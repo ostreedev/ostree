@@ -65,6 +65,7 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 
 ${make}
 [ "$ci_test" = no ] || ${make} check || maybe_fail_tests
+cat test/test-suite.log || :
 # TODO: if ostree aims to support distcheck, run that too
 
 ${make} install DESTDIR=$(pwd)/DESTDIR
@@ -78,6 +79,8 @@ if [ "$ci_sudo" = yes ] && [ "$ci_test" = yes ]; then
         GI_TYPELIB_PATH=/usr/local/lib/girepository-1.0 \
         ${make} installcheck || \
     maybe_fail_tests
+    cat test/test-suite.log || :
+
     env \
         LD_LIBRARY_PATH=/usr/local/lib \
         GI_TYPELIB_PATH=/usr/local/lib/girepository-1.0 \
