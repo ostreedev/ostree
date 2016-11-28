@@ -17,6 +17,10 @@
 
 if BUILDOPT_SYSTEMD
 ostree_boot_PROGRAMS += ostree-remount
+else
+# It is built anyway as a side-effect of having the symlink in tests/,
+# and if we declare it here, it gets cleaned up properly
+check_PROGRAMS += ostree-remount
 endif
 
 ostree_prepare_root_SOURCES = \
