@@ -2800,7 +2800,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         for (i = 0; i < n; i++)
           {
             const char *delta;
-            GVariant *csum_v = NULL;
+            g_autoptr(GVariant) csum_v = NULL;
             guchar *csum_data = g_malloc (OSTREE_SHA256_DIGEST_LEN);
             g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
 
