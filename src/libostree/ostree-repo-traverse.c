@@ -349,8 +349,7 @@ traverse_iter (OstreeRepo                          *repo,
 
           g_debug ("Found file object %s", checksum);
           key = g_variant_ref_sink (ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE));
-          g_hash_table_replace (inout_reachable, key, key);
-          key = NULL;
+          g_hash_table_add (inout_reachable, g_steal_pointer (&key));
         }
       else if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_DIR)
         {
@@ -364,14 +363,12 @@ traverse_iter (OstreeRepo                          *repo,
           g_debug ("Found dirtree object %s", content_checksum);
           g_debug ("Found dirmeta object %s", meta_checksum);
           key = g_variant_ref_sink (ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META));
-          g_hash_table_replace (inout_reachable, key, key);
-          key = NULL;
+          g_hash_table_add (inout_reachable, g_steal_pointer (&key));
 
           key = g_variant_ref_sink (ostree_object_name_serialize (content_checksum, OSTREE_OBJECT_TYPE_DIR_TREE));
           if (!g_hash_table_lookup (inout_reachable, key))
             {
-              g_hash_table_replace (inout_reachable, key, key);
-              key = NULL;
+              g_hash_table_add (inout_reachable, g_steal_pointer (&key));
 
               if (!traverse_dirtree (repo, content_checksum, inout_reachable,
                                      ignore_missing_dirs, cancellable, error))
