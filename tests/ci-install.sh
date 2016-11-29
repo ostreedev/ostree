@@ -4,6 +4,7 @@ set -euo pipefail
 set -x
 
 NULL=
+: "${ci_distro:=debian}"
 : "${ci_docker:=}"
 : "${ci_in_docker:=no}"
 : "${ci_suite:=jessie}"
