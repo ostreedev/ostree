@@ -286,6 +286,7 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
 
   ret = TRUE;
  out:
+  g_clear_pointer (&state->content_checksum, g_checksum_free);
   return ret;
 }
 
@@ -941,6 +942,7 @@ dispatch_close (OstreeRepo                 *repo,
     goto out;
       
   g_clear_pointer (&state->xattrs, g_variant_unref);
+  g_clear_pointer (&state->content_checksum, g_checksum_free);
   g_clear_object (&state->content_out);
   
   state->checksum_index++;
