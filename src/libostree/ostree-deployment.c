@@ -133,7 +133,6 @@ OstreeDeployment *
 ostree_deployment_clone (OstreeDeployment *self)
 {
   glnx_unref_object OstreeBootconfigParser *new_bootconfig = NULL;
-  GKeyFile *new_origin = NULL;
   OstreeDeployment *ret = ostree_deployment_new (self->index, self->osname, self->csum,
                                                  self->deployserial,
                                                  self->bootcsum, self->bootserial);
@@ -143,6 +142,7 @@ ostree_deployment_clone (OstreeDeployment *self)
 
   if (self->origin)
     {
+      g_autoptr(GKeyFile) new_origin = NULL;
       g_autofree char *data = NULL;
       gsize len;
       gboolean success;
