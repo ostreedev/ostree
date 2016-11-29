@@ -127,6 +127,7 @@ int main (int argc, char **argv)
   g_test_add_data_func ("/test-pull-c/multi-ok-error-repeat", &td, test_pull_multi_error_then_ok);
 
   r = g_test_run();
+  g_clear_object (&td.repo);
 
   return r;
 }

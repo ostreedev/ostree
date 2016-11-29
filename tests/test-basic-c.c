@@ -73,7 +73,6 @@ test_raw_file_to_archive_z2_stream (gconstpointer data)
                            &commit_checksum,
                            &error);
   g_assert_no_error (error);
-  reachable = ostree_repo_traverse_new_reachable ();
   ostree_repo_traverse_commit (repo,
                                commit_checksum,
                                -1,

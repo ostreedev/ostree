@@ -180,7 +180,7 @@ static void
 test_libarchive_autocreate_empty (gconstpointer data)
 {
   TestData *td = (void*)data;
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
@@ -198,7 +198,7 @@ static void
 test_libarchive_error_device_file (gconstpointer data)
 {
   TestData *td = (void*)data;
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
@@ -563,6 +563,7 @@ int main (int argc, char **argv)
 
   r = g_test_run();
 
+  g_clear_object (&td.repo);
   if (td.tmpd && g_getenv ("TEST_SKIP_CLEANUP") == NULL)
     (void) glnx_shutil_rm_rf_at (AT_FDCWD, td.tmpd, NULL, NULL);
   g_free (td.tmpd);
