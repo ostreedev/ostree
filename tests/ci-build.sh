@@ -26,10 +26,30 @@ set -euo pipefail
 set -x
 
 NULL=
+
+# ci_docker:
+# If non-empty, this is the name of a Docker image. ci-install.sh will
+# fetch it with "docker pull" and use it as a base for a new Docker image
+# named "ci-image" in which we will do our testing.
+#
+# If empty, we test on "bare metal".
+# Typical values: ubuntu:xenial, debian:jessie-slim
 : "${ci_docker:=}"
+
+# ci_parallel:
+# A number of parallel jobs, passed to make -j
 : "${ci_parallel:=1}"
+
+# ci_sudo:
+# If yes, assume we can get root using sudo; if no, only use current user
 : "${ci_sudo:=no}"
+
+# ci_test:
+# If yes, run tests; if no, just build
 : "${ci_test:=yes}"
+
+# ci_test_fatal:
+# If yes, test failures break the build; if no, they are reported but ignored
 : "${ci_test_fatal:=yes}"
 
 if [ -n "$ci_docker" ]; then

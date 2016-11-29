@@ -26,9 +26,28 @@ set -euo pipefail
 set -x
 
 NULL=
+
+# ci_distro:
+# OS distribution in which we are testing
+# Typical values: ubuntu, debian; maybe fedora in future
 : "${ci_distro:=debian}"
+
+# ci_docker:
+# If non-empty, this is the name of a Docker image. ci-install.sh will
+# fetch it with "docker pull" and use it as a base for a new Docker image
+# named "ci-image" in which we will do our testing.
 : "${ci_docker:=}"
+
+# ci_in_docker:
+# Used internally by ci-install.sh. If yes, we are inside the Docker image
+# (ci_docker is empty in this case).
 : "${ci_in_docker:=no}"
+
+# ci_suite:
+# OS suite (release, branch) in which we are testing.
+# Typical values for ci_distro=ubuntu: xenial, trusty
+# Typical values for ci_distro=debian: sid, jessie
+# Typical values for ci_distro=fedora might be 25, rawhide
 : "${ci_suite:=jessie}"
 
 if [ $(id -u) = 0 ]; then
