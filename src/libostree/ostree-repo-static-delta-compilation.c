@@ -132,7 +132,7 @@ xattr_chunk_hash (const void *vp)
     {
       const guint8* name;
       const guint8* value_data;
-      GVariant *value = NULL;
+      g_autoptr(GVariant) value = NULL;
       gsize value_len;
 
       g_variant_get_child (v, i, "(^&ay@ay)",
@@ -911,9 +911,8 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      g_variant_ref (serialized_key);
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
-        g_hash_table_add (new_reachable_metadata, serialized_key);
+        g_hash_table_add (new_reachable_metadata, g_variant_ref (serialized_key));
       else
         {
           g_autoptr(GFileInfo) finfo = NULL;
@@ -955,8 +954,9 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
     }
 
   /* We already ship the to commit in the superblock, don't ship it twice */
-  g_hash_table_remove (new_reachable_metadata,
-                       ostree_object_name_serialize (to, OSTREE_OBJECT_TYPE_COMMIT));
+  { g_autoptr(GVariant) commit = ostree_object_name_serialize (to, OSTREE_OBJECT_TYPE_COMMIT);
+    g_hash_table_remove (new_reachable_metadata, commit);
+  }
 
   rollsum_optimized_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                              g_free,
@@ -1359,8 +1359,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   for (i = 0; i < builder.parts->len; i++)
     {
       OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];
-      GBytes *payload_b;
-      GBytes *operations_b;
+      g_autoptr(GBytes) payload_b;
+      g_autoptr(GBytes) operations_b;
       g_autofree guchar *part_checksum = NULL;
       g_autoptr(GBytes) objtype_checksum_array = NULL;
       g_autoptr(GBytes) checksum_bytes = NULL;
@@ -1415,10 +1415,11 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       }
 
       /* FIXME - avoid duplicating memory here */
-      delta_part = g_variant_new ("(y@ay)",
-                                  compression_type_char,
-                                  ot_gvariant_new_ay_bytes (g_memory_output_stream_steal_as_bytes (part_payload_out)));
-      g_variant_ref_sink (delta_part);
+      { g_autoptr(GBytes) payload = g_memory_output_stream_steal_as_bytes (part_payload_out);
+        delta_part = g_variant_ref_sink (g_variant_new ("(y@ay)",
+                                                        compression_type_char,
+                                                        ot_gvariant_new_ay_bytes (payload)));
+      }
 
       if (inline_parts)
         {
@@ -1532,7 +1533,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     /* floating */ GVariant *to_csum_v =
       ostree_checksum_to_bytes_v (to);
 
-    delta_descriptor = g_variant_ref_sink (g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "ay"
+    delta_descriptor = g_variant_ref_sink (g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "@ay"
                                                           "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
                                                           "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",
                                                           g_variant_builder_end (&metadata_builder),
@@ -1540,7 +1541,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                                           from_csum_v,
                                                           to_csum_v,
                                                           to_commit,
-                                                          g_variant_builder_new (G_VARIANT_TYPE ("ay")),
+                                                          ot_gvariant_new_bytearray ((guchar*)"", 0),
                                                           part_headers,
                                                           fallback_headers));
     g_date_time_unref (now);
