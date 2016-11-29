@@ -28,7 +28,7 @@ struct _OstreeBootconfigParser
   GObject       parent_instance;
 
   gboolean      parsed;
-  char         *separators;
+  const char   *separators;
 
   GHashTable   *options;
   GPtrArray    *lines;
@@ -235,7 +235,6 @@ ostree_bootconfig_parser_finalize (GObject *object)
 
   g_hash_table_unref (self->options);
   g_ptr_array_unref (self->lines);
-  g_free (self->separators);
 
   G_OBJECT_CLASS (ostree_bootconfig_parser_parent_class)->finalize (object);
 }
@@ -261,6 +260,6 @@ ostree_bootconfig_parser_new (void)
   OstreeBootconfigParser *self = NULL;
 
   self = g_object_new (OSTREE_TYPE_BOOTCONFIG_PARSER, NULL);
-  self->separators = g_strdup (" \t");
+  self->separators = " \t";
   return self;
 }
