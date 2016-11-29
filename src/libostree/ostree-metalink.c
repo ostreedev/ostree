@@ -479,7 +479,7 @@ try_one_url (OstreeMetalinkRequest *self,
 
   ret = TRUE;
   if (out_data)
-    *out_data = g_bytes_ref (bytes);
+    *out_data = g_steal_pointer (&bytes);
  out:
   return ret;
 }
@@ -492,6 +492,7 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
 {
   gboolean ret = FALSE;
   SoupURI *target_uri = NULL;
+  g_autoptr(GBytes) ret_data = NULL;
 
   if (!self->found_a_file_element)
     {
@@ -546,7 +547,7 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
 
       target_uri = self->urls->pdata[self->current_url_index];
       
-      if (try_one_url (self, target_uri, out_data, &temp_error))
+      if (try_one_url (self, target_uri, &ret_data, &temp_error))
         break;
       else
         {
@@ -568,6 +569,8 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
   ret = TRUE;
   if (out_target_uri)
     *out_target_uri = soup_uri_copy (target_uri);
+  if (out_data)
+    *out_data = g_steal_pointer (&ret_data);
  out:
   return ret;
 }
@@ -599,7 +602,7 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   gboolean ret = FALSE;
   OstreeMetalinkRequest request = { 0, };
   g_autoptr(GMainContext) mainctx = NULL;
-  GBytes *out_contents = NULL;
+  g_autoptr(GBytes) contents = NULL;
   gsize len;
   const guint8 *data;
 
@@ -614,13 +617,13 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
                                               self->uri,
                                               FALSE,
                                               FALSE,
-                                              &out_contents,
+                                              &contents,
                                               self->max_size,
                                               cancellable,
                                               error))
     goto out;
 
-  data = g_bytes_get_data (out_contents, &len);
+  data = g_bytes_get_data (contents, &len);
   if (!g_markup_parse_context_parse (request.parser, (const char*)data, len, error))
     goto out;
 
