@@ -336,11 +336,13 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
       g_print ("Generating static delta:\n");
       g_print ("  From: %s\n", from_resolved ? from_resolved : "empty");
       g_print ("  To:   %s\n", to_resolved);
-      if (!ostree_repo_static_delta_generate (repo, OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
-                                              from_resolved, to_resolved, NULL,
-                                              g_variant_builder_end (parambuilder),
-                                              cancellable, error))
-        goto out;
+      { g_autoptr(GVariant) params = g_variant_ref_sink (g_variant_builder_end (parambuilder));
+        if (!ostree_repo_static_delta_generate (repo, OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
+                                                from_resolved, to_resolved, NULL,
+                                                params,
+                                                cancellable, error))
+          goto out;
+      }
 
     }
 
