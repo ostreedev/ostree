@@ -68,7 +68,7 @@ Boston, MA 02111-1307, USA.
             <varlistentry>
                 <term><option>--mode</option>="MODE"</term>
                 <listitem><para>
-                    Initialize repository in given mode (bare, archive-z2).  Default is "bare".
+                    Initialize repository in given mode (bare, bare-user, archive-z2).  Default is "bare".
                 </para></listitem>
             </varlistentry>
         </variablelist>
