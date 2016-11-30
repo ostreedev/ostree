@@ -58,11 +58,14 @@
 		  binaries.  It records the Unix uid and gid,
 		  permissions, as well as extended attributes.
 		</para>
-		
+
 		<para>
-		  A repository can be in one of two modes;
+		  A repository can be in one of three modes;
 		  <literal>bare</literal>, which is designed as a hard
-		  link source for operating system checkouts, and
+		  link source for operating system checkouts,
+		  <literal>bare-user</literal>, which is like
+		  <literal>bare</literal> but works on systems that
+		  run as non-root as well as non-root containers, and
 		  <literal>archive-z2</literal>, which is designed for
 		  static HTTP servers.
 		</para>
