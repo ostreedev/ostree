@@ -19,7 +19,11 @@ function skip_cleanup() {
     echo "Skipping cleanup of ${tempdir}"
 }
 cd ${tempdir}
-${srcd}/${bn} -k --tap
+timeout \
+    --kill-after=60 \
+    --signal=ABRT \
+    $(( 600 * ${TEST_TIMEOUT_FACTOR:-1} )) \
+    ${srcd}/${bn} -k --tap
 rc=$?
 case "${TEST_SKIP_CLEANUP:-}" in
     no|"") cleanup ;;
