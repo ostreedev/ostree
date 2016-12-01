@@ -254,6 +254,61 @@ ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
   return ret;
 }
 
+static gboolean
+repo_prune_internal (OstreeRepo        *self,
+                     GHashTable        *objects,
+                     OstreeRepoPruneOptions *options,
+                     gint              *out_objects_total,
+                     gint              *out_objects_pruned,
+                     guint64           *out_pruned_object_size_total,
+                     GCancellable      *cancellable,
+                     GError           **error)
+{
+  gboolean ret = FALSE;
+  GHashTableIter hash_iter;
+  gpointer key, value;
+  OtPruneData data = { 0, };
+
+  data.repo = self;
+  data.reachable = g_hash_table_ref (options->reachable);
+
+  g_hash_table_iter_init (&hash_iter, objects);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      GVariant *objdata = value;
+      const char *checksum;
+      OstreeObjectType objtype;
+      gboolean is_loose;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+      g_variant_get_child (objdata, 0, "b", &is_loose);
+
+      if (!is_loose)
+        continue;
+
+      if (!maybe_prune_loose_object (&data, options->flags, checksum, objtype,
+                                     cancellable, error))
+        goto out;
+    }
+
+  if (!ostree_repo_prune_static_deltas (self, NULL, cancellable, error))
+    goto out;
+
+  if (!_ostree_repo_prune_tmp (self, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  *out_objects_total = (data.n_reachable_meta + data.n_unreachable_meta +
+                        data.n_reachable_content + data.n_unreachable_content);
+  *out_objects_pruned = (data.n_unreachable_meta + data.n_unreachable_content);
+  *out_pruned_object_size_total = data.freed_bytes;
+ out:
+  if (data.reachable)
+    g_hash_table_unref (data.reachable);
+  return ret;
+}
+
 /**
  * ostree_repo_prune:
  * @self: Repo
@@ -289,39 +344,42 @@ ostree_repo_prune (OstreeRepo        *self,
                    GCancellable      *cancellable,
                    GError           **error)
 {
-  gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
   g_autoptr(GHashTable) objects = NULL;
   g_autoptr(GHashTable) all_refs = NULL;
-  OtPruneData data = { 0, };
+  g_autoptr(GHashTable) reachable = NULL;
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
 
-  data.repo = self;
-  data.reachable = ostree_repo_traverse_new_reachable ();
+  reachable = ostree_repo_traverse_new_reachable ();
+
+  /* This original prune API has fixed logic for traversing refs or all commits
+   * combined with actually deleting content. The newer backend API just does
+   * the deletion.
+   */
 
   if (refs_only)
     {
       if (!ostree_repo_list_refs (self, NULL, &all_refs,
                                   cancellable, error))
-        goto out;
-      
+        return FALSE;
+
       g_hash_table_iter_init (&hash_iter, all_refs);
-      
+
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *checksum = value;
 
           g_debug ("Finding objects to keep for commit %s", checksum);
-          if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
+          if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
                                                   cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
   if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
                                  &objects, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!refs_only)
     {
@@ -338,45 +396,57 @@ ostree_repo_prune (OstreeRepo        *self,
             continue;
 
           g_debug ("Finding objects to keep for commit %s", checksum);
-          if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
+          if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
                                                   cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
-  g_hash_table_iter_init (&hash_iter, objects);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      GVariant *serialized_key = key;
-      GVariant *objdata = value;
-      const char *checksum;
-      OstreeObjectType objtype;
-      gboolean is_loose;
-      
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-      g_variant_get_child (objdata, 0, "b", &is_loose);
+  { OstreeRepoPruneOptions opts = { flags, reachable };
+    return repo_prune_internal (self, objects, &opts,
+                                out_objects_total, out_objects_pruned,
+                                out_pruned_object_size_total, cancellable, error);
+  }
+}
 
-      if (!is_loose)
-        continue;
+/**
+ * ostree_repo_prune_from_reachable:
+ * @self: Repo
+ * @options: Options controlling prune process
+ * @out_objects_total: (out): Number of objects found
+ * @out_objects_pruned: (out): Number of objects deleted
+ * @out_pruned_object_size_total: (out): Storage size in bytes of objects deleted
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Delete content from the repository.  This function is the "backend"
+ * half of the higher level ostree_repo_prune().  To use this function,
+ * you determine the root set yourself, and this function finds all other
+ * unreferenced objects and deletes them.
+ *
+ * Use this API when you want to perform more selective pruning - for example,
+ * retain all commits from a production branch, but just GC some history from
+ * your dev branch.
+ *
+ * The %OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE flag may be specified to just determine
+ * statistics on objects that would be deleted, without actually deleting them.
+ */
+gboolean
+ostree_repo_prune_from_reachable (OstreeRepo        *self,
+                                  OstreeRepoPruneOptions *options,
+                                  gint              *out_objects_total,
+                                  gint              *out_objects_pruned,
+                                  guint64           *out_pruned_object_size_total,
+                                  GCancellable      *cancellable,
+                                  GError           **error)
+{
+  g_autoptr(GHashTable) objects = NULL;
 
-      if (!maybe_prune_loose_object (&data, flags, checksum, objtype,
-                                     cancellable, error))
-        goto out;
-    }
+  if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
+                                 &objects, cancellable, error))
+    return FALSE;
 
-  if (!ostree_repo_prune_static_deltas (self, NULL, cancellable, error))
-    goto out;
-
-  if (!_ostree_repo_prune_tmp (self, cancellable, error))
-    goto out;
-
-  ret = TRUE;
-  *out_objects_total = (data.n_reachable_meta + data.n_unreachable_meta +
-                        data.n_reachable_content + data.n_unreachable_content);
-  *out_objects_pruned = (data.n_unreachable_meta + data.n_unreachable_content);
-  *out_pruned_object_size_total = data.freed_bytes;
- out:
-  if (data.reachable)
-    g_hash_table_unref (data.reachable);
-  return ret;
+  return repo_prune_internal (self, objects, options, out_objects_total,
+                              out_objects_pruned, out_pruned_object_size_total,
+                              cancellable, error);
 }

@@ -371,12 +371,10 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/* Remove comment when first new symbol is added
-LIBOSTREE_2016.XX {
+LIBOSTREE_2017.1 {
 global:
-	someostree_symbol_deleteme;
+        ostree_repo_prune_from_reachable;
 } LIBOSTREE_2016.14;
-*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste

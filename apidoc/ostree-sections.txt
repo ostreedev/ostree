@@ -368,6 +368,7 @@ ostree_repo_commit_traverse_iter_next
 OstreeRepoPruneFlags
 ostree_repo_prune
 ostree_repo_prune_static_deltas
+ostree_repo_prune_from_reachable
 OstreeRepoPullFlags
 ostree_repo_pull
 ostree_repo_pull_one_dir
