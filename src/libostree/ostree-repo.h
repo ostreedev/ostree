@@ -970,6 +970,27 @@ gboolean ostree_repo_prune (OstreeRepo        *self,
                             GCancellable      *cancellable,
                             GError           **error);
 
+struct _OstreeRepoPruneOptions {
+  OstreeRepoPruneFlags flags;
+
+  GHashTable *reachable; /* Set<GVariant> (object names) */
+
+  gboolean unused_bools[6];
+  int unused_ints[6];
+  gpointer unused_ptrs[7];
+};
+
+typedef struct _OstreeRepoPruneOptions OstreeRepoPruneOptions;
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_prune_from_reachable (OstreeRepo             *self,
+                                           OstreeRepoPruneOptions *options,
+                                           gint              *out_objects_total,
+                                           gint              *out_objects_pruned,
+                                           guint64           *out_pruned_object_size_total,
+                                           GCancellable           *cancellable,
+                                           GError              **error);
+
 /**
  * OstreeRepoPullFlags:
  * @OSTREE_REPO_PULL_FLAGS_NONE: No special options for pull
