@@ -125,6 +125,8 @@ AS_IF([ test x$have_gpgme = xno ], [
 ])
 OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"
 
+PKG_CHECK_MODULES(OT_DEP_JSON, [json-glib-1.0])
+
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 # What's in RHEL7.2.
 FUSE_DEPENDENCY="fuse >= 2.9.2"
