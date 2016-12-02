@@ -50,22 +50,29 @@ test_ot_util_path_split_validate (void)
 static void
 test_ot_util_filename_validate (void)
 {
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
 
   /* Check for valid inputs.  */
   g_assert (ot_util_filename_validate ("valid", &error));
+  g_assert_no_error (error);
   g_assert (ot_util_filename_validate ("valid_file_name", &error));
+  g_assert_no_error (error);
   g_assert (ot_util_filename_validate ("file.name", &error));
+  g_assert_no_error (error);
   g_assert (ot_util_filename_validate ("foo..", &error));
+  g_assert_no_error (error);
   g_assert (ot_util_filename_validate ("..bar", &error));
+  g_assert_no_error (error);
   g_assert (ot_util_filename_validate ("baz:", &error));
+  g_assert_no_error (error);
 
   /* Check for invalid inputs.  */
   g_assert_false (ot_util_filename_validate ("not/valid/file/name", &error));
-  error = NULL;
+  g_clear_error (&error);
   g_assert_false (ot_util_filename_validate (".", &error));
-  error = NULL;
+  g_clear_error (&error);
   g_assert_false (ot_util_filename_validate ("..", &error));
+  g_clear_error (&error);
 }
 
 int main (int argc, char **argv)

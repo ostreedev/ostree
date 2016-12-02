@@ -32,7 +32,7 @@
 static void
 helper_test_compress_decompress (const guint8 *data, gssize data_size)
 {
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   g_autoptr(GOutputStream) out_compress = g_memory_output_stream_new_resizable ();
   g_autoptr(GOutputStream) out_decompress = NULL;
   g_autoptr(GInputStream) in_compress = g_memory_input_stream_new_from_data (data, data_size, NULL);
@@ -55,9 +55,10 @@ helper_test_compress_decompress (const guint8 *data, gssize data_size)
   {
     gssize n_bytes_written;
     g_autoptr(GInputStream) convin = NULL;
-  g_autoptr(GConverter) decompressor = (GConverter*)_ostree_lzma_decompressor_new ();
+    g_autoptr(GConverter) decompressor = (GConverter*)_ostree_lzma_decompressor_new ();
+    g_autoptr(GBytes) bytes = g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out_compress));
 
-    in_decompress = g_memory_input_stream_new_from_bytes (g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out_compress)));
+    in_decompress = g_memory_input_stream_new_from_bytes (bytes);
     convin = g_converter_input_stream_new ((GInputStream*) in_decompress, decompressor);
     n_bytes_written = g_output_stream_splice (out_decompress, convin,
                                               G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
