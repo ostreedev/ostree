@@ -27,7 +27,7 @@
 static void
 check_one_roundtrip (guint64    val)
 {
-  GString *buf = g_string_new (NULL);
+  g_autoptr(GString) buf = g_string_new (NULL);
   guint64 newval;
   gsize bytes_read;
 

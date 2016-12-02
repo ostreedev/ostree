@@ -84,7 +84,7 @@ test_ensure_parent_dirs (void)
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
   g_autoptr(GPtrArray) split_path = NULL;
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   const char *pathname = "/foo/bar/baz";
   const char *checksum = "01234567890123456789012345678901";
   g_autofree char *source_checksum = NULL;
@@ -103,6 +103,7 @@ test_ensure_parent_dirs (void)
 
   g_assert_false (ostree_mutable_tree_lookup (tree, "bar", &source_checksum2,
                                               &source_subdir2, &error));
+  g_clear_error (&error);
 }
 
 static void
@@ -110,7 +111,7 @@ test_ensure_dir (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   const char *dirname = "foo";
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";
@@ -122,13 +123,14 @@ test_ensure_dir (void)
 
   g_assert (ostree_mutable_tree_replace_file (tree, filename, checksum, &error));
   g_assert_false (ostree_mutable_tree_ensure_dir (tree, filename, &parent, &error));
+  g_clear_error (&error);
 }
 
 static void
 test_replace_file (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";
   const char *checksum2 = "ABCDEF01234567890123456789012345";
@@ -157,7 +159,7 @@ test_contents_checksum (void)
   const char *subdir_checksum = "ABCD0123456789012345678901234567";
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *subdir = NULL;
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   g_assert_null (ostree_mutable_tree_get_contents_checksum (tree));
 
   ostree_mutable_tree_set_contents_checksum (tree, checksum);

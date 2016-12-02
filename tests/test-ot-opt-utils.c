@@ -39,19 +39,19 @@ util_usage_error_printerr (const gchar *string)
 static void
 test_ot_util_usage_error (void)
 {
-  GError *error = NULL;
-  GOptionContext *context = g_option_context_new ("[TEST]");
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("[TEST]");
   GPrintFunc old_printerr = g_set_printerr_handler (util_usage_error_printerr);
 
   ot_util_usage_error (context, "find_me", &error);
 
   g_assert_nonnull (strstr (printerr_str->str, "[TEST]"));
   g_assert_nonnull (strstr (error->message, "find_me"));
+  g_clear_error (&error);
 
   g_set_printerr_handler (old_printerr);
   g_string_free (printerr_str, TRUE);
   printerr_str = NULL;
-  g_option_context_free (context);
 }
 
 int main (int argc, char **argv)

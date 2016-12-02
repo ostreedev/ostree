@@ -89,7 +89,9 @@ test_bsdiff (void)
   g_output_stream_close (out, NULL, NULL);
 
   /* Now generate NEW_GENERATED from OLD and OUT.  */
-  in = g_memory_input_stream_new_from_bytes (g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out)));
+  { g_autoptr(GBytes) bytes = g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out));
+    in = g_memory_input_stream_new_from_bytes (bytes);
+  }
   bspatch_stream.read = bzpatch_read;
   bspatch_stream.opaque = in;
 

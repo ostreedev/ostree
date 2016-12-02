@@ -43,7 +43,7 @@ ot_parse_keyvalue (const char  *keyvalue,
 static void
 test_ot_parse_boolean (void)
 {
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   gboolean out = FALSE;
   g_assert_true (ot_parse_boolean ("yes", &out, &error));
   g_assert_true (out);
@@ -70,15 +70,17 @@ test_ot_parse_boolean (void)
   out = TRUE;
   g_assert_true (ot_parse_boolean ("none", &out, &error));
   g_assert_false (out);
+  g_clear_error (&error);
 
   g_assert_false (ot_parse_boolean ("FOO", &out, &error));
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_clear_error (&error);
 }
 
 static void
 test_ot_parse_keyvalue (void)
 {
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   char *keyvalue[] = {"foo=bar", "a=", "b=1231231"};
   char *key[] = {"foo", "a", "b"};
   char *value[] = {"bar", "", "1231231"};
@@ -104,6 +106,7 @@ test_ot_parse_keyvalue (void)
                                        &out_value,
                                        &error));
     g_assert_error (error, G_IO_ERROR, G_IO_ERROR_FAILED);
+    g_clear_error (&error);
   }
 }
 
