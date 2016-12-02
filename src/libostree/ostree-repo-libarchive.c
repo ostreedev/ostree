@@ -913,10 +913,9 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
-  struct archive *a = NULL;
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
 
-  a = archive_read_new ();
 #ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL
   archive_read_support_filter_all (a);
 #else
@@ -945,7 +944,6 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   if (a)
     {
       (void)archive_read_close (a);
-      (void)archive_read_free (a);
     }
   return ret;
 #else

@@ -134,6 +134,7 @@ libostree_1_la_SOURCES = \
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
 	src/libostree/ostree-libarchive-input-stream.c \
+	src/libostree/ostree-libarchive-private.h \
 	$(NULL)
 endif
 if HAVE_LIBSOUP_CLIENT_CERTS

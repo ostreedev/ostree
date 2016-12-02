@@ -24,6 +24,7 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "ostree-repo-file.h"
+#include "ostree-libarchive-private.h"
 #include "otutil.h"
 
 #ifdef HAVE_LIBARCHIVE
@@ -67,7 +68,7 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
   g_autoptr(GFile) subtree = NULL;
   g_autofree char *commit = NULL;
   g_autoptr(GVariant) commit_data = NULL;
-  struct archive *a = NULL;
+  ot_cleanup_write_archive struct archive *a = NULL;
   OstreeRepoExportArchiveOptions opts = { 0, };
 
   context = g_option_context_new ("COMMIT - Stream COMMIT to stdout in tar format");
@@ -154,10 +155,6 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
   
   ret = TRUE;
  out:
-#ifdef HAVE_LIBARCHIVE  
-  if (a)
-    archive_write_free (a);
-#endif
   if (context)
     g_option_context_free (context);
   return ret;
