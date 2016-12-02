@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include <ostree.h>
+#include "ostree-libarchive-private.h"
 #include <archive.h>
 #include <archive_entry.h>
 
@@ -40,7 +41,7 @@ static void
 test_data_init (TestData *td)
 {
   GError *error = NULL;
-  struct archive *a = archive_write_new ();
+  ot_cleanup_write_archive struct archive *a = archive_write_new ();
   struct archive_entry *ae;
   uid_t uid = getuid ();
   gid_t gid = getgid ();
@@ -115,12 +116,12 @@ test_data_init (TestData *td)
   archive_entry_free (ae);
 
   g_assert_cmpint (ARCHIVE_OK, ==, archive_write_close (a));
-  g_assert_cmpint (ARCHIVE_OK, ==, archive_write_free (a));
 
   td->fd_empty = openat (AT_FDCWD, "empty.tar.gz", O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0644);
   g_assert (td->fd_empty >= 0);
   (void) unlink ("empty.tar.gz");
 
+  g_assert_cmpint (ARCHIVE_OK, ==, archive_write_free (a));
   a = archive_write_new ();
   g_assert (a);
 
@@ -128,7 +129,6 @@ test_data_init (TestData *td)
   g_assert_cmpint (0, ==, archive_write_add_filter_gzip (a));
   g_assert_cmpint (0, ==, archive_write_open_fd (a, td->fd_empty));
   g_assert_cmpint (ARCHIVE_OK, ==, archive_write_close (a));
-  g_assert_cmpint (ARCHIVE_OK, ==, archive_write_free (a));
 
   { g_autoptr(GFile) repopath = g_file_new_for_path ("repo");
     td->repo = ostree_repo_new (repopath);
@@ -165,7 +165,7 @@ test_libarchive_noautocreate_empty (gconstpointer data)
 {
   TestData *td = (void*)data;
   GError *error = NULL;
-  struct archive *a = archive_read_new ();
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
 
@@ -181,7 +181,7 @@ test_libarchive_autocreate_empty (gconstpointer data)
 {
   TestData *td = (void*)data;
   g_autoptr(GError) error = NULL;
-  struct archive *a = archive_read_new ();
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
 
@@ -199,7 +199,7 @@ test_libarchive_error_device_file (gconstpointer data)
 {
   TestData *td = (void*)data;
   g_autoptr(GError) error = NULL;
-  struct archive *a = archive_read_new ();
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
 
@@ -207,6 +207,7 @@ test_libarchive_error_device_file (gconstpointer data)
 
   (void)ostree_repo_import_archive_to_mtree (td->repo, &opts, a, mtree, NULL, NULL, &error);
   g_assert (error != NULL);
+  g_clear_error (&error);
 }
 
 static gboolean
@@ -268,8 +269,8 @@ static void
 test_libarchive_ignore_device_file (gconstpointer data)
 {
   TestData *td = (void*)data;
-  GError *error = NULL;
-  struct archive *a = archive_read_new ();
+  g_autoptr(GError) error = NULL;
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
 
   if (skip_if_no_xattr (td))
@@ -331,7 +332,7 @@ test_libarchive_ostree_convention (gconstpointer data)
 {
   TestData *td = (void*)data;
   GError *error = NULL;
-  struct archive *a = archive_read_new ();
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
 
   if (skip_if_no_xattr (td))
@@ -373,7 +374,7 @@ test_libarchive_xattr_callback (gconstpointer data)
 {
   TestData *td = (void*)data;
   GError *error = NULL;
-  struct archive *a = archive_read_new ();
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0 };
   OstreeRepoCommitModifier *modifier = NULL;
   char buf[7] = { 0 };
@@ -428,7 +429,7 @@ static void
 entry_pathname_test_helper (gconstpointer data, gboolean on)
 {
   TestData *td = (void*)data; GError *error = NULL;
-  struct archive *a = archive_read_new ();
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   OstreeRepoCommitModifier *modifier = NULL;
   gboolean met_etc_file = FALSE;
@@ -468,7 +469,6 @@ entry_pathname_test_helper (gconstpointer data, gboolean on)
       goto out;
     }
 
-  archive_read_free (a);
   ostree_repo_commit_modifier_unref (modifier);
  out:
   g_assert_no_error (error);
@@ -491,7 +491,7 @@ test_libarchive_selinux (gconstpointer data)
 {
   TestData *td = (void*)data;
   GError *error = NULL;
-  struct archive *a = archive_read_new ();
+  ot_cleanup_read_archive struct archive *a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0 };
   glnx_unref_object OstreeSePolicy *sepol = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
@@ -536,7 +536,6 @@ test_libarchive_selinux (gconstpointer data)
   g_assert_cmpstr (buf, ==, "system_u:object_r:etc_t:s0");
 
  out:
-  archive_read_free (a);
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
   g_assert_no_error (error);
