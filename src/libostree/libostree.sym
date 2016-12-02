@@ -401,6 +401,20 @@ global:
        ostree_oci_image_set_architecture;
        ostree_oci_image_set_os;
        ostree_oci_image_set_layers;
+       ostree_oci_registry_get_type;
+       ostree_oci_registry_new;
+       ostree_oci_registry_load_ref;
+       ostree_oci_registry_set_ref;
+       ostree_oci_registry_download_blob;
+       ostree_oci_registry_download_blob_finish;
+       ostree_oci_registry_load_blob;
+       ostree_oci_registry_store_blob;
+       ostree_oci_registry_store_json;
+       ostree_oci_registry_load_versioned;
+       ostree_oci_registry_write_layer;
+       ostree_oci_layer_writer_get_type;
+       ostree_oci_layer_writer_get_archive;
+       ostree_oci_layer_writer_close;
 } LIBOSTREE_2016.14;
 
 /* Stub section for the stable release *after* this development one; don't
