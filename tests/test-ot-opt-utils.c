@@ -25,6 +25,7 @@
 #include <gio/gio.h>
 #include <string.h>
 #include "ot-opt-utils.h"
+#include "libglnx.h"
 
 static GString *printerr_str = NULL;
 
