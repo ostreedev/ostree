@@ -34,37 +34,6 @@ test_get_boolean_with_default (void)
   g_autoptr(GError) error = NULL;
   gboolean out = FALSE;
 
-  GLogLevelFlags always_fatal_mask;
-
-  /* Avoid that g_return_val_if_fail causes the test to fail.  */
-  always_fatal_mask = g_log_set_always_fatal (0);
-
-
-  g_assert_false (ot_keyfile_get_boolean_with_default (NULL,
-                                                       "section",
-                                                       "a_boolean_true",
-                                                       FALSE,
-                                                       &out,
-                                                       &error));
-  g_clear_error (&error);
-  g_assert_false (ot_keyfile_get_boolean_with_default (g_keyfile,
-                                                       NULL,
-                                                       "a_boolean_true",
-                                                       FALSE,
-                                                       &out,
-                                                       &error));
-  g_clear_error (&error);
-  g_assert_false (ot_keyfile_get_boolean_with_default (g_keyfile,
-                                                       "section",
-                                                       NULL,
-                                                       FALSE,
-                                                       &out,
-                                                       &error));
-  g_clear_error (&error);
-
-  /* Restore the old mask.  */
-  g_log_set_always_fatal (always_fatal_mask);
-
   g_assert (ot_keyfile_get_boolean_with_default (g_keyfile,
                                                  "section",
                                                  "a_boolean_true",
