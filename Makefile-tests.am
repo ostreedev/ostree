@@ -28,6 +28,7 @@ EXTRA_DIST += \
 # include the builddir in $PATH so we find our just-built ostree
 # binary.
 TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
+	G_DEBUG=fatal-warnings \
 	GI_TYPELIB_PATH=$$(cd $(top_builddir) && pwd)$${GI_TYPELIB_PATH:+:$$GI_TYPELIB_PATH} \
 	LD_LIBRARY_PATH=$$(cd $(top_builddir)/.libs && pwd)$${LD_LIBRARY_PATH:+:$${LD_LIBRARY_PATH}} \
 	PATH=$$(cd $(top_builddir)/tests && pwd):$${PATH} \
