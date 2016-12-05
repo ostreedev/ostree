@@ -39,7 +39,6 @@
 G_STATIC_ASSERT (sizeof (guint) >= sizeof (guint32));
 
 typedef struct {
-  gboolean        trusted;
   gboolean        stats_only;
   OstreeRepo     *repo;
   guint           checksum_index;
@@ -180,7 +179,6 @@ gboolean
 _ostree_static_delta_part_execute (OstreeRepo      *repo,
                                    GVariant        *objects,
                                    GVariant        *part,
-                                   gboolean         trusted,
                                    gboolean         stats_only,
                                    OstreeDeltaExecuteStats *stats,
                                    GCancellable    *cancellable,
@@ -200,7 +198,6 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
 
   state->repo = repo;
   state->async_error = error;
-  state->trusted = trusted;
   state->stats_only = stats_only;
 
   if (!_ostree_static_delta_parse_checksum_array (objects,
@@ -296,7 +293,6 @@ typedef struct {
   GVariant *part;
   GCancellable *cancellable;
   GSimpleAsyncResult *result;
-  gboolean trusted;
 } StaticDeltaPartExecuteAsyncData;
 
 static void
@@ -323,7 +319,6 @@ static_delta_part_execute_thread (GSimpleAsyncResult  *res,
   if (!_ostree_static_delta_part_execute (data->repo,
                                           data->header,
                                           data->part,
-                                          data->trusted,
                                           FALSE, NULL,
                                           cancellable, &error))
     g_simple_async_result_take_error (res, error);
@@ -333,7 +328,6 @@ void
 _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
                                          GVariant        *header,
                                          GVariant        *part,
-                                         gboolean         trusted,
                                          GCancellable    *cancellable,
                                          GAsyncReadyCallback  callback,
                                          gpointer         user_data)
@@ -344,7 +338,6 @@ _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
   asyncdata->repo = g_object_ref (repo);
   asyncdata->header = g_variant_ref (header);
   asyncdata->part = g_variant_ref (part);
-  asyncdata->trusted = trusted;
   asyncdata->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
   asyncdata->result = g_simple_async_result_new ((GObject*) repo,
@@ -517,9 +510,9 @@ dispatch_bspatch (OstreeRepo                 *repo,
   return ret;
 }
 
-/* When processing untrusted static deltas, we need to checksum the
- * file content, which includes a header.  Compare with what
- * ostree_checksum_file_from_input() is doing too.
+/* Before, we had a distinction between "trusted" and "untrusted" deltas
+ * which we've decided wasn't a good idea.  Now, we always checksum the content.
+ * Compare with what ostree_checksum_file_from_input() is doing too.
  */
 static gboolean
 handle_untrusted_content_checksum (OstreeRepo                 *repo,
@@ -530,13 +523,10 @@ handle_untrusted_content_checksum (OstreeRepo                 *repo,
   g_autoptr(GVariant) header = NULL;
   g_autoptr(GFileInfo) finfo = NULL;
   gsize bytes_written;
-  
-  if (state->trusted)
-    return TRUE;
 
   finfo = _ostree_header_gfile_info_new (state->mode, state->uid, state->gid);
   header = _ostree_file_header_new (finfo, state->xattrs);
-  
+
   state->content_checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
   if (!_ostree_write_variant_with_size (NULL, header, 0, &bytes_written, state->content_checksum,
@@ -579,26 +569,16 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       metadata = g_variant_new_from_data (ostree_metadata_variant_type (state->output_objtype),
                                           state->payload_data + offset, length, TRUE, NULL, NULL);
 
-      if (state->trusted)
-        {
-          if (!ostree_repo_write_metadata_trusted (state->repo, state->output_objtype,
-                                                   state->checksum,
-                                                   metadata,
-                                                   cancellable,
-                                                   error))
-            goto out;
-        }
-      else
-        {
-          g_autofree guchar *actual_csum = NULL;
+      {
+        g_autofree guchar *actual_csum = NULL;
 
-          if (!ostree_repo_write_metadata (state->repo, state->output_objtype,
-                                           state->checksum,
-                                           metadata, &actual_csum,
-                                           cancellable,
-                                           error))
-            goto out;
-        }
+        if (!ostree_repo_write_metadata (state->repo, state->output_objtype,
+                                         state->checksum,
+                                         metadata, &actual_csum,
+                                         cancellable,
+                                         error))
+          goto out;
+      }
     }
   else
     {
@@ -672,29 +652,18 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
                                                   &object_input, &objlen,
                                                   cancellable, error))
             goto out;
-          
-          if (state->trusted)
-            {
-              if (!ostree_repo_write_content_trusted (state->repo,
-                                                      state->checksum,
-                                                      object_input,
-                                                      objlen,
-                                                      cancellable,
-                                                      error))
-                goto out;
-            }
-          else
-            {
-              g_autofree guchar *actual_csum = NULL;
-              if (!ostree_repo_write_content (state->repo,
-                                              state->checksum,
-                                              object_input,
-                                              objlen,
-                                              &actual_csum,
-                                              cancellable,
-                                              error))
-                goto out;
-            }
+
+          {
+            g_autofree guchar *actual_csum = NULL;
+            if (!ostree_repo_write_content (state->repo,
+                                            state->checksum,
+                                            object_input,
+                                            objlen,
+                                            &actual_csum,
+                                            cancellable,
+                                            error))
+              goto out;
+          }
         }
     }
 
@@ -919,8 +888,6 @@ dispatch_close (OstreeRepo                 *repo,
       if (state->content_checksum)
         {
           const char *actual_checksum = g_checksum_get_string (state->content_checksum);
-
-          g_assert (!state->trusted);
 
           if (strcmp (actual_checksum, state->checksum) != 0)
             {
