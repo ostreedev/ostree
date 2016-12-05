@@ -1010,8 +1010,6 @@ static_deltapart_fetch_on_complete (GObject           *object,
   _ostree_static_delta_part_execute_async (pull_data->repo,
                                            fetch_data->objects,
                                            part,
-                                           /* Trust checksums if summary was gpg signed */
-                                           pull_data->gpg_verify_summary && pull_data->summary_data_sig,
                                            pull_data->cancellable,
                                            on_static_delta_written,
                                            fetch_data);
@@ -1661,7 +1659,6 @@ process_one_static_delta (OtPullData   *pull_data,
       g_autoptr(GBytes) inline_part_bytes = NULL;
       guint64 size, usize;
       guint32 version;
-      const gboolean trusted = pull_data->gpg_verify_summary && pull_data->summary_data_sig;
 
       header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
@@ -1731,7 +1728,6 @@ process_one_static_delta (OtPullData   *pull_data,
           _ostree_static_delta_part_execute_async (pull_data->repo,
                                                    fetch_data->objects,
                                                    inline_delta_part,
-                                                   trusted,
                                                    pull_data->cancellable,
                                                    on_static_delta_written,
                                                    fetch_data);
