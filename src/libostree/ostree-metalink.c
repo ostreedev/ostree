@@ -642,9 +642,3 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   g_clear_pointer (&request.parser, g_markup_parse_context_free);
   return ret;
 }
-
-SoupURI *
-_ostree_metalink_get_uri (OstreeMetalink        *self)
-{
-  return self->uri;
-}
