@@ -1273,15 +1273,15 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     {
       if (!is_stored)
         {
-          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
-                                                          objtype, tmp_checksum, !pull_data->is_untrusted,
-                                                          cancellable, error))
-            goto out;
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!write_commitpartial_for (pull_data, tmp_checksum, error))
                 goto out;
             }
+          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
+                                                          objtype, tmp_checksum, !pull_data->is_untrusted,
+                                                          cancellable, error))
+            goto out;
         }
       is_stored = TRUE;
       is_requested = TRUE;
