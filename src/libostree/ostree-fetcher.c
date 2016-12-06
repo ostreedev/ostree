@@ -422,7 +422,6 @@ static void
 create_pending_soup_request (OstreeFetcherPendingURI  *pending,
                              GError                  **error)
 {
-  g_autofree char *uristr = NULL;
   OstreeFetcherURI *next_mirror = NULL;
   g_autoptr(OstreeFetcherURI) uri = NULL;
 
