@@ -22,10 +22,7 @@
 
 #ifndef __GI_SCANNER__
 
-#define LIBSOUP_USE_UNSTABLE_REQUEST_API
-#include <libsoup/soup.h>
-#include <libsoup/soup-requester.h>
-#include <libsoup/soup-request-http.h>
+#include "libglnx.h"
 
 G_BEGIN_DECLS
 
@@ -39,6 +36,8 @@ G_BEGIN_DECLS
 /* Lower values have higher priority */
 #define OSTREE_FETCHER_DEFAULT_PRIORITY 0
 
+typedef struct OstreeFetcherURI OstreeFetcherURI;
+
 typedef struct OstreeFetcherClass   OstreeFetcherClass;
 typedef struct OstreeFetcher   OstreeFetcher;
 
@@ -51,6 +50,34 @@ typedef enum {
   OSTREE_FETCHER_FLAGS_NONE = 0,
   OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE = (1 << 0)
 } OstreeFetcherConfigFlags;
+
+void
+_ostree_fetcher_uri_free (OstreeFetcherURI *uri);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeFetcherURI, _ostree_fetcher_uri_free)
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_parse (const char       *str,
+                           GError          **error);
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_clone (OstreeFetcherURI *uri);
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_new_path (OstreeFetcherURI *uri,
+                              const char       *subpath);
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_new_subpath (OstreeFetcherURI *uri,
+                                 const char       *subpath);
+
+char *
+_ostree_fetcher_uri_get_scheme (OstreeFetcherURI *uri);
+
+char *
+_ostree_fetcher_uri_get_path (OstreeFetcherURI *uri);
+
+char *
+_ostree_fetcher_uri_to_string (OstreeFetcherURI *uri);
 
 GType   _ostree_fetcher_get_type (void) G_GNUC_CONST;
 
@@ -100,7 +127,7 @@ gboolean _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher,
                                                      GError         **error);
 
 gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
-                                                SoupURI       *uri,
+                                                OstreeFetcherURI *uri,
                                                 gboolean       add_nul,
                                                 gboolean       allow_noent,
                                                 GBytes         **out_contents,

@@ -24,6 +24,10 @@
 
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
+#define LIBSOUP_USE_UNSTABLE_REQUEST_API
+#include <libsoup/soup.h>
+#include <libsoup/soup-requester.h>
+#include <libsoup/soup-request-http.h>
 
 #include "libglnx.h"
 #include "ostree-fetcher.h"
@@ -418,25 +422,20 @@ static void
 create_pending_soup_request (OstreeFetcherPendingURI  *pending,
                              GError                  **error)
 {
-  g_autofree char *uristr = NULL;
-  SoupURI *next_mirror = NULL;
-  SoupURI *uri = NULL;
+  OstreeFetcherURI *next_mirror = NULL;
+  g_autoptr(OstreeFetcherURI) uri = NULL;
 
   g_assert (pending->mirrorlist);
   g_assert (pending->mirrorlist_idx < pending->mirrorlist->len);
 
-  next_mirror = g_ptr_array_index (pending->mirrorlist,
-                                   pending->mirrorlist_idx);
-  uristr = g_build_filename (soup_uri_get_path (next_mirror),
-                             pending->filename /* may be NULL */, NULL);
-  uri = soup_uri_copy (next_mirror);
-  soup_uri_set_path (uri, uristr);
+  next_mirror = g_ptr_array_index (pending->mirrorlist, pending->mirrorlist_idx);
+  if (pending->filename)
+    uri = _ostree_fetcher_uri_new_subpath (next_mirror, pending->filename);
 
   g_clear_object (&pending->request);
 
   pending->request = soup_session_request_uri (pending->thread_closure->session,
-                                               uri, error);
-  soup_uri_free (uri);
+                                               (SoupURI*)(uri ? uri : next_mirror), error);
 }
 
 static void
@@ -1404,7 +1403,7 @@ _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
 /* Helper for callers who just want to fetch single one-off URIs */
 gboolean
 _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
-                                       SoupURI        *uri,
+                                       OstreeFetcherURI *uri,
                                        gboolean        add_nul,
                                        gboolean        allow_noent,
                                        GBytes         **out_contents,
@@ -1418,4 +1417,85 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
                                                      add_nul, allow_noent,
                                                      out_contents, max_size,
                                                      cancellable, error);
+}
+
+void
+_ostree_fetcher_uri_free (OstreeFetcherURI *uri)
+{
+  if (uri)
+    soup_uri_free ((SoupURI*)uri);
+}
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_parse (const char       *str,
+                           GError          **error)
+{
+  SoupURI *soupuri = soup_uri_new (str);
+  if (soupuri == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Failed to parse uri: %s", str);
+      return NULL;
+    }
+  return (OstreeFetcherURI*)soupuri;
+}
+
+static OstreeFetcherURI *
+_ostree_fetcher_uri_new_path_internal (OstreeFetcherURI *uri,
+                                       gboolean          extend,
+                                       const char       *path)
+{
+  SoupURI *newuri = soup_uri_copy ((SoupURI*)uri);
+  if (path)
+    {
+      if (extend)
+        {
+          const char *origpath = soup_uri_get_path ((SoupURI*)uri);
+          g_autofree char *newpath = g_build_filename (origpath, path, NULL);
+          soup_uri_set_path (newuri, newpath);
+        }
+      else
+        {
+          soup_uri_set_path (newuri, path);
+        }
+    }
+  return (OstreeFetcherURI*)newuri;
+}
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_new_path (OstreeFetcherURI *uri,
+                              const char       *path)
+{
+  return _ostree_fetcher_uri_new_path_internal (uri, FALSE, path);
+}
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_new_subpath (OstreeFetcherURI *uri,
+                                 const char       *subpath)
+{
+  return _ostree_fetcher_uri_new_path_internal (uri, TRUE, subpath);
+}
+
+OstreeFetcherURI *
+_ostree_fetcher_uri_clone (OstreeFetcherURI *uri)
+{
+  return _ostree_fetcher_uri_new_subpath (uri, NULL);
+}
+
+char *
+_ostree_fetcher_uri_get_scheme (OstreeFetcherURI *uri)
+{
+  return g_strdup (soup_uri_get_scheme ((SoupURI*)uri));
+}
+
+char *
+_ostree_fetcher_uri_get_path (OstreeFetcherURI *uri)
+{
+  return g_strdup (soup_uri_get_path ((SoupURI*)uri));
+}
+
+char *
+_ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
+{
+  return soup_uri_to_string ((SoupURI*)uri, FALSE);
 }
