@@ -18,9 +18,15 @@
  * Boston, MA 02111-1307, USA.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <string.h>
+
 /*** END file-header ***/
 
 /*** BEGIN file-production ***/
+
 /* enumerations from "@filename@" */
 #include "@filename@"
 
