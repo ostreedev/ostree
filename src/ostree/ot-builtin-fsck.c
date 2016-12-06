@@ -311,7 +311,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
           if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
             n_partial++;
           else
-            g_hash_table_insert (commits, g_variant_ref (serialized_key), serialized_key);
+            g_hash_table_add (commits, g_variant_ref (serialized_key));
         }
     }
 
