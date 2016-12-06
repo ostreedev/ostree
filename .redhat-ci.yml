@@ -3,6 +3,8 @@ branches:
     - auto
     - try
 
+required: true
+
 container:
     image: projectatomic/ostree-tester
 
@@ -30,6 +32,7 @@ artifacts:
 ---
 
 inherit: true
+required: true
 
 context: Clang
 
