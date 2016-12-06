@@ -554,7 +554,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                          g_ascii_xdigit_value (checksum[1]));
         if (repo->updated_uncompressed_dirs == NULL)
           repo->updated_uncompressed_dirs = g_hash_table_new (NULL, NULL);
-        g_hash_table_insert (repo->updated_uncompressed_dirs, key, key);
+        g_hash_table_add (repo->updated_uncompressed_dirs, key);
       }
       g_mutex_unlock (&repo->cache_lock);
 

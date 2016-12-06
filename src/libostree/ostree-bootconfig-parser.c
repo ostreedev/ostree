@@ -193,7 +193,7 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
       else
         {
           write_key (self, buf, key, value);
-          g_hash_table_insert (written_overrides, (gpointer)key, (gpointer)key);
+          g_hash_table_add (written_overrides, (gpointer)key);
         }
     }
 
