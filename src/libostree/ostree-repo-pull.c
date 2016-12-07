@@ -2094,7 +2094,7 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
         }
 
       scheme = _ostree_fetcher_uri_get_scheme (mirror_uri);
-      if ((strcmp (scheme, "http") != 0) && (strcmp (scheme, "https") != 0))
+      if (!(g_str_equal (scheme, "http") || (g_str_equal (scheme, "https"))))
         {
           /* let's not support mirrorlists that contain non-http based URIs for
            * now (e.g. local URIs) -- we need to think about if and how we want
@@ -2111,15 +2111,11 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
       if (ret_mirrorlist->len == 0)
         {
           GError *local_error = NULL;
-          g_autofree char *config_uri_str = g_build_filename (mirror_uri_str,
-                                                              "config", NULL);
-          g_autoptr(OstreeFetcherURI) config_uri = _ostree_fetcher_uri_parse (config_uri_str, NULL);
-
-          g_assert (config_uri);
+          g_autoptr(OstreeFetcherURI) config_uri = _ostree_fetcher_uri_new_subpath (mirror_uri_str, "config");
 
           if (fetch_uri_contents_utf8_sync (fetcher, config_uri, NULL,
                                             cancellable, &local_error))
-            g_ptr_array_add (ret_mirrorlist, g_steal_pointer (&config_uri));
+            g_ptr_array_add (ret_mirrorlist, g_steal_pointer (&mirror_uri));
           else
             {
               g_debug ("Failed to fetch config from mirror '%s': %s",
