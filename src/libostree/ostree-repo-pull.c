@@ -2111,7 +2111,7 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
       if (ret_mirrorlist->len == 0)
         {
           GError *local_error = NULL;
-          g_autoptr(OstreeFetcherURI) config_uri = _ostree_fetcher_uri_new_subpath (mirror_uri_str, "config");
+          g_autoptr(OstreeFetcherURI) config_uri = _ostree_fetcher_uri_new_subpath (mirror_uri, "config");
 
           if (fetch_uri_contents_utf8_sync (fetcher, config_uri, NULL,
                                             cancellable, &local_error))
