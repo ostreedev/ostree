@@ -51,6 +51,3 @@ assert_file_has_content checked-out/baz/cow moo
 assert_has_file checked-out/baz/deeper/ohyeah
 
 echo "ok commit oci"
-
-
-
