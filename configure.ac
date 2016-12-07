@@ -29,6 +29,9 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
         -Werror=return-type \
         -Werror=overflow \
         -Werror=int-conversion \
+        -Werror=parenthesis \
+        -Werror=incompatible-pointer-types \
+        -Werror=misleading-indentation \
 	-Werror=missing-include-dirs -Werror=aggregate-return \
 	-Werror=declaration-after-statement \
 ])
