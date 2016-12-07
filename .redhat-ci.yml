@@ -6,6 +6,9 @@ branches:
 container:
     image: projectatomic/ostree-tester
 
+packages:
+    - pkgconfig(json-glib-1.0)
+
 env:
     CFLAGS: '-fsanitize=undefined'
 
