@@ -415,6 +415,7 @@ global:
        ostree_oci_layer_writer_get_type;
        ostree_oci_layer_writer_get_archive;
        ostree_oci_layer_writer_close;
+       ostree_repo_write_archive_fd_to_mtree;
 } LIBOSTREE_2016.14;
 
 /* Stub section for the stable release *after* this development one; don't

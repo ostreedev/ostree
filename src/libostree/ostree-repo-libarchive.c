@@ -890,6 +890,72 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
 }
 
 /**
+ * ostree_repo_write_archive_fd_to_mtree:
+ * @self: An #OstreeRepo
+ * @archive: A path to an archive file
+ * @mtree: The #OstreeMutableTree to write to
+ * @modifier: (allow-none): Optional commit modifier
+ * @autocreate_parents: Autocreate parent directories
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Import an archive file @archive into the repository, and write its
+ * file structure to @mtree.
+ */
+gboolean
+ostree_repo_write_archive_fd_to_mtree (OstreeRepo                *self,
+                                       int                        fd,
+                                       OstreeMutableTree         *mtree,
+                                       OstreeRepoCommitModifier  *modifier,
+                                       gboolean                   autocreate_parents,
+                                       GCancellable              *cancellable,
+                                       GError                   **error)
+{
+#ifdef HAVE_LIBARCHIVE
+  gboolean ret = FALSE;
+  struct archive *a = NULL;
+  OstreeRepoImportArchiveOptions opts = { 0, };
+
+  a = archive_read_new ();
+#ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL
+  archive_read_support_filter_all (a);
+#else
+  archive_read_support_compression_all (a);
+#endif
+  archive_read_support_format_all (a);
+  if (archive_read_open_fd (a, fd, 8192) != ARCHIVE_OK)
+    {
+      propagate_libarchive_error (error, a);
+      goto out;
+    }
+
+  opts.autocreate_parents = !!autocreate_parents;
+
+  if (!ostree_repo_import_archive_to_mtree (self, &opts, a, mtree, modifier, cancellable, error))
+    goto out;
+
+  if (archive_read_close (a) != ARCHIVE_OK)
+    {
+      propagate_libarchive_error (error, a);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (a)
+    {
+      (void)archive_read_close (a);
+      (void)archive_read_free (a);
+    }
+  return ret;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree is not compiled with libarchive support");
+  return FALSE;
+#endif
+}
+
+/**
  * ostree_repo_write_archive_to_mtree:
  * @self: An #OstreeRepo
  * @archive: A path to an archive file
