@@ -44,6 +44,8 @@ static gboolean opt_link_checkout_speedup;
 static gboolean opt_skip_if_unchanged;
 static gboolean opt_tar_autocreate_parents;
 static gboolean opt_no_xattrs;
+static gboolean opt_oci;
+static char *opt_oci_tag;
 static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
@@ -95,6 +97,8 @@ static GOptionEntry options[] = {
   { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
   { "timestamp", 0, 0, G_OPTION_ARG_STRING, &opt_timestamp, "Override the timestamp of the commit", "TIMESTAMP" },
+  { "oci", 0, 0, G_OPTION_ARG_NONE, &opt_oci, "Commit from an oci registry", NULL },
+  { "oci-tag", 0, 0, G_OPTION_ARG_STRING, &opt_oci_tag, "Read from this tag in the OCI registry (default: latest)", "TAG" },
   { NULL }
 };
 
@@ -228,8 +232,8 @@ commit_editor (OstreeRepo     *repo,
               , *body ? "\n" : "", *body ? *body : ""
               );
 
-  *subject = NULL;
-  *body = NULL;
+  g_clear_pointer (subject, g_free);
+  g_clear_pointer (body, g_free);
 
   output = ot_editor_prompt (repo, input, cancellable, error);
   if (output == NULL)
@@ -291,14 +295,11 @@ out:
 
 static gboolean
 parse_keyvalue_strings (char             **strings,
-                        GVariant         **out_metadata,
+                        GVariantBuilder   *builder,
                         GError           **error)
 {
   gboolean ret = FALSE;
   char **iter;
-  g_autoptr(GVariantBuilder) builder = NULL;
-
-  builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
 
   for (iter = strings; *iter; iter++)
     {
@@ -322,10 +323,47 @@ parse_keyvalue_strings (char             **strings,
     }
 
   ret = TRUE;
-  *out_metadata = g_variant_builder_end (builder);
-  g_variant_ref_sink (*out_metadata);
  out:
   return ret;
+}
+
+typedef struct {
+  int fd;
+  GError **error;
+  GMainLoop *loop;
+} DownloadLayerData;
+
+static void
+download_layer_cb (GObject    *obj,
+                   GAsyncResult  *result,
+                   gpointer       user_data)
+{
+  DownloadLayerData *data = user_data;
+
+  data->fd = ostree_oci_registry_download_blob_finish (OSTREE_OCI_REGISTRY (obj),
+                                                       result, data->error);
+  g_main_loop_quit (data->loop);
+}
+
+static int
+download_layer_sync (OstreeOciRegistry *registry,
+                     const char *digest,
+                     GCancellable *cancellable,
+                     GError **error)
+{
+  DownloadLayerData data = { -1 };
+
+  data.fd = -1;
+  data.loop = g_main_loop_new (NULL, FALSE);
+  data.error = error;
+
+  ostree_oci_registry_download_blob (registry, digest, cancellable,
+                                     download_layer_cb, &data);
+  g_main_loop_run (data.loop);
+
+  g_main_loop_unref (data.loop);
+
+  return data.fd;
 }
 
 gboolean
@@ -336,10 +374,14 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   g_autoptr(GFile) object_to_commit = NULL;
+  g_autofree char *subject = NULL;
+  g_autofree char *body = NULL;
   g_autofree char *parent = NULL;
   g_autofree char *commit_checksum = NULL;
   g_autoptr(GFile) root = NULL;
+  g_autoptr(GVariantBuilder) metadata_builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
   g_autoptr(GVariant) metadata = NULL;
+  g_autoptr(GVariantBuilder) detached_metadata_builder = NULL;
   g_autoptr(GVariant) detached_metadata = NULL;
   glnx_unref_object OstreeMutableTree *mtree = NULL;
   g_autofree char *tree_type = NULL;
@@ -349,6 +391,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;
   struct CommitFilterData filter_data = { 0, };
+  guint64 commit_timestamp = 0;
 
   context = g_option_context_new ("[PATH] - Commit a new revision");
 
@@ -377,13 +420,15 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   if (opt_metadata_strings)
     {
       if (!parse_keyvalue_strings (opt_metadata_strings,
-                                   &metadata, error))
+                                   metadata_builder, error))
         goto out;
     }
   if (opt_detached_metadata_strings)
     {
+      detached_metadata_builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+
       if (!parse_keyvalue_strings (opt_detached_metadata_strings,
-                                   &detached_metadata, error))
+                                   detached_metadata_builder, error))
         goto out;
     }
       
@@ -414,6 +459,12 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
                                                   &filter_data, NULL);
     }
 
+  if (opt_subject)
+    subject = g_strdup (opt_subject);
+
+  if (opt_body)
+    body = g_strdup (opt_body);
+
   if (opt_parent)
     {
       if (g_str_equal (opt_parent, "none"))
@@ -441,7 +492,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (opt_editor)
     {
-      if (!commit_editor (repo, opt_branch, &opt_subject, &opt_body, cancellable, error))
+      if (!commit_editor (repo, opt_branch, &subject, &body, cancellable, error))
         goto out;
     }
 
@@ -453,13 +504,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   mtree = ostree_mutable_tree_new ();
 
-  if (argc <= 1 && (opt_trees == NULL || opt_trees[0] == NULL))
-    {
-      if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, ".", mtree, modifier,
-                                           cancellable, error))
-        goto out;
-    }
-  else if (opt_trees != NULL)
+  if (opt_trees != NULL)
     {
       const char *const*tree_iter;
       const char *tree;
@@ -514,10 +559,82 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
     }
   else
     {
-      g_assert (argc > 1);
-      if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, argv[1], mtree, modifier,
-                                           cancellable, error))
-        goto out;
+      const char *source = ".";
+
+      if (argc > 1)
+        source = argv[1];
+
+      if (opt_oci)
+        {
+          g_autoptr(GFile) source_file = g_file_new_for_commandline_arg (source);
+          g_autofree char *source_uri = g_file_get_uri (source_file);
+          g_autoptr(OstreeOciRegistry) registry = NULL;
+          g_autoptr(OstreeOciRef) ref = NULL;
+          g_autoptr(OstreeOciVersioned) versioned = NULL;
+
+          registry = ostree_oci_registry_new (source_uri, FALSE, -1, cancellable, error);
+          if (registry == NULL)
+            goto out;
+
+          ref = ostree_oci_registry_load_ref (registry, opt_oci_tag ? opt_oci_tag : "latest",
+                                              cancellable, error);
+          if (ref == NULL)
+            goto out;
+
+          versioned = ostree_oci_registry_load_versioned (registry,
+                                                          ostree_oci_ref_get_digest (ref),
+                                                          cancellable, error);
+          if (versioned == NULL)
+            goto out;
+
+          if (OSTREE_IS_OCI_MANIFEST_LIST (versioned))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "OCI manifest lists are not supported");
+              goto out;
+            }
+          else
+            {
+              OstreeOciManifest *manifest = OSTREE_OCI_MANIFEST (versioned);
+              const char *layer_digest;
+              glnx_fd_close int layer_fd = -1;
+              GHashTable *annotations;
+
+              if (ostree_oci_manifest_get_n_layers (manifest) != 1)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                               "Multi-layer OCI images not supported");
+                  goto out;
+                }
+
+              layer_digest = ostree_oci_manifest_get_layer_digest (manifest, 0);
+              layer_fd = download_layer_sync (registry, layer_digest, cancellable, error);
+              if (layer_fd == -1)
+                goto out;
+
+              if (!ostree_repo_write_archive_fd_to_mtree (repo, layer_fd, mtree, modifier,
+                                                          TRUE,
+                                                          cancellable, error))
+                goto out;
+
+              /* Note: We ignore parent commit from the OCI imagehere,
+               * because this is a commit, and its likely we want to
+               * keep its history rather than the history of the
+               * exporting branch */
+              annotations = ostree_oci_manifest_get_annotations (manifest);
+              if (annotations)
+                ostree_oci_parse_commit_annotations (annotations, &commit_timestamp,
+                                                     &subject, &body,
+                                                     NULL, NULL,
+                                                     metadata_builder);
+            }
+        }
+      else
+        {
+          if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, source, mtree, modifier,
+                                               cancellable, error))
+            goto out;
+        }
     }
 
   if (mode_adds && g_hash_table_size (mode_adds) > 0)
@@ -570,16 +687,15 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
     {
       gboolean update_summary;
       guint64 timestamp;
-      if (!opt_timestamp)
+      if (commit_timestamp != 0)
+        {
+          timestamp = commit_timestamp;
+        }
+      else if (!opt_timestamp)
         {
           GDateTime *now = g_date_time_new_now_utc ();
           timestamp = g_date_time_to_unix (now);
           g_date_time_unref (now);
-
-          if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body, metadata,
-                                         OSTREE_REPO_FILE (root),
-                                         &commit_checksum, cancellable, error))
-            goto out;
         }
       else
         {
@@ -591,16 +707,20 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
               goto out;
             }
           timestamp = ts.tv_sec;
-
-          if (!ostree_repo_write_commit_with_time (repo, parent, opt_subject, opt_body, metadata,
-                                                   OSTREE_REPO_FILE (root),
-                                                   timestamp,
-                                                   &commit_checksum, cancellable, error))
-            goto out;
         }
 
-      if (detached_metadata)
+      metadata = g_variant_ref_sink (g_variant_builder_end (metadata_builder));
+
+      if (!ostree_repo_write_commit_with_time (repo, parent, subject, body, metadata,
+                                               OSTREE_REPO_FILE (root),
+                                               timestamp,
+                                               &commit_checksum, cancellable, error))
+        goto out;
+
+      if (detached_metadata_builder)
         {
+          detached_metadata = g_variant_ref_sink (g_variant_builder_end (detached_metadata_builder));
+
           if (!ostree_repo_write_commit_detached_metadata (repo, commit_checksum,
                                                            detached_metadata,
                                                            cancellable, error))
