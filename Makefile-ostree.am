@@ -80,16 +80,21 @@ ostree_SOURCES += \
 ostree_SOURCES += \
 	src/ostree/ot-remote-builtins.h \
 	src/ostree/ot-remote-builtin-add.c \
-	src/ostree/ot-remote-builtin-add-cookie.c \
 	src/ostree/ot-remote-builtin-delete.c \
-	src/ostree/ot-remote-builtin-delete-cookie.c \
 	src/ostree/ot-remote-builtin-gpg-import.c \
 	src/ostree/ot-remote-builtin-list.c \
-	src/ostree/ot-remote-builtin-list-cookies.c \
 	src/ostree/ot-remote-builtin-show-url.c \
 	src/ostree/ot-remote-builtin-refs.c \
 	src/ostree/ot-remote-builtin-summary.c \
 	$(NULL)
+
+if USE_LIBSOUP
+ostree_SOURCES += \
+	src/ostree/ot-remote-builtin-add-cookie.c \
+	src/ostree/ot-remote-builtin-delete-cookie.c \
+	src/ostree/ot-remote-builtin-list-cookies.c \
+	$(NULL)
+endif
 
 src/ostree/parse-datetime.c: src/ostree/parse-datetime.y Makefile
 	$(AM_V_GEN) $(YACC) $< -o $@
