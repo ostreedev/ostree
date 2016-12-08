@@ -44,7 +44,6 @@ dist_test_scripts = \
 	tests/test-pull-subpath.sh \
 	tests/test-archivez.sh \
 	tests/test-remote-add.sh \
-	tests/test-remote-cookies.sh \
 	tests/test-remote-headers.sh \
 	tests/test-remote-gpg-import.sh \
 	tests/test-commit-sign.sh \
@@ -99,6 +98,10 @@ if BUILDOPT_FUSE
 dist_test_scripts += tests/test-rofiles-fuse.sh
 else
 EXTRA_DIST += tests/test-rofiles-fuse.sh
+endif
+
+if USE_LIBSOUP
+dist_test_scripts += tests/test-remote-cookies.sh
 endif
 
 # This one uses corrupt-repo-ref.js

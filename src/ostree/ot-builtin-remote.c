@@ -33,13 +33,15 @@ typedef struct {
 
 static OstreeRemoteCommand remote_subcommands[] = {
   { "add", ot_remote_builtin_add },
-  { "add-cookie", ot_remote_builtin_add_cookie },
   { "delete", ot_remote_builtin_delete },
-  { "delete-cookie", ot_remote_builtin_delete_cookie },
   { "show-url", ot_remote_builtin_show_url },
   { "list", ot_remote_builtin_list },
-  { "list-cookies", ot_remote_builtin_list_cookies },
   { "gpg-import", ot_remote_builtin_gpg_import },
+#ifdef HAVE_LIBSOUP
+  { "add-cookie", ot_remote_builtin_add_cookie },
+  { "delete-cookie", ot_remote_builtin_delete_cookie },
+  { "list-cookies", ot_remote_builtin_list_cookies },
+#endif
   { "refs", ot_remote_builtin_refs },
   { "summary", ot_remote_builtin_summary },
   { NULL, NULL }
