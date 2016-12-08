@@ -34,10 +34,7 @@ libostreeincludedir = $(includedir)/ostree-1
 libostreeinclude_HEADERS = $(libostree_public_headers)
 
 ENUM_TYPES = $(NULL)
-
-if USE_LIBSOUP
 ENUM_TYPES += $(srcdir)/src/libostree/ostree-fetcher.h
-endif
 
 src/libostree/ostree-enumtypes.h: src/libostree/ostree-enumtypes.h.template $(ENUM_TYPES)
 	$(AM_V_GEN) $(GLIB_MKENUMS) \
@@ -50,14 +47,11 @@ src/libostree/ostree-enumtypes.c: src/libostree/ostree-enumtypes.c.template $(EN
 	--fhead "#include \"ostree-enumtypes.h\"" \
 	$(ENUM_TYPES) > $@.tmp && mv $@.tmp $@
 
-if USE_LIBSOUP
 ENUM_GENERATED = \
 	src/libostree/ostree-enumtypes.h \
 	src/libostree/ostree-enumtypes.c \
 	$(NULL)
-
 BUILT_SOURCES += $(ENUM_GENERATED)
-endif
 
 CLEANFILES += $(BUILT_SOURCES)
 
