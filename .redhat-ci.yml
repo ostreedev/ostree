@@ -71,5 +71,27 @@ env:
 tests:
     - make check TESTS=tests/test-rollsum
 
+---
+
+inherit: true
+required: true
+
+context: curl
+
+packages:
+  - pkgconfig(libcurl)
+
+build:
+    config-opts: >
+      --prefix=/usr
+      --libdir=/usr/lib64
+      --enable-installed-tests
+      --enable-gtk-doc
+      --with-curl
+
+tests:
+  - make check
+  - gnome-desktop-testing-runner -p 0 ostree
+
 artifacts:
   - test-suite.log

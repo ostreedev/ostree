@@ -79,14 +79,29 @@ PKG_CHECK_MODULES(OT_DEP_ZLIB, zlib)
 dnl We're not actually linking to this, just using the header
 PKG_CHECK_MODULES(OT_DEP_E2P, e2p)
 
+dnl Arbitrary version that's in CentOS7.2 now
+CURL_DEPENDENCY=7.29.0
+AC_ARG_WITH(curl,
+	    AS_HELP_STRING([--with-curl], [Use libcurl @<:@default=no@:>@]),
+	    [], [with_curl=no])
+AS_IF([test x$with_curl != xno ], [
+    PKG_CHECK_MODULES(OT_DEP_CURL, libcurl >= $CURL_DEPENDENCY)
+    with_curl=yes
+    AC_DEFINE([HAVE_LIBCURL], 1, [Define if we have libcurl.pc])
+    dnl Currently using libcurl requires soup for trivial-httpd for tests
+    with_soup_default=yes
+], [with_soup_default=check])
+AM_CONDITIONAL(USE_CURL, test x$with_curl != xno)
+if test x$with_curl = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES +libcurl"; fi
+
 dnl When bumping the libsoup-2.4 dependency, remember to bump
 dnl SOUP_VERSION_MIN_REQUIRED and SOUP_VERSION_MAX_ALLOWED in
 dnl Makefile.am
 SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
 AC_ARG_WITH(soup,
 	    AS_HELP_STRING([--with-soup], [Use libsoup @<:@default=yes@:>@]),
-	    [], [with_soup=check])
-AS_IF([test x$with_soup != xno ], [
+	    [], [with_soup=$with_soup_default])
+AS_IF([test x$with_soup != xno], [
   AC_ARG_ENABLE(libsoup_client_certs,
                 AS_HELP_STRING([--enable-libsoup-client-certs],
                                [Require availability of new enough libsoup TLS client cert API (default: auto)]),,
@@ -119,6 +134,14 @@ AS_IF([test x$with_soup != xno ], [
 if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 AM_CONDITIONAL(HAVE_LIBSOUP_CLIENT_CERTS, test x$have_libsoup_client_certs = xyes)
+
+AS_IF([test x$with_curl = xyes && test x$with_soup = xno], [
+  AC_MSG_ERROR([Curl enabled, but libsoup is not; libsoup is needed for tests])
+])
+AM_CONDITIONAL(USE_CURL_OR_SOUP, test x$with_curl != xno || test x$with_soup != xno)
+AS_IF([test x$with_curl != xno || test x$with_soup != xno],
+            [AC_DEFINE([HAVE_LIBCURL_OR_LIBSOUP], 1, [Define if we have soup or curl])])
+AS_IF([test x$with_curl = xyes], [fetcher_backend=curl], [test x$with_soup = xyes], [fetcher_backend=libsoup], [fetcher_backend=none])
 
 m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
   GOBJECT_INTROSPECTION_CHECK([1.34.0])
@@ -374,8 +397,7 @@ echo "
     introspection:                                $found_introspection
     Rust (internal oxidation):                    $rust_debug_release
     rofiles-fuse:                                 $enable_rofiles_fuse
-    libsoup (retrieve remote HTTP repositories):  $with_soup
-    libsoup TLS client certs:                     $have_libsoup_client_certs
+    HTTP backend:                                 $fetcher_backend
     SELinux:                                      $with_selinux
     systemd:                                      $have_libsystemd
     libmount:                                     $with_libmount

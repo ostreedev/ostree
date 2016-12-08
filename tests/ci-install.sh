@@ -50,6 +50,9 @@ NULL=
 # Typical values for ci_distro=fedora might be 25, rawhide
 : "${ci_suite:=jessie}"
 
+# ci_configopts: Additional arguments for configure
+: "${ci_configopts:=}"
+
 if [ $(id -u) = 0 ]; then
     sudo=
 else
@@ -104,6 +107,7 @@ case "$ci_distro" in
             libmount-dev \
             libselinux1-dev \
             libsoup2.4-dev \
+            libcurl4-openssl-dev \
             procps \
             zlib1g-dev \
             ${NULL}

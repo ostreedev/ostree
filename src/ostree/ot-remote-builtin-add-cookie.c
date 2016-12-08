@@ -21,13 +21,12 @@
 
 #include "config.h"
 
-#include <libsoup/soup.h>
-
 #include "otutil.h"
 
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 #include "ostree-repo-private.h"
+#include "ot-remote-cookie-util.h"
 
 
 static GOptionEntry option_entries[] = {
@@ -46,8 +45,6 @@ ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, 
   const char *value;
   g_autofree char *jar_path = NULL;
   g_autofree char *cookie_file = NULL;
-  glnx_unref_object SoupCookieJar *jar = NULL;
-  SoupCookie *cookie;
 
   context = g_option_context_new ("NAME DOMAIN PATH COOKIE_NAME VALUE - Add a cookie to remote");
 
@@ -70,15 +67,8 @@ ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, 
   cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
   jar_path = g_build_filename (gs_file_get_path_cached (repo->repodir), cookie_file, NULL);
 
-  jar = soup_cookie_jar_text_new (jar_path, FALSE);
-
-  /* Pick a silly long expire time, we're just storing the cookies in the
-   * jar and on pull the jar is read-only so expiry has little actual value */
-  cookie = soup_cookie_new (cookie_name, value, domain, path,
-                            SOUP_COOKIE_MAX_AGE_ONE_YEAR * 25);
-
-  /* jar takes ownership of cookie */
-  soup_cookie_jar_add_cookie (jar, cookie);
+  if (!ot_add_cookie_at (AT_FDCWD, jar_path, domain, path, cookie_name, value, error))
+    return FALSE;
 
   return TRUE;
 }

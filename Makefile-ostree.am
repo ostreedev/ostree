@@ -88,12 +88,14 @@ ostree_SOURCES += \
 	src/ostree/ot-remote-builtin-summary.c \
 	$(NULL)
 
-if USE_LIBSOUP
-ostree_SOURCES += \
-	src/ostree/ot-remote-builtin-add-cookie.c \
-	src/ostree/ot-remote-builtin-delete-cookie.c \
-	src/ostree/ot-remote-builtin-list-cookies.c \
-	$(NULL)
+
+if USE_CURL_OR_SOUP
+ostree_SOURCES += src/ostree/ot-remote-builtin-add-cookie.c \
+  src/ostree/ot-remote-builtin-delete-cookie.c \
+  src/ostree/ot-remote-builtin-list-cookies.c \
+  src/ostree/ot-remote-cookie-util.h \
+  src/ostree/ot-remote-cookie-util.c \
+  $(NULL)
 endif
 
 src/ostree/parse-datetime.c: src/ostree/parse-datetime.y Makefile
@@ -112,15 +114,23 @@ ostree_CFLAGS = $(ostree_bin_shared_cflags)
 ostree_LDADD = $(ostree_bin_shared_ldadd) libbsdiff.la libostree-kernel-args.la $(LIBSYSTEMD_LIBS)
 
 
-if USE_LIBSOUP
-ostree_SOURCES += src/ostree/ot-builtin-pull.c src/ostree/ot-builtin-trivial-httpd.c
-ostree_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
-ostree_LDADD += $(OT_INTERNAL_SOUP_LIBS)
+if USE_CURL_OR_SOUP
+ostree_SOURCES += src/ostree/ot-builtin-pull.c
+endif
 
+if USE_LIBSOUP
+# Eventually once we stop things from using this, we should support disabling this
+ostree_SOURCES += src/ostree/ot-builtin-trivial-httpd.c
 pkglibexec_PROGRAMS += ostree-trivial-httpd
 ostree_trivial_httpd_SOURCES = src/ostree/ostree-trivial-httpd.c
 ostree_trivial_httpd_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_SOUP_CFLAGS)
 ostree_trivial_httpd_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_SOUP_LIBS)
+
+if !USE_CURL
+# This is necessary for the cookie jar bits
+ostree_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
+ostree_LDADD += $(OT_INTERNAL_SOUP_LIBS)
+endif
 endif
 
 if USE_LIBARCHIVE

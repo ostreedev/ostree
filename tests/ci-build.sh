@@ -52,6 +52,10 @@ NULL=
 # If yes, test failures break the build; if no, they are reported but ignored
 : "${ci_test_fatal:=yes}"
 
+# ci_configopts:
+# Additional args for configure
+: "${ci_configopts:=}"
+
 if [ -n "$ci_docker" ]; then
     exec docker run \
         --env=ci_docker="" \
@@ -59,6 +63,7 @@ if [ -n "$ci_docker" ]; then
         --env=ci_sudo=yes \
         --env=ci_test="${ci_test}" \
         --env=ci_test_fatal="${ci_test_fatal}" \
+        --env=ci_configopts="${ci_configopts}" \
         --privileged \
         ci-image \
         tests/ci-build.sh
@@ -81,6 +86,7 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 ../configure \
     --enable-always-build-tests \
     --enable-installed-tests \
+    ${ci_configopts}
     "$@"
 
 ${make}

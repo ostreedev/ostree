@@ -26,7 +26,7 @@
 #include "ostree.h"
 #include "otutil.h"
 
-#ifdef HAVE_LIBSOUP
+#ifdef HAVE_LIBCURL_OR_LIBSOUP
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
@@ -3405,7 +3405,7 @@ out:
   return ret;
 }
 
-#else /* HAVE_LIBSOUP */
+#else /* HAVE_LIBCURL_OR_LIBSOUP */
 
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -3434,4 +3434,4 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   return FALSE;
 }
 
-#endif /* HAVE_LIBSOUP */
+#endif /* HAVE_LIBCURL_OR_LIBSOUP */

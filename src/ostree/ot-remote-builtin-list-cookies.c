@@ -21,14 +21,12 @@
 
 #include "config.h"
 
-#include <libsoup/soup.h>
-
 #include "otutil.h"
 
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 #include "ostree-repo-private.h"
-
+#include "ot-remote-cookie-util.h"
 
 static GOptionEntry option_entries[] = {
   { NULL }
@@ -42,8 +40,6 @@ ot_remote_builtin_list_cookies (int argc, char **argv, GCancellable *cancellable
   const char *remote_name;
   g_autofree char *jar_path = NULL;
   g_autofree char *cookie_file = NULL;
-  glnx_unref_object SoupCookieJar *jar = NULL;
-  GSList *cookies;
 
   context = g_option_context_new ("NAME - Show remote repository cookies");
 
@@ -62,25 +58,8 @@ ot_remote_builtin_list_cookies (int argc, char **argv, GCancellable *cancellable
   cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
   jar_path = g_build_filename (g_file_get_path (repo->repodir), cookie_file, NULL);
 
-  jar = soup_cookie_jar_text_new (jar_path, TRUE);
-  cookies = soup_cookie_jar_all_cookies (jar);
-
-  while (cookies != NULL)
-    {
-      SoupCookie *cookie = cookies->data;
-      SoupDate *expiry = soup_cookie_get_expires (cookie);
-
-      g_print ("--\n");
-      g_print ("Domain: %s\n", soup_cookie_get_domain (cookie));
-      g_print ("Path: %s\n", soup_cookie_get_path (cookie));
-      g_print ("Name: %s\n", soup_cookie_get_name (cookie));
-      g_print ("Secure: %s\n", soup_cookie_get_secure (cookie) ? "yes" : "no");
-      g_print ("Expires: %s\n", soup_date_to_string (expiry, SOUP_DATE_COOKIE));
-      g_print ("Value: %s\n", soup_cookie_get_value (cookie));
-
-      soup_cookie_free (cookie);
-      cookies = g_slist_delete_link (cookies, cookies);
-    }
+  if (!ot_list_cookies_at (AT_FDCWD, jar_path, error))
+    return FALSE;
 
   return TRUE;
 }

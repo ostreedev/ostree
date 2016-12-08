@@ -21,14 +21,13 @@
 
 #include "config.h"
 
-#include <libsoup/soup.h>
-
 #include "otutil.h"
+#include <sys/stat.h>
 
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 #include "ostree-repo-private.h"
-
+#include "ot-remote-cookie-util.h"
 
 static GOptionEntry option_entries[] = {
   { NULL }
@@ -45,9 +44,6 @@ ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellabl
   const char *cookie_name;
   g_autofree char *jar_path = NULL;
   g_autofree char *cookie_file = NULL;
-  glnx_unref_object SoupCookieJar *jar = NULL;
-  GSList *cookies;
-  gboolean found = FALSE;
 
   context = g_option_context_new ("NAME DOMAIN PATH COOKIE_NAME- Remote one cookie from remote");
 
@@ -69,28 +65,8 @@ ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellabl
   cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
   jar_path = g_build_filename (gs_file_get_path_cached (repo->repodir), cookie_file, NULL);
 
-  jar = soup_cookie_jar_text_new (jar_path, FALSE);
-  cookies = soup_cookie_jar_all_cookies (jar);
+  if (!ot_delete_cookie_at (AT_FDCWD, jar_path, domain, path, cookie_name, error))
+    return FALSE;
 
-  while (cookies != NULL)
-    {
-      SoupCookie *cookie = cookies->data;
-
-      if (!strcmp (domain, soup_cookie_get_domain (cookie)) &&
-          !strcmp (path, soup_cookie_get_path (cookie)) &&
-          !strcmp (cookie_name, soup_cookie_get_name (cookie)))
-        {
-          soup_cookie_jar_delete_cookie (jar, cookie);
-
-          found = TRUE;
-        }
-
-      soup_cookie_free (cookie);
-      cookies = g_slist_delete_link (cookies, cookies);
-    }
-
-  if (!found)
-    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Cookie not found in jar");
-
-  return found;
+  return TRUE;
 }
