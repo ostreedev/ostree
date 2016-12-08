@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..13"
+echo "1..14"
 
 # Try both syntaxes
 repo_init
@@ -249,3 +249,12 @@ assert_file_has_content baz/cow "further modified file for static deltas"
 assert_not_has_file baz/saucer
 
 echo "ok static delta 2"
+
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false --set=unconfigured-state="Access to ExampleOS requires ONE BILLION DOLLARS." origin-subscription file://$(pwd)/ostree-srv/gnomerepo
+if ${CMD_PREFIX} ostree --repo=repo pull origin-subscription main 2>err.txt; then
+    assert_not_reached "pull unexpectedly succeeded?"
+fi
+assert_file_has_content err.txt "ONE BILLION DOLLARS"
+
+echo "ok unconfigured"
