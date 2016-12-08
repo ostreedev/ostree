@@ -21,8 +21,7 @@ build:
 tests:
     - make syntax-check
     - make check
-    - gnome-desktop-testing-runner ostree
-    - sudo --user=testuser gnome-desktop-testing-runner ostree
+    - gnome-desktop-testing-runner -p 0 ostree
 
 timeout: 30m
 
