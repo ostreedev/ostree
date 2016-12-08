@@ -167,17 +167,30 @@ libostree_1_la_CFLAGS += $(LIBSYSTEMD_CFLAGS)
 libostree_1_la_LIBADD += $(LIBSYSTEMD_LIBS)
 endif
 
-if USE_LIBSOUP
+if USE_CURL_OR_SOUP
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-fetcher.h \
-	src/libostree/ostree-fetcher.c \
 	src/libostree/ostree-fetcher-util.h \
 	src/libostree/ostree-fetcher-util.c \
+  src/libostree/ostree-fetcher-uri.c \
 	src/libostree/ostree-metalink.h \
 	src/libostree/ostree-metalink.c \
 	$(NULL)
+endif
+
+if USE_CURL
+libostree_1_la_SOURCES += src/libostree/ostree-fetcher-curl.c \
+	src/libostree/ostree-soup-uri.h src/libostree/ostree-soup-uri.c \
+  src/libostree/ostree-soup-form.c \
+  $(NULL)
+libostree_1_la_CFLAGS += $(OT_DEP_CURL_CFLAGS)
+libostree_1_la_LIBADD += $(OT_DEP_CURL_LIBS)
+else
+if USE_LIBSOUP
+libostree_1_la_SOURCES += src/libostree/ostree-fetcher-soup.c
 libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 libostree_1_la_LIBADD += $(OT_INTERNAL_SOUP_LIBS)
+endif
 endif
 
 if USE_LIBMOUNT

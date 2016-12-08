@@ -21,14 +21,17 @@
 
 #include "config.h"
 
+#ifndef HAVE_LIBCURL
 #include <libsoup/soup.h>
+#endif
 
 #include "otutil.h"
+#include <sys/stat.h>
 
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 #include "ostree-repo-private.h"
-
+#include "ot-remote-cookie-util.h"
 
 static GOptionEntry option_entries[] = {
   { NULL }
@@ -45,8 +48,6 @@ ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellabl
   const char *cookie_name;
   g_autofree char *jar_path = NULL;
   g_autofree char *cookie_file = NULL;
-  glnx_unref_object SoupCookieJar *jar = NULL;
-  GSList *cookies;
   gboolean found = FALSE;
 
   context = g_option_context_new ("NAME DOMAIN PATH COOKIE_NAME- Remote one cookie from remote");
@@ -69,6 +70,52 @@ ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellabl
   cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
   jar_path = g_build_filename (gs_file_get_path_cached (repo->repodir), cookie_file, NULL);
 
+#ifdef HAVE_LIBCURL
+  { glnx_fd_close int tempfile_fd = -1;
+    g_autofree char *tempfile_path = NULL;
+    g_autofree char *dnbuf = NULL;
+    const char *dn = NULL;
+    g_autoptr(OtCookieParser) parser = NULL;
+
+    if (!ot_parse_cookies_at (AT_FDCWD, jar_path, &parser, cancellable, error))
+      return FALSE;
+
+    dnbuf = g_strdup (jar_path);
+    dn = dirname (dnbuf);
+    if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, dn, O_WRONLY | O_CLOEXEC,
+                                        &tempfile_fd, &tempfile_path,
+                                        error))
+      return FALSE;
+
+    while (ot_parse_cookies_next (parser))
+      {
+        if (strcmp (domain, parser->domain) == 0 &&
+            strcmp (path, parser->path) == 0 &&
+            strcmp (cookie_name, parser->name) == 0)
+          {
+            found = TRUE;
+            /* Match, skip writing this one */
+            continue;
+          }
+
+        if (glnx_loop_write (tempfile_fd, parser->line, strlen (parser->line)) < 0 ||
+            glnx_loop_write (tempfile_fd, "\n", 1) < 0)
+          {
+            glnx_set_error_from_errno (error);
+            return FALSE;
+          }
+     }
+
+    if (!glnx_link_tmpfile_at (AT_FDCWD, GLNX_LINK_TMPFILE_REPLACE,
+                               tempfile_fd,
+                               tempfile_path,
+                               AT_FDCWD, jar_path,
+                               error))
+      return FALSE;
+  }
+#else
+  { GSList *cookies;
+    glnx_unref_object SoupCookieJar *jar = NULL;
   jar = soup_cookie_jar_text_new (jar_path, FALSE);
   cookies = soup_cookie_jar_all_cookies (jar);
 
@@ -88,6 +135,8 @@ ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellabl
       soup_cookie_free (cookie);
       cookies = g_slist_delete_link (cookies, cookies);
     }
+  }
+#endif
 
   if (!found)
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Cookie not found in jar");
