@@ -77,7 +77,9 @@ parse_refspec (OstreeSysrootUpgrader  *self,
 
   if ((self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED) == 0)
     {
-      /* If explicit action by the OS creator is requried to upgrade, print their text as an error */
+      /* If explicit action by the OS creator is requried to upgrade, print their text as an error.
+       * NOTE: If changing this, see the matching implementation in ostree-repo-pull.c.
+       */
       unconfigured_state = g_key_file_get_string (self->origin, "origin", "unconfigured-state", NULL);
       if (unconfigured_state)
         {

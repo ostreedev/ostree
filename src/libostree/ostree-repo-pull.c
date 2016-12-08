@@ -2474,6 +2474,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                         &pull_data->gpg_verify_summary, error))
           goto out;
 
+      /* NOTE: If changing this, see the matching implementation in
+       * ostree-sysroot-upgrader.c
+       */
       if (!ostree_repo_get_remote_option (self, pull_data->remote_name,
                                           "unconfigured-state", NULL,
                                           &unconfigured_state,
