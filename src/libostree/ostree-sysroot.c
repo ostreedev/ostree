@@ -1323,7 +1323,7 @@ ostree_sysroot_try_lock (OstreeSysroot         *self,
                          GError               **error)
 {
   gboolean ret = FALSE;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
 
   if (!ensure_sysroot_fd (self, error))
     goto out;
@@ -1338,7 +1338,7 @@ ostree_sysroot_try_lock (OstreeSysroot         *self,
         }
       else
         {
-          g_propagate_error (error, local_error);
+          g_propagate_error (error, g_steal_pointer (&local_error));
           goto out;
         }
     }
