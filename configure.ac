@@ -37,6 +37,15 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
 ])
 AC_SUBST(WARN_CFLAGS)
 
+AC_MSG_CHECKING([for -fsanitize=address in CFLAGS])
+if echo $CFLAGS | grep -q -e -fsanitize=address; then
+  AC_MSG_RESULT([yes])
+  using_asan=yes
+else
+  AC_MSG_RESULT([no])
+fi
+AM_CONDITIONAL(BUILDOPT_ASAN, [test x$using_asan = xyes])
+
 # Initialize libtool
 LT_PREREQ([2.2.4])
 LT_INIT([disable-static])
@@ -305,8 +314,9 @@ AC_ARG_WITH(static-compiler,
 AM_CONDITIONAL(BUILDOPT_USE_STATIC_COMPILER, test x$with_static_compiler != xno)
 AC_SUBST(STATIC_COMPILER, $with_static_compiler)
 
-dnl for tests
-AS_IF([test "x$found_introspection" = xyes], [
+dnl for tests (but we can't use asan with gjs or any introspection,
+dnl see https://github.com/google/sanitizers/wiki/AddressSanitizerAsDso for more info)
+AS_IF([test "x$found_introspection" = xyes && test x$using_asan != xyes], [
   AC_PATH_PROG(GJS, [gjs])
   if test -n "$GJS"; then
     have_gjs=yes
