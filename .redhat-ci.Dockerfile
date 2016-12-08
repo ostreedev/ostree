@@ -11,6 +11,8 @@ RUN dnf install -y \
         parallel \
         clang \
         libubsan \
+        libasan \
+        libtsan \
         gnome-desktop-testing \
         redhat-rpm-config \
         elfutils \
