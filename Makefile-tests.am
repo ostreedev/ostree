@@ -290,9 +290,9 @@ INSTALL_DATA_HOOKS += install-test-data-file-path-hack
 
 install-libtest:
 if BUILDOPT_ASAN
-	sed -e 's,^BUILT_WITH_ASAN=.*,BUILT_WITH_ASAN=1,' < tests/libtest.sh > $(DESTDIR)$(installed_testdir)/tests/libtest.sh
+	sed -e 's,^BUILT_WITH_ASAN=.*,BUILT_WITH_ASAN=1,' < $(srcdir)/tests/libtest.sh > $(DESTDIR)$(installed_testdir)/tests/libtest.sh
 else
-	install -m 0644 tests/libtest.sh $(DESTDIR)$(installed_testdir)/tests/libtest.sh
+	install -m 0644 $(srcdir)/tests/libtest.sh $(DESTDIR)$(installed_testdir)/tests/libtest.sh
 endif
 INSTALL_DATA_HOOKS += install-libtest
 endif
