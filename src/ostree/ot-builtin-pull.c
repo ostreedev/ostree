@@ -109,7 +109,7 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
 gboolean
 ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   g_autofree char *remote = NULL;
@@ -308,7 +308,5 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
  out:
   if (signal_handler_id > 0)
     g_signal_handler_disconnect (repo, signal_handler_id);
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

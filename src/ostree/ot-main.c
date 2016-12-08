@@ -83,7 +83,7 @@ int
 ostree_usage (OstreeCommand *commands,
               gboolean is_error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   g_autofree char *help;
 
   context = ostree_option_context_new_with_commands (commands);
@@ -96,8 +96,6 @@ ostree_usage (OstreeCommand *commands,
     g_printerr ("%s", help);
   else
     g_print ("%s", help);
-
-  g_option_context_free (context);
 
   return (is_error ? 1 : 0);
 }
@@ -172,7 +170,7 @@ ostree_run (int    argc,
 
   if (!command->fn)
     {
-      GOptionContext *context;
+      g_autoptr(GOptionContext) context = NULL;
       g_autofree char *help;
 
       context = ostree_option_context_new_with_commands (commands);
@@ -195,8 +193,6 @@ ostree_run (int    argc,
 
       help = g_option_context_get_help (context, FALSE, NULL);
       g_printerr ("%s", help);
-
-      g_option_context_free (context);
 
       goto out;
     }

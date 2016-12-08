@@ -169,7 +169,7 @@ gboolean
 ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   g_autofree char *formatted_freed_size = NULL;
   OstreeRepoPruneFlags pruneflags = 0;
@@ -235,7 +235,5 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

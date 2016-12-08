@@ -37,7 +37,7 @@ ostree_builtin_reset (int           argc,
                       GCancellable *cancellable,
                       GError      **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   g_autoptr(GHashTable) known_refs = NULL;
   gboolean ret = FALSE;
@@ -83,8 +83,6 @@ ostree_builtin_reset (int           argc,
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   if (repo)
     ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;

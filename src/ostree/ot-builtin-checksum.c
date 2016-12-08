@@ -58,7 +58,7 @@ on_checksum_received (GObject    *obj,
 gboolean
 ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   gboolean ret = FALSE;
   g_autoptr(GFile) f = NULL;
   AsyncChecksumData data = { 0, };
@@ -87,7 +87,5 @@ ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GErro
  out:
   if (data.loop)
     g_main_loop_unref (data.loop);
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

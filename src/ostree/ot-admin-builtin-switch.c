@@ -43,7 +43,7 @@ gboolean
 ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   const char *new_provided_refspec = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
@@ -162,7 +162,5 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
  out:
   if (new_origin)
     g_key_file_unref (new_origin);
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

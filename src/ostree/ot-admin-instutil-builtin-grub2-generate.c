@@ -38,7 +38,7 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
 {
   gboolean ret = FALSE;
   guint bootversion;
-  GOptionContext *context = NULL;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
 
   context = g_option_context_new ("[BOOTVERSION] - generate GRUB2 configuration from given BLS entries");
@@ -76,7 +76,5 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

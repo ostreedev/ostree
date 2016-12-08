@@ -44,7 +44,7 @@ gboolean
 ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   const char *remotename = NULL;
   const char *url = NULL;
   const char *branch = NULL;
@@ -144,7 +144,5 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

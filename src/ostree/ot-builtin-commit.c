@@ -331,7 +331,7 @@ parse_keyvalue_strings (char             **strings,
 gboolean
 ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
@@ -672,8 +672,6 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
  out:
   if (repo)
     ostree_repo_abort_transaction (repo, cancellable, NULL);
-  if (context)
-    g_option_context_free (context);
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
   return ret;

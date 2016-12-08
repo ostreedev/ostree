@@ -42,7 +42,7 @@ gboolean
 ot_admin_builtin_unlock (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   OstreeDeployment *booted_deployment = NULL;
   OstreeDeploymentUnlockedState target_state;
@@ -95,7 +95,5 @@ ot_admin_builtin_unlock (int argc, char **argv, GCancellable *cancellable, GErro
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

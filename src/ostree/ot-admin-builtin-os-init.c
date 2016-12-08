@@ -36,7 +36,7 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   const char *osname = NULL;
@@ -66,7 +66,5 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

@@ -37,7 +37,7 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_list_cookies (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *remote_name;
   g_autofree char *jar_path = NULL;

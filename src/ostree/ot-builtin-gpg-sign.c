@@ -197,7 +197,7 @@ out:
 gboolean
 ostree_builtin_gpg_sign (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   g_autofree char *resolved_commit = NULL;
   const char *commit;
@@ -254,8 +254,5 @@ ostree_builtin_gpg_sign (int argc, char **argv, GCancellable *cancellable, GErro
   ret = TRUE;
 
 out:
-  if (context)
-    g_option_context_free (context);
-
   return ret;
 }

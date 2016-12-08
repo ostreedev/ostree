@@ -39,7 +39,7 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *remote_name;
   g_autoptr(GBytes) summary_bytes = NULL;
@@ -120,9 +120,6 @@ ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GEr
     }
 
   ret = TRUE;
-
 out:
-  g_option_context_free (context);
-
   return ret;
 }

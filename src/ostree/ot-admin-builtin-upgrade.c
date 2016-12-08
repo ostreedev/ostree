@@ -49,7 +49,7 @@ gboolean
 ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
   g_autoptr(GKeyFile) origin = NULL;
@@ -140,7 +140,5 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

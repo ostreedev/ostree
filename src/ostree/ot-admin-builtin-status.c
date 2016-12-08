@@ -83,7 +83,7 @@ out:
 gboolean
 ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   glnx_unref_object OstreeRepo *repo = NULL;
@@ -193,7 +193,5 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }
