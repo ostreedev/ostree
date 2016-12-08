@@ -10,7 +10,7 @@ RUN dnf install -y \
         gjs \
         parallel \
         clang \
-        libubsan \
+        lib{ub,a,t}san \
         gnome-desktop-testing \
         redhat-rpm-config \
         elfutils \
