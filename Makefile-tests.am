@@ -116,7 +116,6 @@ endif
 
 dist_installed_test_data = tests/archive-test.sh \
 	tests/pull-test.sh \
-	tests/libtest.sh \
 	tests/admin-test.sh \
 	tests/basic-test.sh \
 	tests/test-basic-user.sh \
@@ -124,6 +123,8 @@ dist_installed_test_data = tests/archive-test.sh \
 	tests/pre-endian-deltas-repo-big.tar.xz \
 	tests/pre-endian-deltas-repo-little.tar.xz \
 	$(NULL)
+
+EXTRA_DIST += tests/libtest.sh 
 
 dist_test_extra_scripts = tests/bootloader-entries-crosscheck.py \
      tests/ostree-grub-generator
@@ -286,4 +287,12 @@ install-test-data-file-path-hack:
 	fi
 	ln -s . $(DESTDIR)$(installed_testdir)/tests
 INSTALL_DATA_HOOKS += install-test-data-file-path-hack
+
+install-libtest:
+if BUILDOPT_ASAN
+	sed -e 's,^BUILT_WITH_ASAN=.*,BUILT_WITH_ASAN=1,' < $(srcdir)/tests/libtest.sh > $(DESTDIR)$(installed_testdir)/tests/libtest.sh
+else
+	install -m 0644 $(srcdir)/tests/libtest.sh $(DESTDIR)$(installed_testdir)/tests/libtest.sh
+endif
+INSTALL_DATA_HOOKS += install-libtest
 endif
