@@ -2458,6 +2458,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
+      g_autofree char *unconfigured_state = NULL;
+
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
       /* Fetch GPG verification settings from remote if it wasn't already
@@ -2471,6 +2473,22 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         if (!ostree_repo_remote_get_gpg_verify_summary (self, pull_data->remote_name,
                                                         &pull_data->gpg_verify_summary, error))
           goto out;
+
+      /* NOTE: If changing this, see the matching implementation in
+       * ostree-sysroot-upgrader.c
+       */
+      if (!ostree_repo_get_remote_option (self, pull_data->remote_name,
+                                          "unconfigured-state", NULL,
+                                          &unconfigured_state,
+                                          error))
+        goto out;
+
+      if (unconfigured_state)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "remote unconfigured-state: %s", unconfigured_state);
+          goto out;
+        }
     }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
