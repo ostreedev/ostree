@@ -39,7 +39,7 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   glnx_unref_object OstreeDeployment *deployment = NULL;
@@ -95,7 +95,5 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

@@ -109,7 +109,7 @@ ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GEr
 
   if (!subcommand->name)
     {
-      GOptionContext *context;
+      g_autoptr(GOptionContext) context = NULL;
       g_autofree char *help;
 
       context = ostree_admin_instutil_option_context_new_with_commands ();
@@ -133,8 +133,6 @@ ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GEr
 
       help = g_option_context_get_help (context, FALSE, NULL);
       g_printerr ("%s", help);
-
-      g_option_context_free (context);
 
       goto out;
     }

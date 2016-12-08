@@ -188,7 +188,7 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancel
   glnx_unref_object OstreeSePolicy *sepolicy = NULL;
   g_autoptr(GPtrArray) deployments = NULL;
   OstreeDeployment *first_deployment;
-  GOptionContext *context = NULL;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   g_autoptr(GFile) deployment_path = NULL;
 
@@ -241,7 +241,5 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancel
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

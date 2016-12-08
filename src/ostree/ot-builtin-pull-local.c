@@ -53,7 +53,7 @@ gboolean
 ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   int i;
   const char *src_repo_arg;
@@ -174,8 +174,6 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   if (repo)
     ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;

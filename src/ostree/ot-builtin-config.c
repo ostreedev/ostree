@@ -55,7 +55,7 @@ split_key_string (const char   *k,
 gboolean
 ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context = NULL;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *op;
@@ -133,7 +133,5 @@ ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError 
  out:
   if (config)
     g_key_file_free (config);
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

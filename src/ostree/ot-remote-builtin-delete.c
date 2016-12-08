@@ -35,7 +35,7 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_delete (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *remote_name;
   gboolean ret = FALSE;
@@ -63,7 +63,5 @@ ot_remote_builtin_delete (int argc, char **argv, GCancellable *cancellable, GErr
 
   ret = TRUE;
  out:
-  g_option_context_free (context);
-
   return ret;
 }

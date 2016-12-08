@@ -121,7 +121,7 @@ gboolean
 ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *src;
   const char *target;
@@ -224,7 +224,5 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

@@ -36,7 +36,7 @@ static GOptionEntry options[] = {
 gboolean
 ostree_builtin_init (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context = NULL;
+  g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   gboolean ret = FALSE;
   OstreeRepoMode mode;
@@ -54,7 +54,5 @@ ostree_builtin_init (int argc, char **argv, GCancellable *cancellable, GError **
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

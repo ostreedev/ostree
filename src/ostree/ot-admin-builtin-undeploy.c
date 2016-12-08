@@ -36,7 +36,7 @@ gboolean
 ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   const char *deploy_index_str;
   int deploy_index;
@@ -91,7 +91,5 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }

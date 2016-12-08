@@ -130,7 +130,7 @@ gboolean
 ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   int i;
 
@@ -172,8 +172,6 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   if (repo)
     ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;

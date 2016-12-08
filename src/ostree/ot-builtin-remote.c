@@ -111,7 +111,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (!subcommand->name)
     {
-      GOptionContext *context;
+      g_autoptr(GOptionContext) context = NULL;
       g_autofree char *help;
 
       context = remote_option_context_new_with_commands ();
@@ -134,8 +134,6 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
 
       help = g_option_context_get_help (context, FALSE, NULL);
       g_printerr ("%s", help);
-
-      g_option_context_free (context);
 
       goto out;
     }

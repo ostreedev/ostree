@@ -37,7 +37,7 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *remote_name;
   const char *domain;
@@ -80,7 +80,5 @@ ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, 
   /* jar takes ownership of cookie */
   soup_cookie_jar_add_cookie (jar, cookie);
 
-  if (context)
-    g_option_context_free (context);
   return TRUE;
 }

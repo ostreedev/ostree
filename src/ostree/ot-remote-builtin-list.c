@@ -33,7 +33,7 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   g_auto(GStrv) remotes = NULL;
   guint ii, n_remotes = 0;
@@ -73,7 +73,5 @@ ot_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError
   ret = TRUE;
 
  out:
-  g_option_context_free (context);
-
   return ret;
 }
