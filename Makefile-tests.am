@@ -33,6 +33,9 @@ TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 	LD_LIBRARY_PATH=$$(cd $(top_builddir)/.libs && pwd)$${LD_LIBRARY_PATH:+:$${LD_LIBRARY_PATH}} \
 	PATH=$$(cd $(top_builddir)/tests && pwd):$${PATH} \
 	$(NULL)
+if BUILDOPT_ASAN
+TESTS_ENVIRONMENT += OT_SKIP_READDIR_RAND=1 G_SLICE=always-malloc
+endif
 
 uninstalled_test_data = tests/ostree-symlink-stamp tests/ostree-prepare-root-symlink-stamp \
 			tests/ostree-remount-symlink-stamp tests/rofiles-fuse-symlink-stamp
@@ -53,7 +56,6 @@ dist_test_scripts = \
 	tests/test-parent.sh \
 	tests/test-pull-archive-z.sh \
 	tests/test-pull-commit-only.sh \
-	tests/test-pull-corruption.sh \
 	tests/test-pull-depth.sh \
 	tests/test-pull-mirror-summary.sh \
 	tests/test-pull-large-metadata.sh \
@@ -104,10 +106,10 @@ if USE_LIBSOUP
 dist_test_scripts += tests/test-remote-cookies.sh
 endif
 
-# This one uses corrupt-repo-ref.js
-js_tests = tests/test-corruption.sh
+# These call into gjs scripts 
+js_tests = tests/test-corruption.sh tests/test-pull-corruption.sh
 if BUILDOPT_GJS
-dist_test_scripts += tests/test-corruption.sh
+dist_test_scripts += $(js_tests)
 else
 EXTRA_DIST += $(js_tests)
 endif
