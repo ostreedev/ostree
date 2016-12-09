@@ -3137,9 +3137,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
  * @self: Self
  * @name: name of a remote
  * @options: (nullable): A GVariant a{sv} with an extensible set of flags
- * @out_summary: (nullable): return location for raw summary data, or %NULL
- * @out_signatures: (nullable): return location for raw summary signature
- *                              data, or %NULL
+ * @out_summary: (out) (optional): return location for raw summary data, or
+ *               %NULL
+ * @out_signatures: (out) (optional): return location for raw summary
+ *                  signature data, or %NULL
  * @cancellable: a #GCancellable
  * @error: a #GError
  *
