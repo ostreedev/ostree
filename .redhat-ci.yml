@@ -10,7 +10,6 @@ container:
 
 packages:
   - libasan
-  - libubsan
 
 env:
     CFLAGS: '-fsanitize=undefined -fsanitize=address'
