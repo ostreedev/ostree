@@ -35,12 +35,16 @@
 static char *opt_output_path;
 static char *opt_subpath;
 static char *opt_prefix;
+static char *opt_oci_tag;
 static gboolean opt_no_xattrs;
+static gboolean opt_oci;
 
 static GOptionEntry options[] = {
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Skip output of extended attributes", NULL },
+  { "oci", 0, 0, G_OPTION_ARG_NONE, &opt_oci, "Exports to OCI registry, requires --output", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "prefix", 0, 0, G_OPTION_ARG_STRING, &opt_prefix, "Add PATH as prefix to archive pathnames", "PATH" },
+  { "oci-tag", 0, 0, G_OPTION_ARG_STRING, &opt_oci_tag, "Tag to use for OCI image (default=latest)", "TAG" },
   { "output", 'o', 0, G_OPTION_ARG_STRING, &opt_output_path, "Output to PATH ", "PATH" },
   { NULL }
 };
@@ -68,7 +72,10 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
   g_autoptr(GFile) subtree = NULL;
   g_autofree char *commit = NULL;
   g_autoptr(GVariant) commit_data = NULL;
-  ot_cleanup_write_archive struct archive *a = NULL;
+  ot_cleanup_write_archive struct archive *free_a = NULL;
+  g_autoptr(OstreeOciRegistry) registry = NULL;
+  g_autoptr(OstreeOciLayerWriter) layer_writer = NULL;
+  struct archive *a = NULL;
   OstreeRepoExportArchiveOptions opts = { 0, };
 
   context = g_option_context_new ("COMMIT - Stream COMMIT to stdout in tar format");
@@ -85,37 +92,63 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
     }
   rev = argv[1];
 
-  a = archive_write_new ();
-  /* Yes, this is hardcoded for now.  There is
-   * archive_write_set_format_filter_by_ext() but it's fairly magic.
-   * Many programs have support now for GNU tar, so should be a good
-   * default.  I also don't want to lock us into everything libarchive
-   * supports.
-   */
-  if (archive_write_set_format_gnutar (a) != ARCHIVE_OK)
+
+  if (opt_oci)
     {
-      propagate_libarchive_error (error, a);
-      goto out;
+      g_autoptr(GFile) output_file = NULL;
+      g_autofree char *uri = NULL;
+
+      if (opt_output_path == NULL)
+        {
+          ot_util_usage_error (context, "An output path is required", error);
+          goto out;
+        }
+
+      output_file = g_file_new_for_commandline_arg (opt_output_path);
+      uri = g_file_get_uri (output_file);
+      registry = ostree_oci_registry_new (uri, TRUE, -1, cancellable, error);
+      if (registry == NULL)
+        goto out;
+      layer_writer = ostree_oci_registry_write_layer (registry, cancellable, error);
+      if (layer_writer == NULL)
+        goto out;
+      a = ostree_oci_layer_writer_get_archive (layer_writer);
     }
-  if (archive_write_add_filter_none (a) != ARCHIVE_OK)
+  else
     {
-      propagate_libarchive_error (error, a);
-      goto out;
-    }
-  if (opt_output_path)
-    {
-      if (archive_write_open_filename (a, opt_output_path) != ARCHIVE_OK)
+      free_a = a = archive_write_new ();
+      /* Yes, this is hardcoded for now.  There is
+       * archive_write_set_format_filter_by_ext() but it's fairly magic.
+       * Many programs have support now for GNU tar, so should be a good
+       * default.  I also don't want to lock us into everything libarchive
+       * supports.
+       */
+      if (archive_write_set_format_gnutar (a) != ARCHIVE_OK)
         {
           propagate_libarchive_error (error, a);
           goto out;
         }
-    }
-  else
-    {
-      if (archive_write_open_FILE (a, stdout) != ARCHIVE_OK)
+      if (archive_write_add_filter_none (a) != ARCHIVE_OK)
         {
           propagate_libarchive_error (error, a);
           goto out;
+        }
+
+      if (opt_output_path)
+        {
+          if (archive_write_open_filename (a, opt_output_path) != ARCHIVE_OK)
+            {
+              propagate_libarchive_error (error, a);
+              goto out;
+            }
+        }
+      else
+        {
+          if (archive_write_open_FILE (a, stdout) != ARCHIVE_OK)
+            {
+              propagate_libarchive_error (error, a);
+              goto out;
+            }
         }
     }
 
@@ -141,10 +174,63 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
                                            cancellable, error))
     goto out;
 
-  if (archive_write_close (a) != ARCHIVE_OK)
+  if (opt_oci)
     {
-      propagate_libarchive_error (error, a);
-      goto out;
+      g_autofree char *uncompressed_digest = NULL;
+      g_autofree char *timestamp = NULL;
+      g_autoptr(OstreeOciImage) image = NULL;
+      g_autoptr(OstreeOciRef) layer_ref = NULL;
+      g_autoptr(OstreeOciRef) image_ref = NULL;
+      g_autoptr(OstreeOciRef) manifest_ref = NULL;
+      g_autoptr(OstreeOciManifest) manifest = NULL;
+      GHashTable *annotations;
+      const char *layers[2] = { NULL, NULL };
+      OstreeOciRef *refs[2] = { NULL, NULL };
+      GTimeVal stamp = { 0 };
+
+      if (!ostree_oci_layer_writer_close (layer_writer,
+                                          &uncompressed_digest,
+                                          &layer_ref,
+                                          cancellable,
+                                          error))
+        goto out;
+
+      image = ostree_oci_image_new ();
+
+      layers[0] = uncompressed_digest;
+      ostree_oci_image_set_layers (image, layers);
+
+      stamp.tv_sec = ostree_commit_get_timestamp (commit_data);
+      timestamp = g_time_val_to_iso8601 (&stamp);
+      ostree_oci_image_set_created (image, timestamp);
+
+      image_ref = ostree_oci_registry_store_json (registry, OSTREE_JSON (image), cancellable, error);
+      if (image_ref == NULL)
+        goto out;
+
+      manifest = ostree_oci_manifest_new ();
+      ostree_oci_manifest_set_config (manifest, image_ref);
+      refs[0] = layer_ref;
+      ostree_oci_manifest_set_layers (manifest, refs);
+
+      annotations = ostree_oci_manifest_get_annotations (manifest);
+      ostree_oci_add_annotations_for_commit (annotations, commit, commit_data);
+
+      manifest_ref = ostree_oci_registry_store_json (registry, OSTREE_JSON (manifest), cancellable, error);
+      if (manifest_ref == NULL)
+        goto out;
+
+      if (!ostree_oci_registry_set_ref (registry, opt_oci_tag ? opt_oci_tag : "latest", manifest_ref,
+                                        cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (archive_write_close (a) != ARCHIVE_OK)
+        {
+          propagate_libarchive_error (error, a);
+          goto out;
+        }
     }
 
 #else

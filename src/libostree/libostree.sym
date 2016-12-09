@@ -369,12 +369,54 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/* Remove comment when first new symbol is added
-LIBOSTREE_2016.XX {
+LIBOSTREE_2016.15 {
 global:
-	someostree_symbol_deleteme;
+       ostree_json_get_type;
+       ostree_json_from_bytes;
+       ostree_json_to_bytes;
+       ostree_oci_ref_get_type;
+       ostree_oci_ref_new;
+       ostree_oci_ref_get_mediatype;
+       ostree_oci_ref_get_digest;
+       ostree_oci_ref_get_size;
+       ostree_oci_ref_get_urls;
+       ostree_oci_ref_set_urls;
+       ostree_oci_versioned_get_type;
+       ostree_oci_versioned_from_json;
+       ostree_oci_versioned_get_mediatype;
+       ostree_oci_versioned_get_version;
+       ostree_oci_manifest_get_type;
+       ostree_oci_manifest_new;
+       ostree_oci_manifest_set_config;
+       ostree_oci_manifest_set_layers;
+       ostree_oci_manifest_get_n_layers;
+       ostree_oci_manifest_get_layer_digest;
+       ostree_oci_manifest_get_annotations;
+       ostree_oci_add_annotations_for_commit;
+       ostree_oci_parse_commit_annotations;
+       ostree_oci_manifest_list_get_type;
+       ostree_oci_image_get_type;
+       ostree_oci_image_new;
+       ostree_oci_image_set_created;
+       ostree_oci_image_set_architecture;
+       ostree_oci_image_set_os;
+       ostree_oci_image_set_layers;
+       ostree_oci_registry_get_type;
+       ostree_oci_registry_new;
+       ostree_oci_registry_load_ref;
+       ostree_oci_registry_set_ref;
+       ostree_oci_registry_download_blob;
+       ostree_oci_registry_download_blob_finish;
+       ostree_oci_registry_load_blob;
+       ostree_oci_registry_store_blob;
+       ostree_oci_registry_store_json;
+       ostree_oci_registry_load_versioned;
+       ostree_oci_registry_write_layer;
+       ostree_oci_layer_writer_get_type;
+       ostree_oci_layer_writer_get_archive;
+       ostree_oci_layer_writer_close;
+       ostree_repo_write_archive_fd_to_mtree;
 } LIBOSTREE_2016.14;
-*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
@@ -382,5 +424,5 @@ global:
 LIBOSTREE_2016.XX {
 global:
 	someostree_symbol_deleteme;
-} LIBOSTREE_2016.14;
+} LIBOSTREE_2016.15;
 */

@@ -124,6 +124,14 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-gpg-verify-result.c \
 	src/libostree/ostree-gpg-verify-result-private.h \
 	src/libostree/ostree-autocleanups.h \
+	src/libostree/ostree-json.c \
+	src/libostree/ostree-json.h \
+	src/libostree/ostree-json-private.h \
+	src/libostree/ostree-json-oci.c \
+	src/libostree/ostree-json-oci.h \
+	src/libostree/ostree-json-oci-private.h \
+	src/libostree/ostree-oci-registry.c \
+	src/libostree/ostree-oci-registry.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
@@ -167,6 +175,9 @@ libostree_1_la_SOURCES += \
 libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 libostree_1_la_LIBADD += $(OT_INTERNAL_SOUP_LIBS)
 endif
+
+libostree_1_la_CFLAGS += $(OT_DEP_JSON_CFLAGS)
+libostree_1_la_LIBADD += $(OT_DEP_JSON_LIBS)
 
 if USE_LIBMOUNT
 libostree_1_la_CFLAGS += $(OT_DEP_LIBMOUNT_CFLAGS)
