@@ -73,95 +73,100 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                      GCancellable                *cancellable,
                                      GError                     **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GPtrArray) ret_deltas = NULL;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  glnx_fd_close int dfd = -1;
 
   ret_deltas = g_ptr_array_new_with_free_func (g_free);
 
-  if (g_file_query_exists (self->deltas_dir, NULL))
+  dfd = glnx_opendirat_with_errno (self->repo_dir_fd, "deltas", TRUE);
+  if (dfd < 0)
     {
-      dir_enum = g_file_enumerate_children (self->deltas_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            NULL, error);
-      if (!dir_enum)
-        goto out;
+      if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
+  else
+    {
+      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+
+      if (!glnx_dirfd_iterator_init_take_fd (dfd, &dfd_iter, error))
+        return FALSE;
+      dfd = -1;
 
       while (TRUE)
         {
-          g_autoptr(GFileEnumerator) dir_enum2 = NULL;
-          GFileInfo *file_info;
-          GFile *child;
+          g_auto(GLnxDirFdIterator) sub_dfd_iter = { 0, };
+          struct dirent *dent;
 
-          if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                          NULL, error))
-            goto out;
-          if (file_info == NULL)
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+            return FALSE;
+          if (dent == NULL)
             break;
-
-          if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+          if (dent->d_type != DT_DIR)
             continue;
 
-
-          dir_enum2 = g_file_enumerate_children (child, OSTREE_GIO_FAST_QUERYINFO,
-                                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                 NULL, error);
-          if (!dir_enum2)
-            goto out;
+          if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
+                                            &sub_dfd_iter, error))
+            return FALSE;
 
           while (TRUE)
             {
-              GFileInfo *file_info2;
-              GFile *child2;
+              struct dirent *sub_dent;
               const char *name1;
               const char *name2;
+              g_autofree char *superblock_subpath = NULL;
+              struct stat stbuf;
 
-              if (!g_file_enumerator_iterate (dir_enum2, &file_info2, &child2,
-                                              NULL, error))
-                goto out;
-              if (file_info2 == NULL)
+              if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&sub_dfd_iter, &sub_dent,
+                                                               cancellable, error))
+                return FALSE;
+              if (sub_dent == NULL)
                 break;
-
-              if (g_file_info_get_file_type (file_info2) != G_FILE_TYPE_DIRECTORY)
+              if (dent->d_type != DT_DIR)
                 continue;
 
-              name1 = g_file_info_get_name (file_info);
-              name2 = g_file_info_get_name (file_info2);
+              name1 = dent->d_name;
+              name2 = sub_dent->d_name;
 
-              {
-                g_autoptr(GFile) meta_path = g_file_get_child (child2, "superblock");
+              superblock_subpath = g_strconcat (name2, "/superblock", NULL);
+              if (fstatat (sub_dfd_iter.fd, superblock_subpath, &stbuf, 0) < 0)
+                {
+                  if (errno != ENOENT)
+                    {
+                      glnx_set_error_from_errno (error);
+                      return FALSE;
+                    }
+                }
+              else
+                {
+                  g_autofree char *buf = g_strconcat (name1, name2, NULL);
+                  GString *out = g_string_new ("");
+                  char checksum[OSTREE_SHA256_STRING_LEN+1];
+                  guchar csum[OSTREE_SHA256_DIGEST_LEN];
+                  const char *dash = strchr (buf, '-');
 
-                if (g_file_query_exists (meta_path, NULL))
-                  {
-                    g_autofree char *buf = g_strconcat (name1, name2, NULL);
-                    GString *out = g_string_new ("");
-                    char checksum[OSTREE_SHA256_STRING_LEN+1];
-                    guchar csum[OSTREE_SHA256_DIGEST_LEN];
-                    const char *dash = strchr (buf, '-');
+                  ostree_checksum_b64_inplace_to_bytes (buf, csum);
+                  ostree_checksum_inplace_from_bytes (csum, checksum);
+                  g_string_append (out, checksum);
+                  if (dash)
+                    {
+                      g_string_append_c (out, '-');
+                      ostree_checksum_b64_inplace_to_bytes (dash+1, csum);
+                      ostree_checksum_inplace_from_bytes (csum, checksum);
+                      g_string_append (out, checksum);
+                    }
 
-                    ostree_checksum_b64_inplace_to_bytes (buf, csum);
-                    ostree_checksum_inplace_from_bytes (csum, checksum);
-                    g_string_append (out, checksum);
-                    if (dash)
-                      {
-                        g_string_append_c (out, '-');
-                        ostree_checksum_b64_inplace_to_bytes (dash+1, csum);
-                        ostree_checksum_inplace_from_bytes (csum, checksum);
-                        g_string_append (out, checksum);
-                      }
-
-                    g_ptr_array_add (ret_deltas, g_string_free (out, FALSE));
-                  }
-              }
+                  g_ptr_array_add (ret_deltas, g_string_free (out, FALSE));
+                }
             }
         }
     }
 
-  ret = TRUE;
   if (out_deltas)
     *out_deltas = g_steal_pointer (&ret_deltas);
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
