@@ -521,7 +521,6 @@ ostree_repo_finalize (GObject *object)
     (void) close (self->cache_dir_fd);
   if (self->objects_dir_fd != -1)
     (void) close (self->objects_dir_fd);
-  g_clear_object (&self->deltas_dir);
   if (self->uncompressed_objects_dir_fd != -1)
     (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->sysroot_dir);
@@ -605,8 +604,6 @@ ostree_repo_constructed (GObject *object)
   g_assert (self->repodir != NULL);
 
   self->tmp_dir = g_file_resolve_relative_path (self->repodir, "tmp");
-
-  self->deltas_dir = g_file_get_child (self->repodir, "deltas");
 
   /* Ensure the "sysroot-path" property is set. */
   if (self->sysroot_dir == NULL)
