@@ -1700,9 +1700,10 @@ out:
  * ostree_repo_remote_fetch_summary:
  * @self: Self
  * @name: name of a remote
- * @out_summary: (nullable): return location for raw summary data, or %NULL
- * @out_signatures: (nullable): return location for raw summary signature
- *                                data, or %NULL
+ * @out_summary: (out) (optional): return location for raw summary data, or
+ *               %NULL
+ * @out_signatures: (out) (optional): return location for raw summary
+ *                  signature data, or %NULL
  * @cancellable: a #GCancellable
  * @error: a #GError
  *
