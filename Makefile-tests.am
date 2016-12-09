@@ -281,18 +281,15 @@ tests/%-symlink-stamp: % Makefile
 # non-recursive Automake, so we change our code to canonically look
 # for tests/ which is just a symlink when installed.
 if ENABLE_INSTALLED_TESTS
-install-test-data-file-path-hack:
+install-installed-tests-extra:
 	if test -L $(DESTDIR)$(installed_testdir)/tests; then \
 	  rm $(DESTDIR)$(installed_testdir)/tests; \
 	fi
 	ln -s . $(DESTDIR)$(installed_testdir)/tests
-INSTALL_DATA_HOOKS += install-test-data-file-path-hack
-
-install-libtest:
 if BUILDOPT_ASAN
 	sed -e 's,^BUILT_WITH_ASAN=.*,BUILT_WITH_ASAN=1,' < $(srcdir)/tests/libtest.sh > $(DESTDIR)$(installed_testdir)/tests/libtest.sh
 else
 	install -m 0644 $(srcdir)/tests/libtest.sh $(DESTDIR)$(installed_testdir)/tests/libtest.sh
 endif
-INSTALL_DATA_HOOKS += install-libtest
+INSTALL_DATA_HOOKS += install-installed-tests-extra
 endif
