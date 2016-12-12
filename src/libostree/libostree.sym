@@ -364,6 +364,8 @@ global:
        ostree_repo_verify_commit_for_remote;
 } LIBOSTREE_2016.8;
 
+/* No new symbols in 2016.15 */
+
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
