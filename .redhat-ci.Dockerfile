@@ -1,5 +1,4 @@
-FROM fedora:24
-MAINTAINER Jonathan Lebon <jlebon@redhat.com>
+FROM fedora:25
 
 RUN dnf install -y \
         gcc \
