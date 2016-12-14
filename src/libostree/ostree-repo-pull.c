@@ -2660,6 +2660,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->remote_repo_local && !require_static_deltas)
     disable_static_deltas = TRUE;
 
+  /* For local pulls, default to disabling static deltas so that the
+   * exact object files are copied.
+   */
+  if (pull_data->remote_repo_local && !require_static_deltas)
+    disable_static_deltas = TRUE;
+
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
   {
