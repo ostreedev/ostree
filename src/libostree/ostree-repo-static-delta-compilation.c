@@ -843,6 +843,25 @@ process_one_bsdiff (OstreeRepo                       *repo,
   return ret;
 }
 
+static gboolean
+check_object_world_readable (OstreeRepo   *repo,
+                             const char   *checksum,
+                             gboolean     *out_readable,
+                             GCancellable *cancellable,
+                             GError      **error)
+{
+  g_autoptr(GFileInfo) finfo = NULL;
+  guint32 mode;
+
+  if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL,
+                              cancellable, error))
+    return FALSE;
+
+  mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
+  *out_readable = (mode & S_IROTH);
+  return TRUE;
+}
+
 static gboolean 
 generate_delta_lowlatency (OstreeRepo                       *repo,
                            const char                       *from,
@@ -973,6 +992,22 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       const char *from_checksum = value;
       ContentRollsum *rollsum;
       ContentBsdiff *bsdiff;
+      gboolean from_world_readable = FALSE;
+
+      /* We only want to include in the delta objects that we are sure will
+       * be readable by the client when applying the delta, regardless its
+       * access privileges, so that we don't run into permissions problems
+       * when the client is trying to update a bare-user repository with a
+       * bare repository defined as its parent.
+       */
+      if (!check_object_world_readable (repo, from_checksum, &from_world_readable, cancellable, error))
+        goto out;
+      if (!from_world_readable)
+        {
+          g_hash_table_iter_steal (&hashiter);
+          g_hash_table_add (new_reachable_regfile_content, (char*)from_checksum);
+          continue;
+        }
 
       if (!try_content_rollsum (repo, opts, from_checksum, to_checksum,
                                 &rollsum, cancellable, error))
