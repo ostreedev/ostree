@@ -2456,12 +2456,12 @@ list_loose_objects_at (OstreeRepo             *self,
             continue;
         }
 
-        key = ostree_object_name_serialize (buf, objtype);
-        value = g_variant_new ("(b@as)",
-                               TRUE, g_variant_new_strv (NULL, 0));
-        /* transfer ownership */
-        g_hash_table_replace (inout_objects, key,
-                              g_variant_ref_sink (value));
+      key = ostree_object_name_serialize (buf, objtype);
+      value = g_variant_new ("(b@as)",
+                             TRUE, g_variant_new_strv (NULL, 0));
+      /* transfer ownership */
+      g_hash_table_replace (inout_objects, key,
+                            g_variant_ref_sink (value));
     }
 
   ret = TRUE;
