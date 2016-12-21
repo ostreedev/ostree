@@ -2460,7 +2460,7 @@ list_loose_objects_at (OstreeRepo             *self,
       value = g_variant_new ("(b@as)",
                              TRUE, g_variant_new_strv (NULL, 0));
       /* transfer ownership */
-      g_hash_table_replace (inout_objects, key,
+      g_hash_table_replace (inout_objects, g_variant_ref_sink (key),
                             g_variant_ref_sink (value));
     }
 
