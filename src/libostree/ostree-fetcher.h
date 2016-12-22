@@ -103,18 +103,25 @@ void _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
 
 guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
 
-void _ostree_fetcher_mirrored_request_with_partial_async (OstreeFetcher         *self,
-                                                          GPtrArray             *mirrorlist,
-                                                          const char            *filename,
-                                                          guint64                max_size,
-                                                          int                    priority,
-                                                          GCancellable          *cancellable,
-                                                          GAsyncReadyCallback    callback,
-                                                          gpointer               user_data);
+typedef enum {
+  OSTREE_FETCHER_REQUEST_FLAG_ENABLE_PARTIAL = (1 << 0)
+} OstreeFetcherRequestFlags;
 
-char *_ostree_fetcher_mirrored_request_with_partial_finish (OstreeFetcher *self,
-                                                            GAsyncResult  *result,
-                                                            GError       **error);
+void _ostree_fetcher_request_async (OstreeFetcher         *self,
+                                    GPtrArray             *mirrorlist,
+                                    const char            *filename,
+                                    OstreeFetcherRequestFlags flags,
+                                    guint64                max_size,
+                                    int                    priority,
+                                    GCancellable          *cancellable,
+                                    GAsyncReadyCallback    callback,
+                                    gpointer               user_data);
+
+gboolean _ostree_fetcher_request_finish (OstreeFetcher *self,
+                                         GAsyncResult  *result,
+                                         char         **out_filename,
+                                         GInputStream **out_stream,
+                                         GError       **error);
 
 gboolean _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher,
                                                      GPtrArray     *mirrorlist,

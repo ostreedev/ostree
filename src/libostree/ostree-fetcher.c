@@ -1179,17 +1179,16 @@ on_request_sent (GObject        *object,
   g_object_unref (task);
 }
 
-static void
-ostree_fetcher_mirrored_request_internal (OstreeFetcher         *self,
-                                          GPtrArray             *mirrorlist,
-                                          const char            *filename,
-                                          gboolean               is_stream,
-                                          guint64                max_size,
-                                          int                    priority,
-                                          GCancellable          *cancellable,
-                                          GAsyncReadyCallback    callback,
-                                          gpointer               user_data,
-                                          gpointer               source_tag)
+void
+_ostree_fetcher_request_async (OstreeFetcher         *self,
+                               GPtrArray             *mirrorlist,
+                               const char            *filename,
+                               OstreeFetcherRequestFlags flags,
+                               guint64                max_size,
+                               int                    priority,
+                               GCancellable          *cancellable,
+                               GAsyncReadyCallback    callback,
+                               gpointer               user_data)
 {
   g_autoptr(GTask) task = NULL;
   OstreeFetcherPendingURI *pending;
@@ -1205,10 +1204,10 @@ ostree_fetcher_mirrored_request_internal (OstreeFetcher         *self,
   pending->mirrorlist = g_ptr_array_ref (mirrorlist);
   pending->filename = g_strdup (filename);
   pending->max_size = max_size;
-  pending->is_stream = is_stream;
+  pending->is_stream = (flags & OSTREE_FETCHER_REQUEST_FLAG_ENABLE_PARTIAL) == 0;
 
   task = g_task_new (self, cancellable, callback, user_data);
-  g_task_set_source_tag (task, source_tag);
+  g_task_set_source_tag (task, _ostree_fetcher_request_async);
   g_task_set_task_data (task, pending, (GDestroyNotify) pending_uri_unref);
 
   /* We'll use the GTask priority for our own priority queue. */
@@ -1220,60 +1219,45 @@ ostree_fetcher_mirrored_request_internal (OstreeFetcher         *self,
                            (GDestroyNotify) g_object_unref);
 }
 
-void
-_ostree_fetcher_mirrored_request_with_partial_async (OstreeFetcher         *self,
-                                                     GPtrArray             *mirrorlist,
-                                                     const char            *filename,
-                                                     guint64                max_size,
-                                                     int                    priority,
-                                                     GCancellable          *cancellable,
-                                                     GAsyncReadyCallback    callback,
-                                                     gpointer               user_data)
+gboolean
+_ostree_fetcher_request_finish (OstreeFetcher         *self,
+                                GAsyncResult          *result,
+                                char                 **out_filename,
+                                GInputStream         **out_stream,
+                                GError               **error)
 {
-  ostree_fetcher_mirrored_request_internal (self, mirrorlist, filename, FALSE,
-                                            max_size, priority, cancellable,
-                                            callback, user_data,
-                                            _ostree_fetcher_mirrored_request_with_partial_async);
-}
+  GTask *task;
+  OstreeFetcherPendingURI *pending;
+  gpointer ret;
 
-char *
-_ostree_fetcher_mirrored_request_with_partial_finish (OstreeFetcher         *self,
-                                                      GAsyncResult          *result,
-                                                      GError               **error)
-{
-  g_return_val_if_fail (g_task_is_valid (result, self), NULL);
-  g_return_val_if_fail (g_async_result_is_tagged (result,
-                        _ostree_fetcher_mirrored_request_with_partial_async), NULL);
+  g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  g_return_val_if_fail (g_async_result_is_tagged (result, _ostree_fetcher_request_async), FALSE);
 
-  return g_task_propagate_pointer (G_TASK (result), error);
-}
+  /* Special dance to implement
+    enum FetchResult {
+       Filename(String path),
+       Membuf(uint8[])
+    } in Rust terms
+  */
+  task = (GTask*)result;
+  pending = g_task_get_task_data (task);
 
-static void
-ostree_fetcher_stream_mirrored_uri_async (OstreeFetcher         *self,
-                                          GPtrArray             *mirrorlist,
-                                          const char            *filename,
-                                          guint64                max_size,
-                                          int                    priority,
-                                          GCancellable          *cancellable,
-                                          GAsyncReadyCallback    callback,
-                                          gpointer               user_data)
-{
-  ostree_fetcher_mirrored_request_internal (self, mirrorlist, filename, TRUE,
-                                            max_size, priority, cancellable,
-                                            callback, user_data,
-                                            ostree_fetcher_stream_mirrored_uri_async);
-}
+  ret = g_task_propagate_pointer (task, error);
+  if (!ret)
+    return FALSE;
 
-static GInputStream *
-ostree_fetcher_stream_mirrored_uri_finish (OstreeFetcher         *self,
-                                           GAsyncResult          *result,
-                                           GError               **error)
-{
-  g_return_val_if_fail (g_task_is_valid (result, self), NULL);
-  g_return_val_if_fail (g_async_result_is_tagged (result,
-                        ostree_fetcher_stream_mirrored_uri_async), NULL);
+  if (pending->is_stream)
+    {
+      g_assert (out_stream);
+      *out_stream = ret;
+    }
+  else
+    {
+      g_assert (out_filename);
+      *out_filename = ret;
+    }
 
-  return g_task_propagate_pointer (G_TASK (result), error);
+  return TRUE;
 }
 
 guint64
@@ -1322,8 +1306,9 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   FetchUriSyncData *data = user_data;
 
-  data->result_stream = ostree_fetcher_stream_mirrored_uri_finish ((OstreeFetcher*)object,
-                                                                    result, data->error);
+  (void)_ostree_fetcher_request_finish ((OstreeFetcher*)object,
+                                        result, NULL, &data->result_stream,
+                                        data->error);
   data->done = TRUE;
 }
 
@@ -1356,9 +1341,9 @@ _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
   data.done = FALSE;
   data.error = error;
 
-  ostree_fetcher_stream_mirrored_uri_async (fetcher, mirrorlist, filename, max_size,
-                                   OSTREE_FETCHER_DEFAULT_PRIORITY, cancellable,
-                                   fetch_uri_sync_on_complete, &data);
+  _ostree_fetcher_request_async (fetcher, mirrorlist, filename, 0, max_size,
+                                 OSTREE_FETCHER_DEFAULT_PRIORITY, cancellable,
+                                 fetch_uri_sync_on_complete, &data);
   while (!data.done)
     g_main_context_iteration (mainctx, TRUE);
 
