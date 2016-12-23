@@ -154,7 +154,7 @@ and generate a new commit in our prod repository:
 checksum=$(ostree --repo=repo-dev rev-parse exampleos/x86_64/stage-3-pass/standard`)
 ostree --repo=repo-prod pull-local repo-dev ${checksum}
 ostree --repo=repo-prod commit -b exampleos/x86_64/standard \
-       -s 'Release 1.2.3' --add-metadata-string=ostree.version=1.2.3 \
+       -s 'Release 1.2.3' --add-metadata-string=version=1.2.3 \
 	   --tree=ref=${checksum}
 ```
 
@@ -171,7 +171,7 @@ links to avoid copying any content at all - making the process very
 fast.
 
 Another interesting thing to notice here is that we're adding an
-`ostree.version` metadata string to the commit.  This is an optional
+`version` metadata string to the commit.  This is an optional
 piece of metadata, but we are encouraging its use in the OSTree
 ecosystem of tools.  Commands like `ostree admin status` show it by
 default.
