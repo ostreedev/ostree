@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "ostree-metalink.h"
+#include "ostree-fetcher-util.h"
 #include <gio/gfiledescriptorbased.h>
 
 #include "otutil.h"
