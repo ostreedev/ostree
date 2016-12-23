@@ -123,24 +123,6 @@ gboolean _ostree_fetcher_request_finish (OstreeFetcher *self,
                                          GInputStream **out_stream,
                                          GError       **error);
 
-gboolean _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher,
-                                                     GPtrArray     *mirrorlist,
-                                                     const char    *filename,
-                                                     gboolean       add_nul,
-                                                     gboolean       allow_noent,
-                                                     GBytes         **out_contents,
-                                                     guint64        max_size,
-                                                     GCancellable   *cancellable,
-                                                     GError         **error);
-
-gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
-                                                OstreeFetcherURI *uri,
-                                                gboolean       add_nul,
-                                                gboolean       allow_noent,
-                                                GBytes         **out_contents,
-                                                guint64        max_size,
-                                                GCancellable   *cancellable,
-                                                GError         **error);
 G_END_DECLS
 
 #endif

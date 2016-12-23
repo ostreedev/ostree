@@ -32,6 +32,7 @@
 #include "ostree-repo-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-metalink.h"
+#include "ostree-fetcher-util.h"
 #include "ot-fs-utils.h"
 
 #include <gio/gunixinputstream.h>
