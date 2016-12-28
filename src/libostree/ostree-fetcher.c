@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include <gio/gio.h>
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
@@ -90,7 +91,8 @@ typedef struct {
 
   SoupRequest *request;
 
-  gboolean is_stream;
+  gboolean is_membuf;
+  OstreeFetcherRequestFlags flags;
   GInputStream *request_body;
   char *out_tmpfile;
   GOutputStream *out_stream;
@@ -468,7 +470,7 @@ session_thread_request_uri (ThreadClosure *thread_closure,
         soup_message_headers_append (msg->request_headers, key, value);
     }
 
-  if (pending->is_stream)
+  if (pending->is_membuf)
     {
       soup_request_send_async (pending->request,
                                cancellable,
@@ -855,6 +857,16 @@ finish_stream (OstreeFetcherPendingURI *pending,
    */
   if (pending->out_stream)
     {
+      if ((pending->flags & OSTREE_FETCHER_REQUEST_NUL_TERMINATION) > 0)
+        {
+          const guint8 nulchar = 0;
+          gsize bytes_written;
+
+          if (!g_output_stream_write_all (pending->out_stream, &nulchar, 1, &bytes_written,
+                                          cancellable, error))
+            goto out;
+        }
+
       if (!g_output_stream_close (pending->out_stream, cancellable, error))
         goto out;
 
@@ -864,30 +876,37 @@ finish_stream (OstreeFetcherPendingURI *pending,
       g_mutex_unlock (&pending->thread_closure->output_stream_set_lock);
     }
 
-  pending->state = OSTREE_FETCHER_STATE_COMPLETE;
-  if (fstatat (pending->thread_closure->tmpdir_dfd,
-               pending->out_tmpfile,
-               &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
+  if (!pending->is_membuf)
     {
-      glnx_set_error_from_errno (error);
-      goto out;
+      if (fstatat (pending->thread_closure->tmpdir_dfd,
+                   pending->out_tmpfile,
+                   &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
+
+  pending->state = OSTREE_FETCHER_STATE_COMPLETE;
 
   /* Now that we've finished downloading, continue with other queued
    * requests.
    */
   session_thread_process_pending_queue (pending->thread_closure);
 
-  if (stbuf.st_size < pending->content_length)
+  if (!pending->is_membuf)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Download incomplete");
-      goto out;
-    }
-  else
-    {
-      g_mutex_lock (&pending->thread_closure->output_stream_set_lock);
-      pending->thread_closure->total_downloaded += stbuf.st_size;
-      g_mutex_unlock (&pending->thread_closure->output_stream_set_lock);
+      if (stbuf.st_size < pending->content_length)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Download incomplete");
+          goto out;
+        }
+      else
+        {
+          g_mutex_lock (&pending->thread_closure->output_stream_set_lock);
+          pending->thread_closure->total_downloaded += stbuf.st_size;
+          g_mutex_unlock (&pending->thread_closure->output_stream_set_lock);
+        }
     }
 
   ret = TRUE;
@@ -973,9 +992,18 @@ on_stream_read (GObject        *object,
     {
       if (!finish_stream (pending, cancellable, &local_error))
         goto out;
-      g_task_return_pointer (task,
-                             g_strdup (pending->out_tmpfile),
-                             (GDestroyNotify) g_free);
+      if (pending->is_membuf)
+        {
+          g_task_return_pointer (task,
+                                 g_memory_output_stream_steal_as_bytes ((GMemoryOutputStream*)pending->out_stream),
+                                 (GDestroyNotify) g_bytes_unref);
+        }
+      else
+        {
+          g_task_return_pointer (task,
+                                 g_strdup (pending->out_tmpfile),
+                                 (GDestroyNotify) g_free);
+        }
       remove_pending_rerun_queue (pending);
     }
   else
@@ -1045,23 +1073,15 @@ on_request_sent (GObject        *object,
   if (SOUP_IS_REQUEST_HTTP (object))
     {
       msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
-      if (msg->status_code == SOUP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE)
+      if (!pending->is_membuf &&
+          msg->status_code == SOUP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE)
         {
           // We already have the whole file, so just use it.
           pending->state = OSTREE_FETCHER_STATE_COMPLETE;
           (void) g_input_stream_close (pending->request_body, NULL, NULL);
-          if (pending->is_stream)
-            {
-              g_task_return_pointer (task,
-                                     g_object_ref (pending->request_body),
-                                     (GDestroyNotify) g_object_unref);
-            }
-          else
-            {
-              g_task_return_pointer (task,
-                                     g_strdup (pending->out_tmpfile),
-                                     (GDestroyNotify) g_free);
-            }
+          g_task_return_pointer (task,
+                                 g_strdup (pending->out_tmpfile),
+                                 (GDestroyNotify) g_free);
           remove_pending_rerun_queue (pending);
           goto out;
         }
@@ -1126,7 +1146,7 @@ on_request_sent (GObject        *object,
   
   pending->content_length = soup_request_get_content_length (pending->request);
 
-  if (!pending->is_stream)
+  if (!pending->is_membuf)
     {
       int oflags = O_CREAT | O_WRONLY | O_CLOEXEC;
       int fd;
@@ -1147,26 +1167,23 @@ on_request_sent (GObject        *object,
           goto out;
         }
       pending->out_stream = g_unix_output_stream_new (fd, TRUE);
-
-      g_mutex_lock (&pending->thread_closure->output_stream_set_lock);
-      g_hash_table_add (pending->thread_closure->output_stream_set,
-                        g_object_ref (pending->out_stream));
-      g_mutex_unlock (&pending->thread_closure->output_stream_set_lock);
-
-      g_input_stream_read_bytes_async (pending->request_body,
-                                       8192, G_PRIORITY_DEFAULT,
-                                       cancellable,
-                                       on_stream_read,
-                                       g_object_ref (task));
     }
   else
     {
-      g_task_return_pointer (task,
-                             g_object_ref (pending->request_body),
-                             (GDestroyNotify) g_object_unref);
-      remove_pending_rerun_queue (pending);
+      pending->out_stream = g_memory_output_stream_new_resizable ();
     }
-  
+
+  g_mutex_lock (&pending->thread_closure->output_stream_set_lock);
+  g_hash_table_add (pending->thread_closure->output_stream_set,
+                    g_object_ref (pending->out_stream));
+  g_mutex_unlock (&pending->thread_closure->output_stream_set_lock);
+
+  g_input_stream_read_bytes_async (pending->request_body,
+                                   8192, G_PRIORITY_DEFAULT,
+                                   cancellable,
+                                   on_stream_read,
+                                   g_object_ref (task));
+
  out:
   if (local_error)
     {
@@ -1179,11 +1196,12 @@ on_request_sent (GObject        *object,
   g_object_unref (task);
 }
 
-void
+static void
 _ostree_fetcher_request_async (OstreeFetcher         *self,
                                GPtrArray             *mirrorlist,
                                const char            *filename,
                                OstreeFetcherRequestFlags flags,
+                               gboolean               is_membuf,
                                guint64                max_size,
                                int                    priority,
                                GCancellable          *cancellable,
@@ -1203,8 +1221,9 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
   pending->thread_closure = thread_closure_ref (self->thread_closure);
   pending->mirrorlist = g_ptr_array_ref (mirrorlist);
   pending->filename = g_strdup (filename);
+  pending->flags = flags;
   pending->max_size = max_size;
-  pending->is_stream = (flags & OSTREE_FETCHER_REQUEST_FLAG_ENABLE_PARTIAL) == 0;
+  pending->is_membuf = is_membuf;
 
   task = g_task_new (self, cancellable, callback, user_data);
   g_task_set_source_tag (task, _ostree_fetcher_request_async);
@@ -1219,12 +1238,26 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
                            (GDestroyNotify) g_object_unref);
 }
 
+void
+_ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
+                                    GPtrArray             *mirrorlist,
+                                    const char            *filename,
+                                    guint64                max_size,
+                                    int                    priority,
+                                    GCancellable          *cancellable,
+                                    GAsyncReadyCallback    callback,
+                                    gpointer               user_data)
+{
+  _ostree_fetcher_request_async (self, mirrorlist, filename, 0, FALSE,
+                                 max_size, priority, cancellable,
+                                 callback, user_data);
+}
+
 gboolean
-_ostree_fetcher_request_finish (OstreeFetcher         *self,
-                                GAsyncResult          *result,
-                                char                 **out_filename,
-                                GInputStream         **out_stream,
-                                GError               **error)
+_ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
+                                           GAsyncResult  *result,
+                                           char         **out_filename,
+                                           GError       **error)
 {
   GTask *task;
   OstreeFetcherPendingURI *pending;
@@ -1233,12 +1266,6 @@ _ostree_fetcher_request_finish (OstreeFetcher         *self,
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   g_return_val_if_fail (g_async_result_is_tagged (result, _ostree_fetcher_request_async), FALSE);
 
-  /* Special dance to implement
-    enum FetchResult {
-       Filename(String path),
-       Membuf(uint8[])
-    } in Rust terms
-  */
   task = (GTask*)result;
   pending = g_task_get_task_data (task);
 
@@ -1246,19 +1273,56 @@ _ostree_fetcher_request_finish (OstreeFetcher         *self,
   if (!ret)
     return FALSE;
 
-  if (pending->is_stream)
-    {
-      g_assert (out_stream);
-      *out_stream = ret;
-    }
-  else
-    {
-      g_assert (out_filename);
-      *out_filename = ret;
-    }
+  g_assert (!pending->is_membuf);
+  g_assert (out_filename);
+  *out_filename = ret;
 
   return TRUE;
 }
+
+void
+_ostree_fetcher_request_to_membuf (OstreeFetcher         *self,
+                                   GPtrArray             *mirrorlist,
+                                   const char            *filename,
+                                   OstreeFetcherRequestFlags flags,
+                                   guint64                max_size,
+                                   int                    priority,
+                                   GCancellable          *cancellable,
+                                   GAsyncReadyCallback    callback,
+                                   gpointer               user_data)
+{
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, TRUE,
+                                 max_size, priority, cancellable,
+                                 callback, user_data);
+}
+
+gboolean
+_ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
+                                          GAsyncResult  *result,
+                                          GBytes       **out_buf,
+                                          GError       **error)
+{
+  GTask *task;
+  OstreeFetcherPendingURI *pending;
+  gpointer ret;
+
+  g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  g_return_val_if_fail (g_async_result_is_tagged (result, _ostree_fetcher_request_async), FALSE);
+
+  task = (GTask*)result;
+  pending = g_task_get_task_data (task);
+
+  ret = g_task_propagate_pointer (task, error);
+  if (!ret)
+    return FALSE;
+
+  g_assert (pending->is_membuf);
+  g_assert (out_buf);
+  *out_buf = ret;
+
+  return TRUE;
+}
+
 
 guint64
 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)

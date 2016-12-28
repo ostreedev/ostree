@@ -708,7 +708,7 @@ content_fetch_on_complete (GObject        *object,
   OstreeObjectType objtype;
   gboolean free_fetch_data = TRUE;
 
-  if (!_ostree_fetcher_request_finish (fetcher, result, &temp_path, NULL, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &temp_path, error))
     goto out;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
@@ -841,7 +841,7 @@ meta_fetch_on_complete (GObject           *object,
   g_debug ("fetch of %s%s complete", checksum_obj,
            fetch_data->is_detached_meta ? " (detached)" : "");
 
-  if (!_ostree_fetcher_request_finish (fetcher, result, &temp_path, NULL, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &temp_path, error))
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
@@ -981,7 +981,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
-  if (!_ostree_fetcher_request_finish (fetcher, result, &temp_path, NULL, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &temp_path, error))
     goto out;
 
   fd = openat (_ostree_fetcher_get_dfd (fetcher), temp_path, O_RDONLY | O_CLOEXEC);
@@ -1380,13 +1380,12 @@ enqueue_one_object_request (OtPullData        *pull_data,
   else
     expected_max_size = 0;
 
-  _ostree_fetcher_request_async (pull_data->fetcher, mirrorlist,
-                                 obj_subpath, OSTREE_FETCHER_REQUEST_FLAG_ENABLE_PARTIAL,
-                                 expected_max_size,
-                                 is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
-                                 : OSTREE_REPO_PULL_CONTENT_PRIORITY,
-                                 pull_data->cancellable,
-                                 is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
+  _ostree_fetcher_request_to_tmpfile (pull_data->fetcher, mirrorlist,
+                                      obj_subpath, expected_max_size,
+                                      is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
+                                      : OSTREE_REPO_PULL_CONTENT_PRIORITY,
+                                      pull_data->cancellable,
+                                      is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
 }
 
 static gboolean
@@ -1734,14 +1733,13 @@ process_one_static_delta (OtPullData   *pull_data,
         }
       else
         {
-          _ostree_fetcher_request_async (pull_data->fetcher,
-                                         pull_data->content_mirrorlist,
-                                         deltapart_path, OSTREE_FETCHER_REQUEST_FLAG_ENABLE_PARTIAL,
-                                         size,
-                                         OSTREE_FETCHER_DEFAULT_PRIORITY,
-                                         pull_data->cancellable,
-                                         static_deltapart_fetch_on_complete,
-                                         fetch_data);
+          _ostree_fetcher_request_to_tmpfile (pull_data->fetcher,
+                                              pull_data->content_mirrorlist,
+                                              deltapart_path, size,
+                                              OSTREE_FETCHER_DEFAULT_PRIORITY,
+                                              pull_data->cancellable,
+                                              static_deltapart_fetch_on_complete,
+                                              fetch_data);
           pull_data->n_outstanding_deltapart_fetches++;
         }
     }
