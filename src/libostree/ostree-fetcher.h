@@ -103,25 +103,39 @@ void _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
 
 guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
 
+void _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
+                                         GPtrArray             *mirrorlist,
+                                         const char            *filename,
+                                         guint64                max_size,
+                                         int                    priority,
+                                         GCancellable          *cancellable,
+                                         GAsyncReadyCallback    callback,
+                                         gpointer               user_data);
+
+gboolean _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
+                                                    GAsyncResult  *result,
+                                                    char         **out_filename,
+                                                    GError       **error);
+
 typedef enum {
-  OSTREE_FETCHER_REQUEST_FLAG_ENABLE_PARTIAL = (1 << 0)
+  OSTREE_FETCHER_REQUEST_NUL_TERMINATION = (1 << 0)
 } OstreeFetcherRequestFlags;
 
-void _ostree_fetcher_request_async (OstreeFetcher         *self,
-                                    GPtrArray             *mirrorlist,
-                                    const char            *filename,
-                                    OstreeFetcherRequestFlags flags,
-                                    guint64                max_size,
-                                    int                    priority,
-                                    GCancellable          *cancellable,
-                                    GAsyncReadyCallback    callback,
-                                    gpointer               user_data);
+void _ostree_fetcher_request_to_membuf (OstreeFetcher         *self,
+                                        GPtrArray             *mirrorlist,
+                                        const char            *filename,
+                                        OstreeFetcherRequestFlags flags,
+                                        guint64                max_size,
+                                        int                    priority,
+                                        GCancellable          *cancellable,
+                                        GAsyncReadyCallback    callback,
+                                        gpointer               user_data);
 
-gboolean _ostree_fetcher_request_finish (OstreeFetcher *self,
-                                         GAsyncResult  *result,
-                                         char         **out_filename,
-                                         GInputStream **out_stream,
-                                         GError       **error);
+gboolean _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
+                                                   GAsyncResult  *result,
+                                                   GBytes       **out_filename,
+                                                   GError       **error);
+
 
 G_END_DECLS
 
