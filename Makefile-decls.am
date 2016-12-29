@@ -30,6 +30,7 @@ sbin_PROGRAMS =
 bin_SCRIPTS =
 lib_LTLIBRARIES =
 libexec_PROGRAMS =
+pkglibexec_PROGRAMS =
 pkglibexec_SCRIPTS =
 noinst_LTLIBRARIES =
 noinst_PROGRAMS =
