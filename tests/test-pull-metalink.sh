@@ -29,7 +29,7 @@ echo '1..9'
 cd ${test_tmpdir}
 mkdir metalink-data
 cd metalink-data
-${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/metalink-httpd-port
+${OSTREE_HTTPD} --autoexit --daemonize -p ${test_tmpdir}/metalink-httpd-port
 metalink_port=$(cat ${test_tmpdir}/metalink-httpd-port)
 echo "http://127.0.0.1:${metalink_port}" > ${test_tmpdir}/metalink-httpd-address
 

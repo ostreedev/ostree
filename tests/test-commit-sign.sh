@@ -53,7 +53,7 @@ cd ${test_tmpdir}
 mkdir ${test_tmpdir}/httpd
 cd httpd
 ln -s ${test_tmpdir}/ostree-srv ostree
-${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -P 18081 -p ${test_tmpdir}/httpd-port
+${OSTREE_HTTPD} --autoexit --daemonize -P 18081 -p ${test_tmpdir}/httpd-port
 port=$(cat ${test_tmpdir}/httpd-port)
 assert_streq $port 18081
 echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address

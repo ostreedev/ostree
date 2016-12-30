@@ -103,7 +103,8 @@ EXTRA_DIST += src/ostree/parse-datetime.y
 CLEANFILES += src/ostree/parse-datetime.c
 
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree \
-	-I$(srcdir)/src/ostree -I$(srcdir)/libglnx $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+	-I$(srcdir)/src/ostree -I$(srcdir)/libglnx $(OT_INTERNAL_GIO_UNIX_CFLAGS) \
+	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\"
 ostree_bin_shared_ldadd = $(AM_LDFLAGS) libglnx.la libotutil.la libostree-1.la \
 	$(OT_INTERNAL_GIO_UNIX_LIBS)
 
@@ -112,12 +113,14 @@ ostree_LDADD = $(ostree_bin_shared_ldadd) libbsdiff.la libostree-kernel-args.la 
 
 
 if USE_LIBSOUP
-ostree_SOURCES += \
-	src/ostree/ot-builtin-pull.c \
-	src/ostree/ot-builtin-trivial-httpd.c \
-	$(NULL)
+ostree_SOURCES += src/ostree/ot-builtin-pull.c src/ostree/ot-builtin-trivial-httpd.c
 ostree_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 ostree_LDADD += $(OT_INTERNAL_SOUP_LIBS)
+
+pkglibexec_PROGRAMS += ostree-trivial-httpd
+ostree_trivial_httpd_SOURCES = src/ostree/ostree-trivial-httpd.c
+ostree_trivial_httpd_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_SOUP_CFLAGS)
+ostree_trivial_httpd_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_SOUP_LIBS)
 endif
 
 if USE_LIBARCHIVE

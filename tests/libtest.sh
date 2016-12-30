@@ -102,6 +102,12 @@ else
     fi
 fi
 
+if test -n "${OSTREE_UNINSTALLED:-}"; then
+    OSTREE_HTTPD=${OSTREE_UNINSTALLED}/ostree-trivial-httpd
+else
+    OSTREE_HTTPD="${CMD_PREFIX} ostree trivial-httpd"
+fi
+
 assert_streq () {
     test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
 }
@@ -257,7 +263,7 @@ setup_fake_remote_repo1() {
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir}/ostree-srv ostree
-    ${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
+    ${OSTREE_HTTPD} --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
@@ -379,7 +385,7 @@ EOF
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir} ostree
-    ${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port
+    ${OSTREE_HTTPD} --autoexit --daemonize -p ${test_tmpdir}/httpd-port
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
