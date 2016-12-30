@@ -33,7 +33,7 @@ setup_mirror () {
   cd $name
   cp -a ${test_tmpdir}/ostree-srv ostree
 
-  ${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize \
+  ${OSTREE_HTTPD} --autoexit --daemonize \
     -p ${test_tmpdir}/${name}-port
   port=$(cat ${test_tmpdir}/${name}-port)
   echo "http://127.0.0.1:${port}" > ${test_tmpdir}/${name}-address

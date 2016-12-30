@@ -50,7 +50,7 @@ mkdir mirror-httpd
 cd mirror-httpd
 ln -s ${test_tmpdir}/mirror-srv ostree
 mirror_log="${test_tmpdir}/mirror_log"
-${CMD_PREFIX} ostree trivial-httpd --log-file=${mirror_log} --autoexit --daemonize -p ${test_tmpdir}/mirror-httpd-port
+${OSTREE_HTTPD} --log-file=${mirror_log} --autoexit --daemonize -p ${test_tmpdir}/mirror-httpd-port
 port=$(cat ${test_tmpdir}/mirror-httpd-port)
 echo "http://127.0.0.1:${port}" > ${test_tmpdir}/mirror-httpd-address
 

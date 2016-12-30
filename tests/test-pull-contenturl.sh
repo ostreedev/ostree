@@ -51,8 +51,7 @@ fi
 find ${test_tmpdir}/ostree-srv/gnomerepo/objects \
   ! -name '*.commitmeta' -type f | xargs rm
 
-${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize \
-  -p ${test_tmpdir}/httpd-content-port
+${OSTREE_HTTPD} --autoexit --daemonize -p ${test_tmpdir}/httpd-content-port
 content_port=$(cat ${test_tmpdir}/httpd-content-port)
 echo "http://127.0.0.1:${content_port}" > ${test_tmpdir}/httpd-content-address
 
