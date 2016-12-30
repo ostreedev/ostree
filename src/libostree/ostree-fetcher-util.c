@@ -59,7 +59,6 @@ _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
                                             GError         **error)
 {
   gboolean ret = FALSE;
-  const guint8 nulchar = 0;
   g_autoptr(GMainContext) mainctx = NULL;
   FetchUriSyncData data;
   g_assert (error != NULL);
