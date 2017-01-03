@@ -2968,7 +2968,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_autofree char *from_revision = NULL;
       const char *ref = key;
       const char *to_revision = value;
-      g_autoptr(GVariant) delta_superblock = NULL;
 
       if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
                                     &from_revision, error))
