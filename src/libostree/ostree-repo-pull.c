@@ -179,6 +179,10 @@ update_progress (gpointer user_data)
   if (! pull_data->progress)
     return FALSE;
 
+  /* In dry run, we only emit progress once metadata is done */
+  if (pull_data->dry_run && pull_data->n_outstanding_metadata_fetches > 0)
+    return TRUE;
+
   outstanding_writes = pull_data->n_outstanding_content_write_requests +
     pull_data->n_outstanding_metadata_write_requests +
     pull_data->n_outstanding_deltapart_write_requests;
