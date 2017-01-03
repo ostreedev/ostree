@@ -31,8 +31,9 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
   g_autoptr(GPtrArray) new_argv = g_ptr_array_new ();
 
   g_ptr_array_add (new_argv, PKGLIBEXECDIR "/ostree-trivial-httpd");
-  for (int i = 0; i < argc; i++)
+  for (int i = 1; i < argc; i++)
     g_ptr_array_add (new_argv, argv[i]);
+  g_ptr_array_add (new_argv, NULL);
   execvp (new_argv->pdata[0], (char**)new_argv->pdata);
   /* Fall through on error */
   glnx_set_error_from_errno (error);
