@@ -82,12 +82,6 @@ chmod -R u+w "${test_tmpdir}"
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
-if test -n "${OSTREE_UNINSTALLED:-}"; then
-    OSTREE_HTTPD=${OSTREE_UNINSTALLED}/ostree-trivial-httpd
-else
-    OSTREE_HTTPD="${CMD_PREFIX} ostree trivial-httpd"
-fi
-
 if test -n "${OT_TESTS_DEBUG:-}"; then
     set -x
 fi
@@ -106,6 +100,12 @@ else
     else
 	CMD_PREFIX=""
     fi
+fi
+
+if test -n "${OSTREE_UNINSTALLED:-}"; then
+    OSTREE_HTTPD=${OSTREE_UNINSTALLED}/ostree-trivial-httpd
+else
+    OSTREE_HTTPD="${CMD_PREFIX} ostree trivial-httpd"
 fi
 
 assert_streq () {
