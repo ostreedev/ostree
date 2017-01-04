@@ -133,7 +133,7 @@ void _ostree_fetcher_request_to_membuf (OstreeFetcher         *self,
 
 gboolean _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
                                                    GAsyncResult  *result,
-                                                   GBytes       **out_filename,
+                                                   GBytes       **out_buf,
                                                    GError       **error);
 
 
