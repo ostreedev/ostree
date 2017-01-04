@@ -1317,8 +1317,8 @@ _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
     return FALSE;
 
   g_assert (pending->is_membuf);
-  g_assert (out_filename);
-  *out_filename = ret;
+  g_assert (out_buf);
+  *out_buf = ret;
 
   return TRUE;
 }
