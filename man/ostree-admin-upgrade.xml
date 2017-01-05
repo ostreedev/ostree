@@ -57,7 +57,10 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Downloads the latest version of the current ref from the build server and deploys it, if it changed.  Reboot the machine for the changes to take effect.
+            Downloads the latest version of the current ref from the build
+            server and deploys it, if it changed. Reboot the machine for the
+            changes to take effect. These phases can be split via
+            <option>--pull-only</option> and <option>--deploy-only</option>.
         </para>
     </refsect1>
 
@@ -71,6 +74,24 @@ Boston, MA 02111-1307, USA.
                 <listitem><para>
                     Use a different operating system root than the current one.
                 </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--pull-only</option></term>
+
+                <listitem><para> Only perform a pull into the repository; do not
+                create a deployment. This option can hence safely be used in a
+                background scheduled job with the assurance of not changing
+                system state.</para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--deploy-only</option></term>
+
+                <listitem><para>Create a new deployment from the latest commit
+                in the tracked origin refspec.  This option is intended to be used
+                by a scheduled system that detected changes via <option>--pull-only</option>,
+                and is ready to deploy them.</para></listitem>
             </varlistentry>
 
             <varlistentry>

@@ -34,6 +34,8 @@
 
 static gboolean opt_reboot;
 static gboolean opt_allow_downgrade;
+static gboolean opt_pull_only;
+static gboolean opt_deploy_only;
 static char *opt_osname;
 static char *opt_override_commit;
 
@@ -42,6 +44,8 @@ static GOptionEntry options[] = {
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
   { "allow-downgrade", 0, 0, G_OPTION_ARG_NONE, &opt_allow_downgrade, "Permit deployment of chronologically older trees", NULL },
   { "override-commit", 0, 0, G_OPTION_ARG_STRING, &opt_override_commit, "Deploy CHECKSUM instead of the latest tree", "CHECKSUM" },
+  { "pull-only", 0, 0, G_OPTION_ARG_NONE, &opt_pull_only, "Do not create a deployment, just download", NULL },
+  { "deploy-only", 0, 0, G_OPTION_ARG_NONE, &opt_deploy_only, "Do not pull, only deploy", NULL },
   { NULL }
 };
 
@@ -63,6 +67,19 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
     goto out;
+
+  if (opt_pull_only && opt_deploy_only)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Cannot simultaneously specify --pull-only and --deploy-only");
+      goto out;
+    }
+  else if (opt_pull_only && opt_reboot)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Cannot simultaneously specify --pull-only and --reboot");
+      goto out;
+    }
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
@@ -104,6 +121,9 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
         }
     }
 
+  if (opt_deploy_only)
+    upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC;
+
   { g_auto(GLnxConsoleRef) console = { 0, };
     glnx_console_lock (&console);
 
@@ -112,11 +132,23 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
 
     if (opt_allow_downgrade)
       upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER;
-    
+
     if (!ostree_sysroot_upgrader_pull (upgrader, 0, upgraderpullflags,
                                        progress, &changed,
                                        cancellable, error))
-      goto out;
+      {
+        /* In the pull-only case, we do a cleanup here to ensure that if
+         * multiple commits were pulled, we garbage collect any old
+         * partially-pulled intermediate commits before pulling more. This is
+         * really a best practice in general, but for maximum compatiblity, we
+         * only do cleanup if a user specifies the new --pull-only option.
+         * Otherwise, we would break the case of trying to deploy a commit that
+         * isn't directly referenced.
+         */
+        if (opt_pull_only)
+          (void) ostree_sysroot_cleanup (sysroot, NULL, NULL);
+        goto out;
+      }
 
     if (progress)
       ostree_async_progress_finish (progress);
@@ -128,8 +160,11 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
     }
   else
     {
-      if (!ostree_sysroot_upgrader_deploy (upgrader, cancellable, error))
-        goto out;
+      if (!opt_pull_only)
+        {
+          if (!ostree_sysroot_upgrader_deploy (upgrader, cancellable, error))
+            goto out;
+        }
 
       if (opt_reboot)
         {

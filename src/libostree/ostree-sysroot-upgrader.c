@@ -552,7 +552,8 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
   g_assert (self->merge_deployment);
   from_revision = ostree_deployment_get_csum (self->merge_deployment);
 
-  if (self->origin_remote)
+  if (self->origin_remote &&
+      (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
     {
       if (!ostree_repo_pull_one_dir (repo, self->origin_remote, dir_to_pull, refs_to_fetch,
                              flags, progress,
