@@ -83,6 +83,7 @@ dist_test_scripts = \
 	tests/test-admin-instutil-set-kargs.sh \
 	tests/test-admin-upgrade-not-backwards.sh \
 	tests/test-admin-pull-deploy-commit.sh \
+	tests/test-admin-pull-deploy-split.sh \
 	tests/test-admin-locking.sh \
 	tests/test-admin-deploy-clean.sh \
 	tests/test-repo-checkout-subpath.sh	\
