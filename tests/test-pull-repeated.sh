@@ -34,7 +34,7 @@ for x in $(seq 200); do
 	echo "Success on iteration ${x}"
 	break;
     fi
-    assert_file_has_content err.txt "500.*Internal Server Error"
+    assert_file_has_content err.txt "\(500.*Internal Server Error\)\|\(HTTP 500\)"
 done
 
 ${CMD_PREFIX} ostree --repo=repo fsck
