@@ -1951,17 +1951,7 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
       }
     else if (tls_client_cert_path != NULL)
       {
-        g_autoptr(GTlsCertificate) client_cert = NULL;
-
-        g_assert (tls_client_key_path != NULL);
-
-        client_cert = g_tls_certificate_new_from_files (tls_client_cert_path,
-                                                        tls_client_key_path,
-                                                        error);
-        if (client_cert == NULL)
-          goto out;
-
-        _ostree_fetcher_set_client_cert (fetcher, client_cert);
+        _ostree_fetcher_set_client_cert (fetcher, tls_client_cert_path, tls_client_key_path);
       }
   }
 
@@ -1975,13 +1965,7 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
 
     if (tls_ca_path != NULL)
       {
-        g_autoptr(GTlsDatabase) db = NULL;
-
-        db = g_tls_file_database_new (tls_ca_path, error);
-        if (db == NULL)
-          goto out;
-
-        _ostree_fetcher_set_tls_database (fetcher, db);
+        _ostree_fetcher_set_tls_database (fetcher, tls_ca_path);
       }
   }
 
