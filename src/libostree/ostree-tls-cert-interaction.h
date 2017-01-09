@@ -34,6 +34,7 @@ typedef struct _OstreeTlsCertInteractionClass   OstreeTlsCertInteractionClass;
 
 GType                       _ostree_tls_cert_interaction_get_type    (void) G_GNUC_CONST;
 
-OstreeTlsCertInteraction *  _ostree_tls_cert_interaction_new         (GTlsCertificate *cert);
+OstreeTlsCertInteraction *  _ostree_tls_cert_interaction_new         (const char *cert_path,
+                                                                      const char *key_path);
 
 G_END_DECLS

@@ -52,6 +52,7 @@ typedef struct {
   SoupSession *session;  /* not referenced */
   GMainContext *main_context;
   volatile gint running;
+  GError *initialization_error; /* Any failure to load the db */
 
   int tmpdir_dfd;
   char *tmpdir_name;
@@ -357,12 +358,14 @@ static void
 session_thread_set_tls_interaction_cb (ThreadClosure *thread_closure,
                                        gpointer data)
 {
-  GTlsCertificate *cert = data;
+  const char *cert_and_key_path = data; /* str\0str\0 in one malloc buf */
+  const char *cert_path = cert_and_key_path;
+  const char *key_path = cert_and_key_path + strlen (cert_and_key_path) + 1;
   glnx_unref_object OstreeTlsCertInteraction *interaction = NULL;
 
   /* The GTlsInteraction instance must be created in the
    * session thread so it uses the correct GMainContext. */
-  interaction = _ostree_tls_cert_interaction_new (cert);
+  interaction = _ostree_tls_cert_interaction_new (cert_path, key_path);
 
   g_object_set (thread_closure->session,
                 SOUP_SESSION_TLS_INTERACTION,
@@ -374,13 +377,19 @@ static void
 session_thread_set_tls_database_cb (ThreadClosure *thread_closure,
                                     gpointer data)
 {
-  GTlsDatabase *database = data;
+  const char *db_path = data;
 
-  if (database != NULL)
+  if (db_path != NULL)
     {
-      g_object_set (thread_closure->session,
-                    SOUP_SESSION_TLS_DATABASE,
-                    database, NULL);
+      glnx_unref_object GTlsDatabase *tlsdb = NULL;
+
+      g_clear_error (&thread_closure->initialization_error);
+      tlsdb = g_tls_file_database_new (db_path, &thread_closure->initialization_error);
+
+      if (tlsdb)
+        g_object_set (thread_closure->session,
+                      SOUP_SESSION_TLS_DATABASE,
+                      tlsdb, NULL);
     }
   else
     {
@@ -451,6 +460,13 @@ session_thread_request_uri (ThreadClosure *thread_closure,
 
   pending = g_task_get_task_data (task);
   cancellable = g_task_get_cancellable (task);
+
+  /* If we caught an error in init, re-throw it for every request */
+  if (thread_closure->initialization_error)
+    {
+      g_task_return_error (task, g_error_copy (thread_closure->initialization_error));
+      return;
+    }
 
   create_pending_soup_request (pending, &local_error);
   if (local_error != NULL)
@@ -797,16 +813,24 @@ _ostree_fetcher_set_cookie_jar (OstreeFetcher *self,
 
 void
 _ostree_fetcher_set_client_cert (OstreeFetcher   *self,
-                                 GTlsCertificate *cert)
+                                 const char      *cert_path,
+                                 const char      *key_path)
 {
+  g_autoptr(GString) buf = NULL;
   g_return_if_fail (OSTREE_IS_FETCHER (self));
-  g_return_if_fail (G_IS_TLS_CERTIFICATE (cert));
+
+  if (cert_path)
+    {
+      buf = g_string_new (cert_path);
+      g_string_append_c (buf, '\0');
+      g_string_append (buf, key_path);
+    }
 
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
   session_thread_idle_add (self->thread_closure,
                            session_thread_set_tls_interaction_cb,
-                           g_object_ref (cert),
-                           (GDestroyNotify) g_object_unref);
+                           g_string_free (g_steal_pointer (&buf), FALSE),
+                           (GDestroyNotify) g_free);
 #else
   g_warning ("This version of OSTree is compiled without client side certificate support");
 #endif
@@ -814,24 +838,14 @@ _ostree_fetcher_set_client_cert (OstreeFetcher   *self,
 
 void
 _ostree_fetcher_set_tls_database (OstreeFetcher *self,
-                                  GTlsDatabase  *db)
+                                  const char    *tlsdb_path)
 {
   g_return_if_fail (OSTREE_IS_FETCHER (self));
-  g_return_if_fail (db == NULL || G_IS_TLS_DATABASE (db));
 
-  if (db != NULL)
-    {
-      session_thread_idle_add (self->thread_closure,
-                               session_thread_set_tls_database_cb,
-                               g_object_ref (db),
-                               (GDestroyNotify) g_object_unref);
-    }
-  else
-    {
-      session_thread_idle_add (self->thread_closure,
-                               session_thread_set_tls_database_cb,
-                               NULL, (GDestroyNotify) NULL);
-    }
+  session_thread_idle_add (self->thread_closure,
+                           session_thread_set_tls_database_cb,
+                           g_strdup (tlsdb_path),
+                           (GDestroyNotify) g_free);
 }
 
 void

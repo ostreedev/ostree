@@ -93,10 +93,11 @@ void _ostree_fetcher_set_proxy (OstreeFetcher *fetcher,
                                 const char    *proxy);
 
 void _ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
-                                     GTlsCertificate *cert);
+                                      const char     *cert_path,
+                                      const char     *key_path);
 
 void _ostree_fetcher_set_tls_database (OstreeFetcher *self,
-                                       GTlsDatabase *db);
+                                       const char    *tlsdb_path);
 
 void _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
                                         GVariant      *extra_headers);
