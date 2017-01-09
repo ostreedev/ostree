@@ -42,7 +42,7 @@ do
   if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.log; then
     break
   fi
-  assert_file_has_content err.log 'error:.*Download incomplete'
+  assert_file_has_content err.log 'error:.*\(Download incomplete\)\|\(Transferred a partial file\)'
 done
 if ${CMD_PREFIX} ostree --repo=repo fsck; then
     echo "ok, pull succeeded!"
