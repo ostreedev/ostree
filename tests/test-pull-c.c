@@ -49,6 +49,8 @@ test_data_init (TestData *td)
   if (!g_file_get_contents ("httpd-address", &http_address, NULL, error))
     goto out;
 
+  g_strstrip (http_address);
+
   repo_url = g_strconcat (http_address, "/ostree/gnomerepo", NULL);
 
   { g_autoptr(GVariantBuilder) builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
