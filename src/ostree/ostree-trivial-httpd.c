@@ -30,6 +30,7 @@
 #include "otutil.h"
 
 #include <locale.h>
+#include <err.h>
 #include <sys/socket.h>
 #include <sys/prctl.h>
 #include <signal.h>
@@ -597,9 +598,12 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
           goto out;
         }
       /* Child, continue */
+      if (setsid () < 0)
+        err (1, "setsid");
       /* Daemonising: close stdout/stderr so $() et al work on us */
-      fclose (stdout);
-      fclose (stdin);
+      freopen("/dev/null", "r", stdin);
+      freopen("/dev/null", "w", stdout);
+      freopen("/dev/null", "w", stderr);
     }
   else
     {
