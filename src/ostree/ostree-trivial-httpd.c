@@ -59,12 +59,12 @@ typedef struct {
 static GOptionEntry options[] = {
   { "daemonize", 'd', 0, G_OPTION_ARG_NONE, &opt_daemonize, "Fork into background when ready", NULL },
   { "autoexit", 0, 0, G_OPTION_ARG_NONE, &opt_autoexit, "Automatically exit when directory is deleted", NULL },
-  { "port", 'P', 0, G_OPTION_ARG_INT, &opt_port, "Use the specified TCP port", NULL },
+  { "port", 'P', 0, G_OPTION_ARG_INT, &opt_port, "Use the specified TCP port", "PORT" },
   { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH (- for standard output)", "PATH" },
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
   { "random-500s", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_percentage, "Generate random HTTP 500 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
   { "random-500s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_max, "Limit HTTP 500 errors to MAX (default 100)", "MAX" },
-  { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here", "PATH" },
+  { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here (use - for stdout)", "PATH" },
   { "expected-cookies", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_expected_cookies, "Expect given cookies in the http request", "KEY=VALUE" },
   { "expected-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_expected_headers, "Expect given headers in the http request", "KEY=VALUE" },
   { NULL }
