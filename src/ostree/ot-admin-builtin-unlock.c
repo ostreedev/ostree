@@ -34,7 +34,7 @@
 static gboolean opt_hotfix;
 
 static GOptionEntry options[] = {
-  { "hotfix", 0, 0, G_OPTION_ARG_NONE, &opt_hotfix, "Keep the current deployment as default", NULL },
+  { "hotfix", 0, 0, G_OPTION_ARG_NONE, &opt_hotfix, "Retain changes across reboots", NULL },
   { NULL }
 };
 
