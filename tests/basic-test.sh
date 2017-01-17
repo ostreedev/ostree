@@ -26,7 +26,7 @@ echo "ok checkout"
 
 $OSTREE rev-parse test2
 $OSTREE rev-parse 'test2^'
-$OSTREE rev-parse 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
+$OSTREE rev-parse 'test2^^' 2>/dev/null && fatal "rev-parse test2^^ unexpectedly succeeded!"
 echo "ok rev-parse"
 
 checksum=$($OSTREE rev-parse test2)
@@ -294,7 +294,7 @@ rm repo3/refs/heads/* repo3/refs/remotes/* -rf
 ${CMD_PREFIX} ostree --repo=repo3 prune --refs-only
 find repo3/objects -name '*.commit' > objlist-after-prune
 if cmp -s objlist-before-prune objlist-after-prune; then
-    echo "Prune didn't delete anything!"; exit 1
+    fatal "Prune didn't delete anything!"
 fi
 rm repo3 objlist-before-prune objlist-after-prune -rf
 echo "ok prune"

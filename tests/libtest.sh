@@ -29,8 +29,12 @@ else
   test_builddir=$(dirname $0)
 fi
 
-assert_not_reached () {
+fatal() {
     echo $@ 1>&2; exit 1
+}
+# fatal() is shorter to type, but retain this alias
+assert_not_reached () {
+    fatal "$@"
 }
 
 test_tmpdir=$(pwd)
@@ -109,54 +113,51 @@ else
 fi
 
 assert_streq () {
-    test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
+    test "$1" = "$2" || fatal "$1 != $2"
 }
 
 assert_str_match () {
     if ! echo "$1" | grep -E -q "$2"; then
-	(echo 1>&2 "$1 does not match regexp $2"; exit 1)
+	      fatal "$1 does not match regexp $2"
     fi
 }
 
 assert_not_streq () {
-    (! test "$1" = "$2") || (echo 1>&2 "$1 == $2"; exit 1)
+    (! test "$1" = "$2") || fatal "$1 == $2"
 }
 
 assert_has_file () {
-    test -f "$1" || (echo 1>&2 "Couldn't find '$1'"; exit 1)
+    test -f "$1" || fatal "Couldn't find '$1'"
 }
 
 assert_has_dir () {
-    test -d "$1" || (echo 1>&2 "Couldn't find '$1'"; exit 1)
+    test -d "$1" || fatal "Couldn't find '$1'"
 }
 
 assert_not_has_file () {
     if test -f "$1"; then
         sed -e 's/^/# /' < "$1" >&2
-        echo 1>&2 "File '$1' exists"
-        exit 1
+        fatal "File '$1' exists"
     fi
 }
 
 assert_not_file_has_content () {
     if grep -q -e "$2" "$1"; then
         sed -e 's/^/# /' < "$1" >&2
-        echo 1>&2 "File '$1' incorrectly matches regexp '$2'"
-        exit 1
+        fatal "File '$1' incorrectly matches regexp '$2'"
     fi
 }
 
 assert_not_has_dir () {
     if test -d "$1"; then
-	echo 1>&2 "Directory '$1' exists"; exit 1
+	      fatal "Directory '$1' exists"
     fi
 }
 
 assert_file_has_content () {
     if ! grep -q -e "$2" "$1"; then
         sed -e 's/^/# /' < "$1" >&2
-        echo 1>&2 "File '$1' doesn't match regexp '$2'"
-        exit 1
+        fatal "File '$1' doesn't match regexp '$2'"
     fi
 }
 
@@ -175,8 +176,7 @@ assert_symlink_has_content () {
 assert_file_empty() {
     if test -s "$1"; then
         sed -e 's/^/# /' < "$1" >&2
-        echo 1>&2 "File '$1' is not empty"
-        exit 1
+        fatal "File '$1' is not empty"
     fi
 }
 
@@ -184,8 +184,7 @@ assert_files_hardlinked() {
     f1=$(stat -c %i $1)
     f2=$(stat -c %i $2)
     if [ "$f1" != "$f2" ]; then
-        echo 1>&2 "Files '$1' and '$2' are not hardlinked"
-        exit 1
+        fatal "Files '$1' and '$2' are not hardlinked"
     fi
 }
 
