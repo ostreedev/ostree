@@ -189,7 +189,7 @@ echo "ok prune with parent repo"
 # would interact. We make a new repo test suite, then clone it
 # for "subtests" below with reinitialize_datesnap_repo()
 rm repo datetest-snapshot-repo -rf
-ostree --repo=datetest-snapshot-repo init --mode=archive
+${CMD_PREFIX} ostree --repo=datetest-snapshot-repo init --mode=archive
 # Some ancient commits on the both a stable/dev branch
 for day in $(seq 5); do
     ${CMD_PREFIX} ostree --repo=datetest-snapshot-repo commit --branch=stable -m test -s "old stable build $day" tree --timestamp="October $day 1985"
