@@ -215,6 +215,9 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
           /* bd should look like BRANCH=DEPTH where DEPTH is an int */
           const char *bd = *iter;
           const char *eq = strchr (bd, '=');
+          const char *depthstr;
+          gint64 depth;
+          char *endptr;
 
           if (!eq)
             {
@@ -223,8 +226,26 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
                            bd);
               goto out;
             }
+          depthstr = eq + 1;
+          errno = EPERM;
+          depth = g_ascii_strtoll (depthstr, &endptr, 10);
+          if (depth == 0)
+            {
+              if (errno == EINVAL)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Out of range depth %s", depthstr);
+                  goto out;
+                }
+              else if (endptr == depthstr)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Invalid depth %s", depthstr);
+                  goto out;
+                }
+            }
           g_hash_table_insert (retain_branch_depth, g_strndup (bd, eq - bd),
-                               GINT_TO_POINTER ((int)g_ascii_strtoll (eq + 1, NULL, 10)));
+                               GINT_TO_POINTER ((int)depth));
         }
 
       /* We start from the refs */

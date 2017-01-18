@@ -213,6 +213,11 @@ reinitialize_datesnap_repo() {
 # This test prunes with both younger than as well as a full strong ref to the
 # stable branch
 reinitialize_datesnap_repo
+# First, a quick test of invalid input
+if ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago" --retain-branch-depth=stable=BACON 2>err.txt; then
+    assert_not_reached "BACON is a number?!"
+fi
+assert_file_has_content err.txt 'Invalid depth BACON'
 ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago" --retain-branch-depth=stable=-1
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^11$"

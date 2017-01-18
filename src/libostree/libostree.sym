@@ -371,7 +371,7 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-LIBOSTREE_2016.15 {
+LIBOSTREE_2017.1 {
 global:
         ostree_repo_prune_from_reachable;
 } LIBOSTREE_2016.14;
