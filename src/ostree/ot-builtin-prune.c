@@ -247,8 +247,6 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
             depth = GPOINTER_TO_INT(depthp);
           else if (opt_keep_younger_than)
             {
-              g_autoptr(GVariant) commit = NULL;
-
               if (!traverse_keep_younger_than (repo, checksum,
                                                &keep_younger_than_ts,
                                                reachable,
