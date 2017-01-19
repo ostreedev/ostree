@@ -552,11 +552,11 @@ ostree_fetcher_session_thread (gpointer data)
   /* XXX: Now that we have mirrorlist support, we could make this even smarter
    * by spreading requests across mirrors. */
   g_object_get (closure->session, "max-conns-per-host", &max_conns, NULL);
-  if (max_conns < 8)
+  if (max_conns < _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS)
     {
       /* We download a lot of small objects in ostree, so this
        * helps a lot.  Also matches what most modern browsers do. */
-      max_conns = 8;
+      max_conns = _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS;
       g_object_set (closure->session,
                     "max-conns-per-host",
                     max_conns, NULL);
