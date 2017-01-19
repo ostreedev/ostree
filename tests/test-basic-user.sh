@@ -23,9 +23,6 @@ set -euo pipefail
 
 skip_without_user_xattrs
 
-echo "1..1"
-
 setup_test_repository "bare-user"
-echo "ok setup"
 
 . $(dirname $0)/basic-test.sh
