@@ -1,5 +1,5 @@
-#!/bin/bash
-#
+# This file is to be sourced, not executed
+
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
