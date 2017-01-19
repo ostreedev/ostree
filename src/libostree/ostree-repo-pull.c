@@ -210,6 +210,7 @@ update_progress (gpointer user_data)
   ostree_async_progress_set_uint (pull_data->progress, "outstanding-writes", outstanding_writes);
   ostree_async_progress_set_uint (pull_data->progress, "fetched", fetched);
   ostree_async_progress_set_uint (pull_data->progress, "requested", requested);
+  ostree_async_progress_set_uint (pull_data->progress, "scanning", g_queue_is_empty (&pull_data->scan_object_queue) ? 0 : 1);
   ostree_async_progress_set_uint (pull_data->progress, "scanned-metadata", n_scanned_metadata);
   ostree_async_progress_set_uint64 (pull_data->progress, "bytes-transferred", bytes_transferred);
   ostree_async_progress_set_uint64 (pull_data->progress, "start-time", start_time);

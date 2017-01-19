@@ -3827,6 +3827,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
 {
   GString *buf;
   g_autofree char *status = NULL;
+  gboolean scanning;
   guint outstanding_fetches;
   guint outstanding_metadata_fetches;
   guint outstanding_writes;
@@ -3840,6 +3841,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   outstanding_fetches = ostree_async_progress_get_uint (progress, "outstanding-fetches");
   outstanding_metadata_fetches = ostree_async_progress_get_uint (progress, "outstanding-metadata-fetches");
   outstanding_writes = ostree_async_progress_get_uint (progress, "outstanding-writes");
+  scanning = ostree_async_progress_get_uint (progress, "scanning") == 1;
   n_scanned_metadata = ostree_async_progress_get_uint (progress, "scanned-metadata");
   fetched_delta_parts = ostree_async_progress_get_uint (progress, "fetched-delta-parts");
   total_delta_parts = ostree_async_progress_get_uint (progress, "total-delta-parts");
@@ -3888,7 +3890,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
                                   formatted_bytes_sec, formatted_bytes_transferred,
                                   formatted_total, formatted_est_time_remaining);
         }
-      else if (outstanding_metadata_fetches)
+      else if (scanning || outstanding_metadata_fetches)
         {
           g_string_append_printf (buf, "Receiving metadata objects: %u/(estimating) %s/s %s",
                                   metadata_fetched, formatted_bytes_sec, formatted_bytes_transferred);
