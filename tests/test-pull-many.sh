@@ -25,7 +25,7 @@ setup_fake_remote_repo1 "archive-z2"
 cd ${test_tmpdir}
 rm ostree-srv/gnomerepo/ -rf
 mkdir ostree-srv/gnomerepo/
-ostree --repo=ostree-srv/gnomerepo init --mode=archive
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo init --mode=archive
 
 echo '1..1'
 
