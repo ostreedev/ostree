@@ -45,6 +45,7 @@ dist_uninstalled_test_scripts = tests/test-symbols.sh
 
 dist_test_scripts = \
 	tests/test-basic.sh \
+	tests/test-basic-user.sh \
 	tests/test-pull-subpath.sh \
 	tests/test-archivez.sh \
 	tests/test-remote-add.sh \
@@ -119,7 +120,6 @@ dist_installed_test_data = tests/archive-test.sh \
 	tests/pull-test.sh \
 	tests/admin-test.sh \
 	tests/basic-test.sh \
-	tests/test-basic-user.sh \
 	tests/corrupt-repo-ref.js \
 	tests/pre-endian-deltas-repo-big.tar.xz \
 	tests/pre-endian-deltas-repo-little.tar.xz \
