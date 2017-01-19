@@ -63,7 +63,6 @@ typedef struct {
   int max_outstanding;
 
   /* Queue for libsoup, see bgo#708591 */
-  GQueue pending_queue;
   GHashTable *outstanding;
 
   /* Shared across threads; be sure to lock. */
@@ -77,8 +76,10 @@ typedef struct {
 
 } ThreadClosure;
 
+
 static void
-session_thread_process_pending_queue (ThreadClosure *thread_closure);
+start_pending_request (ThreadClosure *thread_closure,
+                       GTask         *task);
 
 typedef struct {
   volatile int ref_count;
@@ -185,18 +186,6 @@ idle_closure_free (IdleClosure *idle_closure)
     idle_closure->notify (idle_closure->data);
 
   g_slice_free (IdleClosure, idle_closure);
-}
-
-static int
-pending_task_compare (gconstpointer a,
-                      gconstpointer b,
-                      gpointer unused)
-{
-  gint priority_a = g_task_get_priority (G_TASK (a));
-  gint priority_b = g_task_get_priority (G_TASK (b));
-
-  return (priority_a == priority_b) ? 0 :
-         (priority_a < priority_b) ? -1 : 1;
 }
 
 static OstreeFetcherPendingURI *
@@ -403,30 +392,23 @@ static void
 on_request_sent (GObject        *object, GAsyncResult   *result, gpointer        user_data);
 
 static void
-session_thread_process_pending_queue (ThreadClosure *thread_closure)
+start_pending_request (ThreadClosure *thread_closure,
+                       GTask         *task)
 {
 
-  while (g_queue_peek_head (&thread_closure->pending_queue) != NULL &&
-         g_hash_table_size (thread_closure->outstanding) < thread_closure->max_outstanding)
-    {
-      GTask *task;
-      OstreeFetcherPendingURI *pending;
-      GCancellable *cancellable;
+  OstreeFetcherPendingURI *pending;
+  GCancellable *cancellable;
 
-      task = g_queue_pop_head (&thread_closure->pending_queue);
+  g_assert_cmpint (g_hash_table_size (thread_closure->outstanding), <, thread_closure->max_outstanding);
 
-      pending = g_task_get_task_data (task);
-      cancellable = g_task_get_cancellable (task);
+  pending = g_task_get_task_data (task);
+  cancellable = g_task_get_cancellable (task);
 
-      g_hash_table_add (thread_closure->outstanding, pending_uri_ref (pending));
-
-      soup_request_send_async (pending->request,
-                               cancellable,
-                               on_request_sent,
-                               g_object_ref (task));
-
-      g_object_unref (task);
-    }
+  g_hash_table_add (thread_closure->outstanding, pending_uri_ref (pending));
+  soup_request_send_async (pending->request,
+                           cancellable,
+                           on_request_sent,
+                           g_object_ref (task));
 }
 
 static void
@@ -547,10 +529,7 @@ session_thread_request_uri (ThreadClosure *thread_closure,
       pending->out_tmpfile = tmpfile;
       tmpfile = NULL; /* Transfer ownership */
 
-      g_queue_insert_sorted (&thread_closure->pending_queue,
-                             g_object_ref (task),
-                             pending_task_compare, NULL);
-      session_thread_process_pending_queue (thread_closure);
+      start_pending_request (thread_closure, task);
     }
 }
 
@@ -600,8 +579,6 @@ ostree_fetcher_session_thread (gpointer data)
    * unreference all data related to the SoupSession ourself to ensure
    * it's freed in the same thread where it was created. */
   g_clear_pointer (&closure->outstanding, g_hash_table_unref);
-  while (!g_queue_is_empty (&closure->pending_queue))
-    g_object_unref (g_queue_pop_head (&closure->pending_queue));
   g_clear_pointer (&closure->session, g_object_unref);
 
   thread_closure_unref (closure);
@@ -903,11 +880,6 @@ finish_stream (OstreeFetcherPendingURI *pending,
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
 
-  /* Now that we've finished downloading, continue with other queued
-   * requests.
-   */
-  session_thread_process_pending_queue (pending->thread_closure);
-
   if (!pending->is_membuf)
     {
       if (stbuf.st_size < pending->content_length)
@@ -942,7 +914,6 @@ remove_pending_rerun_queue (OstreeFetcherPendingURI *pending)
    */
   pending_uri_ref (pending);
   g_hash_table_remove (pending->thread_closure->outstanding, pending);
-  session_thread_process_pending_queue (pending->thread_closure);
   pending_uri_unref (pending);
 }
 
@@ -1110,10 +1081,8 @@ on_request_sent (GObject        *object,
                 goto out;
 
               (void) g_input_stream_close (pending->request_body, NULL, NULL);
-              g_queue_insert_sorted (&pending->thread_closure->pending_queue,
-                                     g_object_ref (task), pending_task_compare,
-                                     NULL);
-              remove_pending_rerun_queue (pending);
+
+              start_pending_request (pending->thread_closure, task);
             }
           else
             {
