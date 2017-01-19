@@ -80,7 +80,7 @@ typedef struct {
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
   GHashTable       *scanned_metadata; /* Maps object name to itself */
   GHashTable       *requested_metadata; /* Maps object name to itself */
-  GHashTable       *requested_content; /* Maps object name to itself */
+  GHashTable       *requested_content; /* Maps checksum to itself */
   guint             n_outstanding_metadata_fetches;
   guint             n_outstanding_metadata_write_requests;
   guint             n_outstanding_content_fetches;
@@ -1267,7 +1267,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
   if (g_hash_table_lookup (pull_data->scanned_metadata, object))
     return TRUE;
 
-  is_requested = g_hash_table_lookup (pull_data->requested_metadata, tmp_checksum) != NULL;
+  is_requested = g_hash_table_lookup (pull_data->requested_metadata, object) != NULL;
   if (!ostree_repo_has_object (pull_data->repo, objtype, tmp_checksum, &is_stored,
                                cancellable, error))
     goto out;
@@ -1292,10 +1292,9 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
   if (!is_stored && !is_requested)
     {
-      char *duped_checksum = g_strdup (tmp_checksum);
       gboolean do_fetch_detached;
 
-      g_hash_table_add (pull_data->requested_metadata, duped_checksum);
+      g_hash_table_add (pull_data->requested_metadata, g_variant_ref (object));
 
       do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
       enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, do_fetch_detached, FALSE);
@@ -1467,10 +1466,11 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
     { 
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         {
-          if (!g_hash_table_lookup (pull_data->requested_metadata, checksum))
+          g_autoptr(GVariant) objname = ostree_object_name_serialize (checksum, objtype);
+          if (!g_hash_table_lookup (pull_data->requested_metadata, objname))
             {
               gboolean do_fetch_detached;
-              g_hash_table_add (pull_data->requested_metadata, checksum);
+              g_hash_table_add (pull_data->requested_metadata, g_variant_ref (objname));
               
               do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
               enqueue_one_object_request (pull_data, checksum, objtype, NULL, do_fetch_detached, FALSE);
@@ -2451,8 +2451,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->requested_content = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                         (GDestroyNotify)g_free, NULL);
-  pull_data->requested_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                         (GDestroyNotify)g_free, NULL);
+  pull_data->requested_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
+                                                         (GDestroyNotify)g_variant_unref, NULL);
   if (dir_to_pull != NULL || dirs_to_pull != NULL)
     {
       pull_data->dirs = g_ptr_array_new_with_free_func (g_free);
