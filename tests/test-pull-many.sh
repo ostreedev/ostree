@@ -42,6 +42,7 @@ cd main
 ndirs=9443
 depth=0
 echo "$(date): Generating content..."
+set +x  # No need to spam the logs for this
 while [ $ndirs -gt 0 ]; do
     # 2/3 of the time, recurse a dir, up to a max of 9, otherwise back up
     x=$(($RANDOM % 3))
@@ -66,6 +67,7 @@ while [ $ndirs -gt 0 ]; do
     done
     ndirs=$((ndirs-1))
 done
+set -x
 cd ${test_tmpdir}
 mkdir build-repo
 ${CMD_PREFIX} ostree --repo=build-repo init --mode=bare-user
