@@ -45,8 +45,8 @@ echo "$(date): Generating content..."
 set +x  # No need to spam the logs for this
 while [ $ndirs -gt 0 ]; do
     # 2/3 of the time, recurse a dir, up to a max of 9, otherwise back up
-    x=$(($RANDOM % 3))
-    case $(($RANDOM % 3)) in
+    x=$(($ndirs % 3))
+    case $x in
         0) if [ $depth -gt 0 ]; then cd ..; depth=$((depth-1)); fi ;;
         1|2) if [ $depth -lt 9 ]; then
                  mkdir dir-${ndirs}
@@ -58,11 +58,11 @@ while [ $ndirs -gt 0 ]; do
     esac
 
     # One symlink - we use somewhat predictable content to have dupes
-    ln -s $(($RANDOM % 20)) link-$ndirs
+    ln -s $(($x % 20)) link-$ndirs
     # 10 files
     nfiles=10
     while [ $nfiles -gt 0 ]; do
-        echo file-$ndirs-$nfiles-$RANDOM > f$ndirs-$nfiles
+        echo file-$ndirs-$nfiles > f$ndirs-$nfiles
         nfiles=$((nfiles-1))
     done
     ndirs=$((ndirs-1))
