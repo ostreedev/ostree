@@ -21,7 +21,7 @@ this document.
 Another example of software which can assist in managing OSTree
 repositories today is the [Pulp Project](http://www.pulpproject.org/),
 which has a
-[Pulp OSTree plugin](https://pulp-ostree.readthedocs.org/en/latest/).
+[Pulp OSTree plugin](https://docs.pulpproject.org/plugins/pulp_ostree/index.html).
 
 ## Mirroring repositories
 
