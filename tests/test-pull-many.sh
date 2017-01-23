@@ -79,7 +79,7 @@ for x in commit dirtree dirmeta file; do
 done
 assert_file_has_content commitcount '^1$'
 assert_file_has_content dirmetacount '^1$'
-assert_file_has_content filecount '^94450$'
+assert_file_has_content filecount '^94433$'
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo pull-local build-repo
 
 echo "$(date): Pulling content..."
@@ -95,6 +95,6 @@ for x in commit dirtree dirmeta filez; do
 done
 assert_file_has_content commitcount '^1$'
 assert_file_has_content dirmetacount '^1$'
-assert_file_has_content filezcount '^94450$'
+assert_file_has_content filezcount '^94433$'
 
 echo "ok"
