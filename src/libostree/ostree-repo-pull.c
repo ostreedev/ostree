@@ -353,7 +353,7 @@ fetcher_queue_is_full (OtPullData *pull_data)
   return (pull_data->n_outstanding_metadata_fetches +
           pull_data->n_outstanding_content_fetches +
           pull_data->n_outstanding_deltapart_fetches) == _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS ||
-    pull_data->n_outstanding_deltapart_fetches > 1;
+    pull_data->n_outstanding_deltapart_fetches == _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS;
 }
 
 static gboolean
