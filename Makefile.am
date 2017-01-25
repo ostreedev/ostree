@@ -60,6 +60,21 @@ GIRS =
 TYPELIBS = $(GIRS:.gir=.typelib)
 endif
 
+# These bits based on gnome:librsvg/Makefile.am
+if ENABLE_RUST
+if RUST_DEBUG
+CARGO_RELEASE_ARGS=
+else
+CARGO_RELEASE_ARGS=--release
+endif
+
+check-local:
+	cd $(srcdir)/rust && CARGO_TARGET_DIR=$(abs_top_builddir)/target cargo test
+
+clean-local:
+	cd $(srcdir)/rust && CARGO_TARGET_DIR=$(abs_top_builddir)/target cargo clean
+endif # end ENABLE_RUST
+
 libglnx_srcpath := $(srcdir)/libglnx
 libglnx_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(libglnx_srcpath)"
 libglnx_libs := $(OT_DEP_GIO_UNIX_LIBS)
