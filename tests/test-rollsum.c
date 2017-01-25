@@ -137,9 +137,35 @@ test_rollsum (void)
   test_rollsum_helper (a, MAX_BUFFER_SIZE, b, MAX_BUFFER_SIZE, FALSE);
 }
 
+#define BUP_SELFTEST_SIZE 100000
+
+static void
+test_bupsplit_sum(void)
+{
+    g_autofree uint8_t *buf = g_malloc (BUP_SELFTEST_SIZE);
+    uint32_t sum1a, sum1b, sum2a, sum2b, sum3a, sum3b;
+    unsigned count;
+
+    for (count = 0; count < BUP_SELFTEST_SIZE; count++)
+      buf[count] = g_random_int_range (0, 256);
+
+    sum1a = bupsplit_sum(buf, 0, BUP_SELFTEST_SIZE);
+    sum1b = bupsplit_sum(buf, 1, BUP_SELFTEST_SIZE);
+    sum2a = bupsplit_sum(buf, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE*5/2,
+			BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
+    sum2b = bupsplit_sum(buf, 0, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
+    sum3a = bupsplit_sum(buf, 0, BUP_WINDOWSIZE+3);
+    sum3b = bupsplit_sum(buf, 3, BUP_WINDOWSIZE+3);
+
+    g_assert_cmpint (sum1a, ==, sum1b);
+    g_assert_cmpint (sum2a, ==, sum2b);
+    g_assert_cmpint (sum3a, ==, sum3b);
+}
+
 int main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/rollsum", test_rollsum);
+  g_test_add_func ("/bupsum", test_bupsplit_sum);
   return g_test_run();
 }
