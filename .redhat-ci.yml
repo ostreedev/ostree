@@ -46,3 +46,22 @@ env:
 
 tests:
 artifacts:
+
+
+---
+
+inherit: true
+
+context: f25-rust
+
+packages:
+  - cargo
+
+env:
+    CC: 'gcc'
+
+tests:
+    - make check TESTS=tests/test-rollsum
+
+artifacts:
+  - test-suite.log
