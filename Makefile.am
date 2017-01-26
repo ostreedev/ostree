@@ -69,10 +69,10 @@ CARGO_RELEASE_ARGS=--release
 endif
 
 check-local:
-	cd $(srcdir)/rust && CARGO_TARGET_DIR=@abs_top_builddir@/target cargo test
+	cd $(srcdir)/rust && CARGO_TARGET_DIR=$(abs_top_builddir)/target cargo test
 
 clean-local:
-	cd $(srcdir)/rust && CARGO_TARGET_DIR=@abs_top_builddir@/target cargo clean
+	cd $(srcdir)/rust && CARGO_TARGET_DIR=$(abs_top_builddir)/target cargo clean
 endif # end ENABLE_RUST
 
 libglnx_srcpath := $(srcdir)/libglnx
