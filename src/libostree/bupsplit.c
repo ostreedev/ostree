@@ -116,5 +116,3 @@ int bupsplit_find_ofs(const unsigned char *buf, int len, int *bits)
     }
     return 0;
 }
-
-
