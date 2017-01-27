@@ -47,11 +47,12 @@ src/libostree/ostree-enumtypes.c: src/libostree/ostree-enumtypes.c.template $(EN
 	--fhead "#include \"ostree-enumtypes.h\"" \
 	$(ENUM_TYPES) > $@.tmp && mv $@.tmp $@
 
-ENUM_GENERATED = \
+nodist_libostree_1_la_SOURCES = \
 	src/libostree/ostree-enumtypes.h \
 	src/libostree/ostree-enumtypes.c \
 	$(NULL)
-BUILT_SOURCES += $(ENUM_GENERATED)
+
+BUILT_SOURCES += $(nodist_libostree_1_la_SOURCES)
 
 CLEANFILES += $(BUILT_SOURCES)
 
@@ -61,7 +62,6 @@ libbupsplit_la_SOURCES = \
 	$(NULL)
 
 libostree_1_la_SOURCES = \
-	$(ENUM_GENERATED) \
 	src/libostree/ostree-async-progress.c \
 	src/libostree/ostree-cmdprivate.h \
 	src/libostree/ostree-cmdprivate.c \
