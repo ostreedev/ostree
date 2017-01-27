@@ -57,6 +57,14 @@ context: f25-rust
 packages:
   - cargo
 
+build:
+    config-opts: >
+      --prefix=/usr
+      --libdir=/usr/lib64
+      --enable-installed-tests
+      --enable-gtk-doc
+      --enable-rust
+
 env:
     CC: 'gcc'
 
