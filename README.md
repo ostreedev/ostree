@@ -1,19 +1,25 @@
-OSTree
+libOSTree
 ======
 
 New! See the docs online at [Read The Docs (OSTree)](https://ostree.readthedocs.org/en/latest/ )
 
 -----
 
-OSTree is a tool that combines a "git-like" model for committing and
-downloading bootable filesystem trees, along with a layer for
-deploying them and managing the bootloader configuration.
+This project is now known as "libOSTree", renamed from "OSTree"; the focus is on
+the shared library. However, in most of the rest of the documentation, we will
+use the term "OSTree", since it's slightly shorter, and changing all
+documentation at once is impractical. We expect to transition to the new name
+over time.
 
-OSTree is like git in that it checksums individual files and has a
-content-addressed-object store.  It's unlike git in that it "checks
-out" the files via hardlinks, and they should thus be immutable.
-Therefore, another way to think of OSTree is that it's just a more
-polished version of
+libOSTree is a library and suite of command line tools that combines a
+"git-like" model for committing and downloading bootable filesystem trees, along
+with a layer for deploying them and managing the bootloader configuration.
+
+The core OSTree model is like git in that it checksums individual files and has
+a content-addressed-object store. It's unlike git in that it "checks out" the
+files via hardlinks, and they should thus be immutable. Therefore, another way
+to think of OSTree is that it's just a more polished version
+of
 [Linux VServer hardlinks](http://linux-vserver.org/index.php?title=util-vserver:Vhashify&oldid=2285).
 
 **Features:**
