@@ -4356,8 +4356,8 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                             _OSTREE_METADATA_GPGSIGS_TYPE);
   if (!signaturedata)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "GPG verification enabled, but no signatures found (use gpg-verify=false in remote config to disable)");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                           "GPG verification enabled, but no signatures found (use gpg-verify=false in remote config to disable)");
       return NULL;
     }
 
@@ -4474,7 +4474,12 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                                           keyringdir, extra_keyring,
                                           cancellable, error);
 
-  return ostree_gpg_verify_result_require_valid_signature (result, error);
+  if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+    {
+      g_prefix_error (error, "Commit %s: ", commit_checksum);
+      return FALSE;
+    }
+  return TRUE;
 }
 
 /**

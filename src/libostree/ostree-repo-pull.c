@@ -1035,14 +1035,22 @@ process_verify_result (OtPullData            *pull_data,
                        GError               **error)
 {
   if (result == NULL)
-    return FALSE;
+    {
+      g_prefix_error (error, "Commit %s: ", checksum);
+      return FALSE;
+    }
 
   /* Allow callers to output the results immediately. */
   g_signal_emit_by_name (pull_data->repo,
                          "gpg-verify-result",
                          checksum, result);
 
-  return ostree_gpg_verify_result_require_valid_signature (result, error);
+  if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+    {
+      g_prefix_error (error, "Commit %s: ", checksum);
+      return FALSE;
+    }
+  return TRUE;
 }
 
 static gboolean
@@ -1060,8 +1068,9 @@ gpg_verify_unwritten_commit (OtPullData         *pull_data,
 
       if (!detached_metadata)
         {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "No detached metadata found for GPG verification");
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Commit %s: no detached metadata found for GPG verification",
+                       checksum);
           return FALSE;
         }
 
