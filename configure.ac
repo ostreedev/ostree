@@ -1,6 +1,6 @@
 AC_PREREQ([2.63])
 dnl If incrementing the version here, remember to update libostree.sym too
-AC_INIT([ostree], [2017.1], [walters@verbum.org])
+AC_INIT([libostree], [2017.1], [walters@verbum.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -334,7 +334,7 @@ src/libostree/ostree-1.pc
 AC_OUTPUT
 
 echo "
-    OSTree $VERSION
+    libOSTree $VERSION
     ===============
 
 
