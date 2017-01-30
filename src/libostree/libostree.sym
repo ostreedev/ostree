@@ -366,15 +366,20 @@ global:
 
 /* No new symbols in 2016.15 */
 
+LIBOSTREE_2017.1 {
+global:
+        ostree_repo_prune_from_reachable;
+} LIBOSTREE_2016.14;
+
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
  */
 
-LIBOSTREE_2017.1 {
+LIBOSTREE_2017.XX {
 global:
-        ostree_repo_prune_from_reachable;
-} LIBOSTREE_2016.14;
+	someostree_symbol_deleteme;
+} LIBOSTREE_2017.1;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
