@@ -2002,13 +2002,124 @@ get_remotes_d_dir (OstreeRepo          *self)
 }
 
 static gboolean
-append_remotes_d (OstreeRepo          *self,
-                  GCancellable        *cancellable,
-                  GError             **error)
+reload_core_config (OstreeRepo          *self,
+                    GCancellable        *cancellable,
+                    GError             **error)
+{
+  g_autofree char *version = NULL;
+  g_autofree char *mode = NULL;
+  g_autofree char *contents = NULL;
+  g_autofree char *parent_repo_path = NULL;
+  gboolean is_archive;
+  gsize len;
+
+  g_clear_pointer (&self->config, (GDestroyNotify)g_key_file_unref);
+  self->config = g_key_file_new ();
+
+  contents = glnx_file_get_contents_utf8_at (self->repo_dir_fd, "config", &len,
+                                             NULL, error);
+  if (!contents)
+    return FALSE;
+  if (!g_key_file_load_from_data (self->config, contents, len, 0, error))
+    {
+      g_prefix_error (error, "Couldn't parse config file: ");
+      return FALSE;
+    }
+
+  version = g_key_file_get_value (self->config, "core", "repo_version", error);
+  if (!version)
+    return FALSE;
+
+  if (strcmp (version, "1") != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid repository version '%s'", version);
+      return FALSE;
+    }
+
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core", "archive",
+                                            FALSE, &is_archive, error))
+    return FALSE;
+  if (is_archive)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "This version of OSTree no longer supports \"archive\" repositories; use archive-z2 instead");
+      return FALSE;
+    }
+
+  if (!ot_keyfile_get_value_with_default (self->config, "core", "mode",
+                                          "bare", &mode, error))
+    return FALSE;
+  if (!ostree_repo_mode_from_string (mode, &self->mode, error))
+    return FALSE;
+
+  if (self->writable)
+    {
+      if (!ot_keyfile_get_boolean_with_default (self->config, "core", "enable-uncompressed-cache",
+                                                TRUE, &self->enable_uncompressed_cache, error))
+        return FALSE;
+    }
+  else
+    self->enable_uncompressed_cache = FALSE;
+
+  {
+    gboolean do_fsync;
+
+    if (!ot_keyfile_get_boolean_with_default (self->config, "core", "fsync",
+                                              TRUE, &do_fsync, error))
+      return FALSE;
+
+    if (!do_fsync)
+      ostree_repo_set_disable_fsync (self, TRUE);
+  }
+
+  { g_autofree char *tmp_expiry_seconds = NULL;
+
+    /* 86400 secs = one day */
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "tmp-expiry-secs", "86400",
+                                            &tmp_expiry_seconds, error))
+      return FALSE;
+
+    self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
+  }
+
+  if (!ot_keyfile_get_value_with_default (self->config, "core", "parent",
+                                          NULL, &parent_repo_path, error))
+    return FALSE;
+
+  if (parent_repo_path && parent_repo_path[0])
+    {
+      g_autoptr(GFile) parent_repo_f = g_file_new_for_path (parent_repo_path);
+
+      g_clear_object (&self->parent_repo);
+      self->parent_repo = ostree_repo_new (parent_repo_f);
+
+      if (!ostree_repo_open (self->parent_repo, cancellable, error))
+        {
+          g_prefix_error (error, "While checking parent repository '%s': ",
+                          gs_file_get_path_cached (parent_repo_f));
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
+static gboolean
+reload_remote_config (OstreeRepo          *self,
+                      GCancellable        *cancellable,
+                      GError             **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GFile) remotes_d = NULL;
   g_autoptr(GFileEnumerator) direnum = NULL;
+
+  g_mutex_lock (&self->remotes_lock);
+  g_hash_table_remove_all (self->remotes);
+  g_mutex_unlock (&self->remotes_lock);
+
+  if (!add_remotes_from_keyfile (self, self->config, NULL, error))
+    goto out;
 
   remotes_d = get_remotes_d_dir (self);
   if (remotes_d == NULL)
@@ -2050,17 +2161,34 @@ append_remotes_d (OstreeRepo          *self,
   return ret;
 }
 
+/**
+ * ostree_repo_reload_config:
+ * @self: repo
+ * @cancellable: cancellable
+ * @error: error
+ *
+ * By default, an #OstreeRepo will cache the remote configuration and its
+ * own repo/config data.  This API can be used to reload it.
+ */
+gboolean
+ostree_repo_reload_config (OstreeRepo          *self,
+                           GCancellable        *cancellable,
+                           GError             **error)
+{
+  if (!reload_core_config (self, cancellable, error))
+    return FALSE;
+  if (!reload_remote_config (self, cancellable, error))
+    return FALSE;
+  return TRUE;
+}
+
 gboolean
 ostree_repo_open (OstreeRepo    *self,
                   GCancellable  *cancellable,
                   GError       **error)
 {
   gboolean ret = FALSE;
-  gboolean is_archive;
   struct stat stbuf;
-  g_autofree char *version = NULL;
-  g_autofree char *mode = NULL;
-  g_autofree char *parent_repo_path = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
@@ -2126,102 +2254,6 @@ ostree_repo_open (OstreeRepo    *self,
       self->target_owner_uid = self->target_owner_gid = -1;
     }
 
-  self->config = g_key_file_new ();
-
-  { g_autofree char *contents = NULL;
-    gsize len;
-
-    contents = glnx_file_get_contents_utf8_at (self->repo_dir_fd, "config", &len,
-                                               NULL, error);
-    if (!contents)
-      goto out;
-    if (!g_key_file_load_from_data (self->config, contents, len, 0, error))
-      {
-        g_prefix_error (error, "Couldn't parse config file: ");
-        goto out;
-      }
-  }
-  if (!add_remotes_from_keyfile (self, self->config, NULL, error))
-    goto out;
-
-  version = g_key_file_get_value (self->config, "core", "repo_version", error);
-  if (!version)
-    goto out;
-
-  if (strcmp (version, "1") != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid repository version '%s'", version);
-      goto out;
-    }
-
-  if (!ot_keyfile_get_boolean_with_default (self->config, "core", "archive",
-                                            FALSE, &is_archive, error))
-    goto out;
-  if (is_archive)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "This version of OSTree no longer supports \"archive\" repositories; use archive-z2 instead");
-      goto out;
-    }
-
-  if (!ot_keyfile_get_value_with_default (self->config, "core", "mode",
-                                          "bare", &mode, error))
-    goto out;
-  if (!ostree_repo_mode_from_string (mode, &self->mode, error))
-    goto out;
-
-  if (!ot_keyfile_get_value_with_default (self->config, "core", "parent",
-                                          NULL, &parent_repo_path, error))
-    goto out;
-
-  if (parent_repo_path && parent_repo_path[0])
-    {
-      g_autoptr(GFile) parent_repo_f = g_file_new_for_path (parent_repo_path);
-
-      self->parent_repo = ostree_repo_new (parent_repo_f);
-
-      if (!ostree_repo_open (self->parent_repo, cancellable, error))
-        {
-          g_prefix_error (error, "While checking parent repository '%s': ",
-                          gs_file_get_path_cached (parent_repo_f));
-          goto out;
-        }
-    }
-
-  if (self->writable)
-    {
-      if (!ot_keyfile_get_boolean_with_default (self->config, "core", "enable-uncompressed-cache",
-                                                TRUE, &self->enable_uncompressed_cache, error))
-        goto out;
-    }
-  else
-    self->enable_uncompressed_cache = FALSE;
-
-  {
-    gboolean do_fsync;
-    
-    if (!ot_keyfile_get_boolean_with_default (self->config, "core", "fsync",
-                                              TRUE, &do_fsync, error))
-      goto out;
-    
-    if (!do_fsync)
-      ostree_repo_set_disable_fsync (self, TRUE);
-  }
-
-  { g_autofree char *tmp_expiry_seconds = NULL;
-
-    /* 86400 secs = one day */
-    if (!ot_keyfile_get_value_with_default (self->config, "core", "tmp-expiry-secs", "86400",
-                                            &tmp_expiry_seconds, error))
-      goto out;
-
-    self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
-  }
-
-  if (!append_remotes_d (self, cancellable, error))
-    goto out;
-
   if (!glnx_opendirat (self->repo_dir_fd, "tmp", TRUE, &self->tmp_dir_fd, error))
     goto out;
 
@@ -2234,6 +2266,10 @@ ostree_repo_open (OstreeRepo    *self,
         goto out;
     }
 
+  if (!ostree_repo_reload_config (self, cancellable, error))
+    goto out;
+
+  /* TODO - delete this */
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && self->enable_uncompressed_cache)
     {
       if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, "uncompressed-objects-cache", 0755,

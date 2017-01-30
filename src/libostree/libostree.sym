@@ -376,9 +376,9 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-LIBOSTREE_2017.XX {
+LIBOSTREE_2017.2 {
 global:
-	someostree_symbol_deleteme;
+       ostree_repo_reload_config;
 } LIBOSTREE_2017.1;
 
 /* Stub section for the stable release *after* this development one; don't
