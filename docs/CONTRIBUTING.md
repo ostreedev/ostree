@@ -12,7 +12,7 @@ for more information.  Instead, we use an instance of
 [Homu](https://github.com/servo/homu), currently known as
 `cgwalters-bot`.
 
-As a review proceeeds, the preferred method is to push `fixup!`
+As a review proceeds, the preferred method is to push `fixup!`
 commits via `git commit --fixup`.  Homu knows how to use
 `--autosquash` when performing the final merge.  See the
 [Git documentation](https://git-scm.com/docs/git-rebase) for more
