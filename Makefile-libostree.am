@@ -206,7 +206,7 @@ endif
 pkgconfig_DATA += src/libostree/ostree-1.pc
 
 gpgreadme_DATA = src/libostree/README-gpg
-gpgreadmedir = $(pkgdatadir)/trusted.gpg.d
+gpgreadmedir = $(datadir)/ostree/trusted.gpg.d
 EXTRA_DIST += src/libostree/README-gpg src/libostree/bupsplit.h \
 		src/libostree/ostree-enumtypes.h.template \
 		src/libostree/ostree-enumtypes.c.template \
