@@ -73,6 +73,15 @@ check-local:
 
 clean-local:
 	cd $(srcdir)/rust && CARGO_TARGET_DIR=$(abs_top_builddir)/target cargo clean
+
+dist-hook:
+	(cd $(distdir)/rust && \
+   cp $(abs_top_srcdir)/rust/Cargo.lock . && \
+   cargo vendor -q && \
+   mkdir .cargo && \
+	 cp cargo-vendor-config .cargo/config)
+
+EXTRA_DIST += $(srcdir)/rust/Cargo.toml $(srcdir)/rust/cargo-vendor-config
 endif # end ENABLE_RUST
 
 libglnx_srcpath := $(srcdir)/libglnx
