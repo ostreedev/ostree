@@ -89,6 +89,7 @@ struct OstreeRepo {
   GError *writable_error;
   gboolean in_transaction;
   gboolean disable_fsync;
+  guint zlib_compression_level;
   GHashTable *loose_object_devino_hash;
   GHashTable *updated_uncompressed_dirs;
   GHashTable *object_sizes;
