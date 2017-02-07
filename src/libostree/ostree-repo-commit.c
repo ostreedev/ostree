@@ -719,7 +719,7 @@ write_object (OstreeRepo         *self,
 
           if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
             {
-              zlib_compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, 9);
+              zlib_compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, self->zlib_compression_level);
               compressed_out_stream = g_converter_output_stream_new (temp_out, zlib_compressor);
               /* Don't close the base; we'll do that later */
               g_filter_output_stream_set_close_base_stream ((GFilterOutputStream*)compressed_out_stream, FALSE);

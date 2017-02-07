@@ -2083,6 +2083,19 @@ reload_core_config (OstreeRepo          *self,
     self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
   }
 
+  { g_autofree char *compression_level_str = NULL;
+
+    /* gzip defaults to 6 */
+    (void)ot_keyfile_get_value_with_default (self->config, "archive", "zlib-level", NULL,
+                                             &compression_level_str, NULL);
+
+    if (compression_level_str)
+      /* Ensure level is in [1,9] */
+      self->zlib_compression_level = MAX (1, MIN (9, g_ascii_strtoull (compression_level_str, NULL, 10)));
+    else
+      self->zlib_compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
+  }
+
   if (!ot_keyfile_get_value_with_default (self->config, "core", "parent",
                                           NULL, &parent_repo_path, error))
     return FALSE;

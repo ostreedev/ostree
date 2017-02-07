@@ -24,6 +24,9 @@
 
 G_BEGIN_DECLS
 
+/* It's what gzip does, 9 is too slow */
+#define OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL (6)
+
 /* This file contains private implementation data format definitions
  * read by multiple implementation .c files.
  */
@@ -142,5 +145,17 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
 
 GFile *
 _ostree_get_default_sysroot_path (void);
+
+_OSTREE_PUBLIC
+gboolean
+_ostree_raw_file_to_archive_stream (GInputStream       *input,
+                                    GFileInfo          *file_info,
+                                    GVariant           *xattrs,
+                                    guint               compression_level,
+                                    GInputStream      **out_input,
+                                    GCancellable       *cancellable,
+                                    GError            **error);
+
+
 
 G_END_DECLS
