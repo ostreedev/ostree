@@ -62,7 +62,7 @@ typedef struct {
   GVariant *extra_headers;
   int max_outstanding;
 
-  /* Queue for libsoup, see bgo#708591 */
+  /* Our active HTTP requests */
   GHashTable *outstanding;
 
   /* Shared across threads; be sure to lock. */
@@ -75,11 +75,6 @@ typedef struct {
   GError *oob_error;
 
 } ThreadClosure;
-
-
-static void
-start_pending_request (ThreadClosure *thread_closure,
-                       GTask         *task);
 
 typedef struct {
   volatile int ref_count;
@@ -907,7 +902,7 @@ on_stream_read (GObject        *object,
                 gpointer        user_data);
 
 static void
-remove_pending_rerun_queue (OstreeFetcherPendingURI *pending)
+remove_pending (OstreeFetcherPendingURI *pending)
 {
   /* Hold a temporary ref to ensure the reference to
    * pending->thread_closure is valid.
@@ -947,7 +942,7 @@ on_out_splice_complete (GObject        *object,
   if (local_error)
     {
       g_task_return_error (task, local_error);
-      remove_pending_rerun_queue (pending);
+      remove_pending (pending);
     }
 
   g_object_unref (task);
@@ -989,7 +984,7 @@ on_stream_read (GObject        *object,
                                  g_strdup (pending->out_tmpfile),
                                  (GDestroyNotify) g_free);
         }
-      remove_pending_rerun_queue (pending);
+      remove_pending (pending);
     }
   else
     {
@@ -1028,7 +1023,7 @@ on_stream_read (GObject        *object,
   if (local_error)
     {
       g_task_return_error (task, local_error);
-      remove_pending_rerun_queue (pending);
+      remove_pending (pending);
     }
 
   g_object_unref (task);
@@ -1067,7 +1062,7 @@ on_request_sent (GObject        *object,
           g_task_return_pointer (task,
                                  g_strdup (pending->out_tmpfile),
                                  (GDestroyNotify) g_free);
-          remove_pending_rerun_queue (pending);
+          remove_pending (pending);
           goto out;
         }
       else if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
@@ -1173,7 +1168,7 @@ on_request_sent (GObject        *object,
       if (pending->request_body)
         (void) g_input_stream_close (pending->request_body, NULL, NULL);
       g_task_return_error (task, local_error);
-      remove_pending_rerun_queue (pending);
+      remove_pending (pending);
     }
 
   g_object_unref (task);
