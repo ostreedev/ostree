@@ -172,6 +172,7 @@ OstreeDiffItem
 ostree_diff_item_ref
 ostree_diff_item_unref
 ostree_diff_dirs
+ostree_diff_dirs_with_options
 ostree_diff_print
 <SUBSECTION Standard>
 ostree_diff_item_get_type
