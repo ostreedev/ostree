@@ -224,7 +224,9 @@ ostree_diff_dirs (OstreeDiffFlags flags,
                   GPtrArray      *removed,
                   GPtrArray      *added,
                   GCancellable   *cancellable,
-                  GError        **error)
+                  GError        **error,
+                  gint            owner_uid,
+                  gint            owner_gid)
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
@@ -316,6 +318,11 @@ ostree_diff_dirs (OstreeDiffFlags flags,
         }
       else
         {
+          if (owner_uid >= 0)
+            g_file_info_set_attribute_uint32 (child_b_info, "unix::uid", owner_uid);
+          if (owner_gid >= 0)
+            g_file_info_set_attribute_uint32 (child_b_info, "unix::gid", owner_gid);
+
           child_b_type = g_file_info_get_file_type (child_b_info);
           if (child_a_type != child_b_type)
             {
@@ -338,7 +345,8 @@ ostree_diff_dirs (OstreeDiffFlags flags,
               if (child_a_type == G_FILE_TYPE_DIRECTORY)
                 {
                   if (!ostree_diff_dirs (flags, child_a, child_b, modified,
-                                         removed, added, cancellable, error))
+                                         removed, added, cancellable, error,
+                                         owner_uid, owner_gid))
                     goto out;
                 }
             }

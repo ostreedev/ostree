@@ -69,7 +69,9 @@ gboolean ostree_diff_dirs (OstreeDiffFlags flags,
                            GPtrArray      *removed,
                            GPtrArray      *added,
                            GCancellable   *cancellable,
-                           GError        **error);
+                           GError        **error,
+                           gint            owner_uid,
+                           gint            owner_gid);
 
 _OSTREE_PUBLIC
 void ostree_diff_print (GFile          *a,
