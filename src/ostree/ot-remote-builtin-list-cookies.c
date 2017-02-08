@@ -21,10 +21,6 @@
 
 #include "config.h"
 
-#ifndef HAVE_LIBCURL
-#include <libsoup/soup.h>
-#endif
-
 #include "otutil.h"
 
 #include "ot-main.h"

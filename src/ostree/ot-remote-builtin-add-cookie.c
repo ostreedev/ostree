@@ -21,15 +21,12 @@
 
 #include "config.h"
 
-#ifndef HAVE_LIBCURL
-#include <libsoup/soup.h>
-#endif
-
 #include "otutil.h"
 
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 #include "ostree-repo-private.h"
+#include "ot-remote-cookie-util.h"
 
 
 static GOptionEntry option_entries[] = {
@@ -70,51 +67,8 @@ ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, 
   cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
   jar_path = g_build_filename (gs_file_get_path_cached (repo->repodir), cookie_file, NULL);
 
-#ifdef HAVE_LIBCURL
-  { glnx_fd_close int fd = openat (AT_FDCWD, jar_path, O_WRONLY | O_APPEND | O_CREAT, 0644);
-    g_autofree char *buf = NULL;
-    g_autoptr(GDateTime) now = NULL;
-    g_autoptr(GDateTime) expires = NULL;
-
-    if (fd < 0)
-      {
-        glnx_set_error_from_errno (error);
-        return FALSE;
-      }
-
-    now = g_date_time_new_now_utc ();
-    expires = g_date_time_add_years (now, 25);
-
-    /* Adapted from soup-cookie-jar-text.c:write_cookie() */
-    buf = g_strdup_printf ("%s\t%s\t%s\t%s\t%llu\t%s\t%s\n",
-                           domain,
-                           *domain == '.' ? "TRUE" : "FALSE",
-                           path,
-                           "FALSE",
-                           (long long unsigned)g_date_time_to_unix (expires),
-                           cookie_name,
-                           value);
-    if (glnx_loop_write (fd, buf, strlen (buf)) < 0)
-      {
-        glnx_set_error_from_errno (error);
-        return FALSE;
-      }
-  }
-#else
-  { glnx_unref_object SoupCookieJar *jar = NULL;
-    SoupCookie *cookie;
-
-    jar = soup_cookie_jar_text_new (jar_path, FALSE);
-
-    /* Pick a silly long expire time, we're just storing the cookies in the
-     * jar and on pull the jar is read-only so expiry has little actual value */
-    cookie = soup_cookie_new (cookie_name, value, domain, path,
-                              SOUP_COOKIE_MAX_AGE_ONE_YEAR * 25);
-
-    /* jar takes ownership of cookie */
-    soup_cookie_jar_add_cookie (jar, cookie);
- }
-#endif
+  if (!ot_add_cookie_at (AT_FDCWD, jar_path, domain, path, cookie_name, value, error))
+    return FALSE;
 
   return TRUE;
 }
