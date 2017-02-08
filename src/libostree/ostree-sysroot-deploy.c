@@ -451,7 +451,7 @@ merge_etc_changes (GFile          *orig_etc,
    */
   if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_IGNORE_XATTRS,
                          orig_etc, modified_etc, modified, removed, added,
-                         cancellable, error))
+                         cancellable, error, -1, -1))
     {
       g_prefix_error (error, "While computing configuration diff: ");
       goto out;
