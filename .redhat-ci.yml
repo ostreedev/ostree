@@ -87,7 +87,7 @@ build:
       --libdir=/usr/lib64
       --enable-installed-tests
       --enable-gtk-doc
-      --enable-curl
+      --with-curl
 
 tests:
   - make check
