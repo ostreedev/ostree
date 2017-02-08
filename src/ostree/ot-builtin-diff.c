@@ -182,7 +182,9 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
       removed = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
       added = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
       
-      if (!ostree_diff_dirs (diff_flags, srcf, targetf, modified, removed, added, cancellable, error, opt_owner_uid, opt_owner_gid))
+      if (!ostree_diff_dirs_with_options (diff_flags, srcf, targetf, modified, removed, 
+                                          added, cancellable, opt_owner_uid, opt_owner_gid,
+                                          error))
         goto out;
 
       ostree_diff_print (srcf, targetf, modified, removed, added);
