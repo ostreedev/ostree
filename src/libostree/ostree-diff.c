@@ -224,7 +224,9 @@ ostree_diff_dirs (OstreeDiffFlags flags,
                   GPtrArray      *removed,
                   GPtrArray      *added,
                   GCancellable   *cancellable,
-                  GError        **error)
+                  GError        **error,
+                  gint            owner_uid,
+                  gint            owner_gid)
 {
   return ostree_diff_dirs_with_options(flags, a, b, modified,
                                        removed, added, cancellable,
