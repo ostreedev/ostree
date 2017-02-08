@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..61"
+echo "1..63"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -166,6 +166,21 @@ rm oh-look-a-file
 cd ${test_tmpdir}
 assert_file_has_content diff-test2-2 'A *oh-look-a-file$'
 echo "ok diff cwd"
+
+cd ${test_tmpdir}/checkout-test2-4
+$OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2
+assert_file_empty ${test_tmpdir}/diff-test2
+$OSTREE diff test2 --owner-uid=0 ./ > ${test_tmpdir}/diff-test2
+assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
+echo "ok diff file with different uid"
+
+$OSTREE diff test2 --owner-gid=0 ./ > ${test_tmpdir}/diff-test2
+assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
+echo "ok diff file with different gid"
 
 cd ${test_tmpdir}/checkout-test2-4
 rm four
