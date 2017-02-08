@@ -88,7 +88,7 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
   added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_IGNORE_XATTRS,
                          orig_etc_path, new_etc_path, modified, removed, added,
-                         cancellable, error, -1, -1))
+                         cancellable, error))
     goto out;
 
   ostree_diff_print (orig_etc_path, new_etc_path, modified, removed, added);
