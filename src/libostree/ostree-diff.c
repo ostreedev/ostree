@@ -224,9 +224,40 @@ ostree_diff_dirs (OstreeDiffFlags flags,
                   GPtrArray      *removed,
                   GPtrArray      *added,
                   GCancellable   *cancellable,
-                  GError        **error,
-                  gint            owner_uid,
-                  gint            owner_gid)
+                  GError        **error)
+{
+  return ostree_diff_dirs_with_options(flags, a, b, modified,
+                                       removed, added, cancellable,
+                                       -1, -1, error);
+}
+
+/**
+ * ostree_diff_dirs_with_options:
+ * @flags: Flags
+ * @a: First directory path, or %NULL
+ * @b: First directory path
+ * @modified: (element-type OstreeDiffItem): Modified files
+ * @removed: (element-type Gio.File): Removed files
+ * @added: (element-type Gio.File): Added files
+ * @cancellable: Cancellable
+ * @owner_uid: Set file ownership user id for local files
+ * @owner_gid: Set file ownership group id for local files
+ * @error: Error
+ *
+ * Compute the difference between directory @a and @b as 3 separate
+ * sets of #OstreeDiffItem in @modified, @removed, and @added.
+ */
+gboolean
+ostree_diff_dirs_with_options (OstreeDiffFlags flags,
+                               GFile          *a,
+                               GFile          *b,
+                               GPtrArray      *modified,
+                               GPtrArray      *removed,
+                               GPtrArray      *added,
+                               GCancellable   *cancellable,
+                               gint            owner_uid,
+                               gint            owner_gid,
+                               GError        **error)
 {
   return ostree_diff_dirs_with_options(flags, a, b, modified,
                                        removed, added, cancellable,
