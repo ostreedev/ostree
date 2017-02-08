@@ -226,6 +226,37 @@ ostree_diff_dirs (OstreeDiffFlags flags,
                   GCancellable   *cancellable,
                   GError        **error)
 {
+  return ostree_diff_dirs_with_options (flags, a, b, modified,
+                                        removed, added, NULL,
+                                        cancellable, error);
+}
+
+/**
+ * ostree_diff_dirs_with_options:
+ * @flags: Flags
+ * @a: First directory path, or %NULL
+ * @b: First directory path
+ * @modified: (element-type OstreeDiffItem): Modified files
+ * @removed: (element-type Gio.File): Removed files
+ * @added: (element-type Gio.File): Added files
+ * @cancellable: Cancellable
+ * @options: (allow-none): Options
+ * @error: Error
+ *
+ * Compute the difference between directory @a and @b as 3 separate
+ * sets of #OstreeDiffItem in @modified, @removed, and @added.
+ */
+gboolean
+ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
+                               GFile                 *a,
+                               GFile                 *b,
+                               GPtrArray             *modified,
+                               GPtrArray             *removed,
+                               GPtrArray             *added,
+                               OstreeDiffDirsOptions *options,
+                               GCancellable          *cancellable,
+                               GError               **error)
+{
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
@@ -233,6 +264,10 @@ ostree_diff_dirs (OstreeDiffFlags flags,
   g_autoptr(GFile) child_b = NULL;
   g_autoptr(GFileInfo) child_a_info = NULL;
   g_autoptr(GFileInfo) child_b_info = NULL;
+  OstreeDiffDirsOptions default_opts = OSTREE_DIFF_DIRS_OPTIONS_INIT;
+
+  if (!options)
+    options = &default_opts;
 
   if (a == NULL)
     {
@@ -316,6 +351,11 @@ ostree_diff_dirs (OstreeDiffFlags flags,
         }
       else
         {
+          if (options->owner_uid >= 0)
+            g_file_info_set_attribute_uint32 (child_b_info, "unix::uid", options->owner_uid);
+          if (options->owner_gid >= 0)
+            g_file_info_set_attribute_uint32 (child_b_info, "unix::gid", options->owner_gid);
+
           child_b_type = g_file_info_get_file_type (child_b_info);
           if (child_a_type != child_b_type)
             {
@@ -337,8 +377,9 @@ ostree_diff_dirs (OstreeDiffFlags flags,
 
               if (child_a_type == G_FILE_TYPE_DIRECTORY)
                 {
-                  if (!ostree_diff_dirs (flags, child_a, child_b, modified,
-                                         removed, added, cancellable, error))
+                  if (!ostree_diff_dirs_with_options (flags, child_a, child_b, modified,
+                                                      removed, added, options,
+                                                      cancellable, error))
                     goto out;
                 }
             }

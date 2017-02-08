@@ -389,6 +389,7 @@ global:
 LIBOSTREE_2017.4 {
 global:
   ostree_check_version;
+  ostree_diff_dirs_with_options;
 } LIBOSTREE_2017.3;
 
 /* Stub section for the stable release *after* this development one; don't

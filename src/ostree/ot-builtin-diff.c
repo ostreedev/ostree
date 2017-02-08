@@ -30,11 +30,15 @@
 static gboolean opt_stats;
 static gboolean opt_fs_diff;
 static gboolean opt_no_xattrs;
+static gint opt_owner_uid = -1;
+static gint opt_owner_gid = -1;
 
 static GOptionEntry options[] = {
   { "stats", 0, 0, G_OPTION_ARG_NONE, &opt_stats, "Print various statistics", NULL },
   { "fs-diff", 0, 0, G_OPTION_ARG_NONE, &opt_fs_diff, "Print filesystem diff", NULL },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Skip output of extended attributes", NULL },
+  { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Use file ownership user id for local files", "UID" },
+  { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Use file ownership group id for local files", "GID" },
   { NULL }
 };
 
@@ -177,8 +181,10 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
       modified = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_diff_item_unref);
       removed = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
       added = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-      
-      if (!ostree_diff_dirs (diff_flags, srcf, targetf, modified, removed, added, cancellable, error))
+
+      OstreeDiffDirsOptions diff_opts = { opt_owner_uid, opt_owner_gid };
+      if (!ostree_diff_dirs_with_options (diff_flags, srcf, targetf, modified, removed,
+                                          added, &diff_opts, cancellable, error))
         goto out;
 
       ostree_diff_print (srcf, targetf, modified, removed, added);

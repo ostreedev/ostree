@@ -78,6 +78,20 @@ Boston, MA 02111-1307, USA.
                     Print filesystem diff.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--owner-uid</option></term>
+                <listitem><para>
+                    Use file ownership user id for local files.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--owner-gid</option></term>
+                <listitem><para>
+                    Use file ownership group id for local files.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
