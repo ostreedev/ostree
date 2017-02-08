@@ -24,31 +24,6 @@
 
 G_BEGIN_DECLS
 
-typedef struct OtCookieParser OtCookieParser;
-struct OtCookieParser {
-  char *buf;
-  char *iter;
-
-  char *line;
-  char *domain;
-  char *flag;
-  char *path;
-  char *secure;
-  long long unsigned int expiration;
-  char *name;
-  char *value;
-};
-void ot_cookie_parser_free (OtCookieParser *parser);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtCookieParser, ot_cookie_parser_free)
-
-gboolean
-ot_parse_cookies_at (int dfd, const char *path,
-                     OtCookieParser **out_parser,
-                     GCancellable *cancellable,
-                     GError **error);
-gboolean
-ot_parse_cookies_next (OtCookieParser *parser);
-
 gboolean
 ot_add_cookie_at (int dfd, const char *jar_path,
                   const char *domain, const char *path,
@@ -61,5 +36,7 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
                      const char *name,
                      GError **error);
 
+gboolean
+ot_list_cookies_at (int dfd, const char *jar_path, GError **error);
 
 G_END_DECLS
