@@ -170,13 +170,13 @@ echo "ok diff cwd"
 cd ${test_tmpdir}/checkout-test2-4
 $OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2
 assert_file_empty ${test_tmpdir}/diff-test2
-$OSTREE diff test2 --owner-uid=0 ./ > ${test_tmpdir}/diff-test2
+$OSTREE diff test2 --owner-uid=$((`id -u`+1)) ./ > ${test_tmpdir}/diff-test2
 assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
 assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
 assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
 echo "ok diff file with different uid"
 
-$OSTREE diff test2 --owner-gid=0 ./ > ${test_tmpdir}/diff-test2
+$OSTREE diff test2 --owner-gid=$((`id -g`+1)) ./ > ${test_tmpdir}/diff-test2
 assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
 assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
 assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
