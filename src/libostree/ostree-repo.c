@@ -284,7 +284,7 @@ _ostree_repo_remote_name_is_file (const char *remote_name)
  * OSTree remotes are represented by keyfile groups, formatted like:
  * `[remote "remotename"]`. This function returns a value named @option_name
  * underneath that group, or @default_value if the remote exists but not the
- * option name.
+ * option name.  If an error is returned, @out_value will be set to %NULL.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
  */
@@ -360,8 +360,9 @@ ostree_repo_get_remote_option (OstreeRepo  *self,
  *
  * OSTree remotes are represented by keyfile groups, formatted like:
  * `[remote "remotename"]`. This function returns a value named @option_name
- * underneath that group, and returns it as an zero terminated array of strings.
- * If the option is not set, @out_value will be set to %NULL.
+ * underneath that group, and returns it as a zero terminated array of strings.
+ * If the option is not set, or if an error is returned, @out_value will be set
+ * to %NULL.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
  */
@@ -435,7 +436,8 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
  * OSTree remotes are represented by keyfile groups, formatted like:
  * `[remote "remotename"]`. This function returns a value named @option_name
  * underneath that group, and returns it as a boolean.
- * If the option is not set, @out_value will be set to @default_value.
+ * If the option is not set, @out_value will be set to @default_value. If an
+ * error is returned, @out_value will be set to %FALSE.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
  */
