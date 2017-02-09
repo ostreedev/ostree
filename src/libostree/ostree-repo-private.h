@@ -35,6 +35,14 @@ G_BEGIN_DECLS
 #define _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS 8
 #define _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS 2
 
+/* In most cases, writing to disk should be much faster than
+ * fetching from the network, so we shouldn't actually hit
+ * this. But if using pipelining and e.g. pulling over LAN
+ * (or writing to slow media), we can have a runaway
+ * situation towards EMFILE.
+ * */
+#define _OSTREE_MAX_OUTSTANDING_WRITE_REQUESTS 16
+
 typedef enum {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0)
 } OstreeRepoTestErrorFlags;

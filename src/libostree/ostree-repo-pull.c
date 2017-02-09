@@ -345,15 +345,26 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
 
 /* We have a total-request limit, as well has a hardcoded max of 2 for delta
  * parts. The logic for the delta one is that processing them is expensive, and
- * doing multiple simultaneously could risk space/memory on smaller devices.
+ * doing multiple simultaneously could risk space/memory on smaller devices. We
+ * also throttle on outstanding writes in case fetches are faster.
  */
 static gboolean
 fetcher_queue_is_full (OtPullData *pull_data)
 {
-  return (pull_data->n_outstanding_metadata_fetches +
-          pull_data->n_outstanding_content_fetches +
-          pull_data->n_outstanding_deltapart_fetches) == _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS ||
-    pull_data->n_outstanding_deltapart_fetches == _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS;
+  const gboolean fetch_full =
+      ((pull_data->n_outstanding_metadata_fetches +
+        pull_data->n_outstanding_content_fetches +
+        pull_data->n_outstanding_deltapart_fetches) ==
+         _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS);
+  const gboolean deltas_full =
+      (pull_data->n_outstanding_deltapart_fetches ==
+        _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
+  const gboolean writes_full =
+      ((pull_data->n_outstanding_metadata_write_requests +
+        pull_data->n_outstanding_content_write_requests +
+        pull_data->n_outstanding_deltapart_write_requests) >=
+         _OSTREE_MAX_OUTSTANDING_WRITE_REQUESTS);
+  return fetch_full || deltas_full || writes_full;
 }
 
 static gboolean
