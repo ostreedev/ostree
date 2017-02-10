@@ -3848,8 +3848,7 @@ _formatted_time_remaining_from_seconds (guint64 seconds_remaining)
   if (minutes_remaining)
     g_string_append_printf (description, "%" G_GUINT64_FORMAT " minutes ", minutes_remaining % 60);
 
-  if (seconds_remaining)
-    g_string_append_printf (description, "%" G_GUINT64_FORMAT " seconds ", seconds_remaining % 60);
+  g_string_append_printf (description, "%" G_GUINT64_FORMAT " seconds ", seconds_remaining % 60);
 
   return g_string_free (description, FALSE);
 }
@@ -3913,33 +3912,49 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       g_autofree char *formatted_bytes_transferred =
         g_format_size_full (bytes_transferred, 0);
       g_autofree char *formatted_bytes_sec = NULL;
-      g_autofree char *formatted_est_time_remaining = NULL;
+      guint64 bytes_sec;
 
       /* Ignore the first second, or when we haven't transferred any
        * data, since those could cause divide by zero below.
        */
       if ((current_time - start_time) < G_USEC_PER_SEC || bytes_transferred == 0)
         {
+          bytes_sec = 0;
           formatted_bytes_sec = g_strdup ("-");
-          formatted_est_time_remaining = g_strdup ("- ");
         }
       else
         {
-          guint64 bytes_sec = bytes_transferred / ((current_time - start_time) / G_USEC_PER_SEC);
-          guint64 est_time_remaining =  (total_delta_part_size - bytes_transferred) / bytes_sec;
+          bytes_sec = bytes_transferred / ((current_time - start_time) / G_USEC_PER_SEC);
           formatted_bytes_sec = g_format_size (bytes_sec);
-          formatted_est_time_remaining = _formatted_time_remaining_from_seconds (est_time_remaining);
         }
 
+      /* Are we doing deltas?  If so, we can be more accurate */
       if (total_delta_parts > 0)
         {
+          guint64 fetched_delta_part_size = ostree_async_progress_get_uint64 (progress, "fetched-delta-part-size");
+          g_autofree char *formatted_fetched =
+            g_format_size (fetched_delta_part_size);
           g_autofree char *formatted_total =
             g_format_size (total_delta_part_size);
-          /* No space between %s and remaining, since formatted_est_time_remaining has a trailing space */
-          g_string_append_printf (buf, "Receiving delta parts: %u/%u %s/s %s/%s %sremaining",
-                                  fetched_delta_parts, total_delta_parts,
-                                  formatted_bytes_sec, formatted_bytes_transferred,
-                                  formatted_total, formatted_est_time_remaining);
+
+          if (bytes_sec > 0)
+            {
+              /* MAX(0, value) here just to be defensive */
+              guint64 est_time_remaining = MAX(0, (total_delta_part_size - fetched_delta_part_size)) / bytes_sec;
+              g_autofree char *formatted_est_time_remaining = _formatted_time_remaining_from_seconds (est_time_remaining);
+              /* No space between %s and remaining, since formatted_est_time_remaining has a trailing space */
+              g_string_append_printf (buf, "Receiving delta parts: %u/%u %s/%s %s/s %sremaining",
+                                      fetched_delta_parts, total_delta_parts,
+                                      formatted_fetched, formatted_total,
+                                      formatted_bytes_sec,
+                                      formatted_est_time_remaining);
+            }
+          else
+            {
+              g_string_append_printf (buf, "Receiving delta parts: %u/%u %s/%s",
+                                      fetched_delta_parts, total_delta_parts,
+                                      formatted_fetched, formatted_total);
+            }
         }
       else if (scanning || outstanding_metadata_fetches)
         {
