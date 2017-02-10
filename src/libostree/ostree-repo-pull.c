@@ -91,6 +91,8 @@ typedef struct {
   guint             n_outstanding_deltapart_fetches;
   guint             n_outstanding_deltapart_write_requests;
   guint             n_total_deltaparts;
+  guint             n_total_delta_fallbacks;
+  guint64           fetched_deltapart_size; /* How much of the delta we have now */
   guint64           total_deltapart_size;
   guint64           total_deltapart_usize;
   gint              n_requested_metadata;
@@ -220,6 +222,10 @@ update_progress (gpointer user_data)
                                   pull_data->n_fetched_deltaparts);
   ostree_async_progress_set_uint (pull_data->progress, "total-delta-parts",
                                   pull_data->n_total_deltaparts);
+  ostree_async_progress_set_uint (pull_data->progress, "total-delta-fallbacks",
+                                  pull_data->n_total_delta_fallbacks);
+  ostree_async_progress_set_uint64 (pull_data->progress, "fetched-delta-part-size",
+                                    pull_data->fetched_deltapart_size);
   ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-size",
                                     pull_data->total_deltapart_size);
   ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-usize",
@@ -1590,14 +1596,9 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
   compressed_size = maybe_swap_endian_u64 (delta_byteswap, compressed_size);
   uncompressed_size = maybe_swap_endian_u64 (delta_byteswap, uncompressed_size);
 
+  pull_data->n_total_delta_fallbacks += 1;
   pull_data->total_deltapart_size += compressed_size;
   pull_data->total_deltapart_usize += uncompressed_size;
-
-  if (pull_data->dry_run)
-    {
-      ret = TRUE;
-      goto out;
-    }
 
   objtype = (OstreeObjectType)objtype_y;
   checksum = ostree_checksum_from_bytes_v (csum_v);
@@ -1606,6 +1607,15 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
                                &is_stored,
                                cancellable, error))
     goto out;
+
+  if (is_stored)
+    pull_data->fetched_deltapart_size += compressed_size;
+
+  if (pull_data->dry_run)
+    {
+      ret = TRUE;
+      goto out;
+    }
 
   if (!is_stored)
     { 
@@ -1779,11 +1789,15 @@ process_one_static_delta (OtPullData   *pull_data,
                                                             cancellable, error))
         goto out;
 
+      pull_data->total_deltapart_size += size;
+      pull_data->total_deltapart_usize += usize;
+
       if (have_all)
         {
           g_debug ("Have all objects from static delta %s-%s part %u",
                    from_revision ? from_revision : "empty", to_revision,
                    i);
+          pull_data->fetched_deltapart_size += size;
           pull_data->n_fetched_deltaparts++;
           continue;
         }
@@ -1796,9 +1810,6 @@ process_one_static_delta (OtPullData   *pull_data,
         if (part_datav)
           inline_part_bytes = g_variant_get_data_as_bytes (part_datav);
       }
-
-      pull_data->total_deltapart_size += size;
-      pull_data->total_deltapart_usize += usize;
 
       if (pull_data->dry_run)
         continue;

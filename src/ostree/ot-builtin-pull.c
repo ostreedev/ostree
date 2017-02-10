@@ -80,7 +80,7 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
                                   gpointer             user_data)
 {
   guint fetched_delta_parts, total_delta_parts;
-  guint64 total_delta_part_size, total_delta_part_usize;
+  guint64 fetched_delta_part_size, total_delta_part_size, total_delta_part_usize;
   GString *buf;
 
   g_assert (!printed_console_progress);
@@ -88,19 +88,23 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
 
   fetched_delta_parts = ostree_async_progress_get_uint (progress, "fetched-delta-parts");
   total_delta_parts = ostree_async_progress_get_uint (progress, "total-delta-parts");
+  fetched_delta_part_size = ostree_async_progress_get_uint64 (progress, "fetched-delta-part-size");
   total_delta_part_size = ostree_async_progress_get_uint64 (progress, "total-delta-part-size");
   total_delta_part_usize = ostree_async_progress_get_uint64 (progress, "total-delta-part-usize");
 
   buf = g_string_new ("");
 
-  { g_autofree char *formatted_size =
+  { g_autofree char *formatted_fetched =
+      g_format_size (fetched_delta_part_size);
+    g_autofree char *formatted_size =
       g_format_size (total_delta_part_size);
     g_autofree char *formatted_usize =
       g_format_size (total_delta_part_usize);
 
-    g_string_append_printf (buf, "Delta update: %u/%u parts, %s to transfer, %s uncompressed",
+    g_string_append_printf (buf, "Delta update: %u/%u parts, %s/%s, %s total uncompressed",
                             fetched_delta_parts, total_delta_parts,
-                            formatted_size, formatted_usize);
+                            formatted_fetched, formatted_size,
+                            formatted_usize);
   }
   g_print ("%s\n", buf->str);
   g_string_free (buf, TRUE);
