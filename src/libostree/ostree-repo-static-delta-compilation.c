@@ -1003,11 +1003,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       if (!check_object_world_readable (repo, from_checksum, &from_world_readable, cancellable, error))
         goto out;
       if (!from_world_readable)
-        {
-          g_hash_table_iter_steal (&hashiter);
-          g_hash_table_add (new_reachable_regfile_content, (char*)from_checksum);
-          continue;
-        }
+        continue;
 
       if (!try_content_rollsum (repo, opts, from_checksum, to_checksum,
                                 &rollsum, cancellable, error))
