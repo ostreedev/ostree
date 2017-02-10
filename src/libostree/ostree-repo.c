@@ -3884,6 +3884,8 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   guint n_scanned_metadata;
   guint fetched_delta_parts;
   guint total_delta_parts;
+  guint fetched_delta_part_fallbacks;
+  guint total_delta_part_fallbacks;
 
   buf = g_string_new ("");
 
@@ -3895,6 +3897,8 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   n_scanned_metadata = ostree_async_progress_get_uint (progress, "scanned-metadata");
   fetched_delta_parts = ostree_async_progress_get_uint (progress, "fetched-delta-parts");
   total_delta_parts = ostree_async_progress_get_uint (progress, "total-delta-parts");
+  fetched_delta_part_fallbacks = ostree_async_progress_get_uint (progress, "fetched-delta-fallbacks");
+  total_delta_part_fallbacks = ostree_async_progress_get_uint (progress, "total-delta-fallbacks");
 
   if (status)
     {
@@ -3932,10 +3936,15 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       if (total_delta_parts > 0)
         {
           guint64 fetched_delta_part_size = ostree_async_progress_get_uint64 (progress, "fetched-delta-part-size");
-          g_autofree char *formatted_fetched =
-            g_format_size (fetched_delta_part_size);
-          g_autofree char *formatted_total =
-            g_format_size (total_delta_part_size);
+          g_autofree char *formatted_fetched = NULL;
+          g_autofree char *formatted_total = NULL;
+
+          /* Here we merge together deltaparts + fallbacks to avoid bloating the text UI */
+          fetched_delta_parts += fetched_delta_part_fallbacks;
+          total_delta_parts += total_delta_part_fallbacks;
+
+          formatted_fetched = g_format_size (fetched_delta_part_size);
+          formatted_total = g_format_size (total_delta_part_size);
 
           if (bytes_sec > 0)
             {
