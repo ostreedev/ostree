@@ -80,14 +80,24 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
                                   gpointer             user_data)
 {
   guint fetched_delta_parts, total_delta_parts;
+  guint fetched_delta_part_fallbacks, total_delta_part_fallbacks;
   guint64 fetched_delta_part_size, total_delta_part_size, total_delta_part_usize;
   GString *buf;
 
   g_assert (!printed_console_progress);
   printed_console_progress = TRUE;
 
+  /* Number of parts */
   fetched_delta_parts = ostree_async_progress_get_uint (progress, "fetched-delta-parts");
   total_delta_parts = ostree_async_progress_get_uint (progress, "total-delta-parts");
+  fetched_delta_part_fallbacks = ostree_async_progress_get_uint (progress, "fetched-delta-fallbacks");
+  total_delta_part_fallbacks = ostree_async_progress_get_uint (progress, "total-delta-fallbacks");
+  /* Fold the count of deltaparts + fallbacks for simplicity; if changing this,
+   * please change ostree_repo_pull_default_console_progress_changed() first.
+   */
+  fetched_delta_parts += fetched_delta_part_fallbacks;
+  total_delta_parts += total_delta_part_fallbacks;
+  /* Size variables */
   fetched_delta_part_size = ostree_async_progress_get_uint64 (progress, "fetched-delta-part-size");
   total_delta_part_size = ostree_async_progress_get_uint64 (progress, "total-delta-part-size");
   total_delta_part_usize = ostree_async_progress_get_uint64 (progress, "total-delta-part-usize");

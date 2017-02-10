@@ -81,6 +81,7 @@ typedef struct {
   GHashTable       *scanned_metadata; /* Maps object name to itself */
   GHashTable       *requested_metadata; /* Maps object name to itself */
   GHashTable       *requested_content; /* Maps checksum to itself */
+  GHashTable       *requested_fallback_content; /* Maps checksum to itself */
   GHashTable       *pending_fetch_metadata; /* Map<ObjectName,FetchObjectData> */
   GHashTable       *pending_fetch_content; /* Map<checksum,FetchObjectData> */
   GHashTable       *pending_fetch_deltaparts; /* Set<FetchStaticDeltaData> */
@@ -98,6 +99,7 @@ typedef struct {
   gint              n_requested_metadata;
   gint              n_requested_content;
   guint             n_fetched_deltaparts;
+  guint             n_fetched_deltapart_fallbacks;
   guint             n_fetched_metadata;
   guint             n_fetched_content;
 
@@ -222,6 +224,8 @@ update_progress (gpointer user_data)
                                   pull_data->n_fetched_deltaparts);
   ostree_async_progress_set_uint (pull_data->progress, "total-delta-parts",
                                   pull_data->n_total_deltaparts);
+  ostree_async_progress_set_uint (pull_data->progress, "fetched-delta-fallbacks",
+                                  pull_data->n_fetched_deltapart_fallbacks);
   ostree_async_progress_set_uint (pull_data->progress, "total-delta-fallbacks",
                                   pull_data->n_total_delta_fallbacks);
   ostree_async_progress_set_uint64 (pull_data->progress, "fetched-delta-part-size",
@@ -785,6 +789,9 @@ content_fetch_on_write_complete (GObject        *object,
     }
 
   pull_data->n_fetched_content++;
+  /* Was this a delta fallback? */
+  if (g_hash_table_remove (pull_data->requested_fallback_content, expected_checksum))
+    pull_data->n_fetched_deltapart_fallbacks++;
  out:
   pull_data->n_outstanding_content_write_requests--;
   check_outstanding_requests_handle_error (pull_data, local_error);
@@ -1631,9 +1638,14 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
         {
           if (!g_hash_table_lookup (pull_data->requested_content, checksum))
             {
+              /* Mark this as requested, like we do in the non-delta path */
               g_hash_table_add (pull_data->requested_content, checksum);
+              /* But also record it's a delta fallback object, so we can account
+               * for it as logically part of the delta fetch.
+               */
+              g_hash_table_add (pull_data->requested_fallback_content, g_strdup (checksum));
               enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, NULL, FALSE, FALSE);
-              checksum = NULL;  /* Transfer ownership */
+              checksum = NULL;  /* We transferred ownership to the requested_content hash */
             }
         }
     }
@@ -2604,6 +2616,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->requested_content = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                         (GDestroyNotify)g_free, NULL);
+  pull_data->requested_fallback_content = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                                 (GDestroyNotify)g_free, NULL);
   pull_data->requested_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                          (GDestroyNotify)g_variant_unref, NULL);
   pull_data->pending_fetch_content = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -3324,6 +3338,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_metadata, (GDestroyNotify) g_hash_table_unref);
