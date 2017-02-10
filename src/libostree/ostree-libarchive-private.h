@@ -37,6 +37,9 @@ GLNX_DEFINE_CLEANUP_FUNCTION (void *, flatpak_local_free_write_archive, archive_
 
 GLNX_DEFINE_CLEANUP_FUNCTION (void *, flatpak_local_free_read_archive, archive_read_free)
 #define ot_cleanup_read_archive __attribute__((cleanup (flatpak_local_free_read_archive)))
+#else
+#define ot_cleanup_write_archive
+#define ot_cleanup_read_archive
 #endif
 
 G_END_DECLS
