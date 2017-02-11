@@ -24,7 +24,6 @@ noinst_LTLIBRARIES += libostree-kernel-args.la
 
 if ENABLE_RUST
 bupsplitpath = @abs_top_builddir@/target/@RUST_TARGET_SUBDIR@/libbupsplit_rs.a
-.PHONY: $(bupsplitpath)
 BUPSPLIT_RUST_SOURCES = rust/src/bupsplit.rs
 EXTRA_DIST += $(BUPSPLIT_RUST_SOURCES)
 $(bupsplitpath): Makefile $(BUPSPLIT_RUST_SOURCES)
