@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..60"
+echo "1..61"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -114,6 +114,22 @@ empty_rev=$($OSTREE commit -b test2-no-subject -s '' --timestamp="2005-10-29 12:
 omitted_rev=$($OSTREE commit -b test2-no-subject-2 --timestamp="2005-10-29 12:43:29 +0000" $test_tmpdir/checkout-test2-4)
 assert_streq $empty_rev $omitted_rev
 echo "ok commit no subject"
+
+cd ${test_tmpdir}
+cat >commitmsg.txt <<EOF
+This is a long
+commit message.
+
+Build-Host: foo.example.com
+Crunchy-With-Extra-Ketchup: true
+EOF
+$OSTREE commit -b branch-with-commitmsg -F commitmsg.txt -s 'a message' $test_tmpdir/checkout-test2-4
+$OSTREE log branch-with-commitmsg > log.txt
+assert_file_has_content log.txt '^ *This is a long$'
+assert_file_has_content log.txt '^ *Build-Host:.*example.com$'
+assert_file_has_content log.txt '^ *Crunchy-With.*true$'
+$OSTREE refs --delete branch-with-commitmsg
+echo "ok commit body file"
 
 cd ${test_tmpdir}
 $OSTREE commit -b test2-custom-parent -s '' $test_tmpdir/checkout-test2-4
