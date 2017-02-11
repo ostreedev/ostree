@@ -32,6 +32,7 @@
 
 static char *opt_subject;
 static char *opt_body;
+static char *opt_body_file;
 static gboolean opt_editor;
 static char *opt_parent;
 static gboolean opt_orphan;
@@ -74,6 +75,7 @@ static GOptionEntry options[] = {
   { "parent", 0, 0, G_OPTION_ARG_STRING, &opt_parent, "Parent ref, or \"none\"", "REF" },
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "SUBJECT" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "BODY" },
+  { "body-file", 'F', 0, G_OPTION_ARG_STRING, &opt_body_file, "Commit message from FILE path", "FILE" },
   { "editor", 'e', 0, G_OPTION_ARG_NONE, &opt_editor, "Use an editor to write the commit message", NULL },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "BRANCH" },
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
@@ -349,6 +351,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;
   struct CommitFilterData filter_data = { 0, };
+  g_autofree char *commit_body = NULL;
 
   context = g_option_context_new ("[PATH] - Commit a new revision");
 
@@ -441,9 +444,18 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (opt_editor)
     {
-      if (!commit_editor (repo, opt_branch, &opt_subject, &opt_body, cancellable, error))
+      if (!commit_editor (repo, opt_branch, &opt_subject, &commit_body, cancellable, error))
         goto out;
     }
+  else if (opt_body_file)
+    {
+      commit_body = glnx_file_get_contents_utf8_at (AT_FDCWD, opt_body_file, NULL,
+                                                    cancellable, error);
+      if (!commit_body)
+        goto out;
+    }
+  else if (opt_body)
+    commit_body = g_strdup (opt_body);
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     goto out;
@@ -576,7 +588,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
           timestamp = g_date_time_to_unix (now);
           g_date_time_unref (now);
 
-          if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body, metadata,
+          if (!ostree_repo_write_commit (repo, parent, opt_subject, commit_body, metadata,
                                          OSTREE_REPO_FILE (root),
                                          &commit_checksum, cancellable, error))
             goto out;
@@ -592,7 +604,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
             }
           timestamp = ts.tv_sec;
 
-          if (!ostree_repo_write_commit_with_time (repo, parent, opt_subject, opt_body, metadata,
+          if (!ostree_repo_write_commit_with_time (repo, parent, opt_subject, commit_body, metadata,
                                                    OSTREE_REPO_FILE (root),
                                                    timestamp,
                                                    &commit_checksum, cancellable, error))
