@@ -89,7 +89,6 @@ global:
         ostree_deployment_set_index;
         ostree_deployment_set_origin;
         ostree_diff_dirs;
-        ostree_diff_dirs_with_options;
         ostree_diff_item_get_type;
         ostree_diff_item_ref;
         ostree_diff_item_unref;
@@ -377,16 +376,21 @@ global:
        ostree_repo_reload_config;
 } LIBOSTREE_2017.1;
 
+LIBOSTREE_2017.3 {
+global:
+       ostree_diff_dirs_with_options;
+} LIBOSTREE_2017.2;
+
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
  */
 
-/* Uncomment this when adding the first new symbol for 2
+/* Uncomment this when adding the first new symbol for 3
 LIBOSTREE_2017.XX {
 global:
 	someostree_symbol_deleteme;
-} LIBOSTREE_2017.2;
+} LIBOSTREE_2017.3;
 */
 
 /* Stub section for the stable release *after* this development one; don't
