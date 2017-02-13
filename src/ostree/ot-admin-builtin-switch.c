@@ -53,6 +53,7 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   g_autofree char *new_remote = NULL;
   g_autofree char *new_ref = NULL;
   g_autofree char *new_refspec = NULL;
+  const char* remote;
   glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
@@ -101,12 +102,17 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
       if (!ostree_parse_refspec (new_provided_refspec, &new_remote, &new_ref, error))
         goto out;
     }
-  
+
   if (!new_remote)
-    new_refspec = g_strconcat (origin_remote, ":", new_ref, NULL);
+    remote = origin_remote;
   else
-    new_refspec = g_strconcat (new_remote, ":", new_ref, NULL);
-  
+    remote = new_remote;
+
+  if (remote)
+    new_refspec = g_strconcat (remote, ":", new_ref, NULL);
+  else
+    new_refspec = g_strdup (new_ref);
+
   if (strcmp (origin_refspec, new_refspec) == 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
