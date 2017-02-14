@@ -371,21 +371,29 @@ global:
         ostree_repo_prune_from_reachable;
 } LIBOSTREE_2016.14;
 
-/*                         NOTE NOTE NOTE
- * Versions above here are released.  Only add symbols below this line.
- *                         NOTE NOTE NOTE
- */
-
 LIBOSTREE_2017.2 {
 global:
        ostree_repo_reload_config;
 } LIBOSTREE_2017.1;
 
-/* Stub section for the stable release *after* this development one; don't
- * edit this other than to update the last number.  This is just a copy/paste
- * source.
-LIBOSTREE_2016.XX {
+/*                         NOTE NOTE NOTE
+ * Versions above here are released.  Only add symbols below this line.
+ *                         NOTE NOTE NOTE
+ */
+
+/* Uncomment this when adding the first new symbol for 2
+LIBOSTREE_2017.XX {
 global:
 	someostree_symbol_deleteme;
-} LIBOSTREE_2016.14;
+} LIBOSTREE_2017.2;
+*/
+
+/* Stub section for the stable release *after* this development one; don't
+ * edit this other than to update the last number.  This is just a copy/paste
+ * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
+ * with whatever the next version with new symbols will be.
+LIBOSTREE_2017.$NEWVERSION {
+global:
+	someostree_symbol_deleteme;
+} LIBOSTREE_2017.$LASTSTABLE;
 */
