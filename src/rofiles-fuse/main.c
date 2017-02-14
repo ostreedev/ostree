@@ -345,6 +345,26 @@ callback_create(const char *path, mode_t mode, struct fuse_file_info *finfo)
 }
 
 static int
+callback_read_buf (const char *path, struct fuse_bufvec **bufp,
+                   size_t size, off_t offset, struct fuse_file_info *finfo)
+{
+  struct fuse_bufvec *src;
+
+  src = malloc (sizeof (struct fuse_bufvec));
+  if (src == NULL)
+    return -ENOMEM;
+
+  *src = FUSE_BUFVEC_INIT (size);
+
+  src->buf[0].flags = FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK;
+  src->buf[0].fd = finfo->fh;
+  src->buf[0].pos = offset;
+  *bufp = src;
+
+  return 0;
+}
+
+static int
 callback_read (const char *path, char *buf, size_t size, off_t offset,
 	       struct fuse_file_info *finfo)
 {
@@ -353,6 +373,19 @@ callback_read (const char *path, char *buf, size_t size, off_t offset,
   if (r == -1)
     return -errno;
   return r;
+}
+
+static int
+callback_write_buf (const char *path, struct fuse_bufvec *buf, off_t offset,
+                    struct fuse_file_info *finfo)
+{
+  struct fuse_bufvec dst = FUSE_BUFVEC_INIT (fuse_buf_size (buf));
+
+  dst.buf[0].flags = FUSE_BUF_IS_FD | FUSE_BUF_FD_SEEK;
+  dst.buf[0].fd = finfo->fh;
+  dst.buf[0].pos = offset;
+
+  return fuse_buf_copy (&dst, buf, FUSE_BUF_SPLICE_NONBLOCK);
 }
 
 static int
@@ -454,7 +487,9 @@ struct fuse_operations callback_oper = {
   .utime = callback_utime,
   .create = callback_create,
   .open = callback_open,
+  .read_buf = callback_read_buf,
   .read = callback_read,
+  .write_buf = callback_write_buf,
   .write = callback_write,
   .statfs = callback_statfs,
   .release = callback_release,
