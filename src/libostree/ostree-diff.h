@@ -84,18 +84,6 @@ gboolean ostree_diff_dirs_with_options (OstreeDiffFlags flags,
                                         GError        **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_diff_dirs_with_options (OstreeDiffFlags flags,
-                                        GFile          *a,
-                                        GFile          *b,
-                                        GPtrArray      *modified,
-                                        GPtrArray      *removed,
-                                        GPtrArray      *added,
-                                        GCancellable   *cancellable,
-                                        gint            owner_uid,
-                                        gint            owner_gid,
-                                        GError        **error);
-
-_OSTREE_PUBLIC
 void ostree_diff_print (GFile          *a,
                         GFile          *b,
                         GPtrArray      *modified,
