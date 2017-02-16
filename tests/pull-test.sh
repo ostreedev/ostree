@@ -144,8 +144,8 @@ cd ${test_tmpdir}
 repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin main >dry-run-pull.txt
-# Note this will need to change if we ever change the content assembled so far
-assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts, 0 bytes/525 bytes, 455 bytes total uncompressed'
+# Compression can vary, so we support 400-699
+assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9] bytes, 455 bytes total uncompressed'
 rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_streq "${prev_rev}" "${rev}"
 ${CMD_PREFIX} ostree --repo=repo fsck

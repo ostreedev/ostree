@@ -313,6 +313,10 @@ setup_exampleos_repo() {
         nfiles=10
         while [ $nfiles -gt 0 ]; do
             echo file-$ndirs-$nfiles > f$ndirs-$nfiles
+            # Make an unreadable file to trigger https://github.com/ostreedev/ostree/pull/634
+            if [ $(($x % 10)) -eq 0 ]; then
+                chmod 0600 f$ndirs-$nfiles
+            fi
             nfiles=$((nfiles-1))
         done
         ndirs=$((ndirs-1))
