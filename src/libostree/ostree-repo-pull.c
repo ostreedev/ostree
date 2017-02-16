@@ -1643,9 +1643,9 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
               /* But also record it's a delta fallback object, so we can account
                * for it as logically part of the delta fetch.
                */
-              g_hash_table_add (pull_data->requested_fallback_content, checksum);
+              g_hash_table_add (pull_data->requested_fallback_content, g_strdup (checksum));
               enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, NULL, FALSE, FALSE);
-              checksum = NULL;  /* Transfer ownership */
+              checksum = NULL;  /* We transferred ownership to the requested_content hash */
             }
         }
     }
