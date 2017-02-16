@@ -41,7 +41,7 @@ rm repo/refs/{heads,remotes}/* -rf
 ${CMD_PREFIX} ostree --repo=repo prune --refs-only
 ${CMD_PREFIX} ostree --repo=repo pull origin ${REF}@${previous}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${REF} > output.txt
-assert_file_has_content output.txt 'Delta update: 0/1 parts, 0 bytes/1.[012] MB, 1.4 MB total uncompressed'
+assert_file_has_content output.txt 'Delta update: 0/1 parts, 0 bytes/1.[012] MB, 1.[345] MB total uncompressed'
 
 echo "ok delta dry-run"
 
