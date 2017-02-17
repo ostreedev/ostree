@@ -12,7 +12,7 @@ packages:
   - libasan
 
 env:
-    CFLAGS: '-fsanitize=undefined -fsanitize=address'
+    CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address'
     ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
     # TODO when we're doing leak checks: G_SLICE: "always-malloc"
 
