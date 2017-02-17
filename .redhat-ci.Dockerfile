@@ -12,6 +12,7 @@ RUN dnf install -y \
         libubsan \
         libasan \
         libtsan \
+        PyYAML \
         gnome-desktop-testing \
         redhat-rpm-config \
         elfutils \
