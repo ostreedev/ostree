@@ -19,6 +19,8 @@ include Makefile-decls.am
 
 shortened_sysconfdir = $$(echo "$(sysconfdir)" | sed -e 's|^$(prefix)||' -e 's|^/||')
 
+OSTREE_GITREV=$(shell if command -v git >/dev/null 2>&1 && test -d $(srcdir)/.git; then git describe --abbrev=42 --tags --always HEAD; fi)
+
 ACLOCAL_AMFLAGS = -I buildutil -I libglnx ${ACLOCAL_FLAGS}
 AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DLOCALEDIR=\"$(datadir)/locale\" -DSYSCONFDIR=\"$(sysconfdir)\" \
@@ -26,6 +28,7 @@ AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DOSTREE_FEATURES='"$(OSTREE_FEATURES)"' \
 	-DOSTREE_COMPILATION \
 	-DG_LOG_DOMAIN=\"OSTree\" \
+  -DOSTREE_GITREV='"$(OSTREE_GITREV)"' \
 	-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_40 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_40 \
 	-DSOUP_VERSION_MIN_REQUIRED=SOUP_VERSION_2_40 -DSOUP_VERSION_MAX_ALLOWED=SOUP_VERSION_2_48
 AM_CFLAGS += -std=gnu99 $(WARN_CFLAGS)

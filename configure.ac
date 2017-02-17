@@ -92,7 +92,7 @@ AS_IF([test x$with_curl != xno ], [
     with_soup_default=yes
 ], [with_soup_default=check])
 AM_CONDITIONAL(USE_CURL, test x$with_curl != xno)
-if test x$with_curl = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES +libcurl"; fi
+if test x$with_curl = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES libcurl"; fi
 
 dnl When bumping the libsoup-2.4 dependency, remember to bump
 dnl SOUP_VERSION_MIN_REQUIRED and SOUP_VERSION_MAX_ALLOWED in
@@ -131,7 +131,7 @@ AS_IF([test x$with_soup != xno], [
     with_soup=no
   ])
 ], [ with_soup=no ])
-if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libsoup"; fi
+if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 AM_CONDITIONAL(HAVE_LIBSOUP_CLIENT_CERTS, test x$have_libsoup_client_certs = xyes)
 
@@ -158,7 +158,7 @@ PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_DEPENDENCY, have_gpgm
 AS_IF([ test x$have_gpgme = xno ], [
    AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_DEPENDENCY or later])
 ])
-OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"
+OSTREE_FEATURES="$OSTREE_FEATURES gpgme"
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 # What's in RHEL7.2.
@@ -245,7 +245,7 @@ AS_IF([ test x$with_libarchive != xno ], [
 	with_libarchive=no
     ])
 ], [ with_libarchive=no ])
-if test x$with_libarchive != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libarchive"; fi
+if test x$with_libarchive != xno; then OSTREE_FEATURES="$OSTREE_FEATURES libarchive"; fi
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
 dnl This is what is in RHEL7 anyways
@@ -270,7 +270,7 @@ AS_IF([ test x$with_selinux != xno ], [
 	with_selinux=no
     ])
 ], [ with_selinux=no ])
-if test x$with_selinux != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +selinux"; fi
+if test x$with_selinux != xno; then OSTREE_FEATURES="$OSTREE_FEATURES selinux"; fi
 AM_CONDITIONAL(USE_SELINUX, test $with_selinux != no)
 
 AC_ARG_WITH(smack,
@@ -303,7 +303,7 @@ AS_IF([ test x$with_libmount != xno ], [
 	with_libmount=no
     ])
 ], [ with_libmount=no ])
-if test x$with_libmount != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libmount"; fi
+if test x$with_libmount != xno; then OSTREE_FEATURES="$OSTREE_FEATURES libmount"; fi
 AM_CONDITIONAL(USE_LIBMOUNT, test $with_libmount != no)
 
 # Enabled by default because I think people should use it.

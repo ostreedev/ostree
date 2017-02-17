@@ -19,7 +19,11 @@
 
 set -euo pipefail
 
-echo "1..61"
+echo "1..62"
+
+$CMD_PREFIX ostree --version > version.yaml
+python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
+echo "ok yaml version"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
