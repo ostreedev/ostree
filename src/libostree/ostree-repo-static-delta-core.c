@@ -937,7 +937,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
       {
         guint64 size, usize;
         g_autoptr(GVariant) checksum_v = NULL;
-        char checksum[65];
+        char checksum[OSTREE_SHA256_STRING_LEN+1];
         g_variant_get_child (fallback, i, "(y@aytt)", NULL, &checksum_v, &size, &usize);
         ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (checksum_v), checksum);
         size = maybe_swap_endian_u64 (swap_endian, size);
