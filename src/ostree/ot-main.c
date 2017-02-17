@@ -241,7 +241,16 @@ ostree_option_context_parse (GOptionContext *context,
 
   if (opt_version)
     {
-      g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
+      /* This should now be YAML, like `docker version`, so it's both nice to read
+       * possible to parse */
+      g_auto(GStrv) features = g_strsplit (OSTREE_FEATURES, " ", -1);
+      g_print ("%s:\n", PACKAGE_NAME);
+      g_print (" Version: %s\n", PACKAGE_VERSION);
+      if (strlen (OSTREE_GITREV) > 0)
+        g_print (" Git: %s\n", OSTREE_GITREV);
+      g_print (" Features:\n");
+      for (char **iter = features; iter && *iter; iter++)
+        g_print ("  - %s\n", *iter);
       exit (EXIT_SUCCESS);
     }
 
