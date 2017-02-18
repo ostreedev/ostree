@@ -19,12 +19,17 @@
 
 set -euo pipefail
 
+function repo_init_origin() {
+    ${CMD_PREFIX} ostree --repo=repo remote delete origin 2>/dev/null || true
+    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false "$@" origin $(cat httpd-address)/ostree/gnomerepo
+}
+
 function repo_init() {
     cd ${test_tmpdir}
     rm repo -rf
     mkdir repo
     ${CMD_PREFIX} ostree --repo=repo init
-    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+    repo_init_origin
 }
 
 function verify_initial_contents() {
@@ -145,10 +150,29 @@ repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin main >dry-run-pull.txt
 # Compression can vary, so we support 400-699
-assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9] bytes, 455 bytes total uncompressed'
+delta_pattern='Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9] bytes, 455 bytes total uncompressed'
+assert_file_has_content dry-run-pull.txt "${delta_pattern}"
 rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_streq "${prev_rev}" "${rev}"
 ${CMD_PREFIX} ostree --repo=repo fsck
+
+# Now, reinitialize the origin to require static deltas
+cd ${test_tmpdir}
+repo_init
+${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
+repo_init_origin --set=require-deltas=upgrade
+${CMD_PREFIX} ostree --repo=repo pull --dry-run origin main >dry-run-pull.txt
+assert_file_has_content dry-run-pull.txt "${delta_pattern}"
+
+# Now, reinitialize the origin to require static deltas
+cd ${test_tmpdir}
+repo_init
+${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
+repo_init_origin --set=require-deltas=bacon
+if ${CMD_PREFIX} ostree --repo=repo pull --dry-run origin main 2>err.txt; then
+   assert_not_reached "bacon is not valid for require-deltas"
+fi
+assert_file_has_content err.txt 'Unknown value in remote.*for require-deltas: bacon'
 
 cd ${test_tmpdir}
 repo_init
@@ -192,11 +216,20 @@ cd ${test_tmpdir}
 rm ostree-srv/gnomerepo/deltas -rf
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 repo_init
+# Test specifying --require-static-deltas on the command line
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
 fi
 assert_file_has_content err.txt "deltas required, but none found"
 ${CMD_PREFIX} ostree --repo=repo fsck
+
+cd ${test_tmpdir}
+# And test it via the origin
+repo_init_origin --set=require-deltas=upgrade
+if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
+    assert_not_reached "--require-static-deltas unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "deltas required, but none found"
 
 echo "ok delta required but don't exist"
 
@@ -213,6 +246,7 @@ ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate --inline 
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 
 cd ${test_tmpdir}
+repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 

@@ -165,13 +165,6 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   if (opt_untrusted)
     pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
 
-  if (opt_dry_run && !opt_require_static_deltas)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "--dry-run requires --require-static-deltas");
-      goto out;
-    }
-
   if (strchr (argv[1], ':') == NULL)
     {
       remote = g_strdup (argv[1]);
