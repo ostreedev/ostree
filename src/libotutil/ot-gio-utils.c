@@ -309,7 +309,10 @@ ot_gfile_ensure_unlinked (GFile         *path,
   if (unlink (gs_file_get_path_cached (path)) != 0)
     {
       if (errno != ENOENT)
-        return FALSE;
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
     }
   return TRUE;
 }
