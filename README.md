@@ -38,26 +38,30 @@ use OSTree as a "deduplicating hardlink store".
 Projects using OSTree
 ---------------------
 
-[rpm-ostree](https://github.com/projectatomic/rpm-ostree) is a tool
-that uses OSTree as a shared library, and supports committing RPMs
-into an OSTree repository, and deploying them on the client.  This is
-appropriate for "fixed purpose" systems.  There is in progress work
-for more sophisticated hybrid models, deeply integrating the RPM
-packaging with OSTree.
+[meta-updater](https://github.com/advancedtelematic/meta-updater) is
+a layer available for [OpenEmbedded](http://www.openembedded.org/wiki/Main_Page)
+systems.
 
-[Project Atomic](http://www.projectatomic.io/) uses rpm-ostree to
-provide a minimal host for Docker formatted Linux containers.
-Replicating a base immutable OS, then using Docker for applications
-meshes together two different tools with different tradeoffs.
+[QtOTA](http://doc.qt.io/QtOTA/) is Qt's over-the-air update framework
+which uses libostree.
 
-[flatpak](https://github.com/alexlarsson/xdg-app) uses OSTree
-for desktop application containers.
+[rpm-ostree](https://github.com/projectatomic/rpm-ostree) is a next-generation
+hybrid package/image system for [Fedora](https://getfedora.org/) and [CentOS](https://www.centos.org/),
+used by the [Atomic Host](http://www.projectatomic.io/) project.
+By default it uses libostree to atomically replicate a base OS (all dependency
+resolution is done on the server), but it supports "package layering", where
+additional RPMs can be layered on top of the base.  This brings a "best of both worlds""
+model for image and package systems.
+
+[flatpak](https://github.com/alexlarsson/xdg-app) uses libostree for desktop
+application containers. Unlike most of the other systems here, flatpak does not
+use the "libostree host system" aspects (e.g. bootloader management), just the
+"git-like hardlink dedup". For example, flatpak supports a per-user OSTree
+repository.
 
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
-a custom build system designed for OSTree, using
-[OpenEmbedded](http://www.openembedded.org/wiki/Main_Page) in concert
-with a custom build system to do continuous delivery from hundreds of
-git repositories.
+where OSTree was born - as a high performance continuous delivery/testing
+system for GNOME.
 
 Building
 --------
