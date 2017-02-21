@@ -538,7 +538,7 @@ skip_without_fuse () {
 }
 
 has_gpgme () {
-    ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'
+    ${CMD_PREFIX} ostree --version | grep -q -e '- gpgme'
 }
 
 libtest_cleanup_gpg () {
