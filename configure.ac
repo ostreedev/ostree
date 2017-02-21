@@ -273,6 +273,14 @@ AS_IF([ test x$with_selinux != xno ], [
 if test x$with_selinux != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +selinux"; fi
 AM_CONDITIONAL(USE_SELINUX, test $with_selinux != no)
 
+AC_ARG_WITH(smack,
+AS_HELP_STRING([--with-smack], [Enable smack]),
+:, with_smack=no)
+AS_IF([ test x$with_smack = xyes], [
+  AC_DEFINE([WITH_SMACK], 1, [Define if we have smack.pc])
+])
+AM_CONDITIONAL(USE_SMACK, test $with_smack != no)
+
 dnl This is what is in RHEL7.2 right now, picking it arbitrarily
 LIBMOUNT_DEPENDENCY="mount >= 2.23.0"
 
