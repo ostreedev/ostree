@@ -292,7 +292,7 @@ setup_exampleos_repo() {
     cd main
     ndirs=3147
     depth=0
-#    set +x  # No need to spam the logs for this
+    set +x  # No need to spam the logs for this
     echo "$(date): Generating initial content..."
     while [ $ndirs -gt 0 ]; do
         # 2/3 of the time, recurse a dir, up to a max of 9, otherwise back up
