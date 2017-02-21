@@ -53,11 +53,17 @@ resolution is done on the server), but it supports "package layering", where
 additional RPMs can be layered on top of the base.  This brings a "best of both worlds""
 model for image and package systems.
 
-[flatpak](https://github.com/alexlarsson/xdg-app) uses libostree for desktop
+[flatpak](https://github.com/flatpak/flatpak) uses libostree for desktop
 application containers. Unlike most of the other systems here, flatpak does not
 use the "libostree host system" aspects (e.g. bootloader management), just the
 "git-like hardlink dedup". For example, flatpak supports a per-user OSTree
 repository.
+
+[Endless OS](https://endlessos.com/) uses libostree for their host system as
+well as flatpak. See
+their [eos-updater](https://github.com/endlessm/eos-updater)
+and [deb-ostree-builder](https://github.com/dbnicholson/deb-ostree-builder)
+projects.
 
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
 where OSTree was born - as a high performance continuous delivery/testing
