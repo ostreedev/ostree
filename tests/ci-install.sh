@@ -110,6 +110,7 @@ case "$ci_distro" in
             libcurl4-openssl-dev \
             procps \
             zlib1g-dev \
+            python-yaml \
             ${NULL}
 
         if [ "$ci_in_docker" = yes ]; then
