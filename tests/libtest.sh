@@ -538,7 +538,10 @@ skip_without_fuse () {
 }
 
 has_gpgme () {
-    ${CMD_PREFIX} ostree --version | grep -q -e '- gpgme'
+    ostree --version > version.txt
+    assert_file_has_content version.txt '- gpgme'
+    rm -f version.txt
+    true
 }
 
 libtest_cleanup_gpg () {
