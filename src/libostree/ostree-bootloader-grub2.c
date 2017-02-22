@@ -239,12 +239,26 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
   return ret;
 }
 
+typedef struct {
+  const char *root;
+  const char *bootversion_str;
+  gboolean is_efi;
+} Grub2ChildSetupData;
+
 static void
 grub2_child_setup (gpointer user_data)
 {
-  const char *root = user_data;
+  Grub2ChildSetupData *cdata = user_data;
 
-  if (chdir (root) != 0)
+  setenv ("_OSTREE_GRUB2_BOOTVERSION", cdata->bootversion_str, TRUE);
+  /* We have to pass our state to the child */
+  if (cdata->is_efi)
+    setenv ("_OSTREE_GRUB2_IS_EFI", "1", TRUE);
+
+  if (!cdata->root)
+    return;
+
+  if (chdir (cdata->root) != 0)
     {
       perror ("chdir");
       _exit (1);
@@ -268,7 +282,7 @@ grub2_child_setup (gpointer user_data)
       _exit (1);
     }
 
-  if (mount (root, "/", NULL, MS_MOVE, NULL) < 0)
+  if (mount (cdata->root, "/", NULL, MS_MOVE, NULL) < 0)
     {
       perror ("failed to MS_MOVE to /");
       _exit (1);
@@ -290,14 +304,15 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
   gboolean ret = FALSE;
   g_autoptr(GFile) new_config_path = NULL;
-  GSubprocessFlags subp_flags = 0;
-  glnx_unref_object GSubprocessLauncher *launcher = NULL;
-  glnx_unref_object GSubprocess *proc = NULL;
   g_autofree char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
   g_autoptr(GFile) config_path_efi_dir = NULL;
   g_autofree char *grub2_mkconfig_chroot = NULL;
   gboolean use_system_grub2_mkconfig = TRUE;
   const gchar *grub_exec = NULL;
+  const char *grub_argv[4] = { NULL, "-o", NULL, NULL};
+  GSpawnFlags grub_spawnflags = G_SPAWN_SEARCH_PATH;
+  int grub2_estatus;
+  Grub2ChildSetupData cdata = { NULL, };
 
 #ifdef USE_BUILTIN_GRUB2_MKCONFIG
   use_system_grub2_mkconfig = FALSE;
@@ -354,22 +369,15 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
                                                       bootversion);
     }
 
-  if (!g_getenv ("OSTREE_DEBUG_GRUB2"))
-    subp_flags |= (G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_SILENCE);
-  
-  launcher = g_subprocess_launcher_new (subp_flags);
-  g_subprocess_launcher_setenv (launcher, "_OSTREE_GRUB2_BOOTVERSION", bootversion_str, TRUE);
-  /* We have to pass our state to the child */
-  if (self->is_efi)
-    g_subprocess_launcher_setenv (launcher, "_OSTREE_GRUB2_IS_EFI", "1", TRUE);
-    
-  /* We need to chroot() if we're not in /.  This assumes our caller has
-   * set up the bind mounts outside.
-   */
-  if (grub2_mkconfig_chroot != NULL)
-    g_subprocess_launcher_set_child_setup (launcher, grub2_child_setup, grub2_mkconfig_chroot, NULL);
+  grub_argv[0] = grub_exec;
+  grub_argv[2] = gs_file_get_path_cached (new_config_path);
 
-  /* In the current Fedora grub2 package, this script doesn't even try
+  if (!g_getenv ("OSTREE_DEBUG_GRUB2"))
+    grub_spawnflags |= G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL;
+  cdata.root = grub2_mkconfig_chroot;
+  cdata.bootversion_str = bootversion_str;
+  cdata.is_efi = self->is_efi;
+  /* Note in older versions of the grub2 package, this script doesn't even try
      to be atomic; it just does:
 
      cat ${grub_cfg}.new > ${grub_cfg}
@@ -377,13 +385,15 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
 
      Upstream is fixed though.
   */
-  proc = g_subprocess_launcher_spawn (launcher, error,
-                                      grub_exec, "-o",
-                                      gs_file_get_path_cached (new_config_path),
-                                      NULL);
-
-  if (!g_subprocess_wait_check (proc, cancellable, error))
+  if (!g_spawn_sync (NULL, (char**)grub_argv, NULL, grub_spawnflags,
+                     grub2_child_setup, &cdata, NULL, NULL,
+                     &grub2_estatus, error))
     goto out;
+  if (!g_spawn_check_exit_status (grub2_estatus, error))
+    {
+      g_prefix_error (error, "%s: ", grub_argv[0]);
+      goto out;
+    }
 
   /* Now let's fdatasync() for the new file */
   { glnx_fd_close int new_config_fd = open (gs_file_get_path_cached (new_config_path), O_RDONLY | O_CLOEXEC);
