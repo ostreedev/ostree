@@ -538,7 +538,7 @@ skip_without_fuse () {
 }
 
 has_gpgme () {
-    ostree --version > version.txt
+    ${CMD_PREFIX} ostree --version > version.txt
     assert_file_has_content version.txt '- gpgme'
     rm -f version.txt
     true
