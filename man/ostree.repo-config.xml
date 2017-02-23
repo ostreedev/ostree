@@ -128,17 +128,15 @@ Boston, MA 02111-1307, USA.
       <varlistentry>
         <term><varname>url</varname></term>
         <listitem><para>Must be present; declares URL for accessing metadata and
-        content for remote. The only supported schemes are the moment are
-.</para></listitem>
+        content for remote. See also <literal>contenturl</literal>. The
+        supported schemes are documented below.</para></listitem>
       </varlistentry>
 
       <varlistentry>
         <term><varname>contenturl</varname></term>
-        <listitem><para>Declares URL for accessing content (filez, static delta parts),
-        as distinct from metadata (summary, static delta "superblock").
-        The supported schemes are the same as the <literal>url</literal>
-        option.
-        </para></listitem>
+        <listitem><para>Declares URL for accessing content (filez, static delta
+        parts). When specified, <literal>url</literal> is used just for
+        metadata: summary, static delta "superblocks".</para></listitem>
       </varlistentry>
 
       <varlistentry>
