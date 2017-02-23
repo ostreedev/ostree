@@ -121,8 +121,8 @@ if ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to
     assert_not_reached "static-delta generate --from=${origrev} --empty unexpectedly succeeded"
 fi
 
-ostree --repo=temp-repo init --mode=archive
-ostree --repo=temp-repo pull-local repo
+${CMD_PREFIX} ostree --repo=temp-repo init --mode=archive
+${CMD_PREFIX} ostree --repo=temp-repo pull-local repo
 ${CMD_PREFIX} ostree --repo=temp-repo static-delta generate --empty --to=${newrev} --filename=some.delta
 assert_has_file some.delta
 ${CMD_PREFIX} ostree --repo=temp-repo static-delta list > delta-list.txt
