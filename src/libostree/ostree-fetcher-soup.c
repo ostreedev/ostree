@@ -170,6 +170,8 @@ thread_closure_unref (ThreadClosure *thread_closure)
 
       g_clear_pointer (&thread_closure->oob_error, g_error_free);
 
+      g_free (thread_closure->remote_name);
+
       g_slice_free (ThreadClosure, thread_closure);
     }
 }
@@ -643,7 +645,6 @@ _ostree_fetcher_finalize (GObject *object)
         g_clear_pointer (&self->session_thread, g_thread_unref);
     }
   g_clear_pointer (&self->thread_closure, thread_closure_unref);
-  g_free (self->remote_name);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
@@ -734,8 +735,7 @@ _ostree_fetcher_new (int                      tmpdir_dfd,
   OstreeFetcher *self;
 
   self = g_object_new (OSTREE_TYPE_FETCHER, "config-flags", flags, NULL);
-  self->remote_name = g_strdup (remote_name);
-
+  self->thread_closure->remote_name = g_strdup (remote_name);
   self->thread_closure->base_tmpdir_dfd = tmpdir_dfd;
 
   return self;
@@ -1123,7 +1123,8 @@ on_request_sent (GObject        *object,
                 g_prefix_error (&local_error,
                                 "All %u mirrors failed. Last error was: ",
                                 pending->mirrorlist->len);
-              if (req->fetcher->remote_name)
+              fprintf (stderr, "log err remote name %s\n", pending->thread_closure->remote_name);
+              if (pending->thread_closure->remote_name)
                 _ostree_fetcher_journal_failure (pending->thread_closure->remote_name,
                                                  uristring, local_error->message);
 
