@@ -32,6 +32,7 @@
 
 #include "libglnx.h"
 #include "ostree-fetcher.h"
+#include "ostree-fetcher-util.h"
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
 #include "ostree-tls-cert-interaction.h"
 #endif
@@ -55,6 +56,7 @@ typedef struct {
   GError *initialization_error; /* Any failure to load the db */
 
   int tmpdir_dfd;
+  char *remote_name;
   char *tmpdir_name;
   GLnxLockFile tmpdir_lock;
   int base_tmpdir_dfd;
@@ -167,6 +169,8 @@ thread_closure_unref (ThreadClosure *thread_closure)
       g_mutex_clear (&thread_closure->output_stream_set_lock);
 
       g_clear_pointer (&thread_closure->oob_error, g_error_free);
+
+      g_free (thread_closure->remote_name);
 
       g_slice_free (ThreadClosure, thread_closure);
     }
@@ -725,12 +729,13 @@ _ostree_fetcher_init (OstreeFetcher *self)
 
 OstreeFetcher *
 _ostree_fetcher_new (int                      tmpdir_dfd,
+                     const char              *remote_name,
                      OstreeFetcherConfigFlags flags)
 {
   OstreeFetcher *self;
 
   self = g_object_new (OSTREE_TYPE_FETCHER, "config-flags", flags, NULL);
-
+  self->thread_closure->remote_name = g_strdup (remote_name);
   self->thread_closure->base_tmpdir_dfd = tmpdir_dfd;
 
   return self;
@@ -1081,6 +1086,9 @@ on_request_sent (GObject        *object,
             }
           else
             {
+              g_autofree char *uristring
+                = soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
+
               GIOErrorEnum code;
               switch (msg->status_code)
                 {
@@ -1115,6 +1123,10 @@ on_request_sent (GObject        *object,
                 g_prefix_error (&local_error,
                                 "All %u mirrors failed. Last error was: ",
                                 pending->mirrorlist->len);
+              if (pending->thread_closure->remote_name)
+                _ostree_fetcher_journal_failure (pending->thread_closure->remote_name,
+                                                 uristring, local_error->message);
+
             }
           goto out;
         }

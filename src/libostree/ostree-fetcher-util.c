@@ -23,6 +23,10 @@
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
 
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-journal.h>
+#endif
+
 #include "ostree-fetcher-util.h"
 #include "otutil.h"
 
@@ -121,4 +125,24 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
                                                      add_nul, allow_noent,
                                                      out_contents, max_size,
                                                      cancellable, error);
+}
+
+#define OSTREE_HTTP_FAILURE_ID SD_ID128_MAKE(f0,2b,ce,89,a5,4e,4e,fa,b3,a9,4a,79,7d,26,20,4a)
+
+void
+_ostree_fetcher_journal_failure (const char *remote_name,
+                                 const char *url,
+                                 const char *msg)
+{
+#ifdef HAVE_LIBSYSTEMD
+  /* Sanity - we don't want to log this when doing local/file pulls */
+  if (!remote_name)
+    return;
+  sd_journal_send ("MESSAGE=libostree HTTP error from remote %s for <%s>: %s",
+                   remote_name, url, msg,
+                   "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_HTTP_FAILURE_ID),
+                   "OSTREE_REMOTE=%s", remote_name,
+                   "OSTREE_URL=%s", url,
+                   NULL);
+#endif
 }
