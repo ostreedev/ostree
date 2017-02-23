@@ -1123,7 +1123,6 @@ on_request_sent (GObject        *object,
                 g_prefix_error (&local_error,
                                 "All %u mirrors failed. Last error was: ",
                                 pending->mirrorlist->len);
-              fprintf (stderr, "log err remote name %s\n", pending->thread_closure->remote_name);
               if (pending->thread_closure->remote_name)
                 _ostree_fetcher_journal_failure (pending->thread_closure->remote_name,
                                                  uristring, local_error->message);
