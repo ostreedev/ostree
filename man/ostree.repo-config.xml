@@ -127,10 +127,16 @@ Boston, MA 02111-1307, USA.
     <variablelist>
       <varlistentry>
         <term><varname>url</varname></term>
-        <listitem><para>Must be present; declares URL for accessing
-        this remote.  The only supported schemes are the moment are
-        <literal>file</literal>, <literal>http</literal>, and
-        <literal>https</literal>.</para></listitem>
+        <listitem><para>Must be present; declares URL for accessing metadata and
+        content for remote. See also <literal>contenturl</literal>. The
+        supported schemes are documented below.</para></listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><varname>contenturl</varname></term>
+        <listitem><para>Declares URL for accessing content (filez, static delta
+        parts). When specified, <literal>url</literal> is used just for
+        metadata: summary, static delta "superblocks".</para></listitem>
       </varlistentry>
 
       <varlistentry>
@@ -198,6 +204,32 @@ Boston, MA 02111-1307, USA.
       configuration file must end in <literal>.conf</literal>; files
       whose name does not end in <literal>.conf</literal> will be
       ignored.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Repository url/contenturl</title>
+    <para>
+      Originally, OSTree had just a <literal>url</literal> option
+      for remotes.  Since then, the <literal>contenturl</literal>
+      option was introduced.  Both of these support 
+      <literal>file</literal>, <literal>http</literal>, and
+      <literal>https</literal> schemes.
+    </para>
+    <para>
+      Additionally, both of these can be prefixed with the string
+      <literal>mirrorlist=</literal>, which instructs the client
+      that the target url is a "mirrorlist" format, which is
+      a plain text file of newline-separated URLs.  Earlier
+      URLs will be given precedence.
+    </para>
+    <para>
+      Note that currently, the <literal>tls-ca-path</literal> and
+      <literal>tls-client-cert-path</literal> options apply to every HTTP
+      request, even when <literal>contenturl</literal> and/or
+      <literal>mirrorlist</literal> are in use. This may change in the future to
+      only apply to metadata (i.e. <literal>url</literal>, not
+      <literal>contenturl</literal>) fetches.
     </para>
   </refsect1>
 
