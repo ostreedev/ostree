@@ -44,6 +44,12 @@ gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
                                                 guint64        max_size,
                                                 GCancellable   *cancellable,
                                                 GError         **error);
+
+void _ostree_fetcher_journal_failure (const char *remote_name,
+                                      const char *url,
+                                      const char *msg);
+
+
 G_END_DECLS
 
 #endif

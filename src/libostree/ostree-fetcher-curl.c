@@ -37,6 +37,7 @@
 #endif
 
 #include "ostree-fetcher.h"
+#include "ostree-fetcher-util.h"
 #include "ostree-enumtypes.h"
 #include "ostree-repo-private.h"
 #include "otutil.h"
@@ -59,6 +60,7 @@ struct OstreeFetcher
   GObject parent_instance;
 
   OstreeFetcherConfigFlags config_flags;
+  char *remote_name;
   char *tls_ca_db_path;
   char *tls_client_cert_path;
   char *tls_client_key_path;
@@ -159,6 +161,7 @@ _ostree_fetcher_finalize (GObject *object)
 {
   OstreeFetcher *self = OSTREE_FETCHER (object);
 
+  g_free (self->remote_name);
   g_free (self->cookie_jar_path);
   g_free (self->proxy);
   g_assert_cmpint (g_hash_table_size (self->outstanding_requests), ==, 0);
@@ -222,9 +225,11 @@ _ostree_fetcher_init (OstreeFetcher *self)
 
 OstreeFetcher *
 _ostree_fetcher_new (int                      tmpdir_dfd,
+                     const char              *remote_name,
                      OstreeFetcherConfigFlags flags)
 {
   OstreeFetcher *fetcher = g_object_new (OSTREE_TYPE_FETCHER, "config-flags", flags, NULL);
+  fetcher->remote_name = g_strdup (remote_name);
   fetcher->tmpdir_dfd = tmpdir_dfd;
   return fetcher;
 }
@@ -303,9 +308,14 @@ check_multi_info (OstreeFetcher *fetcher)
                                          curl_easy_strerror (curlres));
             }
           else
-            g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED, "[%u] %s",
-                                     curlres,
-                                     curl_easy_strerror (curlres));
+            {
+              g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED, "[%u] %s",
+                                       curlres,
+                                       curl_easy_strerror (curlres));
+              if (req->fetcher->remote_name)
+                _ostree_fetcher_journal_failure (req->fetcher->remote_name,
+                                                 eff_url, curl_easy_strerror (curlres));
+            }
         }
       else
         {
@@ -328,8 +338,13 @@ check_multi_info (OstreeFetcher *fetcher)
 
               if (req->idx + 1 == req->mirrorlist->len)
                 {
+                  g_autofree char *msg = g_strdup_printf ("Server returned HTTP %lu", response);
                   g_task_return_new_error (task, G_IO_ERROR, giocode,
-                                           "Server returned HTTP %lu", response);
+                                           "%s", msg);
+                  if (req->fetcher->remote_name)
+                    _ostree_fetcher_journal_failure (req->fetcher->remote_name,
+                                                     eff_url, msg);
+
                 }
               else
                 {

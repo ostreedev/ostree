@@ -32,6 +32,7 @@
 
 #include "libglnx.h"
 #include "ostree-fetcher.h"
+#include "ostree-fetcher-util.h"
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
 #include "ostree-tls-cert-interaction.h"
 #endif
@@ -55,6 +56,7 @@ typedef struct {
   GError *initialization_error; /* Any failure to load the db */
 
   int tmpdir_dfd;
+  char *remote_name;
   char *tmpdir_name;
   GLnxLockFile tmpdir_lock;
   int base_tmpdir_dfd;
@@ -641,6 +643,7 @@ _ostree_fetcher_finalize (GObject *object)
         g_clear_pointer (&self->session_thread, g_thread_unref);
     }
   g_clear_pointer (&self->thread_closure, thread_closure_unref);
+  g_free (self->remote_name);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
@@ -725,11 +728,13 @@ _ostree_fetcher_init (OstreeFetcher *self)
 
 OstreeFetcher *
 _ostree_fetcher_new (int                      tmpdir_dfd,
+                     const char              *remote_name,
                      OstreeFetcherConfigFlags flags)
 {
   OstreeFetcher *self;
 
   self = g_object_new (OSTREE_TYPE_FETCHER, "config-flags", flags, NULL);
+  self->remote_name = g_strdup (remote_name);
 
   self->thread_closure->base_tmpdir_dfd = tmpdir_dfd;
 
@@ -1081,6 +1086,9 @@ on_request_sent (GObject        *object,
             }
           else
             {
+              g_autofree char *uristring
+                = soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
+
               GIOErrorEnum code;
               switch (msg->status_code)
                 {
@@ -1115,6 +1123,10 @@ on_request_sent (GObject        *object,
                 g_prefix_error (&local_error,
                                 "All %u mirrors failed. Last error was: ",
                                 pending->mirrorlist->len);
+              if (req->fetcher->remote_name)
+                _ostree_fetcher_journal_failure (pending->thread_closure->remote_name,
+                                                 uristring, local_error->message);
+
             }
           goto out;
         }
