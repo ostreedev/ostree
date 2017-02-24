@@ -1692,8 +1692,13 @@ is_ro_mount (const char *path)
 
   fs = mnt_table_find_target(tb, path, MNT_ITER_BACKWARD);
   is_mount = fs && mnt_fs_get_target (fs);
-  mnt_unref_cache (cache);
+#ifdef HAVE_MNT_UNREF_CACHE
   mnt_unref_table (tb);
+  mnt_unref_cache (cache);
+#else
+  mnt_free_table (tb);
+  mnt_free_cache (cache);
+#endif
 
   if (!is_mount)
     return FALSE;

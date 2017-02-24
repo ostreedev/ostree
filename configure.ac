@@ -299,6 +299,10 @@ AS_IF([ test x$with_libmount != xno ], [
         AC_DEFINE([HAVE_LIBMOUNT], 1, [Define if we have libmount.pc])
 	PKG_CHECK_MODULES(OT_DEP_LIBMOUNT, $LIBMOUNT_DEPENDENCY)
 	with_libmount=yes
+  save_LIBS=$LIBS
+  LIBS=$OT_DEP_LIBMOUNT_LIBS
+  AC_CHECK_FUNCS(mnt_unref_cache)
+  LIBS=$save_LIBS
     ], [
 	with_libmount=no
     ])
