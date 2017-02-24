@@ -114,7 +114,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
   if (!subcommand->name)
     {
       g_autoptr(GOptionContext) context = NULL;
-      g_autofree char *help;
+      g_autofree char *help = NULL;
 
       context = remote_option_context_new_with_commands ();
 

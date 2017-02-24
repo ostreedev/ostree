@@ -520,7 +520,7 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
         }
       else
         {
-          g_autoptr(GFile) log_file;
+          g_autoptr(GFile) log_file = NULL;
           GFileOutputStream* log_stream;
 
           log_file = g_file_new_for_path (opt_log);
@@ -601,9 +601,12 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
       if (setsid () < 0)
         err (1, "setsid");
       /* Daemonising: close stdout/stderr so $() et al work on us */
-      freopen("/dev/null", "r", stdin);
-      freopen("/dev/null", "w", stdout);
-      freopen("/dev/null", "w", stderr);
+      if (freopen("/dev/null", "r", stdin) == NULL)
+        err (1, "freopen");
+      if (freopen("/dev/null", "w", stdout) == NULL)
+        err (1, "freopen");
+      if (freopen("/dev/null", "w", stderr) == NULL)
+        err (1, "freopen");
     }
   else
     {

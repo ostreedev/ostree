@@ -171,7 +171,7 @@ ostree_run (int    argc,
   if (!command->fn)
     {
       g_autoptr(GOptionContext) context = NULL;
-      g_autofree char *help;
+      g_autofree char *help = NULL;
 
       context = ostree_option_context_new_with_commands (commands);
 
