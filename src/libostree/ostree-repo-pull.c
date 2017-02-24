@@ -1866,6 +1866,86 @@ process_one_static_delta (OtPullData   *pull_data,
   return ret;
 }
 
+/* Loop over the static delta data we got from the summary,
+ * and find the newest commit for @out_from_revision that
+ * goes to @to_revision.
+ */
+static gboolean
+get_best_static_delta_start_for (OtPullData *pull_data,
+                                 const char *to_revision,
+                                 char      **out_from_revision,
+                                 GCancellable *cancellable,
+                                 GError      **error)
+{
+  GHashTableIter hiter;
+  gpointer hkey, hvalue;
+  /* Array<char*> of possible from checksums */
+  g_autoptr(GPtrArray) candidates = g_ptr_array_new_with_free_func (g_free);
+  const char *newest_candidate = NULL;
+  guint64 newest_candidate_timestamp;
+
+  g_assert (pull_data->summary_deltas_checksums != NULL);
+  g_hash_table_iter_init (&hiter, pull_data->summary_deltas_checksums);
+
+  /* Loop over all deltas known from the summary file,
+   * finding ones which go to to_revision */
+  while (g_hash_table_iter_next (&hiter, &hkey, &hvalue))
+    {
+      const char *delta_name = hkey;
+      g_autofree char *cur_from_rev = NULL;
+      g_autofree char *cur_to_rev = NULL;
+
+      /* Gracefully handle corrupted (or malicious) summary files */
+      if (!_ostree_parse_delta_name (delta_name, &cur_from_rev, &cur_to_rev, error))
+        return FALSE;
+
+      /* Is this the checksum we want? */
+      if (strcmp (cur_to_rev, to_revision) != 0)
+        continue;
+
+      g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
+    }
+
+  /* Loop over our candidates, find the newest one */
+  for (guint i = 0; i < candidates->len; i++)
+    {
+      const char *candidate = candidates->pdata[i];
+      guint64 candidate_ts;
+      g_autoptr(GVariant) commit = NULL;
+      OstreeRepoCommitState state;
+      gboolean have_candidate;
+
+      /* Do we have this commit at all?  If not, skip it */
+      if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                   candidate, &have_candidate,
+                                   NULL, error))
+        return FALSE;
+      if (!have_candidate)
+        continue;
+
+      /* Load it */
+      if (!ostree_repo_load_commit (pull_data->repo, candidate,
+                                    &commit, &state, error))
+        return FALSE;
+
+      /* Ignore partial commits, we can't use them */
+      if (state & OSTREE_REPO_COMMIT_STATE_PARTIAL)
+        continue;
+
+      /* Is it newer? */
+      candidate_ts = ostree_commit_get_timestamp (commit);
+      if (newest_candidate == NULL ||
+          candidate_ts > newest_candidate_timestamp)
+        {
+          newest_candidate = candidate;
+          newest_candidate_timestamp = candidate_ts;
+        }
+    }
+
+  *out_from_revision = g_strdup (newest_candidate);
+  return TRUE;
+}
+
 typedef struct {
   OtPullData *pull_data;
   char *from_revision;
@@ -3159,9 +3239,21 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       const char *ref = key;
       const char *to_revision = value;
 
-      if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
-                                    &from_revision, error))
-        goto out;
+      /* If we have a summary, find the latest local commit we have
+       * to use as a from revision for static deltas.
+       */
+      if (pull_data->summary)
+        {
+          if (!get_best_static_delta_start_for (pull_data, to_revision, &from_revision,
+                                                cancellable, error))
+            goto out;
+        }
+      else
+        {
+          if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
+                                        &from_revision, error))
+            goto out;
+        }
 
       if (!disable_static_deltas &&
           (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
