@@ -57,6 +57,9 @@ typedef struct {
 
   GVariant         *extra_headers;
 
+  gboolean      is_refspec_upgrade; /* Whether this fetch is doing a "pure" upgrade
+                                     * and things like require-static-deltas=upgrade should
+                                     * be honored. */
   gboolean      dry_run;
   gboolean      dry_run_emitted_progress;
   gboolean      legacy_transaction_resuming;
@@ -2544,6 +2547,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   const char *url_override = NULL;
   gboolean mirroring_into_archive;
   gboolean inherit_transaction = FALSE;
+  gboolean require_upgrade_deltas = FALSE;
   int i;
 
   if (options)
@@ -2581,14 +2585,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_return_val_if_fail (dirs_to_pull[i][0] == '/', FALSE);
 
   g_return_val_if_fail (!(disable_static_deltas && pull_data->require_static_deltas), FALSE);
-  /* We only do dry runs with static deltas, because we don't really have any
-   * in-advance information for bare fetches.
-   */
-  g_return_val_if_fail (!pull_data->dry_run || pull_data->require_static_deltas, FALSE);
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
   pull_data->is_untrusted = (flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) > 0;
+  /* Initially, our "is pure upgrade" flag is true, we'll set it to FALSE potentially below */
+  pull_data->is_refspec_upgrade = TRUE;
   pull_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
   mirroring_into_archive = pull_data->is_mirror && self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2;
@@ -2661,6 +2663,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   else
     {
       g_autofree char *unconfigured_state = NULL;
+      g_autofree char *require_deltas = NULL;
 
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
@@ -2690,6 +2693,28 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "remote unconfigured-state: %s", unconfigured_state);
           goto out;
+        }
+
+      if (!ostree_repo_get_remote_option (self, pull_data->remote_name,
+                                          "require-deltas", NULL,
+                                          &require_deltas,
+                                          error))
+        goto out;
+      if (require_deltas)
+        {
+          if (strcmp (require_deltas, "upgrade") == 0)
+            {
+              require_upgrade_deltas = TRUE;
+            }
+          else if (strcmp (require_deltas, "no") == 0 || strcmp (require_deltas, "false") == 0)
+            ;
+          else
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown value in remote %s for require-deltas: %s",
+                           pull_data->remote_name, require_deltas);
+              goto out;
+            }
         }
     }
 
@@ -3033,10 +3058,17 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             {
               char *key = g_strdup (branch);
               g_hash_table_add (commits_to_fetch, key);
+              /* Direct checksum fetches are never pure upgrades */
+              pull_data->is_refspec_upgrade = FALSE;
             }
           else
             {
               char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
+              /* We also handle is_refspec_upgrade in this case below, but might
+               * as well be doubly sure.
+               */
+              if (commitid)
+                pull_data->is_refspec_upgrade = FALSE;
               g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
             }
           
@@ -3075,6 +3107,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       /* Support specifying "" for an override commitid */
       if (override_commitid && *override_commitid)
         {
+          /* Is there a commit override?  Not a pure upgrade then */
+          if (override_commitid)
+            pull_data->is_refspec_upgrade = FALSE;
           g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), g_strdup (override_commitid));
         }
       else    
@@ -3111,6 +3146,19 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           glnx_set_error_from_errno (error);
           goto out;
         }
+    }
+
+  /* Here, we finally derive whether or not we're going to require
+   * deltas for this upgrade.
+   */
+  if (pull_data->is_refspec_upgrade && require_upgrade_deltas)
+    pull_data->require_static_deltas = TRUE;
+
+  if (pull_data->dry_run && !pull_data->require_static_deltas)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "dry-run pull requires static deltas");
+      goto out;
     }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_OBJECTS;
