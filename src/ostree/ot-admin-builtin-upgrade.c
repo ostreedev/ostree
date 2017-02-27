@@ -121,19 +121,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
         }
     }
 
-  /* In the pull-only case, we do a cleanup here to ensure that if multiple
-   * commits were pulled, we garbage collect any intermediate data before
-   * pulling more.  This is really a best practice in general, but for maximum
-   * compatiblity, we only do cleanup if a user specifies the new --pull-only
-   * option.  Otherwise, we would break the case of trying to deploy a commit
-   * that isn't directly referenced.
-   */
-  if (opt_pull_only)
-    {
-      if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
-        goto out;
-    }
-  else if (opt_deploy_only)
+  if (opt_deploy_only)
     upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC;
 
   { g_auto(GLnxConsoleRef) console = { 0, };
@@ -148,7 +136,19 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
     if (!ostree_sysroot_upgrader_pull (upgrader, 0, upgraderpullflags,
                                        progress, &changed,
                                        cancellable, error))
-      goto out;
+      {
+        /* In the pull-only case, we do a cleanup here to ensure that if
+         * multiple commits were pulled, we garbage collect any old
+         * partially-pulled intermediate commits before pulling more. This is
+         * really a best practice in general, but for maximum compatiblity, we
+         * only do cleanup if a user specifies the new --pull-only option.
+         * Otherwise, we would break the case of trying to deploy a commit that
+         * isn't directly referenced.
+         */
+        if (opt_pull_only)
+          (void) ostree_sysroot_cleanup (sysroot, NULL, NULL);
+        goto out;
+      }
 
     if (progress)
       ostree_async_progress_finish (progress);
