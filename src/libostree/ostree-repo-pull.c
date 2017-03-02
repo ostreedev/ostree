@@ -2542,7 +2542,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
   const char *url_override = NULL;
-  gboolean mirroring_into_archive;
   gboolean inherit_transaction = FALSE;
   int i;
 
@@ -2581,6 +2580,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_return_val_if_fail (dirs_to_pull[i][0] == '/', FALSE);
 
   g_return_val_if_fail (!(disable_static_deltas && pull_data->require_static_deltas), FALSE);
+
   /* We only do dry runs with static deltas, because we don't really have any
    * in-advance information for bare fetches.
    */
@@ -2590,8 +2590,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
   pull_data->is_untrusted = (flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) > 0;
   pull_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
-
-  mirroring_into_archive = pull_data->is_mirror && self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2;
 
   if (error)
     pull_data->async_error = &pull_data->cached_async_error;
@@ -2860,6 +2858,23 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
    * exact object files are copied.
    */
   if (pull_data->remote_repo_local && !pull_data->require_static_deltas)
+    disable_static_deltas = TRUE;
+
+  /* We can't use static deltas if pulling into an archive-z2 repo. */
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+    {
+      if (pull_data->require_static_deltas)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Can't use static deltas in an archive repo");
+          goto out;
+        }
+      disable_static_deltas = TRUE;
+    }
+
+  /* It's not efficient to use static deltas if all we want is the commit
+   * metadata. */
+  if (pull_data->is_commit_only)
     disable_static_deltas = TRUE;
 
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
@@ -3148,7 +3163,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                     &from_revision, error))
         goto out;
 
-      if (!(disable_static_deltas || mirroring_into_archive || pull_data->is_commit_only) &&
+      if (!disable_static_deltas &&
           (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
         {
           g_autofree char *delta_name =

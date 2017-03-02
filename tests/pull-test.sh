@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..14"
+echo "1..15"
 
 # Try both syntaxes
 repo_init
@@ -68,6 +68,16 @@ ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo fsck
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
 echo "ok pull mirror (should not apply deltas)"
+
+cd ${test_tmpdir}
+if ${CMD_PREFIX} ostree --repo=mirrorrepo \
+     pull origin main --require-static-deltas 2>err.txt; then
+  assert_not_reached "--require-static-deltas unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Can't use static deltas in an archive repo"
+${CMD_PREFIX} ostree --repo=mirrorrepo pull origin main
+${CMD_PREFIX} ostree --repo=mirrorrepo fsck
+echo "ok pull (refuses deltas)"
 
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf

@@ -168,7 +168,7 @@ echo 'ok heuristic endian detection'
 
 ${CMD_PREFIX} ostree --repo=repo summary -u
 
-mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
+mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=bare-user
 ${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${newrev}
 ${CMD_PREFIX} ostree --repo=repo2 fsck
 ${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
@@ -236,7 +236,7 @@ echo 'ok generate + show empty delta part'
 ${CMD_PREFIX} ostree --repo=repo summary -u
 
 rm -rf repo2
-mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
+mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=bare-user
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${newrev}
 ${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${samerev}
 ${CMD_PREFIX} ostree --repo=repo2 fsck
