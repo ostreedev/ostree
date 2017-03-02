@@ -201,8 +201,16 @@ checkout_file_from_input_at (OstreeRepo     *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (res == -1)
         {
-          glnx_set_error_from_errno (error);
-          goto out;
+          if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
+            {
+              ret = TRUE;
+              goto out;
+            }
+          else
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
         }
 
       if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
@@ -240,6 +248,11 @@ checkout_file_from_input_at (OstreeRepo     *self,
       while (G_UNLIKELY (fd == -1 && errno == EINTR));
       if (fd == -1)
         {
+          if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
+            {
+              ret = TRUE;
+              goto out;
+            }
           glnx_set_error_from_errno (error);
           goto out;
         }
@@ -332,6 +345,12 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
   return ret;
 }
 
+typedef enum {
+  HARDLINK_RESULT_NOT_SUPPORTED,
+  HARDLINK_RESULT_SKIP_EXISTED,
+  HARDLINK_RESULT_LINKED
+} HardlinkResult;
+
 static gboolean
 checkout_file_hardlink (OstreeRepo                          *self,
                         OstreeRepoCheckoutAtOptions           *options,
@@ -339,28 +358,32 @@ checkout_file_hardlink (OstreeRepo                          *self,
                         int                                  destination_dfd,
                         const char                          *destination_name,
                         gboolean                             allow_noent,
-                        gboolean                            *out_was_supported,
+                        HardlinkResult                      *out_result,
                         GCancellable                        *cancellable,
                         GError                             **error)
 {
-  gboolean ret = FALSE;
-  gboolean ret_was_supported = FALSE;
+  HardlinkResult ret_result = HARDLINK_RESULT_NOT_SUPPORTED;
   int srcfd = (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER) ?
     self->objects_dir_fd : self->uncompressed_objects_dir_fd;
 
  again:
-  if (linkat (srcfd, loose_path, destination_dfd, destination_name, 0) != -1)
-    ret_was_supported = TRUE;
+  if (linkat (srcfd, loose_path, destination_dfd, destination_name, 0) == 0)
+    ret_result = HARDLINK_RESULT_LINKED;
   else if (!options->no_copy_fallback && (errno == EMLINK || errno == EXDEV || errno == EPERM))
     {
       /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
        * optimization of hardlinking instead of copying.
        */
-      ret_was_supported = FALSE;
     }
   else if (allow_noent && errno == ENOENT)
     {
-      ret_was_supported = FALSE;
+    }
+  else if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
+    {
+      /* In this mode, we keep existing content.  Distinguish this case though to
+       * avoid inserting into the devino cache.
+       */
+      ret_result = HARDLINK_RESULT_SKIP_EXISTED;
     }
   else if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
     { 
@@ -370,7 +393,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
        * the same file, then rename() does nothing, and returns a
        * success status."
        *
-       * So we can't make this atomic.  
+       * So we can't make this atomic.
        */
       (void) unlinkat (destination_dfd, destination_name, 0);
       goto again;
@@ -379,14 +402,12 @@ checkout_file_hardlink (OstreeRepo                          *self,
     {
       g_prefix_error (error, "Hardlinking %s to %s: ", loose_path, destination_name);
       glnx_set_error_from_errno (error);
-      goto out;
+      return FALSE;
     }
 
-  ret = TRUE;
-  if (out_was_supported)
-    *out_was_supported = ret_was_supported;
- out:
-  return ret;
+  if (out_result)
+    *out_result = ret_result;
+  return TRUE;
 }
 
 static gboolean
@@ -439,7 +460,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
     }
   else
     {
-      gboolean did_hardlink = FALSE;
+      HardlinkResult hardlink_res = HARDLINK_RESULT_NOT_SUPPORTED;
       /* Try to do a hardlink first, if it's a regular file.  This also
        * traverses all parent repos.
        */
@@ -469,11 +490,11 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                            options,
                                            loose_path_buf,
                                            destination_dfd, destination_name,
-                                           TRUE, &did_hardlink,
+                                           TRUE, &hardlink_res,
                                            cancellable, error))
                 goto out;
 
-              if (did_hardlink && options->devino_to_csum_cache)
+              if (hardlink_res == HARDLINK_RESULT_LINKED && options->devino_to_csum_cache)
                 {
                   struct stat stbuf;
                   OstreeDevIno *key;
@@ -492,13 +513,13 @@ checkout_one_file_at (OstreeRepo                        *repo,
                   g_hash_table_add ((GHashTable*)options->devino_to_csum_cache, key);
                 }
 
-              if (did_hardlink)
+              if (hardlink_res != HARDLINK_RESULT_NOT_SUPPORTED)
                 break;
             }
           current_repo = current_repo->parent_repo;
         }
 
-      need_copy = !did_hardlink;
+      need_copy = (hardlink_res == HARDLINK_RESULT_NOT_SUPPORTED);
     }
 
   can_cache = (options->enable_uncompressed_cache
@@ -514,7 +535,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
       && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      gboolean did_hardlink;
+      HardlinkResult hardlink_res = HARDLINK_RESULT_NOT_SUPPORTED;
       
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, NULL,
                                   cancellable, error))
@@ -560,19 +581,20 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       if (!checkout_file_hardlink (repo, options, loose_path_buf,
                                    destination_dfd, destination_name,
-                                   FALSE, &did_hardlink,
+                                   FALSE, &hardlink_res,
                                    cancellable, error))
         {
           g_prefix_error (error, "Using new cached uncompressed hardlink of %s to %s: ", checksum, destination_name);
           goto out;
         }
 
-      need_copy = !did_hardlink;
+      need_copy = (hardlink_res == HARDLINK_RESULT_NOT_SUPPORTED);
     }
 
   /* Fall back to copy if we couldn't hardlink */
   if (need_copy)
     {
+      g_assert (!options->no_copy_fallback);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
         goto out;
@@ -655,7 +677,9 @@ checkout_tree_at (OstreeRepo                        *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (res == -1)
     {
-      if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+      if (errno == EEXIST &&
+          (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
+           || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES))
         did_exist = TRUE;
       else
         {

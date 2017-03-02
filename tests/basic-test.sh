@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..62"
+echo "1..63"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -278,6 +278,24 @@ cmp union-files-count{,.new}
 cd checkout-test2-union
 assert_file_has_content ./yet/another/tree/green "leaf"
 echo "ok checkout union 1"
+
+cd ${test_tmpdir}
+$OSTREE commit -b test-union-add --tree=ref=test2
+$OSTREE checkout test-union-add checkout-test-union-add
+echo 'file for union add testing' > checkout-test-union-add/union-add-test
+echo 'another file for union add testing' > checkout-test-union-add/union-add-test2
+$OSTREE commit -b test-union-add --tree=dir=checkout-test-union-add
+rm checkout-test-union-add -rf
+# Check out previous
+$OSTREE checkout test-union-add^ checkout-test-union-add
+assert_not_has_file checkout-test-union-add/union-add-test
+assert_not_has_file checkout-test-union-add/union-add-test2
+# Now create a file we don't want overwritten
+echo 'existing file for union add' > checkout-test-union-add/union-add-test
+$OSTREE checkout --union-add test-union-add checkout-test-union-add
+assert_file_has_content checkout-test-union-add/union-add-test 'existing file for union add'
+assert_file_has_content checkout-test-union-add/union-add-test2 'another file for union add testing'
+echo "ok checkout union add"
 
 cd ${test_tmpdir}
 rm -rf shadow-repo
