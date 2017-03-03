@@ -1903,7 +1903,8 @@ get_best_static_delta_start_for (OtPullData *pull_data,
       if (strcmp (cur_to_rev, to_revision) != 0)
         continue;
 
-      g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
+      if (cur_from_rev)
+        g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
     }
 
   /* Loop over our candidates, find the newest one */
