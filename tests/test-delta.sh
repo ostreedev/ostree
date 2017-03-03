@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..11'
+echo '1..12'
 
 mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
@@ -244,6 +244,17 @@ ${CMD_PREFIX} ostree --repo=repo2 ls ${samerev} >/dev/null
 
 echo 'ok pull empty delta part'
 
+# Make a new branch to test "rebase deltas"
+echo otherbranch-content > files/otherbranch-content
+${CMD_PREFIX} ostree --repo=repo commit -b otherbranch --tree=dir=files
+samerev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=test --to=otherbranch
+${CMD_PREFIX} ostree --repo=repo summary -u
+${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo otherbranch
+
+echo 'ok rebase deltas'
+
+${CMD_PREFIX} ostree --repo=repo summary -u
 if ${CMD_PREFIX} ostree --repo=repo static-delta show GARBAGE 2> err.txt; then
     assert_not_reached "static-delta show GARBAGE unexpectedly succeeded"
 fi
