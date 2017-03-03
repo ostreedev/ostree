@@ -29,6 +29,20 @@
 
 #include <string.h>
 
+/* I only did some cursory research here, but it appears
+ * that we only want to use "linux16" for x86 platforms.
+ * At least, I got a report that "linux16" is definitely wrong
+ * for ppc64.  See
+ * http://pkgs.fedoraproject.org/cgit/rpms/grub2.git/tree/0036-Use-linux16-when-appropriate-880840.patch?h=f25
+ * https://bugzilla.redhat.com/show_bug.cgi?id=1108296
+ * among others.
+ */
+#if defined(__i386__) || defined(__x86_64__)
+#define GRUB2_USES_16 1
+#else
+#define GRUB2_USES_16 0
+#endif
+
 struct _OstreeBootloaderGrub2
 {
   GObject       parent_instance;
@@ -203,7 +217,13 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
       if (is_efi)
         g_string_append (output, "linuxefi ");
       else
-        g_string_append (output, "linux16 ");
+        {
+#if GRUB2_USES_16
+          g_string_append (output, "linux16 ");
+#else
+          g_string_append (output, "linux ");
+#endif
+        }
       g_string_append (output, kernel);
 
       options = ostree_bootconfig_parser_get (config, "options");
@@ -220,7 +240,13 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
           if (is_efi)
             g_string_append (output, "initrdefi ");
           else
-            g_string_append (output, "initrd16 ");
+            {
+#if GRUB2_USES_16
+              g_string_append (output, "initrd16 ");
+#else
+              g_string_append (output, "initrd ");
+#endif
+            }
           g_string_append (output, initrd);
           g_string_append_c (output, '\n');
         }
