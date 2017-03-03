@@ -33,7 +33,6 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
         -Werror=incompatible-pointer-types \
         -Werror=misleading-indentation \
 	-Werror=missing-include-dirs -Werror=aggregate-return \
-	-Werror=declaration-after-statement \
 ])
 AC_SUBST(WARN_CFLAGS)
 
