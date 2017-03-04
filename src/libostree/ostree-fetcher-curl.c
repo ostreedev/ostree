@@ -416,11 +416,13 @@ timer_cb (gpointer data)
 {
   OstreeFetcher *fetcher = data;
   CURLMcode rc;
+  GSource *orig_src = fetcher->timer_event;
 
-  fetcher->timer_event = NULL;
   rc = curl_multi_socket_action (fetcher->multi, CURL_SOCKET_TIMEOUT, 0, &fetcher->curl_running);
   g_assert (rc == CURLM_OK);
   check_multi_info (fetcher);
+  if (fetcher->timer_event == orig_src)
+    fetcher->timer_event = NULL;
 
   return FALSE;
 }
@@ -713,6 +715,8 @@ initiate_next_curl_request (FetcherRequest *req,
   CURLMcode rc;
   OstreeFetcher *self = req->fetcher;
 
+  if (req->easy)
+    curl_easy_cleanup (req->easy);
   req->easy = curl_easy_init ();
   g_assert (req->easy);
 
