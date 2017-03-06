@@ -381,12 +381,10 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/* Uncomment this when adding the first new symbol for 2
-LIBOSTREE_2017.XX {
+LIBOSTREE_2017.3 {
 global:
-	someostree_symbol_deleteme;
+        ostree_raw_file_to_archive_z2_stream_with_options;
 } LIBOSTREE_2017.2;
-*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
