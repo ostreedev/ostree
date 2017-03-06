@@ -903,9 +903,6 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
                          GError                           **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) commit_root = NULL;
-  g_autoptr(GFile) target_dir = NULL;
-  g_autoptr(GFileInfo) target_info = NULL;
   OstreeRepoCheckoutAtOptions default_options = { 0, };
 
   if (!options)
@@ -914,33 +911,33 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
       options = &default_options;
     }
 
-  commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
+  g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
-    goto out;
+    return FALSE;
 
   if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)commit_root, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(GFile) target_dir = NULL;
   if (options->subpath && strcmp (options->subpath, "/") != 0)
     target_dir = g_file_get_child (commit_root, options->subpath);
   else
     target_dir = g_object_ref (commit_root);
-  target_info = g_file_query_info (target_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                   G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                   cancellable, error);
+  g_autoptr(GFileInfo) target_info =
+    g_file_query_info (target_dir, OSTREE_GIO_FAST_QUERYINFO,
+                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                       cancellable, error);
   if (!target_info)
-    goto out;
+    return FALSE;
 
   if (!checkout_tree_at (self, options,
                          destination_dfd,
                          destination_path,
                          (OstreeRepoFile*)target_dir, target_info,
                          cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static guint
@@ -994,16 +991,15 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
                          GCancellable      *cancellable,
                          GError           **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GHashTable) to_clean_dirs = NULL;
-  GHashTableIter iter;
-  gpointer key, value;
 
   g_mutex_lock (&self->cache_lock);
   to_clean_dirs = self->updated_uncompressed_dirs;
   self->updated_uncompressed_dirs = g_hash_table_new (NULL, NULL);
   g_mutex_unlock (&self->cache_lock);
 
+  GHashTableIter iter;
+  gpointer key, value;
   if (to_clean_dirs)
     g_hash_table_iter_init (&iter, to_clean_dirs);
   while (to_clean_dirs && g_hash_table_iter_next (&iter, &key, &value))
@@ -1013,7 +1009,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
 
       if (!glnx_dirfd_iterator_init_at (self->uncompressed_objects_dir_fd, objdir_name, FALSE,
                                         &dfd_iter, error))
-        goto out;
+        return FALSE;
 
       while (TRUE)
         {
@@ -1021,14 +1017,14 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
           struct stat stbuf;
 
           if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
-            goto out;
+            return FALSE;
           if (dent == NULL)
             break;
 
           if (fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
             {
               glnx_set_error_from_errno (error);
-              goto out;
+              return FALSE;
             }
           
           if (stbuf.st_nlink == 1)
@@ -1036,13 +1032,11 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
               if (unlinkat (dfd_iter.fd, dent->d_name, 0) != 0)
                 {
                   glnx_set_error_from_errno (error);
-                  goto out;
+                  return FALSE;
                 }
             }
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
