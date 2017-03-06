@@ -641,6 +641,8 @@ checkout_tree_at (OstreeRepo                        *self,
   gboolean did_exist = FALSE;
   glnx_fd_close int destination_dfd = -1;
   int res;
+  struct stat repo_dfd_stat;
+  struct stat destination_stat;
   g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
 
@@ -665,6 +667,25 @@ checkout_tree_at (OstreeRepo                        *self,
   if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE,
                        &destination_dfd, error))
     goto out;
+
+  if (fstat (self->repo_dir_fd, &repo_dfd_stat) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+  if (fstat (destination_dfd, &destination_stat) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (options->no_copy_fallback && repo_dfd_stat.st_dev != destination_stat.st_dev)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to do hardlink checkout across devices (src=%lu destination=%lu)",
+                   repo_dfd_stat.st_dev, destination_stat.st_dev);
+      goto out;
+    }
 
   /* Set the xattrs now, so any derived labeling works */
   if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
