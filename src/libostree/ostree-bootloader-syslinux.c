@@ -95,6 +95,10 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
       if (val)
         g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s", val));
 
+      val = ostree_bootconfig_parser_get (config, "devicetree");
+      if (val)
+        g_ptr_array_add (new_lines, g_strdup_printf ("\tDEVICETREE %s", val));
+
       val = ostree_bootconfig_parser_get (config, "options");
       if (val)
         g_ptr_array_add (new_lines, g_strdup_printf ("\tAPPEND %s", val));
