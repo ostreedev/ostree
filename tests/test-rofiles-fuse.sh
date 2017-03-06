@@ -78,6 +78,6 @@ assert_file_has_content mnt/test2-checkout-copy-fallback/anewfile-for-fuse anewf
 if ${CMD_PREFIX} ostree --repo=repo checkout -UH test2 mnt/test2-checkout-copy-hardlinked 2>err.txt; then
     assert_not_reached "Checking out via hardlinks across mountpoint unexpectedly succeeded!"
 fi
-assert_file_has_content err.txt "Invalid cross-device link"
+assert_file_has_content err.txt "Unable to do hardlink checkout across devices"
 
 echo "ok checkout copy fallback"
