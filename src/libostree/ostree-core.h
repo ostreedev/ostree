@@ -312,6 +312,16 @@ ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
                                       GError            **error);
 
 _OSTREE_PUBLIC
+gboolean
+ostree_raw_file_to_archive_z2_stream_with_options (GInputStream       *input,
+                                                   GFileInfo          *file_info,
+                                                   GVariant           *xattrs,
+                                                   GVariant           *options,
+                                                   GInputStream      **out_input,
+                                                   GCancellable       *cancellable,
+                                                   GError            **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_raw_file_to_content_stream (GInputStream       *input,
                                             GFileInfo          *file_info,
                                             GVariant           *xattrs,

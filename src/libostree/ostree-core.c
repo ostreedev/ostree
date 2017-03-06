@@ -507,6 +507,46 @@ ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
 }
 
 /**
+ * ostree_raw_file_to_archive_z2_stream_with_options:
+ * @input: File raw content stream
+ * @file_info: A file info
+ * @xattrs: (allow-none): Optional extended attributes
+ * @options: (nullable): A GVariant `a{sv}` with an extensible set of flags
+ * @out_input: (out): Serialized object stream
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like ostree_raw_file_to_archive_z2_stream(), but supports an extensible set
+ * of flags. The following flags are currently defined:
+ *
+ * - `compression-level` (`i`): Level of compression to use, 0–9, with 0 being
+ *   the least compression, and <0 giving the default level (currently 6).
+ *
+ * Since: 2017.3
+ */
+gboolean
+ostree_raw_file_to_archive_z2_stream_with_options (GInputStream       *input,
+                                                   GFileInfo          *file_info,
+                                                   GVariant           *xattrs,
+                                                   GVariant           *options,
+                                                   GInputStream      **out_input,
+                                                   GCancellable       *cancellable,
+                                                   GError            **error)
+{
+  gint compression_level = -1;
+
+  if (options)
+    (void) g_variant_lookup (options, "compression-level", "i", &compression_level);
+
+  if (compression_level < 0)
+    compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
+
+  return _ostree_raw_file_to_archive_stream (input, file_info, xattrs,
+                                             compression_level,
+                                             out_input, cancellable, error);
+}
+
+/**
  * ostree_raw_file_to_content_stream:
  * @input: File raw content stream
  * @file_info: A file info
