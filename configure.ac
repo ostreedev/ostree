@@ -134,6 +134,14 @@ if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 AM_CONDITIONAL(HAVE_LIBSOUP_CLIENT_CERTS, test x$have_libsoup_client_certs = xyes)
 
+AC_ARG_ENABLE(trivial-httpd-cmdline,
+  [AS_HELP_STRING([--enable-trivial-httpd-cmdline],
+  [Continue to support "ostree trivial-httpd" [default=no]])],,
+  enable_trivial_httpd_cmdline=no)
+AS_IF([test x$enable_trivial_httpd_cmdline = xyes],
+  [AC_DEFINE([BUILDOPT_ENABLE_TRIVIAL_HTTPD_CMDLINE], 1, [Define if we are enabling ostree trivial-httpd entrypoint])]
+)
+
 AS_IF([test x$with_curl = xyes && test x$with_soup = xno], [
   AC_MSG_ERROR([Curl enabled, but libsoup is not; libsoup is needed for tests])
 ])
@@ -410,6 +418,7 @@ echo "
     Rust (internal oxidation):                    $rust_debug_release
     rofiles-fuse:                                 $enable_rofiles_fuse
     HTTP backend:                                 $fetcher_backend
+    \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
     SELinux:                                      $with_selinux
     systemd:                                      $have_libsystemd
     libmount:                                     $with_libmount
