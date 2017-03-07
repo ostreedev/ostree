@@ -902,7 +902,6 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
                          GCancellable                      *cancellable,
                          GError                           **error)
 {
-  gboolean ret = FALSE;
   OstreeRepoCheckoutAtOptions default_options = { 0, };
 
   if (!options)
