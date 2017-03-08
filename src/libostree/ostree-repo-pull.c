@@ -2589,6 +2589,7 @@ reinitialize_fetcher (OtPullData *pull_data, const char *remote_name, GError **e
  *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
  *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, usefult to do mutliple pulls in one transaction.
  *   * http-headers (a(ss)): Additional headers to add to all HTTP requests
+ *   * update-frequency (u): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -2613,6 +2614,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   char **configured_branches = NULL;
   guint64 bytes_transferred;
   guint64 end_time;
+  guint update_frequency = 0;
   OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
   g_autofree char **dirs_to_pull = NULL;
@@ -2648,6 +2650,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
       (void) g_variant_lookup (options, "inherit-transaction", "b", &inherit_transaction);
       (void) g_variant_lookup (options, "http-headers", "@a(ss)", &pull_data->extra_headers);
+      (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -3283,7 +3286,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (pull_data->progress)
     {
-      update_timeout = g_timeout_source_new_seconds (pull_data->dry_run ? 0 : 1);
+      /* Setup a custom frequency if set */
+      if (update_frequency > 0)
+        update_timeout = g_timeout_source_new (pull_data->dry_run ? 0 : update_frequency);
+      else
+        update_timeout = g_timeout_source_new_seconds (pull_data->dry_run ? 0 : 1);
+
       g_source_set_priority (update_timeout, G_PRIORITY_HIGH);
       g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
       g_source_attach (update_timeout, pull_data->main_context);
