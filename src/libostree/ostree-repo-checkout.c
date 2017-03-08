@@ -706,8 +706,8 @@ checkout_tree_at (OstreeRepo                        *self,
   if (options->no_copy_fallback && repo_dfd_stat.st_dev != destination_stat.st_dev)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to do hardlink checkout across devices (src=%lu destination=%lu)",
-                   repo_dfd_stat.st_dev, destination_stat.st_dev);
+                   "Unable to do hardlink checkout across devices (src=%"G_GUINT64_FORMAT" destination=%"G_GUINT64_FORMAT")",
+                   (guint64)repo_dfd_stat.st_dev, (guint64)destination_stat.st_dev);
       goto out;
     }
 
