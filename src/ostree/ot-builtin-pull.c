@@ -38,6 +38,7 @@ static char** opt_subpaths;
 static char** opt_http_headers;
 static char* opt_cache_dir;
 static int opt_depth = 0;
+static int opt_frequency = 0;
 static char* opt_url;
 
 static GOptionEntry options[] = {
@@ -53,6 +54,7 @@ static GOptionEntry options[] = {
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
    { "url", 0, 0, G_OPTION_ARG_STRING, &opt_url, "Pull objects from this URL instead of the one from the remote config", NULL },
    { "http-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_http_headers, "Add NAME=VALUE as HTTP header to all requests", "NAME=VALUE" },
+   { "update-frequency", 0, 0, G_OPTION_ARG_INT, &opt_frequency, "Sets the update frequency, in milliseconds (0=1000ms) (default: 0)", "FREQUENCY" },
    { NULL }
  };
 
@@ -252,6 +254,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
    
+    g_variant_builder_add (&builder, "{s@v}", "update-frequency",
+                           g_variant_new_variant (g_variant_new_uint32 (opt_frequency)));
+
     g_variant_builder_add (&builder, "{s@v}", "disable-static-deltas",
                            g_variant_new_variant (g_variant_new_boolean (opt_disable_static_deltas)));
 
