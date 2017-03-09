@@ -386,7 +386,7 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/* Stub section for new version, uncomment when the first symbol is added */
+/* Stub section for new version, uncomment when the first symbol is added
 LIBOSTREE_2017.$NEWVERSION {
 global:
 	someostree_symbol_deleteme;
