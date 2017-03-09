@@ -376,15 +376,22 @@ global:
        ostree_repo_reload_config;
 } LIBOSTREE_2017.1;
 
+LIBOSTREE_2017.3 {
+global:
+        ostree_raw_file_to_archive_z2_stream_with_options;
+} LIBOSTREE_2017.2;
+
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
  */
 
-LIBOSTREE_2017.3 {
+/* Stub section for new version, uncomment when the first symbol is added
+LIBOSTREE_2017.$NEWVERSION {
 global:
-        ostree_raw_file_to_archive_z2_stream_with_options;
+	someostree_symbol_deleteme;
 } LIBOSTREE_2017.2;
+*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
