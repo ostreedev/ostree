@@ -33,3 +33,4 @@
 #include <ostree-gpg-verify-result.h>
 
 #include <ostree-autocleanups.h>
+#include <ostree-version.h>

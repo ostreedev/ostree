@@ -105,7 +105,7 @@ EXTRA_DIST += src/ostree/parse-datetime.y
 CLEANFILES += src/ostree/parse-datetime.c
 
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree \
-	-I$(srcdir)/src/ostree -I$(srcdir)/libglnx $(OT_INTERNAL_GIO_UNIX_CFLAGS) \
+	-I$(builddir)/src/libostree -I$(srcdir)/src/ostree -I$(srcdir)/libglnx $(OT_INTERNAL_GIO_UNIX_CFLAGS) \
 	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\"
 ostree_bin_shared_ldadd = $(AM_LDFLAGS) libglnx.la libotutil.la libostree-1.la \
 	$(OT_INTERNAL_GIO_UNIX_LIBS)
