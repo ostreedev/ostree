@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "otutil.h"
+#include <sys/file.h>
 #include <sys/mount.h>
 #include <sys/wait.h>
 

@@ -42,6 +42,7 @@
 
 #include <locale.h>
 #include <glib/gstdio.h>
+#include <sys/file.h>
 
 /**
  * SECTION:ostree-repo
