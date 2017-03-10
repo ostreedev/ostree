@@ -21,8 +21,6 @@
 #include "config.h"
 
 #include "ostree-rollsum.h"
-#include <unistd.h>
-#include <stdlib.h>
 
 int
 main (int argc, char **argv)
@@ -39,7 +37,7 @@ main (int argc, char **argv)
   g_setenv ("GIO_USE_VFS", "local", TRUE);
 
   if (argc < 3)
-    exit (EXIT_FAILURE);
+    return 1;
 
   from_path = argv[1];
   to_path = argv[2];
