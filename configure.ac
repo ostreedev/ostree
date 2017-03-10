@@ -1,6 +1,10 @@
 AC_PREREQ([2.63])
 dnl If incrementing the version here, remember to update libostree.sym too
-AC_INIT([libostree], [2017.3], [walters@verbum.org])
+m4_define([year_version], [2017])
+m4_define([release_version], [3])
+m4_define([package_version], [year_version.release_version])
+
+AC_INIT([libostree], [package_version], [walters@verbum.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -15,6 +19,11 @@ AC_SYS_LARGEFILE
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_YACC
+
+dnl Versioning information
+AC_SUBST([YEAR_VERSION], [year_version])
+AC_SUBST([RELEASE_VERSION], [release_version])
+AC_SUBST([PACKAGE_VERSION], [package_version])
 
 CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
         -pipe \
@@ -398,6 +407,7 @@ AC_CONFIG_FILES([
 Makefile
 apidoc/Makefile
 src/libostree/ostree-1.pc
+src/libostree/ostree-version.h
 ])
 AC_OUTPUT
 

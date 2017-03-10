@@ -37,3 +37,7 @@ libostree_public_headers = \
 	src/libostree/ostree-bootconfig-parser.h \
 	src/libostree/ostree-repo-deprecated.h \
 	$(NULL)
+
+# This one is generated via configure.ac, and the gtk-doc
+# code hence needs to look in the builddir.
+libostree_public_built_headers = src/libostree/ostree-version.h

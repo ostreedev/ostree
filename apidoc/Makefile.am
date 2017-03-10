@@ -60,7 +60,7 @@ FIXXREF_OPTIONS=
 # Used for dependencies. The docs will be rebuilt if any of these change.
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
-HFILE_GLOB=$(addprefix $(top_srcdir)/,$(libostree_public_headers))
+HFILE_GLOB=$(addprefix $(top_srcdir)/,$(libostree_public_headers)) $(addprefix $(top_builddir)/,$(libostree_public_built_headers))
 CFILE_GLOB=$(top_srcdir)/src/libostree/*.c
 
 # Header files to ignore when scanning.
