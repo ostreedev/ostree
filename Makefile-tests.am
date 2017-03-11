@@ -39,7 +39,8 @@ TESTS_ENVIRONMENT += OT_SKIP_READDIR_RAND=1 G_SLICE=always-malloc
 endif
 
 uninstalled_test_data = tests/ostree-symlink-stamp tests/ostree-prepare-root-symlink-stamp \
-			tests/ostree-remount-symlink-stamp tests/rofiles-fuse-symlink-stamp
+			tests/ostree-remount-symlink-stamp tests/rofiles-fuse-symlink-stamp \
+			tests/ostree-union-fuse-symlink-stamp
 
 dist_uninstalled_test_scripts = tests/test-symbols.sh
 
@@ -110,8 +111,11 @@ if USE_LIBSOUP
 dist_test_scripts += tests/test-remote-cookies.sh
 endif
 
+dist_test_scripts += tests/test-union-fuse.sh
+
 # These call into gjs scripts 
 js_tests = tests/test-corruption.sh tests/test-pull-corruption.sh
+
 if BUILDOPT_GJS
 dist_test_scripts += $(js_tests)
 else
@@ -268,8 +272,8 @@ tests/libreaddir-rand.so: Makefile
 ALL_LOCAL_RULES += tests/libreaddir-rand.so
 CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp \
 		tests/ostree-prepare-root-symlink-stamp tests/ostree-remount-symlink-stamp \
-		tests/rofiles-fuse-symlink-stamp tests/ostree
-CLEANFILES += tests/ostree-prepare-root tests/ostree-remount tests/rofiles-fuse
+		tests/rofiles-fuse-symlink-stamp tests/ostree-union-fuse-symlink-stamp tests/ostree
+CLEANFILES += tests/ostree-prepare-root tests/ostree-remount tests/rofiles-fuse tests/ostree-union-fuse
 
 tests/%-symlink-stamp: % Makefile
 	$(AM_V_GEN) set -e; \

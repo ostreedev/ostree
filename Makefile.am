@@ -107,6 +107,7 @@ include Makefile-ostree.am
 include Makefile-switchroot.am
 if BUILDOPT_FUSE
 include src/rofiles-fuse/Makefile-inc.am
+include src/union-fuse/Makefile-inc.am
 endif
 include Makefile-tests.am
 include Makefile-boot.am
