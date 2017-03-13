@@ -2153,3 +2153,16 @@ _ostree_get_default_sysroot_path (void)
 
   return default_sysroot_path;
 }
+
+/**
+ * ostree_check_version:
+ * @required_year: Major/year required
+ * @required_release: Release version required
+ *
+ * Returns: %TRUE if current libostree has at least the requested version, %FALSE otherwise
+ */
+gboolean
+ostree_check_version (guint required_year, guint required_release)
+{
+  return OSTREE_CHECK_VERSION(required_year, required_release);
+}
