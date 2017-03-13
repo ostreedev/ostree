@@ -52,17 +52,13 @@ do_print_variant_generic (const GVariantType *type,
                           const char *filename,
                           GError **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GVariant) variant = NULL;
 
   if (!ot_util_variant_map_at (AT_FDCWD, filename, type, TRUE, &variant, error))
-    goto out;
+    return FALSE;
 
   ot_dump_variant (variant);
-
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -71,34 +67,23 @@ do_print_related (OstreeRepo  *repo,
                   const char *resolved_rev,
                   GError **error)
 {
-  gboolean ret = FALSE;
-  const char *name;
-  g_autoptr(GVariant) csum_v = NULL;
   g_autoptr(GVariant) variant = NULL;
-  g_autoptr(GVariant) related = NULL;
-  GVariantIter *viter = NULL;
-
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  resolved_rev, &variant, error))
-    goto out;
-      
-  /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
-  related = g_variant_get_child_value (variant, 2);
-  
-  viter = g_variant_iter_new (related);
+    return FALSE;
 
+  /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
+  g_autoptr(GVariant) related = g_variant_get_child_value (variant, 2);
+  g_autoptr(GVariantIter) viter = g_variant_iter_new (related);
+
+  const char *name;
+  GVariant* csum_v;
   while (g_variant_iter_loop (viter, "(&s@ay)", &name, &csum_v))
     {
       g_autofree char *checksum = ostree_checksum_from_bytes_v (csum_v);
       g_print ("%s %s\n", name, checksum);
     }
-  csum_v = NULL;
-
-  ret = TRUE;
- out:
-  if (viter)
-    g_variant_iter_free (viter);
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -108,8 +93,6 @@ do_print_metadata_key (OstreeRepo     *repo,
                        const char     *key,
                        GError        **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) value = NULL;
   g_autoptr(GVariant) commit = NULL;
   g_autoptr(GVariant) metadata = NULL;
 
@@ -117,7 +100,7 @@ do_print_metadata_key (OstreeRepo     *repo,
     {
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                      resolved_rev, &commit, error))
-        goto out;
+        return FALSE;
       /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
       metadata = g_variant_get_child_value (commit, 0);
     }
@@ -125,28 +108,25 @@ do_print_metadata_key (OstreeRepo     *repo,
     {
       if (!ostree_repo_read_commit_detached_metadata (repo, resolved_rev, &metadata,
                                                       NULL, error))
-        goto out;
+        return FALSE;
       if (metadata == NULL)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                        "No detached metadata for commit %s", resolved_rev);
-          goto out;
+          return FALSE;
         }
     }
-  
-  value = g_variant_lookup_value (metadata, key, NULL);
+
+  g_autoptr(GVariant) value = g_variant_lookup_value (metadata, key, NULL);
   if (!value)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "No such metadata key '%s'", key);
-      goto out;
+      return FALSE;
     }
 
   ot_dump_variant (value);
-
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -155,13 +135,12 @@ print_object (OstreeRepo          *repo,
               const char          *checksum,
               GError             **error)
 {
-  g_autoptr(GVariant) variant = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
-  gboolean ret = FALSE;
 
+  g_autoptr(GVariant) variant = NULL;
   if (!ostree_repo_load_variant (repo, objtype, checksum,
                                  &variant, error))
-    goto out;
+    return FALSE;
   if (opt_raw)
     flags |= OSTREE_DUMP_RAW;
   ot_dump_object (objtype, checksum, variant, flags);
@@ -169,7 +148,7 @@ print_object (OstreeRepo          *repo,
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
       glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-      GError *local_error = NULL;
+      g_autoptr(GError) local_error = NULL;
       g_autoptr(GFile) gpg_homedir = opt_gpg_homedir ? g_file_new_for_path (opt_gpg_homedir) : NULL;
 
       if (opt_gpg_verify_remote)
@@ -186,24 +165,20 @@ print_object (OstreeRepo          *repo,
 
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
-          g_clear_error (&local_error);
+          /* Ignore */
         }
       else if (local_error != NULL)
         {
-          g_propagate_error (error, local_error);
-          goto out;
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
         }
       else
         {
-          GString *buffer;
-          guint n_sigs, ii;
-
-          n_sigs = ostree_gpg_verify_result_count_all (result);
+          guint n_sigs = ostree_gpg_verify_result_count_all (result);
           g_print ("Found %u signature%s:\n", n_sigs, n_sigs == 1 ? "" : "s");
 
-          buffer = g_string_sized_new (256);
-
-          for (ii = 0; ii < n_sigs; ii++)
+          g_autoptr(GString) buffer = g_string_sized_new (256);
+          for (guint ii = 0; ii < n_sigs; ii++)
             {
               g_string_append_c (buffer, '\n');
               ostree_gpg_verify_result_describe (result, ii, buffer, "  ",
@@ -211,13 +186,10 @@ print_object (OstreeRepo          *repo,
             }
 
           g_print ("%s", buffer->str);
-          g_string_free (buffer, TRUE);
         }
     }
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -228,7 +200,6 @@ print_if_found (OstreeRepo        *repo,
                 GCancellable      *cancellable,
                 GError           **error)
 {
-  gboolean ret = FALSE;
   gboolean have_object = FALSE;
 
   if (*inout_was_found)
@@ -236,62 +207,56 @@ print_if_found (OstreeRepo        *repo,
 
   if (!ostree_repo_has_object (repo, objtype, checksum, &have_object,
                                cancellable, error))
-    goto out;
+    return FALSE;
   if (have_object)
     {
       if (!print_object (repo, objtype, checksum, error))
-        goto out;
+        return FALSE;
       *inout_was_found = TRUE;
     }
-  
-  ret = TRUE;
- out:
-  return ret;
+
+  return TRUE;
 }
 
 gboolean
 ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("OBJECT - Output a metadata object");
+
   glnx_unref_object OstreeRepo *repo = NULL;
-  gboolean ret = FALSE;
-  const char *rev;
-  g_autofree char *resolved_rev = NULL;
-
-  context = g_option_context_new ("OBJECT - Output a metadata object");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc <= 1)
     {
       ot_util_usage_error (context, "An object argument is required", error);
-      goto out;
+      return FALSE;
     }
-  rev = argv[1];
+  const char *rev = argv[1];
 
+  g_autofree char *resolved_rev = NULL;
   if (opt_print_metadata_key || opt_print_detached_metadata_key)
     {
       gboolean detached = opt_print_detached_metadata_key != NULL;
       const char *key = detached ? opt_print_detached_metadata_key : opt_print_metadata_key;
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
-        goto out;
+        return FALSE;
 
       if (!do_print_metadata_key (repo, resolved_rev, detached, key, error))
-        goto out;
+        return FALSE;
     }
   else if (opt_print_related)
     {
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
-        goto out;
+        return FALSE;
 
       if (!do_print_related (repo, rev, resolved_rev, error))
-        goto out;
+        return FALSE;
     }
   else if (opt_print_variant_type)
     {
       if (!do_print_variant_generic (G_VARIANT_TYPE (opt_print_variant_type), rev, error))
-        goto out;
+        return FALSE;
     }
   else
     {
@@ -299,33 +264,32 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
       if (!ostree_validate_checksum_string (rev, NULL))
         {
           if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
-            goto out;
+            return FALSE;
           if (!print_object (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev, error))
-            goto out;
+            return FALSE;
         }
       else
         {
           if (!print_if_found (repo, OSTREE_OBJECT_TYPE_COMMIT, rev,
                                &found, cancellable, error))
-            goto out;
+            return FALSE;
           if (!print_if_found (repo, OSTREE_OBJECT_TYPE_DIR_META, rev,
                                &found, cancellable, error))
-            goto out;
+            return FALSE;
           if (!print_if_found (repo, OSTREE_OBJECT_TYPE_DIR_TREE, rev,
                                &found, cancellable, error))
-            goto out;
+            return FALSE;
           if (!found)
             {
               g_autoptr(GFileInfo) finfo = NULL;
               g_autoptr(GVariant) xattrs = NULL;
-              GFileType filetype;
-              
+
               if (!ostree_repo_load_file (repo, rev, NULL, &finfo, &xattrs,
                                           cancellable, error))
-                goto out;
+                return FALSE;
 
               g_print ("Object: %s\nType: %s\n", rev, ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
-              filetype = g_file_info_get_file_type (finfo);
+              GFileType filetype = g_file_info_get_file_type (finfo);
               g_print ("File Type: ");
               switch (filetype)
                 {
@@ -358,8 +322,6 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
             }
         }
     }
- 
-  ret = TRUE;
- out:
-  return ret;
+
+  return TRUE;
 }
