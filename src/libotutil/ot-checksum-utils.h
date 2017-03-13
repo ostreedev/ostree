@@ -26,6 +26,8 @@
 
 G_BEGIN_DECLS
 
+void ot_bin2hex (char *out_buf, const guint8 *inbuf, gsize len);
+
 guchar *ot_csum_from_gchecksum (GChecksum *checksum);
 
 gboolean ot_gio_write_update_checksum (GOutputStream  *out,

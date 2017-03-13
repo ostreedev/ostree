@@ -26,6 +26,22 @@
 
 #include <string.h>
 
+
+void
+ot_bin2hex (char *out_buf, const guint8 *inbuf, gsize len)
+{
+  static const gchar hexchars[] = "0123456789abcdef";
+  guint i, j;
+
+  for (i = 0, j = 0; i < len; i++, j += 2)
+    {
+      guchar byte = inbuf[i];
+      out_buf[j] = hexchars[byte >> 4];
+      out_buf[j+1] = hexchars[byte & 0xF];
+    }
+  out_buf[j] = '\0';
+}
+
 guchar *
 ot_csum_from_gchecksum (GChecksum  *checksum)
 {
