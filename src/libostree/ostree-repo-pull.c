@@ -1882,7 +1882,7 @@ get_best_static_delta_start_for (OtPullData *pull_data,
   /* Array<char*> of possible from checksums */
   g_autoptr(GPtrArray) candidates = g_ptr_array_new_with_free_func (g_free);
   const char *newest_candidate = NULL;
-  guint64 newest_candidate_timestamp;
+  guint64 newest_candidate_timestamp = 0;
 
   g_assert (pull_data->summary_deltas_checksums != NULL);
   g_hash_table_iter_init (&hiter, pull_data->summary_deltas_checksums);
@@ -1911,7 +1911,7 @@ get_best_static_delta_start_for (OtPullData *pull_data,
   for (guint i = 0; i < candidates->len; i++)
     {
       const char *candidate = candidates->pdata[i];
-      guint64 candidate_ts;
+      guint64 candidate_ts = 0;
       g_autoptr(GVariant) commit = NULL;
       OstreeRepoCommitState state;
       gboolean have_candidate;
