@@ -22,6 +22,8 @@ noinst_LTLIBRARIES += libotutil.la
 libotutil_la_SOURCES = \
 	src/libotutil/ot-checksum-utils.c \
 	src/libotutil/ot-checksum-utils.h \
+	src/libotutil/ot-checksum-instream.c \
+	src/libotutil/ot-checksum-instream.h \
 	src/libotutil/ot-fs-utils.c \
 	src/libotutil/ot-fs-utils.h \
 	src/libotutil/ot-keyfile-utils.c \
