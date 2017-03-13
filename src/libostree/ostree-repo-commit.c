@@ -619,12 +619,11 @@ write_object (OstreeRepo         *self,
   OstreeRepoMode repo_mode;
   g_autofree char *temp_filename = NULL;
   g_autofree guchar *ret_csum = NULL;
-  glnx_unref_object OstreeChecksumInputStream *checksum_input = NULL;
+  glnx_unref_object OtChecksumInstream *checksum_input = NULL;
   g_autoptr(GInputStream) file_input = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
   g_autoptr(GVariant) xattrs = NULL;
   gboolean have_obj;
-  GChecksum *checksum = NULL;
   gboolean temp_file_is_regular;
   gboolean temp_file_is_symlink;
   glnx_fd_close int temp_fd = -1;
@@ -654,11 +653,7 @@ write_object (OstreeRepo         *self,
   repo_mode = ostree_repo_get_mode (self);
 
   if (out_csum)
-    {
-      checksum = g_checksum_new (G_CHECKSUM_SHA256);
-      if (input)
-        checksum_input = ostree_checksum_input_stream_new (input, checksum);
-    }
+    checksum_input = ot_checksum_instream_new (input, G_CHECKSUM_SHA256);
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
@@ -778,11 +773,11 @@ write_object (OstreeRepo         *self,
       temp_file_is_regular = TRUE;
     }
 
-  if (!checksum)
+  if (!checksum_input)
     actual_checksum = expected_checksum;
   else
     {
-      actual_checksum = g_checksum_get_string (checksum);
+      actual_checksum = ot_checksum_instream_get_string (checksum_input);
       if (expected_checksum && strcmp (actual_checksum, expected_checksum) != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -892,16 +887,15 @@ write_object (OstreeRepo         *self,
   else
     self->txn_stats.content_objects_total++;
   g_mutex_unlock (&self->txn_stats_lock);
-      
-  if (checksum)
-    ret_csum = ot_csum_from_gchecksum (checksum);
+
+  if (checksum_input)
+    ret_csum = ot_checksum_instream_dup_digest (checksum_input, NULL);
 
   ret = TRUE;
   ot_transfer_out_value(out_csum, &ret_csum);
  out:
   if (temp_filename)
     (void) unlinkat (self->tmp_dir_fd, temp_filename, 0);
-  g_clear_pointer (&checksum, (GDestroyNotify) g_checksum_free);
   return ret;
 }
 
