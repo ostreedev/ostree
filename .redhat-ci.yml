@@ -76,10 +76,11 @@ tests:
 inherit: true
 required: true
 
-context: curl
+context: curl-openssl
 
 packages:
   - pkgconfig(libcurl)
+  - pkgconfig(openssl)
 
 build:
     config-opts: >
@@ -88,6 +89,7 @@ build:
       --enable-installed-tests
       --enable-gtk-doc
       --with-curl
+      --with-openssl
 
 tests:
   - make check

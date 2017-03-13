@@ -298,6 +298,23 @@ AS_IF([ test x$with_smack = xyes], [
 ])
 AM_CONDITIONAL(USE_SMACK, test $with_smack != no)
 
+dnl begin openssl
+OPENSSL_DEPENDENCY="libselinux >= 1.0.1"
+AC_ARG_WITH(openssl,
+AS_HELP_STRING([--with-openssl], [Enable use of OpenSSL (checksums)]),
+:, with_openssl=no)
+
+AS_IF([ test x$with_openssl != xno ], [
+      PKG_CHECK_MODULES(OT_DEP_OPENSSL, $OPENSSL_DEPENDENCY)
+      AC_DEFINE([HAVE_OPENSSL], 1, [Define if we have openssl])
+      with_openssl=yes
+], [
+      with_openssl=no
+])
+if test x$with_openssl != xno; then OSTREE_FEATURES="$OSTREE_FEATURES openssl"; fi
+AM_CONDITIONAL(USE_OPENSSL, test $with_openssl != no)
+dnl end openssl
+
 dnl This is what is in RHEL7.2 right now, picking it arbitrarily
 LIBMOUNT_DEPENDENCY="mount >= 2.23.0"
 
@@ -430,6 +447,7 @@ echo "
     HTTP backend:                                 $fetcher_backend
     \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
     SELinux:                                      $with_selinux
+    OpenSSL (checksums):                          $with_openssl
     systemd:                                      $have_libsystemd
     libmount:                                     $with_libmount
     libarchive (parse tar files directly):        $with_libarchive

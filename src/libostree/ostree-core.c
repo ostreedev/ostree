@@ -1351,16 +1351,7 @@ void
 ostree_checksum_inplace_from_bytes (const guchar *csum,
                                     char         *buf)
 {
-  static const gchar hexchars[] = "0123456789abcdef";
-  guint i, j;
-
-  for (i = 0, j = 0; i < OSTREE_SHA256_DIGEST_LEN; i++, j += 2)
-    {
-      guchar byte = csum[i];
-      buf[j] = hexchars[byte >> 4];
-      buf[j+1] = hexchars[byte & 0xF];
-    }
-  buf[j] = '\0';
+  ot_bin2hex (buf, csum, OSTREE_SHA256_DIGEST_LEN);
 }
 
 /**
