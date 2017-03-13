@@ -1269,12 +1269,13 @@ ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
 
 /**
  * ostree_sysroot_origin_new_from_refspec:
+ * @self: Sysroot
  * @refspec: A refspec
  *
  * Returns: (transfer full): A new config file which sets @refspec as an origin
  */
 GKeyFile *
-ostree_sysroot_origin_new_from_refspec (OstreeSysroot  *sysroot,
+ostree_sysroot_origin_new_from_refspec (OstreeSysroot  *self,
                                         const char     *refspec)
 {
   GKeyFile *ret = g_key_file_new ();

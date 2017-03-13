@@ -378,6 +378,8 @@ initable_iface_init (GInitableIface *initable_iface)
 /**
  * ostree_sepolicy_new:
  * @path: Path to a root directory
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Returns: (transfer full): An accessor object for SELinux policy in root located at @path
  */
@@ -621,6 +623,7 @@ ostree_sepolicy_setfscreatecon (OstreeSePolicy   *self,
 
 /**
  * ostree_sepolicy_fscreatecon_cleanup:
+ * @unused: Not used, just in case you didn't infer that from the parameter name
  *
  * Cleanup function for ostree_sepolicy_setfscreatecon().
  */

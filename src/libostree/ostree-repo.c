@@ -4226,6 +4226,13 @@ out:
 
 /**
  * ostree_repo_sign_delta:
+ * @self: Self
+ * @from_commit: From commit
+ * @to_commit: To commit
+ * @key_id: key id
+ * @homedir: homedir
+ * @cancellable: cancellable
+ * @error: error
  *
  * This function is deprecated, sign the summary file instead.
  * Add a GPG signature to a static delta.

@@ -293,6 +293,8 @@ ostree_sysroot_upgrader_init (OstreeSysrootUpgrader *self)
 /**
  * ostree_sysroot_upgrader_new:
  * @sysroot: An #OstreeSysroot
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Returns: (transfer full): An upgrader
  */
@@ -309,6 +311,8 @@ ostree_sysroot_upgrader_new (OstreeSysroot *sysroot,
  * ostree_sysroot_upgrader_new_for_os:
  * @sysroot: An #OstreeSysroot
  * @osname: (allow-none): Operating system name
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Returns: (transfer full): An upgrader
  */
@@ -327,6 +331,8 @@ ostree_sysroot_upgrader_new_for_os (OstreeSysroot *sysroot,
  * @sysroot: An #OstreeSysroot
  * @osname: (allow-none): Operating system name
  * @flags: Flags
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Returns: (transfer full): An upgrader
  */
@@ -514,6 +520,14 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
 
 /**
  * ostree_sysroot_upgrader_pull_one_dir:
+ * @self: Upgrader
+ * @dir_to_pull: Subdirectory path (should include a leading /)
+ * @flags: Flags controlling pull behavior
+ * @upgrader_flags: Flags controlling upgrader behavior
+ * @progress: (allow-none): Progress
+ * @out_changed: (out): Whether or not the origin changed
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Like ostree_sysroot_upgrader_pull(), but allows retrieving just a
  * subpath of the tree.  This can be used to download metadata files
