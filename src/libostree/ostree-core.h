@@ -399,4 +399,7 @@ gchar *  ostree_commit_get_parent            (GVariant  *commit_variant);
 _OSTREE_PUBLIC
 guint64  ostree_commit_get_timestamp         (GVariant  *commit_variant);
 
+_OSTREE_PUBLIC
+gboolean ostree_check_version (guint required_year, guint required_release);
+
 G_END_DECLS
