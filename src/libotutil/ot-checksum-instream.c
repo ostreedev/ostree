@@ -167,7 +167,7 @@ ot_checksum_instream_dup_digest (OtChecksumInstream *stream,
 {
 #ifdef HAVE_OPENSSL
   guint len;
-  guchar *ret = g_malloc (EVP_MAX_MD_SIZE);
+  guchar *ret = g_malloc0 (EVP_MAX_MD_SIZE);
   g_assert (EVP_DigestFinal_ex (stream->priv->checksum, ret, &len));
 #else
   gsize len = g_checksum_type_get_length (stream->priv->checksum_type);
