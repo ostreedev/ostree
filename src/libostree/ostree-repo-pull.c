@@ -1198,6 +1198,14 @@ gpg_verify_unwritten_commit (OtPullData         *pull_data,
 }
 
 static gboolean
+commitstate_is_partial (OtPullData   *pull_data,
+                        OstreeRepoCommitState commitstate)
+{
+  return pull_data->legacy_transaction_resuming
+    || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
+}
+
+static gboolean
 scan_commit_object (OtPullData         *pull_data,
                     const char         *checksum,
                     guint               recursion_depth,
@@ -1253,8 +1261,7 @@ scan_commit_object (OtPullData         *pull_data,
     goto out;
 
   /* If we found a legacy transaction flag, assume all commits are partial */
-  is_partial = pull_data->legacy_transaction_resuming
-    || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
+  is_partial = commitstate_is_partial (pull_data, commitstate);
 
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
   g_variant_get_child (commit, 1, "@ay", &parent_csum);
@@ -3242,6 +3249,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_autofree char *from_revision = NULL;
       const char *ref = key;
       const char *to_revision = value;
+      gboolean have_valid_from_commit = TRUE;
 
       /* If we have a summary, find the latest local commit we have
        * to use as a from revision for static deltas.
@@ -3257,9 +3265,27 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
                                         &from_revision, error))
             goto out;
+
+          /* Determine whether the from revision we have is partial; this
+           * can happen if e.g. one uses `ostree pull --commit-metadata-only`.
+           * This mirrors the logic in get_best_static_delta_start_for().
+           */
+          if (from_revision)
+            {
+              OstreeRepoCommitState from_commitstate;
+
+              if (!ostree_repo_load_commit (pull_data->repo, from_revision, NULL,
+                                            &from_commitstate, error))
+                goto out;
+
+              /* Was it partial?  OK, we can't use it. */
+              if (commitstate_is_partial (pull_data, from_commitstate))
+                have_valid_from_commit = FALSE;
+            }
         }
 
       if (!disable_static_deltas &&
+          have_valid_from_commit &&
           (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
         {
           g_autofree char *delta_name =
