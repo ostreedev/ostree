@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "ot-checksum-instream.h"
+#include "ot-checksum-utils.h"
 
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
