@@ -889,7 +889,10 @@ write_object (OstreeRepo         *self,
   g_mutex_unlock (&self->txn_stats_lock);
 
   if (checksum_input)
-    ret_csum = ot_checksum_instream_dup_digest (checksum_input, NULL);
+    {
+      g_assert (actual_checksum);
+      ret_csum = ostree_checksum_to_bytes (actual_checksum);
+    }
 
   ret = TRUE;
   ot_transfer_out_value(out_csum, &ret_csum);
