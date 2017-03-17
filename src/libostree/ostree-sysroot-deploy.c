@@ -423,11 +423,18 @@ copy_modified_config_file (int                 orig_etc_fd,
   return ret;
 }
 
-/**
- * merge_etc_changes:
+/*
+ * merge_configuration_from:
+ * @sysroot: Sysroot
+ * @merge_deployment: Source of configuration differences
+ * @merge_deployment_dfd: Directory fd, may be -1
+ * @new_deployment: Target for merge of configuration
+ * @new_deployment_dfd: Directory fd for @new_deployment (may *not* be -1)
+ * @cancellable: Cancellable
+ * @error: Error
  *
- * Compute the difference between @orig_etc and @modified_etc,
- * and apply that to @new_etc.
+ * Compute the difference between @merge_deployment's `/usr/etc` and `/etc`, and
+ * apply that to @new_deployment's `/etc`.
  *
  * The algorithm for computing the difference is pretty simple; it's
  * approximately equivalent to "diff -unR orig_etc modified_etc",
@@ -435,26 +442,37 @@ copy_modified_config_file (int                 orig_etc_fd,
  * changed in @new_etc, the modified version always wins.
  */
 static gboolean
-merge_etc_changes (GFile          *orig_etc,
-                   GFile          *modified_etc,
-                   GFile          *new_etc,
-                   OstreeSysrootDebugFlags flags,
-                   GCancellable   *cancellable,
-                   GError        **error)
+merge_configuration_from (OstreeSysroot    *sysroot,
+                          OstreeDeployment *merge_deployment,
+                          int               merge_deployment_dfd,
+                          OstreeDeployment *new_deployment,
+                          int               new_deployment_dfd,
+                          GCancellable     *cancellable,
+                          GError          **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GPtrArray) modified = NULL;
-  g_autoptr(GPtrArray) removed = NULL;
-  g_autoptr(GPtrArray) added = NULL;
-  guint i;
-  glnx_fd_close int orig_etc_fd = -1;
-  glnx_fd_close int modified_etc_fd = -1;
-  glnx_fd_close int new_etc_fd = -1; 
+  glnx_fd_close int owned_merge_deployment_dfd = -1;
+  const OstreeSysrootDebugFlags flags = sysroot->debug_flags;
 
-  modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
-  removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
-  added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  g_assert (merge_deployment != NULL && new_deployment != NULL);
+  g_assert (new_deployment_dfd != -1);
 
+  /* Allow the caller to pass -1 for the merge, for convenience */
+  if (merge_deployment_dfd == -1)
+    {
+      g_autofree char *merge_deployment_path = ostree_sysroot_get_deployment_dirpath (sysroot, merge_deployment);
+      if (!glnx_opendirat (sysroot->sysroot_fd, merge_deployment_path, FALSE,
+                           &owned_merge_deployment_dfd, error))
+        return FALSE;
+      merge_deployment_dfd = owned_merge_deployment_dfd;
+    }
+
+  /* TODO: get rid of GFile usage here */
+  g_autoptr(GFile) orig_etc = ot_fdrel_to_gfile (merge_deployment_dfd, "usr/etc");
+  g_autoptr(GFile) modified_etc = ot_fdrel_to_gfile (merge_deployment_dfd, "etc");
+  /* Return values for below */
+  g_autoptr(GPtrArray) modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
+  g_autoptr(GPtrArray) removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  g_autoptr(GPtrArray) added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   /* For now, ignore changes to xattrs; the problem is that
    * security.selinux will be different between the /usr/etc labels
    * and the ones in the real /etc, so they all show up as different.
@@ -466,42 +484,37 @@ merge_etc_changes (GFile          *orig_etc,
   if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_IGNORE_XATTRS,
                          orig_etc, modified_etc, modified, removed, added,
                          cancellable, error))
-    {
-      g_prefix_error (error, "While computing configuration diff: ");
-      goto out;
-    }
+    return g_prefix_error (error, "While computing configuration diff: "), FALSE;
 
   ot_log_structured_print_id_v (OSTREE_CONFIGMERGE_ID,
-                                "Copying /etc changes: %u modified, %u removed, %u added", 
+                                "Copying /etc changes: %u modified, %u removed, %u added",
                                 modified->len,
                                 removed->len,
                                 added->len);
 
-  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (orig_etc), TRUE,
-                       &orig_etc_fd, error))
-    goto out;
-  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (modified_etc), TRUE,
-                       &modified_etc_fd, error))
-    goto out;
-  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (new_etc), TRUE,
-                       &new_etc_fd, error))
-    goto out;
+  glnx_fd_close int orig_etc_fd = -1;
+  if (!glnx_opendirat (merge_deployment_dfd, "usr/etc", TRUE, &orig_etc_fd, error))
+    return FALSE;
+  glnx_fd_close int modified_etc_fd = -1;
+  if (!glnx_opendirat (merge_deployment_dfd, "etc", TRUE, &modified_etc_fd, error))
+    return FALSE;
+  glnx_fd_close int new_etc_fd = -1;
+  if (!glnx_opendirat (new_deployment_dfd, "etc", TRUE, &new_etc_fd, error))
+    return FALSE;
 
-  for (i = 0; i < removed->len; i++)
+  for (guint i = 0; i < removed->len; i++)
     {
       GFile *file = removed->pdata[i];
-      g_autoptr(GFile) target_file = NULL;
       g_autofree char *path = NULL;
 
       path = g_file_get_relative_path (orig_etc, file);
       g_assert (path);
-      target_file = g_file_resolve_relative_path (new_etc, path);
 
-      if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (target_file), cancellable, error))
-        goto out;
+      if (!glnx_shutil_rm_rf_at (new_etc_fd, path, cancellable, error))
+        return FALSE;
     }
 
-  for (i = 0; i < modified->len; i++)
+  for (guint i = 0; i < modified->len; i++)
     {
       OstreeDiffItem *diff = modified->pdata[i];
       g_autofree char *path = g_file_get_relative_path (modified_etc, diff->target);
@@ -510,9 +523,9 @@ merge_etc_changes (GFile          *orig_etc,
 
       if (!copy_modified_config_file (orig_etc_fd, modified_etc_fd, new_etc_fd, path,
                                       flags, cancellable, error))
-        goto out;
+        return FALSE;
     }
-  for (i = 0; i < added->len; i++)
+  for (guint i = 0; i < added->len; i++)
     {
       GFile *file = added->pdata[i];
       g_autofree char *path = g_file_get_relative_path (modified_etc, file);
@@ -521,12 +534,10 @@ merge_etc_changes (GFile          *orig_etc,
 
       if (!copy_modified_config_file (orig_etc_fd, modified_etc_fd, new_etc_fd, path,
                                       flags, cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -775,16 +786,7 @@ merge_configuration (OstreeSysroot         *sysroot,
                      GCancellable          *cancellable,
                      GError               **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *deployment_abspath = glnx_fdrel_abspath (deployment_dfd, ".");
-  g_autoptr(GFile) deployment_path = g_file_new_for_path (deployment_abspath);
-  g_autoptr(GFile) source_etc_path = NULL;
-  g_autoptr(GFile) source_etc_pristine_path = NULL;
-  g_autoptr(GFile) deployment_usretc_path = NULL;
-  g_autoptr(GFile) deployment_etc_path = NULL;
   glnx_unref_object OstreeSePolicy *sepolicy = NULL;
-  gboolean etc_exists;
-  gboolean usretc_exists;
 
   if (previous_deployment)
     {
@@ -792,8 +794,6 @@ merge_configuration (OstreeSysroot         *sysroot,
       OstreeBootconfigParser *previous_bootconfig;
 
       previous_path = ostree_sysroot_get_deployment_directory (sysroot, previous_deployment);
-      source_etc_path = g_file_resolve_relative_path (previous_path, "etc");
-      source_etc_pristine_path = g_file_resolve_relative_path (previous_path, "usr/etc");
 
       previous_bootconfig = ostree_deployment_get_bootconfig (previous_deployment);
       if (previous_bootconfig)
@@ -807,26 +807,20 @@ merge_configuration (OstreeSysroot         *sysroot,
         }
     }
 
-  deployment_etc_path = g_file_get_child (deployment_path, "etc");
-  deployment_usretc_path = g_file_resolve_relative_path (deployment_path, "usr/etc");
-  
-  etc_exists = g_file_query_exists (deployment_etc_path, NULL);
-  usretc_exists = g_file_query_exists (deployment_usretc_path, NULL);
+  gboolean etc_exists = FALSE;
+  if (!ot_query_exists_at (deployment_dfd, "etc", &etc_exists, error))
+    return FALSE;
+  gboolean usretc_exists = FALSE;
+  if (!ot_query_exists_at (deployment_dfd, "usr/etc", &usretc_exists, error))
+    return FALSE;
 
   if (etc_exists && usretc_exists)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                           "Tree contains both /etc and /usr/etc");
-      goto out;
-    }
+    return glnx_throw (error, "Tree contains both /etc and /usr/etc");
   else if (etc_exists)
     {
       /* Compatibility hack */
       if (renameat (deployment_dfd, "etc", deployment_dfd, "usr/etc") < 0)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "renameat");
       usretc_exists = TRUE;
       etc_exists = FALSE;
     }
@@ -843,9 +837,9 @@ merge_configuration (OstreeSysroot         *sysroot,
       /* Here, we initialize SELinux policy from the /usr/etc inside
        * the root - this is before we've finalized the configuration
        * merge into /etc. */
-      sepolicy = ostree_sepolicy_new (deployment_path, cancellable, error);
+      sepolicy = ostree_sepolicy_new_at (deployment_dfd, cancellable, error);
       if (!sepolicy)
-        goto out;
+        return FALSE;
       if (ostree_sepolicy_get_name (sepolicy) != NULL)
         etc_co_opts.sepolicy = sepolicy;
 
@@ -854,21 +848,21 @@ merge_configuration (OstreeSysroot         *sysroot,
                                     deployment_dfd, "etc",
                                     ostree_deployment_get_csum (deployment),
                                     cancellable, error))
-        goto out;
+        return FALSE;
+
     }
 
-  if (source_etc_path)
+  if (previous_deployment)
     {
-      if (!merge_etc_changes (source_etc_pristine_path, source_etc_path, deployment_etc_path,
-                              sysroot->debug_flags, cancellable, error))
-        goto out;
+      if (!merge_configuration_from (sysroot, previous_deployment, -1,
+                                     deployment, deployment_dfd,
+                                     cancellable, error))
+        return FALSE;
     }
 
-  ret = TRUE;
   if (out_sepolicy)
     *out_sepolicy = g_steal_pointer (&sepolicy);
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
