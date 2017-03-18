@@ -42,6 +42,8 @@
 struct OstreeSePolicy {
   GObject parent;
 
+  int rootfs_dfd;
+  int rootfs_dfd_owned;
   GFile *path;
 
   gboolean runtime_enabled;
@@ -63,7 +65,8 @@ static void initable_iface_init       (GInitableIface      *initable_iface);
 enum {
   PROP_0,
 
-  PROP_PATH
+  PROP_PATH,
+  PROP_ROOTFS_DFD
 };
 
 G_DEFINE_TYPE_WITH_CODE (OstreeSePolicy, ostree_sepolicy, G_TYPE_OBJECT,
@@ -75,6 +78,8 @@ ostree_sepolicy_finalize (GObject *object)
   OstreeSePolicy *self = OSTREE_SEPOLICY (object);
 
   g_clear_object (&self->path);
+  if (self->rootfs_dfd_owned != -1)
+    (void) close (self->rootfs_dfd_owned);
 #ifdef HAVE_SELINUX
   g_clear_object (&self->selinux_policy_root);
   g_clear_pointer (&self->selinux_policy_name, g_free);
@@ -100,8 +105,22 @@ ostree_sepolicy_set_property(GObject         *object,
   switch (prop_id)
     {
     case PROP_PATH:
-      /* Canonicalize */
-      self->path = g_file_new_for_path (gs_file_get_path_cached (g_value_get_object (value)));
+      {
+        GFile *path = g_value_get_object (value);
+        if (path)
+          {
+            /* Canonicalize */
+            self->path = g_file_new_for_path (gs_file_get_path_cached (path));
+          }
+        self->rootfs_dfd = -1;
+      }
+      break;
+    case PROP_ROOTFS_DFD:
+      {
+        self->rootfs_dfd = g_value_get_int (value);
+        g_clear_object (&self->path);
+        self->path = ot_fdrel_to_gfile (self->rootfs_dfd, ".");
+      }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -122,6 +141,9 @@ ostree_sepolicy_get_property(GObject         *object,
     case PROP_PATH:
       g_value_set_object (value, self->path);
       break;
+    case PROP_ROOTFS_DFD:
+      g_value_set_int (value, self->rootfs_dfd);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -133,7 +155,7 @@ ostree_sepolicy_constructed (GObject *object)
 {
   OstreeSePolicy *self = OSTREE_SEPOLICY (object);
 
-  g_assert (self->path != NULL);
+  g_assert (self->path != NULL || self->rootfs_dfd != -1);
 
   G_OBJECT_CLASS (ostree_sepolicy_parent_class)->constructed (object);
 }
@@ -155,6 +177,13 @@ ostree_sepolicy_class_init (OstreeSePolicyClass *klass)
                                                         "",
                                                         G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class,
+                                   PROP_ROOTFS_DFD,
+                                   g_param_spec_int ("rootfs-dfd",
+                                                     "", "",
+                                                     -1, G_MAXINT, -1,
+                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
 }
 
 #ifdef HAVE_SELINUX
@@ -262,6 +291,15 @@ initable_init (GInitable     *initable,
   const char *selinux_prefix = "SELINUX=";
   const char *selinuxtype_prefix = "SELINUXTYPE=";
 
+  /* TODO - use this below */
+  if (self->rootfs_dfd == -1)
+    {
+      if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->path), TRUE,
+                           &self->rootfs_dfd_owned, error))
+        goto out;
+      self->rootfs_dfd = self->rootfs_dfd_owned;
+    }
+
   etc_selinux_dir = g_file_resolve_relative_path (self->path, "etc/selinux");
   if (!g_file_query_exists (etc_selinux_dir, NULL))
     {
@@ -367,6 +405,8 @@ initable_init (GInitable     *initable,
 static void
 ostree_sepolicy_init (OstreeSePolicy *self)
 {
+  self->rootfs_dfd = -1;
+  self->rootfs_dfd_owned = -1;
 }
 
 static void
@@ -389,6 +429,22 @@ ostree_sepolicy_new (GFile         *path,
                      GError       **error)
 {
   return g_initable_new (OSTREE_TYPE_SEPOLICY, cancellable, error, "path", path, NULL);
+}
+
+/**
+ * ostree_sepolicy_new_at:
+ * @rootfs_dfd: Directory fd for rootfs (will not be cloned)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Returns: (transfer full): An accessor object for SELinux policy in root located at @rootfs_dfd
+ */
+OstreeSePolicy*
+ostree_sepolicy_new_at (int         rootfs_dfd,
+                        GCancellable  *cancellable,
+                        GError       **error)
+{
+  return g_initable_new (OSTREE_TYPE_SEPOLICY, cancellable, error, "rootfs-dfd", rootfs_dfd, NULL);
 }
 
 /**
