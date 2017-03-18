@@ -25,6 +25,16 @@
 #include <sys/xattr.h>
 #include <gio/gunixinputstream.h>
 
+/* Convert a fd-relative path to a GFile* - use
+ * for legacy code.
+ */
+GFile *
+ot_fdrel_to_gfile (int dfd, const char *path)
+{
+  g_autofree char *abspath = glnx_fdrel_abspath (dfd, path);
+  return g_file_new_for_path (abspath);
+}
+
 int
 ot_opendirat (int dfd, const char *path, gboolean follow)
 {
@@ -202,6 +212,30 @@ ot_ensure_unlinked_at (int dfd,
           return FALSE;
         }
     }
+  return TRUE;
+}
+
+gboolean
+ot_query_exists_at (int dfd, const char *path,
+                    gboolean *out_exists,
+                    GError **error)
+{
+  struct stat stbuf;
+  gboolean ret_exists;
+
+  if (fstatat (dfd, path, &stbuf, AT_SYMLINK_NOFOLLOW) < 0)
+    {
+      if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+      ret_exists = FALSE;
+    }
+  else
+    ret_exists = TRUE;
+
+  *out_exists = ret_exists;
   return TRUE;
 }
 
