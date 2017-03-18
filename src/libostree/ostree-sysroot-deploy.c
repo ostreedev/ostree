@@ -702,88 +702,61 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
 }
 
 static gboolean
-selinux_relabel_file (OstreeSysroot                 *sysroot,
-                      OstreeSePolicy                *sepolicy,
-                      GFile                         *path,
-                      const char                    *prefix,
-                      GCancellable                  *cancellable,
-                      GError                       **error)
-{
-  gboolean ret = FALSE;
-  g_autoptr(GPtrArray) path_parts = g_ptr_array_new ();
-  g_autoptr(GFileInfo) file_info = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
-                                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                            cancellable, error);
-  if (!file_info)
-    goto out;
-
-  g_ptr_array_add (path_parts, (char*)prefix);
-  g_ptr_array_add (path_parts, (char*)g_file_info_get_name (file_info));
-  if (!relabel_one_path (sysroot, sepolicy, path, file_info, path_parts,
-                         cancellable, error))
-    {
-      g_prefix_error (error, "Relabeling /%s/%s: ", prefix,
-                      g_file_info_get_name (file_info));
-      goto out;
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
 selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
                                OstreeSePolicy                *sepolicy,
-                               GFile                         *deployment_var_path,
+                               int                            os_deploy_dfd,
                                GCancellable                  *cancellable,
                                GError                       **error)
 {
-  gboolean ret = FALSE;
   /* This is a bit of a hack; we should change the code at some
    * point in the distant future to only create (and label) /var
    * when doing a deployment.
    */
-  g_autoptr(GFile) deployment_var_labeled = 
-    g_file_get_child (deployment_var_path, ".ostree-selabeled");
-  g_autoptr(GFile) deployment_var_labeled_tmp = 
-    g_file_get_child (deployment_var_path, ".ostree-selabeled.tmp");
-      
-  if (!g_file_query_exists (deployment_var_labeled, NULL))
+  const char selabeled[] = "var/.ostree-selabeled";
+  gboolean deployment_var_labeled;
+
+  if (!ot_query_exists_at (os_deploy_dfd, selabeled, &deployment_var_labeled, error))
+    return FALSE;
+
+  if (!deployment_var_labeled)
     {
       ot_log_structured_print_id_v (OSTREE_VARRELABEL_ID,
                                     "Relabeling /var (no stamp file '%s' found)",
-                                    gs_file_get_path_cached (deployment_var_labeled));
+                                    selabeled);
 
+      g_autoptr(GFile) deployment_var_path = ot_fdrel_to_gfile (os_deploy_dfd, "var");
       if (!selinux_relabel_dir (sysroot, sepolicy,
                                 deployment_var_path, "var",
                                 cancellable, error))
         {
           g_prefix_error (error, "Relabeling /var: ");
-          goto out;
+          return FALSE;
         }
 
-      if (!g_file_replace_contents (deployment_var_labeled_tmp, "", 0, NULL, FALSE,
-                                    G_FILE_CREATE_REPLACE_DESTINATION, NULL,
-                                    cancellable, error))
-        goto out;
-          
-      if (!selinux_relabel_file (sysroot, sepolicy,
-                                 deployment_var_labeled_tmp, "var",
-                                 cancellable, error))
-        goto out;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+      { ostree_cleanup_sepolicy_fscreatecon gpointer dummy = NULL;
+#pragma GCC diagnostic pop
 
-      if (rename (gs_file_get_path_cached (deployment_var_labeled_tmp),
-                  gs_file_get_path_cached (deployment_var_labeled)) < 0)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        if (sysroot->sepolicy != NULL
+            && ostree_sepolicy_get_name (sysroot->sepolicy) != NULL)
+          {
+            const char *selabeled_abspath = glnx_strjoina ("/", selabeled);
+            if (!ostree_sepolicy_setfscreatecon (sysroot->sepolicy,
+                                                 selabeled_abspath,
+                                                 0644,
+                                                 error))
+              return FALSE;
+          }
+
+        if (!glnx_file_replace_contents_at (os_deploy_dfd, selabeled, (guint8*)"", 0,
+                                            GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                            cancellable, error))
+          return FALSE;
+      }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -1997,7 +1970,6 @@ allocate_deployserial (OstreeSysroot           *self,
                        GCancellable            *cancellable,
                        GError                 **error)
 {
-  gboolean ret = FALSE;
   guint i;
   int new_deployserial = 0;
   g_autoptr(GFile) osdir = NULL;
@@ -2008,7 +1980,7 @@ allocate_deployserial (OstreeSysroot           *self,
 
   if (!_ostree_sysroot_list_deployment_dirs_for_os (osdir, tmp_current_deployments,
                                                     cancellable, error))
-    goto out;
+    return FALSE;
 
   for (i = 0; i < tmp_current_deployments->len; i++)
     {
@@ -2020,12 +1992,10 @@ allocate_deployserial (OstreeSysroot           *self,
       new_deployserial = MAX(new_deployserial, ostree_deployment_get_deployserial (deployment)+1);
     }
 
-  ret = TRUE;
   *out_deployserial = new_deployserial;
- out:
-  return ret;
+  return TRUE;
 }
-                            
+
 /**
  * ostree_sysroot_deploy_tree:
  * @self: Sysroot
@@ -2052,103 +2022,93 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                             GCancellable      *cancellable,
                             GError           **error)
 {
-  gboolean ret = FALSE;
-  gint new_deployserial;
-  glnx_unref_object OstreeDeployment *new_deployment = NULL;
-  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
-  g_autoptr(GFile) osdeploydir = NULL;
-  g_autoptr(GFile) deployment_var = NULL;
-  glnx_fd_close int tree_boot_dfd = -1;
-  g_autofree char *tree_kernel_path = NULL;
-  g_autofree char *tree_initramfs_path = NULL;
-  glnx_fd_close int deployment_dfd = -1;
-  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
-  g_autofree char *new_bootcsum = NULL;
-  glnx_unref_object OstreeBootconfigParser *bootconfig = NULL;
-
   g_return_val_if_fail (osname != NULL || self->booted_deployment != NULL, FALSE);
 
   if (osname == NULL)
     osname = ostree_deployment_get_osname (self->booted_deployment);
 
-  osdeploydir = ot_gfile_get_child_build_path (self->path, "ostree", "deploy", osname, NULL);
-  if (!g_file_query_exists (osdeploydir, NULL))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No OS named \"%s\" known", osname);
-      goto out;
-    }
+  const char *osdeploypath = glnx_strjoina ("ostree/deploy/", osname);
+  glnx_fd_close int os_deploy_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, osdeploypath, TRUE, &os_deploy_dfd, error))
+    return FALSE;
 
-  deployment_var = g_file_get_child (osdeploydir, "var");
-
+  glnx_unref_object OstreeRepo *repo = NULL;
   if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
+  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
   if (provided_merge_deployment != NULL)
     merge_deployment = g_object_ref (provided_merge_deployment);
 
+  gint new_deployserial;
   if (!allocate_deployserial (self, osname, revision, &new_deployserial,
                               cancellable, error))
-    goto out;
+    return FALSE;
 
-  new_deployment = ostree_deployment_new (0, osname, revision, new_deployserial,
-                                          new_bootcsum, -1);
+  g_autofree char *new_bootcsum = NULL;
+  glnx_unref_object OstreeDeployment *new_deployment =
+    ostree_deployment_new (0, osname, revision, new_deployserial,
+                           new_bootcsum, -1);
   ostree_deployment_set_origin (new_deployment, origin);
 
   /* Check out the userspace tree onto the filesystem */
+  glnx_fd_close int deployment_dfd = -1;
   if (!checkout_deployment_tree (self, repo, new_deployment, &deployment_dfd,
                                  cancellable, error))
     {
       g_prefix_error (error, "Checking out tree: ");
-      goto out;
+      return FALSE;
     }
 
+  glnx_fd_close int tree_boot_dfd = -1;
+  g_autofree char *tree_kernel_path = NULL;
+  g_autofree char *tree_initramfs_path = NULL;
   if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
                              &tree_kernel_path, &tree_initramfs_path,
                              cancellable, error))
-    goto out;
-  
+    return FALSE;
+
   if (tree_initramfs_path != NULL)
     {
       if (!checksum_from_kernel_src (tree_initramfs_path, &new_bootcsum, error))
-        goto out;
+        return FALSE;
     }
   else
     {
       if (!checksum_from_kernel_src (tree_kernel_path, &new_bootcsum, error))
-        goto out;
+        return FALSE;
     }
-  
+
   _ostree_deployment_set_bootcsum (new_deployment, new_bootcsum);
 
   /* Create an empty boot configuration; we will merge things into
    * it as we go.
    */
-  bootconfig = ostree_bootconfig_parser_new ();
+  glnx_unref_object OstreeBootconfigParser *bootconfig = ostree_bootconfig_parser_new ();
   ostree_deployment_set_bootconfig (new_deployment, bootconfig);
 
+  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
   if (!merge_configuration (self, merge_deployment, new_deployment,
                             deployment_dfd,
                             &sepolicy,
                             cancellable, error))
     {
       g_prefix_error (error, "During /etc merge: ");
-      goto out;
+      return FALSE;
     }
 
   g_clear_object (&self->sepolicy);
   self->sepolicy = g_object_ref (sepolicy);
 
-  if (!selinux_relabel_var_if_needed (self, sepolicy, deployment_var,
+  if (!selinux_relabel_var_if_needed (self, sepolicy, os_deploy_dfd,
                                       cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!(self->debug_flags & OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS))
     {
       if (!ostree_sysroot_deployment_set_mutable (self, new_deployment, FALSE,
                                                   cancellable, error))
-        goto out;
+        return FALSE;
     }
 
 #pragma GCC diagnostic push
@@ -2166,7 +2126,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                              "/etc/ostree/remotes.d/dummy.conf",
                                              0644,
                                              error))
-          goto out;
+          return FALSE;
       }
 
     /* Don't fsync here, as we assume that's all done in
@@ -2177,7 +2137,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                      cancellable, error))
       {
         g_prefix_error (error, "Writing out origin file: ");
-        goto out;
+        return FALSE;
       }
   }
 
@@ -2195,10 +2155,8 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       ostree_bootconfig_parser_set (bootconfig, "options", new_options);
     }
 
-  ret = TRUE;
   ot_transfer_out_value (out_new_deployment, &new_deployment);
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -2219,7 +2177,6 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
                                      GCancellable      *cancellable,
                                      GError           **error)
 {
-  gboolean ret = FALSE;
   guint i;
   g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
   glnx_unref_object OstreeDeployment *new_deployment = NULL;
@@ -2246,11 +2203,9 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
 
   if (!ostree_sysroot_write_deployments (self, new_deployments,
                                          cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -2271,20 +2226,17 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
                                        GCancellable      *cancellable,
                                        GError           **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
-  glnx_fd_close int fd = -1;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
+  g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  glnx_fd_close int fd = -1;
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &fd, error))
-    goto out;
+    return FALSE;
 
   if (!_ostree_linuxfs_fd_alter_immutable_flag (fd, !is_mutable, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
