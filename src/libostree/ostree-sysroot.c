@@ -1553,6 +1553,7 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   g_autoptr(GPtrArray) deployments = NULL;
   g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
   const gboolean postclean = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN) == 0;
+  OstreeSysrootWriteDeploymentsOpts write_opts = { .do_postclean = postclean };
   gboolean retain = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
   const gboolean make_default = !((flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT) > 0);
   gboolean added_new = FALSE;
@@ -1603,8 +1604,8 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
       added_new = TRUE;
     }
 
-  if (!_ostree_sysroot_write_deployments_internal (sysroot, new_deployments,
-                                                   postclean, cancellable, error))
+  if (!ostree_sysroot_write_deployments_with_options (sysroot, new_deployments, &write_opts,
+                                                      cancellable, error))
     goto out;
 
   ret = TRUE;

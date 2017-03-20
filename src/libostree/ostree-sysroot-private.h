@@ -114,10 +114,4 @@ gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot,
                                            GCancellable  *cancellable,
                                            GError       **error);
 
-gboolean _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
-                                                     GPtrArray         *new_deployments,
-                                                     gboolean           do_clean,
-                                                     GCancellable      *cancellable,
-                                                     GError           **error);
-
 G_END_DECLS

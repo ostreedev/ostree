@@ -391,6 +391,7 @@ global:
   ostree_check_version;
   ostree_diff_dirs_with_options;
   ostree_sepolicy_new_at;
+  ostree_sysroot_write_deployments_with_options;
 } LIBOSTREE_2017.3;
 
 /* Stub section for the stable release *after* this development one; don't

@@ -1686,8 +1686,8 @@ is_ro_mount (const char *path)
  * @cancellable: Cancellable
  * @error: Error
  *
- * Assuming @new_deployments have already been deployed in place on
- * disk, atomically update bootloader configuration.
+ * Older verison of ostree_sysroot_write_deployments() - will perform
+ * post-deployment cleanup by default.
  */
 gboolean
 ostree_sysroot_write_deployments (OstreeSysroot     *self,
@@ -1695,16 +1695,32 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                   GCancellable      *cancellable,
                                   GError           **error)
 {
-  return _ostree_sysroot_write_deployments_internal (self, new_deployments,
-                                                     TRUE, cancellable, error);
+  OstreeSysrootWriteDeploymentsOpts opts = { .do_postclean = TRUE };
+  return ostree_sysroot_write_deployments_with_options (self, new_deployments, &opts,
+                                                        cancellable, error);
 }
 
+/**
+ * ostree_sysroot_write_deployments_with_options:
+ * @self: Sysroot
+ * @new_deployments: (element-type OstreeDeployment): List of new deployments
+ * @opts: Options
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Assuming @new_deployments have already been deployed in place on disk via
+ * ostree_sysroot_deploy_tree(), atomically update bootloader configuration. By
+ * default, no-post-transaction cleanup will be performed. You should invoke
+ * ostree_sysroot_cleanup() at some point after the transaction, or specify
+ * `do_postclean` in @opts.  Skipping the post-transaction cleanup is useful
+ * if for example you want to control pruning of the repository.
+ */
 gboolean
-_ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
-                                            GPtrArray         *new_deployments,
-                                            gboolean           do_clean,
-                                            GCancellable      *cancellable,
-                                            GError           **error)
+ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
+                                               GPtrArray         *new_deployments,
+                                               OstreeSysrootWriteDeploymentsOpts *opts,
+                                               GCancellable      *cancellable,
+                                               GError           **error)
 {
   gboolean ret = FALSE;
   guint i;
@@ -1930,7 +1946,7 @@ _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
 
   /* And finally, cleanup of any leftover data.
    */
-  if (do_clean)
+  if (opts->do_postclean)
     {
       if (!ostree_sysroot_cleanup (self, cancellable, error))
         {
