@@ -145,6 +145,20 @@ gboolean ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                            GCancellable      *cancellable,
                                            GError           **error);
 
+typedef struct {
+  gboolean do_postclean;
+  gboolean unused_bools[7];
+  int unused_ints[7];
+  gpointer unused_ptrs[7];
+} OstreeSysrootWriteDeploymentsOpts;
+
+_OSTREE_PUBLIC
+gboolean ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
+                                                        GPtrArray         *new_deployments,
+                                                        OstreeSysrootWriteDeploymentsOpts *opts,
+                                                        GCancellable      *cancellable,
+                                                        GError           **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                      const char        *osname,
