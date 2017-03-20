@@ -732,17 +732,8 @@ parse_deployment (OstreeSysroot       *self,
   unlocked_development_path = get_unlocked_development_path (ret_deployment);
   if (lstat (unlocked_development_path, &stbuf) == 0)
     ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
-  else
-    {
-      g_autofree char *existing_unlocked_state =
-        g_key_file_get_string (origin, "origin", "unlocked", NULL);
-
-      if (g_strcmp0 (existing_unlocked_state, "hotfix") == 0)
-        {
-          ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX;
-        }
-      /* TODO: warn on unknown unlock types? */
-    }
+  else if (fstatat (deployment_dfd, ".usr-ovl-work", &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
+    ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX;
 
   g_debug ("Deployment %s.%d unlocked=%d", treecsum, deployserial, ret_deployment->unlocked);
 
@@ -1695,7 +1686,6 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
   glnx_unref_object OstreeDeployment *deployment_clone =
     ostree_deployment_clone (deployment);
   glnx_unref_object OstreeDeployment *merge_deployment = NULL;
-  GKeyFile *origin_clone = ostree_deployment_get_origin (deployment_clone);
   const char hotfix_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
   const char *ovl_options = NULL;
   g_autofree char *deployment_path = NULL;
@@ -1828,11 +1818,7 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
       g_assert_not_reached ();
       break;
     case OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX:
-      g_key_file_set_string (origin_clone, "origin", "unlocked",
-                             ostree_deployment_unlocked_state_to_string (unlocked_state));
-      if (!ostree_sysroot_write_origin_file (self, deployment, origin_clone,
-                                             cancellable, error))
-        goto out;
+      /* The .usr-ovl-* directories will stay around */
       break;
     case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
       {

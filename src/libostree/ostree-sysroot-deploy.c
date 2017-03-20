@@ -2056,6 +2056,8 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   gint new_deployserial;
   glnx_unref_object OstreeDeployment *new_deployment = NULL;
   glnx_unref_object OstreeDeployment *merge_deployment = NULL;
+  OstreeDeploymentUnlockedState current_unlocked;
+  OstreeDeploymentUnlockedState future_unlocked;
   glnx_unref_object OstreeRepo *repo = NULL;
   g_autoptr(GFile) osdeploydir = NULL;
   g_autoptr(GFile) deployment_var = NULL;
@@ -2136,6 +2138,15 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       g_prefix_error (error, "During /etc merge: ");
       goto out;
     }
+
+  /* Should we consider requiring --discard-hotfix here? Or merging? */
+  current_unlocked = merge_deployment ? ostree_deployment_get_unlocked (merge_deployment)
+                                      : OSTREE_DEPLOYMENT_UNLOCKED_NONE;
+  future_unlocked = ostree_deployment_get_unlocked (new_deployment);
+  if ( current_unlocked != future_unlocked)
+    g_debug ( "Unlocked status changing: %s -> %s",
+              ostree_deployment_unlocked_state_to_string (current_unlocked),
+              ostree_deployment_unlocked_state_to_string (future_unlocked));
 
   g_clear_object (&self->sepolicy);
   self->sepolicy = g_object_ref (sepolicy);
