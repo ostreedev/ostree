@@ -109,21 +109,14 @@ gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
 gboolean _ostree_sysroot_bump_mtime (OstreeSysroot *sysroot,
                                      GError       **error);
 
-typedef enum {
-  OSTREE_SYSROOT_CLEANUP_BOOTVERSIONS = 1 << 0,
-  OSTREE_SYSROOT_CLEANUP_DEPLOYMENTS  = 1 << 1,
-  OSTREE_SYSROOT_CLEANUP_PRUNE_REPO   = 1 << 2,
-  OSTREE_SYSROOT_CLEANUP_ALL          = 0xffff
-} OstreeSysrootCleanupFlags;
-
-gboolean _ostree_sysroot_piecemeal_cleanup (OstreeSysroot *sysroot,
-                                            OstreeSysrootCleanupFlags flags,
-                                            GCancellable *cancellable,
-                                            GError **error);
+gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot,
+                                           gboolean       prune_repo,
+                                           GCancellable  *cancellable,
+                                           GError       **error);
 
 gboolean _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
                                                      GPtrArray         *new_deployments,
-                                                     OstreeSysrootCleanupFlags cleanup_flags,
+                                                     gboolean           do_clean,
                                                      GCancellable      *cancellable,
                                                      GError           **error);
 
