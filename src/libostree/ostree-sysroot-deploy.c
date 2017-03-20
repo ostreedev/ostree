@@ -1703,14 +1703,13 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                   GError           **error)
 {
   return _ostree_sysroot_write_deployments_internal (self, new_deployments,
-                                                     OSTREE_SYSROOT_CLEANUP_ALL,
-                                                     cancellable, error);
+                                                     TRUE, cancellable, error);
 }
 
 gboolean
 _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
                                             GPtrArray         *new_deployments,
-                                            OstreeSysrootCleanupFlags cleanup_flags,
+                                            gboolean           do_clean,
                                             GCancellable      *cancellable,
                                             GError           **error)
 {
@@ -1938,11 +1937,13 @@ _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
 
   /* And finally, cleanup of any leftover data.
    */
-  if (!_ostree_sysroot_piecemeal_cleanup (self, cleanup_flags,
-                                          cancellable, error))
+  if (do_clean)
     {
-      g_prefix_error (error, "Performing final cleanup: ");
-      goto out;
+      if (!ostree_sysroot_cleanup (self, cancellable, error))
+        {
+          g_prefix_error (error, "Performing final cleanup: ");
+          goto out;
+        }
     }
 
   ret = TRUE;

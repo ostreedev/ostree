@@ -515,12 +515,7 @@ ostree_sysroot_cleanup (OstreeSysroot       *self,
                         GCancellable        *cancellable,
                         GError             **error)
 {
-  OstreeSysrootCleanupFlags flags;
-
-  /* Do everything. */
-  flags = OSTREE_SYSROOT_CLEANUP_ALL;
-
-  return _ostree_sysroot_piecemeal_cleanup (self, flags, cancellable, error);
+  return _ostree_sysroot_cleanup_internal (self, TRUE, cancellable, error);
 }
 
 /**
@@ -537,55 +532,41 @@ ostree_sysroot_prepare_cleanup (OstreeSysroot  *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  OstreeSysrootCleanupFlags flags;
-
-  /* Do everything EXCEPT pruning the repository. */
-  flags = OSTREE_SYSROOT_CLEANUP_ALL & ~OSTREE_SYSROOT_CLEANUP_PRUNE_REPO;
-
-  return _ostree_sysroot_piecemeal_cleanup (self, flags, cancellable, error);
+  return _ostree_sysroot_cleanup_internal (self, FALSE, cancellable, error);
 }
 
 gboolean
-_ostree_sysroot_piecemeal_cleanup (OstreeSysroot              *self,
-                                   OstreeSysrootCleanupFlags   flags,
-                                   GCancellable               *cancellable,
-                                   GError                    **error)
+_ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
+                                  gboolean                    do_prune_repo,
+                                  GCancellable               *cancellable,
+                                  GError                    **error)
 {
-  gboolean ret = FALSE;
   glnx_unref_object OstreeRepo *repo = NULL;
 
   g_return_val_if_fail (OSTREE_IS_SYSROOT (self), FALSE);
   g_return_val_if_fail (self->loaded, FALSE);
 
-  if (flags & OSTREE_SYSROOT_CLEANUP_BOOTVERSIONS)
-    {
-      if (!cleanup_other_bootversions (self, cancellable, error))
-        goto out;
-    }
+  if (!cleanup_other_bootversions (self, cancellable, error))
+    return FALSE;
 
-  if (flags & OSTREE_SYSROOT_CLEANUP_DEPLOYMENTS)
-    {
-      if (!cleanup_old_deployments (self, cancellable, error))
-        goto out;
-    }
+  if (!cleanup_old_deployments (self, cancellable, error))
+    return FALSE;
 
   if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
-    goto out;
-  
+    return FALSE;
+
   if (!generate_deployment_refs (self, repo,
                                  self->bootversion,
                                  self->subbootversion,
                                  self->deployments,
                                  cancellable, error))
-    goto out;
-  
-  if (flags & OSTREE_SYSROOT_CLEANUP_PRUNE_REPO)
+    return FALSE;
+
+  if (do_prune_repo)
     {
       if (!prune_repo (repo, cancellable, error))
-            goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }

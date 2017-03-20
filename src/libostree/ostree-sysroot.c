@@ -1604,8 +1604,7 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
     }
 
   if (!_ostree_sysroot_write_deployments_internal (sysroot, new_deployments,
-                                                   postclean ? OSTREE_SYSROOT_CLEANUP_ALL : 0,
-                                                   cancellable, error))
+                                                   postclean, cancellable, error))
     goto out;
 
   ret = TRUE;
