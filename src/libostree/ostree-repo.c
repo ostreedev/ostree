@@ -1831,10 +1831,7 @@ ostree_repo_create (OstreeRepo     *self,
   if (mkdir (repopath, 0755) != 0)
     {
       if (G_UNLIKELY (errno != EEXIST))
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+        return glnx_throw_errno (error);
     }
 
   if (!glnx_opendirat (AT_FDCWD, repopath, TRUE, &dfd, error))
@@ -1858,10 +1855,7 @@ ostree_repo_create (OstreeRepo     *self,
             return FALSE;
         }
       else
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+        return glnx_throw_errno (error);
     }
 
   for (guint i = 0; i < G_N_ELEMENTS (state_dirs); i++)
@@ -1870,10 +1864,7 @@ ostree_repo_create (OstreeRepo     *self,
       if (mkdirat (dfd, elt, 0755) == -1)
         {
           if (G_UNLIKELY (errno != EEXIST))
-            {
-              glnx_set_error_from_errno (error);
-              return FALSE;
-            }
+            return glnx_throw_errno (error);
         }
     }
 
