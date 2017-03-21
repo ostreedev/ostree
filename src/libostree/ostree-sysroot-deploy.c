@@ -30,6 +30,7 @@
 #endif
 
 #include "ostree-sysroot-private.h"
+#include "ostree-sepolicy-private.h"
 #include "ostree-deployment-private.h"
 #include "ostree-core-private.h"
 #include "ostree-linuxfsutil.h"
@@ -733,21 +734,13 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
           return FALSE;
         }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-      { ostree_cleanup_sepolicy_fscreatecon gpointer dummy = NULL;
-#pragma GCC diagnostic pop
+      { g_auto(OstreeSepolicyFsCreatecon) con = { 0, };
+        const char *selabeled_abspath = glnx_strjoina ("/", selabeled);
 
-        if (sysroot->sepolicy != NULL
-            && ostree_sepolicy_get_name (sysroot->sepolicy) != NULL)
-          {
-            const char *selabeled_abspath = glnx_strjoina ("/", selabeled);
-            if (!ostree_sepolicy_setfscreatecon (sysroot->sepolicy,
-                                                 selabeled_abspath,
-                                                 0644,
-                                                 error))
-              return FALSE;
-          }
+        if (!_ostree_sepolicy_preparefscreatecon (&con, sysroot->sepolicy,
+                                                  selabeled_abspath,
+                                                  0644, error))
+          return FALSE;
 
         if (!glnx_file_replace_contents_at (os_deploy_dfd, selabeled, (guint8*)"", 0,
                                             GLNX_FILE_REPLACE_DATASYNC_NEW,
@@ -2112,23 +2105,12 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
         return FALSE;
     }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-  { ostree_cleanup_sepolicy_fscreatecon gpointer dummy = NULL;
-#pragma GCC diagnostic pop
+  { g_auto(OstreeSepolicyFsCreatecon) con = { 0, };
 
-    /* Explicitly override the label for the origin file to ensure
-     * it's system_conf_t.
-     */
-    if (self->sepolicy != NULL
-        && ostree_sepolicy_get_name (self->sepolicy) != NULL)
-      {
-        if (!ostree_sepolicy_setfscreatecon (self->sepolicy,
-                                             "/etc/ostree/remotes.d/dummy.conf",
-                                             0644,
-                                             error))
-          return FALSE;
-      }
+    if (!_ostree_sepolicy_preparefscreatecon (&con, self->sepolicy,
+                                              "/etc/ostree/remotes.d/dummy.conf",
+                                              0644, error))
+      return FALSE;
 
     /* Don't fsync here, as we assume that's all done in
      * ostree_sysroot_write_deployments().

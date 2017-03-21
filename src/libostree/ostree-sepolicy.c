@@ -28,6 +28,7 @@
 #include "otutil.h"
 
 #include "ostree-sepolicy.h"
+#include "ostree-sepolicy-private.h"
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
 
@@ -689,4 +690,32 @@ ostree_sepolicy_fscreatecon_cleanup (void **unused)
 #ifdef HAVE_SELINUX
   setfscreatecon (NULL);
 #endif
+}
+
+/* Currently private copy of the older sepolicy/fscreatecon API with a nicer
+ * g_auto() cleanup. May be made public later.
+ */
+gboolean
+_ostree_sepolicy_preparefscreatecon (OstreeSepolicyFsCreatecon *con,
+                                     OstreeSePolicy   *self,
+                                     const char       *path,
+                                     guint32           mode,
+                                     GError          **error)
+{
+  if (!self || ostree_sepolicy_get_name (self) == NULL)
+    return TRUE;
+
+  if (!ostree_sepolicy_setfscreatecon (self, path, mode, error))
+    return FALSE;
+
+  con->initialized = TRUE;
+  return TRUE;
+}
+
+void
+_ostree_sepolicy_fscreatecon_clear (OstreeSepolicyFsCreatecon *con)
+{
+  if (!con->initialized)
+    return;
+  ostree_sepolicy_fscreatecon_cleanup (NULL);
 }
