@@ -298,10 +298,10 @@ AS_IF([ test x$with_smack = xyes], [
 ])
 AM_CONDITIONAL(USE_SMACK, test $with_smack != no)
 
-dnl begin openssl
-OPENSSL_DEPENDENCY="libselinux >= 1.0.1"
+dnl begin openssl (really just libcrypto right now)
+OPENSSL_DEPENDENCY="libcrypto >= 1.0.1"
 AC_ARG_WITH(openssl,
-AS_HELP_STRING([--with-openssl], [Enable use of OpenSSL (checksums)]),
+AS_HELP_STRING([--with-openssl], [Enable use of OpenSSL libcrypto (checksums)]),
 :, with_openssl=no)
 
 AS_IF([ test x$with_openssl != xno ], [
@@ -447,7 +447,7 @@ echo "
     HTTP backend:                                 $fetcher_backend
     \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
     SELinux:                                      $with_selinux
-    OpenSSL (checksums):                          $with_openssl
+    OpenSSL libcrypto (checksums):                $with_openssl
     systemd:                                      $have_libsystemd
     libmount:                                     $with_libmount
     libarchive (parse tar files directly):        $with_libarchive
