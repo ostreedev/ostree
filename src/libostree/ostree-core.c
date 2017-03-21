@@ -1798,13 +1798,9 @@ ostree_validate_structureof_objtype (guchar    objtype,
                                      GError   **error)
 {
   OstreeObjectType objtype_v = (OstreeObjectType) objtype;
-  if (objtype_v < OSTREE_OBJECT_TYPE_FILE 
+  if (objtype_v < OSTREE_OBJECT_TYPE_FILE
       || objtype_v > OSTREE_OBJECT_TYPE_COMMIT)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid object type '%u'", objtype);
-      return FALSE;
-    }
+    return glnx_throw (error, "Invalid object type '%u'", objtype);
   return TRUE;
 }
 
@@ -1837,11 +1833,7 @@ ostree_validate_structureof_checksum_string (const char *checksum,
   size_t len = strlen (checksum);
 
   if (len != OSTREE_SHA256_STRING_LEN)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid rev '%s'", checksum);
-      return FALSE;
-    }
+    return glnx_throw (error, "Invalid rev '%s'", checksum);
 
   for (i = 0; i < len; i++)
     {
