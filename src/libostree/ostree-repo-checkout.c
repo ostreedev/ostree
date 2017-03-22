@@ -363,7 +363,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
                         GError                             **error)
 {
   HardlinkResult ret_result = HARDLINK_RESULT_NOT_SUPPORTED;
-  int srcfd = (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER) ?
+  int srcfd = _ostree_repo_mode_is_bare (self->mode) ?
     self->objects_dir_fd : self->uncompressed_objects_dir_fd;
 
  again:
