@@ -1754,6 +1754,9 @@ ostree_repo_mode_to_string (OstreeRepoMode   mode,
     case OSTREE_REPO_MODE_BARE_USER:
       ret_mode = "bare-user";
       break;
+    case OSTREE_REPO_MODE_BARE_USER_ONLY:
+      ret_mode = "bare-user-only";
+      break;
     case OSTREE_REPO_MODE_ARCHIVE_Z2:
       ret_mode ="archive-z2";
       break;
@@ -1781,6 +1784,8 @@ ostree_repo_mode_from_string (const char      *mode,
     ret_mode = OSTREE_REPO_MODE_BARE;
   else if (strcmp (mode, "bare-user") == 0)
     ret_mode = OSTREE_REPO_MODE_BARE_USER;
+  else if (strcmp (mode, "bare-user-only") == 0)
+    ret_mode = OSTREE_REPO_MODE_BARE_USER_ONLY;
   else if (strcmp (mode, "archive-z2") == 0 ||
            strcmp (mode, "archive") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z2;
@@ -2905,6 +2910,37 @@ ostree_repo_load_file (OstreeRepo         *self,
                     goto out;
 
                   g_file_info_set_symlink_target (ret_file_info, targetbuf);
+                }
+            }
+          else if (repo_mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+            {
+              glnx_fd_close int fd = -1;
+
+              /* Canonical info is: uid/gid is 0 and no xattrs, which
+                 might be wrong and thus not validate correctly, but
+                 at least we report something consistent. */
+              g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", 0);
+              g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", 0);
+
+              if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR &&
+                  out_input)
+                {
+                  fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+                  if (fd < 0)
+                    {
+                      glnx_set_error_from_errno (error);
+                      goto out;
+                    }
+
+                  ret_input = g_unix_input_stream_new (fd, TRUE);
+                  fd = -1; /* Transfer ownership */
+                }
+
+              if (out_xattrs)
+                {
+                  GVariantBuilder builder;
+                  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+                  ret_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
                 }
             }
           else

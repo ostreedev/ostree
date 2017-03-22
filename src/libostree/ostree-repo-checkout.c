@@ -473,7 +473,9 @@ checkout_one_file_at (OstreeRepo                        *repo,
                               (current_repo->mode == OSTREE_REPO_MODE_BARE_USER
                                && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER
                                /* NOTE: bare-user symlinks are not stored as symlinks */
-                               && !is_symlink));
+                               && !is_symlink) ||
+                              (current_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER));
           gboolean current_can_cache = (options->enable_uncompressed_cache
                                         && current_repo->enable_uncompressed_cache);
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
@@ -862,6 +864,9 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
 {
   OstreeRepoCheckoutAtOptions options = { 0, };
 
+  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+
   options.mode = mode;
   options.overwrite_mode = overwrite_mode;
   /* Backwards compatibility */
@@ -948,12 +953,20 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
                          GError                           **error)
 {
   OstreeRepoCheckoutAtOptions default_options = { 0, };
+  OstreeRepoCheckoutAtOptions real_options;
 
   if (!options)
     {
       default_options.subpath = NULL;
       options = &default_options;
     }
+
+  /* Make a copy so we can modify the options */
+  real_options = *options;
+  options = &real_options;
+
+  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    options->mode = OSTREE_REPO_CHECKOUT_MODE_USER;
 
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
