@@ -139,6 +139,14 @@ _ostree_loose_path (char              *buf,
 #define _OSTREE_METADATA_GPGSIGS_NAME "ostree.gpgsigs"
 #define _OSTREE_METADATA_GPGSIGS_TYPE G_VARIANT_TYPE ("aay")
 
+static inline gboolean
+_ostree_repo_mode_is_bare (OstreeRepoMode mode)
+{
+  return
+    mode == OSTREE_REPO_MODE_BARE ||
+    mode == OSTREE_REPO_MODE_BARE_USER;
+}
+
 GVariant *
 _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                           GBytes     *signature_bytes);

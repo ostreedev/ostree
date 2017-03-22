@@ -306,8 +306,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
             goto out;
         }
 
-      if (objtype == OSTREE_OBJECT_TYPE_FILE && (self->mode == OSTREE_REPO_MODE_BARE ||
-                                                 self->mode == OSTREE_REPO_MODE_BARE_USER))
+      if (objtype == OSTREE_OBJECT_TYPE_FILE && _ostree_repo_mode_is_bare (self->mode))
         {
           /* To satisfy tools such as guile which compare mtimes
            * to determine whether or not source files need to be compiled,
@@ -700,7 +699,7 @@ write_object (OstreeRepo         *self,
        * binary with trailing garbage, creating a window on the local
        * system where a malicious setuid binary exists.
        */
-      if ((repo_mode == OSTREE_REPO_MODE_BARE || repo_mode == OSTREE_REPO_MODE_BARE_USER) && temp_file_is_regular)
+      if ((_ostree_repo_mode_is_bare (repo_mode)) && temp_file_is_regular)
         {
           guint64 size = g_file_info_get_size (file_info);
 

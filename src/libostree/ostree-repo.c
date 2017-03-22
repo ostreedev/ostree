@@ -2472,7 +2472,7 @@ list_loose_objects_at (OstreeRepo             *self,
 
       if ((self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
            && strcmp (dot, ".filez") == 0) ||
-          ((self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER)
+          ((_ostree_repo_mode_is_bare (self->mode))
            && strcmp (dot, ".file") == 0))
         objtype = OSTREE_OBJECT_TYPE_FILE;
       else if (strcmp (dot, ".dirtree") == 0)
@@ -2743,8 +2743,7 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
 {
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
 
-  g_assert (self->mode == OSTREE_REPO_MODE_BARE ||
-            self->mode == OSTREE_REPO_MODE_BARE_USER);
+  g_assert (_ostree_repo_mode_is_bare (self->mode));
 
   _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
 
