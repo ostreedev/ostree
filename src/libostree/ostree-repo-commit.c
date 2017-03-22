@@ -227,7 +227,11 @@ commit_loose_object_trusted (OstreeRepo        *self,
     }
 
   /* Special handling for symlinks in bare repositories */
-  if (object_is_symlink && self->mode == OSTREE_REPO_MODE_BARE)
+  if (object_is_symlink && self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    {
+      /* We don't store the metadata in bare-user-only, so we're done. */
+    }
+  else if (object_is_symlink && self->mode == OSTREE_REPO_MODE_BARE)
     {
       /* Now that we know the checksum is valid, apply uid/gid, mode bits,
        * and extended attributes.
@@ -283,7 +287,8 @@ commit_loose_object_trusted (OstreeRepo        *self,
             }
         }
 
-      if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE_USER)
+      if (objtype == OSTREE_OBJECT_TYPE_FILE &&
+          (self->mode == OSTREE_REPO_MODE_BARE_USER || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY))
         {
           if (!object_is_symlink)
             {
@@ -302,7 +307,8 @@ commit_loose_object_trusted (OstreeRepo        *self,
                 }
             }
 
-          if (!write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
+          if (self->mode == OSTREE_REPO_MODE_BARE_USER &&
+              !write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
             goto out;
         }
 
@@ -708,8 +714,10 @@ write_object (OstreeRepo         *self,
                                                              cancellable, error))
             goto out;
         }
-      else if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_symlink)
+      else if (_ostree_repo_mode_is_bare (repo_mode) && temp_file_is_symlink)
         {
+          /* Note: This will not be hit for bare-user mode because its converted to a
+             regular file and take the branch above */
           if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd,
                                                   g_file_info_get_symlink_target (file_info),
                                                   &temp_filename,
@@ -959,6 +967,7 @@ scan_one_loose_devino (OstreeRepo                     *self,
             case OSTREE_REPO_MODE_ARCHIVE_Z2:
             case OSTREE_REPO_MODE_BARE:
             case OSTREE_REPO_MODE_BARE_USER:
+            case OSTREE_REPO_MODE_BARE_USER_ONLY:
               skip = !g_str_has_suffix (name, ".file");
               break;
             default:

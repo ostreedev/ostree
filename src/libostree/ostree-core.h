@@ -179,6 +179,7 @@ typedef enum {
  * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; checkouts are hardlinks; can only be written as root
  * @OSTREE_REPO_MODE_ARCHIVE_Z2: Files are compressed, should be owned by non-root.  Can be served via HTTP
  * @OSTREE_REPO_MODE_BARE_USER: Files are stored as themselves, except ownership; can be written by user. Hardlinks work only in user checkouts.
+ * @OSTREE_REPO_MODE_BARE_USER_ONLY: Same as BARE_USER, but all metadata is not stored, so it can only be used for user checkouts. Does not need xattrs.
  *
  * See the documentation of #OstreeRepo for more information about the
  * possible modes.
@@ -186,7 +187,8 @@ typedef enum {
 typedef enum {
   OSTREE_REPO_MODE_BARE,
   OSTREE_REPO_MODE_ARCHIVE_Z2,
-  OSTREE_REPO_MODE_BARE_USER
+  OSTREE_REPO_MODE_BARE_USER,
+  OSTREE_REPO_MODE_BARE_USER_ONLY,
 } OstreeRepoMode;
 
 _OSTREE_PUBLIC
