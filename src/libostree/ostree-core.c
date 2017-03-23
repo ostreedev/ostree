@@ -799,8 +799,7 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
         }
     }
 
-  g_autofree guchar *ret_csum = ot_csum_from_gchecksum (checksum);
-  ot_transfer_out_value (out_csum, &ret_csum);
+  *out_csum = ot_csum_from_gchecksum (checksum);
   return TRUE;
 }
 
