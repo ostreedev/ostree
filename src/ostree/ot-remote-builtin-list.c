@@ -34,7 +34,7 @@ gboolean
 ot_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   g_auto(GStrv) remotes = NULL;
   guint ii, n_remotes = 0;
   gboolean ret = FALSE;

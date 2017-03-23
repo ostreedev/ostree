@@ -36,7 +36,7 @@ gboolean
 ot_remote_builtin_delete (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   const char *remote_name;
   gboolean ret = FALSE;
 

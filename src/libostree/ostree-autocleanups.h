@@ -26,14 +26,10 @@
 
 G_BEGIN_DECLS
 
-#ifndef OSTREE_WITH_AUTOCLEANUPS
-#define OSTREE_WITH_AUTOCLEANUPS 0
-#endif
-
 /* ostree can use g_autoptr backports from libglnx when glib is too
  * old, but still avoid exposing them to users that also have an old
  * glib */
-#if defined(OSTREE_COMPILATION) || (OSTREE_WITH_AUTOCLEANUPS && GLIB_CHECK_VERSION(2, 44, 0))
+#if defined(OSTREE_COMPILATION) || GLIB_CHECK_VERSION(2, 44, 0)
 
 /*
  * The following types have no specific clear/free/unref functions, so

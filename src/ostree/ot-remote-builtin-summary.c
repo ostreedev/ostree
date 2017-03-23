@@ -40,7 +40,7 @@ gboolean
 ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   const char *remote_name;
   g_autoptr(GBytes) summary_bytes = NULL;
   g_autoptr(GBytes) signature_bytes = NULL;
