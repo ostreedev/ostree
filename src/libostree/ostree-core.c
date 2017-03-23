@@ -121,13 +121,8 @@ ostree_parse_refspec (const char   *refspec,
                       char        **out_ref,
                       GError      **error)
 {
-  gboolean ret = FALSE;
-  GMatchInfo *match = NULL;
-  g_autofree char *remote = NULL;
-
-  static gsize regex_initialized;
   static GRegex *regex;
-
+  static gsize regex_initialized;
   if (g_once_init_enter (&regex_initialized))
     {
       regex = g_regex_new ("^(" OSTREE_REF_FRAGMENT_REGEXP ":)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
@@ -135,14 +130,11 @@ ostree_parse_refspec (const char   *refspec,
       g_once_init_leave (&regex_initialized, 1);
     }
 
+  g_autoptr(GMatchInfo) match = NULL;
   if (!g_regex_match (regex, refspec, 0, &match))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid refspec %s", refspec);
-      goto out;
-    }
+    return glnx_throw (error, "Invalid refspec %s", refspec);
 
-  remote = g_match_info_fetch (match, 1);
+  g_autofree char *remote = g_match_info_fetch (match, 1);
   if (*remote == '\0')
     {
       g_clear_pointer (&remote, g_free);
@@ -153,16 +145,11 @@ ostree_parse_refspec (const char   *refspec,
       remote[strlen(remote)-1] = '\0';
     }
 
-  ret = TRUE;
-
   if (out_remote)
     *out_remote = g_steal_pointer (&remote);
   if (out_ref != NULL)
     *out_ref = g_match_info_fetch (match, 2);
- out:
-  if (match)
-    g_match_info_unref (match);
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -176,12 +163,10 @@ gboolean
 ostree_validate_rev (const char *rev,
                      GError **error)
 {
-  gboolean ret = FALSE;
-  GMatchInfo *match = NULL;
+  g_autoptr(GMatchInfo) match = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
-
   if (g_once_init_enter (&regex_initialized))
     {
       regex = g_regex_new ("^" OSTREE_REF_REGEXP "$", 0, 0, NULL);
@@ -190,17 +175,9 @@ ostree_validate_rev (const char *rev,
     }
 
   if (!g_regex_match (regex, rev, 0, &match))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid ref name %s", rev);
-      goto out;
-    }
+    return glnx_throw (error, "Invalid ref name %s", rev);
 
-  ret = TRUE;
- out:
-  if (match)
-    g_match_info_unref (match);
-  return ret;
+  return TRUE;
 }
 
 GVariant *
@@ -282,7 +259,6 @@ write_padding (GOutputStream    *output,
                GCancellable     *cancellable,
                GError          **error)
 {
-  gboolean ret = FALSE;
   guint bits;
   guint padding_len;
   guchar padding_nuls[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -298,12 +274,10 @@ write_padding (GOutputStream    *output,
       if (!ot_gio_write_update_checksum (output, (guchar*)padding_nuls, padding_len,
                                          out_bytes_written, checksum,
                                          cancellable, error))
-        goto out;
+        return FALSE;
     }
-  
-  ret = TRUE;
- out:
-  return ret;
+
+  return TRUE;
 }
 
 /*
@@ -330,7 +304,6 @@ _ostree_write_variant_with_size (GOutputStream      *output,
                                  GCancellable       *cancellable,
                                  GError            **error)
 {
-  gboolean ret = FALSE;
   guint64 variant_size;
   guint32 variant_size_u32_be;
   gsize bytes_written;
@@ -345,7 +318,7 @@ _ostree_write_variant_with_size (GOutputStream      *output,
   if (!ot_gio_write_update_checksum (output, &variant_size_u32_be, 4,
                                      &bytes_written, checksum,
                                      cancellable, error))
-    goto out;
+    return FALSE;
   ret_bytes_written += bytes_written;
   alignment_offset += bytes_written;
 
@@ -353,21 +326,19 @@ _ostree_write_variant_with_size (GOutputStream      *output,
   /* Pad to offset of 8, write variant */
   if (!write_padding (output, 8, alignment_offset, &bytes_written, checksum,
                       cancellable, error))
-    goto out;
+    return FALSE;
   ret_bytes_written += bytes_written;
 
   bytes_written = 0;
   if (!ot_gio_write_update_checksum (output, g_variant_get_data (variant),
                                      variant_size, &bytes_written, checksum,
                                      cancellable, error))
-    goto out;
+    return FALSE;
   ret_bytes_written += bytes_written;
 
-  ret = TRUE;
   if (out_bytes_written)
     *out_bytes_written = ret_bytes_written;
- out:
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -388,16 +359,13 @@ write_file_header_update_checksum (GOutputStream         *out,
                                    GCancellable          *cancellable,
                                    GError               **error)
 {
-  gboolean ret = FALSE;
   gsize bytes_written;
 
   if (!_ostree_write_variant_with_size (out, header, 0, &bytes_written, checksum,
                                         cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -724,32 +692,28 @@ ostree_content_file_parse_at (gboolean                compressed,
                               GCancellable           *cancellable,
                               GError                **error)
 {
-  gboolean ret = FALSE;
-  struct stat stbuf;
   g_autoptr(GInputStream) file_input = NULL;
-  g_autoptr(GInputStream) ret_input = NULL;
-  g_autoptr(GFileInfo) ret_file_info = NULL;
-  g_autoptr(GVariant) ret_xattrs = NULL;
-
   if (!ot_openat_read_stream (parent_dfd, path, TRUE, &file_input,
                               cancellable, error))
-    goto out;
-      
+    return FALSE;
+
+  struct stat stbuf;
   if (!glnx_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, error))
-    goto out;
-  
+    return FALSE;
+
+  g_autoptr(GFileInfo) ret_file_info = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
+  g_autoptr(GInputStream) ret_input = NULL;
   if (!ostree_content_stream_parse (compressed, file_input, stbuf.st_size, trusted,
                                     out_input ? &ret_input : NULL,
                                     &ret_file_info, &ret_xattrs,
                                     cancellable, error))
-    goto out;
-      
-  ret = TRUE;
+    return FALSE;
+
   ot_transfer_out_value (out_input, &ret_input);
   ot_transfer_out_value (out_file_info, &ret_file_info);
   ot_transfer_out_value (out_xattrs, &ret_xattrs);
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -804,23 +768,19 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GCancellable     *cancellable,
                                  GError          **error)
 {
-  gboolean ret = FALSE;
-  g_autofree guchar *ret_csum = NULL;
-  GChecksum *checksum = NULL;
 
-  checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  g_autoptr(GChecksum) checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
       if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
-        goto out;
+        return FALSE;
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
       g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (file_info, xattrs);
       g_checksum_update (checksum, g_variant_get_data (dirmeta),
                          g_variant_get_size (dirmeta));
-      
     }
   else
     {
@@ -830,22 +790,18 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
 
       if (!write_file_header_update_checksum (NULL, file_header, checksum,
                                               cancellable, error))
-        goto out;
+        return FALSE;
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
         {
           if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
-  ret_csum = ot_csum_from_gchecksum (checksum);
-
-  ret = TRUE;
+  g_autofree guchar *ret_csum = ot_csum_from_gchecksum (checksum);
   ot_transfer_out_value (out_csum, &ret_csum);
- out:
-  g_clear_pointer (&checksum, (GDestroyNotify)g_checksum_free);
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1042,10 +998,9 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
                                    GCancellable   *cancellable,
                                    GError        **error)
 {
-  gboolean ret = FALSE;
-  char *tmpname = g_strdup ("tmplink.XXXXXX");
-  guint i;
+  g_autofree char *tmpname = g_strdup ("tmplink.XXXXXX");
   const int max_attempts = 128;
+  guint i;
 
   for (i = 0; i < max_attempts; i++)
     {
@@ -1055,28 +1010,17 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
           if (errno == EEXIST)
             continue;
           else
-            {
-              int errsv = errno;
-              g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errsv),
-                                   g_strerror (errsv));
-              goto out;
-            }
+            return glnx_throw_errno (error);
         }
       else
         break;
     }
   if (i == max_attempts)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Exhausted attempts to open temporary file");
-      goto out;
-    }
+    return glnx_throw (error, "Exhausted attempts to open temporary file");
 
-  ret = TRUE;
   if (out_name)
     *out_name = g_steal_pointer (&tmpname);
- out:
-  return ret;
+  return TRUE;
 }
 
 
