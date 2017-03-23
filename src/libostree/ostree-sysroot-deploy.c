@@ -1686,8 +1686,8 @@ is_ro_mount (const char *path)
  * @cancellable: Cancellable
  * @error: Error
  *
- * Older verison of ostree_sysroot_write_deployments() - will perform
- * post-deployment cleanup by default.
+ * Older version of ostree_sysroot_write_deployments_with_options(). This
+ * version will perform post-deployment cleanup by default.
  */
 gboolean
 ostree_sysroot_write_deployments (OstreeSysroot     *self,
@@ -1710,7 +1710,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
  *
  * Assuming @new_deployments have already been deployed in place on disk via
  * ostree_sysroot_deploy_tree(), atomically update bootloader configuration. By
- * default, no-post-transaction cleanup will be performed. You should invoke
+ * default, no post-transaction cleanup will be performed. You should invoke
  * ostree_sysroot_cleanup() at some point after the transaction, or specify
  * `do_postclean` in @opts.  Skipping the post-transaction cleanup is useful
  * if for example you want to control pruning of the repository.
