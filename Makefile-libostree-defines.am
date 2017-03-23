@@ -31,6 +31,7 @@ libostree_public_headers = \
 	src/libostree/ostree-diff.h \
 	src/libostree/ostree-gpg-verify-result.h \
 	src/libostree/ostree-sepolicy.h \
+	src/libostree/ostree-sepolicy-private.h \
 	src/libostree/ostree-sysroot.h \
 	src/libostree/ostree-sysroot-upgrader.h \
 	src/libostree/ostree-deployment.h \
