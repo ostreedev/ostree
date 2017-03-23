@@ -10,6 +10,7 @@ container:
 
 packages:
   - libasan
+  - coccinelle
 
 env:
     CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address'

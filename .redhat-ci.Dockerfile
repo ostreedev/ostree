@@ -8,6 +8,7 @@ RUN dnf install -y \
         fuse \
         gjs \
         parallel \
+        coccinelle \
         clang \
         libubsan \
         libasan \

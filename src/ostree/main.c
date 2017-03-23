@@ -68,7 +68,7 @@ int
 main (int    argc,
       char **argv)
 {
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   int ret;
 
   setlocale (LC_ALL, "");
@@ -88,7 +88,6 @@ main (int    argc,
           suffix = "\x1b[22m\x1b[0m"; /* bold off, color reset */
         }
       g_printerr ("%serror: %s%s\n", prefix, suffix, error->message);
-      g_error_free (error);
     }
 
   return ret;

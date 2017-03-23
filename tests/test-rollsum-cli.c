@@ -25,7 +25,7 @@
 int
 main (int argc, char **argv)
 {
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   GBytes *from_bytes = NULL;
   GBytes *to_bytes = NULL;
@@ -64,7 +64,6 @@ main (int argc, char **argv)
   if (local_error)
     {
       g_printerr ("%s\n", local_error->message);
-      g_error_free (local_error);
       return 1;
     }
   return 0;

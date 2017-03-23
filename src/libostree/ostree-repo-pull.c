@@ -279,18 +279,21 @@ pull_termination_condition (OtPullData          *pull_data)
 
 static void
 check_outstanding_requests_handle_error (OtPullData          *pull_data,
-                                         GError              *error)
+                                         GError             **errorp)
 {
+  g_assert (errorp);
+
+  GError *error = *errorp;
   if (error)
     {
       if (!pull_data->caught_error)
         {
           pull_data->caught_error = TRUE;
-          g_propagate_error (pull_data->async_error, error);
+          g_propagate_error (pull_data->async_error, g_steal_pointer (errorp));
         }
       else
         {
-          g_error_free (error);
+          g_clear_error (errorp);
         }
     }
   else
@@ -382,7 +385,7 @@ idle_worker (gpointer user_data)
 {
   OtPullData *pull_data = user_data;
   ScanObjectQueueData *scan_data;
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
 
   scan_data = g_queue_pop_head (&pull_data->scan_object_queue);
   if (!scan_data)
@@ -398,7 +401,7 @@ idle_worker (gpointer user_data)
                               scan_data->recursion_depth,
                               pull_data->cancellable,
                               &error);
-  check_outstanding_requests_handle_error (pull_data, error);
+  check_outstanding_requests_handle_error (pull_data, &error);
 
   g_free (scan_data->path);
   g_free (scan_data);
@@ -760,7 +763,7 @@ content_fetch_on_write_complete (GObject        *object,
 {
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   OstreeObjectType objtype;
   const char *expected_checksum;
@@ -794,7 +797,7 @@ content_fetch_on_write_complete (GObject        *object,
     pull_data->n_fetched_deltapart_fallbacks++;
  out:
   pull_data->n_outstanding_content_write_requests--;
-  check_outstanding_requests_handle_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, &local_error);
   fetch_object_data_free (fetch_data);
 }
 
@@ -806,7 +809,7 @@ content_fetch_on_complete (GObject        *object,
   OstreeFetcher *fetcher = (OstreeFetcher *)object;
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   GCancellable *cancellable = NULL;
   guint64 length;
@@ -881,7 +884,7 @@ content_fetch_on_complete (GObject        *object,
 
  out:
   pull_data->n_outstanding_content_fetches--;
-  check_outstanding_requests_handle_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, &local_error);
   if (free_fetch_data)
     fetch_object_data_free (fetch_data);
 }
@@ -893,7 +896,7 @@ on_metadata_written (GObject           *object,
 {
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   const char *expected_checksum;
   OstreeObjectType objtype;
@@ -927,7 +930,7 @@ on_metadata_written (GObject           *object,
   pull_data->n_outstanding_metadata_write_requests--;
   fetch_object_data_free (fetch_data);
 
-  check_outstanding_requests_handle_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, &local_error);
 }
 
 static void
@@ -943,7 +946,7 @@ meta_fetch_on_complete (GObject           *object,
   const char *checksum;
   g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   glnx_fd_close int fd = -1;
   gboolean free_fetch_data = TRUE;
@@ -1038,7 +1041,7 @@ meta_fetch_on_complete (GObject           *object,
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;
-  check_outstanding_requests_handle_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, &local_error);
   if (free_fetch_data)
     fetch_object_data_free (fetch_data);
 }
@@ -1061,7 +1064,7 @@ on_static_delta_written (GObject           *object,
 {
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
 
   g_debug ("execute static delta part %s complete", fetch_data->expected_checksum);
@@ -1072,7 +1075,7 @@ on_static_delta_written (GObject           *object,
  out:
   g_assert (pull_data->n_outstanding_deltapart_write_requests > 0);
   pull_data->n_outstanding_deltapart_write_requests--;
-  check_outstanding_requests_handle_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, &local_error);
   /* Always free state */
   fetch_static_delta_data_free (fetch_data);
 }
@@ -1088,7 +1091,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
   g_autofree char *temp_path = NULL;
   g_autoptr(GInputStream) in = NULL;
   g_autoptr(GVariant) part = NULL;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   glnx_fd_close int fd = -1;
   gboolean free_fetch_data = TRUE;
@@ -1132,7 +1135,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
   g_assert (pull_data->n_outstanding_deltapart_fetches > 0);
   pull_data->n_outstanding_deltapart_fetches--;
   pull_data->n_fetched_deltaparts++;
-  check_outstanding_requests_handle_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, &local_error);
   if (free_fetch_data)
     fetch_static_delta_data_free (fetch_data);
 }
@@ -1961,7 +1964,7 @@ on_superblock_fetched (GObject   *src,
 {
   FetchDeltaSuperData *fdata = data;
   OtPullData *pull_data = fdata->pull_data;
-  GError *local_error = NULL;
+  g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   g_autoptr(GBytes) delta_superblock_data = NULL;
   const char *from_revision = fdata->from_revision;
@@ -2038,7 +2041,7 @@ on_superblock_fetched (GObject   *src,
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;
-  check_outstanding_requests_handle_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, &local_error);
 }
 
 static gboolean
