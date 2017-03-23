@@ -28,6 +28,7 @@ EXTRA_DIST += \
 # include the builddir in $PATH so we find our just-built ostree
 # binary.
 TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
+  OSTREE_UNINSTALLED_SRCDIR=$(abs_top_srcdir) \
 	OSTREE_UNINSTALLED=$(abs_top_builddir) \
 	G_DEBUG=fatal-warnings \
 	GI_TYPELIB_PATH=$$(cd $(top_builddir) && pwd)$${GI_TYPELIB_PATH:+:$$GI_TYPELIB_PATH} \
@@ -99,6 +100,7 @@ dist_test_scripts = \
 	tests/test-switchroot.sh \
 	tests/test-pull-contenturl.sh \
 	tests/test-pull-mirrorlist.sh \
+	tests/coccinelle.sh \
 	$(NULL)
 
 if BUILDOPT_FUSE

@@ -259,7 +259,7 @@ ostree_option_context_parse (GOptionContext *context,
 
   if (opt_repo == NULL && !(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      GError *local_error = NULL;
+      g_autoptr(GError) local_error = NULL;
 
       repo = ostree_repo_new_default ();
       if (!ostree_repo_open (repo, cancellable, &local_error))
@@ -270,14 +270,13 @@ ostree_option_context_parse (GOptionContext *context,
 
               g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                    "Command requires a --repo argument");
-              g_error_free (local_error);
 
               help = g_option_context_get_help (context, FALSE, NULL);
               g_printerr ("%s", help);
             }
           else
             {
-              g_propagate_error (error, local_error);
+              g_propagate_error (error, g_steal_pointer (&local_error));
             }
           goto out;
         }

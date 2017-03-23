@@ -11,6 +11,7 @@ container:
 
 packages:
   - libasan
+  - coccinelle
 
 env:
     CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
