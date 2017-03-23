@@ -107,6 +107,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo-file-enumerator.c \
 	src/libostree/ostree-repo-file-enumerator.h \
 	src/libostree/ostree-sepolicy.c \
+	src/libostree/ostree-sepolicy-private.h \
 	src/libostree/ostree-sysroot-private.h \
 	src/libostree/ostree-sysroot.c \
 	src/libostree/ostree-sysroot-cleanup.c \
