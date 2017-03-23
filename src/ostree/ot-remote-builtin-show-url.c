@@ -33,7 +33,7 @@ gboolean
 ot_remote_builtin_show_url (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   const char *remote_name;
   g_autofree char *remote_url = NULL;
   gboolean ret = FALSE;

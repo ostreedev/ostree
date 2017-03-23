@@ -37,7 +37,7 @@ gboolean
 ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   const char *remote_name;
   const char *domain;
   const char *path;
