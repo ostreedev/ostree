@@ -779,7 +779,7 @@ _ostree_repo_write_ref (OstreeRepo    *self,
 
       dfd = glnx_opendirat_with_errno (refs_remotes_dfd, remote, TRUE);
       if (dfd < 0 && (errno != ENOENT || rev != NULL))
-        return glnx_throw_errno_prefix (error, "Opening remotes/ dir %s: ", remote);
+        return glnx_throw_errno_prefix (error, "Opening remotes/ dir %s", remote);
     }
 
   if (rev == NULL)
