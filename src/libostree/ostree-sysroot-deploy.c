@@ -1634,7 +1634,7 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
 }
 
 static gboolean
-is_ro_mount (const char *path)
+is_mount (const char *path)
 {
 #ifdef HAVE_LIBMOUNT
   /* Dragging in all of this crud is apparently necessary just to determine
@@ -1647,7 +1647,6 @@ is_ro_mount (const char *path)
   struct libmnt_fs *fs;
   struct libmnt_cache *cache;
   gboolean is_mount = FALSE;
-  struct statvfs stvfsbuf;
 
   if (!tb)
     return FALSE;
@@ -1666,17 +1665,29 @@ is_ro_mount (const char *path)
   mnt_free_cache (cache);
 #endif
 
-  if (!is_mount)
-    return FALSE;
+  return is_mount;
+#else
+  return FALSE;
+#endif
+}
+
+static gboolean
+query_mount_is_ro (const char *path,
+                   gboolean *out_is_ro,
+                   GError **error)
+{
+  struct statvfs stvfsbuf;
 
   /* We *could* parse the options, but it seems more reliable to
    * introspect the actual mount at runtime.
    */
-  if (statvfs (path, &stvfsbuf) == 0)
-    return (stvfsbuf.f_flag & ST_RDONLY) != 0;
-
-#endif
-  return FALSE;
+  if (statvfs (path, &stvfsbuf) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      return FALSE;
+    }
+  *out_is_ro = (stvfsbuf.f_flag & ST_RDONLY) != 0;
+  return TRUE;
 }
 
 /**
@@ -1814,11 +1825,29 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       g_autofree char* new_loader_entries_dir = NULL;
       glnx_unref_object OstreeRepo *repo = NULL;
       gboolean show_osname = FALSE;
+      gboolean boot_is_mount = FALSE;
 
       if (self->booted_deployment)
-        boot_was_ro_mount = is_ro_mount ("/boot");
+        boot_is_mount = is_mount ("/boot");
+      else
+        {
+          /* For legacy reasons; see
+           * https://bugzilla.gnome.org/show_bug.cgi?id=751666 But the
+           * test suite can override this.  Do NOT use this debug flag
+           * in production, instead we could consider a compile-time
+           * default if you don't want a dependency on libmount or
+           * something.
+           */
+          boot_is_mount = (self->debug_flags & OSTREE_SYSROOT_DEBUG_BOOT_IS_NOT_MOUNT) == 0;
+        }
 
-      g_debug ("boot is ro: %s", boot_was_ro_mount ? "yes" : "no");
+      if (self->booted_deployment && boot_is_mount)
+        {
+          if (!query_mount_is_ro ("/boot", &boot_was_ro_mount, error))
+            goto out;
+        }
+
+      g_debug ("boot is mount: %d ro: %d", boot_is_mount, boot_was_ro_mount);
 
       if (boot_was_ro_mount)
         {
@@ -1897,6 +1926,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       if (bootloader)
         {
           if (!_ostree_bootloader_write_config (bootloader, new_bootversion,
+                                                boot_is_mount,
                                                 cancellable, error))
             {
               g_prefix_error (error, "Bootloader write config: ");

@@ -30,7 +30,9 @@ G_BEGIN_DECLS
 typedef enum {
 
   /* Don't flag deployments as immutable. */
-  OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS = 1 << 0
+  OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS = 1 << 0,
+  /* If set, assume /boot is on / */
+  OSTREE_SYSROOT_DEBUG_BOOT_IS_NOT_MOUNT = 1 << 1
 
 } OstreeSysrootDebugFlags;
 

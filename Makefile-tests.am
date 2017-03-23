@@ -73,6 +73,7 @@ dist_test_scripts = \
 	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-upgrade-unconfigured.sh \
 	tests/test-admin-deploy-syslinux.sh \
+	tests/test-admin-deploy-syslinux-bootonslash.sh \
 	tests/test-admin-deploy-2.sh \
 	tests/test-admin-deploy-karg.sh \
 	tests/test-admin-deploy-switch.sh \

@@ -60,11 +60,12 @@ _ostree_bootloader_syslinux_get_name (OstreeBootloader *bootloader)
 
 static gboolean
 append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
-                                        gboolean               regenerate_default,
-                                        int                    bootversion,
-                                        GPtrArray             *new_lines,
-                                        GCancellable          *cancellable,
-                                        GError               **error)
+                                            gboolean                   regenerate_default,
+                                            int                        bootversion,
+                                            gboolean                   have_boot_partition,
+                                            GPtrArray                 *new_lines,
+                                            GCancellable              *cancellable,
+                                            GError                   **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GPtrArray) boostree_loader_configs = NULL;
@@ -78,6 +79,7 @@ append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
     {
       OstreeBootconfigParser *config = boostree_loader_configs->pdata[i];
       const char *val;
+      const char *filename_prefix = have_boot_partition ? "" : "/boot";
 
       val = ostree_bootconfig_parser_get (config, "title");
       if (!val)
@@ -97,11 +99,11 @@ append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
                        "No \"linux\" key in bootloader config");
           goto out;
         }
-      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL %s", val));
+      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL %s%s", filename_prefix, val));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s", val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s%s", filename_prefix, val));
 
       val = ostree_bootconfig_parser_get (config, "options");
       if (val)
@@ -115,9 +117,10 @@ append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
 
 static gboolean
 _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
-                                     int                    bootversion,
-                                     GCancellable          *cancellable,
-                                     GError               **error)
+                                          int                    bootversion,
+                                          gboolean               have_boot_partition,
+                                          GCancellable          *cancellable,
+                                          GError               **error)
 {
   gboolean ret = FALSE;
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
@@ -156,6 +159,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
     {
       char *line = *iter;
       gboolean skip = FALSE;
+      const char *nonostree_prefix = have_boot_partition ? "/ostree/" : "/boot/ostree/";
 
       if (parsing_label && 
           (line == NULL || !g_str_has_prefix (line, "\t")))
@@ -171,7 +175,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
           /* If this is a non-ostree kernel, just emit the lines
            * we saw.
            */
-          if (!g_str_has_prefix (kernel_arg, "/ostree/"))
+          if (!g_str_has_prefix (kernel_arg, nonostree_prefix))
             {
               for (i = 0; i < tmp_lines->len; i++)
                 {
@@ -241,8 +245,9 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
     regenerate_default = TRUE;
 
   if (!append_config_from_boostree_loader_entries (self, regenerate_default,
-                                               bootversion, new_lines,
-                                               cancellable, error))
+                                                   bootversion, have_boot_partition,
+                                                   new_lines,
+                                                   cancellable, error))
     goto out;
 
   new_config_contents = _ostree_sysroot_join_lines (new_lines);
