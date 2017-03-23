@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
+# Run the .cocci files in the tests directory; these act
+# as a blacklist.
+
 set -euo pipefail
+
+. $(dirname $0)/libtest.sh
 
 if ! spatch --version 2>/dev/null; then
     skip "no spatch; get it from http://coccinelle.lip6.fr/"
@@ -9,8 +14,6 @@ fi
 if test -z "${OSTREE_UNINSTALLED_SRCDIR:-}"; then
     skip "running installed?"
 fi
-
-. $(dirname $0)/libtest.sh
 
 coccitests=$(ls $(dirname $0)/coccinelle/*.cocci)
 echo "1.."$(echo ${coccitests} | wc -l)
