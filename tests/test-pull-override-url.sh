@@ -34,7 +34,7 @@ gnomerepo_url="$(cat httpd-address)/ostree/gnomerepo"
 mkdir mirror-srv
 cd mirror-srv
 mkdir gnomerepo
-${CMD_PREFIX} ostree --repo=gnomerepo init --mode "archive-z2"
+ostree_repo_init gnomerepo --mode "archive-z2"
 ${CMD_PREFIX} ostree --repo=gnomerepo remote add --set=gpg-verify=false origin ${gnomerepo_url}
 ${CMD_PREFIX} ostree --repo=gnomerepo pull --mirror --depth=-1 origin main
 
@@ -57,7 +57,7 @@ echo "http://127.0.0.1:${port}" > ${test_tmpdir}/mirror-httpd-address
 cd ${test_tmpdir}
 mirrorrepo_url="$(cat mirror-httpd-address)/ostree/gnomerepo"
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin ${gnomerepo_url}
 rm -rf ${test_tmpdir}/ostree-srv/gnomerepo
 if ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin main

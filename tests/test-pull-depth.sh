@@ -27,7 +27,7 @@ echo '1..1'
 
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=0 origin main

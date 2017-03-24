@@ -30,7 +30,9 @@ G_BEGIN_DECLS
 typedef enum {
 
   /* Don't flag deployments as immutable. */
-  OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS = 1 << 0
+  OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS = 1 << 0,
+  /* See https://github.com/ostreedev/ostree/pull/759 */
+  OSTREE_SYSROOT_DEBUG_NO_XATTRS = 1 << 1,
 
 } OstreeSysrootDebugFlags;
 

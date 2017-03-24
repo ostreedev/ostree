@@ -21,6 +21,9 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip "We don't really have a use case for committing user. xattrs right now. See also https://github.com/ostreedev/ostree/issues/758"
+
+# Dead code below
 skip_without_user_xattrs
 
 echo "1..2"

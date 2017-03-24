@@ -29,7 +29,7 @@ echo '1..5'
 
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
 mkdir -p tree/root
@@ -142,7 +142,7 @@ assert_file_has_content deltascount "^1$"
 echo "ok prune"
 
 rm repo -rf
-${CMD_PREFIX} ostree --repo=repo init --mode=bare-user
+ostree_repo_init repo --mode=bare-user
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 --commit-metadata-only origin test
 ${CMD_PREFIX} ostree --repo=repo prune
@@ -158,7 +158,7 @@ assert_has_n_objects() {
 cd ${test_tmpdir}
 for repo in repo child-repo tmp-repo; do
     rm ${repo} -rf
-    ${CMD_PREFIX} ostree --repo=${repo} init --mode=archive
+    ostree_repo_init ${repo} --mode=archive
 done
 echo parent=${test_tmpdir}/repo >> child-repo/config
 mkdir files
@@ -189,7 +189,7 @@ echo "ok prune with parent repo"
 # would interact. We make a new repo test suite, then clone it
 # for "subtests" below with reinitialize_datesnap_repo()
 rm repo datetest-snapshot-repo -rf
-${CMD_PREFIX} ostree --repo=datetest-snapshot-repo init --mode=archive
+ostree_repo_init datetest-snapshot-repo --mode=archive
 # Some ancient commits on the both a stable/dev branch
 for day in $(seq 5); do
     ${CMD_PREFIX} ostree --repo=datetest-snapshot-repo commit --branch=stable -m test -s "old stable build $day" tree --timestamp="October $day 1985"
@@ -206,7 +206,7 @@ assert_file_has_content commitcount "^16$"
 # Snapshot the above
 reinitialize_datesnap_repo() {
     rm repo -rf
-    ${CMD_PREFIX} ostree --repo=repo init --mode=archive
+    ostree_repo_init repo --mode=archive
     ${CMD_PREFIX} ostree --repo=repo pull-local --depth=-1 datetest-snapshot-repo 
 }
 

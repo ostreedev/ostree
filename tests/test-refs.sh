@@ -27,7 +27,7 @@ echo '1..1'
 
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 
 mkdir -p tree/root
 touch tree/root/a

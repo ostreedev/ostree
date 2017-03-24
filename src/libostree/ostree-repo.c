@@ -1584,8 +1584,9 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
 
   if (fstatat (self->repo_dir_fd, remote->keyring, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
     {
+      GLnxFileCopyFlags copyflags = self->disable_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
       if (!glnx_file_copy_at (self->repo_dir_fd, remote->keyring,
-                              &stbuf, target_temp_fd, "pubring.gpg", 0,
+                              &stbuf, target_temp_fd, "pubring.gpg", copyflags,
                               cancellable, error))
         {
           g_prefix_error (error, "Unable to copy remote's keyring: ");
@@ -2066,6 +2067,11 @@ reload_core_config (OstreeRepo          *self,
     if (!do_fsync)
       ostree_repo_set_disable_fsync (self, TRUE);
   }
+
+  /* See https://github.com/ostreedev/ostree/issues/758 */
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core", "disable-xattrs",
+                                            TRUE, &self->disable_xattrs, error))
+    return FALSE;
 
   { g_autofree char *tmp_expiry_seconds = NULL;
 
@@ -2920,8 +2926,10 @@ ostree_repo_load_file (OstreeRepo         *self,
 
                   if (out_xattrs)
                     {
-                      if (!glnx_fd_get_all_xattrs (fd, &ret_xattrs,
-                                                 cancellable, error))
+                      if (self->disable_xattrs)
+                        ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+                      else if (!glnx_fd_get_all_xattrs (fd, &ret_xattrs,
+                                                        cancellable, error))
                         goto out;
                     }
 
@@ -2934,15 +2942,17 @@ ostree_repo_load_file (OstreeRepo         *self,
               else if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_SYMBOLIC_LINK
                        && out_xattrs)
                 {
-                  if (!glnx_dfd_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
-                                                       &ret_xattrs,
-                                                       cancellable, error))
+                  if (self->disable_xattrs)
+                    ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+                  else if (!glnx_dfd_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
+                                                          &ret_xattrs,
+                                                          cancellable, error))
                     goto out;
                 }
             }
         }
     }
-  
+
   if (!found)
     {
       if (self->parent_repo)

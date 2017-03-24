@@ -29,7 +29,7 @@ setup_test_repository "archive-z2"
 
 cd ${test_tmpdir}
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init
+ostree_repo_init repo2
 ${CMD_PREFIX} ostree --repo=repo2 remote add --set=gpg-verify=false aremote file://$(pwd)/repo test2
 ${CMD_PREFIX} ostree --repo=repo2 pull aremote
 ${CMD_PREFIX} ostree --repo=repo2 rev-parse aremote/test2

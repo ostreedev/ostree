@@ -46,8 +46,8 @@ echo "ok shortened checksum"
 echo "ok repo-in-cwd"
 
 rm test-repo -rf
-$OSTREE --repo=test-repo init --mode=bare-user
-$OSTREE --repo=test-repo init --mode=bare-user
+ostree_repo_init test-repo --mode=bare-user
+ostree_repo_init test-repo --mode=bare-user
 rm test-repo -rf
 echo "ok repo-init on existing repo"
 
@@ -197,7 +197,7 @@ echo "ok diff file changing type"
 
 cd ${test_tmpdir}
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init
+ostree_repo_init repo2
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 echo "ok pull-local"
 
@@ -315,7 +315,7 @@ echo "ok checkout union add"
 cd ${test_tmpdir}
 rm -rf shadow-repo
 mkdir shadow-repo
-${CMD_PREFIX} ostree --repo=shadow-repo init
+ostree_repo_init shadow-repo
 ${CMD_PREFIX} ostree --repo=shadow-repo config set core.parent $(pwd)/repo
 rm -rf test2-checkout
 parent_rev_test2=$(${CMD_PREFIX} ostree --repo=repo rev-parse test2)
@@ -335,7 +335,7 @@ echo "ok subdir noent"
 
 cd ${test_tmpdir}
 mkdir repo3
-${CMD_PREFIX} ostree --repo=repo3 init
+ostree_repo_init repo3
 ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
 ${CMD_PREFIX} ostree --repo=repo3 rev-parse aremote/test2
 echo "ok pull-local with --remote arg"
@@ -354,7 +354,7 @@ echo "ok prune"
 
 cd ${test_tmpdir}
 rm repo3 -rf
-${CMD_PREFIX} ostree --repo=repo3 init --mode=archive
+ostree_repo_init repo3 --mode=archive
 ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
 rm repo3/refs/remotes -rf
 mkdir repo3/refs/remotes
@@ -437,7 +437,7 @@ echo "ok metadata commit with strings"
 cd ${test_tmpdir}
 rm repo2 -rf
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init
+ostree_repo_init repo2
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 ${CMD_PREFIX} ostree --repo=repo2 show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
 assert_file_has_content test2-meta "HANCOCK"
@@ -481,7 +481,7 @@ echo "ok commit of fifo was rejected"
 cd ${test_tmpdir}
 rm repo2 -rf
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init --mode=archive
+ostree_repo_init repo2 --mode=archive
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 rm -rf test2-checkout
 ${CMD_PREFIX} ostree --repo=repo2 checkout -U --disable-cache test2 test2-checkout

@@ -33,7 +33,7 @@ oldpwd=`pwd`
 mkdir ostree-srv
 cd ostree-srv
 mkdir gnomerepo
-${CMD_PREFIX} ostree --repo=gnomerepo init --mode="archive-z2"
+ostree_repo_init gnomerepo --mode="archive-z2"
 mkdir gnomerepo-files
 cd gnomerepo-files 
 echo first > firstfile
@@ -67,7 +67,7 @@ cp -a ${repopath} ${repopath}.orig
 # Set OSTREE_GPG_HOME to a place with no keyrings, we shouldn't trust the signature
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
 if env OSTREE_GPG_HOME=${test_tmpdir} ${CMD_PREFIX} ostree --repo=repo pull origin main; then
     assert_not_reached "pull with no trusted GPG keys unexpectedly succeeded!"
@@ -77,7 +77,7 @@ rm repo -rf
 # And a test case with valid signature
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo show --gpg-verify-remote=origin main | grep -o 'Found [[:digit:]] signature' > show-verify-remote
@@ -90,7 +90,7 @@ find ${test_tmpdir}/ostree-srv/gnomerepo -name '*.commitmeta' | while read fname
     echo borkborkbork > ${fname};
 done
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
 if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
     assert_not_reached "pull with corrupted signature unexpectedly succeeded!"
@@ -101,7 +101,7 @@ rm repo -rf
 # verification off
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 rm repo -rf
@@ -114,7 +114,7 @@ echo secret > signme
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Don't forget to sign me!"
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 if ${CMD_PREFIX} ostree --repo=repo show main | grep -o 'Found [[:digit:]] signature'; then
