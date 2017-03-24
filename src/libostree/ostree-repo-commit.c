@@ -344,6 +344,8 @@ commit_loose_object_trusted (OstreeRepo        *self,
   
   ret = TRUE;
  out:
+  if (G_UNLIKELY (error && *error))
+    g_prefix_error (error, "Writing object %s.%s: ", checksum, ostree_object_type_to_string (objtype));
   return ret;
 }
 
