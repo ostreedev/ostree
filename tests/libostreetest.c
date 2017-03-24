@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <linux/magic.h>
-#include <sys/statvfs.h>
+#include <sys/vfs.h>
 
 #include "libglnx.h"
 #include "libostreetest.h"
@@ -92,17 +92,17 @@ ot_test_setup_sysroot (GCancellable *cancellable,
   gboolean ret = FALSE;
   g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
   glnx_unref_object OstreeSysroot *ret_sysroot = NULL;
-  struct statvfs stbuf;
+  struct statfs stbuf;
 
   if (!ot_test_run_libtest ("setup_os_repository \"archive-z2\" \"syslinux\"", error))
     goto out;
 
   { g_autoptr(GString) buf = g_string_new ("mutable-deployments");
-    if (statvfs ("/", &stbuf) < 0)
+    if (statfs ("/", &stbuf) < 0)
       return glnx_throw_errno (error), NULL;
     /* Keep this in sync with the overlayfs bits in libtest.sh */
 #ifdef OVERLAYFS_SUPER_MAGIC
-    if (stbuf.f_fsid == OVERLAYFS_SUPER_MAGIC)
+    if (stbuf.f_type == OVERLAYFS_SUPER_MAGIC)
       {
         g_print ("libostreetest: detected overlayfs\n");
         g_string_append (buf, ",no-xattrs");
