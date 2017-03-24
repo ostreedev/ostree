@@ -57,7 +57,7 @@ echo "http://127.0.0.1:${content_port}" > ${test_tmpdir}/httpd-content-address
 
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 if has_gpgme; then VERIFY=true; else VERIFY=false; fi
 ${CMD_PREFIX} ostree --repo=repo remote add origin \
   --set=gpg-verify=$VERIFY --set=gpg-verify-summary=$VERIFY \

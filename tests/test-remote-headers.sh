@@ -38,7 +38,7 @@ assert_fail (){
 cd ${test_tmpdir}
 rm repo -rf
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
 # Sanity check the setup, without headers the pull should fail

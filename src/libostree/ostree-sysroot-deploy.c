@@ -88,6 +88,15 @@ symlink_at_replace (const char    *oldpath,
   return ret;
 }
 
+static GLnxFileCopyFlags
+sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults,
+                             OstreeSysrootDebugFlags sysrootflags)
+{
+  if (sysrootflags & OSTREE_SYSROOT_DEBUG_NO_XATTRS)
+    defaults |= GLNX_FILE_COPY_NOXATTRS;
+  return defaults;
+}
+
 /* Try a hardlink if we can, otherwise fall back to copying.  Used
  * right now for kernels/initramfs in /boot, where we can just
  * hardlink if we're on the same partition.
@@ -97,6 +106,7 @@ hardlink_or_copy_at (int         src_dfd,
                      const char *src_subpath,
                      int         dest_dfd,
                      const char *dest_subpath,
+                     OstreeSysrootDebugFlags flags,
                      GCancellable  *cancellable,
                      GError       **error)
 {
@@ -106,7 +116,8 @@ hardlink_or_copy_at (int         src_dfd,
     {
       if (errno == EMLINK || errno == EXDEV)
         {
-          return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath, 0,
+          return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath,
+                                    sysroot_flags_to_copy_flags (0, flags),
                                     cancellable, error);
         }
       else
@@ -126,6 +137,7 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
                                   const char    *src_name,
                                   int            src_dfd,
                                   int            dest_dfd,
+                                  OstreeSysrootDebugFlags flags,
                                   GCancellable  *cancellable,
                                   GError       **error)
 {
@@ -136,13 +148,16 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
   /* Clone all xattrs first, so we get the SELinux security context
    * right.  This will allow other users access if they have ACLs, but
    * oh well.
-   */ 
-  if (!glnx_dfd_name_get_all_xattrs (src_parent_dfd, src_name,
-                                       &xattrs, cancellable, error))
-    goto out;
-  if (!glnx_fd_set_all_xattrs (dest_dfd, xattrs,
-                             cancellable, error))
-    goto out;
+   */
+  if (!(flags & OSTREE_SYSROOT_DEBUG_NO_XATTRS))
+    {
+      if (!glnx_dfd_name_get_all_xattrs (src_parent_dfd, src_name,
+                                         &xattrs, cancellable, error))
+        goto out;
+      if (!glnx_fd_set_all_xattrs (dest_dfd, xattrs,
+                                   cancellable, error))
+        goto out;
+    }
 
   if (fstat (src_dfd, &src_stbuf) != 0)
     {
@@ -169,6 +184,7 @@ static gboolean
 copy_dir_recurse (int              src_parent_dfd,
                   int              dest_parent_dfd,
                   const char      *name,
+                  OstreeSysrootDebugFlags flags,
                   GCancellable    *cancellable,
                   GError         **error)
 {
@@ -190,7 +206,7 @@ copy_dir_recurse (int              src_parent_dfd,
     return FALSE;
 
   if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd_iter.fd, dest_dfd,
-                                         cancellable, error))
+                                         flags, cancellable, error))
     return FALSE;
  
   while (TRUE)
@@ -212,14 +228,14 @@ copy_dir_recurse (int              src_parent_dfd,
       if (S_ISDIR (child_stbuf.st_mode))
         {
           if (!copy_dir_recurse (src_dfd_iter.fd, dest_dfd, dent->d_name,
-                                 cancellable, error))
+                                 flags, cancellable, error))
             return FALSE;
         }
       else
         {
           if (!glnx_file_copy_at (src_dfd_iter.fd, dent->d_name, &child_stbuf,
                                   dest_dfd, dent->d_name,
-                                  GLNX_FILE_COPY_OVERWRITE,
+                                  sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
                                   cancellable, error))
             return FALSE;
         }
@@ -234,6 +250,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
                                 int                 new_etc_fd,
                                 const char         *path,
                                 int                *out_dfd,
+                                OstreeSysrootDebugFlags flags,
                                 GCancellable       *cancellable,
                                 GError            **error)
 {
@@ -262,7 +279,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
           if (strcmp (parent_path, ".") != 0)
             {
               if (!ensure_directory_from_template (orig_etc_fd, modified_etc_fd, new_etc_fd,
-                                                   parent_path, NULL, cancellable, error))
+                                                   parent_path, NULL, flags, cancellable, error))
                 goto out;
 
               /* Loop */
@@ -286,7 +303,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
     goto out;
 
   if (!dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd,
-                                         cancellable, error))
+                                         flags, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -312,6 +329,7 @@ copy_modified_config_file (int                 orig_etc_fd,
                            int                 modified_etc_fd,
                            int                 new_etc_fd,
                            const char         *path,
+                           OstreeSysrootDebugFlags flags,
                            GCancellable       *cancellable,
                            GError            **error)
 {
@@ -332,7 +350,7 @@ copy_modified_config_file (int                 orig_etc_fd,
       g_autofree char *parent = g_path_get_dirname (path);
 
       if (!ensure_directory_from_template (orig_etc_fd, modified_etc_fd, new_etc_fd,
-                                           parent, &dest_parent_dfd, cancellable, error))
+                                           parent, &dest_parent_dfd, flags, cancellable, error))
         goto out;
     }
   else
@@ -386,7 +404,7 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   if (S_ISDIR (modified_stbuf.st_mode))
     {
-      if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path,
+      if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path, flags,
                              cancellable, error))
         goto out;
     }
@@ -394,7 +412,7 @@ copy_modified_config_file (int                 orig_etc_fd,
     {
       if (!glnx_file_copy_at (modified_etc_fd, path, &modified_stbuf, 
                               new_etc_fd, path,
-                              GLNX_FILE_COPY_OVERWRITE,
+                              sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
                               cancellable, error))
         goto out;
     }
@@ -426,6 +444,7 @@ static gboolean
 merge_etc_changes (GFile          *orig_etc,
                    GFile          *modified_etc,
                    GFile          *new_etc,
+                   OstreeSysrootDebugFlags flags,
                    GCancellable   *cancellable,
                    GError        **error)
 {
@@ -496,7 +515,7 @@ merge_etc_changes (GFile          *orig_etc,
       g_assert (path);
 
       if (!copy_modified_config_file (orig_etc_fd, modified_etc_fd, new_etc_fd, path,
-                                      cancellable, error))
+                                      flags, cancellable, error))
         goto out;
     }
   for (i = 0; i < added->len; i++)
@@ -507,7 +526,7 @@ merge_etc_changes (GFile          *orig_etc,
       g_assert (path);
 
       if (!copy_modified_config_file (orig_etc_fd, modified_etc_fd, new_etc_fd, path,
-                                      cancellable, error))
+                                      flags, cancellable, error))
         goto out;
     }
 
@@ -827,7 +846,7 @@ merge_configuration (OstreeSysroot         *sysroot,
       /* TODO - set out labels as we copy files */
       g_assert (!etc_exists);
       if (!copy_dir_recurse (deployment_usr_dfd, deployment_dfd, "etc",
-                             cancellable, error))
+                             sysroot->debug_flags, cancellable, error))
         goto out;
 
       /* Here, we initialize SELinux policy from the /usr/etc inside
@@ -847,8 +866,8 @@ merge_configuration (OstreeSysroot         *sysroot,
 
   if (source_etc_path)
     {
-      if (!merge_etc_changes (source_etc_pristine_path, source_etc_path, deployment_etc_path, 
-                              cancellable, error))
+      if (!merge_etc_changes (source_etc_pristine_path, source_etc_path, deployment_etc_path,
+                              sysroot->debug_flags, cancellable, error))
         goto out;
     }
 
@@ -1319,6 +1338,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         }
       if (!hardlink_or_copy_at (tree_boot_dfd, tree_kernel_name,
                                 bootcsum_dfd, dest_kernel_name,
+                                sysroot->debug_flags,
                                 cancellable, error))
         goto out;
     }
@@ -1336,6 +1356,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
             }
           if (!hardlink_or_copy_at (tree_boot_dfd, tree_initramfs_name,
                                     bootcsum_dfd, dest_initramfs_name,
+                                    sysroot->debug_flags,
                                     cancellable, error))
             goto out;
         }

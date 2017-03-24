@@ -28,7 +28,7 @@ setup_test_repository "bare"
 
 cd ${test_tmpdir}
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init --mode="bare"
+ostree_repo_init repo2 --mode="bare"
 
 ${CMD_PREFIX} ostree --repo=repo2 --untrusted pull-local repo
 
@@ -52,7 +52,7 @@ done
 
 rm -rf repo2
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init --mode="bare"
+ostree_repo_init repo2 --mode="bare"
 if ${CMD_PREFIX} ostree --repo=repo2 pull-local repo; then
     echo "ok trusted pull with corruption succeeded"
 else
@@ -61,7 +61,7 @@ fi
 
 rm -rf repo2
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init --mode="bare"
+ostree_repo_init repo2 --mode="bare"
 if ${CMD_PREFIX} ostree --repo=repo2 pull-local --untrusted repo; then
     assert_not_reached "corrupted untrusted pull unexpectedly failed!"
 else

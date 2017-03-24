@@ -24,6 +24,7 @@
 
 #include "libglnx.h"
 #include "ostree.h"
+#include "ostree-repo-private.h"
 #include "otutil.h"
 
 static gboolean
@@ -268,6 +269,19 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
 
   if (!options)
     options = &default_opts;
+
+  /* If we're diffing versus a repo, and either of them have xattrs disabled,
+   * then disable for both.
+   */
+  OstreeRepo *repo;
+  if (OSTREE_IS_REPO_FILE (a))
+    repo = ostree_repo_file_get_repo ((OstreeRepoFile*)a);
+  else if (OSTREE_IS_REPO_FILE (b))
+    repo = ostree_repo_file_get_repo ((OstreeRepoFile*)b);
+  else
+    repo = NULL;
+  if (repo != NULL && repo->disable_xattrs)
+    flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
 
   if (a == NULL)
     {

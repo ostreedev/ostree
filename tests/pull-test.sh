@@ -23,7 +23,7 @@ function repo_init() {
     cd ${test_tmpdir}
     rm repo -rf
     mkdir repo
-    ${CMD_PREFIX} ostree --repo=repo init
+    ostree_repo_init repo
     ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 }
 
@@ -50,7 +50,7 @@ echo "ok pull contents"
 
 cd ${test_tmpdir}
 mkdir mirrorrepo
-${CMD_PREFIX} ostree --repo=mirrorrepo init --mode=archive-z2
+ostree_repo_init mirrorrepo --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=mirrorrepo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
@@ -96,7 +96,7 @@ echo "ok pull commit metadata only (should not apply deltas)"
 
 cd ${test_tmpdir}
 mkdir mirrorrepo-local
-${CMD_PREFIX} ostree --repo=mirrorrepo-local init --mode=archive-z2
+ostree_repo_init mirrorrepo-local --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local fsck
@@ -114,7 +114,7 @@ echo "ok pull detached metadata"
 
 cd ${test_tmpdir}
 mkdir parentpullrepo
-${CMD_PREFIX} ostree --repo=parentpullrepo init --mode=archive-z2
+ostree_repo_init parentpullrepo --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=parentpullrepo remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
 parent_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main^)
 rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main)

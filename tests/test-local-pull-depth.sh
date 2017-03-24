@@ -27,7 +27,7 @@ echo "1..1"
 
 cd ${test_tmpdir}
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init --mode="archive-z2"
+ostree_repo_init repo2 --mode="archive-z2"
 
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 find repo2/objects -name '*.commit' | wc -l > commitcount

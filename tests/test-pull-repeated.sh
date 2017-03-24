@@ -27,7 +27,7 @@ COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}" --random-500s=50
 
 cd ${test_tmpdir}
-${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
+ostree_repo_init repo --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 for x in $(seq 200); do
     if ${CMD_PREFIX} ostree --repo=repo pull --mirror origin main 2>err.txt; then

@@ -161,9 +161,10 @@ ostree_sysroot_init (OstreeSysroot *self)
 {
   const GDebugKey keys[] = {
     { "mutable-deployments", OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS },
+    { "no-xattrs", OSTREE_SYSROOT_DEBUG_NO_XATTRS },
   };
 
-  self->debug_flags = g_parse_debug_string (g_getenv("OSTREE_SYSROOT_DEBUG"),
+  self->debug_flags = g_parse_debug_string (g_getenv ("OSTREE_SYSROOT_DEBUG"),
                                             keys, G_N_ELEMENTS (keys));
 
   self->sysroot_fd = -1;

@@ -33,7 +33,7 @@ for remoteurl in $(cat httpd-address)/ostree/gnomerepo \
 cd ${test_tmpdir}
 rm repo -rf
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin ${remoteurl}
 
 ${CMD_PREFIX} ostree --repo=repo pull --subpath=/baz/deeper --subpath=/baz/another origin main
@@ -58,7 +58,7 @@ echo "ok subpaths"
 
 rm -rf repo
 
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin ${remoteurl}
 
 # Pull a directory which is not the first in the commit (/baz/another is before)

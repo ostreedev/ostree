@@ -68,7 +68,7 @@ EOF
 
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin metalink=$(cat metalink-httpd-address)/metalink.xml
 ${CMD_PREFIX} ostree --repo=repo pull origin:main
 ${CMD_PREFIX} ostree --repo=repo rev-parse origin:main
@@ -87,7 +87,7 @@ test_metalink_pull_error() {
     msg=$1
     rm repo -rf
     mkdir repo
-    ${CMD_PREFIX} ostree --repo=repo init
+    ostree_repo_init repo
     ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin metalink=$(cat metalink-httpd-address)/metalink.xml
     if ${CMD_PREFIX} ostree --repo=repo pull origin:main 2>err.txt; then
 	assert_not_reached "pull unexpectedly succeeded"
@@ -157,7 +157,7 @@ EOF
 cd ${test_tmpdir}
 rm repo -rf
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin metalink=$(cat metalink-httpd-address)/metalink.xml
 ${CMD_PREFIX} ostree --repo=repo pull origin:main
 ${CMD_PREFIX} ostree --repo=repo rev-parse origin:main

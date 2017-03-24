@@ -31,7 +31,7 @@ echo "ok content"
 
 cd ${test_tmpdir}
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init
+ostree_repo_init repo2
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 echo "ok local clone"
 

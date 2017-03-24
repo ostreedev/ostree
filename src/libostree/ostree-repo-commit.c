@@ -2304,7 +2304,8 @@ get_modified_xattrs (OstreeRepo                       *self,
       ret_xattrs = modifier->xattr_callback (self, relpath, file_info,
                                              modifier->xattr_user_data);
     }
-  else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
+  else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0)
+           && !self->disable_xattrs)
     {
       if (path && OSTREE_IS_REPO_FILE (path))
         {

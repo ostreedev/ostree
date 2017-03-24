@@ -33,14 +33,14 @@ echo "ok setup"
 
 cd ${test_tmpdir}
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init --mode="bare-user"
+ostree_repo_init repo2 --mode="bare-user"
 
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 ${CMD_PREFIX} ostree --repo=repo2 fsck
 echo "ok pull-local z2 to bare-user"
 
 mkdir repo3
-${CMD_PREFIX} ostree --repo=repo3 init --mode="archive-z2"
+ostree_repo_init repo3 --mode="archive-z2"
 ${CMD_PREFIX} ostree --repo=repo3 pull-local repo2
 ${CMD_PREFIX} ostree --repo=repo3 fsck
 echo "ok pull-local bare-user to z2"
@@ -62,7 +62,7 @@ cmp checkout1.files checkout3.files
 echo "ok checkouts same"
 
 mkdir repo4
-${CMD_PREFIX} ostree --repo=repo4 init --mode="archive-z2"
+ostree_repo_init repo4 --mode="archive-z2"
 ${CMD_PREFIX} ostree --repo=repo4 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
 if ${CMD_PREFIX} ostree --repo=repo4 pull-local --remote=origin --gpg-verify repo test2 2>&1; then
     assert_not_reached "GPG verification unexpectedly succeeded"
@@ -72,13 +72,13 @@ echo "ok --gpg-verify with no signature"
 ${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME} test2  ${TEST_GPG_KEYID_1}
 
 mkdir repo5
-${CMD_PREFIX} ostree --repo=repo5 init --mode="archive-z2"
+ostree_repo_init repo5 --mode="archive-z2"
 ${CMD_PREFIX} ostree --repo=repo5 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
 ${CMD_PREFIX} ostree --repo=repo5 pull-local --remote=origin --gpg-verify repo test2
 echo "ok --gpg-verify"
 
 mkdir repo6
-${CMD_PREFIX} ostree --repo=repo6 init --mode="archive-z2"
+ostree_repo_init repo6 --mode="archive-z2"
 ${CMD_PREFIX} ostree --repo=repo6 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
 if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
     assert_not_reached "GPG summary verification with no summary unexpectedly succeeded"
@@ -97,7 +97,7 @@ ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summar
 echo "ok --gpg-verify-summary"
 
 mkdir repo7
-${CMD_PREFIX} ostree --repo=repo7 init --mode="archive-z2"
+ostree_repo_init repo7 --mode="archive-z2"
 ${CMD_PREFIX} ostree --repo=repo7 pull-local repo
 ${CMD_PREFIX} ostree --repo=repo7 fsck
 for src_object in `find repo/objects -name '*.filez'`; do

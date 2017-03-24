@@ -29,7 +29,7 @@ morebindatafiles="false ls"
 echo '1..12'
 
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
+ostree_repo_init repo --mode=archive-z2
 
 mkdir files
 for bin in ${bindatafiles}; do
@@ -121,7 +121,7 @@ if ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to
     assert_not_reached "static-delta generate --from=${origrev} --empty unexpectedly succeeded"
 fi
 
-${CMD_PREFIX} ostree --repo=temp-repo init --mode=archive
+ostree_repo_init temp-repo --mode=archive
 ${CMD_PREFIX} ostree --repo=temp-repo pull-local repo
 ${CMD_PREFIX} ostree --repo=temp-repo static-delta generate --empty --to=${newrev} --filename=some.delta
 assert_has_file some.delta
@@ -168,7 +168,7 @@ echo 'ok heuristic endian detection'
 
 ${CMD_PREFIX} ostree --repo=repo summary -u
 
-mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=bare-user
+mkdir repo2 && ostree_repo_init repo2 --mode=bare-user
 ${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${newrev}
 ${CMD_PREFIX} ostree --repo=repo2 fsck
 ${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
@@ -176,7 +176,7 @@ ${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
 echo 'ok pull delta'
 
 rm repo2 -rf
-mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=bare-user
+mkdir repo2 && ostree_repo_init repo2 --mode=bare-user
 mkdir deltadir
 
 deltaprefix=$(get_assert_one_direntry_matching repo/deltas '.')
@@ -194,7 +194,7 @@ ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${
 assert_not_has_file repo/deltas/${deltaprefix}/${deltadir}/0
 
 rm repo2 -rf
-mkdir repo2 && ostree --repo=repo2 init --mode=bare-user
+ostree_repo_init repo2 --mode=bare-user
 
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
 ${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
@@ -236,7 +236,7 @@ echo 'ok generate + show empty delta part'
 ${CMD_PREFIX} ostree --repo=repo summary -u
 
 rm -rf repo2
-mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=bare-user
+mkdir repo2 && ostree_repo_init repo2 --mode=bare-user
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${newrev}
 ${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${samerev}
 ${CMD_PREFIX} ostree --repo=repo2 fsck

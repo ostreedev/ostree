@@ -32,7 +32,7 @@ dd if=/dev/zero bs=1M count=20 of=ostree-srv/gnomerepo/objects/$(echo $rev | cut
 
 cd ${test_tmpdir}
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
+ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
 if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>pulllog.txt 1>&2; then

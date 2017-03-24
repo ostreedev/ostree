@@ -66,9 +66,9 @@ exampleos_recompose() {
 packages="bash systemd"
 
 mkdir build-repo
-${CMD_PREFIX} ostree --repo=build-repo init --mode=bare-user
+ostree_repo_init build-repo --mode=bare-user
 mkdir repo
-${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
+ostree_repo_init repo --mode=archive-z2
 # Our FUSE mount point
 mkdir mnt
 
