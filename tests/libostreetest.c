@@ -21,6 +21,8 @@
 #include "config.h"
 #include <stdlib.h>
 #include <string.h>
+#include <linux/magic.h>
+#include <sys/statvfs.h>
 
 #include "libglnx.h"
 #include "libostreetest.h"
@@ -90,12 +92,24 @@ ot_test_setup_sysroot (GCancellable *cancellable,
   gboolean ret = FALSE;
   g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
   glnx_unref_object OstreeSysroot *ret_sysroot = NULL;
+  struct statvfs stbuf;
 
   if (!ot_test_run_libtest ("setup_os_repository \"archive-z2\" \"syslinux\"", error))
     goto out;
 
-  /* Make sure deployments are mutable */
-  g_setenv ("OSTREE_SYSROOT_DEBUG", "mutable-deployments", TRUE);
+  { g_autoptr(GString) buf = g_string_new ("mutable-deployments");
+    if (statvfs ("/", &stbuf) < 0)
+      return glnx_throw_errno (error), NULL;
+    /* Keep this in sync with the overlayfs bits in libtest.sh */
+#ifdef OVERLAYFS_SUPER_MAGIC
+    if (stbuf.f_fsid == OVERLAYFS_SUPER_MAGIC)
+      g_string_append (buf, ",no-xattrs");
+#else
+#warn No OVERLAYFS_SUPER_MAGIC defined?
+#endif
+    /* Make sure deployments are mutable */
+    g_setenv ("OSTREE_SYSROOT_DEBUG", "mutable-deployments", TRUE);
+  }
 
   ret_sysroot = ostree_sysroot_new (sysroot_path);
 

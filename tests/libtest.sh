@@ -87,6 +87,7 @@ export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
 # See comment in ot-builtin-commit.c and https://github.com/ostreedev/ostree/issues/758
+# Also keep this in sync with the bits in libostreetest.c
 echo evaluating for overlayfs...
 case $(stat -f --printf '%T' /) in
     overlayfs)
