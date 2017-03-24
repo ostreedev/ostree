@@ -103,12 +103,15 @@ ot_test_setup_sysroot (GCancellable *cancellable,
     /* Keep this in sync with the overlayfs bits in libtest.sh */
 #ifdef OVERLAYFS_SUPER_MAGIC
     if (stbuf.f_fsid == OVERLAYFS_SUPER_MAGIC)
-      g_string_append (buf, ",no-xattrs");
+      {
+        g_print ("libostreetest: detected overlayfs\n");
+        g_string_append (buf, ",no-xattrs");
+      }
 #else
 #warn No OVERLAYFS_SUPER_MAGIC defined?
 #endif
     /* Make sure deployments are mutable */
-    g_setenv ("OSTREE_SYSROOT_DEBUG", "mutable-deployments", TRUE);
+    g_setenv ("OSTREE_SYSROOT_DEBUG", buf->str, TRUE);
   }
 
   ret_sysroot = ostree_sysroot_new (sysroot_path);
