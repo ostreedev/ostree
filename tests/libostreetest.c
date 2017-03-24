@@ -101,15 +101,14 @@ ot_test_setup_sysroot (GCancellable *cancellable,
     if (statfs ("/", &stbuf) < 0)
       return glnx_throw_errno (error), NULL;
     /* Keep this in sync with the overlayfs bits in libtest.sh */
-#ifdef OVERLAYFS_SUPER_MAGIC
+#ifndef OVERLAYFS_SUPER_MAGIC
+#define OVERLAYFS_SUPER_MAGIC 0x794c7630
+#endif
     if (stbuf.f_type == OVERLAYFS_SUPER_MAGIC)
       {
         g_print ("libostreetest: detected overlayfs\n");
         g_string_append (buf, ",no-xattrs");
       }
-#else
-#warn No OVERLAYFS_SUPER_MAGIC defined?
-#endif
     /* Make sure deployments are mutable */
     g_setenv ("OSTREE_SYSROOT_DEBUG", buf->str, TRUE);
   }
