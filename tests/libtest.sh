@@ -206,6 +206,11 @@ setup_test_repository () {
 
     oldpwd=`pwd`
 
+    COMMIT_ARGS=""
+    if [ $mode == "bare-user-only" ] ; then
+       COMMIT_ARGS="--owner-uid=0 --owner-gid=0 --no-xattrs --canonical-permissions"
+    fi
+
     cd ${test_tmpdir}
     if test -n "${mode}"; then
         ostree_repo_init repo --mode=${mode}
@@ -224,7 +229,7 @@ setup_test_repository () {
     echo first > firstfile
 
     cd ${test_tmpdir}/files
-    $OSTREE commit -b test2 -s "Test Commit 1" -m "Commit body first"
+    $OSTREE commit ${COMMIT_ARGS}  -b test2 -s "Test Commit 1" -m "Commit body first"
 
     mkdir baz
     echo moo > baz/cow
@@ -236,7 +241,7 @@ setup_test_repository () {
     echo x > baz/another/y
 
     cd ${test_tmpdir}/files
-    $OSTREE commit -b test2 -s "Test Commit 2" -m "Commit body second"
+    $OSTREE commit ${COMMIT_ARGS}  -b test2 -s "Test Commit 2" -m "Commit body second"
     $OSTREE fsck -q
 
     cd $oldpwd
