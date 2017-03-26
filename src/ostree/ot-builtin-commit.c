@@ -45,6 +45,7 @@ static gboolean opt_link_checkout_speedup;
 static gboolean opt_skip_if_unchanged;
 static gboolean opt_tar_autocreate_parents;
 static gboolean opt_no_xattrs;
+static gboolean opt_canonical_permissions;
 static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
@@ -84,6 +85,7 @@ static GOptionEntry options[] = {
   { "add-detached-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_detached_metadata_strings, "Add a key/value pair to detached metadata", "KEY=VALUE" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
+  { "canonical-permissions", 0, 0, G_OPTION_ARG_NONE, &opt_canonical_permissions, "Canonicalize permissions in the same way bare-user does for hardlinked files", NULL },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
@@ -399,6 +401,8 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (opt_no_xattrs)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
+  if (opt_canonical_permissions)
+    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS;
   if (opt_generate_sizes)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
   if (opt_disable_fsync)

@@ -2236,17 +2236,33 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     GFileInfo                *file_info,
                                     GFileInfo               **out_modified_info)
 {
-  OstreeRepoCommitFilterResult result;
+  OstreeRepoCommitFilterResult result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
   GFileInfo *modified_info;
 
-  if (modifier == NULL || modifier->filter == NULL)
+  if (modifier == NULL ||
+      (modifier->filter == NULL &&
+       (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) == 0))
     {
       *out_modified_info = g_object_ref (file_info);
       return OSTREE_REPO_COMMIT_FILTER_ALLOW;
     }
 
   modified_info = g_file_info_dup (file_info);
-  result = modifier->filter (self, path, modified_info, modifier->user_data);
+  if (modifier->filter)
+    result = modifier->filter (self, path, modified_info, modifier->user_data);
+
+  if ((modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) != 0)
+    {
+
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+        {
+          guint current_mode = g_file_info_get_attribute_uint32 (modified_info, "unix::mode");
+          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", current_mode | 0744);
+        }
+      g_file_info_set_attribute_uint32 (modified_info, "unix::uid", 0);
+      g_file_info_set_attribute_uint32 (modified_info, "unix::gid", 0);
+    }
+
   *out_modified_info = modified_info;
 
   return result;
@@ -2283,7 +2299,9 @@ apply_commit_filter (OstreeRepo               *self,
                      GFileInfo                *file_info,
                      GFileInfo               **out_modified_info)
 {
-  if (modifier == NULL || modifier->filter == NULL)
+  if (modifier == NULL ||
+      (modifier->filter == NULL &&
+       (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) == 0))
     {
       *out_modified_info = g_object_ref (file_info);
       return OSTREE_REPO_COMMIT_FILTER_ALLOW;
@@ -2312,7 +2330,8 @@ get_modified_xattrs (OstreeRepo                       *self,
       ret_xattrs = modifier->xattr_callback (self, relpath, file_info,
                                              modifier->xattr_user_data);
     }
-  else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0)
+  else if (!(modifier && (modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
+                                             OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0)
            && !self->disable_xattrs)
     {
       if (path && OSTREE_IS_REPO_FILE (path))
