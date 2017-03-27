@@ -24,7 +24,7 @@ OSTREE_GITREV=$(shell if command -v git >/dev/null 2>&1 && test -d $(srcdir)/.gi
 ACLOCAL_AMFLAGS = -I buildutil -I libglnx ${ACLOCAL_FLAGS}
 AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DLOCALEDIR=\"$(datadir)/locale\" -DSYSCONFDIR=\"$(sysconfdir)\" \
-	-DSHORTENED_SYSCONFDIR=\"$(shortened_sysconfdir)\" \
+	-DTARGET_PREFIX='"$(prefix)"' -DSHORTENED_SYSCONFDIR=\"$(shortened_sysconfdir)\" \
 	-DOSTREE_FEATURES='"$(OSTREE_FEATURES)"' \
 	-DOSTREE_COMPILATION \
 	-DG_LOG_DOMAIN=\"OSTree\" \

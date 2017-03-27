@@ -353,7 +353,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
         use_system_grub2_mkconfig = FALSE;
     }
   else
-    grub_exec = use_system_grub2_mkconfig ? GRUB2_MKCONFIG_PATH : "/usr/lib/ostree/ostree-grub-generator";
+    grub_exec = use_system_grub2_mkconfig ? GRUB2_MKCONFIG_PATH : TARGET_PREFIX "/lib/ostree/ostree-grub-generator";
 
   if (use_system_grub2_mkconfig && ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
       && g_file_has_parent (self->sysroot->path, NULL))
