@@ -170,7 +170,7 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
                                 dest_dfd, tmpbuf) == -1))
         {
           if (errno != EEXIST)
-            return glnx_throw_errno_prefix (error, "Storing file '%s': ", temp_filename);
+            return glnx_throw_errno_prefix (error, "Storing file '%s'", temp_filename);
           else
             (void) unlinkat (temp_dfd, temp_filename, 0);
         }
