@@ -756,7 +756,7 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
       { g_auto(OstreeSepolicyFsCreatecon) con = { 0, };
         const char *selabeled_abspath = glnx_strjoina ("/", selabeled);
 
-        if (!_ostree_sepolicy_preparefscreatecon (&con, sysroot->sepolicy,
+        if (!_ostree_sepolicy_preparefscreatecon (&con, sepolicy,
                                                   selabeled_abspath,
                                                   0644, error))
           return FALSE;
@@ -2128,9 +2128,6 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       return FALSE;
     }
 
-  g_clear_object (&self->sepolicy);
-  self->sepolicy = g_object_ref (sepolicy);
-
   if (!selinux_relabel_var_if_needed (self, sepolicy, os_deploy_dfd,
                                       cancellable, error))
     return FALSE;
@@ -2144,7 +2141,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
 
   { g_auto(OstreeSepolicyFsCreatecon) con = { 0, };
 
-    if (!_ostree_sepolicy_preparefscreatecon (&con, self->sepolicy,
+    if (!_ostree_sepolicy_preparefscreatecon (&con, sepolicy,
                                               "/etc/ostree/remotes.d/dummy.conf",
                                               0644, error))
       return FALSE;

@@ -72,7 +72,6 @@ ostree_sysroot_finalize (GObject *object)
   OstreeSysroot *self = OSTREE_SYSROOT (object);
 
   g_clear_object (&self->path);
-  g_clear_object (&self->sepolicy);
   g_clear_object (&self->repo);
   g_clear_pointer (&self->deployments, g_ptr_array_unref);
   g_clear_object (&self->booted_deployment);
