@@ -78,5 +78,5 @@
  * of ostree is equal or greater than the required one.
  */
 #define OSTREE_CHECK_VERSION(year,release)   \
-        (OSTREE_YEAR_VERSION >= (year) || \
+        (OSTREE_YEAR_VERSION > (year) || \
          (OSTREE_YEAR_VERSION == (year) && OSTREE_RELEASE_VERSION >= (release)))
