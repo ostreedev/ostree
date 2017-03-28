@@ -4,6 +4,7 @@ branches:
     - try
 
 required: true
+context: f25-sanitizer
 
 container:
     image: projectatomic/ostree-tester
@@ -12,7 +13,7 @@ packages:
   - libasan
 
 env:
-    CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address'
+    CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
     ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
     # TODO when we're doing leak checks: G_SLICE: "always-malloc"
 
@@ -38,7 +39,7 @@ artifacts:
 inherit: true
 required: true
 
-context: Clang
+context: f25-clang
 
 env:
     CC: 'clang'
@@ -76,7 +77,7 @@ tests:
 inherit: true
 required: true
 
-context: curl-openssl
+context: f25-curl-openssl
 
 packages:
   - pkgconfig(libcurl)
