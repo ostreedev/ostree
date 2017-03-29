@@ -80,36 +80,6 @@ ot_util_variant_asv_to_hash_table (GVariant *variant)
   return ret;
 }
 
-gboolean
-ot_util_variant_save (GFile *dest,
-                      GVariant *variant,
-                      GCancellable *cancellable,
-                      GError  **error)
-{
-  gboolean ret = FALSE;
-  g_autoptr(GOutputStream) out = NULL;
-  gsize bytes_written;
-  
-  out = (GOutputStream*)g_file_replace (dest, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION,
-                                        cancellable, error);
-  if (!out)
-    goto out;
-
-  if (!g_output_stream_write_all (out,
-                                  g_variant_get_data (variant),
-                                  g_variant_get_size (variant),
-                                  &bytes_written,
-                                  cancellable,
-                                  error))
-    goto out;
-  if (!g_output_stream_close (out, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
 GVariant *
 ot_util_variant_take_ref (GVariant *variant)
 {
@@ -194,43 +164,6 @@ ot_util_variant_map_fd (int                    fd,
   ret = TRUE;
   *out_variant = g_variant_ref_sink (g_variant_new_from_data (type, map, len, trusted,
                                                               variant_map_data_destroy, mdata));
- out:
-  return ret;
-}
-
-/**
- * Read all input from @src, allocating a new #GVariant from it into
- * output variable @out_variant.  @src will be closed as a result.
- *
- * Note the returned @out_variant is not floating.
- */
-gboolean
-ot_util_variant_from_stream (GInputStream         *src,
-                             const GVariantType   *type,
-                             gboolean              trusted,
-                             GVariant            **out_variant,
-                             GCancellable         *cancellable,
-                             GError              **error)
-{
-  gboolean ret = FALSE;
-  g_autoptr(GMemoryOutputStream) data_stream = NULL;
-  g_autoptr(GVariant) ret_variant = NULL;
-
-  data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-
-  if (g_output_stream_splice ((GOutputStream*)data_stream, src,
-                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                              cancellable, error) < 0)
-    goto out;
-
-  ret_variant = g_variant_new_from_data (type, g_memory_output_stream_get_data (data_stream),
-                                         g_memory_output_stream_get_data_size (data_stream),
-                                         trusted, (GDestroyNotify) g_object_unref, data_stream);
-  data_stream = NULL; /* Transfer ownership */
-  g_variant_ref_sink (ret_variant);
-
-  ret = TRUE;
-  ot_transfer_out_value (out_variant, &ret_variant);
  out:
   return ret;
 }
