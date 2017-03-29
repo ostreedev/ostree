@@ -2309,7 +2309,11 @@ get_modified_xattrs (OstreeRepo                       *self,
                                       &label, cancellable, error))
         return FALSE;
 
-      if (label)
+      if (!label && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED) > 0)
+        {
+          return glnx_throw (error, "Failed to look up SELinux label for '%s'", relpath);
+        }
+      else if (label)
         {
           g_autoptr(GVariantBuilder) builder = NULL;
 
