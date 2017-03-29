@@ -526,35 +526,34 @@ ostree_sepolicy_get_label (OstreeSePolicy    *self,
                            GError          **error)
 {
 #ifdef HAVE_SELINUX
-  gboolean ret = FALSE;
-  int res;
-  char *con = NULL;
+  /* Early return if no policy */
+  if (!self->selinux_hnd)
+    return TRUE;
 
-  if (self->selinux_hnd)
+  /* http://marc.info/?l=selinux&m=149082134430052&w=2
+   * https://github.com/ostreedev/ostree/pull/768
+   */
+  if (strcmp (relpath, "/proc") == 0)
+    relpath = "/mnt";
+
+  char *con = NULL;
+  int res = selabel_lookup_raw (self->selinux_hnd, &con, relpath, unix_mode);
+  if (res != 0)
     {
-      res = selabel_lookup_raw (self->selinux_hnd, &con, relpath, unix_mode);
-      if (res != 0)
-        {
-          if (errno != ENOENT)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
-        }
+      if (errno == ENOENT)
+        *out_label = NULL;
       else
-        {
-          /* Ensure we consistently allocate with g_malloc */
-          *out_label = g_strdup (con);
-          freecon (con);
-        }
+        return glnx_throw_errno (error);
+    }
+  else
+    {
+      /* Ensure we consistently allocate with g_malloc */
+      *out_label = g_strdup (con);
+      freecon (con);
     }
 
-  ret = TRUE;
- out:
-  return ret;
-#else
-  return TRUE;
 #endif
+  return TRUE;
 }
 
 /**
