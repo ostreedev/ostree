@@ -49,7 +49,6 @@
 #include <ot-opt-utils.h>
 #include <ot-unix-utils.h>
 #include <ot-variant-utils.h>
-#include <ot-spawn-utils.h>
 #include <ot-checksum-utils.h>
 #include <ot-gpg-utils.h>
 #include <ot-log-utils.h>

@@ -32,8 +32,6 @@ libotutil_la_SOURCES = \
 	src/libotutil/ot-opt-utils.h \
 	src/libotutil/ot-unix-utils.c \
 	src/libotutil/ot-unix-utils.h \
-	src/libotutil/ot-spawn-utils.c \
-	src/libotutil/ot-spawn-utils.h \
 	src/libotutil/ot-variant-utils.c \
 	src/libotutil/ot-variant-utils.h \
 	src/libotutil/ot-gio-utils.c \
