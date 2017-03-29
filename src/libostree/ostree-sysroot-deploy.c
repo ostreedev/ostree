@@ -2003,11 +2003,11 @@ allocate_deployserial (OstreeSysroot           *self,
 {
   guint i;
   int new_deployserial = 0;
-  g_autoptr(GFile) osdir = NULL;
   g_autoptr(GPtrArray) tmp_current_deployments =
     g_ptr_array_new_with_free_func (g_object_unref);
 
-  osdir = ot_gfile_get_child_build_path (self->path, "ostree/deploy", osname, NULL);
+  const char *osdir_name = glnx_strjoina ("ostree/deploy/", osname);
+  g_autoptr(GFile) osdir = g_file_resolve_relative_path (self->path, osdir_name);
 
   if (!_ostree_sysroot_list_deployment_dirs_for_os (osdir, tmp_current_deployments,
                                                     cancellable, error))
