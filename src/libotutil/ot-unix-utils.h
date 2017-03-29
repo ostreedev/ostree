@@ -36,10 +36,6 @@
 
 G_BEGIN_DECLS
 
-void ot_util_fatal_literal (const char *msg) G_GNUC_NORETURN;
-
-void ot_util_fatal_gerror (GError *error) G_GNUC_NORETURN;
-
 gboolean ot_util_filename_validate (const char *name, GError **error);
 
 gboolean ot_util_path_split_validate (const char *path, GPtrArray **out_components, GError **error);
