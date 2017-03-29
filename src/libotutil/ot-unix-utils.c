@@ -121,17 +121,3 @@ ot_util_path_split_validate (const char *path,
  out:
   return ret;
 }
-
-void
-ot_util_fatal_literal (const char *msg)
-{
-  g_printerr ("%s\n", msg);
-  exit (EXIT_FAILURE);
-}
-
-void
-ot_util_fatal_gerror (GError *error)
-{
-  g_assert (error != NULL);
-  ot_util_fatal_literal (error->message);
-}
