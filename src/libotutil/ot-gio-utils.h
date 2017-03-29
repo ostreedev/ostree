@@ -35,12 +35,6 @@ G_BEGIN_DECLS
 
 GFileType ot_gfile_type_for_mode (guint32 mode);
 
-GFile *ot_gfile_from_build_path (const char *first, ...) G_GNUC_NULL_TERMINATED;
-
-GFile *ot_gfile_get_child_strconcat (GFile *parent, const char *first, ...) G_GNUC_NULL_TERMINATED;
-
-GFile *ot_gfile_get_child_build_path (GFile *parent, const char *first, ...) G_GNUC_NULL_TERMINATED;
-
 GFile * ot_gfile_resolve_path_printf (GFile       *path,
                                       const char  *format,
                                       ...) G_GNUC_PRINTF(2, 3);
