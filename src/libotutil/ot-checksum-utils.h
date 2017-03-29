@@ -61,14 +61,4 @@ char * ot_checksum_file_at (int             dfd,
                             GCancellable   *cancellable,
                             GError        **error);
 
-void ot_gio_checksum_stream_async (GInputStream         *in,
-                                   int                   io_priority,
-                                   GCancellable         *cancellable,
-                                   GAsyncReadyCallback   callback,
-                                   gpointer              user_data);
-
-guchar * ot_gio_checksum_stream_finish (GInputStream   *in,
-                                        GAsyncResult   *result,
-                                        GError        **error);
-
 G_END_DECLS
