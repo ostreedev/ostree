@@ -112,15 +112,18 @@ ostree_sepolicy_set_property(GObject         *object,
           {
             /* Canonicalize */
             self->path = g_file_new_for_path (gs_file_get_path_cached (path));
+            g_assert_cmpint (self->rootfs_dfd, ==, -1);
           }
-        self->rootfs_dfd = -1;
       }
       break;
     case PROP_ROOTFS_DFD:
       {
-        self->rootfs_dfd = g_value_get_int (value);
-        g_clear_object (&self->path);
-        self->path = ot_fdrel_to_gfile (self->rootfs_dfd, ".");
+        int fd = g_value_get_int (value);
+        if (fd != -1)
+          {
+            g_assert (self->path == NULL);
+            self->rootfs_dfd = fd;
+          }
       }
       break;
     default:
@@ -300,6 +303,12 @@ initable_init (GInitable     *initable,
         goto out;
       self->rootfs_dfd = self->rootfs_dfd_owned;
     }
+  else if (!self->path)
+    {
+      self->path = ot_fdrel_to_gfile (self->rootfs_dfd, ".");
+    }
+  else
+    g_assert_not_reached ();
 
   etc_selinux_dir = g_file_resolve_relative_path (self->path, "etc/selinux");
   if (!g_file_query_exists (etc_selinux_dir, NULL))
