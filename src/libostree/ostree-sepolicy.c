@@ -285,6 +285,7 @@ initable_init (GInitable     *initable,
 #ifdef HAVE_SELINUX
   gboolean ret = FALSE;
   OstreeSePolicy *self = OSTREE_SEPOLICY (initable);
+  g_autoptr(GFile) path = NULL;
   g_autoptr(GFile) etc_selinux_dir = NULL;
   g_autoptr(GFile) policy_config_path = NULL;
   g_autoptr(GFile) policy_root = NULL;
@@ -296,25 +297,27 @@ initable_init (GInitable     *initable,
   const char *selinuxtype_prefix = "SELINUXTYPE=";
 
   /* TODO - use this below */
-  if (self->rootfs_dfd == -1)
+  if (self->rootfs_dfd != -1)
+    path = ot_fdrel_to_gfile (self->rootfs_dfd, ".");
+  else if (self->path)
     {
+      path = g_object_ref (self->path);
+#if 0
+      /* TODO - use this below */
       if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->path), TRUE,
                            &self->rootfs_dfd_owned, error))
         goto out;
       self->rootfs_dfd = self->rootfs_dfd_owned;
-    }
-  else if (!self->path)
-    {
-      self->path = ot_fdrel_to_gfile (self->rootfs_dfd, ".");
+#endif
     }
   else
     g_assert_not_reached ();
 
-  etc_selinux_dir = g_file_resolve_relative_path (self->path, "etc/selinux");
+  etc_selinux_dir = g_file_resolve_relative_path (path, "etc/selinux");
   if (!g_file_query_exists (etc_selinux_dir, NULL))
     {
       g_object_unref (etc_selinux_dir);
-      etc_selinux_dir = g_file_resolve_relative_path (self->path, "usr/etc/selinux");
+      etc_selinux_dir = g_file_resolve_relative_path (path, "usr/etc/selinux");
     }
   policy_config_path = g_file_get_child (etc_selinux_dir, "config");
 
