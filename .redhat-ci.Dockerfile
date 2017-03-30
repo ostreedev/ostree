@@ -2,6 +2,7 @@ FROM fedora:25
 
 RUN dnf install -y \
         gcc \
+        git \
         sudo \
         which \
         attr \

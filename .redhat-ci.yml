@@ -11,6 +11,7 @@ container:
 
 packages:
   - libasan
+  - git
   - coccinelle
 
 env:
@@ -27,6 +28,7 @@ build:
 
 tests:
     - make syntax-check
+    - ./tests/ci-commitmessage-submodules.sh
     - make check
     - gnome-desktop-testing-runner -p 0 ostree
 
