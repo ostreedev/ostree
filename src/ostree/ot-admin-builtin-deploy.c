@@ -38,6 +38,7 @@ static char **opt_kernel_argv_append;
 static gboolean opt_kernel_proc_cmdline;
 static char *opt_osname;
 static char *opt_origin_path;
+static gboolean opt_kernel_arg_none;
 
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
@@ -46,6 +47,7 @@ static GOptionEntry options[] = {
   { "karg-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_proc_cmdline, "Import current /proc/cmdline", NULL },
   { "karg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "NAME=VALUE" },
   { "karg-append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "NAME=VALUE" },
+  { "karg-none", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_arg_none, "Do not import kernel arguments", NULL },
   { NULL }
 };
 
@@ -75,6 +77,12 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
       ot_util_usage_error (context, "REF/REV must be specified", error);
       goto out;
     }
+
+  if (opt_kernel_proc_cmdline && opt_kernel_arg_none)
+  {
+    ot_util_usage_error (context, "Can't specify both --karg-proc-cmdline and --karg-none", error);
+    goto out;
+  }
 
   refspec = argv[1];
 
@@ -134,7 +142,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
       if (!_ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
         goto out;
     }
-  else if (merge_deployment)
+  else if (merge_deployment && !opt_kernel_arg_none)
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
       g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
