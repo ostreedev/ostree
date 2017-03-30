@@ -22,6 +22,8 @@
 
 #include "ostree-rollsum.h"
 
+#include "libglnx.h"
+
 int
 main (int argc, char **argv)
 {
