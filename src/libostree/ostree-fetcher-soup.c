@@ -1040,13 +1040,12 @@ on_request_sent (GObject        *object,
                  gpointer        user_data) 
 {
   GTask *task = G_TASK (user_data);
-  OstreeFetcherPendingURI *pending;
-  GCancellable *cancellable;
+  /* Hold a ref to the pending across this function, since we remove
+   * it from the hash early in some cases, not in others. */
+  OstreeFetcherPendingURI *pending = pending_uri_ref (g_task_get_task_data (task));
+  GCancellable *cancellable = g_task_get_cancellable (task);
   GError *local_error = NULL;
   glnx_unref_object SoupMessage *msg = NULL;
-
-  pending = g_task_get_task_data (task);
-  cancellable = g_task_get_cancellable (task);
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   pending->request_body = soup_request_send_finish ((SoupRequest*) object,
@@ -1054,7 +1053,8 @@ on_request_sent (GObject        *object,
 
   if (!pending->request_body)
     goto out;
-  
+  g_assert_no_error (local_error);
+
   if (SOUP_IS_REQUEST_HTTP (object))
     {
       msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
@@ -1183,6 +1183,7 @@ on_request_sent (GObject        *object,
       remove_pending (pending);
     }
 
+  pending_uri_unref (pending);
   g_object_unref (task);
 }
 
