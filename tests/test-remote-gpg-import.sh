@@ -30,7 +30,7 @@ echo "1..4"
 
 cd ${test_tmpdir}
 mkdir repo
-${OSTREE} init
+ostree_repo_init repo
 
 #----------------------------------------------
 # Test synchronicity of keyring file and remote
