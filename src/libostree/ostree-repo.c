@@ -2075,7 +2075,7 @@ reload_core_config (OstreeRepo          *self,
 
   /* See https://github.com/ostreedev/ostree/issues/758 */
   if (!ot_keyfile_get_boolean_with_default (self->config, "core", "disable-xattrs",
-                                            TRUE, &self->disable_xattrs, error))
+                                            FALSE, &self->disable_xattrs, error))
     return FALSE;
 
   { g_autofree char *tmp_expiry_seconds = NULL;
