@@ -470,15 +470,16 @@ checkout_one_file_at (OstreeRepo                        *repo,
           /* TODO - Hoist this up to the toplevel at least for checking out from
            * !parent; don't need to compute it for each file.
            */
+          gboolean repo_is_usermode =
+            current_repo->mode == OSTREE_REPO_MODE_BARE_USER ||
+            current_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY;
+          /* We're hardlinkable if the checkout mode matches the repo mode */
           gboolean is_hardlinkable =
             (current_repo->mode == OSTREE_REPO_MODE_BARE
              && options->mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
-            (current_repo->mode == OSTREE_REPO_MODE_BARE_USER
-             && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER) ||
-            (current_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
-             && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER);
+            (repo_is_usermode && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER);
           /* NOTE: bare-user symlinks are not stored as symlinks */
-          gboolean is_bare_symlink = (current_repo->mode == OSTREE_REPO_MODE_BARE_USER && is_symlink);
+          gboolean is_bare_symlink = (repo_is_usermode && is_symlink);
           gboolean is_bare = is_hardlinkable && !is_bare_symlink;
           gboolean current_can_cache = (options->enable_uncompressed_cache
                                         && current_repo->enable_uncompressed_cache);
@@ -491,10 +492,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
            */
           if (options->no_copy_fallback && !is_hardlinkable && !is_bare_symlink)
             {
-              if (current_repo->mode == OSTREE_REPO_MODE_BARE)
-                glnx_throw (error, "Bare repository mode cannot hardlink in user checkout mode");
-              else
-                glnx_throw (error, "User repository mode requires user checkout mode to hardlink");
+              glnx_throw (error,
+                          repo_is_usermode ?
+                          "User repository mode requires user checkout mode to hardlink" :
+                          "Bare repository mode cannot hardlink in user checkout mode");
               goto out;
             }
 

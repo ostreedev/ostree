@@ -60,7 +60,10 @@ else
 fi
 validate_checkout_basic checkout-test2
 rm checkout-test2 -rf
-if grep bare-user repo/config; then
+# Only do these tests on bare-user/bare, not bare-user-only
+# since the latter automatically synthesizes -U if it's not passed.
+if ! grep -q bare-user-only repo/config; then
+if grep -q bare-user repo/config; then
     if $OSTREE checkout -H test2 checkout-test2 2>err.txt; then
         assert_not_reached "checkout -H worked?"
     fi
@@ -70,6 +73,7 @@ else
         assert_not_reached "checkout -H worked?"
     fi
     assert_file_has_content err.txt "Bare repository mode cannot hardlink in user"
+fi
 fi
 echo "ok checkout -H"
 
