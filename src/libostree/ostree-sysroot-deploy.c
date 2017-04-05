@@ -1095,8 +1095,6 @@ create_new_bootlinks (OstreeSysroot *self,
   if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
     return FALSE;
 
-  g_autofree char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
-
   int old_subbootversion;
   if (bootversion != self->bootversion)
     {
@@ -1153,16 +1151,11 @@ swap_bootlinks (OstreeSysroot *self,
                 GCancellable  *cancellable,
                 GError       **error)
 {
-  int old_subbootversion, new_subbootversion;
   glnx_fd_close int ostree_dfd = -1;
-  g_autofree char *ostree_bootdir_name = NULL;
-  g_autofree char *ostree_subbootdir_name = NULL;
-
   if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
     return FALSE;
 
-  ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
-
+  int old_subbootversion;
   if (bootversion != self->bootversion)
     {
       if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &old_subbootversion,
@@ -1172,10 +1165,9 @@ swap_bootlinks (OstreeSysroot *self,
   else
     old_subbootversion = self->subbootversion;
 
-  new_subbootversion = old_subbootversion == 0 ? 1 : 0;
-
-  ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
-
+  int new_subbootversion = old_subbootversion == 0 ? 1 : 0;
+  g_autofree char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
+  g_autofree char *ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
   if (!symlink_at_replace (ostree_subbootdir_name, ostree_dfd, ostree_bootdir_name,
                            cancellable, error))
     return FALSE;
