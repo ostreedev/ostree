@@ -36,6 +36,14 @@
 #define CURL_AT_LEAST_VERSION(x,y,z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
 #endif
 
+/* Cargo culted from https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
+#ifndef CURLPIPE_MULTIPLEX
+/* This little trick will just make sure that we don't enable pipelining for
+   libcurls old enough to not have this symbol. It is _not_ defined to zero in
+   a recent libcurl header. */
+#define CURLPIPE_MULTIPLEX 0
+#endif
+
 #include "ostree-fetcher.h"
 #include "ostree-fetcher-util.h"
 #include "ostree-enumtypes.h"
@@ -219,6 +227,12 @@ _ostree_fetcher_init (OstreeFetcher *self)
 #if CURL_AT_LEAST_VERSION(7, 30, 0)
   /* Let's do something reasonable here. */
   curl_multi_setopt (self->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS, 8);
+#endif
+  /* This version mirrors the version at which we're enabling HTTP2 support.
+   * See also https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c
+   */
+#if CURL_AT_LEAST_VERSION(7, 51, 0)
+  curl_multi_setopt (self->multi, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 #endif
 }
 
@@ -764,6 +778,11 @@ initiate_next_curl_request (FetcherRequest *req,
    */
 #if CURL_AT_LEAST_VERSION(7, 51, 0)
   curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+#endif
+  /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
+#if (CURLPIPE_MULTIPLEX > 0)
+  /* wait for pipe connection to confirm */
+  curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
 #endif
   curl_easy_setopt (req->easy, CURLOPT_WRITEFUNCTION, write_cb);
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
