@@ -197,10 +197,7 @@ copy_dir_recurse (int              src_parent_dfd,
 
   /* Create with mode 0700, we'll fchmod/fchown later */
   if (mkdirat (dest_parent_dfd, name, 0700) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      return FALSE;
-    }
+    return glnx_throw_errno (error);
 
   if (!glnx_opendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
     return FALSE;
@@ -220,10 +217,7 @@ copy_dir_recurse (int              src_parent_dfd,
 
       if (fstatat (src_dfd_iter.fd, dent->d_name, &child_stbuf,
                    AT_SYMLINK_NOFOLLOW) != 0)
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+        return glnx_throw_errno (error);
 
       if (S_ISDIR (child_stbuf.st_mode))
         {
@@ -1055,20 +1049,13 @@ syncfs_dir_at (int            dfd,
                GCancellable  *cancellable,
                GError       **error)
 {
-  gboolean ret = FALSE;
   glnx_fd_close int child_dfd = -1;
-
   if (!glnx_opendirat (dfd, path, TRUE, &child_dfd, error))
-    goto out;
+    return FALSE;
   if (syncfs (child_dfd) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno (error);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /* First, sync the root directory as well as /var and /boot which may
@@ -1080,16 +1067,11 @@ full_system_sync (OstreeSysroot     *self,
                   GCancellable      *cancellable,
                   GError           **error)
 {
-  gboolean ret = FALSE;
-
   if (syncfs (self->sysroot_fd) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno (error);
 
   if (!syncfs_dir_at (self->sysroot_fd, "boot", cancellable, error))
-    goto out;
+    return FALSE;
 
   /* And now out of an excess of conservativism, we still invoke
    * sync().  The advantage of still using `syncfs()` above is that we
@@ -1099,9 +1081,7 @@ full_system_sync (OstreeSysroot     *self,
    */
   sync ();
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -1111,43 +1091,36 @@ create_new_bootlinks (OstreeSysroot *self,
                        GCancellable  *cancellable,
                       GError       **error)
 {
-  gboolean ret = FALSE;
-  guint i;
-  int old_subbootversion;
-  int new_subbootversion;
   glnx_fd_close int ostree_dfd = -1;
-  glnx_fd_close int ostree_subbootdir_dfd = -1;
-  g_autofree char *ostree_bootdir_name = NULL;
-  g_autofree char *ostree_subbootdir_name = NULL;
-
   if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
-    goto out;
+    return FALSE;
 
-  ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
-
+  int old_subbootversion;
   if (bootversion != self->bootversion)
     {
       if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &old_subbootversion,
                                                         cancellable, error))
-        goto out;
+        return FALSE;
     }
   else
     old_subbootversion = self->subbootversion;
 
-  new_subbootversion = old_subbootversion == 0 ? 1 : 0;
+  int new_subbootversion = old_subbootversion == 0 ? 1 : 0;
 
   /* Create the "subbootdir", which is a directory holding a symlink farm pointing to
    * deployments per-osname.
    */
-  ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
+  g_autofree char *ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
   if (!glnx_shutil_rm_rf_at (ostree_dfd, ostree_subbootdir_name, cancellable, error))
-    goto out;
+    return FALSE;
   if (!glnx_shutil_mkdir_p_at (ostree_dfd, ostree_subbootdir_name, 0755, cancellable, error))
-    goto out;
-  if (!glnx_opendirat (ostree_dfd, ostree_subbootdir_name, FALSE, &ostree_subbootdir_dfd, error))
-    goto out;
+    return FALSE;
 
-  for (i = 0; i < new_deployments->len; i++)
+  glnx_fd_close int ostree_subbootdir_dfd = -1;
+  if (!glnx_opendirat (ostree_dfd, ostree_subbootdir_name, FALSE, &ostree_subbootdir_dfd, error))
+    return FALSE;
+
+  for (guint i = 0; i < new_deployments->len; i++)
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
       g_autofree char *bootlink_parent = g_strconcat (ostree_deployment_get_osname (deployment),
@@ -1161,16 +1134,14 @@ create_new_bootlinks (OstreeSysroot *self,
                                                           ostree_deployment_get_deployserial (deployment));
 
       if (!glnx_shutil_mkdir_p_at (ostree_subbootdir_dfd, bootlink_parent, 0755, cancellable, error))
-        goto out;
+        return FALSE;
 
       if (!symlink_at_replace (bootlink_target, ostree_subbootdir_dfd, bootlink_pathname,
                                cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -1180,37 +1151,28 @@ swap_bootlinks (OstreeSysroot *self,
                 GCancellable  *cancellable,
                 GError       **error)
 {
-  gboolean ret = FALSE;
-  int old_subbootversion, new_subbootversion;
   glnx_fd_close int ostree_dfd = -1;
-  g_autofree char *ostree_bootdir_name = NULL;
-  g_autofree char *ostree_subbootdir_name = NULL;
-
   if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
-    goto out;
+    return FALSE;
 
-  ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
-
+  int old_subbootversion;
   if (bootversion != self->bootversion)
     {
       if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &old_subbootversion,
                                                         cancellable, error))
-        goto out;
+        return FALSE;
     }
   else
     old_subbootversion = self->subbootversion;
 
-  new_subbootversion = old_subbootversion == 0 ? 1 : 0;
-
-  ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
-
+  int new_subbootversion = old_subbootversion == 0 ? 1 : 0;
+  g_autofree char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
+  g_autofree char *ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
   if (!symlink_at_replace (ostree_subbootdir_name, ostree_dfd, ostree_bootdir_name,
                            cancellable, error))
-    goto out;
-  
-  ret = TRUE;
- out:
-  return ret;
+    return FALSE;
+
+  return TRUE;
 }
 
 static char *
@@ -1227,29 +1189,25 @@ parse_os_release (const char *contents,
                   const char *split)
 {
   g_autofree char **lines = g_strsplit (contents, split, -1);
-  char **iter;
   GHashTable *ret = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-  for (iter = lines; *iter; iter++)
+  for (char **iter = lines; *iter; iter++)
     {
       g_autofree char *line = *iter;
-      char *eq;
-      const char *quotedval;
-      char *val;
 
       if (g_str_has_prefix (line, "#"))
         continue;
-      
-      eq = strchr (line, '=');
+
+      char *eq = strchr (line, '=');
       if (!eq)
         continue;
-      
+
       *eq = '\0';
-      quotedval = eq + 1;
-      val = g_shell_unquote (quotedval, NULL);
+      const char *quotedval = eq + 1;
+      char *val = g_shell_unquote (quotedval, NULL);
       if (!val)
         continue;
-      
+
       g_hash_table_insert (ret, g_steal_pointer (&line), val);
     }
 
@@ -1258,7 +1216,7 @@ parse_os_release (const char *contents,
 
 /*
  * install_deployment_kernel:
- * 
+ *
  * Write out an entry in /boot/loader/entries for @deployment.
  */
 static gboolean
@@ -1272,77 +1230,55 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                            GError        **error)
 
 {
-  gboolean ret = FALSE;
-  struct stat stbuf;
-  const char *osname = ostree_deployment_get_osname (deployment);
-  const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-  g_autofree char *bootcsumdir = NULL;
-  g_autofree char *bootconfdir = NULL;
-  g_autofree char *bootconf_name = NULL;
-  g_autofree char *dest_kernel_name = NULL;
-  g_autofree char *dest_initramfs_name = NULL;
-  g_autofree char *tree_kernel_name = NULL;
-  g_autofree char *tree_initramfs_name = NULL;
-  g_autofree char *deployment_dirpath = NULL;
+  OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+  g_autofree char *deployment_dirpath = ostree_sysroot_get_deployment_dirpath (sysroot, deployment);
   glnx_fd_close int deployment_dfd = -1;
-  glnx_fd_close int tree_boot_dfd = -1;
-  glnx_fd_close int boot_dfd = -1;
-  glnx_fd_close int bootcsum_dfd = -1;
-  g_autofree char *contents = NULL;
-  g_autofree char *deployment_version = NULL;
-  g_autoptr(GHashTable) osrelease_values = NULL;
-  g_autofree char *version_key = NULL;
-  g_autofree char *ostree_kernel_arg = NULL;
-  g_autofree char *options_key = NULL;
-  GString *title_key;
-  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
-  const char *val;
-  OstreeBootconfigParser *bootconfig;
-
-  bootconfig = ostree_deployment_get_bootconfig (deployment);
-  deployment_dirpath = ostree_sysroot_get_deployment_dirpath (sysroot, deployment);
-
   if (!glnx_opendirat (sysroot->sysroot_fd, deployment_dirpath, FALSE,
                        &deployment_dfd, error))
-    goto out;
+    return FALSE;
 
+  glnx_fd_close int tree_boot_dfd = -1;
+  g_autofree char *tree_kernel_name = NULL;
+  g_autofree char *tree_initramfs_name = NULL;
   if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
                              &tree_kernel_name, &tree_initramfs_name,
                              cancellable, error))
-    goto out;
+    return FALSE;
 
+  glnx_fd_close int boot_dfd = -1;
   if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
-    goto out;
+    return FALSE;
 
-  bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
-  bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
-  bootconf_name = g_strdup_printf ("ostree-%s-%d.conf", osname, 
+  const char *osname = ostree_deployment_get_osname (deployment);
+  const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
+  g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
+  g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
+  g_autofree char *bootconf_name = g_strdup_printf ("ostree-%s-%d.conf", osname,
                                    ostree_deployment_get_index (deployment));
-
   if (!glnx_shutil_mkdir_p_at (boot_dfd, bootcsumdir, 0775, cancellable, error))
-    goto out;
+    return FALSE;
+
+  glnx_fd_close int bootcsum_dfd = -1;
   if (!glnx_opendirat (boot_dfd, bootcsumdir, TRUE, &bootcsum_dfd, error))
-    goto out;
+    return FALSE;
 
   if (!glnx_shutil_mkdir_p_at (boot_dfd, bootconfdir, 0775, cancellable, error))
-    goto out;
+    return FALSE;
 
-  dest_kernel_name = remove_checksum_from_kernel_name (tree_kernel_name, bootcsum);
-
+  g_autofree char *dest_kernel_name = remove_checksum_from_kernel_name (tree_kernel_name, bootcsum);
+  struct stat stbuf;
   if (fstatat (bootcsum_dfd, dest_kernel_name, &stbuf, 0) != 0)
     {
       if (errno != ENOENT)
-        {
-          glnx_set_prefix_error_from_errno (error, "fstat %s", dest_kernel_name);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "fstat %s", dest_kernel_name);
       if (!hardlink_or_copy_at (tree_boot_dfd, tree_kernel_name,
                                 bootcsum_dfd, dest_kernel_name,
                                 sysroot->debug_flags,
                                 cancellable, error))
-        goto out;
+        return FALSE;
     }
 
+  g_autofree char *dest_initramfs_name = NULL;
   if (tree_initramfs_name)
     {
       dest_initramfs_name = remove_checksum_from_kernel_name (tree_initramfs_name, bootcsum);
@@ -1350,34 +1286,28 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
       if (fstatat (bootcsum_dfd, dest_initramfs_name, &stbuf, 0) != 0)
         {
           if (errno != ENOENT)
-            {
-              glnx_set_prefix_error_from_errno (error, "fstat %s", dest_initramfs_name);
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "fstat %s", dest_initramfs_name);
           if (!hardlink_or_copy_at (tree_boot_dfd, tree_initramfs_name,
                                     bootcsum_dfd, dest_initramfs_name,
                                     sysroot->debug_flags,
                                     cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
+  g_autofree char *contents = NULL;
   if (fstatat (deployment_dfd, "usr/lib/os-release", &stbuf, 0) != 0)
     {
       if (errno != ENOENT)
         {
-          glnx_set_error_from_errno (error);
-          goto out;
+          return glnx_throw_errno (error);
         }
       else
         {
           contents = glnx_file_get_contents_utf8_at (deployment_dfd, "etc/os-release", NULL,
                                                      cancellable, error);
           if (!contents)
-            {
-              g_prefix_error (error, "Reading /etc/os-release: ");
-              goto out;
-            }
+            return g_prefix_error (error, "Reading /etc/os-release: "), FALSE;
         }
     }
   else
@@ -1385,26 +1315,18 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
       contents = glnx_file_get_contents_utf8_at (deployment_dfd, "usr/lib/os-release", NULL,
                                                  cancellable, error);
       if (!contents)
-        {
-          g_prefix_error (error, "Reading /usr/lib/os-release: ");
-          goto out;
-        }
+        return g_prefix_error (error, "Reading /usr/lib/os-release: "), FALSE;
     }
 
-  osrelease_values = parse_os_release (contents, "\n");
-
+  g_autoptr(GHashTable) osrelease_values = parse_os_release (contents, "\n");
   /* title */
-  val = g_hash_table_lookup (osrelease_values, "PRETTY_NAME");
+  const char *val = g_hash_table_lookup (osrelease_values, "PRETTY_NAME");
   if (val == NULL)
       val = g_hash_table_lookup (osrelease_values, "ID");
   if (val == NULL)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "No PRETTY_NAME or ID in /etc/os-release");
-      goto out;
-    }
-  
+    return glnx_throw (error, "No PRETTY_NAME or ID in /etc/os-release");
 
+  g_autofree char *deployment_version = NULL;
   if (repo)
     {
       /* Try extracting a version for this deployment. */
@@ -1426,7 +1348,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   /* XXX The SYSLINUX bootloader backend actually parses the title string
    *     (specifically, it looks for the substring "(ostree"), so further
    *     changes to the title format may require updating that backend. */
-  title_key = g_string_new (val);
+  g_autoptr(GString) title_key = g_string_new (val);
   if (deployment_version && *deployment_version)
     {
       g_string_append_c (title_key, ' ');
@@ -1444,14 +1366,11 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     }
   g_string_append_c (title_key, ')');
   ostree_bootconfig_parser_set (bootconfig, "title", title_key->str);
-  g_string_free (title_key, TRUE);
 
-  version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
+  g_autofree char *version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
   ostree_bootconfig_parser_set (bootconfig, "version", version_key);
-
-  { g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_kernel_name, NULL);
-    ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
-  }
+  g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_kernel_name, NULL);
+  ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
 
   if (dest_initramfs_name)
     {
@@ -1461,29 +1380,25 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   val = ostree_bootconfig_parser_get (bootconfig, "options");
 
-  ostree_kernel_arg = g_strdup_printf ("ostree=/ostree/boot.%d/%s/%s/%d",
+  g_autofree char *ostree_kernel_arg = g_strdup_printf ("ostree=/ostree/boot.%d/%s/%s/%d",
                                        new_bootversion, osname, bootcsum,
                                        ostree_deployment_get_bootserial (deployment));
-  kargs = _ostree_kernel_args_from_string (val);
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = _ostree_kernel_args_from_string (val);
   _ostree_kernel_args_replace_take (kargs, ostree_kernel_arg);
   ostree_kernel_arg = NULL;
-  options_key = _ostree_kernel_args_to_string (kargs);
+  g_autofree char *options_key = _ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
-  
-  { glnx_fd_close int bootconf_dfd = -1;
 
-    if (!glnx_opendirat (boot_dfd, bootconfdir, TRUE, &bootconf_dfd, error))
-      goto out;
+  glnx_fd_close int bootconf_dfd = -1;
+  if (!glnx_opendirat (boot_dfd, bootconfdir, TRUE, &bootconf_dfd, error))
+    return FALSE;
 
-    if (!ostree_bootconfig_parser_write_at (ostree_deployment_get_bootconfig (deployment),
-                                            bootconf_dfd, bootconf_name,
-                                            cancellable, error))
-      goto out;
-  }
+  if (!ostree_bootconfig_parser_write_at (ostree_deployment_get_bootconfig (deployment),
+                                          bootconf_dfd, bootconf_name,
+                                          cancellable, error))
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -1493,23 +1408,18 @@ prepare_new_bootloader_link (OstreeSysroot  *sysroot,
                              GCancellable   *cancellable,
                              GError        **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *new_target = NULL;
-
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
 
-  new_target = g_strdup_printf ("loader.%d", new_bootversion);
+  g_autofree char *new_target = g_strdup_printf ("loader.%d", new_bootversion);
 
   /* We shouldn't actually need to replace but it's easier to reuse
      that code */
   if (!symlink_at_replace (new_target, sysroot->sysroot_fd, "boot/loader.tmp",
                            cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -1519,7 +1429,6 @@ swap_bootloader (OstreeSysroot  *sysroot,
                  GCancellable   *cancellable,
                  GError        **error)
 {
-  gboolean ret = FALSE;
   glnx_fd_close int boot_dfd = -1;
   int res;
 
@@ -1527,7 +1436,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
             (current_bootversion == 1 && new_bootversion == 0));
 
   if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
-    goto out;
+    return FALSE;
 
   /* The symlink was already written, and we used syncfs() to ensure
    * its data is in place.  Renaming now should give us atomic semantics;
@@ -1537,10 +1446,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
     res = renameat (boot_dfd, "loader.tmp", boot_dfd, "loader");
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (res == -1)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno (error);
 
   /* Now we explicitly fsync this directory, even though it
    * isn't required for atomicity, for two reasons:
@@ -1552,14 +1458,9 @@ swap_bootloader (OstreeSysroot  *sysroot,
    *    admin by going back to the previous session.
    */
   if (fsync (boot_dfd) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno (error);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static GHashTable *
@@ -1644,10 +1545,7 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
       if (unlinkat (self->sysroot_fd, buf->str, 0) < 0)
         {
           if (errno != ENOENT)
-            {
-              glnx_set_error_from_errno (error);
-              return FALSE;
-            }
+            return glnx_throw_errno (error);
         }
     }
 
