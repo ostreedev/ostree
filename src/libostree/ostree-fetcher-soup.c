@@ -1053,6 +1053,7 @@ on_request_sent (GObject        *object,
 
   if (!pending->request_body)
     goto out;
+  g_assert_no_error (local_error);
 
   if (SOUP_IS_REQUEST_HTTP (object))
     {
