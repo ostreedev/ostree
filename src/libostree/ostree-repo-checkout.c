@@ -431,7 +431,6 @@ checkout_one_file_at (OstreeRepo                        *repo,
   gboolean is_whiteout;
 
   is_symlink = g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
-
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
 
   is_whiteout = !is_symlink && options->process_whiteouts &&
@@ -468,19 +467,36 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       while (current_repo)
         {
-          gboolean is_bare = ((current_repo->mode == OSTREE_REPO_MODE_BARE
-                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
-                              (current_repo->mode == OSTREE_REPO_MODE_BARE_USER
-                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER
-                               /* NOTE: bare-user symlinks are not stored as symlinks */
-                               && !is_symlink) ||
-                              (current_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
-                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER));
+          /* TODO - Hoist this up to the toplevel at least for checking out from
+           * !parent; don't need to compute it for each file.
+           */
+          gboolean is_hardlinkable =
+            (current_repo->mode == OSTREE_REPO_MODE_BARE
+             && options->mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
+            (current_repo->mode == OSTREE_REPO_MODE_BARE_USER
+             && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER) ||
+            (current_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+             && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER);
+          /* NOTE: bare-user symlinks are not stored as symlinks */
+          gboolean is_bare_symlink = (current_repo->mode == OSTREE_REPO_MODE_BARE_USER && is_symlink);
+          gboolean is_bare = is_hardlinkable && !is_bare_symlink;
           gboolean current_can_cache = (options->enable_uncompressed_cache
                                         && current_repo->enable_uncompressed_cache);
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
                                                && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER
                                                && current_can_cache);
+
+          /* Verify if no_copy_fallback is set that we can hardlink, with a
+           * special exception for bare-user symlinks.
+           */
+          if (options->no_copy_fallback && !is_hardlinkable && !is_bare_symlink)
+            {
+              if (current_repo->mode == OSTREE_REPO_MODE_BARE)
+                glnx_throw (error, "Bare repository mode cannot hardlink in user checkout mode");
+              else
+                glnx_throw (error, "User repository mode requires user checkout mode to hardlink");
+              goto out;
+            }
 
           /* But only under these conditions */
           if (is_bare || is_archive_z2_with_cache)
@@ -596,7 +612,13 @@ checkout_one_file_at (OstreeRepo                        *repo,
   /* Fall back to copy if we couldn't hardlink */
   if (need_copy)
     {
-      g_assert (!options->no_copy_fallback);
+      /* Bare user mode can't hardlink symlinks, so we need to do a copy for
+       * those. (Although in the future we could hardlink inside checkouts) This
+       * assertion is intended to ensure that for regular files at least, we
+       * succeeded at hardlinking above.
+       */
+      if (!is_symlink)
+        g_assert (!options->no_copy_fallback);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
         goto out;

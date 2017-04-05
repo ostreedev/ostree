@@ -38,8 +38,40 @@ if grep bare-user-only repo/config; then
     CHECKOUT_U_ARG="-U"
 fi
 
+validate_checkout_basic() {
+    (cd $1;
+     assert_has_file firstfile
+     assert_has_file baz/cow
+     assert_file_has_content baz/cow moo
+     assert_has_file baz/deeper/ohyeah
+     )
+}
+
 $OSTREE checkout test2 checkout-test2
+validate_checkout_basic checkout-test2
 echo "ok checkout"
+
+# Note this tests bare-user *and* bare-user-only
+rm checkout-test2 -rf
+if grep bare-user repo/config; then
+    $OSTREE checkout -U -H test2 checkout-test2
+else
+    $OSTREE checkout -H test2 checkout-test2
+fi
+validate_checkout_basic checkout-test2
+rm checkout-test2 -rf
+if grep bare-user repo/config; then
+    if $OSTREE checkout -H test2 checkout-test2 2>err.txt; then
+        assert_not_reached "checkout -H worked?"
+    fi
+    assert_file_has_content err.txt "User repository.*requires.*user"
+else
+    if $OSTREE checkout -U -H test2 checkout-test2 2>err.txt; then
+        assert_not_reached "checkout -H worked?"
+    fi
+    assert_file_has_content err.txt "Bare repository mode cannot hardlink in user"
+fi
+echo "ok checkout -H"
 
 $OSTREE rev-parse test2
 $OSTREE rev-parse 'test2^'
@@ -64,13 +96,9 @@ ostree_repo_init test-repo --mode=bare-user
 rm test-repo -rf
 echo "ok repo-init on existing repo"
 
+rm checkout-test2 -rf
+$OSTREE checkout test2 checkout-test2
 cd checkout-test2
-assert_has_file firstfile
-assert_has_file baz/cow
-assert_file_has_content baz/cow moo
-assert_has_file baz/deeper/ohyeah
-echo "ok content"
-
 rm firstfile
 $OSTREE commit ${COMMIT_ARGS} -b test2 -s delete
 
