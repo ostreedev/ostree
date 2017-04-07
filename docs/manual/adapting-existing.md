@@ -71,17 +71,23 @@ directory.
 
 ## Booting and initramfs technology
 
-OSTree comes with optional dracut+systemd integration code that parses
-the `ostree=` kernel command line argument in the initramfs, and then
-sets up the read-only bind mount on `/usr`, a bind mount on the
-deployment's `/sysroot` to the physical `/`, and then finally uses
-`mount(MS_MOVE)` to make the deployment root appear to be the root
-filesystem before telling systemd to switch root.
+OSTree comes with optional dracut+systemd integration code which follows
+this logic:
+
+- Parse the `ostree=` kernel command line argument in the initramfs
+- Set up a read-only bind mount on `/usr`
+- Bind mount the deployment's `/sysroot` to the physical `/`
+- Use `mount(MS_MOVE)` to make the deployment root appear to be the root filesystem
+
+After these steps, systemd switches root.
 
 If you are not using dracut or systemd, using OSTree should still be
-possible, but you will have to write the integration code.  Patches to
-support other initramfs technologies and init systems, if sufficiently
-clean, will likely be accepted upstream.
+possible, but you will have to write the integration code. See the
+existing sources in [src/switchroot](/src/switchroot) as a reference,
+as well as [src/switchroot/switchroot.sh](/src/switchroot/switchroot.sh).
+
+Patches to support other initramfs technologies and init systems, if
+sufficiently clean, will likely be accepted upstream.
 
 A further specific note regarding `sysvinit`: OSTree used to support
 recording device files such the `/dev/initctl` FIFO, but no longer
