@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..15"
+echo "1..16"
 
 # Try both syntaxes
 repo_init
@@ -150,23 +150,33 @@ prev_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main^)
 new_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main)
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 
+# Explicitly test delta fetches via ref name as well as commit hash
+for delta_target in main ${new_rev}; do
 cd ${test_tmpdir}
 repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
-${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin main >dry-run-pull.txt
+${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${delta_target} >dry-run-pull.txt
 # Compression can vary, so we support 400-699
 assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9] bytes, 455 bytes total uncompressed'
 rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_streq "${prev_rev}" "${rev}"
 ${CMD_PREFIX} ostree --repo=repo fsck
+done
 
+# Explicitly test delta fetches via ref name as well as commit hash
+for delta_target in main ${new_rev}; do
 cd ${test_tmpdir}
 repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
-${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main
-rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
-assert_streq "${new_rev}" "${rev}"
+${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin ${delta_target}
+if test ${delta_target} = main; then
+    rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
+    assert_streq "${new_rev}" "${rev}"
+else
+    ${CMD_PREFIX} ostree --repo=repo rev-parse ${delta_target}
+fi
 ${CMD_PREFIX} ostree --repo=repo fsck
+done
 
 cd ${test_tmpdir}
 repo_init
@@ -208,7 +218,22 @@ fi
 assert_file_has_content err.txt "deltas required, but none found"
 ${CMD_PREFIX} ostree --repo=repo fsck
 
+# Now test with a partial commit
+repo_init
+${CMD_PREFIX} ostree --repo=repo pull --commit-metadata-only origin main@${prev_rev}
+if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>err.txt; then
+    assert_not_reached "--require-static-deltas unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "deltas required, but none found"
 echo "ok delta required but don't exist"
+
+repo_init
+${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
+if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin ${new_rev} 2>err.txt; then
+    assert_not_reached "--require-static-deltas unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "deltas required, but none found"
+echo "ok delta required for revision"
 
 cd ${test_tmpdir}
 rm main-files -rf

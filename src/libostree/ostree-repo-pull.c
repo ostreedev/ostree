@@ -68,6 +68,7 @@ typedef struct {
 
   gboolean          gpg_verify;
   gboolean          require_static_deltas;
+  gboolean          disable_static_deltas;
   gboolean          gpg_verify_summary;
   gboolean          has_tombstone_commits;
 
@@ -1879,10 +1880,15 @@ process_one_static_delta (OtPullData   *pull_data,
 /* Loop over the static delta data we got from the summary,
  * and find the newest commit for @out_from_revision that
  * goes to @to_revision.
+ *
+ * Additionally, @out_have_scratch_delta will be set to %TRUE
+ * if there is a %NULL → @to_revision delta, also known as
+ * a "from scratch" delta.
  */
 static gboolean
 get_best_static_delta_start_for (OtPullData *pull_data,
                                  const char *to_revision,
+                                 gboolean   *out_have_scratch_delta,
                                  char      **out_from_revision,
                                  GCancellable *cancellable,
                                  GError      **error)
@@ -1896,6 +1902,8 @@ get_best_static_delta_start_for (OtPullData *pull_data,
 
   g_assert (pull_data->summary_deltas_checksums != NULL);
   g_hash_table_iter_init (&hiter, pull_data->summary_deltas_checksums);
+
+  *out_have_scratch_delta = FALSE;
 
   /* Loop over all deltas known from the summary file,
    * finding ones which go to to_revision */
@@ -1915,6 +1923,8 @@ get_best_static_delta_start_for (OtPullData *pull_data,
 
       if (cur_from_rev)
         g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
+      else
+        *out_have_scratch_delta = TRUE;
     }
 
   /* Loop over our candidates, find the newest one */
@@ -1964,6 +1974,16 @@ typedef struct {
 } FetchDeltaSuperData;
 
 static void
+set_required_deltas_error (GError **error,
+                           const char *from_revision,
+                           const char *to_revision)
+{
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+               "Static deltas required, but none found for %s to %s",
+               from_revision, to_revision);
+}
+
+static void
 on_superblock_fetched (GObject   *src,
                        GAsyncResult *res,
                        gpointer      data)
@@ -1984,14 +2004,11 @@ on_superblock_fetched (GObject   *src,
     {
       if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         goto out;
-
       g_clear_error (&local_error);
 
       if (pull_data->require_static_deltas)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Static deltas required, but none found for %s to %s",
-                       from_revision, to_revision);
+          set_required_deltas_error (error, from_revision, to_revision);
           goto out;
         }
 
@@ -2566,6 +2583,117 @@ reinitialize_fetcher (OtPullData *pull_data, const char *remote_name, GError **e
   return TRUE;
 }
 
+/* Start a request for a static delta */
+static void
+initiate_delta_request (OtPullData *pull_data,
+                        const char *from_revision,
+                        const char *to_revision)
+{
+  g_autofree char *delta_name =
+    _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
+  FetchDeltaSuperData *fdata = g_new0(FetchDeltaSuperData, 1);
+  fdata->pull_data = pull_data;
+  fdata->from_revision = g_strdup (from_revision);
+  fdata->to_revision = g_strdup (to_revision);
+
+  _ostree_fetcher_request_to_membuf (pull_data->fetcher,
+                                     pull_data->content_mirrorlist,
+                                     delta_name, 0,
+                                     OSTREE_MAX_METADATA_SIZE,
+                                     0, pull_data->cancellable,
+                                     on_superblock_fetched, fdata);
+  pull_data->n_outstanding_metadata_fetches++;
+  pull_data->n_requested_metadata++;
+}
+
+/* @ref - Optional ref name
+ * @to_revision: Target commit revision we want to fetch
+ *
+ * Start a request for either a ref or a commit.  In the
+ * ref case, we know both the name and the target commit.
+ *
+ * This function primarily handles the semantics around
+ * `disable_static_deltas` and `require_static_deltas`.
+ */
+static gboolean
+initiate_request (OtPullData *pull_data,
+                  const char *ref,
+                  const char *to_revision,
+                  GError    **error)
+{
+  g_autofree char *delta_from_revision = NULL;
+
+  /* Are deltas disabled?  OK, just start an object fetch and be done */
+  if (pull_data->disable_static_deltas)
+    {
+      queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0);
+      return TRUE;
+    }
+
+  /* If we have a summary, we can use the newer logic */
+  if (pull_data->summary)
+    {
+      gboolean have_scratch_delta = FALSE;
+
+      /* Look for a delta to @to_revision in the summary data */
+      if (!get_best_static_delta_start_for (pull_data, to_revision,
+                                            &have_scratch_delta, &delta_from_revision,
+                                            pull_data->cancellable, error))
+        return FALSE;
+
+      if (delta_from_revision)   /* Did we find a delta FROM commit? */
+        initiate_delta_request (pull_data, delta_from_revision, to_revision);
+      else if (have_scratch_delta)    /* No delta FROM, do we have a scratch? */
+        initiate_delta_request (pull_data, NULL, to_revision);
+      else if (pull_data->require_static_deltas) /* No deltas found; are they required? */
+        {
+          set_required_deltas_error (error, ref, to_revision);
+          return FALSE;
+        }
+      else /* No deltas, fall back to object fetches. */
+        queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0);
+    }
+  else if (ref != NULL)
+    {
+      /* Are we doing a delta via a ref?  In that case we can fall back to the older
+       * logic of just using the current tip of the ref as a delta FROM source. */
+      if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
+                                    &delta_from_revision, error))
+        return FALSE;
+
+      /* Determine whether the from revision we have is partial; this
+       * can happen if e.g. one uses `ostree pull --commit-metadata-only`.
+       * This mirrors the logic in get_best_static_delta_start_for().
+       */
+      if (delta_from_revision)
+        {
+          OstreeRepoCommitState from_commitstate;
+
+          if (!ostree_repo_load_commit (pull_data->repo, delta_from_revision, NULL,
+                                        &from_commitstate, error))
+            return FALSE;
+
+          /* Was it partial?  Then we can't use it. */
+          if (commitstate_is_partial (pull_data, from_commitstate))
+            g_clear_pointer (&delta_from_revision, g_free);
+        }
+
+      /* This is similar to the below, except we *might* use the previous
+       * commit, or we might do a scratch delta first.
+       */
+      initiate_delta_request (pull_data, delta_from_revision ?: NULL, to_revision);
+    }
+  else
+    {
+      /* Legacy path without a summary file - let's try a scratch delta, if that
+       * doesn't work, it'll drop down to object requests.
+       */
+      initiate_delta_request (pull_data, NULL, to_revision);
+    }
+
+  return TRUE;
+}
+
 /* ------------------------------------------------------------------------------------------
  * Below is the libsoup-invariant API; these should match
  * the stub functions in the #else clause
@@ -2631,7 +2759,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autofree char **refs_to_fetch = NULL;
   g_autofree char **override_commit_ids = NULL;
   GSource *update_timeout = NULL;
-  gboolean disable_static_deltas = FALSE;
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
   const char *url_override = NULL;
@@ -2653,7 +2780,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       opt_gpg_verify_summary_set =
         g_variant_lookup (options, "gpg-verify-summary", "b", &pull_data->gpg_verify_summary);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
-      (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
+      (void) g_variant_lookup (options, "disable-static-deltas", "b", &pull_data->disable_static_deltas);
       (void) g_variant_lookup (options, "require-static-deltas", "b", &pull_data->require_static_deltas);
       (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
       (void) g_variant_lookup (options, "dry-run", "b", &pull_data->dry_run);
@@ -2673,7 +2800,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   for (i = 0; dirs_to_pull != NULL && dirs_to_pull[i] != NULL; i++)
     g_return_val_if_fail (dirs_to_pull[i][0] == '/', FALSE);
 
-  g_return_val_if_fail (!(disable_static_deltas && pull_data->require_static_deltas), FALSE);
+  g_return_val_if_fail (!(pull_data->disable_static_deltas && pull_data->require_static_deltas), FALSE);
 
   /* We only do dry runs with static deltas, because we don't really have any
    * in-advance information for bare fetches.
@@ -2952,7 +3079,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
    * exact object files are copied.
    */
   if (pull_data->remote_repo_local && !pull_data->require_static_deltas)
-    disable_static_deltas = TRUE;
+    pull_data->disable_static_deltas = TRUE;
 
   /* We can't use static deltas if pulling into an archive-z2 repo. */
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
@@ -2963,13 +3090,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                "Can't use static deltas in an archive repo");
           goto out;
         }
-      disable_static_deltas = TRUE;
+      pull_data->disable_static_deltas = TRUE;
     }
 
   /* It's not efficient to use static deltas if all we want is the commit
    * metadata. */
   if (pull_data->is_commit_only)
-    disable_static_deltas = TRUE;
+    pull_data->disable_static_deltas = TRUE;
 
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
@@ -3239,78 +3366,23 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->legacy_transaction_resuming)
     g_debug ("resuming legacy transaction");
 
+  /* Initiate requests for explicit commit revisions */
   g_hash_table_iter_init (&hash_iter, commits_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *commit = value;
-      queue_scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0);
+      if (!initiate_request (pull_data, NULL, commit, error))
+        goto out;
     }
 
+  /* Initiate requests for refs */
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      g_autofree char *from_revision = NULL;
       const char *ref = key;
       const char *to_revision = value;
-      gboolean have_valid_from_commit = TRUE;
-
-      /* If we have a summary, find the latest local commit we have
-       * to use as a from revision for static deltas.
-       */
-      if (pull_data->summary)
-        {
-          if (!get_best_static_delta_start_for (pull_data, to_revision, &from_revision,
-                                                cancellable, error))
-            goto out;
-        }
-      else
-        {
-          if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
-                                        &from_revision, error))
-            goto out;
-
-          /* Determine whether the from revision we have is partial; this
-           * can happen if e.g. one uses `ostree pull --commit-metadata-only`.
-           * This mirrors the logic in get_best_static_delta_start_for().
-           */
-          if (from_revision)
-            {
-              OstreeRepoCommitState from_commitstate;
-
-              if (!ostree_repo_load_commit (pull_data->repo, from_revision, NULL,
-                                            &from_commitstate, error))
-                goto out;
-
-              /* Was it partial?  OK, we can't use it. */
-              if (commitstate_is_partial (pull_data, from_commitstate))
-                have_valid_from_commit = FALSE;
-            }
-        }
-
-      if (!disable_static_deltas &&
-          have_valid_from_commit &&
-          (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
-        {
-          g_autofree char *delta_name =
-            _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
-          FetchDeltaSuperData *fdata = g_new0(FetchDeltaSuperData, 1);
-          fdata->pull_data = pull_data;
-          fdata->from_revision = g_strdup (from_revision);
-          fdata->to_revision = g_strdup (to_revision);
-
-          _ostree_fetcher_request_to_membuf (pull_data->fetcher,
-                                             pull_data->content_mirrorlist,
-                                             delta_name, 0,
-                                             OSTREE_MAX_METADATA_SIZE,
-                                             0, pull_data->cancellable,
-                                             on_superblock_fetched, fdata);
-          pull_data->n_outstanding_metadata_fetches++;
-          pull_data->n_requested_metadata++;
-        }
-      else
-        {
-          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0);
-        }
+      if (!initiate_request (pull_data, ref, to_revision, error))
+        goto out;
     }
 
   if (pull_data->progress)
