@@ -423,6 +423,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   gboolean ret = FALSE;
   const char *checksum;
   gboolean is_symlink;
+  gboolean is_bare_user_symlink = FALSE;
   gboolean can_cache;
   gboolean need_copy = TRUE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
@@ -478,19 +479,23 @@ checkout_one_file_at (OstreeRepo                        *repo,
             (current_repo->mode == OSTREE_REPO_MODE_BARE
              && options->mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
             (repo_is_usermode && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER);
-          /* NOTE: bare-user symlinks are not stored as symlinks */
-          gboolean is_bare_symlink = (repo_is_usermode && is_symlink);
-          gboolean is_bare = is_hardlinkable && !is_bare_symlink;
+          gboolean is_bare = is_hardlinkable && !is_bare_user_symlink;
           gboolean current_can_cache = (options->enable_uncompressed_cache
                                         && current_repo->enable_uncompressed_cache);
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
                                                && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER
                                                && current_can_cache);
 
+          /* NOTE: bare-user symlinks are not stored as symlinks; see
+           * https://github.com/ostreedev/ostree/commit/47c612e5a0688c3452a125655a245e8f4f01b2b0
+           * as well as write_object().
+           */
+          is_bare_user_symlink = (repo_is_usermode && is_symlink);
+
           /* Verify if no_copy_fallback is set that we can hardlink, with a
            * special exception for bare-user symlinks.
            */
-          if (options->no_copy_fallback && !is_hardlinkable && !is_bare_symlink)
+          if (options->no_copy_fallback && !is_hardlinkable && !is_bare_user_symlink)
             {
               glnx_throw (error,
                           repo_is_usermode ?
@@ -618,8 +623,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
        * assertion is intended to ensure that for regular files at least, we
        * succeeded at hardlinking above.
        */
-      if (!is_symlink)
-        g_assert (!options->no_copy_fallback);
+      if (options->no_copy_fallback)
+        g_assert (is_bare_user_symlink);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
         goto out;
