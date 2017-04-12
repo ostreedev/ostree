@@ -2128,6 +2128,7 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
  * @self: Sysroot
  * @deployment: A deployment
  * @is_mutable: Whether or not deployment's files can be changed
+ * @cancellable: Cancellable
  * @error: Error
  *
  * By default, deployment directories are not mutable.  This function
