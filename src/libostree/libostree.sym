@@ -394,10 +394,13 @@ global:
  *                         NOTE NOTE NOTE
  */
 
+/* Uncomment when adding the first new symbol */
+/*
 LIBOSTREE_2017.$NEWVERSION {
 global:
 	someostree_symbol_deleteme;
 } LIBOSTREE_2017.4;
+*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
