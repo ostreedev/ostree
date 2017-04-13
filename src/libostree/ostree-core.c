@@ -579,57 +579,45 @@ ostree_content_stream_parse (gboolean                compressed,
                              GCancellable           *cancellable,
                              GError                **error)
 {
-  gboolean ret = FALSE;
   guint32 archive_header_size;
   guchar dummy[4];
   gsize bytes_read;
-  g_autoptr(GInputStream) ret_input = NULL;
-  g_autoptr(GFileInfo) ret_file_info = NULL;
-  g_autoptr(GVariant) ret_xattrs = NULL;
-  g_autoptr(GVariant) file_header = NULL;
-  g_autofree guchar *buf = NULL;
 
   if (!g_input_stream_read_all (input,
                                 &archive_header_size, 4, &bytes_read,
                                 cancellable, error))
-    goto out;
+    return FALSE;
   archive_header_size = GUINT32_FROM_BE (archive_header_size);
   if (archive_header_size > input_length)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "File header size %u exceeds size %" G_GUINT64_FORMAT,
-                   (guint)archive_header_size, input_length);
-      goto out;
-    }
-  if (archive_header_size == 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "File header size is zero");
-      goto out;
-    }
+      return glnx_throw (error, "File header size %u exceeds size %" G_GUINT64_FORMAT,
+                         (guint)archive_header_size, input_length);
+  else if (archive_header_size == 0)
+    return glnx_throw (error, "File header size is zero");
 
   /* Skip over padding */
   if (!g_input_stream_read_all (input,
                                 dummy, 4, &bytes_read,
                                 cancellable, error))
-    goto out;
+    return FALSE;
 
-  buf = g_malloc (archive_header_size);
+  g_autofree guchar *buf = g_malloc (archive_header_size);
   if (!g_input_stream_read_all (input, buf, archive_header_size, &bytes_read,
                                 cancellable, error))
-    goto out;
-  file_header = g_variant_new_from_data (compressed ? _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : _OSTREE_FILE_HEADER_GVARIANT_FORMAT,
-                                         buf, archive_header_size, trusted,
-                                         g_free, buf);
+    return FALSE;
+  g_autoptr(GVariant) file_header =
+    g_variant_new_from_data (compressed ? _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : _OSTREE_FILE_HEADER_GVARIANT_FORMAT,
+                             buf, archive_header_size, trusted,
+                             g_free, buf);
   buf = NULL;
-
+  g_autoptr(GFileInfo) ret_file_info = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
   if (compressed)
     {
       if (!zlib_file_header_parse (file_header,
                                    out_file_info ? &ret_file_info : NULL,
                                    out_xattrs ? &ret_xattrs : NULL,
                                    error))
-        goto out;
+        return FALSE;
     }
   else
     {
@@ -637,11 +625,12 @@ ostree_content_stream_parse (gboolean                compressed,
                               out_file_info ? &ret_file_info : NULL,
                               out_xattrs ? &ret_xattrs : NULL,
                               error))
-        goto out;
+        return FALSE;
       if (ret_file_info)
         g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
     }
-  
+
+  g_autoptr(GInputStream) ret_input = NULL;
   if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
       && out_input)
     {
@@ -658,12 +647,10 @@ ostree_content_stream_parse (gboolean                compressed,
         ret_input = g_object_ref (input);
     }
 
-  ret = TRUE;
   ot_transfer_out_value (out_input, &ret_input);
   ot_transfer_out_value (out_file_info, &ret_file_info);
   ot_transfer_out_value (out_xattrs, &ret_xattrs);
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -820,43 +807,39 @@ ostree_checksum_file (GFile            *f,
                       GCancellable     *cancellable,
                       GError          **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFileInfo) file_info = NULL;
-  g_autoptr(GInputStream) in = NULL;
-  g_autoptr(GVariant) xattrs = NULL;
-  g_autofree guchar *ret_csum = NULL;
-
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
+  g_autoptr(GFileInfo) file_info =
+    g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
+                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                       cancellable, error);
   if (!file_info)
-    goto out;
+    return FALSE;
 
+  g_autoptr(GInputStream) in = NULL;
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
       in = (GInputStream*)g_file_read (f, cancellable, error);
       if (!in)
-        goto out;
+        return FALSE;
     }
 
+  g_autoptr(GVariant) xattrs = NULL;
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (f),
                                          &xattrs, cancellable, error))
-        goto out;
+        return FALSE;
     }
 
+  g_autofree guchar *ret_csum = NULL;
   if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype,
                                         &ret_csum, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
   ot_transfer_out_value(out_csum, &ret_csum);
- out:
-  return ret;
+  return TRUE;
 }
 
 typedef struct {
@@ -1623,27 +1606,21 @@ file_header_parse (GVariant         *metadata,
                    GVariant        **out_xattrs,
                    GError          **error)
 {
-  gboolean ret = FALSE;
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  g_autoptr(GFileInfo) ret_file_info = NULL;
   g_autoptr(GVariant) ret_xattrs = NULL;
 
   g_variant_get (metadata, "(uuuu&s@a(ayay))",
                  &uid, &gid, &mode, &rdev,
                  &symlink_target, &ret_xattrs);
   if (rdev != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
-      goto out;
-    }
+    return glnx_throw (error, "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
 
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
 
-  ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
+  g_autoptr(GFileInfo) ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
 
   if (S_ISREG (mode))
     {
@@ -1655,16 +1632,12 @@ file_header_parse (GVariant         *metadata,
     }
   else
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted archive file; invalid mode %u", mode);
-      goto out;
+      return glnx_throw (error, "Corrupted archive file; invalid mode %u", mode);
     }
 
-  ret = TRUE;
   ot_transfer_out_value(out_file_info, &ret_file_info);
   ot_transfer_out_value(out_xattrs, &ret_xattrs);
- out:
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -1683,28 +1656,21 @@ zlib_file_header_parse (GVariant         *metadata,
                         GVariant        **out_xattrs,
                         GError          **error)
 {
-  gboolean ret = FALSE;
   guint64 size;
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  g_autoptr(GFileInfo) ret_file_info = NULL;
   g_autoptr(GVariant) ret_xattrs = NULL;
 
   g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size,
                  &uid, &gid, &mode, &rdev,
                  &symlink_target, &ret_xattrs);
   if (rdev != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
-      goto out;
-    }
+    return glnx_throw (error, "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
 
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-  ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
-
+  g_autoptr(GFileInfo) ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
   g_file_info_set_size (ret_file_info, GUINT64_FROM_BE (size));
 
   if (S_ISREG (mode))
@@ -1717,16 +1683,12 @@ zlib_file_header_parse (GVariant         *metadata,
     }
   else
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted archive file; invalid mode %u", mode);
-      goto out;
+      return glnx_throw (error, "Corrupted archive file; invalid mode %u", mode);
     }
 
-  ret = TRUE;
   ot_transfer_out_value(out_file_info, &ret_file_info);
   ot_transfer_out_value(out_xattrs, &ret_xattrs);
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1829,34 +1791,30 @@ gboolean
 ostree_validate_structureof_commit (GVariant      *commit,
                                     GError       **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) parent_csum_v = NULL;
-  g_autoptr(GVariant) content_csum_v = NULL;
-  g_autoptr(GVariant) metadata_csum_v = NULL;
-  gsize n_elts;
-
   if (!validate_variant (commit, OSTREE_COMMIT_GVARIANT_FORMAT, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(GVariant) parent_csum_v = NULL;
   g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
+  gsize n_elts;
   (void) g_variant_get_fixed_array (parent_csum_v, &n_elts, 1);
   if (n_elts > 0)
     {
       if (!ostree_validate_structureof_csum_v (parent_csum_v, error))
-        goto out;
+        return FALSE;
     }
 
+  g_autoptr(GVariant) content_csum_v = NULL;
   g_variant_get_child (commit, 6, "@ay", &content_csum_v);
   if (!ostree_validate_structureof_csum_v (content_csum_v, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(GVariant) metadata_csum_v = NULL;
   g_variant_get_child (commit, 7, "@ay", &metadata_csum_v);
   if (!ostree_validate_structureof_csum_v (metadata_csum_v, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1873,14 +1831,13 @@ gboolean
 ostree_validate_structureof_dirtree (GVariant      *dirtree,
                                      GError       **error)
 {
-  gboolean ret = FALSE;
   const char *filename;
   g_autoptr(GVariant) content_csum_v = NULL;
   g_autoptr(GVariant) meta_csum_v = NULL;
-  GVariantIter *contents_iter = NULL;
+  g_autoptr(GVariantIter) contents_iter = NULL;
 
   if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))
-    goto out;
+    return FALSE;
 
   g_variant_get_child (dirtree, 0, "a(say)", &contents_iter);
 
@@ -1888,10 +1845,13 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
                               &filename, &content_csum_v))
     {
       if (!ot_util_filename_validate (filename, error))
-        goto out;
+        return FALSE;
       if (!ostree_validate_structureof_csum_v (content_csum_v, error))
-        goto out;
+        return FALSE;
     }
+  /* Note we only use autoptr in case we broke out of the loop early;
+   * g_variant_iter_loop() has special semantics.
+   */
   content_csum_v = NULL;
 
   g_variant_iter_free (contents_iter);
@@ -1901,68 +1861,49 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
                               &filename, &content_csum_v, &meta_csum_v))
     {
       if (!ot_util_filename_validate (filename, error))
-        goto out;
+        return FALSE;
       if (!ostree_validate_structureof_csum_v (content_csum_v, error))
-        goto out;
+        return FALSE;
       if (!ostree_validate_structureof_csum_v (meta_csum_v, error))
-        goto out;
+        return FALSE;
     }
   content_csum_v = NULL;
   meta_csum_v = NULL;
 
-  ret = TRUE;
- out:
-  if (contents_iter)
-    g_variant_iter_free (contents_iter);
-  return ret;
+  return TRUE;
 }
 
 static gboolean
 validate_stat_mode_perms (guint32        mode,
                           GError       **error)
 {
-  gboolean ret = FALSE;
   guint32 otherbits = (~S_IFMT & ~S_IRWXU & ~S_IRWXG & ~S_IRWXO &
                        ~S_ISUID & ~S_ISGID & ~S_ISVTX);
 
   if (mode & otherbits)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid mode %u; invalid bits in mode", mode);
-      goto out;
-    }
+    return glnx_throw (error, "Invalid mode %u; invalid bits in mode", mode);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
  * ostree_validate_structureof_file_mode:
  * @mode: A Unix filesystem mode
  * @error: Error
- * 
+ *
  * Returns: %TRUE if @mode represents a valid file type and permissions
  */
 gboolean
 ostree_validate_structureof_file_mode (guint32            mode,
                                        GError           **error)
 {
-  gboolean ret = FALSE;
-
   if (!(S_ISREG (mode) || S_ISLNK (mode)))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid file metadata mode %u; not a valid file type", mode);
-      goto out;
-    }
+    return glnx_throw (error, "Invalid file metadata mode %u; not a valid file type", mode);
 
   if (!validate_stat_mode_perms (mode, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1978,28 +1919,21 @@ gboolean
 ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
                                      GError       **error)
 {
-  gboolean ret = FALSE;
   guint32 mode;
 
   if (!validate_variant (dirmeta, OSTREE_DIRMETA_GVARIANT_FORMAT, error))
-    goto out;
+    return FALSE;
 
   g_variant_get_child (dirmeta, 2, "u", &mode); 
   mode = GUINT32_FROM_BE (mode);
 
   if (!S_ISDIR (mode))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid directory metadata mode %u; not a directory", mode);
-      goto out;
-    }
+    return glnx_throw (error, "Invalid directory metadata mode %u; not a directory", mode);
 
   if (!validate_stat_mode_perms (mode, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
