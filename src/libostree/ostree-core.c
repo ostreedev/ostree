@@ -607,7 +607,8 @@ ostree_content_stream_parse (gboolean                compressed,
   g_autoptr(GVariant) file_header =
     g_variant_new_from_data (compressed ? _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : _OSTREE_FILE_HEADER_GVARIANT_FORMAT,
                              buf, archive_header_size, trusted,
-                             g_free, g_steal_pointer (&buf));
+                             g_free, buf);
+  buf = NULL;
   g_autoptr(GFileInfo) ret_file_info = NULL;
   g_autoptr(GVariant) ret_xattrs = NULL;
   if (compressed)
