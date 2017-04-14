@@ -730,3 +730,44 @@ _ostree_sepolicy_fscreatecon_clear (OstreeSepolicyFsCreatecon *con)
     return;
   ostree_sepolicy_fscreatecon_cleanup (NULL);
 }
+
+/*
+ * Given @xattrs, filter out `security.selinux`, and return
+ * a new GVariant without it.  Supports @xattrs as %NULL to
+ * mean "no xattrs", and also returns %NULL if no xattrs
+ * would result (rather than a zero-length array).
+ */
+GVariant *
+_ostree_filter_selinux_xattr (GVariant *xattrs)
+{
+  if (!xattrs)
+    return NULL;
+
+  gboolean have_xattrs = FALSE;
+  GVariantBuilder builder;
+  guint n = g_variant_n_children (xattrs);
+  for (guint i = 0; i < n; i++)
+    {
+      const char *name = NULL;
+      g_autoptr(GVariant) value = NULL;
+
+      g_variant_get_child (xattrs, i, "(^&ay@ay)",
+                           &name, &value);
+
+      if (strcmp (name, "security.selinux") == 0)
+        continue;
+      /* Initialize builder lazily */
+      if (!have_xattrs)
+        {
+          have_xattrs = TRUE;
+          g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+        }
+      g_variant_builder_add (&builder, "(@ay@ay)",
+                             g_variant_new_bytestring (name),
+                             value);
+    }
+  /* Canonicalize zero length to NULL for efficiency */
+  if (!have_xattrs)
+    return NULL;
+  return g_variant_ref_sink (g_variant_builder_end (&builder));
+}

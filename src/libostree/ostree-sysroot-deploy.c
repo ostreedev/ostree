@@ -767,6 +767,7 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
 
 static gboolean
 merge_configuration (OstreeSysroot         *sysroot,
+                     OstreeRepo            *repo,
                      OstreeDeployment      *previous_deployment,
                      OstreeDeployment      *deployment,
                      int                    deployment_dfd,
@@ -829,19 +830,15 @@ merge_configuration (OstreeSysroot         *sysroot,
       usretc_exists = TRUE;
       etc_exists = FALSE;
     }
-  
+
   if (usretc_exists)
     {
-      glnx_fd_close int deployment_usr_dfd = -1;
-
-      if (!glnx_opendirat (deployment_dfd, "usr", TRUE, &deployment_usr_dfd, error))
-        goto out;
-
-      /* TODO - set out labels as we copy files */
-      g_assert (!etc_exists);
-      if (!copy_dir_recurse (deployment_usr_dfd, deployment_dfd, "etc",
-                             sysroot->debug_flags, cancellable, error))
-        goto out;
+      /* We need copies of /etc from /usr/etc (so admins can use vi), and if
+       * SELinux is enabled, we need to relabel.
+       */
+      OstreeRepoCheckoutAtOptions etc_co_opts = { .force_copy = TRUE,
+                                                  .subpath = "/usr/etc",
+                                                  .sepolicy_prefix = "/etc"};
 
       /* Here, we initialize SELinux policy from the /usr/etc inside
        * the root - this is before we've finalized the configuration
@@ -849,13 +846,15 @@ merge_configuration (OstreeSysroot         *sysroot,
       sepolicy = ostree_sepolicy_new (deployment_path, cancellable, error);
       if (!sepolicy)
         goto out;
-
       if (ostree_sepolicy_get_name (sepolicy) != NULL)
-        {
-          if (!selinux_relabel_dir (sysroot, sepolicy, deployment_etc_path, "etc",
+        etc_co_opts.sepolicy = sepolicy;
+
+      /* Copy usr/etc → etc */
+      if (!ostree_repo_checkout_at (repo, &etc_co_opts,
+                                    deployment_dfd, "etc",
+                                    ostree_deployment_get_csum (deployment),
                                     cancellable, error))
-            goto out;
-        }
+        goto out;
     }
 
   if (source_etc_path)
@@ -2018,7 +2017,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   ostree_deployment_set_bootconfig (new_deployment, bootconfig);
 
   glnx_unref_object OstreeSePolicy *sepolicy = NULL;
-  if (!merge_configuration (self, merge_deployment, new_deployment,
+  if (!merge_configuration (self, repo, merge_deployment, new_deployment,
                             deployment_dfd,
                             &sepolicy,
                             cancellable, error))

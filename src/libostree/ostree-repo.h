@@ -775,7 +775,9 @@ typedef struct {
   OstreeRepoDevInoCache *devino_to_csum_cache;
 
   int unused_ints[6];
-  gpointer unused_ptrs[7];
+  gpointer unused_ptrs[5];
+  OstreeSePolicy *sepolicy; /* Since: 2017.6 */
+  const char *sepolicy_prefix;
 } OstreeRepoCheckoutAtOptions;
 
 _OSTREE_PUBLIC

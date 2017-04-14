@@ -407,6 +407,9 @@ EOF
     mkdir sysroot
     export OSTREE_SYSROOT=sysroot
     ${CMD_PREFIX} ostree admin init-fs sysroot
+    if test -n "${OSTREE_NO_XATTRS:-}"; then
+        echo -e 'disable-xattrs=true\n' >> sysroot/ostree/repo/config
+    fi
     ${CMD_PREFIX} ostree admin os-init testos
 
     case $bootmode in
