@@ -538,6 +538,7 @@ ostree_repo_finalize (GObject *object)
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
   g_clear_error (&self->writable_error);
   g_clear_pointer (&self->object_sizes, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&self->dirmeta_cache, (GDestroyNotify) g_hash_table_unref);
   g_mutex_clear (&self->cache_lock);
   g_mutex_clear (&self->txn_stats_lock);
 
@@ -2500,6 +2501,26 @@ load_metadata_internal (OstreeRepo       *self,
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
 
+  /* Special caching for dirmeta objects, since they're commonly referenced many
+   * times.
+   */
+  const gboolean is_dirmeta_cachable =
+    (objtype == OSTREE_OBJECT_TYPE_DIR_META && out_variant && !out_stream);
+  if (is_dirmeta_cachable)
+    {
+      GMutex *lock = &self->cache_lock;
+      g_mutex_lock (lock);
+      GVariant *cache_hit = NULL;
+      /* Look it up, if we have a cache */
+      if (self->dirmeta_cache)
+        cache_hit = g_hash_table_lookup (self->dirmeta_cache, sha256);
+      if (cache_hit)
+        *out_variant = g_variant_ref (cache_hit);
+      g_mutex_unlock (lock);
+      if (cache_hit)
+        return TRUE;
+    }
+
   _ostree_loose_path (loose_path_buf, sha256, objtype, self->mode);
 
  if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
@@ -2544,6 +2565,16 @@ load_metadata_internal (OstreeRepo       *self,
               ret_variant = g_variant_new_from_bytes (ostree_metadata_variant_type (objtype),
                                                       data, TRUE);
               g_variant_ref_sink (ret_variant);
+            }
+
+          /* Now, let's put it in the cache */
+          if (is_dirmeta_cachable)
+            {
+              GMutex *lock = &self->cache_lock;
+              g_mutex_lock (lock);
+              if (self->dirmeta_cache)
+                g_hash_table_replace (self->dirmeta_cache, g_strdup (sha256), g_variant_ref (ret_variant));
+              g_mutex_unlock (lock);
             }
         }
       else if (out_stream)
@@ -4931,4 +4962,33 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
   ret = TRUE;
  out:
   return ret;
+}
+
+/* See ostree-repo-private.h for more information about this */
+void
+_ostree_repo_memory_cache_ref_init (OstreeRepoMemoryCacheRef *state,
+                                    OstreeRepo               *repo)
+{
+  state->repo = g_object_ref (repo);
+  GMutex *lock = &repo->cache_lock;
+  g_mutex_lock (lock);
+  repo->dirmeta_cache_refcount++;
+  if (repo->dirmeta_cache == NULL)
+    repo->dirmeta_cache = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_variant_unref);
+  g_mutex_unlock (lock);
+
+}
+
+/* See ostree-repo-private.h for more information about this */
+void
+_ostree_repo_memory_cache_ref_destroy (OstreeRepoMemoryCacheRef *state)
+{
+  OstreeRepo *repo = state->repo;
+  GMutex *lock = &repo->cache_lock;
+  g_mutex_lock (lock);
+  repo->dirmeta_cache_refcount--;
+  if (repo->dirmeta_cache_refcount == 0)
+    g_clear_pointer (&repo->dirmeta_cache, (GDestroyNotify) g_hash_table_unref);
+  g_mutex_unlock (lock);
+  g_object_unref (repo);
 }

@@ -799,6 +799,8 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
   /* Backwards compatibility */
   options.enable_uncompressed_cache = TRUE;
 
+  g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
+  _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
   return checkout_tree_at (self, &options,
                            AT_FDCWD, gs_file_get_path_cached (destination),
                            source, source_info,
@@ -916,6 +918,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   if (!target_info)
     return FALSE;
 
+  g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
+  _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
   if (!checkout_tree_at (self, options,
                          destination_dfd,
                          destination_path,
