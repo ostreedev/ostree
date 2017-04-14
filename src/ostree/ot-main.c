@@ -223,7 +223,6 @@ ostree_option_context_parse (GOptionContext *context,
                              GError **error)
 {
   glnx_unref_object OstreeRepo *repo = NULL;
-  gboolean success = FALSE;
 
   /* Entries are listed in --help output in the order added.  We add the
    * main entries ourselves so that we can add the --repo entry first. */
@@ -278,7 +277,7 @@ ostree_option_context_parse (GOptionContext *context,
             {
               g_propagate_error (error, g_steal_pointer (&local_error));
             }
-          goto out;
+          return FALSE;
         }
     }
   else if (opt_repo != NULL)
@@ -289,17 +288,14 @@ ostree_option_context_parse (GOptionContext *context,
       if (!(flags & OSTREE_BUILTIN_FLAG_NO_CHECK))
         {
           if (!ostree_repo_open (repo, cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
   if (out_repo)
     *out_repo = g_steal_pointer (&repo);
 
-  success = TRUE;
-
-out:
-  return success;
+  return TRUE;
 }
 
 gboolean
@@ -312,22 +308,19 @@ ostree_admin_option_context_parse (GOptionContext *context,
                                    GCancellable *cancellable,
                                    GError **error)
 {
-  g_autoptr(GFile) sysroot_path = NULL;
-  glnx_unref_object OstreeSysroot *sysroot = NULL;
-  gboolean success = FALSE;
-
   /* Entries are listed in --help output in the order added.  We add the
    * main entries ourselves so that we can add the --sysroot entry first. */
 
   g_option_context_add_main_entries (context, global_admin_entries, NULL);
 
   if (!ostree_option_context_parse (context, main_entries, argc, argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(GFile) sysroot_path = NULL;
   if (opt_sysroot != NULL)
     sysroot_path = g_file_new_for_path (opt_sysroot);
 
-  sysroot = ostree_sysroot_new (sysroot_path);
+  glnx_unref_object OstreeSysroot *sysroot = ostree_sysroot_new (sysroot_path);
 
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {
@@ -338,7 +331,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
                        "You must be root to perform this command");
-          goto out;
+          return FALSE;
         }
     }
 
@@ -350,15 +343,11 @@ ostree_admin_option_context_parse (GOptionContext *context,
       g_autofree char *deployment_path = NULL;
 
       if (!ostree_sysroot_load (sysroot, cancellable, error))
-        goto out;
+        return FALSE;
 
       deployments = ostree_sysroot_get_deployments (sysroot);
       if (deployments->len == 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unable to find a deployment in sysroot");
-          goto out;
-        }
+        return glnx_throw (error, "Unable to find a deployment in sysroot");
       first_deployment = deployments->pdata[0];
       deployment_file = ostree_sysroot_get_deployment_directory (sysroot, first_deployment);
       deployment_path = g_file_get_path (deployment_file);
@@ -379,29 +368,22 @@ ostree_admin_option_context_parse (GOptionContext *context,
     {
       /* Released when sysroot is finalized, or on process exit */
       if (!ot_admin_sysroot_lock (sysroot, error))
-        goto out;
+        return FALSE;
     }
 
   if (out_sysroot)
     *out_sysroot = g_steal_pointer (&sysroot);
 
-  success = TRUE;
-
-out:
-  return success;
+  return TRUE;
 }
 
 gboolean
 ostree_ensure_repo_writable (OstreeRepo *repo,
                              GError **error)
 {
-  gboolean ret;
-
-  ret = ostree_repo_is_writable (repo, error);
-
-  g_prefix_error (error, "Cannot write to repository: ");
-
-  return ret;
+  if (!ostree_repo_is_writable (repo, error))
+    return g_prefix_error (error, "Cannot write to repository: "), FALSE;
+  return TRUE;
 }
 
 void
@@ -432,7 +414,6 @@ ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
 gboolean
 ot_enable_tombstone_commits (OstreeRepo *repo, GError **error)
 {
-  gboolean ret = FALSE;
   gboolean tombstone_commits = FALSE;
   GKeyFile *config = ostree_repo_get_config (repo);
 
@@ -442,10 +423,8 @@ ot_enable_tombstone_commits (OstreeRepo *repo, GError **error)
     {
       g_key_file_set_boolean (config, "core", "tombstone-commits", TRUE);
       if (!ostree_repo_write_config (repo, config, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
