@@ -92,8 +92,6 @@ struct OstreeRepo {
   OstreeRepoTransactionStats txn_stats;
 
   GMutex cache_lock;
-  GPtrArray *cached_meta_indexes;
-  GPtrArray *cached_content_indexes;
 
   gboolean inited;
   gboolean writable;
