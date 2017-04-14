@@ -42,64 +42,52 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
                                         GCancellable    *cancellable,
                                         GError         **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *temp_filename = NULL;
-  g_autoptr(GOutputStream) temp_out = NULL;
-  glnx_fd_close int fd = -1;
-  int res;
-  guint32 file_mode;
-
   /* Don't make setuid files in uncompressed cache */
-  file_mode = g_file_info_get_attribute_uint32 (src_info, "unix::mode");
+  guint32 file_mode = g_file_info_get_attribute_uint32 (src_info, "unix::mode");
   file_mode &= ~(S_ISUID|S_ISGID);
 
+  glnx_fd_close int fd = -1;
+  g_autofree char *temp_filename = NULL;
   if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY | O_CLOEXEC,
                                       &fd, &temp_filename,
                                       error))
-    goto out;
-  temp_out = g_unix_output_stream_new (fd, FALSE);
+    return FALSE;
+  g_autoptr(GOutputStream) temp_out = g_unix_output_stream_new (fd, FALSE);
 
   if (g_output_stream_splice (temp_out, content, 0, cancellable, error) < 0)
-    goto out;
+    return FALSE;
 
   if (!g_output_stream_flush (temp_out, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!self->disable_fsync)
     {
+      int res;
       do
         res = fsync (fd);
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
 
   if (!g_output_stream_close (temp_out, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (fchmod (fd, file_mode) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno (error);
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->uncompressed_objects_dir_fd,
                                             loose_path,
                                             cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!glnx_link_tmpfile_at (self->tmp_dir_fd, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
                              fd, temp_filename,
                              self->uncompressed_objects_dir_fd, loose_path,
                              error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -119,64 +107,51 @@ write_regular_file_content (OstreeRepo            *self,
                             GCancellable          *cancellable,
                             GError               **error)
 {
-  gboolean ret = FALSE;
   const OstreeRepoCheckoutMode mode = options->mode;
-  int fd;
-  int res;
 
   if (g_output_stream_splice (output, input, 0,
                               cancellable, error) < 0)
-    goto out;
+    return FALSE;
 
   if (!g_output_stream_flush (output, cancellable, error))
-    goto out;
+    return FALSE;
 
-  fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)output);
+  int fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)output);
 
   if (mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
+      int res;
       do
         res = fchown (fd,
                       g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                       g_file_info_get_attribute_uint32 (file_info, "unix::gid"));
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
 
       do
         res = fchmod (fd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
-              
+        return glnx_throw_errno (error);
+
       if (xattrs)
         {
           if (!glnx_fd_set_all_xattrs (fd, xattrs, cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
-          
+
   if (fsync_is_enabled (self, options))
     {
       if (fsync (fd) == -1)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
-          
-  if (!g_output_stream_close (output, cancellable, error))
-    goto out;
 
-  ret = TRUE;
- out:
-  return ret;
+  if (!g_output_stream_close (output, cancellable, error))
+    return FALSE;
+
+  return TRUE;
 }
 
 static gboolean
@@ -190,7 +165,6 @@ checkout_file_from_input_at (OstreeRepo     *self,
                              GCancellable   *cancellable,
                              GError        **error)
 {
-  gboolean ret = FALSE;
   int res;
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
@@ -203,14 +177,11 @@ checkout_file_from_input_at (OstreeRepo     *self,
         {
           if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
             {
-              ret = TRUE;
-              goto out;
+              /* Note early return */
+              return TRUE;
             }
           else
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+            return glnx_throw_errno (error);
         }
 
       if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
@@ -219,16 +190,13 @@ checkout_file_from_input_at (OstreeRepo     *self,
                                     g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                                     g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
                                     AT_SYMLINK_NOFOLLOW) == -1))
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+            return glnx_throw_errno (error);
 
           if (xattrs)
             {
               if (!glnx_dfd_name_set_all_xattrs (destination_dfd, destination_name,
                                                    xattrs, cancellable, error))
-                goto out;
+                return FALSE;
             }
         }
     }
@@ -250,25 +218,23 @@ checkout_file_from_input_at (OstreeRepo     *self,
         {
           if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
             {
-              ret = TRUE;
-              goto out;
+              /* Note early return */
+              return TRUE;
             }
-          glnx_set_error_from_errno (error);
-          goto out;
+          else
+            return glnx_throw_errno (error);
         }
       temp_out = g_unix_output_stream_new (fd, TRUE);
       fd = -1; /* Transfer ownership */
 
       if (!write_regular_file_content (self, options, temp_out, file_info, xattrs, input,
                                        cancellable, error))
-        goto out;
+        return FALSE;
     }
   else
     g_assert_not_reached ();
-  
-  ret = TRUE;
- out:
-  return ret;
+
+  return TRUE;
 }
 
 /*
@@ -286,7 +252,6 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                       GCancellable   *cancellable,
                                       GError        **error)
 {
-  gboolean ret = FALSE;
   g_autofree char *temp_filename = NULL;
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
@@ -295,20 +260,17 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                               g_file_info_get_symlink_target (file_info),
                                               &temp_filename,
                                               cancellable, error))
-        goto out;
-          
+        return FALSE;
+
       if (xattrs)
         {
           if (!glnx_dfd_name_set_all_xattrs (destination_dfd, temp_filename,
                                                xattrs, cancellable, error))
-            goto out;
+            return FALSE;
         }
       if (G_UNLIKELY (renameat (destination_dfd, temp_filename,
                                 destination_dfd, destination_name) == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
@@ -324,25 +286,23 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
       if (!glnx_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
                                           &temp_fd, &temp_filename,
                                           error))
-        goto out;
+        return FALSE;
       temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
       if (!write_regular_file_content (repo, options, temp_out, file_info, xattrs, input,
                                        cancellable, error))
-        goto out;
+        return FALSE;
 
       if (!glnx_link_tmpfile_at (destination_dfd, GLNX_LINK_TMPFILE_REPLACE,
                                  temp_fd, temp_filename, destination_dfd,
                                  destination_name,
                                  error))
-        goto out;
+        return FALSE;
     }
   else
     g_assert_not_reached ();
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 typedef enum {
@@ -386,7 +346,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
       ret_result = HARDLINK_RESULT_SKIP_EXISTED;
     }
   else if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
-    { 
+    {
       /* Idiocy, from man rename(2)
        *
        * "If oldpath and newpath are existing hard links referring to
@@ -400,9 +360,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
     }
   else
     {
-      g_prefix_error (error, "Hardlinking %s to %s: ", loose_path, destination_name);
-      glnx_set_error_from_errno (error);
-      return FALSE;
+      return glnx_throw_errno_prefix (error, "Hardlinking %s to %s", loose_path, destination_name);
     }
 
   if (out_result)
@@ -420,22 +378,13 @@ checkout_one_file_at (OstreeRepo                        *repo,
                       GCancellable                      *cancellable,
                       GError                           **error)
 {
-  gboolean ret = FALSE;
-  const char *checksum;
-  gboolean is_symlink;
-  gboolean is_bare_user_symlink = FALSE;
-  gboolean can_cache;
   gboolean need_copy = TRUE;
+  gboolean is_bare_user_symlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  g_autoptr(GInputStream) input = NULL;
-  g_autoptr(GVariant) xattrs = NULL;
-  gboolean is_whiteout;
-
-  is_symlink = g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
-  checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
-
-  is_whiteout = !is_symlink && options->process_whiteouts &&
-    g_str_has_prefix (destination_name, WHITEOUT_PREFIX);
+  const gboolean is_symlink = (g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK);
+  const char *checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
+  const gboolean is_whiteout = (!is_symlink && options->process_whiteouts &&
+                                g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
 
   /* First, see if it's a Docker whiteout,
    * https://github.com/docker/docker/blob/1a714e76a2cb9008cd19609059e9988ff1660b78/pkg/archive/whiteouts.go
@@ -445,16 +394,12 @@ checkout_one_file_at (OstreeRepo                        *repo,
       const char *name = destination_name + (sizeof (WHITEOUT_PREFIX) - 1);
 
       if (!name[0])
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid empty whiteout '%s'", name);
-          goto out;
-        }
+        return glnx_throw (error, "Invalid empty whiteout '%s'", name);
 
       g_assert (name[0] != '/'); /* Sanity */
 
       if (!glnx_shutil_rm_rf_at (destination_dfd, name, cancellable, error))
-        goto out;
+        return FALSE;
 
       need_copy = FALSE;
     }
@@ -496,13 +441,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
            * special exception for bare-user symlinks.
            */
           if (options->no_copy_fallback && !is_hardlinkable && !is_bare_user_symlink)
-            {
-              glnx_throw (error,
-                          repo_is_usermode ?
-                          "User repository mode requires user checkout mode to hardlink" :
-                          "Bare repository mode cannot hardlink in user checkout mode");
-              goto out;
-            }
+            return glnx_throw (error,
+                               repo_is_usermode ?
+                               "User repository mode requires user checkout mode to hardlink" :
+                               "Bare repository mode cannot hardlink in user checkout mode");
 
           /* But only under these conditions */
           if (is_bare || is_archive_z2_with_cache)
@@ -516,24 +458,21 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                            destination_dfd, destination_name,
                                            TRUE, &hardlink_res,
                                            cancellable, error))
-                goto out;
+                return FALSE;
 
               if (hardlink_res == HARDLINK_RESULT_LINKED && options->devino_to_csum_cache)
                 {
                   struct stat stbuf;
                   OstreeDevIno *key;
-                  
+
                   if (TEMP_FAILURE_RETRY (fstatat (destination_dfd, destination_name, &stbuf, AT_SYMLINK_NOFOLLOW)) != 0)
-                    {
-                      glnx_set_error_from_errno (error);
-                      goto out;
-                    }
-                  
+                    return glnx_throw_errno (error);
+
                   key = g_new (OstreeDevIno, 1);
                   key->dev = stbuf.st_dev;
                   key->ino = stbuf.st_ino;
                   memcpy (key->checksum, checksum, OSTREE_SHA256_STRING_LEN+1);
-                  
+
                   g_hash_table_add ((GHashTable*)options->devino_to_csum_cache, key);
                 }
 
@@ -546,8 +485,11 @@ checkout_one_file_at (OstreeRepo                        *repo,
       need_copy = (hardlink_res == HARDLINK_RESULT_NOT_SUPPORTED);
     }
 
-  can_cache = (options->enable_uncompressed_cache
-               && repo->enable_uncompressed_cache);
+  const gboolean can_cache = (options->enable_uncompressed_cache
+                              && repo->enable_uncompressed_cache);
+
+  g_autoptr(GInputStream) input = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
 
   /* Ok, if we're archive-z2 and we didn't find an object, uncompress
    * it now, stick it in the cache, and then hardlink to that.
@@ -560,10 +502,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
       && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
       HardlinkResult hardlink_res = HARDLINK_RESULT_NOT_SUPPORTED;
-      
+
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, NULL,
                                   cancellable, error))
-        goto out;
+        return FALSE;
 
       /* Overwrite any parent repo from earlier */
       _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, OSTREE_REPO_MODE_BARE);
@@ -571,11 +513,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
       if (!checkout_object_for_uncompressed_cache (repo, loose_path_buf,
                                                    source_info, input,
                                                    cancellable, error))
-        {
-          g_prefix_error (error, "Unpacking loose object %s: ", checksum);
-          goto out;
-        }
-      
+        return g_prefix_error (error, "Unpacking loose object %s: ", checksum), FALSE;
+
       g_clear_object (&input);
 
       /* Store the 2-byte objdir prefix (e.g. e3) in a set.  The basic
@@ -607,10 +546,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                    destination_dfd, destination_name,
                                    FALSE, &hardlink_res,
                                    cancellable, error))
-        {
-          g_prefix_error (error, "Using new cached uncompressed hardlink of %s to %s: ", checksum, destination_name);
-          goto out;
-        }
+        return g_prefix_error (error, "Using new cached uncompressed hardlink of %s to %s: ", checksum, destination_name), FALSE;
 
       need_copy = (hardlink_res == HARDLINK_RESULT_NOT_SUPPORTED);
     }
@@ -627,18 +563,15 @@ checkout_one_file_at (OstreeRepo                        *repo,
         g_assert (is_bare_user_symlink);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
-        goto out;
+        return FALSE;
 
       if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
         {
           if (!checkout_file_unioning_from_input_at (repo, options, source_info, xattrs, input,
                                                      destination_dfd,
                                                      destination_name,
-                                                     cancellable, error)) 
-            {
-              g_prefix_error (error, "Union checkout of %s to %s: ", checksum, destination_name);
-              goto out;
-            }
+                                                     cancellable, error))
+            return g_prefix_error (error, "Union checkout of %s to %s: ", checksum, destination_name), FALSE;
         }
       else
         {
@@ -646,22 +579,17 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                             destination_dfd,
                                             destination_name,
                                             cancellable, error))
-            {
-              g_prefix_error (error, "Checkout of %s to %s: ", checksum, destination_name);
-              goto out;
-            }
+            return g_prefix_error (error, "Checkout of %s to %s: ", checksum, destination_name), FALSE;
         }
 
       if (input)
         {
           if (!g_input_stream_close (input, cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -689,14 +617,8 @@ checkout_tree_at (OstreeRepo                        *self,
                   GCancellable                      *cancellable,
                   GError                           **error)
 {
-  gboolean ret = FALSE;
   gboolean did_exist = FALSE;
-  glnx_fd_close int destination_dfd = -1;
   int res;
-  struct stat repo_dfd_stat;
-  struct stat destination_stat;
-  g_autoptr(GVariant) xattrs = NULL;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
 
   /* Create initially with mode 0700, then chown/chmod only when we're
    * done.  This avoids anyone else being able to operate on partially
@@ -712,65 +634,56 @@ checkout_tree_at (OstreeRepo                        *self,
            || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES))
         did_exist = TRUE;
       else
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
 
+  glnx_fd_close int destination_dfd = -1;
   if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE,
                        &destination_dfd, error))
-    goto out;
+    return FALSE;
 
+  struct stat repo_dfd_stat;
   if (fstat (self->repo_dir_fd, &repo_dfd_stat) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno (error);
+  struct stat destination_stat;
   if (fstat (destination_dfd, &destination_stat) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno (error);
 
   if (options->no_copy_fallback && repo_dfd_stat.st_dev != destination_stat.st_dev)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to do hardlink checkout across devices (src=%"G_GUINT64_FORMAT" destination=%"G_GUINT64_FORMAT")",
-                   (guint64)repo_dfd_stat.st_dev, (guint64)destination_stat.st_dev);
-      goto out;
-    }
+    return glnx_throw (error, "Unable to do hardlink checkout across devices (src=%"G_GUINT64_FORMAT" destination=%"G_GUINT64_FORMAT")",
+                       (guint64)repo_dfd_stat.st_dev, (guint64)destination_stat.st_dev);
 
   /* Set the xattrs now, so any derived labeling works */
+  g_autoptr(GVariant) xattrs = NULL;
   if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
       if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
-        goto out;
+        return FALSE;
 
       if (xattrs)
         {
           if (!glnx_fd_set_all_xattrs (destination_dfd, xattrs, cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
+  /* Note early return here! */
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
-    {
-      ret = checkout_one_file_at (self, options,
-                                  (GFile *) source,
-                                  source_info,
-                                  destination_dfd,
-                                  g_file_info_get_name (source_info),
-                                  cancellable, error);
-      goto out;
-    }
-  dir_enum = g_file_enumerate_children ((GFile*)source,
-                                        OSTREE_GIO_FAST_QUERYINFO, 
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, 
-                                        error);
+    return checkout_one_file_at (self, options,
+                                 (GFile *) source,
+                                 source_info,
+                                 destination_dfd,
+                                 g_file_info_get_name (source_info),
+                                 cancellable, error);
+
+  g_autoptr(GFileEnumerator) dir_enum =
+    g_file_enumerate_children ((GFile*)source,
+                               OSTREE_GIO_FAST_QUERYINFO,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                               cancellable,
+                               error);
   if (!dir_enum)
-    goto out;
+    return FALSE;
 
   while (TRUE)
     {
@@ -780,7 +693,7 @@ checkout_tree_at (OstreeRepo                        *self,
 
       if (!g_file_enumerator_iterate (dir_enum, &file_info, &src_child,
                                       cancellable, error))
-        goto out;
+        return FALSE;
       if (file_info == NULL)
         break;
 
@@ -792,7 +705,7 @@ checkout_tree_at (OstreeRepo                        *self,
                                  destination_dfd, name,
                                  (OstreeRepoFile*)src_child, file_info,
                                  cancellable, error))
-            goto out;
+            return FALSE;
         }
       else
         {
@@ -800,7 +713,7 @@ checkout_tree_at (OstreeRepo                        *self,
                                      src_child, file_info,
                                      destination_dfd, name,
                                      cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
@@ -814,10 +727,7 @@ checkout_tree_at (OstreeRepo                        *self,
                       g_file_info_get_attribute_uint32 (source_info, "unix::mode"));
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
 
   if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
@@ -828,10 +738,7 @@ checkout_tree_at (OstreeRepo                        *self,
                       g_file_info_get_attribute_uint32 (source_info, "unix::gid"));
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
 
   /* Set directory mtime to OSTREE_TIMESTAMP, so that it is constant for all checkouts.
@@ -844,24 +751,16 @@ checkout_tree_at (OstreeRepo                        *self,
         res = futimens (destination_dfd, times);
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
 
   if (fsync_is_enabled (self, options))
     {
       if (fsync (destination_dfd) == -1)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno (error);
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1111,7 +1010,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
               glnx_set_error_from_errno (error);
               return FALSE;
             }
-          
+
           if (stbuf.st_nlink == 1)
             {
               if (unlinkat (dfd_iter.fd, dent->d_name, 0) != 0)
