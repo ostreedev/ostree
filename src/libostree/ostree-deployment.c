@@ -39,6 +39,12 @@ ostree_deployment_get_bootcsum (OstreeDeployment *self)
   return self->bootcsum;
 }
 
+/*
+ * ostree_deployment_get_osname:
+ * @self: Deployemnt
+ *
+ * Returns: The "stateroot" name, also known as an "osname"
+ */
 const char *
 ostree_deployment_get_osname (OstreeDeployment *self)
 {

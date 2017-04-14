@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree admin os-init</command> <arg choice="req">OSNAME</arg>
+                <command>ostree admin os-init</command> <arg choice="req">STATEROOT</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -57,15 +57,19 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Initializes an new state for an operating system.  Ensures that the core subdirectories of /var (/tmp, /lib, /run, and /lock) exist and initialize the given OSNAME as OSTree root.  Each deployment location is comprised of a single shared <filename>var</filename> and a set of deployments (chroots).
+            Initializes an new stateroot (AKA "osname") for an operating system.
+            Ensures that the core subdirectories of /var (/tmp, /lib, /run, and
+            /lock) exist and initialize the given STATEROOT as OSTree stateroot.
+            Each deployment location is comprised of a single shared
+            <filename>var</filename> and a set of deployments (chroots).
         </para>
     </refsect1>
 
     <refsect1>
         <title>Example</title>
-        <para><command>$ ostree admin os-init gnome-ostree</command></para>
+        <para><command>$ ostree admin os-init exampleos</command></para>
     <programlisting>
-        ostree/deploy/gnome-ostree initialized as OSTree root
+        ostree/deploy/exampleos initialized as OSTree root
     </programlisting>
     </refsect1>
 </refentry>

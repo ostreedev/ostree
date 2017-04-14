@@ -66,7 +66,7 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
-                <term><option>--os</option>="OSNAME"</term>
+                <term><option>--os</option>="STATEROOT"</term>
 
                 <listitem><para>
                     Use a different operating system root than the current one.
