@@ -29,10 +29,16 @@
 #include "otutil.h"
 
 #include "ostree-repo-file.h"
+#include "ostree-sepolicy-private.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 
 #define WHITEOUT_PREFIX ".wh."
+
+/* Per-checkout call state/caching */
+typedef struct {
+  GString *selabel_path_buf;
+} CheckoutState;
 
 static gboolean
 checkout_object_for_uncompressed_cache (OstreeRepo      *self,
@@ -160,6 +166,7 @@ write_regular_file_content (OstreeRepo            *self,
 static gboolean
 create_file_copy_from_input_at (OstreeRepo     *repo,
                                 OstreeRepoCheckoutAtOptions  *options,
+                                CheckoutState  *state,
                                 GFileInfo      *file_info,
                                 GVariant       *xattrs,
                                 GInputStream   *input,
@@ -171,9 +178,34 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
   g_autofree char *temp_filename = NULL;
   const gboolean union_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
   const gboolean add_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
+  const gboolean sepolicy_enabled = options->sepolicy && !repo->disable_xattrs;
+  g_autoptr(GVariant) modified_xattrs = NULL;
+
+  /* If we're doing SELinux labeling, prepare it */
+  if (sepolicy_enabled)
+    {
+      /* If doing sepolicy path-based labeling, we don't want to set the
+       * security.selinux attr via the generic xattr paths in either the symlink
+       * or regfile cases, so filter it out.
+       */
+      modified_xattrs = _ostree_filter_selinux_xattr (xattrs);
+      xattrs = modified_xattrs;
+    }
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     {
+      g_auto(OstreeSepolicyFsCreatecon) fscreatecon = { 0, };
+
+      if (sepolicy_enabled)
+        {
+          /* For symlinks, since we don't have O_TMPFILE, we use setfscreatecon() */
+          if (!_ostree_sepolicy_preparefscreatecon (&fscreatecon, options->sepolicy,
+                                                    state->selabel_path_buf->str,
+                                                    g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
+                                                    error))
+            return FALSE;
+        }
+
       if (symlinkat (g_file_info_get_symlink_target (file_info),
                      destination_dfd, destination_name) < 0)
         {
@@ -225,6 +257,18 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                                           error))
         return FALSE;
       temp_out = g_unix_output_stream_new (temp_fd, FALSE);
+
+      if (sepolicy_enabled)
+        {
+          g_autofree char *label = NULL;
+          if (!ostree_sepolicy_get_label (options->sepolicy,
+                                          state->selabel_path_buf->str,
+                                          g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
+                                          &label, cancellable, error))
+            return FALSE;
+          if (fsetxattr (temp_fd, "security.selinux", label, strlen (label), 0) < 0)
+            return glnx_throw_errno_prefix (error, "Setting security.selinux");
+        }
 
       if (!write_regular_file_content (repo, options, temp_out, file_info, xattrs, input,
                                        cancellable, error))
@@ -316,6 +360,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
 static gboolean
 checkout_one_file_at (OstreeRepo                        *repo,
                       OstreeRepoCheckoutAtOptions         *options,
+                      CheckoutState                     *state,
                       GFile                             *source,
                       GFileInfo                         *source_info,
                       int                                destination_dfd,
@@ -510,9 +555,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                   cancellable, error))
         return FALSE;
 
-      if (!create_file_copy_from_input_at (repo, options, source_info, xattrs, input,
-                                           destination_dfd,
-                                           destination_name,
+      if (!create_file_copy_from_input_at (repo, options, state, source_info, xattrs, input,
+                                           destination_dfd, destination_name,
                                            cancellable, error))
         return g_prefix_error (error, "Copy checkout of %s to %s: ", checksum, destination_name), FALSE;
 
@@ -530,6 +574,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
  * checkout_tree_at:
  * @self: Repo
  * @mode: Options controlling all files
+ * @state: Any state we're carrying through
  * @overwrite_mode: Whether or not to overwrite files
  * @destination_parent_fd: Place tree here
  * @destination_name: Use this name for tree
@@ -542,34 +587,62 @@ checkout_one_file_at (OstreeRepo                        *repo,
  * relative @destination_name, located by @destination_parent_fd.
  */
 static gboolean
-checkout_tree_at (OstreeRepo                        *self,
-                  OstreeRepoCheckoutAtOptions       *options,
-                  int                                destination_parent_fd,
-                  const char                        *destination_name,
-                  OstreeRepoFile                    *source,
-                  GFileInfo                         *source_info,
-                  GCancellable                      *cancellable,
-                  GError                           **error)
+checkout_tree_at_recurse (OstreeRepo                        *self,
+                          OstreeRepoCheckoutAtOptions       *options,
+                          CheckoutState                     *state,
+                          int                                destination_parent_fd,
+                          const char                        *destination_name,
+                          OstreeRepoFile                    *source,
+                          GFileInfo                         *source_info,
+                          GCancellable                      *cancellable,
+                          GError                           **error)
 {
   gboolean did_exist = FALSE;
   int res;
+  const gboolean sepolicy_enabled = options->sepolicy && !self->disable_xattrs;
+  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr(GVariant) modified_xattrs = NULL;
 
-  /* Create initially with mode 0700, then chown/chmod only when we're
-   * done.  This avoids anyone else being able to operate on partially
-   * constructed dirs.
-   */
-  do
-    res = mkdirat (destination_parent_fd, destination_name, 0700);
-  while (G_UNLIKELY (res == -1 && errno == EINTR));
-  if (res == -1)
+  if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      if (errno == EEXIST &&
-          (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
-           || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES))
-        did_exist = TRUE;
-      else
-        return glnx_throw_errno (error);
+      if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
+        return FALSE;
     }
+
+  /* First, make the directory.  Push a new scope in case we end up using
+   * setfscreatecon().
+   */
+  {
+    g_auto(OstreeSepolicyFsCreatecon) fscreatecon = { 0, };
+
+    /* If we're doing SELinux labeling, prepare it */
+    if (sepolicy_enabled)
+      {
+        /* We'll set the xattr via setfscreatecon(), so don't do it via generic xattrs below. */
+        modified_xattrs = _ostree_filter_selinux_xattr (xattrs);
+        xattrs = modified_xattrs;
+
+        if (!_ostree_sepolicy_preparefscreatecon (&fscreatecon, options->sepolicy,
+                                                  state->selabel_path_buf->str,
+                                                  g_file_info_get_attribute_uint32 (source_info, "unix::mode"),
+                                                  error))
+          return FALSE;
+      }
+
+    /* Create initially with mode 0700, then chown/chmod only when we're
+     * done.  This avoids anyone else being able to operate on partially
+     * constructed dirs.
+     */
+    if (TEMP_FAILURE_RETRY (mkdirat (destination_parent_fd, destination_name, 0700)) < 0)
+      {
+        if (errno == EEXIST &&
+            (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
+             || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES))
+          did_exist = TRUE;
+        else
+          return glnx_throw_errno (error);
+      }
+  }
 
   glnx_fd_close int destination_dfd = -1;
   if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE,
@@ -587,23 +660,16 @@ checkout_tree_at (OstreeRepo                        *self,
     return glnx_throw (error, "Unable to do hardlink checkout across devices (src=%"G_GUINT64_FORMAT" destination=%"G_GUINT64_FORMAT")",
                        (guint64)repo_dfd_stat.st_dev, (guint64)destination_stat.st_dev);
 
-  /* Set the xattrs now, so any derived labeling works */
-  g_autoptr(GVariant) xattrs = NULL;
-  if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+  /* Set the xattrs if we created the dir */
+  if (!did_exist && xattrs)
     {
-      if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
+      if (!glnx_fd_set_all_xattrs (destination_dfd, xattrs, cancellable, error))
         return FALSE;
-
-      if (xattrs)
-        {
-          if (!glnx_fd_set_all_xattrs (destination_dfd, xattrs, cancellable, error))
-            return FALSE;
-        }
     }
 
   /* Note early return here! */
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
-    return checkout_one_file_at (self, options,
+    return checkout_one_file_at (self, options, state,
                                  (GFile *) source,
                                  source_info,
                                  destination_dfd,
@@ -624,6 +690,7 @@ checkout_tree_at (OstreeRepo                        *self,
       GFileInfo *file_info;
       GFile *src_child;
       const char *name;
+      GString *selabel_path_buf = state->selabel_path_buf;
 
       if (!g_file_enumerator_iterate (dir_enum, &file_info, &src_child,
                                       cancellable, error))
@@ -632,23 +699,33 @@ checkout_tree_at (OstreeRepo                        *self,
         break;
 
       name = g_file_info_get_name (file_info);
+      size_t namelen = strlen (name);
+      if (selabel_path_buf)
+        g_string_append_len (selabel_path_buf, name, namelen);
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!checkout_tree_at (self, options,
-                                 destination_dfd, name,
-                                 (OstreeRepoFile*)src_child, file_info,
-                                 cancellable, error))
+          if (selabel_path_buf)
+            g_string_append_c (selabel_path_buf, '/');
+          if (!checkout_tree_at_recurse (self, options, state,
+                                         destination_dfd, name,
+                                         (OstreeRepoFile*)src_child, file_info,
+                                         cancellable, error))
             return FALSE;
+          if (state->selabel_path_buf)
+            g_string_truncate (selabel_path_buf, state->selabel_path_buf->len-1);
         }
       else
         {
-          if (!checkout_one_file_at (self, options,
+          if (!checkout_one_file_at (self, options, state,
                                      src_child, file_info,
                                      destination_dfd, name,
                                      cancellable, error))
             return FALSE;
         }
+
+      if (selabel_path_buf)
+        g_string_truncate (selabel_path_buf, selabel_path_buf->len - namelen);
     }
 
   /* We do fchmod/fchown last so that no one else could access the
@@ -697,6 +774,51 @@ checkout_tree_at (OstreeRepo                        *self,
   return TRUE;
 }
 
+/* Begin a checkout process */
+static gboolean
+checkout_tree_at (OstreeRepo                        *self,
+                  OstreeRepoCheckoutAtOptions       *options,
+                  int                                destination_parent_fd,
+                  const char                        *destination_name,
+                  OstreeRepoFile                    *source,
+                  GFileInfo                         *source_info,
+                  GCancellable                      *cancellable,
+                  GError                           **error)
+{
+  CheckoutState state = { 0, };
+  // If SELinux labeling is enabled, we need to keep track of the full path string
+  if (options->sepolicy)
+    {
+      GString *buf = g_string_new (options->sepolicy_prefix ?: options->subpath);
+      g_assert_cmpint (buf->len, >, 0);
+      // Ensure it ends with /
+      if (buf->str[buf->len-1] != '/')
+        g_string_append_c (buf, '/');
+      state.selabel_path_buf = buf;
+
+      /* Otherwise it'd just be corrupting things, and there's no use case */
+      g_assert (options->force_copy);
+    }
+
+  return checkout_tree_at_recurse (self, options, &state, destination_parent_fd,
+                                   destination_name,
+                                   source, source_info,
+                                   cancellable, error);
+}
+
+static void
+canonicalize_options (OstreeRepo                  *self,
+                      OstreeRepoCheckoutAtOptions *options)
+{
+  /* Canonicalize subpath to / */
+  if (!options->subpath)
+    options->subpath = "/";
+
+  /* Force USER mode for BARE_USER_ONLY always - nothing else makes sense */
+  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    options->mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+}
+
 /**
  * ostree_repo_checkout_tree:
  * @self: Repo
@@ -724,14 +846,11 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                            GError                  **error)
 {
   OstreeRepoCheckoutAtOptions options = { 0, };
-
-  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
-    mode = OSTREE_REPO_CHECKOUT_MODE_USER;
-
   options.mode = mode;
   options.overwrite_mode = overwrite_mode;
   /* Backwards compatibility */
   options.enable_uncompressed_cache = TRUE;
+  canonicalize_options (self, &options);
 
   g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
   _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
@@ -827,11 +946,10 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   /* Make a copy so we can modify the options */
   real_options = *options;
   options = &real_options;
-
-  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
-    options->mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+  canonicalize_options (self, options);
 
   g_return_val_if_fail (!(options->force_copy && options->no_copy_fallback), FALSE);
+  g_return_val_if_fail (!options->sepolicy || options->force_copy, FALSE);
 
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
@@ -841,7 +959,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
     return FALSE;
 
   g_autoptr(GFile) target_dir = NULL;
-  if (options->subpath && strcmp (options->subpath, "/") != 0)
+
+  if (strcmp (options->subpath, "/") != 0)
     target_dir = g_file_get_child (commit_root, options->subpath);
   else
     target_dir = g_object_ref (commit_root);

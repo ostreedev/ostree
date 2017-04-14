@@ -37,5 +37,6 @@ gboolean _ostree_sepolicy_preparefscreatecon (OstreeSepolicyFsCreatecon *con,
                                               guint32           mode,
                                               GError          **error);
 
+GVariant *_ostree_filter_selinux_xattr (GVariant *xattrs);
 
 G_END_DECLS
