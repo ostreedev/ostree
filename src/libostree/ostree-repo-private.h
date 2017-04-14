@@ -92,6 +92,9 @@ struct OstreeRepo {
   OstreeRepoTransactionStats txn_stats;
 
   GMutex cache_lock;
+  guint dirmeta_cache_refcount;
+  /* char * checksum → GVariant * for dirmeta objects, used in the checkout path */
+  GHashTable *dirmeta_cache;
 
   gboolean inited;
   gboolean writable;
@@ -125,6 +128,24 @@ typedef struct {
   ino_t ino;
   char checksum[OSTREE_SHA256_STRING_LEN+1];
 } OstreeDevIno;
+
+/* A MemoryCacheRef is an in-memory cache of objects (currently just DIRMETA).  This can
+ * be used when performing an operation that traverses a repository in someway.  Currently,
+ * the primary use case is ostree_repo_checkout_at() avoiding lots of duplicate dirmeta
+ * lookups.
+ */
+typedef struct {
+  OstreeRepo *repo;
+} OstreeRepoMemoryCacheRef;
+
+
+void
+_ostree_repo_memory_cache_ref_init (OstreeRepoMemoryCacheRef *state,
+                                    OstreeRepo               *repo);
+
+void
+_ostree_repo_memory_cache_ref_destroy (OstreeRepoMemoryCacheRef *state);
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OstreeRepoMemoryCacheRef, _ostree_repo_memory_cache_ref_destroy);
 
 #define OSTREE_REPO_TMPDIR_STAGING "staging-"
 #define OSTREE_REPO_TMPDIR_FETCHER "fetcher-"
