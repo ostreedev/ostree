@@ -35,7 +35,6 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   const char *deploy_index_str;
@@ -48,16 +47,16 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 2)
     {
       ot_util_usage_error (context, "INDEX must be specified", error);
-      goto out;
+      return FALSE;
     }
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
+    return FALSE;
   current_deployments = ostree_sysroot_get_deployments (sysroot);
 
   deploy_index_str = argv[1];
@@ -65,31 +64,26 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
 
   target_deployment = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
   if (!target_deployment)
-    goto out;
+    return FALSE;
 
   if (target_deployment == ostree_sysroot_get_booted_deployment (sysroot))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "Cannot undeploy currently booted deployment %i", deploy_index);
-      goto out;
+      return FALSE;
     }
-  
+
   g_ptr_array_remove_index (current_deployments, deploy_index);
 
   if (!ostree_sysroot_write_deployments (sysroot, current_deployments,
                                          cancellable, error))
-    goto out;
+    return FALSE;
 
   g_print ("Deleted deployment %s.%d\n", ostree_deployment_get_csum (target_deployment),
            ostree_deployment_get_deployserial (target_deployment));
-  
-  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
-    {
-      g_prefix_error (error, "Performing final cleanup: ");
-      goto out;
-    }
 
-  ret = TRUE;
- out:
-  return ret;
+  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+    return g_prefix_error (error, "Performing final cleanup: "), FALSE;
+
+  return TRUE;
 }
