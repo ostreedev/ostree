@@ -8,23 +8,24 @@ operating systems (accessible via `ostree admin`).  The core content of these op
 are treated as read-only, but they transparently share storage.
 
 A deployment is physically located at a path of the form
-`/ostree/deploy/$osname/deploy/$checksum`.
+`/ostree/deploy/$stateroot/deploy/$checksum`.
 OSTree is designed to boot directly into exactly one deployment
 at a time; each deployment is intended to be a target for
 `chroot()` or equivalent.
 
-### "osname": Group of deployments that share /var
+### "stateroot" (AKA "osname"): Group of deployments that share /var
 
-Each deployment is grouped in exactly one "osname".  From above, you
-can see that an osname is physically represented in the
-`/ostree/deploy/$osname` directory.  For example, OSTree can allow
-parallel installing Debian in `/ostree/deploy/debian` and Red Hat
-Enterprise Linux in `/ostree/deploy/rhel` (subject to operating system
-support, present released versions of these operating systems may not
-support this).
+Each deployment is grouped in exactly one "stateroot" (also known as an "osname");
+the former term is preferred.
 
-Each osname has exactly one copy of the traditional Unix `/var`,
-stored physically in `/ostree/deploy/$osname/var`.  OSTree provides
+From above, you can see that an stateroot is physically represented in the
+`/ostree/deploy/$stateroot` directory. For example, OSTree can allow parallel
+installing Debian in `/ostree/deploy/debian` and Red Hat Enterprise Linux in
+`/ostree/deploy/rhel` (subject to operating system support, present released
+versions of these operating systems may not support this).
+
+Each stateroot has exactly one copy of the traditional Unix `/var`,
+stored physically in `/ostree/deploy/$stateroot/var`.  OSTree provides
 support tools for `systemd` to create a Linux bind mount that ensures
 the booted deployment sees the shared copy of `/var`.
 
@@ -81,7 +82,7 @@ files.
 
 When a tree is deployed, it will have a configuration file generated
 of the form
-`/boot/loader/entries/ostree-$osname-$checksum.$serial.conf`.  This
+`/boot/loader/entries/ostree-$stateroot-$checksum.$serial.conf`.  This
 configuration file will include a special `ostree=` kernel argument
 that allows the initramfs to find (and `chroot()` into) the specified
 deployment.

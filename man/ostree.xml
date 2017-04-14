@@ -65,8 +65,9 @@ Boston, MA 02111-1307, USA.
             Instead, they parallel install to the new toplevel
             <filename>/ostree</filename> directory.  Each
             installed system gets its own
-            <filename>/ostree/deploy/<replaceable>osname</replaceable></filename>
-            directory.
+            <filename>/ostree/deploy/<replaceable>stateroot</replaceable></filename>
+            directory.  (<literal>stateroot</literal> is the
+            newer term for <literal>osname</literal>).
         </para>
         <para>
             Unlike <literal>rpm</literal> or

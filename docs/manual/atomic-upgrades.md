@@ -55,7 +55,7 @@ checking it back out of the repo into a deployment.
 ## Assembling a new deployment directory
 
 Given a commit to deploy, OSTree first allocates a directory for
-it.  This is of the form `/boot/loader/entries/ostree-$osname-$checksum.$serial.conf`.
+it.  This is of the form `/boot/loader/entries/ostree-$stateroot-$checksum.$serial.conf`.
 The `$serial` is normally `0`, but if a
 given commit is deployed more than once, it will be incremented.
 This is supported because the previous deployment may have

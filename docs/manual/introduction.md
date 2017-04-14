@@ -97,7 +97,7 @@ parallel install inside an existing OS or distribution
 occupying the physical `/` root.
 
 On each client machine, there is an OSTree repository stored
-in `/ostree/repo`, and a set of "deployments" stored in `/ostree/deploy/$OSNAME/$CHECKSUM`.
+in `/ostree/repo`, and a set of "deployments" stored in `/ostree/deploy/$STATEROOT/$CHECKSUM`.
 Each deployment is primarily composed of a set of hardlinks
 into the repository.  This means each version is deduplicated;
 an upgrade process only costs disk space proportional to the
