@@ -2770,8 +2770,18 @@ ostree_repo_load_file (OstreeRepo         *self,
               g_autoptr(GBytes) bytes = NULL;
               glnx_fd_close int fd = -1;
 
-              bytes = ot_lgetxattrat (self->objects_dir_fd, loose_path_buf,
-                                      "user.ostreemeta", error);
+              /* In bare-user, symlinks are stored as regular files, so we just
+               * always do an open, then query the user.ostreemeta xattr for
+               * more information.
+               */
+              fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+              if (fd < 0)
+                {
+                  glnx_set_error_from_errno (error);
+                  goto out;
+                }
+
+              bytes = glnx_fgetxattr_bytes (fd, "user.ostreemeta", error);
               if (bytes == NULL)
                 goto out;
 
@@ -2782,21 +2792,6 @@ ostree_repo_load_file (OstreeRepo         *self,
               ret_xattrs = set_info_from_filemeta (ret_file_info, metadata);
 
               mode = g_file_info_get_attribute_uint32 (ret_file_info, "unix::mode");
-
-              /* Optimize this so that we only open the file if we
-               * need to; symlinks contain their content, and we only
-               * open regular files if the caller has requested an
-               * input stream.
-               */
-              if (S_ISLNK (mode) || out_input)
-                { 
-                  fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
-                  if (fd < 0)
-                    {
-                      glnx_set_error_from_errno (error);
-                      goto out;
-                    }
-                }
 
               if (S_ISREG (mode) && out_input)
                 {
