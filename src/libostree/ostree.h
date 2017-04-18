@@ -39,6 +39,7 @@
 #include <ostree-ref.h>
 #include <ostree-repo-finder.h>
 #include <ostree-repo-finder-config.h>
+#include <ostree-repo-finder-mount.h>
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #include <ostree-autocleanups.h>

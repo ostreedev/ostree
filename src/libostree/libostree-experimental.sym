@@ -50,6 +50,8 @@ global:
   ostree_repo_finder_config_get_type;
   ostree_repo_finder_config_new;
   ostree_repo_finder_get_type;
+  ostree_repo_finder_mount_get_type;
+  ostree_repo_finder_mount_new;
   ostree_repo_finder_resolve_async;
   ostree_repo_finder_resolve_all_async;
   ostree_repo_finder_resolve_all_finish;

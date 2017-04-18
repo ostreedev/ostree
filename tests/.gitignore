@@ -15,4 +15,5 @@ test-ot-opt-utils
 test-ot-tool-util
 test-ot-unix-utils
 test-repo-finder-config
+test-repo-finder-mount
 test-rollsum-cli

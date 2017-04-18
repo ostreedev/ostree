@@ -196,6 +196,7 @@ _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-u
 if ENABLE_EXPERIMENTAL_API
 test_programs += \
 	tests/test-repo-finder-config \
+	tests/test-repo-finder-mount \
 	$(NULL)
 endif
 
@@ -210,7 +211,7 @@ common_tests_cflags = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 common_tests_ldadd = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 
 noinst_LTLIBRARIES += libostreetest.la
-libostreetest_la_SOURCES = tests/libostreetest.c
+libostreetest_la_SOURCES = tests/libostreetest.c tests/test-mock-gio.c tests/test-mock-gio.h
 libostreetest_la_CFLAGS = $(common_tests_cflags) -I $(srcdir)/tests
 libostreetest_la_LIBADD = $(common_tests_ldadd)
 
@@ -228,6 +229,10 @@ tests_test_rollsum_LDADD = $(bupsplitpath) $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
 tests_test_repo_finder_config_SOURCES = tests/test-repo-finder-config.c
 tests_test_repo_finder_config_CFLAGS = $(TESTS_CFLAGS)
 tests_test_repo_finder_config_LDADD = $(TESTS_LDADD)
+
+tests_test_repo_finder_mount_SOURCES = tests/test-repo-finder-mount.c
+tests_test_repo_finder_mount_CFLAGS = $(TESTS_CFLAGS)
+tests_test_repo_finder_mount_LDADD = $(TESTS_LDADD)
 
 tests_test_mutable_tree_CFLAGS = $(TESTS_CFLAGS)
 tests_test_mutable_tree_LDADD = $(TESTS_LDADD)

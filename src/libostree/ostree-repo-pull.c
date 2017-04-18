@@ -42,6 +42,7 @@
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 #include "ostree-repo-finder.h"
 #include "ostree-repo-finder-config.h"
+#include "ostree-repo-finder-mount.h"
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #include <gio/gunixinputstream.h>
@@ -4087,6 +4088,7 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   GMainContext *context;
   OstreeRepoFinder *default_finders[4] = { NULL, };
   g_autoptr(OstreeRepoFinder) finder_config = NULL;
+  g_autoptr(OstreeRepoFinder) finder_mount = NULL;
 
   g_return_if_fail (OSTREE_IS_REPO (self));
   g_return_if_fail (is_valid_collection_ref_array (refs));
@@ -4106,8 +4108,10 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   if (finders == NULL)
     {
       finder_config = OSTREE_REPO_FINDER (ostree_repo_finder_config_new ());
+      finder_mount = OSTREE_REPO_FINDER (ostree_repo_finder_mount_new (NULL));
 
       default_finders[0] = finder_config;
+      default_finders[1] = finder_mount;
 
       finders = default_finders;
     }
