@@ -29,3 +29,11 @@ ostree_repo_finder_config_new
 <SUBSECTION Standard>
 ostree_repo_finder_config_get_type
 </SECTION>
+
+<SECTION>
+<FILE>ostree-repo-finder-mount</FILE>
+OstreeRepoFinderMount
+ostree_repo_finder_mount_new
+<SUBSECTION Standard>
+ostree_repo_finder_mount_get_type
+</SECTION>

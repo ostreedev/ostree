@@ -154,6 +154,7 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-remote.h \
 	src/libostree/ostree-repo-finder.h \
 	src/libostree/ostree-repo-finder-config.h \
+	src/libostree/ostree-repo-finder-mount.h \
 	$(NULL)
 endif
 else # if ENABLE_EXPERIMENTAL_API
