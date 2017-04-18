@@ -45,6 +45,12 @@ libostree_public_headers += \
 	src/libostree/ostree-repo-finder-config.h \
 	src/libostree/ostree-repo-finder-mount.h \
 	$(NULL)
+
+if USE_AVAHI
+libostree_public_headers += \
+	src/libostree/ostree-repo-finder-avahi.h \
+	$(NULL)
+endif
 endif
 
 # This one is generated via configure.ac, and the gtk-doc

@@ -35,6 +35,11 @@ global:
   ostree_remote_get_name;
   ostree_repo_find_remotes_async;
   ostree_repo_find_remotes_finish;
+  /* TODO: What if we compile without Avahi? */
+  ostree_repo_finder_avahi_get_type;
+  ostree_repo_finder_avahi_new;
+  ostree_repo_finder_avahi_start;
+  ostree_repo_finder_avahi_stop;
   ostree_repo_finder_config_get_type;
   ostree_repo_finder_config_new;
   ostree_repo_finder_get_type;

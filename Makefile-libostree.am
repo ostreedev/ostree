@@ -156,6 +156,11 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-repo-finder-config.h \
 	src/libostree/ostree-repo-finder-mount.h \
 	$(NULL)
+
+if USE_AVAHI
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-repo-finder-avahi.h \
+	$(NULL)
 endif
 else # if ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += \
@@ -165,6 +170,13 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-repo-finder-config.c \
 	src/libostree/ostree-repo-finder-mount.c \
 	$(NULL)
+
+if USE_AVAHI
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-repo-finder-avahi.c \
+	src/libostree/ostree-repo-finder-avahi-private.h \
+	$(NULL)
+endif
 endif
 
 libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
@@ -189,6 +201,13 @@ endif
 if USE_LIBARCHIVE
 libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_LIBARCHIVE_LIBS)
+endif
+
+if ENABLE_EXPERIMENTAL_API
+if USE_AVAHI
+libostree_1_la_CFLAGS += $(OT_DEP_AVAHI_CFLAGS)
+libostree_1_la_LIBADD += $(OT_DEP_AVAHI_LIBS)
+endif
 endif
 
 if BUILDOPT_LIBSYSTEMD
