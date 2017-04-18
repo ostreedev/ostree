@@ -41,6 +41,7 @@ libostree_public_headers = \
 if ENABLE_EXPERIMENTAL_API
 libostree_public_headers += \
 	src/libostree/ostree-remote.h \
+	src/libostree/ostree-repo-finder.h \
 	$(NULL)
 endif
 
