@@ -43,6 +43,7 @@ libostree_public_headers += \
 	src/libostree/ostree-ref.h \
 	src/libostree/ostree-remote.h \
 	src/libostree/ostree-repo-finder.h \
+	src/libostree/ostree-repo-finder-config.h \
 	$(NULL)
 endif
 

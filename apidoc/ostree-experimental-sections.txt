@@ -50,6 +50,14 @@ ostree_repo_finder_result_get_type
 </SECTION>
 
 <SECTION>
+<FILE>ostree-repo-finder-config</FILE>
+OstreeRepoFinderConfig
+ostree_repo_finder_config_new
+<SUBSECTION Standard>
+ostree_repo_finder_config_get_type
+</SECTION>
+
+<SECTION>
 <FILE>ostree-misc-experimental</FILE>
 ostree_repo_get_collection_id
 ostree_repo_set_collection_id
