@@ -43,6 +43,9 @@
 #include "ostree-repo-finder.h"
 #include "ostree-repo-finder-config.h"
 #include "ostree-repo-finder-mount.h"
+#ifdef HAVE_AVAHI
+#include "ostree-repo-finder-avahi.h"
+#endif  /* HAVE_AVAHI */
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #include <gio/gunixinputstream.h>
@@ -3961,11 +3964,13 @@ typedef struct
   OstreeCollectionRef **refs;
   GVariant *options;
   OstreeAsyncProgress *progress;
+  OstreeRepoFinder *default_finder_avahi;
 } FindRemotesData;
 
 static void
 find_remotes_data_free (FindRemotesData *data)
 {
+  g_clear_object (&data->default_finder_avahi);
   g_clear_object (&data->progress);
   g_clear_pointer (&data->options, g_variant_unref);
   ostree_collection_ref_freev (data->refs);
@@ -3978,7 +3983,8 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (FindRemotesData, find_remotes_data_free)
 static FindRemotesData *
 find_remotes_data_new (const OstreeCollectionRef * const *refs,
                        GVariant                      *options,
-                       OstreeAsyncProgress           *progress)
+                       OstreeAsyncProgress           *progress,
+                       OstreeRepoFinder              *default_finder_avahi)
 {
   g_autoptr(FindRemotesData) data = NULL;
 
@@ -3986,6 +3992,7 @@ find_remotes_data_new (const OstreeCollectionRef * const *refs,
   data->refs = ostree_collection_ref_dupv (refs);
   data->options = (options != NULL) ? g_variant_ref (options) : NULL;
   data->progress = (progress != NULL) ? g_object_ref (progress) : NULL;
+  data->default_finder_avahi = (default_finder_avahi != NULL) ? g_object_ref (default_finder_avahi) : NULL;
 
   return g_steal_pointer (&data);
 }
@@ -4085,10 +4092,10 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
 {
   g_autoptr(GTask) task = NULL;
   g_autoptr(FindRemotesData) data = NULL;
-  GMainContext *context;
   OstreeRepoFinder *default_finders[4] = { NULL, };
   g_autoptr(OstreeRepoFinder) finder_config = NULL;
   g_autoptr(OstreeRepoFinder) finder_mount = NULL;
+  g_autoptr(OstreeRepoFinder) finder_avahi = NULL;
 
   g_return_if_fail (OSTREE_IS_REPO (self));
   g_return_if_fail (is_valid_collection_ref_array (refs));
@@ -4102,21 +4109,43 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   task = g_task_new (self, cancellable, callback, user_data);
   g_task_set_source_tag (task, ostree_repo_find_remotes_async);
 
-  context = g_main_context_get_thread_default ();
-
   /* Are we using #OstreeRepoFinders provided by the user, or the defaults? */
   if (finders == NULL)
     {
+#ifdef HAVE_AVAHI
+      GMainContext *context = g_main_context_get_thread_default ();
+      g_autoptr(GError) local_error = NULL;
+#endif  /* HAVE_AVAHI */
+
       finder_config = OSTREE_REPO_FINDER (ostree_repo_finder_config_new ());
       finder_mount = OSTREE_REPO_FINDER (ostree_repo_finder_mount_new (NULL));
+#ifdef HAVE_AVAHI
+      finder_avahi = OSTREE_REPO_FINDER (ostree_repo_finder_avahi_new (context));
+#endif  /* HAVE_AVAHI */
 
       default_finders[0] = finder_config;
       default_finders[1] = finder_mount;
+      default_finders[2] = finder_avahi;
 
       finders = default_finders;
+
+#ifdef HAVE_AVAHI
+      ostree_repo_finder_avahi_start (OSTREE_REPO_FINDER_AVAHI (finder_avahi),
+                                      &local_error);
+
+      if (local_error != NULL)
+        {
+          g_warning ("Avahi finder failed; removing it: %s", local_error->message);
+          default_finders[2] = NULL;
+          g_clear_object (&finder_avahi);
+        }
+#endif  /* HAVE_AVAHI */
     }
 
-  data = find_remotes_data_new (refs, options, progress);
+  /* We need to keep a pointer to the default Avahi finder so we can stop it
+   * again after the operation, which happens implicitly by dropping the final
+   * ref. */
+  data = find_remotes_data_new (refs, options, progress, finder_avahi);
   g_task_set_task_data (task, g_steal_pointer (&data), (GDestroyNotify) find_remotes_data_free);
 
   /* Asynchronously resolve all possible remotes for the given refs. */

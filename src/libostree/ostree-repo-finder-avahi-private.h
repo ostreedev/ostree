@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011,2013 Colin Walters <walters@verbum.org>
+ * Copyright © 2017 Endless Mobile, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,32 +16,20 @@
  * License along with this library; if not, write to the
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
+ *
+ * Authors:
+ *  - Philip Withnall <withnall@endlessm.com>
  */
 
 #pragma once
 
-#include <ostree-async-progress.h>
-#include <ostree-core.h>
-#include <ostree-repo.h>
-#include <ostree-mutable-tree.h>
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-#include <ostree-remote.h>
-#endif
-#include <ostree-repo-file.h>
-#include <ostree-sysroot.h>
-#include <ostree-sysroot-upgrader.h>
-#include <ostree-deployment.h>
-#include <ostree-bootconfig-parser.h>
-#include <ostree-diff.h>
-#include <ostree-gpg-verify-result.h>
+#include <avahi-common/strlst.h>
+#include <gio/gio.h>
+#include <glib.h>
+#include <glib-object.h>
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-#include <ostree-ref.h>
-#include <ostree-repo-finder.h>
-#include <ostree-repo-finder-avahi.h>
-#include <ostree-repo-finder-config.h>
-#include <ostree-repo-finder-mount.h>
-#endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
+G_BEGIN_DECLS
 
-#include <ostree-autocleanups.h>
-#include <ostree-version.h>
+GHashTable *_ostree_txt_records_parse (AvahiStringList *txt);
+
+G_END_DECLS

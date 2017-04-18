@@ -155,6 +155,7 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-ref.h \
 	src/libostree/ostree-remote.h \
 	src/libostree/ostree-repo-finder.h \
+	src/libostree/ostree-repo-finder-avahi.h \
 	src/libostree/ostree-repo-finder-config.h \
 	src/libostree/ostree-repo-finder-mount.h \
 	$(NULL)
@@ -163,9 +164,17 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-bloom.c \
 	src/libostree/ostree-bloom-private.h \
 	src/libostree/ostree-repo-finder.c \
+	src/libostree/ostree-repo-finder-avahi.c \
 	src/libostree/ostree-repo-finder-config.c \
 	src/libostree/ostree-repo-finder-mount.c \
 	$(NULL)
+
+if USE_AVAHI
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-repo-finder-avahi-parser.c \
+	src/libostree/ostree-repo-finder-avahi-private.h \
+	$(NULL)
+endif # USE_AVAHI
 endif
 
 symbol_files = $(top_srcdir)/src/libostree/libostree-released.sym
@@ -191,6 +200,13 @@ EXTRA_libostree_1_la_DEPENDENCIES = $(symbol_files)
 if USE_LIBARCHIVE
 libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_LIBARCHIVE_LIBS)
+endif
+
+if ENABLE_EXPERIMENTAL_API
+if USE_AVAHI
+libostree_1_la_CFLAGS += $(OT_DEP_AVAHI_CFLAGS)
+libostree_1_la_LIBADD += $(OT_DEP_AVAHI_LIBS)
+endif
 endif
 
 if BUILDOPT_LIBSYSTEMD
@@ -241,7 +257,7 @@ OSTree_1_0_gir_INCLUDES = Gio-2.0
 OSTree_1_0_gir_CFLAGS = $(libostree_1_la_CFLAGS)
 OSTree_1_0_gir_LIBS = libostree-1.la
 OSTree_1_0_gir_SCANNERFLAGS = --warn-all --identifier-prefix=Ostree --symbol-prefix=ostree
-OSTree_1_0_gir_FILES = $(libostreeinclude_HEADERS) $(filter-out %-private.h %/ostree-soup-uri.h %/ostree-repo-finder.h %/ostree-repo-finder-config.h %/ostree-repo-finder-mount.h,$(libostree_1_la_SOURCES))
+OSTree_1_0_gir_FILES = $(libostreeinclude_HEADERS) $(filter-out %-private.h %/ostree-soup-uri.h %/ostree-repo-finder.h %/ostree-repo-finder-avahi.h %/ostree-repo-finder-config.h %/ostree-repo-finder-mount.h,$(libostree_1_la_SOURCES))
 INTROSPECTION_GIRS += OSTree-1.0.gir
 gir_DATA += OSTree-1.0.gir
 typelib_DATA += OSTree-1.0.typelib

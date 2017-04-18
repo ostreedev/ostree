@@ -320,6 +320,31 @@ if test x$with_openssl != xno; then OSTREE_FEATURES="$OSTREE_FEATURES openssl"; 
 AM_CONDITIONAL(USE_OPENSSL, test $with_openssl != no)
 dnl end openssl
 
+dnl Avahi dependency for finding repos
+AVAHI_DEPENDENCY="avahi-client >= 0.6.31 avahi-glib >= 0.6.31"
+
+AC_ARG_WITH(avahi,
+            AS_HELP_STRING([--without-avahi], [Do not use Avahi]),
+            :, with_avahi=maybe)
+
+AS_IF([ test x$with_avahi != xno ], [
+    AC_MSG_CHECKING([for $AVAHI_DEPENDENCY])
+    PKG_CHECK_EXISTS($AVAHI_DEPENDENCY, have_avahi=yes, have_avahi=no)
+    AC_MSG_RESULT([$have_avahi])
+    AS_IF([ test x$have_avahi = xno && test x$with_avahi != xmaybe ], [
+       AC_MSG_ERROR([Avahi is enabled but could not be found])
+    ])
+    AS_IF([ test x$have_avahi = xyes], [
+        AC_DEFINE([HAVE_AVAHI], 1, [Define if we have avahi-client.pc and avahi-glib.pc])
+        PKG_CHECK_MODULES(OT_DEP_AVAHI, $AVAHI_DEPENDENCY)
+        with_avahi=yes
+    ], [
+        with_avahi=no
+    ])
+], [ with_avahi=no ])
+if test x$with_avahi != xno; then OSTREE_FEATURES="$OSTREE_FEATURES avahi"; fi
+AM_CONDITIONAL(USE_AVAHI, test $with_avahi != no)
+
 dnl This is what is in RHEL7.2 right now, picking it arbitrarily
 LIBMOUNT_DEPENDENCY="mount >= 2.23.0"
 
