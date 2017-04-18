@@ -190,6 +190,9 @@ G_DEFINE_AUTO_CLEANUP_FREE_FUNC (OstreeRepoFinderResultv, ostree_repo_finder_res
 
 #include "ostree-repo-finder-config.h"
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoFinderConfig, g_object_unref)
+
+#include "ostree-repo-finder-mount.h"
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoFinderMount, g_object_unref)
 #endif
 
 G_END_DECLS
