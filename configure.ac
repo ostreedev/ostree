@@ -1,7 +1,7 @@
 AC_PREREQ([2.63])
 dnl If incrementing the version here, remember to update libostree.sym too
 m4_define([year_version], [2017])
-m4_define([release_version], [4])
+m4_define([release_version], [5])
 m4_define([package_version], [year_version.release_version])
 
 AC_INIT([libostree], [package_version], [walters@verbum.org])
