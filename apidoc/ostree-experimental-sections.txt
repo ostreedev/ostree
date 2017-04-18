@@ -21,3 +21,11 @@ ostree_repo_finder_result_freev
 <SUBSECTION Standard>
 ostree_repo_finder_get_type
 </SECTION>
+
+<SECTION>
+<FILE>ostree-repo-finder-config</FILE>
+OstreeRepoFinderConfig
+ostree_repo_finder_config_new
+<SUBSECTION Standard>
+ostree_repo_finder_config_get_type
+</SECTION>

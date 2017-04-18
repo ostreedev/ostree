@@ -153,11 +153,14 @@ if !ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-remote.h \
 	src/libostree/ostree-repo-finder.h \
+	src/libostree/ostree-repo-finder-config.h \
 	$(NULL)
 endif
 else # if ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-repo-finder.c \
+	src/libostree/ostree-repo-finder-config.c \
+	src/libostree/ostree-repo-finder-mount.c \
 	$(NULL)
 endif
 

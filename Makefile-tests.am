@@ -193,6 +193,12 @@ _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-u
 	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
 	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c
 
+if ENABLE_EXPERIMENTAL_API
+test_programs += \
+	tests/test-repo-finder-config \
+	$(NULL)
+endif
+
 # An interactive tool
 noinst_PROGRAMS += tests/test-rollsum-cli
 
@@ -218,6 +224,10 @@ tests_test_rollsum_cli_LDADD = $(bupsplitpath) $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS
 tests_test_rollsum_SOURCES = src/libostree/ostree-rollsum.c tests/test-rollsum.c
 tests_test_rollsum_CFLAGS = $(TESTS_CFLAGS) $(OT_DEP_ZLIB_CFLAGS)
 tests_test_rollsum_LDADD = $(bupsplitpath) $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
+
+tests_test_repo_finder_config_SOURCES = tests/test-repo-finder-config.c
+tests_test_repo_finder_config_CFLAGS = $(TESTS_CFLAGS)
+tests_test_repo_finder_config_LDADD = $(TESTS_LDADD)
 
 tests_test_mutable_tree_CFLAGS = $(TESTS_CFLAGS)
 tests_test_mutable_tree_LDADD = $(TESTS_LDADD)
