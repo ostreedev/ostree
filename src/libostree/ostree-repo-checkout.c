@@ -479,7 +479,6 @@ checkout_one_file_at (OstreeRepo                        *repo,
             (current_repo->mode == OSTREE_REPO_MODE_BARE
              && options->mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
             (repo_is_usermode && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER);
-          gboolean is_bare = is_hardlinkable && !is_bare_user_symlink;
           gboolean current_can_cache = (options->enable_uncompressed_cache
                                         && current_repo->enable_uncompressed_cache);
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
@@ -491,6 +490,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
            * as well as write_object().
            */
           is_bare_user_symlink = (repo_is_usermode && is_symlink);
+          const gboolean is_bare = is_hardlinkable && !is_bare_user_symlink;
 
           /* Verify if no_copy_fallback is set that we can hardlink, with a
            * special exception for bare-user symlinks.
