@@ -154,129 +154,66 @@ write_regular_file_content (OstreeRepo            *self,
   return TRUE;
 }
 
-static gboolean
-checkout_file_from_input_at (OstreeRepo     *self,
-                             OstreeRepoCheckoutAtOptions *options,
-                             GFileInfo      *file_info,
-                             GVariant       *xattrs,
-                             GInputStream   *input,
-                             int             destination_dfd,
-                             const char     *destination_name,
-                             GCancellable   *cancellable,
-                             GError        **error)
-{
-  int res;
-
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
-    {
-      do
-        res = symlinkat (g_file_info_get_symlink_target (file_info),
-                         destination_dfd, destination_name);
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (res == -1)
-        {
-          if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
-            {
-              /* Note early return */
-              return TRUE;
-            }
-          else
-            return glnx_throw_errno (error);
-        }
-
-      if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
-        {
-          if (G_UNLIKELY (fchownat (destination_dfd, destination_name,
-                                    g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
-                                    g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
-                                    AT_SYMLINK_NOFOLLOW) == -1))
-            return glnx_throw_errno (error);
-
-          if (xattrs)
-            {
-              if (!glnx_dfd_name_set_all_xattrs (destination_dfd, destination_name,
-                                                   xattrs, cancellable, error))
-                return FALSE;
-            }
-        }
-    }
-  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-    {
-      g_autoptr(GOutputStream) temp_out = NULL;
-      int fd;
-      guint32 file_mode;
-
-      file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-      /* Don't make setuid files on checkout when we're doing --user */
-      if (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
-        file_mode &= ~(S_ISUID|S_ISGID);
-
-      do
-        fd = openat (destination_dfd, destination_name, O_WRONLY | O_CREAT | O_EXCL, file_mode);
-      while (G_UNLIKELY (fd == -1 && errno == EINTR));
-      if (fd == -1)
-        {
-          if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
-            {
-              /* Note early return */
-              return TRUE;
-            }
-          else
-            return glnx_throw_errno (error);
-        }
-      temp_out = g_unix_output_stream_new (fd, TRUE);
-      fd = -1; /* Transfer ownership */
-
-      if (!write_regular_file_content (self, options, temp_out, file_info, xattrs, input,
-                                       cancellable, error))
-        return FALSE;
-    }
-  else
-    g_assert_not_reached ();
-
-  return TRUE;
-}
-
 /*
- * This function creates a file under a temporary name, then rename()s
- * it into place.  This implements union-like behavior.
+ * Create a copy of a file, supporting optional union/add behavior.
  */
 static gboolean
-checkout_file_unioning_from_input_at (OstreeRepo     *repo,
-                                      OstreeRepoCheckoutAtOptions  *options,
-                                      GFileInfo      *file_info,
-                                      GVariant       *xattrs,
-                                      GInputStream   *input,
-                                      int             destination_dfd,
-                                      const char     *destination_name,
-                                      GCancellable   *cancellable,
-                                      GError        **error)
+create_file_copy_from_input_at (OstreeRepo     *repo,
+                                OstreeRepoCheckoutAtOptions  *options,
+                                GFileInfo      *file_info,
+                                GVariant       *xattrs,
+                                GInputStream   *input,
+                                int             destination_dfd,
+                                const char     *destination_name,
+                                GCancellable   *cancellable,
+                                GError        **error)
 {
   g_autofree char *temp_filename = NULL;
+  const gboolean union_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
+  const gboolean add_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     {
-      if (!_ostree_make_temporary_symlink_at (destination_dfd,
-                                              g_file_info_get_symlink_target (file_info),
-                                              &temp_filename,
-                                              cancellable, error))
-        return FALSE;
-
-      if (xattrs)
+      if (symlinkat (g_file_info_get_symlink_target (file_info),
+                     destination_dfd, destination_name) < 0)
         {
-          if (!glnx_dfd_name_set_all_xattrs (destination_dfd, temp_filename,
-                                               xattrs, cancellable, error))
+          /* Handle union/add behaviors if we get EEXIST */
+          if (errno == EEXIST && union_mode)
+            {
+              /* Unioning?  Let's unlink and try again */
+              (void) unlinkat (destination_dfd, destination_name, 0);
+              if (symlinkat (g_file_info_get_symlink_target (file_info),
+                             destination_dfd, destination_name) < 0)
+                return glnx_throw_errno (error);
+            }
+          else if (errno == EEXIST && add_mode)
+            /* Note early return - we don't want to set the xattrs below */
+            return TRUE;
+          else
+            return glnx_throw_errno (error);
+        }
+
+      /* Process ownership and xattrs now that we made the link */
+      if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+        {
+          if (TEMP_FAILURE_RETRY (fchownat (destination_dfd, destination_name,
+                                            g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                            g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                                            AT_SYMLINK_NOFOLLOW)) == -1)
+            return glnx_throw_errno_prefix (error, "fchownat");
+
+          if (xattrs != NULL &&
+              !glnx_dfd_name_set_all_xattrs (destination_dfd, destination_name,
+                                             xattrs, cancellable, error))
             return FALSE;
         }
-      if (G_UNLIKELY (renameat (destination_dfd, temp_filename,
-                                destination_dfd, destination_name) == -1))
-        return glnx_throw_errno (error);
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
       glnx_fd_close int temp_fd = -1;
       g_autoptr(GOutputStream) temp_out = NULL;
       guint32 file_mode;
+      GLnxLinkTmpfileReplaceMode replace_mode;
 
       file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
       /* Don't make setuid files on checkout when we're doing --user */
@@ -293,7 +230,15 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                        cancellable, error))
         return FALSE;
 
-      if (!glnx_link_tmpfile_at (destination_dfd, GLNX_LINK_TMPFILE_REPLACE,
+      /* The add/union/none behaviors map directly to GLnxLinkTmpfileReplaceMode */
+      if (add_mode)
+        replace_mode = GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST;
+      else if (union_mode)
+        replace_mode = GLNX_LINK_TMPFILE_REPLACE;
+      else
+        replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
+
+      if (!glnx_link_tmpfile_at (destination_dfd, replace_mode,
                                  temp_fd, temp_filename, destination_dfd,
                                  destination_name,
                                  error))
@@ -565,22 +510,11 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                   cancellable, error))
         return FALSE;
 
-      if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
-        {
-          if (!checkout_file_unioning_from_input_at (repo, options, source_info, xattrs, input,
-                                                     destination_dfd,
-                                                     destination_name,
-                                                     cancellable, error))
-            return g_prefix_error (error, "Union checkout of %s to %s: ", checksum, destination_name), FALSE;
-        }
-      else
-        {
-          if (!checkout_file_from_input_at (repo, options, source_info, xattrs, input,
-                                            destination_dfd,
-                                            destination_name,
-                                            cancellable, error))
-            return g_prefix_error (error, "Checkout of %s to %s: ", checksum, destination_name), FALSE;
-        }
+      if (!create_file_copy_from_input_at (repo, options, source_info, xattrs, input,
+                                           destination_dfd,
+                                           destination_name,
+                                           cancellable, error))
+        return g_prefix_error (error, "Copy checkout of %s to %s: ", checksum, destination_name), FALSE;
 
       if (input)
         {
