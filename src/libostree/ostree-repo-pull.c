@@ -41,6 +41,7 @@
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 #include "ostree-repo-finder.h"
+#include "ostree-repo-finder-config.h"
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #include <gio/gunixinputstream.h>
@@ -4085,6 +4086,7 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   g_autoptr(FindRemotesData) data = NULL;
   GMainContext *context;
   OstreeRepoFinder *default_finders[4] = { NULL, };
+  g_autoptr(OstreeRepoFinder) finder_config = NULL;
 
   g_return_if_fail (OSTREE_IS_REPO (self));
   g_return_if_fail (is_valid_collection_ref_array (refs));
@@ -4103,6 +4105,10 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   /* Are we using #OstreeRepoFinders provided by the user, or the defaults? */
   if (finders == NULL)
     {
+      finder_config = OSTREE_REPO_FINDER (ostree_repo_finder_config_new ());
+
+      default_finders[0] = finder_config;
+
       finders = default_finders;
     }
 
