@@ -199,6 +199,10 @@ test_programs += \
 	tests/test-repo-finder-config \
 	tests/test-repo-finder-mount \
 	$(NULL)
+
+if USE_AVAHI
+test_programs += tests/test-repo-finder-avahi
+endif
 endif
 
 # An interactive tool
@@ -230,6 +234,12 @@ tests_test_rollsum_LDADD = $(bupsplitpath) $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
 tests_test_bloom_SOURCES = src/libostree/ostree-bloom.c tests/test-bloom.c
 tests_test_bloom_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bloom_LDADD = $(TESTS_LDADD)
+
+if USE_AVAHI
+tests_test_repo_finder_avahi_SOURCES = src/libostree/ostree-repo-finder-avahi-parser.c tests/test-repo-finder-avahi.c
+tests_test_repo_finder_avahi_CFLAGS = $(TESTS_CFLAGS)
+tests_test_repo_finder_avahi_LDADD = $(TESTS_LDADD)
+endif
 
 tests_test_repo_finder_config_SOURCES = tests/test-repo-finder-config.c
 tests_test_repo_finder_config_CFLAGS = $(TESTS_CFLAGS)
