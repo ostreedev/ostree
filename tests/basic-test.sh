@@ -44,6 +44,7 @@ validate_checkout_basic() {
      assert_has_file baz/cow
      assert_file_has_content baz/cow moo
      assert_has_file baz/deeper/ohyeah
+     assert_symlink_has_content somelink nosuchfile
      )
 }
 
