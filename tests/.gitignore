@@ -1,4 +1,7 @@
 !Makefile
+*.log
+*.test
+*.trs
 ostree-http-server
 run-apache
 tmpdir-lifecycle
