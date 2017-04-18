@@ -37,6 +37,7 @@
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 #include <ostree-ref.h>
+#include <ostree-repo-finder.h>
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #include <ostree-autocleanups.h>

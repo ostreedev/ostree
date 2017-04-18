@@ -27,6 +27,7 @@
 #include "ostree-async-progress.h"
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 #include "ostree-ref.h"
+#include "ostree-repo-finder.h"
 #endif
 #include "ostree-sepolicy.h"
 #include "ostree-gpg-verify-result.h"
@@ -1080,6 +1081,33 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                           GCancellable             *cancellable,
                           GError                  **error);
 
+
+
+#if 0
+FIXME
+Called with: remote_name, refs, override-commit-ids
+or: URL, refs, override-commit-ids
+=> we only need refs; could use the remote_name or URL as additional results
+
+Summary file is downloaded first, so this would result in multiple downloads of
+the summary, but we don’t care because of caching.
+
+Big problem preventing this from being the overall API: presenting the download
+sizes in the gnome-software UI before the user chooses to download.
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_find_remotes_squashed (OstreeRepo           *self,
+                                                   const gchar * const  *refs, -> options
+                                                   GVariant             *options,
+                                                   OstreeRepoFinder    **finders, -> options
+                                                   GMainContext         *context, -> nope
+                                                   OstreeAsyncProgress  *progress,
+                                                   GCancellable         *cancellable,
+                                                   GError              **error);
+#endif
+
+
+
 _OSTREE_PUBLIC
 gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
                                         const char             *remote_name_or_baseurl,
@@ -1089,6 +1117,39 @@ gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
                                         GError                **error);
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+_OSTREE_PUBLIC
+void ostree_repo_find_remotes_async (OstreeRepo                         *self,
+                                     const OstreeCollectionRef * const  *refs,
+                                     GVariant                           *options,
+                                     OstreeRepoFinder                  **finders,
+                                     OstreeAsyncProgress                *progress,
+                                     GCancellable                       *cancellable,
+                                     GAsyncReadyCallback                 callback,
+                                     gpointer                            user_data);
+_OSTREE_PUBLIC
+OstreeRepoFinderResult **ostree_repo_find_remotes_finish (OstreeRepo    *self,
+                                                          GAsyncResult  *result,
+                                                          GError       **error);
+
+_OSTREE_PUBLIC
+void ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
+                                          const OstreeRepoFinderResult * const *results,
+                                          GVariant                             *options,
+                                          OstreeAsyncProgress                  *progress,
+                                          GCancellable                         *cancellable,
+                                          GAsyncReadyCallback                   callback,
+                                          gpointer                              user_data);
+_OSTREE_PUBLIC
+gboolean ostree_repo_pull_from_remotes_finish (OstreeRepo    *self,
+                                               GAsyncResult  *result,
+                                               GError       **error);
+
+_OSTREE_PUBLIC
+gchar *ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
+                                                   const gchar   *collection_id,
+                                                   GCancellable  *cancellable,
+                                                   GError       **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_repo_list_collection_refs (OstreeRepo    *self,

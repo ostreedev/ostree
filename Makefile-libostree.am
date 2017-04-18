@@ -154,6 +154,11 @@ if !ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-ref.h \
 	src/libostree/ostree-remote.h \
+	src/libostree/ostree-repo-finder.h \
+	$(NULL)
+else # if ENABLE_EXPERIMENTAL_API
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-repo-finder.c \
 	$(NULL)
 endif
 
@@ -230,7 +235,7 @@ OSTree_1_0_gir_INCLUDES = Gio-2.0
 OSTree_1_0_gir_CFLAGS = $(libostree_1_la_CFLAGS)
 OSTree_1_0_gir_LIBS = libostree-1.la
 OSTree_1_0_gir_SCANNERFLAGS = --warn-all --identifier-prefix=Ostree --symbol-prefix=ostree
-OSTree_1_0_gir_FILES = $(libostreeinclude_HEADERS) $(filter-out %-private.h %/ostree-soup-uri.h,$(libostree_1_la_SOURCES))
+OSTree_1_0_gir_FILES = $(libostreeinclude_HEADERS) $(filter-out %-private.h %/ostree-soup-uri.h %/ostree-repo-finder.h,$(libostree_1_la_SOURCES))
 INTROSPECTION_GIRS += OSTree-1.0.gir
 gir_DATA += OSTree-1.0.gir
 typelib_DATA += OSTree-1.0.typelib

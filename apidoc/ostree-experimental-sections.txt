@@ -22,6 +22,34 @@ ostree_remote_get_name
 </SECTION>
 
 <SECTION>
+<FILE>ostree-repo-experimental</FILE>
+ostree_repo_find_remotes_async
+ostree_repo_find_remotes_finish
+ostree_repo_pull_from_remotes_async
+ostree_repo_pull_from_remotes_finish
+ostree_repo_resolve_keyring_for_collection
+</SECTION>
+
+<SECTION>
+<FILE>ostree-repo-finder</FILE>
+OstreeRepoFinder
+ostree_repo_finder_resolve_async
+ostree_repo_finder_resolve_finish
+ostree_repo_finder_resolve_all_async
+ostree_repo_finder_resolve_all_finish
+OstreeRepoFinderResult
+ostree_repo_finder_result_new
+ostree_repo_finder_result_dup
+ostree_repo_finder_result_free
+ostree_repo_finder_result_compare
+OstreeRepoFinderResultv
+ostree_repo_finder_result_freev
+<SUBSECTION Standard>
+ostree_repo_finder_get_type
+ostree_repo_finder_result_get_type
+</SECTION>
+
+<SECTION>
 <FILE>ostree-misc-experimental</FILE>
 ostree_repo_get_collection_id
 ostree_repo_set_collection_id
