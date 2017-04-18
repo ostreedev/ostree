@@ -160,6 +160,8 @@ libostree_1_la_SOURCES += \
 	$(NULL)
 else # if ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += \
+	src/libostree/ostree-bloom.c \
+	src/libostree/ostree-bloom-private.h \
 	src/libostree/ostree-repo-finder.c \
 	src/libostree/ostree-repo-finder-config.c \
 	src/libostree/ostree-repo-finder-mount.c \

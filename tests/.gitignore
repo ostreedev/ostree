@@ -6,6 +6,7 @@ ostree-http-server
 run-apache
 tmpdir-lifecycle
 test-rollsum
+test-bloom
 test-bsdiff
 test-checksum
 test-gpg-verify-result
