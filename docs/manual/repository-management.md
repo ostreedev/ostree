@@ -47,6 +47,27 @@ positive integer like `3` to retrieve just the last 3 commits.
 See also the `rsync-repos` script in
 [ostree-releng-scripts](https://github.com/ostreedev/ostree-releng-scripts).
 
+## Mirroring repositories
+
+It's very common to want to perform a full or partial mirror, in
+particular across organizational boundaries (e.g. an upstream OS
+provider, and a user that wants offline and faster access to the
+content).  OSTree supports both full and partial mirroring of the base
+`archive-z2` content, although not yet of static deltas.
+
+To create a mirror, first create an `archive-z2` repository (you don't
+need to run this as root), then add the upstream as a remote, then use
+`pull --mirror`.
+
+```
+ostree --repo=repo init --mode=archive-z2
+ostree --repo=repo remote add exampleos https://exampleos.com/ostree/repo
+ostree --repo=repo pull --mirror exampleos:exampleos/x86_64/standard
+```
+
+You can use the `--depth=-1` option to retrieve all history, or a
+positive integer like `3` to retrieve just the last 3 commits.
+
 ## Separate development vs release repositories
 
 By default, OSTree accumulates server side history.  This is actually
