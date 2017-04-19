@@ -2130,6 +2130,26 @@ ostree_repo_reload_config (OstreeRepo          *self,
 }
 
 gboolean
+ostree_repo_is_created (OstreeRepo    *self,
+                        gboolean      *is_created,
+                        GCancellable  *cancellable,
+                        GError        **error)
+{
+  if (!ostree_repo_open (self, cancellable, error))
+    {
+      if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          *is_created = FALSE;
+          return TRUE;
+        }
+      *is_created = FALSE;
+      return FALSE;
+    }
+  *is_created = TRUE;
+  return TRUE;
+}
+
+gboolean
 ostree_repo_open (OstreeRepo    *self,
                   GCancellable  *cancellable,
                   GError       **error)
