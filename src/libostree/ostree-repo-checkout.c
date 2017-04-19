@@ -381,10 +381,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
   gboolean need_copy = TRUE;
   gboolean is_bare_user_symlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  const gboolean is_symlink = g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
+  const gboolean is_symlink = (g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK);
   const char *checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
-  const gboolean is_whiteout = !is_symlink && options->process_whiteouts &&
-    g_str_has_prefix (destination_name, WHITEOUT_PREFIX);
+  const gboolean is_whiteout = (!is_symlink && options->process_whiteouts &&
+                                g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
 
   /* First, see if it's a Docker whiteout,
    * https://github.com/docker/docker/blob/1a714e76a2cb9008cd19609059e9988ff1660b78/pkg/archive/whiteouts.go
@@ -667,18 +667,15 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
+  /* Note early return here! */
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
-    {
-      if (!checkout_one_file_at (self, options,
+    return checkout_one_file_at (self, options,
                                  (GFile *) source,
                                  source_info,
                                  destination_dfd,
                                  g_file_info_get_name (source_info),
-                                 cancellable, error))
-        return FALSE;
-      /* Note early return here! */
-      return TRUE;
-    }
+                                 cancellable, error);
+
   g_autoptr(GFileEnumerator) dir_enum =
     g_file_enumerate_children ((GFile*)source,
                                OSTREE_GIO_FAST_QUERYINFO,
