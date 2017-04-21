@@ -194,7 +194,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
         }
 
       /* Process any xattrs now that we made the link */
-      if (xattrs)
+      if (xattrs && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
         {
           if (!glnx_dfd_name_set_all_xattrs (destination_dfd, destination_name,
                                              xattrs, cancellable, error))
