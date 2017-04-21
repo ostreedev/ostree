@@ -42,6 +42,7 @@ static gboolean opt_from_stdin;
 static char *opt_from_file;
 static gboolean opt_disable_fsync;
 static gboolean opt_require_hardlinks;
+static gboolean opt_force_copy;
 
 static gboolean
 parse_fsync_cb (const char  *option_name,
@@ -71,6 +72,7 @@ static GOptionEntry options[] = {
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
   { "require-hardlinks", 'H', 0, G_OPTION_ARG_NONE, &opt_require_hardlinks, "Do not fall back to full copies if hardlinking fails", NULL },
+  { "force-copy", 'C', 0, G_OPTION_ARG_NONE, &opt_force_copy, "Never hardlink (but may reflink if available)", NULL },
   { NULL }
 };
 
@@ -89,7 +91,7 @@ process_one_checkout (OstreeRepo           *repo,
    * `ostree_repo_checkout_at` until such time as we have a more
    * convenient infrastructure for testing C APIs with data.
    */
-  if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks || opt_union_add)
+  if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks || opt_union_add || opt_force_copy)
     {
       OstreeRepoCheckoutAtOptions options = { 0, };
 
@@ -102,6 +104,11 @@ process_one_checkout (OstreeRepo           *repo,
                        "Cannot specify both --union and --union-add");
           goto out;
         }
+      if (opt_require_hardlinks && opt_force_copy)
+        {
+          glnx_throw (error, "Cannot specify both --require-hardlinks and --force-copy");
+          goto out;
+        }
       else if (opt_union)
         options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
       else if (opt_union_add)
@@ -111,6 +118,7 @@ process_one_checkout (OstreeRepo           *repo,
       if (subpath)
         options.subpath = subpath;
       options.no_copy_fallback = opt_require_hardlinks;
+      options.force_copy = opt_force_copy;
 
       if (!ostree_repo_checkout_at (repo, &options,
                                     AT_FDCWD, destination,

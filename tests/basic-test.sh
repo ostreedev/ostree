@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..65"
+echo "1..66"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -28,7 +28,7 @@ echo "ok yaml version"
 CHECKOUT_U_ARG=""
 COMMIT_ARGS=""
 DIFF_ARGS=""
-if grep bare-user-only repo/config; then
+if grep -q bare-user-only repo/config; then
     # In bare-user-only repos we can only represent files with uid/gid 0, no
     # xattrs and canonical permissions, so we need to commit them as such, or
     # we end up with repos that don't pass fsck
@@ -50,11 +50,14 @@ validate_checkout_basic() {
 
 $OSTREE checkout test2 checkout-test2
 validate_checkout_basic checkout-test2
+if grep -q 'mode=bare$' repo/config; then
+    assert_not_streq $(stat -c '%h' checkout-test2/firstfile) 1
+fi
 echo "ok checkout"
 
 # Note this tests bare-user *and* bare-user-only
 rm checkout-test2 -rf
-if grep bare-user repo/config; then
+if grep -q bare-user repo/config; then
     $OSTREE checkout -U -H test2 checkout-test2
 else
     $OSTREE checkout -H test2 checkout-test2
@@ -77,6 +80,14 @@ else
 fi
 fi
 echo "ok checkout -H"
+
+rm checkout-test2 -rf
+$OSTREE checkout -C test2 checkout-test2
+for file in firstfile baz/cow baz/alink; do
+    assert_streq $(stat -c '%h' checkout-test2/$file) 1
+done
+
+echo "ok checkout -C"
 
 $OSTREE rev-parse test2
 $OSTREE rev-parse 'test2^'

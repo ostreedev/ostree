@@ -403,7 +403,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       need_copy = FALSE;
     }
-  else
+  else if (!options->force_copy)
     {
       HardlinkResult hardlink_res = HARDLINK_RESULT_NOT_SUPPORTED;
       /* Try to do a hardlink first, if it's a regular file.  This also
@@ -894,6 +894,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
 
   if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
     options->mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+
+  g_return_val_if_fail (!(options->force_copy && options->no_copy_fallback), FALSE);
 
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
