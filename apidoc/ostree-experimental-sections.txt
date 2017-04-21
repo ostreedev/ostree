@@ -1,0 +1,6 @@
+<SECTION>
+<FILE>ostree-remote</FILE>
+OstreeRemote
+ostree_remote_ref
+ostree_remote_unref
+</SECTION>

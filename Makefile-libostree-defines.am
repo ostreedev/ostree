@@ -38,6 +38,12 @@ libostree_public_headers = \
 	src/libostree/ostree-repo-deprecated.h \
 	$(NULL)
 
+if ENABLE_EXPERIMENTAL_API
+libostree_public_headers += \
+	src/libostree/ostree-remote.h \
+	$(NULL)
+endif
+
 # This one is generated via configure.ac, and the gtk-doc
 # code hence needs to look in the builddir.
 libostree_public_built_headers = src/libostree/ostree-version.h

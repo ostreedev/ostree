@@ -24,9 +24,8 @@
  * --enable-experimental-api. They are not stable or officially supported, and
  * might disappear or change in future releases. */
 
-/*
 LIBOSTREE_2017.6_EXPERIMENTAL {
 global:
-  some_symbol;
+  ostree_remote_ref;
+  ostree_remote_unref;
 } LIBOSTREE_2017.6;
-*/
