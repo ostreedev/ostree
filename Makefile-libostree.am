@@ -94,6 +94,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-linuxfsutil.c \
 	src/libostree/ostree-diff.c \
 	src/libostree/ostree-mutable-tree.c \
+	src/libostree/ostree-remote.c \
+	src/libostree/ostree-remote-private.h \
 	src/libostree/ostree-repo.c \
 	src/libostree/ostree-repo-checkout.c \
 	src/libostree/ostree-repo-commit.c \
@@ -144,6 +146,11 @@ if HAVE_LIBSOUP_CLIENT_CERTS
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-tls-cert-interaction.c \
 	src/libostree/ostree-tls-cert-interaction.h \
+	$(NULL)
+endif
+if !ENABLE_EXPERIMENTAL_API
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-remote.h \
 	$(NULL)
 endif
 

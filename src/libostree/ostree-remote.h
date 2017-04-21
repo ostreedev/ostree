@@ -1,6 +1,8 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright © 2011 Colin Walters <walters@verbum.org>
+ * Copyright © 2015 Red Hat, Inc.
+ * Copyright © 2017 Endless Mobile, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,29 +19,38 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  *
- * Author: Colin Walters <walters@verbum.org>
+ * Authors:
+ *  - Colin Walters <walters@verbum.org>
+ *  - Philip Withnall <withnall@endlessm.com>
  */
 
 #pragma once
 
 #include <gio/gio.h>
+#include <glib.h>
+#include <glib-object.h>
 
-#ifndef _OSTREE_PUBLIC
-#define _OSTREE_PUBLIC extern
-#endif
+#include "ostree-types.h"
 
 G_BEGIN_DECLS
 
-typedef struct OstreeRepo OstreeRepo;
-typedef struct OstreeRepoDevInoCache OstreeRepoDevInoCache;
-typedef struct OstreeSePolicy OstreeSePolicy;
-typedef struct OstreeSysroot OstreeSysroot;
-typedef struct OstreeSysrootUpgrader OstreeSysrootUpgrader;
-typedef struct OstreeMutableTree OstreeMutableTree;
-typedef struct OstreeRepoFile OstreeRepoFile;
-
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+/**
+ * OstreeRemote:
+ *
+ * This represents the configuration for a single remote repository. Currently,
+ * remotes can only be passed around as (reference counted) opaque handles. In
+ * future, more API may be added to create and interrogate them.
+ *
+ * Since: 2016.7
+ */
+#ifndef OSTREE_ENABLE_EXPERIMENTAL_API
+/* This is in ostree-types.h otherwise */
 typedef struct OstreeRemote OstreeRemote;
 #endif
+
+_OSTREE_PUBLIC
+OstreeRemote *ostree_remote_ref (OstreeRemote *remote);
+_OSTREE_PUBLIC
+void ostree_remote_unref (OstreeRemote *remote);
 
 G_END_DECLS

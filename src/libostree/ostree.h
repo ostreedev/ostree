@@ -24,6 +24,9 @@
 #include <ostree-core.h>
 #include <ostree-repo.h>
 #include <ostree-mutable-tree.h>
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+#include <ostree-remote.h>
+#endif
 #include <ostree-repo-file.h>
 #include <ostree-sysroot.h>
 #include <ostree-sysroot-upgrader.h>

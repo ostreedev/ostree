@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ostree-repo.h"
+#include "ostree-remote-private.h"
 #include "libglnx.h"
 
 G_BEGIN_DECLS
@@ -349,5 +350,17 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
 gboolean
 _ostree_repo_update_mtime (OstreeRepo        *self,
                            GError           **error);
+
+void
+_ostree_repo_add_remote (OstreeRepo   *self,
+                         OstreeRemote *remote);
+OstreeRemote *
+_ostree_repo_get_remote (OstreeRepo  *self,
+                         const char  *name,
+                         GError     **error);
+OstreeRemote *
+_ostree_repo_get_remote_inherited (OstreeRepo  *self,
+                                   const char  *name,
+                                   GError     **error);
 
 G_END_DECLS
