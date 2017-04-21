@@ -187,10 +187,12 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                 return glnx_throw_errno (error);
             }
           else if (errno == EEXIST && add_mode)
-            ;
+            /* Note early return - we don't want to set the xattrs below */
+            return TRUE;
           else
             return glnx_throw_errno (error);
         }
+
       /* Process any xattrs now that we made the link */
       if (xattrs)
         {
