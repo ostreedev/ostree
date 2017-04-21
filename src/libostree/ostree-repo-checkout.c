@@ -403,7 +403,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       need_copy = FALSE;
     }
-  else
+  else if (!options->force_copy)
     {
       HardlinkResult hardlink_res = HARDLINK_RESULT_NOT_SUPPORTED;
       /* Try to do a hardlink first, if it's a regular file.  This also

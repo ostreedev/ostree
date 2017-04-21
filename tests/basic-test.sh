@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..65"
+echo "1..66"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -41,6 +41,7 @@ fi
 validate_checkout_basic() {
     (cd $1;
      assert_has_file firstfile
+     assert_not_streq $(stat -c '%h' firstfile) 1
      assert_has_file baz/cow
      assert_file_has_content baz/cow moo
      assert_has_file baz/deeper/ohyeah
@@ -77,6 +78,14 @@ else
 fi
 fi
 echo "ok checkout -H"
+
+rm checkout-test2 -rf
+$OSTREE checkout -C test2 checkout-test2
+for file in firstfile baz/cow baz/alink; do
+    assert_streq $(stat -c '%h' checkout-test2/$file) 1
+done
+
+echo "ok checkout -C"
 
 $OSTREE rev-parse test2
 $OSTREE rev-parse 'test2^'
