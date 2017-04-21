@@ -25,127 +25,112 @@
 
 #include "ostree-sysroot-private.h"
 
+/* Like glnx_dirfd_iterator_init_at(), but if %ENOENT, then set
+ * @out_exists to %FALSE, and return successfully.
+ */
+static gboolean
+dfd_iter_init_allow_noent (int dfd,
+                           const char *path,
+                           GLnxDirFdIterator *dfd_iter,
+                           gboolean *out_exists,
+                           GError **error)
+{
+  glnx_fd_close int fd = glnx_opendirat_with_errno (dfd, path, TRUE);
+  if (fd < 0)
+    {
+      if (errno != ENOENT)
+        return glnx_throw_errno (error);
+      *out_exists = FALSE;
+      return TRUE;
+    }
+  if (!glnx_dirfd_iterator_init_take_fd (fd, dfd_iter, error))
+    return FALSE;
+  fd = -1;
+  *out_exists = TRUE;
+  return TRUE;
+}
+
+/* @deploydir_dfd: Directory FD for ostree/deploy
+ * @osname: Target osname
+ * @inout_deployments: All deployments in this subdir will be appended to this array
+ */
 gboolean
-_ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
+_ostree_sysroot_list_deployment_dirs_for_os (int                  deploydir_dfd,
+                                             const char          *osname,
                                              GPtrArray           *inout_deployments,
                                              GCancellable        *cancellable,
                                              GError             **error)
 {
-  gboolean ret = FALSE;
-  const char *osname = glnx_basename (gs_file_get_path_cached (osdir));
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
-  g_autoptr(GFile) osdeploy_dir = NULL;
-  GError *temp_error = NULL;
-
-  osdeploy_dir = g_file_get_child (osdir, "deploy");
-
-  dir_enum = g_file_enumerate_children (osdeploy_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        NULL, &temp_error);
-  if (!dir_enum)
-    {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-          goto done;
-        } 
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  gboolean exists;
+  const char *osdeploy_path = glnx_strjoina (osname, "/deploy");
+  if (!dfd_iter_init_allow_noent (deploydir_dfd, osdeploy_path, &dfd_iter, &exists, error))
+    return FALSE;
+  if (!exists)
+    return TRUE;
 
   while (TRUE)
     {
-      const char *name;
-      GFileInfo *file_info = NULL;
-      GFile *child = NULL;
-      glnx_unref_object OstreeDeployment *deployment = NULL;
-      g_autofree char *csum = NULL;
-      gint deployserial;
+      struct dirent *dent;
 
-      if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                      cancellable, error))
-        goto out;
-      if (file_info == NULL)
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
         break;
 
-      name = g_file_info_get_name (file_info);
-
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+      if (dent->d_type != DT_DIR)
         continue;
 
-      if (!_ostree_sysroot_parse_deploy_path_name (name, &csum, &deployserial, error))
-        goto out;
-      
-      deployment = ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1);
-      g_ptr_array_add (inout_deployments, g_object_ref (deployment));
+      g_autofree char *csum = NULL;
+      gint deployserial;
+      if (!_ostree_sysroot_parse_deploy_path_name (dent->d_name, &csum, &deployserial, error))
+        return FALSE;
+
+      g_ptr_array_add (inout_deployments, ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1));
     }
 
- done:
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
+/* Return in @out_deployments a new array of OstreeDeployment loaded from the
+ * filesystem state.
+ */
 static gboolean
 list_all_deployment_directories (OstreeSysroot       *self,
                                  GPtrArray          **out_deployments,
                                  GCancellable        *cancellable,
                                  GError             **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
-  g_autoptr(GFile) deploydir = NULL;
-  g_autoptr(GPtrArray) ret_deployments = NULL;
-  GError *temp_error = NULL;
+  g_autoptr(GPtrArray) ret_deployments =
+    g_ptr_array_new_with_free_func (g_object_unref);
 
-  deploydir = g_file_resolve_relative_path (self->path, "ostree/deploy");
-
-  ret_deployments = g_ptr_array_new_with_free_func (g_object_unref);
-
-  dir_enum = g_file_enumerate_children (deploydir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, &temp_error);
-  if (!dir_enum)
-    {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-          goto done;
-        } 
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  gboolean exists;
+  if (!dfd_iter_init_allow_noent (self->sysroot_fd, "ostree/deploy", &dfd_iter, &exists, error))
+    return FALSE;
+  if (!exists)
+    return TRUE;
 
   while (TRUE)
     {
-      GFileInfo *file_info = NULL;
-      GFile *child = NULL;
+      struct dirent *dent;
 
-      if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                      NULL, error))
-        goto out;
-      if (file_info == NULL)
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
         break;
 
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+      if (dent->d_type != DT_DIR)
         continue;
-      
-      if (!_ostree_sysroot_list_deployment_dirs_for_os (child, ret_deployments,
+
+      if (!_ostree_sysroot_list_deployment_dirs_for_os (dfd_iter.fd, dent->d_name,
+                                                        ret_deployments,
                                                         cancellable, error))
-        goto out;
+        return FALSE;
     }
-  
- done:
-  ret = TRUE;
+
   ot_transfer_out_value (out_deployments, &ret_deployments);
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -154,7 +139,7 @@ parse_bootdir_name (const char *name,
                     char      **out_csum)
 {
   const char *lastdash;
-  
+
   if (out_osname)
     *out_osname = NULL;
   if (out_csum)
@@ -164,7 +149,7 @@ parse_bootdir_name (const char *name,
 
   if (!lastdash)
     return FALSE;
-      
+
   if (!ostree_validate_checksum_string (lastdash + 1, NULL))
     return FALSE;
 
@@ -183,7 +168,6 @@ list_all_boot_directories (OstreeSysroot       *self,
                            GError             **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
   g_autoptr(GFile) boot_ostree = NULL;
   g_autoptr(GPtrArray) ret_bootdirs = NULL;
   GError *temp_error = NULL;
@@ -192,9 +176,10 @@ list_all_boot_directories (OstreeSysroot       *self,
 
   ret_bootdirs = g_ptr_array_new_with_free_func (g_object_unref);
 
-  dir_enum = g_file_enumerate_children (boot_ostree, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, &temp_error);
+  g_autoptr(GFileEnumerator) dir_enum =
+    g_file_enumerate_children (boot_ostree, OSTREE_GIO_FAST_QUERYINFO,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                               cancellable, &temp_error);
   if (!dir_enum)
     {
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))

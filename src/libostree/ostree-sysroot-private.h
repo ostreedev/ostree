@@ -87,7 +87,8 @@ _ostree_sysroot_parse_deploy_path_name (const char *name,
                                         GError    **error);
 
 gboolean
-_ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
+_ostree_sysroot_list_deployment_dirs_for_os (int                  deploydir_dfd,
+                                             const char          *osname,
                                              GPtrArray           *inout_deployments,
                                              GCancellable        *cancellable,
                                              GError             **error);

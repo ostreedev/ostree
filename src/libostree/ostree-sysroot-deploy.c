@@ -1899,19 +1899,20 @@ allocate_deployserial (OstreeSysroot           *self,
                        GCancellable            *cancellable,
                        GError                 **error)
 {
-  guint i;
   int new_deployserial = 0;
   g_autoptr(GPtrArray) tmp_current_deployments =
     g_ptr_array_new_with_free_func (g_object_unref);
 
-  const char *osdir_name = glnx_strjoina ("ostree/deploy/", osname);
-  g_autoptr(GFile) osdir = g_file_resolve_relative_path (self->path, osdir_name);
+  glnx_fd_close int deploy_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, "ostree/deploy", TRUE, &deploy_dfd, error))
+    return FALSE;
 
-  if (!_ostree_sysroot_list_deployment_dirs_for_os (osdir, tmp_current_deployments,
+  if (!_ostree_sysroot_list_deployment_dirs_for_os (deploy_dfd, osname,
+                                                    tmp_current_deployments,
                                                     cancellable, error))
     return FALSE;
 
-  for (i = 0; i < tmp_current_deployments->len; i++)
+  for (guint i = 0; i < tmp_current_deployments->len; i++)
     {
       OstreeDeployment *deployment = tmp_current_deployments->pdata[i];
 
