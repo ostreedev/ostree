@@ -1123,7 +1123,7 @@ sc_copyright_check:
 sc_missing_cmd_prefix:
 	@prohibit='^ostree '						\
 	halt='found missing ${CMD_PREFIX}'				\
-	in_vc_files='$tests/.*\.sh$$'					\
+	in_vc_files='$tests/[^/]*\.sh$$'					\
 	  $(_sc_search_regexp)
 
 # If tests/help-version exists and seems to be new enough, assume that its
