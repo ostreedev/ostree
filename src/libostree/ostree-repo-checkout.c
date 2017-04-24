@@ -895,6 +895,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
     options->mode = OSTREE_REPO_CHECKOUT_MODE_USER;
 
+  g_return_val_if_fail (!(options->force_copy && options->no_copy_fallback), FALSE);
+
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
     return FALSE;
