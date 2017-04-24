@@ -18,7 +18,6 @@
 # Boston, MA 02111-1307, USA.
 
 dn=$(dirname $0)
-. ${dn}/libtest-core.sh
 
 if [ -n "${G_TEST_SRCDIR:-}" ]; then
   test_srcdir="${G_TEST_SRCDIR}/tests"
@@ -31,6 +30,7 @@ if [ -n "${G_TEST_BUILDDIR:-}" ]; then
 else
   test_builddir=$(dirname $0)
 fi
+. ${test_srcdir}/libtest-core.sh
 
 test_tmpdir=$(pwd)
 
