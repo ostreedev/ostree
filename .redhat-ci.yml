@@ -124,10 +124,7 @@ build:
     config-opts: >
       --prefix=/usr
       --libdir=/usr/lib64
-      --enable-installed-tests
       --enable-gtk-doc
-      --with-curl
-      --with-openssl
 
 # Copy the build from the container to the host; ideally down the line
 # this is installing an RPM via https://github.com/jlebon/redhat-ci/issues/10
