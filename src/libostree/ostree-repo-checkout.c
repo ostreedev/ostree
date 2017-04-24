@@ -193,10 +193,17 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
             return glnx_throw_errno (error);
         }
 
-      /* Process any xattrs now that we made the link */
-      if (xattrs && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+      /* Process ownership and xattrs now that we made the link */
+      if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
         {
-          if (!glnx_dfd_name_set_all_xattrs (destination_dfd, destination_name,
+          if (TEMP_FAILURE_RETRY (fchownat (destination_dfd, destination_name,
+                                            g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                            g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                                            AT_SYMLINK_NOFOLLOW)) == -1)
+            return glnx_throw_errno_prefix (error, "fchownat");
+
+          if (xattrs != NULL &&
+              !glnx_dfd_name_set_all_xattrs (destination_dfd, destination_name,
                                              xattrs, cancellable, error))
             return FALSE;
         }
