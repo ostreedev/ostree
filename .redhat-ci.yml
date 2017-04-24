@@ -130,9 +130,8 @@ build:
 # this is installing an RPM via https://github.com/jlebon/redhat-ci/issues/10
 tests:
   - make install DESTDIR=$(pwd)/insttree
-  - rsync -rl -e 'ssh -o User=root -F ssh-config' . vmcheck:ostree/
-  - ssh -o User=root -F ssh-config vmcheck 'ostree admin unlock && rsync -rlv ostree/insttree/usr/ /usr/'
-  - ssh -o User=root -F ssh-config vmcheck ./ostree/tests/installed/run.sh
+  - rsync -rl -e 'ssh -o User=root' . vmcheck:ostree/
+  - ssh root@vmcheck 'ostree admin unlock && rsync -rlv ./ostree/insttree/usr/ /usr/ && ./ostree/tests/installed/run.sh'
 
 artifacts:
   - test-suite.log
