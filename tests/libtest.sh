@@ -17,6 +17,9 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+dn=$(dirname $0)
+. ${dn}/libtest-core.sh
+
 if [ -n "${G_TEST_SRCDIR:-}" ]; then
   test_srcdir="${G_TEST_SRCDIR}/tests"
 else
@@ -29,24 +32,7 @@ else
   test_builddir=$(dirname $0)
 fi
 
-fatal() {
-    echo $@ 1>&2; exit 1
-}
-# fatal() is shorter to type, but retain this alias
-assert_not_reached () {
-    fatal "$@"
-}
-
 test_tmpdir=$(pwd)
-
-# Some tests look for specific English strings. Use a UTF-8 version
-# of the C (POSIX) locale if we have one, or fall back to POSIX
-# (https://sourceware.org/glibc/wiki/Proposals/C.UTF-8)
-if locale -a | grep C.UTF-8 >/dev/null; then
-  export LC_ALL=C.UTF-8
-else
-  export LC_ALL=C
-fi
 
 # Sanity check that we're in a tmpdir that has
 # just .testtmp (created by tap-driver for `make check`,
@@ -61,8 +47,6 @@ if ! test -f .testtmp; then
     # C and JS tests which may source this file again
     touch .testtmp
 fi
-
-export G_DEBUG=fatal-warnings
 
 # Also, unbreak `tar` inside `make check`...Automake will inject
 # TAR_OPTIONS: --owner=0 --group=0 --numeric-owner presumably so that
@@ -123,74 +107,6 @@ if test -n "${OSTREE_UNINSTALLED:-}"; then
 else
     OSTREE_HTTPD="${CMD_PREFIX} ostree trivial-httpd"
 fi
-
-assert_streq () {
-    test "$1" = "$2" || fatal "$1 != $2"
-}
-
-assert_str_match () {
-    if ! echo "$1" | grep -E -q "$2"; then
-	      fatal "$1 does not match regexp $2"
-    fi
-}
-
-assert_not_streq () {
-    (! test "$1" = "$2") || fatal "$1 == $2"
-}
-
-assert_has_file () {
-    test -f "$1" || fatal "Couldn't find '$1'"
-}
-
-assert_has_dir () {
-    test -d "$1" || fatal "Couldn't find '$1'"
-}
-
-assert_not_has_file () {
-    if test -f "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' exists"
-    fi
-}
-
-assert_not_file_has_content () {
-    if grep -q -e "$2" "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' incorrectly matches regexp '$2'"
-    fi
-}
-
-assert_not_has_dir () {
-    if test -d "$1"; then
-	      fatal "Directory '$1' exists"
-    fi
-}
-
-assert_file_has_content () {
-    if ! grep -q -e "$2" "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' doesn't match regexp '$2'"
-    fi
-}
-
-assert_symlink_has_content () {
-    if ! test -L "$1"; then
-        echo 1>&2 "File '$1' is not a symbolic link"
-        exit 1
-    fi
-    if ! readlink "$1" | grep -q -e "$2"; then
-        sed -e 's/^/# /' < "$1" >&2
-        echo 1>&2 "Symbolic link '$1' doesn't match regexp '$2'"
-        exit 1
-    fi
-}
-
-assert_file_empty() {
-    if test -s "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' is not empty"
-    fi
-}
 
 assert_files_hardlinked() {
     f1=$(stat -c %i $1)
@@ -539,11 +455,6 @@ os_repository_new_commit ()
 
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b testos/buildmaster/x86_64-runtime -s "Build"
     cd ${test_tmpdir}
-}
-
-skip() {
-    echo "1..0 # SKIP" "$@"
-    exit 0
 }
 
 skip_without_user_xattrs () {
