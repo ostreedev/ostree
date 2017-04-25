@@ -53,6 +53,10 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/parse-datetime.c \
 	$(NULL)
 
+if ENABLE_EXPERIMENTAL_API
+ostree_SOURCES += src/ostree/ot-builtin-find-remotes.c
+endif
+
 # Admin subcommand
 ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-init-fs.c \

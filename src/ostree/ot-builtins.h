@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "config.h"
+
 #include "ostree.h"
 
 G_BEGIN_DECLS
@@ -36,6 +38,9 @@ BUILTINPROTO(checksum);
 BUILTINPROTO(commit);
 BUILTINPROTO(diff);
 BUILTINPROTO(export);
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+BUILTINPROTO(find_remotes);
+#endif
 BUILTINPROTO(gpg_sign);
 BUILTINPROTO(init);
 BUILTINPROTO(log);
