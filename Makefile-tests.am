@@ -48,6 +48,7 @@ dist_test_scripts = \
 	tests/test-basic.sh \
 	tests/test-basic-user.sh \
 	tests/test-basic-user-only.sh \
+	tests/test-basic-root.sh \
 	tests/test-pull-subpath.sh \
 	tests/test-archivez.sh \
 	tests/test-remote-add.sh \
