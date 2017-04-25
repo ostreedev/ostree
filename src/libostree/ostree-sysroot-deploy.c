@@ -255,7 +255,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
   g_assert (path != NULL);
   g_assert (*path != '/' && *path != '\0');
 
-  if (!ot_gopendirat (modified_etc_fd, path, TRUE, &src_dfd, error))
+  if (!glnx_opendirat (modified_etc_fd, path, TRUE, &src_dfd, error))
     goto out;
 
   /* Create with mode 0700, we'll fchmod/fchown later */
@@ -293,7 +293,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
         }
     }
 
-  if (!ot_gopendirat (new_etc_fd, path, TRUE, &target_dfd, error))
+  if (!glnx_opendirat (new_etc_fd, path, TRUE, &target_dfd, error))
     goto out;
 
   if (!dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd,

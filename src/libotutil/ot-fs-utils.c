@@ -35,32 +35,6 @@ ot_fdrel_to_gfile (int dfd, const char *path)
   return g_file_new_for_path (abspath);
 }
 
-int
-ot_opendirat (int dfd, const char *path, gboolean follow)
-{
-  int flags = O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOCTTY;
-  if (!follow)
-    flags |= O_NOFOLLOW;
-  return openat (dfd, path, flags);
-}
-
-gboolean
-ot_gopendirat (int             dfd,
-               const char     *path,
-               gboolean        follow,
-               int            *out_fd,
-               GError        **error)
-{
-  int ret = ot_opendirat (dfd, path, follow);
-  if (ret == -1)
-    {
-      glnx_set_error_from_errno (error);
-      return FALSE;
-    }
-  *out_fd = ret;
-  return TRUE;
-}
-
 gboolean
 ot_readlinkat_gfile_info (int             dfd,
                           const char     *path,

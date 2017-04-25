@@ -26,13 +26,6 @@ G_BEGIN_DECLS
 
 GFile * ot_fdrel_to_gfile (int dfd, const char *path);
 
-int ot_opendirat (int dfd, const char *path, gboolean follow);
-gboolean ot_gopendirat (int             dfd,
-                        const char     *path,
-                        gboolean        follow,
-                        int            *out_fd,
-                        GError        **error);
-
 gboolean ot_readlinkat_gfile_info (int             dfd,
                                    const char     *path,
                                    GFileInfo      *target_info,
