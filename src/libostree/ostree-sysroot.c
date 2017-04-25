@@ -1470,10 +1470,10 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   for (i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
-      const gboolean is_merge_or_booted = 
-        ostree_deployment_equal (deployment, booted_deployment) ||
+      const gboolean is_booted = ostree_deployment_equal (deployment, booted_deployment);
+      const gboolean is_merge_or_booted = is_booted ||
         ostree_deployment_equal (deployment, merge_deployment);
-      
+
       /* Keep deployments with different osnames, as well as the
        * booted and merge deployments
        */
@@ -1484,16 +1484,16 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
           g_ptr_array_add (new_deployments, g_object_ref (deployment));
         }
 
-      if (!added_new)
+      /* Insert new non-default right after the booted, if we have a booted deployment */
+      if (!make_default && is_booted)
         {
           g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
           added_new = TRUE;
         }
     }
 
-  /* In this non-default case , an improvement in the future would be
-   * to put the new deployment right after the current default in the
-   * order.
+  /* If we're operating on a non-booted osname, arbitrarily insert the new
+   * non-default last.
    */
   if (!added_new)
     {
