@@ -28,7 +28,7 @@
 static char* opt_cache_dir;
 
 static GOptionEntry option_entries[] = {
-  { "cache-dir", 0, 0, G_OPTION_ARG_STRING, &opt_cache_dir, "Use custom cache dir", NULL },
+  { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
   { NULL }
 };
 

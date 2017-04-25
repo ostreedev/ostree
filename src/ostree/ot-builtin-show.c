@@ -42,7 +42,7 @@ static GOptionEntry options[] = {
   { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key", "KEY" },
   { "print-detached-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_detached_metadata_key, "Print string value of detached metadata key", "KEY" },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
-  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
+  { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
   { "gpg-verify-remote", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_verify_remote, "Use REMOTE name for GPG configuration", "REMOTE"},
   { NULL }
 };
