@@ -63,7 +63,7 @@ parse_fsync_cb (const char  *option_name,
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
   { "disable-cache", 0, 0, G_OPTION_ARG_NONE, &opt_disable_cache, "Do not update or use the internal repository uncompressed object cache", NULL },
-  { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
+  { "subpath", 0, 0, G_OPTION_ARG_FILENAME, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
   { "union-add", 0, 0, G_OPTION_ARG_NONE, &opt_union_add, "Keep existing files/directories, only add new", NULL },
   { "whiteouts", 0, 0, G_OPTION_ARG_NONE, &opt_whiteouts, "Process 'whiteout' (Docker style) entries", NULL },

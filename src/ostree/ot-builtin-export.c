@@ -39,9 +39,9 @@ static gboolean opt_no_xattrs;
 
 static GOptionEntry options[] = {
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Skip output of extended attributes", NULL },
-  { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
-  { "prefix", 0, 0, G_OPTION_ARG_STRING, &opt_prefix, "Add PATH as prefix to archive pathnames", "PATH" },
-  { "output", 'o', 0, G_OPTION_ARG_STRING, &opt_output_path, "Output to PATH ", "PATH" },
+  { "subpath", 0, 0, G_OPTION_ARG_FILENAME, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
+  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Add PATH as prefix to archive pathnames", "PATH" },
+  { "output", 'o', 0, G_OPTION_ARG_FILENAME, &opt_output_path, "Output to PATH ", "PATH" },
   { NULL }
 };
 
