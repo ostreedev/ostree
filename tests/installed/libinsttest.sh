@@ -30,9 +30,9 @@ fi
 assert_streq $(id -u) 0
 
 PYTHON=
-for PYTHON in /usr/bin/python3 /usr/bin/python; do
-    if ! test -x ${PYTHON}; then continue; fi
-    export PYTHON
+for py in /usr/bin/python3 /usr/bin/python; do
+    if ! test -x ${py}; then continue; fi
+    export PYTHON=${py}
     break
 done
 if test -z "${PYTHON}"; then
