@@ -2631,7 +2631,7 @@ query_info_for_bare_content_object (OstreeRepo      *self,
         return FALSE;
     }
   else
-    return glnx_throw_errno_prefix (error, "Not a regular file or symlink: %s", loose_path_buf);
+    return glnx_throw (error, "Not a regular file or symlink: %s", loose_path_buf);
 
   ot_transfer_out_value (out_info, &ret_info);
   return TRUE;
