@@ -2465,7 +2465,7 @@ list_loose_objects (OstreeRepo                     *self,
       buf[0] = hexchars[c >> 4];
       buf[1] = hexchars[c & 0xF];
       buf[2] = '\0';
-      dfd = ot_opendirat (self->objects_dir_fd, buf, FALSE);
+      dfd = glnx_opendirat_with_errno (self->objects_dir_fd, buf, FALSE);
       if (dfd == -1)
         {
           if (errno == ENOENT)
