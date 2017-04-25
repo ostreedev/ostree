@@ -2364,39 +2364,45 @@ ostree_repo_get_parent (OstreeRepo  *self)
 static gboolean
 list_loose_objects_at (OstreeRepo             *self,
                        GHashTable             *inout_objects,
-                       const char             *prefix,
                        int                     dfd,
+                       const char             *prefix,
                        const char             *commit_starting_with,
                        GCancellable           *cancellable,
                        GError                **error)
 {
-  gboolean ret = FALSE;
-  DIR *d = NULL;
-  struct dirent *dent;
   GVariant *key, *value;
 
-  d = fdopendir (dfd);
-  if (!d)
+  glnx_fd_close int target_dfd = glnx_opendirat_with_errno (dfd, prefix, FALSE);
+  if (target_dfd < 0)
     {
-      glnx_set_error_from_errno (error);
-      goto out;
+      /* Nothing to do if this dir doesn't exist */
+      if (errno == ENOENT)
+        return TRUE;
+      return glnx_throw_errno (error);
     }
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  if (!glnx_dirfd_iterator_init_take_fd (target_dfd, &dfd_iter, error))
+    return FALSE;
 
-  while ((dent = readdir (d)) != NULL)
+  while (TRUE)
     {
-      const char *name = dent->d_name;
-      const char *dot;
-      OstreeObjectType objtype;
-      char buf[OSTREE_SHA256_STRING_LEN+1];
+      struct dirent *dent;
 
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+
+      const char *name = dent->d_name;
       if (strcmp (name, ".") == 0 ||
           strcmp (name, "..") == 0)
         continue;
 
-      dot = strrchr (name, '.');
+      const char *dot = strrchr (name, '.');
       if (!dot)
         continue;
 
+      OstreeObjectType objtype;
       if ((self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
            && strcmp (dot, ".filez") == 0) ||
           ((_ostree_repo_mode_is_bare (self->mode))
@@ -2413,6 +2419,8 @@ list_loose_objects_at (OstreeRepo             *self,
 
       if ((dot - name) != 62)
         continue;
+
+      char buf[OSTREE_SHA256_STRING_LEN+1];
 
       memcpy (buf, prefix, 2);
       memcpy (buf + 2, name, 62);
@@ -2440,11 +2448,7 @@ list_loose_objects_at (OstreeRepo             *self,
                             g_variant_ref_sink (value));
     }
 
-  ret = TRUE;
- out:
-  if (d)
-    (void) closedir (d);
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -2454,28 +2458,17 @@ list_loose_objects (OstreeRepo                     *self,
                     GCancellable                   *cancellable,
                     GError                        **error)
 {
-  guint c;
-  int dfd = -1;
   static const gchar hexchars[] = "0123456789abcdef";
 
-  for (c = 0; c < 256; c++)
+  for (guint c = 0; c < 256; c++)
     {
       char buf[3];
       buf[0] = hexchars[c >> 4];
       buf[1] = hexchars[c & 0xF];
       buf[2] = '\0';
-      dfd = glnx_opendirat_with_errno (self->objects_dir_fd, buf, FALSE);
-      if (dfd == -1)
-        {
-          if (errno == ENOENT)
-            continue;
-          else
-            return glnx_throw_errno (error);
-        }
-      /* Takes ownership of dfd */
-      if (!list_loose_objects_at (self, inout_objects, buf, dfd,
-                                       commit_starting_with,
-                                       cancellable, error))
+      if (!list_loose_objects_at (self, inout_objects, self->objects_dir_fd, buf,
+                                  commit_starting_with,
+                                  cancellable, error))
         return FALSE;
     }
 
