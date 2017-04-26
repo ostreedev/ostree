@@ -68,11 +68,7 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 
   if (!self->disable_fsync)
     {
-      int res;
-      do
-        res = fsync (fd);
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
+      if (TEMP_FAILURE_RETRY (fsync (fd)) < 0)
         return glnx_throw_errno (error);
     }
 
@@ -126,19 +122,11 @@ write_regular_file_content (OstreeRepo            *self,
 
   if (mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      int res;
-      do
-        res = fchown (fd,
-                      g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
-                      g_file_info_get_attribute_uint32 (file_info, "unix::gid"));
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
+      if (TEMP_FAILURE_RETRY (fchown (fd, g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                      g_file_info_get_attribute_uint32 (file_info, "unix::gid"))) < 0)
         return glnx_throw_errno (error);
 
-      do
-        res = fchmod (fd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
+      if (TEMP_FAILURE_RETRY (fchmod (fd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"))) < 0)
         return glnx_throw_errno (error);
 
       if (xattrs)
@@ -598,7 +586,6 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
                           GError                           **error)
 {
   gboolean did_exist = FALSE;
-  int res;
   const gboolean sepolicy_enabled = options->sepolicy && !self->disable_xattrs;
   g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GVariant) modified_xattrs = NULL;
@@ -733,22 +720,15 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
    */
   if (!did_exist)
     {
-      do
-        res = fchmod (destination_dfd,
-                      g_file_info_get_attribute_uint32 (source_info, "unix::mode"));
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
+      if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, g_file_info_get_attribute_uint32 (source_info, "unix::mode"))) < 0)
         return glnx_throw_errno (error);
     }
 
   if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      do
-        res = fchown (destination_dfd,
-                      g_file_info_get_attribute_uint32 (source_info, "unix::uid"),
-                      g_file_info_get_attribute_uint32 (source_info, "unix::gid"));
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
+      if (TEMP_FAILURE_RETRY (fchown (destination_dfd,
+                                      g_file_info_get_attribute_uint32 (source_info, "unix::uid"),
+                                      g_file_info_get_attribute_uint32 (source_info, "unix::gid"))) < 0)
         return glnx_throw_errno (error);
     }
 
@@ -758,10 +738,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
   if (!did_exist)
     {
       const struct timespec times[2] = { { OSTREE_TIMESTAMP, UTIME_OMIT }, { OSTREE_TIMESTAMP, 0} };
-      do
-        res = futimens (destination_dfd, times);
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
+      if (TEMP_FAILURE_RETRY (futimens (destination_dfd, times)) < 0)
         return glnx_throw_errno (error);
     }
 
