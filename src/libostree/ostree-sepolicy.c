@@ -47,8 +47,6 @@ struct OstreeSePolicy {
   int rootfs_dfd_owned;
   GFile *path;
 
-  gboolean runtime_enabled;
-
 #ifdef HAVE_SELINUX
   GFile *selinux_policy_root;
   struct selabel_handle *selinux_hnd;
@@ -267,6 +265,23 @@ get_policy_checksum (char        **out_csum,
 
 #endif
 
+
+/* Workaround for http://marc.info/?l=selinux&m=149323809332417&w=2 */
+#ifdef HAVE_SELINUX
+static gboolean
+cached_is_selinux_enabled (void)
+{
+  static gsize initialized;
+  static gboolean cached_enabled;
+  if (g_once_init_enter (&initialized))
+    {
+      cached_enabled = is_selinux_enabled () == 1;
+      g_once_init_leave (&initialized, 1);
+    }
+  return cached_enabled;
+}
+#endif
+
 static gboolean
 initable_init (GInitable     *initable,
                GCancellable  *cancellable,
@@ -278,6 +293,11 @@ initable_init (GInitable     *initable,
   g_autofree char *policytype = NULL;
   const char *selinux_prefix = "SELINUX=";
   const char *selinuxtype_prefix = "SELINUXTYPE=";
+
+  /* First thing here, call is_selinux_enabled() to prime the cache. See the
+   * link above for more information why.
+   */
+  (void) cached_is_selinux_enabled ();
 
   /* TODO - use this below */
   g_autoptr(GFile) path = NULL;
@@ -345,7 +365,6 @@ initable_init (GInitable     *initable,
 
   if (enabled)
     {
-      self->runtime_enabled = is_selinux_enabled () == 1;
       const char *policy_rootpath = gs_file_get_path_cached (policy_root);
 
       g_setenv ("LIBSELINUX_DISABLE_PCRE_PRECOMPILED", "1", FALSE);
@@ -613,7 +632,7 @@ ostree_sepolicy_setfscreatecon (OstreeSePolicy   *self,
    * request.  To correctly handle the case of disabled host but
    * enabled target will require nontrivial work.
    */
-  if (!self->runtime_enabled)
+  if (!cached_is_selinux_enabled ())
     return TRUE;
 
   if (!ostree_sepolicy_get_label (self, path, mode, &label, NULL, error))
