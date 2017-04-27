@@ -720,7 +720,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
    */
   if (!did_exist)
     {
-      if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, g_file_info_get_attribute_uint32 (source_info, "unix::mode")) < 0)
+      if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, g_file_info_get_attribute_uint32 (source_info, "unix::mode"))) < 0)
         return glnx_throw_errno (error);
     }
 
@@ -728,7 +728,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
     {
       if (TEMP_FAILURE_RETRY (fchown (destination_dfd,
                                       g_file_info_get_attribute_uint32 (source_info, "unix::uid"),
-                                      g_file_info_get_attribute_uint32 (source_info, "unix::gid")) < 0)
+                                      g_file_info_get_attribute_uint32 (source_info, "unix::gid"))) < 0)
         return glnx_throw_errno (error);
     }
 
