@@ -40,6 +40,7 @@ git log --pretty=oneline origin/master.. | while read logline; do
             echo "Commit $commit modifies submodule: $submodule"
             expected_match="Update submodule: $submodule"
             if ! grep -q -e "$expected_match" ${tmpd}/log.txt; then
+                sed -e 's,^,# ,' < ${tmpd}/log.txt
                 echo "error: Commit message for ${commit} changes a submodule, but does not match regex ${expected_match}"
                 exit 1
             fi

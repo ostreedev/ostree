@@ -102,7 +102,7 @@ fsync_is_enabled (OstreeRepo   *self,
 static gboolean
 write_regular_file_content (OstreeRepo            *self,
                             OstreeRepoCheckoutAtOptions *options,
-                            GOutputStream         *output,
+                            int                    outfd,
                             GFileInfo             *file_info,
                             GVariant              *xattrs,
                             GInputStream          *input,
@@ -110,40 +110,54 @@ write_regular_file_content (OstreeRepo            *self,
                             GError               **error)
 {
   const OstreeRepoCheckoutMode mode = options->mode;
+  g_autoptr(GOutputStream) outstream = NULL;
 
-  if (g_output_stream_splice (output, input, 0,
-                              cancellable, error) < 0)
-    return FALSE;
+  if (G_IS_FILE_DESCRIPTOR_BASED (input))
+    {
+      int infd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*) input);
+      guint64 len = g_file_info_get_size (file_info);
 
-  if (!g_output_stream_flush (output, cancellable, error))
-    return FALSE;
+      if (glnx_regfile_copy_bytes (infd, outfd, (off_t)len, TRUE) < 0)
+        return glnx_throw_errno_prefix (error, "regfile copy");
+    }
+  else
+    {
+      outstream = g_unix_output_stream_new (outfd, FALSE);
+      if (g_output_stream_splice (outstream, input, 0,
+                                  cancellable, error) < 0)
+        return FALSE;
 
-  int fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)output);
+      if (!g_output_stream_flush (outstream, cancellable, error))
+        return FALSE;
+    }
 
   if (mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      if (TEMP_FAILURE_RETRY (fchown (fd, g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+      if (TEMP_FAILURE_RETRY (fchown (outfd, g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                                       g_file_info_get_attribute_uint32 (file_info, "unix::gid"))) < 0)
         return glnx_throw_errno (error);
 
-      if (TEMP_FAILURE_RETRY (fchmod (fd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"))) < 0)
+      if (TEMP_FAILURE_RETRY (fchmod (outfd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"))) < 0)
         return glnx_throw_errno (error);
 
       if (xattrs)
         {
-          if (!glnx_fd_set_all_xattrs (fd, xattrs, cancellable, error))
+          if (!glnx_fd_set_all_xattrs (outfd, xattrs, cancellable, error))
             return FALSE;
         }
     }
 
   if (fsync_is_enabled (self, options))
     {
-      if (fsync (fd) == -1)
+      if (fsync (outfd) == -1)
         return glnx_throw_errno (error);
     }
 
-  if (!g_output_stream_close (output, cancellable, error))
-    return FALSE;
+  if (outstream)
+    {
+      if (!g_output_stream_close (outstream, cancellable, error))
+        return FALSE;
+    }
 
   return TRUE;
 }
@@ -231,7 +245,6 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
       glnx_fd_close int temp_fd = -1;
-      g_autoptr(GOutputStream) temp_out = NULL;
       guint32 file_mode;
       GLnxLinkTmpfileReplaceMode replace_mode;
 
@@ -244,7 +257,6 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                                           &temp_fd, &temp_filename,
                                           error))
         return FALSE;
-      temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
       if (sepolicy_enabled)
         {
@@ -258,7 +270,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
             return glnx_throw_errno_prefix (error, "Setting security.selinux");
         }
 
-      if (!write_regular_file_content (repo, options, temp_out, file_info, xattrs, input,
+      if (!write_regular_file_content (repo, options, temp_fd, file_info, xattrs, input,
                                        cancellable, error))
         return FALSE;
 
