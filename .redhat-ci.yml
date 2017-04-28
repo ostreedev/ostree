@@ -155,3 +155,6 @@ host:
 
 tests:
   - docker run --rm --privileged -v $(pwd):/srv/code registry.fedoraproject.org/fedora:25 /bin/sh -c "cd /srv/code && ./ci/flatpak.sh"
+
+artifacts:
+  - test-suite.log
