@@ -70,7 +70,6 @@ static void
 teardown (Fixture       *fixture,
           gconstpointer  test_data)
 {
-  glnx_fd_close int parent_repo_dfd = -1;
   g_autoptr(GError) error = NULL;
 
   /* Recursively remove the temporary directory. */
@@ -81,10 +80,7 @@ teardown (Fixture       *fixture,
 
   /* The repo also needs its source files to be removed. This is the inverse
    * of setup_test_repository() in libtest.sh. */
-  g_autofree gchar *parent_repo_path = g_file_get_path (ostree_repo_get_path (fixture->parent_repo));
-  glnx_opendirat (-1, parent_repo_path, TRUE, &parent_repo_dfd, &error);
-  g_assert_no_error (error);
-
+  int parent_repo_dfd = ostree_repo_get_dfd (fixture->parent_repo);
   glnx_shutil_rm_rf_at (parent_repo_dfd, "../files", NULL, NULL);
   glnx_shutil_rm_rf_at (parent_repo_dfd, "../repo", NULL, NULL);
 

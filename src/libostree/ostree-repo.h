@@ -64,6 +64,13 @@ gboolean      ostree_repo_open   (OstreeRepo     *self,
                                   GError        **error);
 
 _OSTREE_PUBLIC
+OstreeRepo*
+ostree_repo_open_at (int           dfd,
+                     const char   *path,
+                     GCancellable *cancellable,
+                     GError      **error);
+
+_OSTREE_PUBLIC
 void          ostree_repo_set_disable_fsync (OstreeRepo    *self,
                                              gboolean       disable_fsync);
 
@@ -89,6 +96,13 @@ gboolean      ostree_repo_create (OstreeRepo     *self,
                                   OstreeRepoMode  mode,
                                   GCancellable   *cancellable,
                                   GError        **error);
+_OSTREE_PUBLIC
+OstreeRepo *  ostree_repo_create_at (int             dfd,
+                                     const char     *path,
+                                     OstreeRepoMode  mode,
+                                     GVariant       *options,
+                                     GCancellable   *cancellable,
+                                     GError        **error);
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 
