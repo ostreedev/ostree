@@ -135,3 +135,26 @@ tests:
 
 artifacts:
   - test-suite.log
+
+---
+
+inherit: false
+branches:
+    - master
+    - auto
+    - try
+
+context: f25-flatpak
+required: false
+
+# This test case wants an "unprivileged container with bubblewrap",
+# which we don't have right now; so just provision a VM and do a
+# docker --privileged run.
+host:
+  distro: fedora/25/atomic
+
+tests:
+  - docker run --rm --privileged -v $(pwd):/srv/code registry.fedoraproject.org/fedora:25 /bin/sh -c "cd /srv/code && ./ci/flatpak.sh"
+
+artifacts:
+  - test-suite.log
