@@ -22,6 +22,8 @@
 
 #include "ostree-async-progress.h"
 
+#include "libglnx.h"
+
 /**
  * SECTION:ostree-async-progress
  * @title: Progress notification system for asynchronous operations
