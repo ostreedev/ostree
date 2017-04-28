@@ -59,6 +59,9 @@ guint ostree_async_progress_get_uint (OstreeAsyncProgress       *self,
 _OSTREE_PUBLIC
 guint64 ostree_async_progress_get_uint64 (OstreeAsyncProgress       *self,
                                           const char                *key);
+_OSTREE_PUBLIC
+GVariant *ostree_async_progress_get_variant (OstreeAsyncProgress *self,
+                                             const char          *key);
 
 _OSTREE_PUBLIC
 void ostree_async_progress_set_status (OstreeAsyncProgress       *self,
@@ -72,6 +75,10 @@ _OSTREE_PUBLIC
 void ostree_async_progress_set_uint64 (OstreeAsyncProgress       *self,
                                        const char                *key,
                                        guint64                    value);
+_OSTREE_PUBLIC
+void ostree_async_progress_set_variant (OstreeAsyncProgress *self,
+                                        const char          *key,
+                                        GVariant            *value);
 
 _OSTREE_PUBLIC
 void ostree_async_progress_finish (OstreeAsyncProgress *self);
