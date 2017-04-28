@@ -3748,8 +3748,6 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
 
   buf = g_string_new ("");
 
-  status = ostree_async_progress_get_status (progress);
-
   ostree_async_progress_get (progress,
                              "outstanding-fetches", "u", &outstanding_fetches,
                              "outstanding-metadata-fetches", "u", &outstanding_metadata_fetches,
@@ -3760,9 +3758,10 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
                              "total-delta-parts", "u", &total_delta_parts,
                              "fetched-delta-fallbacks", "u", &fetched_delta_part_fallbacks,
                              "total-delta-fallbacks", "u", &total_delta_part_fallbacks,
+                             "status", "s", &status,
                              NULL);
 
-  if (status)
+  if (*status != '\0')
     {
       g_string_append (buf, status);
     }
