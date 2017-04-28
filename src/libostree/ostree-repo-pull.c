@@ -240,9 +240,9 @@ update_progress (gpointer user_data)
                              /* We fetch metadata before content.  These allow us to report metadata fetch progress specifically. */
                              "outstanding-metadata-fetches", "u", pull_data->n_outstanding_metadata_fetches,
                              "metadata-fetched", "u", pull_data->n_fetched_metadata,
+                             /* Overall status. */
+                             "status", "s", "",
                              NULL);
-
-  ostree_async_progress_set_status (pull_data->progress, NULL);
 
   if (pull_data->dry_run)
     pull_data->dry_run_emitted_progress = TRUE;
