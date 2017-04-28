@@ -211,36 +211,36 @@ update_progress (gpointer user_data)
   n_scanned_metadata = pull_data->n_scanned_metadata;
   start_time = pull_data->start_time;
 
-  ostree_async_progress_set_uint (pull_data->progress, "outstanding-fetches", outstanding_fetches);
-  ostree_async_progress_set_uint (pull_data->progress, "outstanding-writes", outstanding_writes);
-  ostree_async_progress_set_uint (pull_data->progress, "fetched", fetched);
-  ostree_async_progress_set_uint (pull_data->progress, "requested", requested);
-  ostree_async_progress_set_uint (pull_data->progress, "scanning", g_queue_is_empty (&pull_data->scan_object_queue) ? 0 : 1);
-  ostree_async_progress_set_uint (pull_data->progress, "scanned-metadata", n_scanned_metadata);
-  ostree_async_progress_set_uint64 (pull_data->progress, "bytes-transferred", bytes_transferred);
-  ostree_async_progress_set_uint64 (pull_data->progress, "start-time", start_time);
-
-  /* Deltas */
-  ostree_async_progress_set_uint (pull_data->progress, "fetched-delta-parts",
-                                  pull_data->n_fetched_deltaparts);
-  ostree_async_progress_set_uint (pull_data->progress, "total-delta-parts",
-                                  pull_data->n_total_deltaparts);
-  ostree_async_progress_set_uint (pull_data->progress, "fetched-delta-fallbacks",
-                                  pull_data->n_fetched_deltapart_fallbacks);
-  ostree_async_progress_set_uint (pull_data->progress, "total-delta-fallbacks",
-                                  pull_data->n_total_delta_fallbacks);
-  ostree_async_progress_set_uint64 (pull_data->progress, "fetched-delta-part-size",
-                                    pull_data->fetched_deltapart_size);
-  ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-size",
-                                    pull_data->total_deltapart_size);
-  ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-usize",
-                                    pull_data->total_deltapart_usize);
-  ostree_async_progress_set_uint (pull_data->progress, "total-delta-superblocks",
-                                  pull_data->static_delta_superblocks->len);
-
-  /* We fetch metadata before content.  These allow us to report metadata fetch progress specifically. */
-  ostree_async_progress_set_uint (pull_data->progress, "outstanding-metadata-fetches", pull_data->n_outstanding_metadata_fetches);
-  ostree_async_progress_set_uint (pull_data->progress, "metadata-fetched", pull_data->n_fetched_metadata);
+  ostree_async_progress_set (pull_data->progress,
+                             "outstanding-fetches", "u", outstanding_fetches,
+                             "outstanding-writes", "u", outstanding_writes,
+                             "fetched", "u", fetched,
+                             "requested", "u", requested,
+                             "scanning", "u", g_queue_is_empty (&pull_data->scan_object_queue) ? 0 : 1,
+                             "scanned-metadata", "u", n_scanned_metadata,
+                             "bytes-transferred", "t", bytes_transferred,
+                             "start-time", "t", start_time,
+                             /* Deltas */
+                             "fetched-delta-parts",
+                                  "u", pull_data->n_fetched_deltaparts,
+                             "total-delta-parts",
+                                  "u", pull_data->n_total_deltaparts,
+                             "fetched-delta-fallbacks",
+                                  "u", pull_data->n_fetched_deltapart_fallbacks,
+                             "total-delta-fallbacks",
+                                  "u", pull_data->n_total_delta_fallbacks,
+                             "fetched-delta-part-size",
+                                  "t", pull_data->fetched_deltapart_size,
+                             "total-delta-part-size",
+                                  "t", pull_data->total_deltapart_size,
+                             "total-delta-part-usize",
+                                  "t", pull_data->total_deltapart_usize,
+                             "total-delta-superblocks",
+                                  "u", pull_data->static_delta_superblocks->len,
+                             /* We fetch metadata before content.  These allow us to report metadata fetch progress specifically. */
+                             "outstanding-metadata-fetches", "u", pull_data->n_outstanding_metadata_fetches,
+                             "metadata-fetched", "u", pull_data->n_fetched_metadata,
+                             NULL);
 
   ostree_async_progress_set_status (pull_data->progress, NULL);
 
