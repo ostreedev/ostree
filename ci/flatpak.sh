@@ -4,7 +4,7 @@
 set -xeuo pipefail
 
 build() {
-    env NOCONFIGURE=1./autogen.sh
+    env NOCONFIGURE=1 ./autogen.sh
     ./configure --prefix=/usr --libdir=/usr/lib64 "$@"
     make -j 8
 }
