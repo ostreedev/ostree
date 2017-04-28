@@ -39,6 +39,11 @@
  * handles thread safety, ensuring that the progress change
  * notification occurs in the thread-default context of the calling
  * operation.
+ *
+ * The ostree_async_progress_get_status() and ostree_async_progress_set_status()
+ * methods get and set a well-known `status` key of type %G_VARIANT_TYPE_STRING.
+ * This key may be accessed using the other #OstreeAsyncProgress methods, but it
+ * must always have the correct type.
  */
 
 enum {
@@ -58,8 +63,6 @@ struct OstreeAsyncProgress
   GHashTable *values;  /* (element-type uint GVariant) */
 
   gboolean dead;
-
-  char *status;
 };
 
 G_DEFINE_TYPE (OstreeAsyncProgress, ostree_async_progress, G_TYPE_OBJECT)
@@ -75,7 +78,6 @@ ostree_async_progress_finalize (GObject *object)
   g_clear_pointer (&self->maincontext, g_main_context_unref);
   g_clear_pointer (&self->idle_source, g_source_unref);
   g_hash_table_unref (self->values);
-  g_free (self->status);
 
   G_OBJECT_CLASS (ostree_async_progress_parent_class)->finalize (object);
 }
@@ -243,28 +245,47 @@ ensure_callback_locked (OstreeAsyncProgress *self)
   g_source_attach (self->idle_source, self->maincontext);
 }
 
+/**
+ * ostree_async_progress_set_status:
+ * @self: an #OstreeAsyncProgress
+ * @status: (nullable): new status string, or %NULL to clear the status
+ *
+ * Set the human-readable status string for the #OstreeAsyncProgress. This
+ * operation is thread-safe. %NULL may be passed to clear the status.
+ *
+ * This is a convenience function to set the well-known `status` key.
+ *
+ * Since: 2017.6
+ */
 void
 ostree_async_progress_set_status (OstreeAsyncProgress       *self,
                                   const char                *status)
 {
-  g_mutex_lock (&self->lock);
-  if (!self->dead)
-    {
-      g_free (self->status);
-      self->status = g_strdup (status);
-      ensure_callback_locked (self);
-    }
-  g_mutex_unlock (&self->lock);
+  ostree_async_progress_set_variant (self, "status",
+                                     g_variant_new_string ((status != NULL) ? status : ""));
 }
 
+/**
+ * ostree_async_progress_get_status:
+ * @self: an #OstreeAsyncProgress
+ *
+ * Get the human-readable status string from the #OstreeAsyncProgress. This
+ * operation is thread-safe. The retuned value may be %NULL if no status is
+ * set.
+ *
+ * This is a convenience function to get the well-known `status` key.
+ *
+ * Returns: (transfer full) (nullable): the current status, or %NULL if none is set
+ * Since: 2017.6
+ */
 char *
 ostree_async_progress_get_status (OstreeAsyncProgress       *self)
 {
-  char *ret;
-  g_mutex_lock (&self->lock);
-  ret = g_strdup (self->status);
-  g_mutex_unlock (&self->lock);
-  return ret;
+  g_autoptr(GVariant) rval = ostree_async_progress_get_variant (self, "status");
+  const gchar *status = (rval != NULL) ? g_variant_get_string (rval, NULL) : NULL;
+  if (status != NULL && *status == '\0')
+    status = NULL;
+  return g_strdup (status);
 }
 
 /**
