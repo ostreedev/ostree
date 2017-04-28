@@ -517,7 +517,6 @@ ostree_repo_finalize (GObject *object)
     (void) close (self->commit_stagedir_fd);
   g_free (self->commit_stagedir_name);
   glnx_release_lock_file (&self->commit_stagedir_lock);
-  g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd != -1)
     (void) close (self->tmp_dir_fd);
   if (self->cache_dir_fd != -1)
@@ -604,8 +603,6 @@ ostree_repo_constructed (GObject *object)
   OstreeRepo *self = OSTREE_REPO (object);
 
   g_assert (self->repodir != NULL);
-
-  self->tmp_dir = g_file_resolve_relative_path (self->repodir, "tmp");
 
   /* Ensure the "sysroot-path" property is set. */
   if (self->sysroot_dir == NULL)
@@ -1401,7 +1398,6 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
   ot_auto_gpgme_data gpgme_data_t data_buffer = NULL;
   gpgme_import_result_t import_result;
   gpgme_import_status_t import_status;
-  const char *tmp_dir = NULL;
   g_autofree char *source_tmp_dir = NULL;
   g_autofree char *target_tmp_dir = NULL;
   glnx_fd_close int target_temp_fd = -1;
@@ -1409,6 +1405,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
   struct stat stbuf;
   gpgme_error_t gpg_error;
   gboolean ret = FALSE;
+  const GLnxFileCopyFlags copyflags = self->disable_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
@@ -1418,17 +1415,6 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
   remote = ost_repo_get_remote_inherited (self, name, error);
   if (remote == NULL)
     goto out;
-
-  /* Use OstreeRepo's "tmp" directory so the keyring files remain
-   * under one mount point.  Necessary for renameat() below. */
-
-  /* XXX This produces a path under "/proc/self/fd/" which won't
-   *     work in a child process so I had to resort to the GFile.
-   *     I was trying to avoid the GFile so we can get rid of it.
-   *
-   *     tmp_dir = glnx_fdrel_abspath (self->repo_dir_fd, "tmp");
-   */
-  tmp_dir = gs_file_get_path_cached (self->tmp_dir);
 
   /* Prepare the source GPGME context.  If reading GPG keys from an input
    * stream, point the OpenPGP engine at a temporary directory and import
@@ -1443,7 +1429,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
     {
       data_buffer = ot_gpgme_data_input (source_stream);
 
-      if (!ot_gpgme_ctx_tmp_home_dir (source_context, tmp_dir, &source_tmp_dir,
+      if (!ot_gpgme_ctx_tmp_home_dir (source_context, &source_tmp_dir,
                                       NULL, cancellable, error))
         {
           g_prefix_error (error, "Unable to configure context: ");
@@ -1526,7 +1512,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
     goto out;
 
   /* No need for an output stream since we copy in a pubring.gpg. */
-  if (!ot_gpgme_ctx_tmp_home_dir (target_context, tmp_dir, &target_tmp_dir,
+  if (!ot_gpgme_ctx_tmp_home_dir (target_context, &target_tmp_dir,
                                   NULL, cancellable, error))
     {
       g_prefix_error (error, "Unable to configure context: ");
@@ -1541,10 +1527,9 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
 
   if (fstatat (self->repo_dir_fd, remote->keyring, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
     {
-      GLnxFileCopyFlags copyflags = self->disable_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
       if (!glnx_file_copy_at (self->repo_dir_fd, remote->keyring,
-                              &stbuf, target_temp_fd, "pubring.gpg", copyflags,
-                              cancellable, error))
+                              &stbuf, target_temp_fd, "pubring.gpg",
+                              copyflags, cancellable, error))
         {
           g_prefix_error (error, "Unable to copy remote's keyring: ");
           goto out;
@@ -1626,13 +1611,11 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
 
   /* Import successful; replace the remote's old keyring with the
    * updated keyring in the target context's temporary directory. */
-
-  if (renameat (target_temp_fd, "pubring.gpg",
-                self->repo_dir_fd, remote->keyring) == -1)
-    {
-      glnx_set_prefix_error_from_errno (error, "%s", "Unable to rename keyring");
-      goto out;
-    }
+  if (!glnx_file_copy_at (target_temp_fd, "pubring.gpg", NULL,
+                          self->repo_dir_fd, remote->keyring,
+                          copyflags | GLNX_FILE_COPY_OVERWRITE,
+                          cancellable, error))
+    goto out;
 
   if (out_imported != NULL)
     *out_imported = (guint) import_result->imported;

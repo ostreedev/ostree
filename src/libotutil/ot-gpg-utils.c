@@ -67,7 +67,6 @@ ot_gpgme_error_to_gio_error (gpgme_error_t   gpg_error,
 
 gboolean
 ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
-                           const char     *tmp_dir,
                            char          **out_tmp_home_dir,
                            GOutputStream **out_pubring_stream,
                            GCancellable   *cancellable,
@@ -85,10 +84,7 @@ ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
    * and hand the caller an open output stream to concatenate necessary
    * keyring files. */
 
-  if (tmp_dir == NULL)
-    tmp_dir = g_get_tmp_dir ();
-
-  tmp_home_dir = g_build_filename (tmp_dir, "ostree-gpg-XXXXXX", NULL);
+  tmp_home_dir = g_build_filename (g_get_tmp_dir (), "ostree-gpg-XXXXXX", NULL);
 
   if (mkdtemp (tmp_home_dir) == NULL)
     {

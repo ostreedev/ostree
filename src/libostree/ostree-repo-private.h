@@ -78,7 +78,6 @@ struct OstreeRepo {
 
   GFile *repodir;
   int    repo_dir_fd;
-  GFile *tmp_dir;
   int    tmp_dir_fd;
   int    cache_dir_fd;
   char  *cache_dir;
