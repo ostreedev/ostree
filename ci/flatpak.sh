@@ -28,7 +28,7 @@ cd flatpak
 dnf builddep -y flatpak
 # And runtime deps
 dnf install -y flatpak && rpm -e flatpak
-dnf install which attr fuse parallel # for the test suite
+dnf install -y which attr fuse parallel # for the test suite
 build
 # We want to capture automake results from flatpak
 cleanup() {
