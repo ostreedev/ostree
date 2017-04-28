@@ -34,7 +34,6 @@ GLNX_DEFINE_CLEANUP_FUNCTION0(gpgme_ctx_t, ot_cleanup_gpgme_ctx, gpgme_release)
 void ot_gpgme_error_to_gio_error (gpgme_error_t gpg_error, GError **error);
 
 gboolean ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
-                                    const char     *tmp_dir,
                                     char          **out_tmp_home_dir,
                                     GOutputStream **out_pubring_stream,
                                     GCancellable   *cancellable,

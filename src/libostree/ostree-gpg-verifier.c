@@ -116,7 +116,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   if (result == NULL)
     goto out;
 
-  if (!ot_gpgme_ctx_tmp_home_dir (result->context, NULL,
+  if (!ot_gpgme_ctx_tmp_home_dir (result->context,
                                   &tmp_dir, &target_stream,
                                   cancellable, error))
     goto out;
