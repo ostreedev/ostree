@@ -17,7 +17,7 @@ dnf install -y 'dnf-command(builddep)'
 # build+install ostree
 dnf builddep -y ostree
 build
-sudo make install
+make install
 tmpd=$(mktemp -d)
 cd ${tmpd}
 # Frozen to a tag for now on general principle
