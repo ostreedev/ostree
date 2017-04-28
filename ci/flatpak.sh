@@ -9,7 +9,13 @@ build() {
     make -j 8
 }
 
+# Core prep
+dnf -y install dnf-plugins-core
+dnf install -y @buildsys-build
+dnf install -y 'dnf-command(builddep)'
+
 # build+install ostree
+dnf builddep -y ostree
 build
 sudo make install
 tmpd=$(mktemp -d)
