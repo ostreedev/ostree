@@ -31,6 +31,7 @@
 
 #include "ostree-autocleanups.h"
 #include "ostree-remote-private.h"
+#include "ostree-repo-private.h"
 #include "ostree-repo-finder.h"
 #include "ostree-repo-finder-mount.h"
 
@@ -257,19 +258,16 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
         {
           struct stat stbuf;
           g_autofree gchar *collection_and_ref = NULL;
-          g_autofree gchar *repo_dir_path = NULL;
           g_autofree gchar *resolved_repo_uri = NULL;
           g_autofree gchar *keyring = NULL;
           g_autoptr(UriAndKeyring) resolved_repo = NULL;
 
           collection_and_ref = g_build_filename (refs[i]->collection_id, refs[i]->ref_name, NULL);
-          repo_dir_path = g_build_filename (mount_root_path, ".ostree", "repos",
-                                            collection_and_ref, NULL);
 
           if (!glnx_fstatat (repos_dfd, collection_and_ref, &stbuf, AT_NO_AUTOMOUNT, &local_error))
             {
               g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as querying info of ‘%s’ failed: %s",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, repo_dir_path, local_error->message);
+                       refs[i]->collection_id, refs[i]->ref_name, mount_name, collection_and_ref, local_error->message);
               g_clear_error (&local_error);
               continue;
             }
@@ -277,7 +275,7 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
           if ((stbuf.st_mode & S_IFMT) != S_IFDIR)
             {
               g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as ‘%s’ is of type %u, not a directory.",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, repo_dir_path, (stbuf.st_mode & S_IFMT));
+                       refs[i]->collection_id, refs[i]->ref_name, mount_name, collection_and_ref, (stbuf.st_mode & S_IFMT));
               g_clear_error (&local_error);
               continue;
             }
@@ -294,27 +292,19 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
             }
 
           /* Exclude repositories which resolve to @parent_repo. */
-          g_autofree char *canonical_repo_dir_path = realpath (repo_dir_path, NULL);
-          g_autofree gchar *parent_repo_path = g_file_get_path (ostree_repo_get_path (parent_repo));
-          g_autofree char *canonical_parent_repo_path = realpath (parent_repo_path, NULL);
-
-          if (g_strcmp0 (canonical_repo_dir_path, canonical_parent_repo_path) == 0)
+          if (stbuf.st_dev == parent_repo->device &&
+              stbuf.st_ino == parent_repo->inode)
             {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as its repository was the one we are resolving for: %s",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, canonical_parent_repo_path);
+              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as it is the same as the one we are resolving",
+                       refs[i]->collection_id, refs[i]->ref_name, mount_name);
               g_clear_error (&local_error);
               continue;
             }
 
-          /* Grab the given ref and a checksum for it from the repo.
-           * FIXME: Ideally, there would be some ostree_repo_open_at() which we
-           * could use to keep the openat() chain going. See
-           * https://github.com/ostreedev/ostree/pull/820. */
-          g_autoptr(OstreeRepo) repo = NULL;
-          g_autoptr(GFile) repo_dir_file = g_file_new_for_path (repo_dir_path);
-          repo = ostree_repo_new (repo_dir_file);
-
-          if (!ostree_repo_open (repo, cancellable, &local_error))
+          /* Grab the given ref and a checksum for it from the repo, if it appears to be a valid repo */
+          g_autoptr(OstreeRepo) repo = ostree_repo_open_at (repos_dfd, collection_and_ref,
+                                                            cancellable, &local_error);
+          if (!repo)
             {
               g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as its repository could not be opened: %s",
                        refs[i]->collection_id, refs[i]->ref_name, mount_name, local_error->message);
@@ -358,6 +348,11 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
            * $mount_root/.ostree/repos/$refs[i]->collection_id/$refs[i]->ref_name.
            * Add it to the results, keyed by the canonicalised repository URI
            * to deduplicate the results. */
+
+          g_autofree char *repo_abspath = g_build_filename (mount_root_path, ".ostree/repos",
+                                                            collection_and_ref, NULL);
+          /* FIXME - why are we using realpath here? */
+          g_autofree char *canonical_repo_dir_path = realpath (repo_abspath, NULL);
           resolved_repo_uri = g_strconcat ("file://", canonical_repo_dir_path, NULL);
           g_debug ("Resolved ref (%s, %s) on mount ‘%s’ to repo URI ‘%s’ with keyring ‘%s’.",
                    refs[i]->collection_id, refs[i]->ref_name, mount_name, resolved_repo_uri, keyring);

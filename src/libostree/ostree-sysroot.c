@@ -127,17 +127,10 @@ static void
 ostree_sysroot_constructed (GObject *object)
 {
   OstreeSysroot *self = OSTREE_SYSROOT (object);
-  g_autoptr(GFile) repo_path = NULL;
 
   /* Ensure the system root path is set. */
   if (self->path == NULL)
     self->path = g_object_ref (_ostree_get_default_sysroot_path ());
-
-  repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
-  self->repo = ostree_repo_new_for_sysroot_path (repo_path, self->path);
-  self->repo->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_VIA_SYSROOT;
-  /* Hold a weak ref for the remote-add handling */
-  g_weak_ref_init (&self->repo->sysroot, object);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->constructed (object);
 }
@@ -301,21 +294,12 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
                                cancellable, error))
     return FALSE;
 
-  struct stat stbuf;
-  if (fstatat (self->sysroot_fd, "ostree/repo/objects", &stbuf, 0) != 0)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "stat(ostree/repo/objects)");
-      else
-        {
-          g_autoptr(GFile) repo_dir = g_file_resolve_relative_path (self->path, "ostree/repo");
-          g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_dir);
-          if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE,
-                                   cancellable, error))
-            return FALSE;
-        }
-    }
-
+  g_autoptr(OstreeRepo) repo =
+    ostree_repo_create_at (self->sysroot_fd, "ostree/repo",
+                           OSTREE_REPO_MODE_BARE, NULL,
+                           cancellable, error);
+  if (!repo)
+    return FALSE;
   return TRUE;
 }
 
@@ -734,14 +718,22 @@ ostree_sysroot_load (OstreeSysroot  *self,
 }
 
 static gboolean
-ensure_repo_opened (OstreeSysroot  *self,
-                    GError        **error)
+ensure_repo (OstreeSysroot  *self,
+             GError        **error)
 {
-  if (self->repo_opened)
+  if (self->repo != NULL)
     return TRUE;
-  if (!ostree_repo_open (self->repo, NULL, error))
+  if (!ensure_sysroot_fd (self, error))
     return FALSE;
-  self->repo_opened = TRUE;
+  self->repo = ostree_repo_open_at (self->sysroot_fd, "ostree/repo", NULL, error);
+  if (!self->repo)
+    return FALSE;
+
+  /* Flag it as having been created via ostree_sysroot_get_repo(), and hold a
+   * weak ref for the remote-add handling.
+   */
+  g_weak_ref_init (&self->repo->sysroot, self);
+  self->repo->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_VIA_SYSROOT;
   return TRUE;
 }
 
@@ -758,7 +750,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
    * previous to v2017.6, but we do now to support the error-free
    * ostree_sysroot_repo() API.
    */
-  if (!ensure_repo_opened (self, error))
+  if (!ensure_repo (self, error))
     return FALSE;
 
   int bootversion = 0;
@@ -961,9 +953,8 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
                          GCancellable  *cancellable,
                          GError       **error)
 {
-  if (!ensure_repo_opened (self, error))
+  if (!ensure_repo (self, error))
     return FALSE;
-
   if (out_repo != NULL)
     *out_repo = g_object_ref (self->repo);
   return TRUE;

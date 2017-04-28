@@ -57,9 +57,8 @@ struct OstreeSysroot {
   OstreeDeployment *booted_deployment;
   struct timespec loaded_ts;
 
-  /* Only access through ostree_sysroot_get_repo() */
+  /* Only access through ostree_sysroot_[_get]repo() */
   OstreeRepo *repo;
-  gboolean repo_opened;
 
   OstreeSysrootDebugFlags debug_flags;
 };
