@@ -54,6 +54,10 @@ _OSTREE_PUBLIC
 char *ostree_async_progress_get_status (OstreeAsyncProgress       *self);
 
 _OSTREE_PUBLIC
+void ostree_async_progress_get (OstreeAsyncProgress *self,
+                                ...) G_GNUC_NULL_TERMINATED;
+
+_OSTREE_PUBLIC
 guint ostree_async_progress_get_uint (OstreeAsyncProgress       *self,
                                       const char                *key);
 _OSTREE_PUBLIC
@@ -66,6 +70,10 @@ GVariant *ostree_async_progress_get_variant (OstreeAsyncProgress *self,
 _OSTREE_PUBLIC
 void ostree_async_progress_set_status (OstreeAsyncProgress       *self,
                                        const char                *status);
+
+_OSTREE_PUBLIC
+void ostree_async_progress_set (OstreeAsyncProgress *self,
+                                ...) G_GNUC_NULL_TERMINATED;
 
 _OSTREE_PUBLIC
 void ostree_async_progress_set_uint (OstreeAsyncProgress       *self,

@@ -157,6 +157,68 @@ ostree_async_progress_get_uint64 (OstreeAsyncProgress       *self,
   return (rval != NULL) ? g_variant_get_uint64 (rval) : 0;
 }
 
+/**
+ * ostree_async_progress_get:
+ * @self: an #OstreeAsyncProgress
+ * @...: key name, format string, #GVariant return locations, …, followed by %NULL
+ *
+ * Get the values corresponding to zero or more keys from the
+ * #OstreeAsyncProgress. Each key is specified in @... as the key name, followed
+ * by a #GVariant format string, followed by the necessary arguments for that
+ * format string, just as for g_variant_get(). After those arguments is the
+ * next key name. The varargs list must be %NULL-terminated.
+ *
+ * Each format string must make deep copies of its value, as the values stored
+ * in the #OstreeAsyncProgress may be freed from another thread after this
+ * function returns.
+ *
+ * This operation is thread-safe, and all the keys are queried atomically.
+ *
+ * |[<!-- language="C" -->
+ * guint32 outstanding_fetches;
+ * guint64 bytes_received;
+ * g_autofree gchar *status = NULL;
+ * g_autoptr(GVariant) refs_variant = NULL;
+ *
+ * ostree_async_progress_get (progress,
+ *                            "outstanding-fetches", "u", &outstanding_fetches,
+ *                            "bytes-received", "t", &bytes_received,
+ *                            "status", "s", &status,
+ *                            "refs", "@a{ss}", &refs_variant,
+ *                            NULL);
+ * ]|
+ *
+ * Since: 2017.6
+ */
+void
+ostree_async_progress_get (OstreeAsyncProgress *self,
+                           ...)
+{
+  va_list ap;
+  const char *key, *format_string;
+
+  g_mutex_lock (&self->lock);
+  va_start (ap, self);
+
+  for (key = va_arg (ap, const char *), format_string = va_arg (ap, const char *);
+       key != NULL;
+       key = va_arg (ap, const char *), format_string = va_arg (ap, const char *))
+    {
+      GVariant *variant;
+
+      g_assert (format_string != NULL);
+
+      variant = g_hash_table_lookup (self->values, GUINT_TO_POINTER (g_quark_from_string (key)));
+      g_assert (variant != NULL);
+      g_assert (g_variant_check_format_string (variant, format_string, TRUE));
+
+      g_variant_get_va (variant, format_string, NULL, &ap);
+    }
+
+  va_end (ap);
+  g_mutex_unlock (&self->lock);
+}
+
 static gboolean
 idle_invoke_async_progress (gpointer user_data)
 {
@@ -203,6 +265,78 @@ ostree_async_progress_get_status (OstreeAsyncProgress       *self)
   ret = g_strdup (self->status);
   g_mutex_unlock (&self->lock);
   return ret;
+}
+
+/**
+ * ostree_async_progress_set:
+ * @self: an #OstreeAsyncProgress
+ * @...: key name, format string, #GVariant parameters, …, followed by %NULL
+ *
+ * Set the values for zero or more keys in the #OstreeAsyncProgress. Each key is
+ * specified in @... as the key name, followed by a #GVariant format string,
+ * followed by the necessary arguments for that format string, just as for
+ * g_variant_new(). After those arguments is the next key name. The varargs list
+ * must be %NULL-terminated.
+ *
+ * g_variant_ref_sink() will be called as appropriate on the #GVariant
+ * parameters, so they may be floating.
+ *
+ * This operation is thread-safe, and all the keys are set atomically.
+ *
+ * |[<!-- language="C" -->
+ * guint32 outstanding_fetches = 15;
+ * guint64 bytes_received = 1000;
+ *
+ * ostree_async_progress_set (progress,
+ *                            "outstanding-fetches", "u", outstanding_fetches,
+ *                            "bytes-received", "t", bytes_received,
+ *                            "status", "s", "Updated status",
+ *                            "refs", "@a{ss}", g_variant_new_parsed ("@a{ss} {}"),
+ *                            NULL);
+ * ]|
+ *
+ * Since: 2017.6
+ */
+void
+ostree_async_progress_set (OstreeAsyncProgress *self,
+                           ...)
+{
+  va_list ap;
+  const char *key, *format_string;
+  gboolean changed;
+
+  g_mutex_lock (&self->lock);
+
+  if (self->dead)
+    goto out;
+
+  va_start (ap, self);
+
+  for (key = va_arg (ap, const char *), format_string = va_arg (ap, const char *);
+       key != NULL;
+       key = va_arg (ap, const char *), format_string = va_arg (ap, const char *))
+    {
+      GVariant *orig_value;
+      g_autoptr(GVariant) new_value = NULL;
+      gpointer qkey = GUINT_TO_POINTER (g_quark_from_string (key));
+
+      new_value = g_variant_ref_sink (g_variant_new_va (format_string, NULL, &ap));
+
+      if (g_hash_table_lookup_extended (self->values, qkey, NULL, (gpointer *) &orig_value) &&
+          g_variant_equal (orig_value, new_value))
+        continue;
+
+      g_hash_table_replace (self->values, qkey, g_steal_pointer (&new_value));
+      changed = TRUE;
+    }
+
+  va_end (ap);
+
+  if (changed)
+    ensure_callback_locked (self);
+
+out:
+  g_mutex_unlock (&self->lock);
 }
 
 /**
