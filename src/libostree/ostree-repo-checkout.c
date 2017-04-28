@@ -777,6 +777,11 @@ checkout_tree_at (OstreeRepo                        *self,
       g_assert (options->force_copy);
     }
 
+  /* Cache any directory metadata we read during this operation;
+   * see commit b7afe91e21143d7abb0adde440683a52712aa246
+   */
+  g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
+  _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
   return checkout_tree_at_recurse (self, options, &state, destination_parent_fd,
                                    destination_name,
                                    source, source_info,
@@ -829,8 +834,6 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
   options.enable_uncompressed_cache = TRUE;
   canonicalize_options (self, &options);
 
-  g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
-  _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
   return checkout_tree_at (self, &options,
                            AT_FDCWD, gs_file_get_path_cached (destination),
                            source, source_info,
@@ -948,8 +951,6 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   if (!target_info)
     return FALSE;
 
-  g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
-  _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
   if (!checkout_tree_at (self, options,
                          destination_dfd,
                          destination_path,
