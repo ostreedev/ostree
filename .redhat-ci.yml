@@ -153,6 +153,8 @@ required: false
 # docker --privileged run.
 host:
   distro: fedora/25/atomic
+  specs:
+    ram: 4096  # build-bundle is a static delta, which needs RAM right now
 
 tests:
   - docker run --rm --privileged -v $(pwd):/srv/code registry.fedoraproject.org/fedora:25 /bin/sh -c "cd /srv/code && ./ci/flatpak.sh"

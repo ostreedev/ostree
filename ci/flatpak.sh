@@ -12,23 +12,27 @@ build() {
 codedir=$(pwd)
 
 # Core prep
-dnf -y install dnf-plugins-core
-dnf install -y @buildsys-build
-dnf install -y 'dnf-command(builddep)'
+yum -y install dnf-plugins-core @buildsys-build 'dnf-command(builddep)'
+# build+install ostree, and build deps for both, so that our
+# make install overrides the ostree via rpm
+dnf builddep -y ostree flatpak
+yum -y install flatpak && rpm -e flatpak
+# we use yaml below
+yum -y install python3-PyYAML
 
-# build+install ostree
-dnf builddep -y ostree
-build
-make install
+# Now get flatpak's deps from rhci file
 tmpd=$(mktemp -d)
 cd ${tmpd}
 # Frozen to a tag for now on general principle
 git clone --recursive --depth=1 -b 0.9.3 https://github.com/flatpak/flatpak
 cd flatpak
-dnf builddep -y flatpak
-# And runtime deps
-dnf install -y flatpak && rpm -e flatpak
-dnf install -y which attr fuse parallel # for the test suite
+python3 -c 'import yaml; y = list(yaml.load_all(open(".redhat-ci.yml")))[0]; print("\0".join(y["packages"]))' | xargs -0 yum install -y
+# back to ostree and build
+cd ${codedir}
+build
+make install
+cd ${tmpd}/flatpak
+patch -p1 < ${codedir}/ci/*.patch
 build
 # We want to capture automake results from flatpak
 cleanup() {
