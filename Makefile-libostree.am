@@ -156,7 +156,15 @@ libostree_1_la_LIBADD = libotutil.la libglnx.la libbsdiff.la libostree-kernel-ar
 libostree_1_la_LIBADD += $(bupsplitpath)
 EXTRA_libostree_1_la_DEPENDENCIES = $(top_srcdir)/src/libostree/libostree.sym
 
-EXTRA_DIST += src/libostree/libostree.sym
+EXTRA_DIST += \
+	src/libostree/libostree.sym \
+	src/libostree/libostree-experimental.sym \
+	$(NULL)
+
+if ENABLE_EXPERIMENTAL_API
+libostree_1_la_LDFLAGS += -Wl,--version-script=$(top_srcdir)/src/libostree/libostree-experimental.sym
+EXTRA_libostree_1_la_DEPENDENCIES += $(top_srcdir)/src/libostree/libostree-experimental.sym
+endif
 
 if USE_LIBARCHIVE
 libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)

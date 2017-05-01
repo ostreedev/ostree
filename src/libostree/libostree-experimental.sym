@@ -1,0 +1,32 @@
+/*
+ * Copyright © 2017 Endless Mobile, Inc.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ *
+ * Authors:
+ *  - Philip Withnall <withnall@endlessm.com>
+ */
+
+/* Symbols in this file are added to the build if OSTree is configured with
+ * --enable-experimental-api. They are not stable or officially supported, and
+ * might disappear or change in future releases. */
+
+/*
+LIBOSTREE_2017.6_EXPERIMENTAL {
+global:
+  some_symbol;
+} LIBOSTREE_2017.6;
+*/
