@@ -1405,6 +1405,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
   struct stat stbuf;
   gpgme_error_t gpg_error;
   gboolean ret = FALSE;
+  const GLnxFileCopyFlags copyflags = self->disable_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
@@ -1526,10 +1527,9 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
 
   if (fstatat (self->repo_dir_fd, remote->keyring, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
     {
-      GLnxFileCopyFlags copyflags = self->disable_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
       if (!glnx_file_copy_at (self->repo_dir_fd, remote->keyring,
-                              &stbuf, target_temp_fd, "pubring.gpg", copyflags,
-                              cancellable, error))
+                              &stbuf, target_temp_fd, "pubring.gpg",
+                              copyflags, cancellable, error))
         {
           g_prefix_error (error, "Unable to copy remote's keyring: ");
           goto out;
@@ -1613,7 +1613,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
    * updated keyring in the target context's temporary directory. */
   if (!glnx_file_copy_at (target_temp_fd, "pubring.gpg", NULL,
                           self->repo_dir_fd, remote->keyring,
-                          GLNX_FILE_COPY_OVERWRITE,
+                          copyflags | GLNX_FILE_COPY_OVERWRITE,
                           cancellable, error))
     goto out;
 
