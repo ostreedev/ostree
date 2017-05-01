@@ -34,6 +34,7 @@ TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 	GI_TYPELIB_PATH=$$(cd $(top_builddir) && pwd)$${GI_TYPELIB_PATH:+:$$GI_TYPELIB_PATH} \
 	LD_LIBRARY_PATH=$$(cd $(top_builddir)/.libs && pwd)$${LD_LIBRARY_PATH:+:$${LD_LIBRARY_PATH}} \
 	PATH=$$(cd $(top_builddir)/tests && pwd):$${PATH} \
+	OSTREE_FEATURES="$(OSTREE_FEATURES)" \
 	$(NULL)
 if BUILDOPT_ASAN
 TESTS_ENVIRONMENT += OT_SKIP_READDIR_RAND=1 G_SLICE=always-malloc

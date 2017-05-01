@@ -429,6 +429,22 @@ AS_IF([test "x$found_introspection" = xyes && test x$using_asan != xyes], [
 ], [have_gjs=no])
 AM_CONDITIONAL(BUILDOPT_GJS, test x$have_gjs = xyes)
 
+# Do we enable building experimental (non-stable) API?
+# The OSTREE_ENABLE_EXPERIMENTAL_API #define is used internally and in public
+# headers, so any consumer of libostree who wants to use experimental API must
+#    #define OSTREE_ENABLE_EXPERIMENTAL_API 1
+# before including libostree headers. This means the name in the AC_DEFINE below
+# is public API.
+AC_ARG_ENABLE([experimental-api],
+  [AS_HELP_STRING([--enable-experimental-api],
+                  [Enable unstable experimental API in libostree [default=no]])],,
+  [enable_experimental_api=no])
+AS_IF([test x$enable_experimental_api = xyes],
+  [AC_DEFINE([OSTREE_ENABLE_EXPERIMENTAL_API],[1],[Define if experimental API should be enabled])
+   OSTREE_FEATURES="$OSTREE_FEATURES experimental"]
+)
+AM_CONDITIONAL([ENABLE_EXPERIMENTAL_API],[test x$enable_experimental_api = xyes])
+
 AC_CONFIG_FILES([
 Makefile
 apidoc/Makefile
@@ -460,7 +476,8 @@ echo "
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
     mkinitcpio:                                   $with_mkinitcpio
-    Static compiler for ostree-prepare-root:      $with_static_compiler"
+    Static compiler for ostree-prepare-root:      $with_static_compiler
+    Experimental API                              $enable_experimental_api"
 AS_IF([test x$with_builtin_grub2_mkconfig = xyes], [
     echo "    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
 ], [
