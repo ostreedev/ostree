@@ -562,6 +562,14 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
   key_id = (len > 16) ? fingerprint + len - 16 : fingerprint;
 
   date_time_utc = g_date_time_new_from_unix_utc (timestamp);
+  if (date_time_utc == NULL)
+    {
+      g_string_append_printf (output_buffer,
+                              "Can't check signature: timestamp %" G_GINT64_FORMAT " is invalid\n",
+                              timestamp);
+      return;
+    }
+
   date_time_local = g_date_time_to_local (date_time_utc);
   formatted_date_time = g_date_time_format (date_time_local, "%c");
 
@@ -606,6 +614,14 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
   if (exp_timestamp > 0)
     {
       date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
+      if (date_time_utc == NULL)
+        {
+          g_string_append_printf (output_buffer,
+                                  "Signature expiry timestamp (%" G_GINT64_FORMAT ") is invalid\n",
+                                  exp_timestamp);
+          return;
+        }
+
       date_time_local = g_date_time_to_local (date_time_utc);
       formatted_date_time = g_date_time_format (date_time_local, "%c");
 
