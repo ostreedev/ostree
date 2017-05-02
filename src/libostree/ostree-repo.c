@@ -4563,6 +4563,10 @@ ostree_repo_verify_summary (OstreeRepo    *self,
  * An OSTree repository can contain a high level "summary" file that
  * describes the available branches and other metadata.
  *
+ * If the timetable for making commits and updating the summary file is fairly
+ * regular, setting the `ostree.summary.expires` key in @additional_metadata
+ * will aid clients in working out when to check for updates.
+ *
  * It is regenerated automatically after a commit if
  * `core/commit-update-summary` is set.
  */
@@ -4595,6 +4599,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       const char *commit = g_hash_table_lookup (refs, ref);
       g_autofree char *remotename = NULL;
       g_autoptr(GVariant) commit_obj = NULL;
+      g_auto(GVariantDict) commit_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
+      guint64 commit_timestamp;
+      g_autoptr(GDateTime) dt = NULL;
 
       g_assert (commit);
 
@@ -4608,11 +4615,21 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
         goto out;
 
-      g_variant_builder_add_value (refs_builder, 
+      g_variant_dict_init (&commit_metadata_builder, NULL);
+
+      /* Forward the commit’s timestamp if it’s valid. */
+      commit_timestamp = ostree_commit_get_timestamp (commit_obj);
+      dt = g_date_time_new_from_unix_utc (commit_timestamp);
+
+      if (dt != NULL)
+        g_variant_dict_insert_value (&commit_metadata_builder, OSTREE_COMMIT_TIMESTAMP,
+                                     g_variant_new_uint64 (GUINT64_TO_BE (commit_timestamp)));
+
+      g_variant_builder_add_value (refs_builder,
                                    g_variant_new ("(s(t@ay@a{sv}))", ref,
                                                   (guint64) g_variant_get_size (commit_obj),
                                                   ostree_checksum_to_bytes_v (commit),
-                                                  ot_gvariant_new_empty_string_dict ()));
+                                                  g_variant_dict_end (&commit_metadata_builder)));
     }
 
 
@@ -4659,6 +4676,11 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       }
 
     g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_STATIC_DELTAS, g_variant_dict_end (&deltas_builder));
+  }
+
+  {
+    g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_LAST_MODIFIED,
+                                 g_variant_new_uint64 (GUINT64_TO_BE (g_get_real_time () / G_USEC_PER_SEC)));
   }
 
   {
