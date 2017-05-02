@@ -43,6 +43,14 @@ G_BEGIN_DECLS
  * */
 #define _OSTREE_MAX_OUTSTANDING_WRITE_REQUESTS 16
 
+/* Well-known keys for the additional metadata field in a summary file. */
+#define OSTREE_SUMMARY_LAST_MODIFIED "ostree.summary.last-modified"
+#define OSTREE_SUMMARY_EXPIRES "ostree.summary.expires"
+
+/* Well-known keys for the additional metadata field in a commit in a ref entry
+ * in a summary file. */
+#define OSTREE_COMMIT_TIMESTAMP "ostree.commit.timestamp"
+
 typedef enum {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0)
 } OstreeRepoTestErrorFlags;
