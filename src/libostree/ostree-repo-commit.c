@@ -608,7 +608,7 @@ write_object (OstreeRepo         *self,
               GError            **error)
 {
   gboolean ret = FALSE;
-  const char *actual_checksum;
+  g_autofree char *actual_checksum = NULL;
   gboolean do_commit;
   OstreeRepoMode repo_mode;
   g_autofree char *temp_filename = NULL;
@@ -770,7 +770,7 @@ write_object (OstreeRepo         *self,
     }
 
   if (!checksum_input)
-    actual_checksum = expected_checksum;
+    actual_checksum = g_strdup (expected_checksum);
   else
     {
       actual_checksum = ot_checksum_instream_get_string (checksum_input);
