@@ -298,14 +298,18 @@ ot_list_cookies_at (int dfd, const char *jar_path, GError **error)
   while (ot_parse_cookies_next (parser))
     {
       g_autoptr(GDateTime) expires = g_date_time_new_from_unix_utc (parser->expiration);
-      g_autofree char *expires_str = g_date_time_format (expires, "%Y-%m-%d %H:%M:%S +0000");
+      g_autofree char *expires_str = NULL;
+
+      if (expires != NULL)
+        expires_str = g_date_time_format (expires, "%Y-%m-%d %H:%M:%S +0000");
 
       g_print ("--\n");
       g_print ("Domain: %s\n", parser->domain);
       g_print ("Path: %s\n", parser->path);
       g_print ("Name: %s\n", parser->name);
       g_print ("Secure: %s\n", parser->secure);
-      g_print ("Expires: %s\n", expires_str);
+      if (expires_str != NULL)
+        g_print ("Expires: %s\n", expires_str);
       g_print ("Value: %s\n", parser->value);
     }
 #else

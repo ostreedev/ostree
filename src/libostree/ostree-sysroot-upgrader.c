@@ -470,8 +470,15 @@ ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
       g_autofree char *old_ts_str = NULL;
       g_autofree char *new_ts_str = NULL;
 
-      g_assert (old_ts);
-      g_assert (new_ts);
+      if (old_ts == NULL || new_ts == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Upgrade target revision '%s' timestamp (%" G_GINT64_FORMAT ") or current revision '%s' timestamp (%" G_GINT64_FORMAT ") is invalid",
+                       to_rev, ostree_commit_get_timestamp (new_commit),
+                       from_rev, ostree_commit_get_timestamp (old_commit));
+          goto out;
+        }
+
       old_ts_str = g_date_time_format (old_ts, "%c");
       new_ts_str = g_date_time_format (new_ts, "%c");
       g_date_time_unref (old_ts);
