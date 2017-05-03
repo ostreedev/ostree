@@ -2725,7 +2725,7 @@ initiate_request (OtPullData *pull_data,
  *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
  *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
  *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
- *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, usefult to do mutliple pulls in one transaction.
+ *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, usefult to do multiple pulls in one transaction.
  *   * http-headers (a(ss)): Additional headers to add to all HTTP requests
  *   * update-frequency (u): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
  */
