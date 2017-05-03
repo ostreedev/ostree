@@ -2459,7 +2459,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   g_autoptr(GMainContext) mainctx = NULL;
   gboolean ret = FALSE;
   gboolean from_cache = FALSE;
-  g_autofree char *url_override = NULL;
+  const char *url_override = NULL;
   g_autoptr(GPtrArray) mirrorlist = NULL;
 
   if (options)
