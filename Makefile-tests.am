@@ -129,9 +129,10 @@ dist_installed_test_data = tests/archive-test.sh \
 	tests/basic-test.sh \
 	tests/pre-endian-deltas-repo-big.tar.xz \
 	tests/pre-endian-deltas-repo-little.tar.xz \
+	tests/libtest-core.sh \
 	$(NULL)
 
-EXTRA_DIST += tests/libtest.sh tests/libtest-core.sh
+EXTRA_DIST += tests/libtest.sh
 
 dist_test_extra_scripts = \
 	tests/bootloader-entries-crosscheck.py \
