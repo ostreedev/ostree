@@ -105,7 +105,15 @@ fi
 if test -n "${OSTREE_UNINSTALLED:-}"; then
     OSTREE_HTTPD=${OSTREE_UNINSTALLED}/ostree-trivial-httpd
 else
-    OSTREE_HTTPD="${CMD_PREFIX} ostree trivial-httpd"
+    # trivial-httpd is now in $libexecdir by default, which we don't
+    # know at this point. Fortunately, libtest.sh is also in
+    # $libexecdir, so make an educated guess. If it's not found, assume
+    # it's still runnable as "ostree trivial-httpd".
+    if [ -x "${test_srcdir}/../../libostree/ostree-trivial-httpd" ]; then
+        OSTREE_HTTPD="${CMD_PREFIX} ${test_srcdir}/../../libostree/ostree-trivial-httpd"
+    else
+        OSTREE_HTTPD="${CMD_PREFIX} ostree trivial-httpd"
+    fi
 fi
 
 assert_files_hardlinked() {
