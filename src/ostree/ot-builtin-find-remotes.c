@@ -32,11 +32,13 @@
 
 static gchar *opt_cache_dir = NULL;
 static gboolean opt_disable_fsync = FALSE;
+static gboolean opt_pull = FALSE;
 
 static GOptionEntry options[] =
   {
     { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
     { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+    { "pull", 0, 0, G_OPTION_ARG_NONE, &opt_pull, "Pull the updates after finding them", NULL },
     { NULL }
   };
 
@@ -118,7 +120,7 @@ ostree_builtin_find_remotes (int            argc,
   g_autoptr(GPtrArray) refs = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gsize i;
-  g_autoptr(GAsyncResult) find_result = NULL;
+  g_autoptr(GAsyncResult) find_result = NULL, pull_result = NULL;
   g_auto(OstreeRepoFinderResultv) results = NULL;
   g_auto(GLnxConsoleRef) console = { 0, };
   g_autoptr(GHashTable) refs_found = NULL;
@@ -212,7 +214,10 @@ ostree_builtin_find_remotes (int            argc,
     }
 
   if (results[0] == NULL)
-    g_print ("No results.\n");
+    {
+      g_print ("No results.\n");
+      return TRUE;
+    }
 
   /* Print out the refs which weren’t found. */
   if (g_hash_table_size (refs_found) != refs->len - 1  /* NULL terminator */)
@@ -228,6 +233,31 @@ ostree_builtin_find_remotes (int            argc,
     }
   else
     g_print ("All refs were found.\n");
+
+  /* Does the user want us to pull the updates? */
+  if (!opt_pull)
+    return TRUE;
+
+  /* Run the pull operation. */
+  if (console.is_tty)
+    progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
+
+  ostree_repo_pull_from_remotes_async (repo,
+                                       (const OstreeRepoFinderResult * const *) results,
+                                       NULL,  /* no options */
+                                       progress, cancellable,
+                                       get_result_cb, &pull_result);
+
+  while (pull_result == NULL)
+    g_main_context_iteration (NULL, TRUE);
+
+  if (!ostree_repo_pull_from_remotes_finish (repo, pull_result, error))
+    return FALSE;
+
+  if (progress)
+    ostree_async_progress_finish (progress);
+
+  g_print ("Pulled refs successfully.\n");
 
   return TRUE;
 }
