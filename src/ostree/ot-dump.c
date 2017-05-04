@@ -199,6 +199,18 @@ dump_summary_ref (const char   *ref_name,
     }
 }
 
+static gchar *
+uint64_secs_to_iso8601 (guint64 secs)
+{
+  g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (secs);
+  g_autoptr(GDateTime) local = (dt != NULL) ? g_date_time_to_local (dt) : NULL;
+
+  if (local != NULL)
+    return g_date_time_format (local, "%FT%T%:::z");
+  else
+    return g_strdup ("invalid");
+}
+
 void
 ot_dump_summary_bytes (GBytes          *summary_bytes,
                        OstreeDumpFlags  flags)
@@ -251,11 +263,35 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
 
   g_variant_iter_init (&iter, exts);
 
-  /* XXX Should we print something more human-friendly for
-   *     known extension names like 'ostree.static-deltas'? */
   while (g_variant_iter_loop (&iter, "{sv}", &key, &value))
     {
-      g_autofree char *string = g_variant_print (value, FALSE);
-      g_print ("%s: %s\n", key, string);
+      g_autofree gchar *value_str = NULL;
+      const gchar *pretty_key = NULL;
+
+      if (g_strcmp0 (key, "ostree.static-deltas") == 0)
+        {
+          pretty_key = "Static Deltas";
+          value_str = g_variant_print (value, FALSE);
+        }
+      else if (g_strcmp0 (key, "ostree.summary.last-modified") == 0)
+        {
+          pretty_key = "Last-Modified";
+          value_str = uint64_secs_to_iso8601 (GUINT64_FROM_BE (g_variant_get_uint64 (value)));
+        }
+      else if (g_strcmp0 (key, "ostree.summary.expires") == 0)
+        {
+          pretty_key = "Expires";
+          value_str = uint64_secs_to_iso8601 (GUINT64_FROM_BE (g_variant_get_uint64 (value)));
+        }
+      else
+        {
+          value_str = g_variant_print (value, FALSE);
+        }
+
+      /* Print out. */
+      if (pretty_key != NULL)
+        g_print ("%s (%s): %s\n", pretty_key, key, value_str);
+      else
+        g_print ("%s: %s\n", key, value_str);
     }
 }
