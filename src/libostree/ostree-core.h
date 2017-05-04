@@ -104,9 +104,9 @@ typedef enum {
 /**
  * OSTREE_DIRMETA_GVARIANT_FORMAT:
  *
- * - u - uid
- * - u - gid
- * - u - mode
+ * - u - uid (big-endian)
+ * - u - gid (big-endian)
+ * - u - mode (big-endian)
  * - a(ayay) - xattrs
  */
 #define OSTREE_DIRMETA_GVARIANT_STRING "(uuua(ayay))"
@@ -120,9 +120,9 @@ typedef enum {
  * can't store in the real filesystem but we can still use a regular .file object
  * that we can hardlink to in the case of a user-mode checkout.
  *
- * - u - uid
- * - u - gid
- * - u - mode
+ * - u - uid (big-endian)
+ * - u - gid (big-endian)
+ * - u - mode (big-endian)
  * - a(ayay) - xattrs
  */
 #define OSTREE_FILEMETA_GVARIANT_STRING "(uuua(ayay))"
@@ -145,7 +145,7 @@ typedef enum {
  * - a(say) - Related objects
  * - s - subject
  * - s - body
- * - t - Timestamp in seconds since the epoch (UTC)
+ * - t - Timestamp in seconds since the epoch (UTC, big-endian)
  * - ay - Root tree contents
  * - ay - Root tree metadata
  */
