@@ -1306,7 +1306,7 @@ ensure_txn_refs (OstreeRepo *self)
  * ostree_repo_transaction_set_refspec:
  * @self: An #OstreeRepo
  * @refspec: The refspec to write
- * @checksum: The checksum to point it to
+ * @checksum: (nullable): The checksum to point it to
  *
  * Like ostree_repo_transaction_set_ref(), but takes concatenated
  * @refspec format as input instead of separate remote and name
@@ -1329,7 +1329,7 @@ ostree_repo_transaction_set_refspec (OstreeRepo *self,
  * @self: An #OstreeRepo
  * @remote: (allow-none): A remote for the ref
  * @ref: The ref to write
- * @checksum: The checksum to point it to
+ * @checksum: (nullable): The checksum to point it to
  *
  * If @checksum is not %NULL, then record it as the target of ref named
  * @ref; if @remote is provided, the ref will appear to originate from that
