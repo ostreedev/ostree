@@ -28,11 +28,10 @@
 #define assert_no_gpg_error(err, filename) \
   G_STMT_START { \
     if (err != GPG_ERR_NO_ERROR) { \
-      GString *string = g_string_new ("assertion failed "); \
+      g_autoptr(GString) string = g_string_new ("assertion failed ");  \
       g_string_append_printf (string, "%s: %s ", gpgme_strsource (err), gpgme_strerror (err)); \
       g_string_append (string, filename ? filename : ""); \
       g_assertion_message (G_LOG_DOMAIN, __FILE__, __LINE__, G_STRFUNC, string->str); \
-      g_string_free (string, TRUE); \
     } \
   } G_STMT_END
 

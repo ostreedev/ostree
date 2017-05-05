@@ -47,12 +47,9 @@ static GOptionContext *
 ostree_admin_instutil_option_context_new_with_commands (void)
 {
   OstreeAdminInstUtilCommand *command = admin_instutil_subcommands;
-  GOptionContext *context;
-  GString *summary;
+  GOptionContext *context = g_option_context_new ("COMMAND");
 
-  context = g_option_context_new ("COMMAND");
-
-  summary = g_string_new ("Builtin \"admin instutil\" Commands:");
+  g_autoptr(GString) summary = g_string_new ("Builtin \"admin instutil\" Commands:");
 
   while (command->name != NULL)
     {
@@ -61,8 +58,6 @@ ostree_admin_instutil_option_context_new_with_commands (void)
     }
 
   g_option_context_set_summary (context, summary->str);
-
-  g_string_free (summary, TRUE);
 
   return context;
 }

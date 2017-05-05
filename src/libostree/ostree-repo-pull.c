@@ -3474,8 +3474,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
   if (bytes_transferred > 0 && pull_data->progress)
     {
-      guint shift; 
-      GString *buf = g_string_new ("");
+      guint shift;
+      g_autoptr(GString) buf = g_string_new ("");
 
       /* Ensure the rest of the progress keys are set appropriately. */
       update_progress (pull_data);
@@ -3499,7 +3499,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                               (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
 
       ostree_async_progress_set_status (pull_data->progress, buf->str);
-      g_string_free (buf, TRUE);
     }
 
   /* iterate over commits fetched and delete any commitpartial files */

@@ -124,7 +124,6 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
           OstreeDeploymentUnlockedState unlocked = ostree_deployment_get_unlocked (deployment);
           g_autofree char *version = version_of_commit (repo, ref);
           glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-          GString *output_buffer;
           guint jj, n_signatures;
           GError *local_error = NULL;
 
@@ -159,6 +158,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
 
           if (deployment_get_gpg_verify (deployment, repo))
             {
+              g_autoptr(GString) output_buffer = g_string_sized_new (256);
               /* Print any digital signatures on this commit. */
 
               result = ostree_repo_verify_commit_ext (repo, ref, NULL, NULL,
@@ -176,7 +176,6 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
                   goto out;
                 }
 
-              output_buffer = g_string_sized_new (256);
               n_signatures = ostree_gpg_verify_result_count_all (result);
 
               for (jj = 0; jj < n_signatures; jj++)
@@ -186,7 +185,6 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
                 }
 
               g_print ("%s", output_buffer->str);
-              g_string_free (output_buffer, TRUE);
             }
         }
     }

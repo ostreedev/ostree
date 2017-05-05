@@ -3717,7 +3717,6 @@ void
 ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress,
                                                    gpointer             user_data)
 {
-  GString *buf;
   g_autofree char *status = NULL;
   gboolean scanning;
   guint outstanding_fetches;
@@ -3729,7 +3728,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   guint fetched_delta_part_fallbacks;
   guint total_delta_part_fallbacks;
 
-  buf = g_string_new ("");
+  g_autoptr(GString) buf = g_string_new ("");
 
   ostree_async_progress_get (progress,
                              "outstanding-fetches", "u", &outstanding_fetches,
@@ -3838,8 +3837,6 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
     }
 
   glnx_console_text (buf->str);
-
-  g_string_free (buf, TRUE);
 }
 
 /**
