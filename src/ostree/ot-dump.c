@@ -26,6 +26,8 @@
 
 #include <err.h>
 
+#include "ostree-repo-private.h"
+#include "ostree-repo-static-delta-private.h"
 #include "ot-dump.h"
 #include "otutil.h"
 #include "ot-admin-functions.h"
@@ -268,17 +270,17 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
       g_autofree gchar *value_str = NULL;
       const gchar *pretty_key = NULL;
 
-      if (g_strcmp0 (key, "ostree.static-deltas") == 0)
+      if (g_strcmp0 (key, OSTREE_SUMMARY_STATIC_DELTAS) == 0)
         {
           pretty_key = "Static Deltas";
           value_str = g_variant_print (value, FALSE);
         }
-      else if (g_strcmp0 (key, "ostree.summary.last-modified") == 0)
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_LAST_MODIFIED) == 0)
         {
           pretty_key = "Last-Modified";
           value_str = uint64_secs_to_iso8601 (GUINT64_FROM_BE (g_variant_get_uint64 (value)));
         }
-      else if (g_strcmp0 (key, "ostree.summary.expires") == 0)
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_EXPIRES) == 0)
         {
           pretty_key = "Expires";
           value_str = uint64_secs_to_iso8601 (GUINT64_FROM_BE (g_variant_get_uint64 (value)));
