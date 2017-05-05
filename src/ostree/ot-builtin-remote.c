@@ -51,12 +51,9 @@ static GOptionContext *
 remote_option_context_new_with_commands (void)
 {
   OstreeRemoteCommand *subcommand = remote_subcommands;
-  GOptionContext *context;
-  GString *summary;
+  GOptionContext *context = g_option_context_new ("COMMAND");
 
-  context = g_option_context_new ("COMMAND");
-
-  summary = g_string_new ("Builtin \"remote\" Commands:");
+  g_autoptr(GString) summary = g_string_new ("Builtin \"remote\" Commands:");
 
   while (subcommand->name != NULL)
     {
@@ -65,8 +62,6 @@ remote_option_context_new_with_commands (void)
     }
 
   g_option_context_set_summary (context, summary->str);
-
-  g_string_free (summary, TRUE);
 
   return context;
 }

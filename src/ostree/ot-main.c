@@ -59,12 +59,9 @@ static GOptionEntry global_admin_entries[] = {
 static GOptionContext *
 ostree_option_context_new_with_commands (OstreeCommand *commands)
 {
-  GOptionContext *context;
-  GString *summary;
+  GOptionContext *context = g_option_context_new ("COMMAND");
 
-  context = g_option_context_new ("COMMAND");
-
-  summary = g_string_new ("Builtin Commands:");
+  g_autoptr(GString) summary = g_string_new ("Builtin Commands:");
 
   while (commands->name != NULL)
     {
@@ -73,8 +70,6 @@ ostree_option_context_new_with_commands (OstreeCommand *commands)
     }
 
   g_option_context_set_summary (context, summary->str);
-
-  g_string_free (summary, TRUE);
 
   return context;
 }
@@ -389,18 +384,15 @@ ostree_ensure_repo_writable (OstreeRepo *repo,
 void
 ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
 {
-  GString *buffer;
-  guint n_sigs, ii;
-
-  n_sigs = ostree_gpg_verify_result_count_all (result);
+  guint n_sigs = ostree_gpg_verify_result_count_all (result);
 
   /* XXX If we ever add internationalization, use ngettext() here. */
   g_print ("GPG: Verification enabled, found %u signature%s:\n",
            n_sigs, n_sigs == 1 ? "" : "s");
 
-  buffer = g_string_sized_new (256);
+  g_autoptr(GString) buffer = g_string_sized_new (256);
 
-  for (ii = 0; ii < n_sigs; ii++)
+  for (guint ii = 0; ii < n_sigs; ii++)
     {
       g_string_append_c (buffer, '\n');
       ostree_gpg_verify_result_describe (result, ii, buffer, "  ",
@@ -408,7 +400,6 @@ ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
     }
 
   g_print ("%s", buffer->str);
-  g_string_free (buffer, TRUE);
 }
 
 gboolean

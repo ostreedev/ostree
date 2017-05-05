@@ -148,7 +148,7 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
                                           GError                       **error)
 {
   gboolean ret = FALSE;
-  GString *output = g_string_new ("");
+  g_autoptr(GString) output = g_string_new ("");
   g_autoptr(GOutputStream) out_stream = NULL;
   g_autoptr(GPtrArray) loader_configs = NULL;
   guint i;
@@ -260,8 +260,6 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
 
   ret = TRUE;
  out:
-  if (output)
-    g_string_free (output, TRUE);
   return ret;
 }
 

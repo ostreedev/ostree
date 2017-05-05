@@ -433,7 +433,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
         {
           guint8 csum[OSTREE_SHA256_DIGEST_LEN];
           const char *e_checksum = sorted_keys->pdata[i];
-          GString *buffer = g_string_new (NULL);
+          g_autoptr(GString) buffer = g_string_new (NULL);
 
           ostree_checksum_inplace_to_bytes (e_checksum, csum);
           g_string_append_len (buffer, (char*)csum, sizeof (csum));
@@ -444,7 +444,6 @@ add_size_index_to_metadata (OstreeRepo        *self,
 
           g_variant_builder_add (&index_builder, "@ay",
                                  ot_gvariant_new_bytearray ((guint8*)buffer->str, buffer->len));
-          g_string_free (buffer, TRUE);
         }
       
       g_variant_builder_add (builder, "{sv}", "ostree.sizes",
