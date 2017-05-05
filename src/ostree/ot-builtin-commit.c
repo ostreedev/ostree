@@ -218,7 +218,7 @@ commit_editor (OstreeRepo     *repo,
   g_autofree char *input = NULL;
   g_autofree char *output = NULL;
   gboolean ret = FALSE;
-  GString *bodybuf = NULL;
+  g_autoptr(GString) bodybuf = NULL;
   char **lines = NULL;
   int i;
 
@@ -288,8 +288,6 @@ commit_editor (OstreeRepo     *repo,
 
 out:
   g_strfreev (lines);
-  if (bodybuf)
-    g_string_free (bodybuf, TRUE);
   return ret;
 }
 

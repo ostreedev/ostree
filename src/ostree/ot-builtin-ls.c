@@ -47,15 +47,13 @@ static void
 print_one_file_text (GFile     *f,
                      GFileInfo *file_info)
 {
-  GString *buf = NULL;
+  g_autoptr(GString) buf = g_string_new ("");
   char type_c;
   guint32 mode;
   guint32 type;
 
   if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
     g_assert_not_reached ();
-  
-  buf = g_string_new ("");
 
   type_c = '?';
   mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
@@ -119,8 +117,6 @@ print_one_file_text (GFile     *f,
     g_string_append_printf (buf, " -> %s", g_file_info_get_attribute_byte_string (file_info, "standard::symlink-target"));
       
   g_print ("%s\n", buf->str);
-
-  g_string_free (buf, TRUE);
 }
 
 static void

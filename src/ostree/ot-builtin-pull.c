@@ -84,7 +84,6 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
   guint fetched_delta_parts, total_delta_parts;
   guint fetched_delta_part_fallbacks, total_delta_part_fallbacks;
   guint64 fetched_delta_part_size, total_delta_part_size, total_delta_part_usize;
-  GString *buf;
 
   g_assert (!printed_console_progress);
   printed_console_progress = TRUE;
@@ -107,7 +106,7 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
   fetched_delta_parts += fetched_delta_part_fallbacks;
   total_delta_parts += total_delta_part_fallbacks;
 
-  buf = g_string_new ("");
+  g_autoptr(GString) buf = g_string_new ("");
 
   { g_autofree char *formatted_fetched =
       g_format_size (fetched_delta_part_size);
@@ -122,7 +121,6 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
                             formatted_usize);
   }
   g_print ("%s\n", buf->str);
-  g_string_free (buf, TRUE);
 }
 
 gboolean
