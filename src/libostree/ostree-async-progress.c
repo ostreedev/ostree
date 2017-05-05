@@ -331,6 +331,8 @@ ostree_async_progress_set (OstreeAsyncProgress *self,
   if (self->dead)
     goto out;
 
+  changed = FALSE;
+
   va_start (ap, self);
 
   for (key = va_arg (ap, const char *), format_string = va_arg (ap, const char *);
