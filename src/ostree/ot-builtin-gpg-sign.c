@@ -26,6 +26,7 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ostree-core-private.h"
 
 static gboolean opt_delete;
 static char *opt_gpg_homedir;
@@ -85,7 +86,7 @@ delete_signatures (OstreeRepo *repo,
   g_variant_dict_init (&metadata_dict, old_metadata);
 
   signature_data = g_variant_dict_lookup_value (&metadata_dict,
-                                                "ostree.gpgsigs",
+                                                _OSTREE_METADATA_GPGSIGS_NAME,
                                                 G_VARIANT_TYPE ("aay"));
 
   /* Taking the approach of deleting whatever matches we find for the
@@ -154,7 +155,7 @@ delete_signatures (OstreeRepo *repo,
   /* Update the metadata dictionary. */
   if (g_queue_is_empty (&signatures))
     {
-      g_variant_dict_remove (&metadata_dict, "ostree.gpgsigs");
+      g_variant_dict_remove (&metadata_dict, _OSTREE_METADATA_GPGSIGS_NAME);
     }
   else
     {
@@ -170,7 +171,7 @@ delete_signatures (OstreeRepo *repo,
         }
 
       g_variant_dict_insert_value (&metadata_dict,
-                                   "ostree.gpgsigs",
+                                   _OSTREE_METADATA_GPGSIGS_NAME,
                                    g_variant_builder_end (&signature_builder));
     }
 
