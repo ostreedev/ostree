@@ -101,6 +101,7 @@ dist_test_scripts = \
 	tests/test-switchroot.sh \
 	tests/test-pull-contenturl.sh \
 	tests/test-pull-mirrorlist.sh \
+	tests/test-summary-view.sh \
 	tests/coccinelle.sh \
 	$(NULL)
 
