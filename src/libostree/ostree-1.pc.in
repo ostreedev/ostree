@@ -2,6 +2,7 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
+features=@OSTREE_FEATURES@
 
 Name: OSTree
 Description: Git for operating system binaries
