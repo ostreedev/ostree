@@ -296,7 +296,7 @@ tests/%-symlink-stamp: % Makefile
 
 # See above comment on binding the tests to be either installed or not.
 if ENABLE_INSTALLED_TESTS_EXCLUSIVE
-installed_test_scripts = $(_installed_or_uninstalled_test_scripts)
+dist_installed_test_scripts = $(_installed_or_uninstalled_test_scripts)
 installed_test_programs = $(_installed_or_uninstalled_test_programs)
 check-local:
 	echo "NOTE: Exclusive installed tests are enabled; to run them, make install, then: gnome-desktop-testing-runner -p 0 libostree/"
