@@ -3,7 +3,7 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-for tn in ${dn}/test-*.sh; do
+for tn in ${dn}/itest-*.sh; do
     echo Executing: ${tn}
     ${tn}
 done
