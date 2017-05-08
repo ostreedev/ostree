@@ -69,7 +69,6 @@ dist_test_scripts = \
 	tests/test-pull-resume.sh \
 	tests/test-pull-repeated.sh \
 	tests/test-pull-untrusted.sh \
-	tests/test-pull-many.sh \
 	tests/test-pull-override-url.sh \
 	tests/test-local-pull.sh \
 	tests/test-local-pull-depth.sh \
