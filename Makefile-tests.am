@@ -42,9 +42,16 @@ endif
 uninstalled_test_data = tests/ostree-symlink-stamp tests/ostree-prepare-root-symlink-stamp \
 			tests/ostree-remount-symlink-stamp tests/rofiles-fuse-symlink-stamp
 
-dist_uninstalled_test_scripts = tests/test-symbols.sh
+dist_uninstalled_test_scripts = tests/test-symbols.sh tests/coccinelle.sh
 
-dist_test_scripts = \
+# This logic implements ENABLE_INSTALLED_TESTS_EXCLUSIVE; see below.
+# The goal here if installed tests are enabled, we explicitly make the
+# tests *only* run installed, to avoid having to run them twice in CI.
+# This overrides the glib-tap.mk emphasis on doing both, if we'd
+# used e.g. `dist_test_scripts`.
+dist_test_scripts = $(NULL)
+test_programs = $(NULL)
+_installed_or_uninstalled_test_scripts = \
 	tests/test-basic.sh \
 	tests/test-basic-user.sh \
 	tests/test-basic-user-only.sh \
@@ -102,23 +109,22 @@ dist_test_scripts = \
 	tests/test-pull-contenturl.sh \
 	tests/test-pull-mirrorlist.sh \
 	tests/test-summary-view.sh \
-	tests/coccinelle.sh \
 	$(NULL)
 
 if BUILDOPT_FUSE
-dist_test_scripts += tests/test-rofiles-fuse.sh
+_installed_or_uninstalled_test_scripts += tests/test-rofiles-fuse.sh
 else
 EXTRA_DIST += tests/test-rofiles-fuse.sh
 endif
 
 if USE_LIBSOUP
-dist_test_scripts += tests/test-remote-cookies.sh
+_installed_or_uninstalled_test_scripts += tests/test-remote-cookies.sh
 endif
 
-# These call into gjs scripts 
+# These call into gjs scripts
 js_tests = tests/test-corruption.sh tests/test-pull-corruption.sh
 if BUILDOPT_GJS
-dist_test_scripts += $(js_tests)
+_installed_or_uninstalled_test_scripts += $(js_tests)
 else
 EXTRA_DIST += $(js_tests)
 endif
@@ -182,7 +188,7 @@ if !ENABLE_INSTALLED_TESTS
 libreaddir_rand_la_LDFLAGS += -rpath $(abs_builddir)
 endif
 
-test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
+_installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
 	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c
@@ -191,7 +197,7 @@ test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tes
 noinst_PROGRAMS += tests/test-rollsum-cli
 
 if USE_LIBARCHIVE
-test_programs += tests/test-libarchive-import
+_installed_or_uninstalled_test_programs += tests/test-libarchive-import
 endif
 
 common_tests_cflags = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/libglnx
@@ -287,6 +293,17 @@ tests/%-symlink-stamp: % Makefile
 	fi; \
 	ln -sf "$${real_bin}" tests/$*; \
 	touch $@
+
+# See above comment on binding the tests to be either installed or not.
+if ENABLE_INSTALLED_TESTS_EXCLUSIVE
+installed_test_scripts = $(_installed_or_uninstalled_test_scripts)
+installed_test_programs = $(_installed_or_uninstalled_test_programs)
+check-local:
+	echo "NOTE: Exclusive installed tests are enabled; to run them, make install, then: gnome-desktop-testing-runner -p 0 libostree/"
+else
+dist_test_scripts += $(_installed_or_uninstalled_test_scripts)
+test_programs += $(_installed_or_uninstalled_test_programs)
+endif
 
 # Unfortunately the glib test data APIs don't actually handle
 # non-recursive Automake, so we change our code to canonically look

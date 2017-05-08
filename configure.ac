@@ -457,6 +457,7 @@ echo "
     wrpseudo-compat:                              $enable_wrpseudo_compat
     man pages (xsltproc):                         $enable_man
     api docs (gtk-doc):                           $enable_gtk_doc
+    installed tests:                              $enable_installed_tests
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
     mkinitcpio:                                   $with_mkinitcpio
