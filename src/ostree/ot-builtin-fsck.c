@@ -246,6 +246,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
   gpointer key, value;
   gboolean found_corruption = FALSE;
   guint n_partial = 0;
+  g_autoptr(GHashTable) all_refs = NULL;
   g_autoptr(GHashTable) objects = NULL;
   g_autoptr(GHashTable) commits = NULL;
   g_autoptr(GPtrArray) tombstones = NULL;
@@ -253,6 +254,27 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
+
+  if (!opt_quiet)
+    g_print ("Validating refs...\n");
+
+  /* Validate that the commit for each ref is available */
+  if (!ostree_repo_list_refs (repo, NULL, &all_refs,
+                              cancellable, error))
+    return FALSE;
+  g_hash_table_iter_init (&hash_iter, all_refs);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *refname = key;
+      const char *checksum = value;
+      g_autoptr(GVariant) commit = NULL;
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                     checksum, &commit, error))
+        {
+          g_prefix_error (error, "Loading commit for ref %s: ", refname);
+          goto out;
+        }
+    }
 
   if (!opt_quiet)
     g_print ("Enumerating objects...\n");
