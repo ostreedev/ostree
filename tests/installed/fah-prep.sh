@@ -4,5 +4,5 @@ set -xeuo pipefail
 if lvm lvs atomicos/docker-pool &>/dev/null; then
     systemctl stop docker
     lvm lvremove -f atomicos/docker-pool
-    lvm lvextend -r -l +100%FREE atomicos/root
 fi
+lvm lvextend -r -l +100%FREE atomicos/root
