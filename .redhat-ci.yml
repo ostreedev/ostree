@@ -32,7 +32,7 @@ tests:
     - make syntax-check
     - ./tests/ci-commitmessage-submodules.sh
     - make check
-    - gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/
+    - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
 
 timeout: 30m
 
@@ -98,7 +98,7 @@ build:
 
 tests:
   - make check
-  - gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/
+  - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
 
 artifacts:
   - test-suite.log
