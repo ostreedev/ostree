@@ -47,20 +47,18 @@ ${CMD_PREFIX} ostree --repo=repo pull --mirror origin
 
 # Check the summary file exists in the checkout, and can be viewed.
 assert_has_file repo/summary
-output=$(${OSTREE} summary --view)
-echo "$output" | sed -e 's/^/# /'
-echo "$output" | grep --quiet --no-messages "* main"
-echo "$output" | grep --quiet --no-messages "* other"
-echo "$output" | grep --quiet --no-messages "ostree.summary.last-modified"
-echo "$output" | grep --quiet --no-messages "Static Deltas (ostree.static-deltas): {}"
+${OSTREE} summary --view > summary.txt
+assert_file_has_content_literal summary.txt "* main"
+assert_file_has_content_literal summary.txt "* other"
+assert_file_has_content_literal summary.txt "ostree.summary.last-modified"
+assert_file_has_content_literal summary.txt "Static Deltas (ostree.static-deltas): {}"
 echo "ok view summary"
 
 # Check the summary can be viewed raw too.
-raw_output=$(${OSTREE} summary --view --raw)
-echo "$raw_output" | sed -e 's/^/# /'
-echo "$raw_output" | grep --quiet --no-messages "('main', ("
-echo "$raw_output" | grep --quiet --no-messages "('other', ("
-echo "$raw_output" | grep --quiet --no-messages "{'ostree.summary.last-modified': <uint64"
+${OSTREE} summary --view --raw > raw-summary.txt
+assert_file_has_content_literal raw-summary.txt "('main', ("
+assert_file_has_content_literal raw-summary.txt "('other', ("
+assert_file_has_content_literal raw-summary.txt "{'ostree.summary.last-modified': <uint64"
 echo "ok view summary raw"
 
 libtest_cleanup_gpg

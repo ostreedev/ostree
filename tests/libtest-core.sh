@@ -85,6 +85,13 @@ assert_file_has_content () {
     fi
 }
 
+assert_file_has_content_literal () {
+    if ! grep -q -F -e "$2" "$1"; then
+        sed -e 's/^/# /' < "$1" >&2
+        fatal "File '$1' doesn't match fixed string list '$2'"
+    fi
+}
+
 assert_symlink_has_content () {
     if ! test -L "$1"; then
         echo 1>&2 "File '$1' is not a symbolic link"
