@@ -2460,10 +2460,14 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   gboolean ret = FALSE;
   gboolean from_cache = FALSE;
   const char *url_override = NULL;
+  g_autoptr(GVariant) extra_headers = NULL;
   g_autoptr(GPtrArray) mirrorlist = NULL;
 
   if (options)
-    (void) g_variant_lookup (options, "override-url", "&s", &url_override);
+    {
+      (void) g_variant_lookup (options, "override-url", "&s", &url_override);
+      (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
+    }
 
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
@@ -2471,6 +2475,9 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
   if (fetcher == NULL)
     goto out;
+
+  if (extra_headers)
+    _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
 
   {
     g_autofree char *url_string = NULL;
@@ -3584,6 +3591,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
  * The following are currently defined:
  *
  * - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
+ * - http-headers (a(ss)): Additional headers to add to all HTTP requests
  *
  * Returns: %TRUE on success, %FALSE on failure
  */
