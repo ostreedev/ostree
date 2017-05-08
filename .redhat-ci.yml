@@ -23,14 +23,16 @@ build:
     config-opts: >
       --prefix=/usr
       --libdir=/usr/lib64
-      --enable-installed-tests
+      --enable-installed-tests=exclusive
       --enable-gtk-doc
 
+# The g-d-t-r timeout is for test-pull-many.sh; if tweaking this,
+# also be sure to change the other cases below
 tests:
     - make syntax-check
     - ./tests/ci-commitmessage-submodules.sh
     - make check
-    - gnome-desktop-testing-runner -p 0 ostree
+    - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
 
 timeout: 30m
 
@@ -65,7 +67,6 @@ build:
     config-opts: >
       --prefix=/usr
       --libdir=/usr/lib64
-      --enable-installed-tests
       --enable-gtk-doc
       --enable-rust
 
@@ -90,14 +91,14 @@ build:
     config-opts: >
       --prefix=/usr
       --libdir=/usr/lib64
-      --enable-installed-tests
+      --enable-installed-tests=exclusive
       --enable-gtk-doc
       --with-curl
       --with-openssl
 
 tests:
   - make check
-  - gnome-desktop-testing-runner -p 0 ostree
+  - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
 
 artifacts:
   - test-suite.log

@@ -85,7 +85,6 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 
 ../configure \
     --enable-always-build-tests \
-    --enable-installed-tests \
     ${ci_configopts}
     "$@"
 
@@ -106,12 +105,6 @@ if [ "$ci_sudo" = yes ] && [ "$ci_test" = yes ]; then
         ${make} installcheck || \
     maybe_fail_tests
     cat test/test-suite.log || :
-
-    env \
-        LD_LIBRARY_PATH=/usr/local/lib \
-        GI_TYPELIB_PATH=/usr/local/lib/girepository-1.0 \
-        gnome-desktop-testing-runner -d /usr/local/share ostree/ || \
-    maybe_fail_tests
 fi
 
 # vim:set sw=4 sts=4 et:
