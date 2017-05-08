@@ -129,7 +129,7 @@ build:
 # Copy the build from the container to the host; ideally down the line
 # this is installing an RPM via https://github.com/jlebon/redhat-ci/issues/10
 tests:
-  - ./ostree/tests/installed/fah-prep.sh
+  - ./tests/installed/fah-prep.sh
   - make install DESTDIR=$(pwd)/insttree
   - rsync -rl -e 'ssh -o User=root' . vmcheck:ostree/
   - ssh root@vmcheck 'ostree admin unlock && rsync -rlv ./ostree/insttree/usr/ /usr/ && ./ostree/tests/installed/run.sh'
