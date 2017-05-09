@@ -33,13 +33,13 @@ NULL=
 : "${ci_distro:=debian}"
 
 # ci_docker:
-# If non-empty, this is the name of a Docker image. ci-install.sh will
+# If non-empty, this is the name of a Docker image. travis-install.sh will
 # fetch it with "docker pull" and use it as a base for a new Docker image
 # named "ci-image" in which we will do our testing.
 : "${ci_docker:=}"
 
 # ci_in_docker:
-# Used internally by ci-install.sh. If yes, we are inside the Docker image
+# Used internally by travis-install.sh. If yes, we are inside the Docker image
 # (ci_docker is empty in this case).
 : "${ci_in_docker:=no}"
 
@@ -64,7 +64,7 @@ if [ -n "$ci_docker" ]; then
         -e "s/@ci_distro@/${ci_distro}/" \
         -e "s/@ci_docker@/${ci_docker}/" \
         -e "s/@ci_suite@/${ci_suite}/" \
-        < tests/ci-Dockerfile.in > Dockerfile
+        < ci/travis-Dockerfile.in > Dockerfile
     exec docker build -t ci-image .
 fi
 
