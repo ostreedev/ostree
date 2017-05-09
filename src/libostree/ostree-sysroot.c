@@ -587,60 +587,54 @@ parse_deployment (OstreeSysroot       *self,
                   GCancellable        *cancellable,
                   GError             **error)
 {
-  gboolean ret = FALSE;
-  const char *relative_boot_link;
-  glnx_unref_object OstreeDeployment *ret_deployment = NULL;
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+
   int entry_boot_version;
-  int treebootserial = -1;
-  int deployserial = -1;
   g_autofree char *osname = NULL;
   g_autofree char *bootcsum = NULL;
-  g_autofree char *treecsum = NULL;
-  glnx_fd_close int deployment_dfd = -1;
-  const char *deploy_basename;
-  g_autofree char *treebootserial_target = NULL;
-  g_autoptr(GKeyFile) origin = NULL;
-  g_autofree char *unlocked_development_path = NULL;
-  struct stat stbuf;
-
-  if (!ensure_sysroot_fd (self, error))
-    goto out;
-      
+  int treebootserial = -1;
   if (!parse_bootlink (boot_link, &entry_boot_version,
                        &osname, &bootcsum, &treebootserial,
                        error))
-    goto out;
+    return FALSE;
 
-  relative_boot_link = boot_link;
+  const char *relative_boot_link = boot_link;
   if (*relative_boot_link == '/')
     relative_boot_link++;
 
-  treebootserial_target = glnx_readlinkat_malloc (self->sysroot_fd, relative_boot_link,
-                                                  cancellable, error);
+  g_autofree char *treebootserial_target =
+    glnx_readlinkat_malloc (self->sysroot_fd, relative_boot_link,
+                            cancellable, error);
   if (!treebootserial_target)
-    goto out;
+    return FALSE;
 
-  deploy_basename = glnx_basename (treebootserial_target);
-
+  const char *deploy_basename = glnx_basename (treebootserial_target);
+  g_autofree char *treecsum = NULL;
+  int deployserial = -1;
   if (!_ostree_sysroot_parse_deploy_path_name (deploy_basename,
                                                &treecsum, &deployserial, error))
-    goto out;
+    return FALSE;
 
+  glnx_fd_close int deployment_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, relative_boot_link, TRUE,
                        &deployment_dfd, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(GKeyFile) origin = NULL;
   if (!parse_origin (self, deployment_dfd, deploy_basename, &origin,
                      cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret_deployment = ostree_deployment_new (-1, osname, treecsum, deployserial,
-                                          bootcsum, treebootserial);
+  glnx_unref_object OstreeDeployment *ret_deployment
+    = ostree_deployment_new (-1, osname, treecsum, deployserial,
+                             bootcsum, treebootserial);
   if (origin)
     ostree_deployment_set_origin (ret_deployment, origin);
 
   ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_NONE;
-  unlocked_development_path = get_unlocked_development_path (ret_deployment);
+  g_autofree char *unlocked_development_path = get_unlocked_development_path (ret_deployment);
+  struct stat stbuf;
   if (lstat (unlocked_development_path, &stbuf) == 0)
     ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
   else
@@ -657,11 +651,9 @@ parse_deployment (OstreeSysroot       *self,
 
   g_debug ("Deployment %s.%d unlocked=%d", treecsum, deployserial, ret_deployment->unlocked);
 
-  ret = TRUE;
   if (out_deployment)
     *out_deployment = g_steal_pointer (&ret_deployment);
- out:
-  return ret;
+  return TRUE;
 }
 
 static char *
@@ -747,29 +739,21 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  gboolean ret = FALSE;
-  guint i;
-  int bootversion = 0;
-  int subbootversion = 0;
-  struct stat stbuf;
-  g_autoptr(GPtrArray) boot_loader_configs = NULL;
-  g_autoptr(GPtrArray) deployments = NULL;
-
   if (!ensure_sysroot_fd (self, error))
-    goto out;
+    return FALSE;
 
+  int bootversion = 0;
   if (!read_current_bootversion (self, &bootversion, cancellable, error))
-    goto out;
+    return FALSE;
 
+  int subbootversion = 0;
   if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion,
                                                     cancellable, error))
-    goto out;
+    return FALSE;
 
+  struct stat stbuf;
   if (fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "fstatat");
 
   if (out_changed)
     {
@@ -777,8 +761,8 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
           self->loaded_ts.tv_nsec == stbuf.st_mtim.tv_nsec)
         {
           *out_changed = FALSE;
-          ret = TRUE;
-          goto out;
+          /* Note early return */
+          return TRUE;
         }
     }
 
@@ -787,23 +771,24 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   self->bootversion = -1;
   self->subbootversion = -1;
 
+  g_autoptr(GPtrArray) boot_loader_configs = NULL;
   if (!_ostree_sysroot_read_boot_loader_configs (self, bootversion, &boot_loader_configs,
                                                  cancellable, error))
-    goto out;
+    return FALSE;
 
-  deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  g_autoptr(GPtrArray) deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  for (i = 0; i < boot_loader_configs->len; i++)
+  for (guint i = 0; i < boot_loader_configs->len; i++)
     {
       OstreeBootconfigParser *config = boot_loader_configs->pdata[i];
 
       if (!list_deployments_process_one_boot_entry (self, config, deployments,
                                                     cancellable, error))
-        goto out;
+        return FALSE;
     }
 
   g_ptr_array_sort (deployments, compare_deployments_by_boot_loader_version_reversed);
-  for (i = 0; i < deployments->len; i++)
+  for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       ostree_deployment_set_index (deployment, i);
@@ -811,7 +796,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
 
   if (!find_booted_deployment (self, deployments, &self->booted_deployment,
                                cancellable, error))
-    goto out;
+    return FALSE;
 
   self->bootversion = bootversion;
   self->subbootversion = subbootversion;
@@ -820,11 +805,9 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   self->loaded = TRUE;
   self->loaded_ts = stbuf.st_mtim;
 
-  ret = TRUE;
   if (out_changed)
     *out_changed = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 int
@@ -939,18 +922,13 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
                          GCancellable  *cancellable,
                          GError       **error)
 {
-  gboolean ret = FALSE;
-
   /* ostree_repo_open() is idempotent. */
   if (!ostree_repo_open (self->repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (out_repo != NULL)
     *out_repo = g_object_ref (self->repo);
-
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1024,21 +1002,17 @@ parse_kernel_commandline (OstreeKernelArgs  **out_args,
                           GCancellable       *cancellable,
                           GError            **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GFile) proc_cmdline = g_file_new_for_path ("/proc/cmdline");
   g_autofree char *contents = NULL;
   gsize len;
 
   if (!g_file_load_contents (proc_cmdline, cancellable, &contents, &len, NULL,
                              error))
-    goto out;
+    return FALSE;
 
   g_strchomp (contents);
-
-  ret = TRUE;
   *out_args = _ostree_kernel_args_from_string (contents);
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -1048,50 +1022,37 @@ find_booted_deployment (OstreeSysroot       *self,
                         GCancellable        *cancellable,
                         GError             **error)
 {
-  gboolean ret = FALSE;
   struct stat root_stbuf;
   struct stat self_stbuf;
   glnx_unref_object OstreeDeployment *ret_deployment = NULL;
 
   if (stat ("/", &root_stbuf) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "stat /");
 
   if (!ensure_sysroot_fd (self, error))
-    goto out;
+    return FALSE;
 
   if (fstat (self->sysroot_fd, &self_stbuf) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "fstat");
 
   if (root_stbuf.st_dev == self_stbuf.st_dev &&
       root_stbuf.st_ino == self_stbuf.st_ino)
-    { 
-      guint i;
-      const char *bootlink_arg;
+    {
       __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kernel_args = NULL;
-      
       if (!parse_kernel_commandline (&kernel_args, cancellable, error))
-        goto out;
-      
-      bootlink_arg = _ostree_kernel_args_get_last_value (kernel_args, "ostree");
+        return FALSE;
+
+      const char *bootlink_arg = _ostree_kernel_args_get_last_value (kernel_args, "ostree");
       if (bootlink_arg)
         {
-          for (i = 0; i < deployments->len; i++)
+          for (guint i = 0; i < deployments->len; i++)
             {
               OstreeDeployment *deployment = deployments->pdata[i];
               g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
               struct stat stbuf;
 
               if (fstatat (self->sysroot_fd, deployment_path, &stbuf, 0) != 0)
-                {
-                  glnx_set_error_from_errno (error);
-                  goto out;
-                }
+                return glnx_throw_errno_prefix (error, "fstatat");
 
               if (stbuf.st_dev == root_stbuf.st_dev &&
                   stbuf.st_ino == root_stbuf.st_ino)
@@ -1102,11 +1063,7 @@ find_booted_deployment (OstreeSysroot       *self,
             }
 
           if (ret_deployment == NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unexpected state: ostree= kernel argument found, but / is not a deployment root");
-              goto out;
-            }
+            return glnx_throw (error, "Unexpected state: ostree= kernel argument found, but / is not a deployment root");
         }
       else
         {
@@ -1114,10 +1071,8 @@ find_booted_deployment (OstreeSysroot       *self,
         }
     }
 
-  ret = TRUE;
   ot_transfer_out_value (out_deployment, &ret_deployment);
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1157,7 +1112,7 @@ ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
 
           if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
             continue;
-          
+
           return g_object_ref (deployment);
         }
     }
@@ -1221,11 +1176,10 @@ ostree_sysroot_try_lock (OstreeSysroot         *self,
                          gboolean              *out_acquired,
                          GError               **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GError) local_error = NULL;
 
   if (!ensure_sysroot_fd (self, error))
-    goto out;
+    return FALSE;
 
   /* Note use of LOCK_NB */
   if (!glnx_make_lock_file (self->sysroot_fd, OSTREE_SYSROOT_LOCKFILE,
@@ -1238,7 +1192,7 @@ ostree_sysroot_try_lock (OstreeSysroot         *self,
       else
         {
           g_propagate_error (error, g_steal_pointer (&local_error));
-          goto out;
+          return FALSE;
         }
     }
   else
@@ -1246,9 +1200,7 @@ ostree_sysroot_try_lock (OstreeSysroot         *self,
       *out_acquired = TRUE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -1279,7 +1231,7 @@ lock_in_thread (GTask            *task,
 
   if (g_cancellable_set_error_if_cancelled (cancellable, &local_error))
     ostree_sysroot_unlock (self);
-  
+
  out:
   if (local_error)
     g_task_return_error (task, local_error);
@@ -1340,77 +1292,49 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
                             GCancellable        *cancellable,
                             GError             **error)
 {
-  gboolean ret = FALSE;
-  const char *deploydir = glnx_strjoina ("ostree/deploy/", osname);
-  glnx_fd_close int dfd = -1;
-
   if (!ensure_sysroot_fd (self, error))
-    goto out;
+    return FALSE;
 
+  const char *deploydir = glnx_strjoina ("ostree/deploy/", osname);
   if (mkdirat (self->sysroot_fd, deploydir, 0777) < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Creating %s", deploydir);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "Creating %s", deploydir);
 
+  glnx_fd_close int dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, deploydir, TRUE, &dfd, error))
-    goto out;
+    return FALSE;
 
   if (mkdirat (dfd, "var", 0777) < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Creating %s", "var");
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "Creating %s", "var");
 
   /* This is a bit of a legacy hack...but we have to keep it around
    * now.  We're ensuring core subdirectories of /var exist.
    */
   if (mkdirat (dfd, "var/tmp", 0777) < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Creating %s", "var/tmp");
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "Creating %s", "var/tmp");
 
   if (fchmodat (dfd, "var/tmp", 01777, 0) < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Fchmod %s", "var/tmp");
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "fchmod %s", "var/tmp");
 
   if (mkdirat (dfd, "var/lib", 0777) < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Creating %s", "var/tmp");
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "Creating %s", "var/tmp");
 
   /* This needs to be available and properly labeled early during the boot
    * process (before tmpfiles.d kicks in), so that journald can flush logs from
    * the first boot there. https://bugzilla.redhat.com/show_bug.cgi?id=1265295
    * */
   if (mkdirat (dfd, "var/log", 0755) < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Creating %s", "var/log");
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "Creating %s", "var/log");
 
   if (symlinkat ("../run", dfd, "var/run") < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Symlinking %s", "var/run");
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "Symlinking %s", "var/run");
 
   if (symlinkat ("../run/lock", dfd, "var/lock") < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "Symlinking %s", "var/lock");
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "Symlinking %s", "var/lock");
 
   if (!_ostree_sysroot_bump_mtime (self, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
