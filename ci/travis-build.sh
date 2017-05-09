@@ -28,7 +28,7 @@ set -x
 NULL=
 
 # ci_docker:
-# If non-empty, this is the name of a Docker image. ci-install.sh will
+# If non-empty, this is the name of a Docker image. travis-install.sh will
 # fetch it with "docker pull" and use it as a base for a new Docker image
 # named "ci-image" in which we will do our testing.
 #
@@ -66,7 +66,7 @@ if [ -n "$ci_docker" ]; then
         --env=ci_configopts="${ci_configopts}" \
         --privileged \
         ci-image \
-        tests/ci-build.sh
+        ci/travis-build.sh
 fi
 
 maybe_fail_tests () {

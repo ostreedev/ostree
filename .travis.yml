@@ -10,8 +10,8 @@ env:
   - ci_docker=ubuntu:xenial ci_distro=ubuntu ci_suite=xenial
 
 script:
-  - tests/ci-install.sh
-  - ci_parallel=2 ci_sudo=yes tests/ci-build.sh
+  - ci/travis-install.sh
+  - ci_parallel=2 ci_sudo=yes ci/travis-build.sh
 
 notifications:
   email: false
