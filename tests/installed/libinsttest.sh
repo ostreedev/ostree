@@ -41,7 +41,7 @@ run_tmp_webserver() {
     test -n ${test_tmpdir}
 
     cd ${dir}
-    env PYTHONUNBUFFERED=1 setsid python -m SimpleHTTPServer 0 >${test_tmpdir}/httpd-output &
+    env PYTHONUNBUFFERED=1 setsid python -m SimpleHTTPServer 0 &>${test_tmpdir}/httpd-output &
     cd -
     child_pid=$!
 
