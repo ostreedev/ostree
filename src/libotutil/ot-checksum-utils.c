@@ -47,7 +47,7 @@ ot_csum_from_gchecksum (GChecksum  *checksum)
 {
   guchar *ret = g_malloc (32);
   gsize len = 32;
-  
+
   g_checksum_get_digest (checksum, ret, &len);
   g_assert (len == 32);
   return ret;
@@ -62,13 +62,11 @@ ot_gio_write_update_checksum (GOutputStream  *out,
                               GCancellable   *cancellable,
                               GError        **error)
 {
-  gboolean ret = FALSE;
-
   if (out)
     {
       if (!g_output_stream_write_all (out, data, len, out_bytes_written,
                                       cancellable, error))
-        goto out;
+        return FALSE;
     }
   else if (out_bytes_written)
     {
@@ -77,10 +75,7 @@ ot_gio_write_update_checksum (GOutputStream  *out,
 
   if (checksum)
     g_checksum_update (checksum, data, len);
-  
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -90,8 +85,6 @@ ot_gio_splice_update_checksum (GOutputStream  *out,
                                GCancellable   *cancellable,
                                GError        **error)
 {
-  gboolean ret = FALSE;
-
   g_return_val_if_fail (out != NULL || checksum != NULL, FALSE);
 
   if (checksum != NULL)
@@ -101,24 +94,25 @@ ot_gio_splice_update_checksum (GOutputStream  *out,
       do
         {
           if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, cancellable, error))
-            goto out;
+            return FALSE;
           if (!ot_gio_write_update_checksum (out, buf, bytes_read, &bytes_written, checksum,
                                              cancellable, error))
-            goto out;
+            return FALSE;
         }
       while (bytes_read > 0);
     }
   else if (out != NULL)
     {
       if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
+/* Copy @in to @out, return in @out_csum the binary checksum for
+ * all data read.
+ */
 gboolean
 ot_gio_splice_get_checksum (GOutputStream  *out,
                             GInputStream   *in,
@@ -126,22 +120,14 @@ ot_gio_splice_get_checksum (GOutputStream  *out,
                             GCancellable   *cancellable,
                             GError        **error)
 {
-  gboolean ret = FALSE;
-  GChecksum *checksum = NULL;
-  g_autofree guchar *ret_csum = NULL;
-
-  checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  g_autoptr(GChecksum) checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
   if (!ot_gio_splice_update_checksum (out, in, checksum, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret_csum = ot_csum_from_gchecksum (checksum);
-
-  ret = TRUE;
+  g_autofree guchar *ret_csum = ot_csum_from_gchecksum (checksum);
   ot_transfer_out_value (out_csum, &ret_csum);
- out:
-  g_clear_pointer (&checksum, (GDestroyNotify) g_checksum_free);
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -162,21 +148,13 @@ ot_checksum_file_at (int             dfd,
                      GCancellable   *cancellable,
                      GError        **error)
 {
-  GChecksum *checksum = NULL;
-  char *ret = NULL;
   g_autoptr(GInputStream) in = NULL;
-
   if (!ot_openat_read_stream (dfd, path, TRUE, &in, cancellable, error))
-    goto out;
+    return FALSE;
 
-  checksum = g_checksum_new (checksum_type);
-
+  g_autoptr(GChecksum) checksum = g_checksum_new (checksum_type);
   if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = g_strdup (g_checksum_get_string (checksum));
- out:
-  g_clear_pointer (&checksum, (GDestroyNotify) g_checksum_free);
-  return ret;
-
+  return g_strdup (g_checksum_get_string (checksum));
 }
