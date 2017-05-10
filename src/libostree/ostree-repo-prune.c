@@ -42,21 +42,14 @@ prune_commitpartial_file (OstreeRepo    *repo,
                           GCancellable  *cancellable,
                           GError       **error)
 {
-  gboolean ret = FALSE;
   g_autofree char *path = _ostree_get_commitpartial_path (checksum);
-  
   if (unlinkat (repo->repo_dir_fd, path, 0) != 0)
     {
       if (errno != ENOENT)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "unlinkat");
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -67,7 +60,6 @@ maybe_prune_loose_object (OtPruneData        *data,
                           GCancellable       *cancellable,
                           GError            **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GVariant) key = NULL;
 
   key = ostree_object_name_serialize (checksum, objtype);
@@ -83,16 +75,16 @@ maybe_prune_loose_object (OtPruneData        *data,
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!prune_commitpartial_file (data->repo, checksum, cancellable, error))
-                goto out;
+                return FALSE;
             }
 
           if (!ostree_repo_query_object_storage_size (data->repo, objtype, checksum,
                                                       &storage_size, cancellable, error))
-            goto out;
+            return FALSE;
 
           if (!ostree_repo_delete_object (data->repo, objtype, checksum,
                                           cancellable, error))
-            goto out;
+            return FALSE;
 
           data->freed_bytes += storage_size;
         }
@@ -111,9 +103,7 @@ maybe_prune_loose_object (OtPruneData        *data,
         data->n_reachable_content++;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -121,25 +111,22 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
                         GCancellable *cancellable,
                         GError **error)
 {
-  gboolean ret = FALSE;
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  glnx_fd_close int fd = -1;
-
   if (self->cache_dir_fd == -1)
     return TRUE;
 
-  fd = glnx_opendirat_with_errno (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, FALSE);
+  glnx_fd_close int fd = glnx_opendirat_with_errno (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, FALSE);
   if (fd < 0)
     {
+      /* Note early return */
       if (errno == ENOENT)
-        ret = TRUE;
+        return TRUE;
       else
-        glnx_set_error_from_errno (error);
-      goto out;
+        return glnx_throw_errno_prefix (error, "opendirat(%s)", _OSTREE_SUMMARY_CACHE_DIR);
     }
 
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   if (!glnx_dirfd_iterator_init_take_fd (dup (fd), &dfd_iter, error))
-    goto out;
+    return FALSE;
 
   while (TRUE)
     {
@@ -148,8 +135,7 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
       struct dirent *dent;
 
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
-        goto out;
-
+        return FALSE;
       if (dent == NULL)
         break;
 
@@ -167,17 +153,11 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
             dent->d_name[len - 4] = '.';
 
           if (unlinkat (fd, dent->d_name, 0) < 0)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "unlinkat");
         }
     }
 
-  ret = TRUE;
-
- out:
-  return ret;
+  return TRUE;
 }
 
 
@@ -198,22 +178,17 @@ ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
                                  GCancellable      *cancellable,
                                  GError           **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GPtrArray) deltas = NULL;
-  guint i;
-
   if (!ostree_repo_list_static_delta_names (self, &deltas,
                                             cancellable, error))
-    goto out;
+    return FALSE;
 
-  for (i = 0; i < deltas->len; i++)
+  for (guint i = 0; i < deltas->len; i++)
     {
       const char *deltaname = deltas->pdata[i];
       const char *dash = strchr (deltaname, '-');
       const char *to = NULL;
-      gboolean have_commit;
       g_autofree char *from = NULL;
-      g_autofree char *deltadir = NULL;
 
       if (!dash)
         {
@@ -232,26 +207,24 @@ ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
         }
       else
         {
+          gboolean have_commit;
           if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT,
                                        to, &have_commit,
                                        cancellable, error))
-            goto out;
+            return FALSE;
 
           if (have_commit)
             continue;
         }
 
       g_debug ("Trying to prune static delta %s", deltaname);
-      deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
-
+      g_autofree char *deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
       if (!glnx_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
-                               cancellable, error))
-        goto out;
+                                 cancellable, error))
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -264,13 +237,14 @@ repo_prune_internal (OstreeRepo        *self,
                      GCancellable      *cancellable,
                      GError           **error)
 {
-  gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
   OtPruneData data = { 0, };
 
   data.repo = self;
-  data.reachable = g_hash_table_ref (options->reachable);
+  /* We unref this when we're done */
+  g_autoptr(GHashTable) reachable_owned = g_hash_table_ref (options->reachable);
+  data.reachable = reachable_owned;
 
   g_hash_table_iter_init (&hash_iter, objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -289,24 +263,20 @@ repo_prune_internal (OstreeRepo        *self,
 
       if (!maybe_prune_loose_object (&data, options->flags, checksum, objtype,
                                      cancellable, error))
-        goto out;
+        return FALSE;
     }
 
   if (!ostree_repo_prune_static_deltas (self, NULL, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!_ostree_repo_prune_tmp (self, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
   *out_objects_total = (data.n_reachable_meta + data.n_unreachable_meta +
                         data.n_reachable_content + data.n_unreachable_content);
   *out_objects_pruned = (data.n_unreachable_meta + data.n_unreachable_content);
   *out_pruned_object_size_total = data.freed_bytes;
- out:
-  if (data.reachable)
-    g_hash_table_unref (data.reachable);
-  return ret;
+  return TRUE;
 }
 
 /**
