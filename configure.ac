@@ -378,7 +378,10 @@ dnl We have separate checks for libsystemd and the unit dir for historical reaso
 PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd], [have_libsystemd=yes], [have_libsystemd=no])
 AM_CONDITIONAL(BUILDOPT_LIBSYSTEMD, test x$have_libsystemd = xyes)
 AM_COND_IF(BUILDOPT_LIBSYSTEMD,
-           AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd]))
+           AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd])
+           systemdsystemgeneratordir=$($PKG_CONFIG --variable=systemdsystemgeneratordir systemd)
+           AC_SUBST(systemdsystemgeneratordir)
+           )
 
 AS_IF([test "x$have_libsystemd" = "xyes"], [
   with_systemd=yes
@@ -391,6 +394,10 @@ AS_IF([test "x$have_libsystemd" = "xyes"], [
   ])
 ])
 AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
+dnl If we have both, we use the "new /var" model with ostree-system-generator
+AM_CONDITIONAL(BUILDOPT_SYSTEMD_AND_LIBMOUNT,[test x$with_systemd = xyes && test x$with_libmount = xyes])
+AM_COND_IF(BUILDOPT_SYSTEMD_AND_LIBMOUNT,
+  AC_DEFINE([BUILDOPT_LIBSYSTEMD_AND_LIBMOUNT], 1, [Define if systemd and libmount]))
 
 AC_ARG_WITH(builtin-grub2-mkconfig,
             AS_HELP_STRING([--with-builtin-grub2-mkconfig],

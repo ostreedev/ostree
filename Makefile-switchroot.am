@@ -27,6 +27,7 @@ ostree_prepare_root_SOURCES = \
     src/switchroot/ostree-mount-util.h \
     src/switchroot/ostree-prepare-root.c \
     $(NULL)
+ostree_prepare_root_CPPFLAGS = $(AM_CPPFLAGS)
 
 if BUILDOPT_USE_STATIC_COMPILER
 # ostree-prepare-root can be used as init in a system without a populated /lib.
@@ -45,7 +46,6 @@ ostree-prepare-root : $(ostree_prepare_root_SOURCES)
 	$(STATIC_COMPILER) -o $@ -static $(ostree_prepare_root_SOURCES) $(AM_CPPFLAGS) $(AM_CFLAGS) $(DEFAULT_INCLUDES)
 else
 ostree_boot_PROGRAMS += ostree-prepare-root
-
 ostree_prepare_root_CFLAGS = $(AM_CFLAGS) -Isrc/switchroot
 endif
 
@@ -53,4 +53,19 @@ ostree_remount_SOURCES = \
     src/switchroot/ostree-mount-util.h \
     src/switchroot/ostree-remount.c \
     $(NULL)
-ostree_remount_CFLAGS = $(AM_CFLAGS) -Isrc/switchroot
+ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) -Isrc/switchroot
+
+# This is the "new mode" of using a generator for /var; see
+# https://github.com/ostreedev/ostree/issues/855
+if BUILDOPT_SYSTEMD_AND_LIBMOUNT
+ostree_prepare_root_CPPFLAGS += -DHAVE_SYSTEMD_AND_LIBMOUNT=1
+ostree_remount_CPPFLAGS += -DHAVE_SYSTEMD_AND_LIBMOUNT=1
+
+systemdsystemgenerator_PROGRAMS = ostree-system-generator
+GITIGNOREFILES += $(systemdsystemgenerator_PROGRAMS)
+ostree_system_generator_SOURCES = src/switchroot/ostree-mount-util.h \
+                                  src/switchroot/ostree-system-generator.c
+ostree_system_generator_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/libglnx -I$(srcdir)/src/libostree
+ostree_system_generator_CFLAGS = $(AM_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+ostree_system_generator_LDADD = $(AM_LDFLAGS) libglnx.la libostree-1.la $(OT_INTERNAL_GIO_UNIX_LIBS)
+endif

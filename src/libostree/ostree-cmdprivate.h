@@ -24,7 +24,10 @@
 
 G_BEGIN_DECLS
 
+gboolean _ostree_impl_system_generator (const char *ostree_cmdline, const char *normal_dir, const char *early_dir, const char *late_dir, GError **error);
+
 typedef struct {
+  gboolean (* ostree_system_generator) (const char *ostree_cmdline, const char *normal_dir, const char *early_dir, const char *late_dir, GError **error);
   gboolean (* ostree_generate_grub2_config) (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_dump) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_query_exists) (OstreeRepo *repo, const char *delta_id, gboolean *out_exists, GCancellable *cancellable, GError **error);

@@ -46,68 +46,6 @@
 
 #include "ostree-mount-util.h"
 
-static char *
-read_proc_cmdline (void)
-{
-  FILE *f = fopen("/proc/cmdline", "r");
-  char *cmdline = NULL;
-  size_t len;
-
-  if (!f)
-    goto out;
-
-  /* Note that /proc/cmdline will not end in a newline, so getline
-   * will fail unelss we provide a length.
-   */
-  if (getline (&cmdline, &len, f) < 0)
-    goto out;
-  /* ... but the length will be the size of the malloc buffer, not
-   * strlen().  Fix that.
-   */
-  len = strlen (cmdline);
-
-  if (cmdline[len-1] == '\n')
-    cmdline[len-1] = '\0';
-out:
-  if (f)
-    fclose (f);
-  return cmdline;
-}
-
-static char *
-parse_ostree_cmdline (void)
-{
-  char *cmdline = NULL;
-  const char *iter;
-  char *ret = NULL;
-
-  cmdline = read_proc_cmdline ();
-  if (!cmdline)
-    err (EXIT_FAILURE, "failed to read /proc/cmdline");
-
-  iter = cmdline;
-  while (iter != NULL)
-    {
-      const char *next = strchr (iter, ' ');
-      const char *next_nonspc = next;
-      while (next_nonspc && *next_nonspc == ' ')
-        next_nonspc += 1;
-      if (strncmp (iter, "ostree=", strlen ("ostree=")) == 0)
-        {
-          const char *start = iter + strlen ("ostree=");
-          if (next)
-            ret = strndup (start, next - start);
-          else
-            ret = strdup (start);
-          break;
-        }
-      iter = next_nonspc;
-    }
-
-  free (cmdline);
-  return ret;
-}
-
 /* This is an API for other projects to determine whether or not the
  * currently running system is ostree-controlled.
  */
@@ -132,7 +70,7 @@ resolve_deploy_path (const char * root_mountpoint)
   struct stat stbuf;
   char *ostree_target, *deploy_path;
 
-  ostree_target = parse_ostree_cmdline ();
+  ostree_target = read_proc_cmdline_ostree ();
   if (!ostree_target)
     errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
 
@@ -211,9 +149,12 @@ main(int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
+  /* In the systemd case, this is handled by ostree-system-generator */
+#ifndef HAVE_SYSTEMD_AND_LIBMOUNT
   /* Link to the deployment's /var */
   if (mount ("../../var", "var", NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
     err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+#endif
 
   /* If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
