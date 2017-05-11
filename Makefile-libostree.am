@@ -115,6 +115,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-sysroot-cleanup.c \
 	src/libostree/ostree-sysroot-deploy.c \
 	src/libostree/ostree-sysroot-upgrader.c \
+	src/libostree/ostree-impl-system-generator.c \
 	src/libostree/ostree-bootconfig-parser.c \
 	src/libostree/ostree-deployment.c \
 	src/libostree/ostree-bootloader.h \

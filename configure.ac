@@ -389,8 +389,19 @@ AS_IF([test "x$have_libsystemd" = "xyes"], [
   AS_IF([test "x$with_systemdsystemunitdir" != "xno"], [
     AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
   ])
+  AC_ARG_WITH([systemdsystemgeneratordir],
+              AS_HELP_STRING([--with-systemdsystemgeneratordir=DIR], [Directory for systemd generators]),
+              [],
+              [with_systemdsystemgeneratordir=$($PKG_CONFIG --variable=systemdsystemgeneratordir systemd)])
+  AS_IF([test "x$with_systemdsystemgeneratordir" != "xno"], [
+    AC_SUBST([systemdsystemgeneratordir], [$with_systemdsystemgeneratordir])
+  ])
 ])
 AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
+dnl If we have both, we use the "new /var" model with ostree-system-generator
+AM_CONDITIONAL(BUILDOPT_SYSTEMD_AND_LIBMOUNT,[test x$with_systemd = xyes && test x$with_libmount = xyes])
+AM_COND_IF(BUILDOPT_SYSTEMD_AND_LIBMOUNT,
+  AC_DEFINE([BUILDOPT_LIBSYSTEMD_AND_LIBMOUNT], 1, [Define if systemd and libmount]))
 
 AC_ARG_WITH(builtin-grub2-mkconfig,
             AS_HELP_STRING([--with-builtin-grub2-mkconfig],

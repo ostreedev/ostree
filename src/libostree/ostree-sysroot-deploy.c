@@ -1379,6 +1379,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   val = ostree_bootconfig_parser_get (bootconfig, "options");
 
+  /* Note this is parsed in ostree-impl-system-generator.c */
   g_autofree char *ostree_kernel_arg = g_strdup_printf ("ostree=/ostree/boot.%d/%s/%s/%d",
                                        new_bootversion, osname, bootcsum,
                                        ostree_deployment_get_bootserial (deployment));
