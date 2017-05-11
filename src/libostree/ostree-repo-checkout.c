@@ -40,6 +40,14 @@ typedef struct {
   GString *selabel_path_buf;
 } CheckoutState;
 
+static void
+checkout_state_clear (CheckoutState *state)
+{
+  if (state->selabel_path_buf)
+    g_string_free (state->selabel_path_buf, TRUE);
+}
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(CheckoutState, checkout_state_clear);
+
 static gboolean
 checkout_object_for_uncompressed_cache (OstreeRepo      *self,
                                         const char      *loose_path,
@@ -787,7 +795,7 @@ checkout_tree_at (OstreeRepo                        *self,
                   GCancellable                      *cancellable,
                   GError                           **error)
 {
-  CheckoutState state = { 0, };
+  g_auto(CheckoutState) state = { 0, };
   // If SELinux labeling is enabled, we need to keep track of the full path string
   if (options->sepolicy)
     {
