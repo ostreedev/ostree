@@ -90,6 +90,14 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
 
 GFileInfo * _ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid);
 
+static inline void
+_ostree_checksum_inplace_from_bytes_v (GVariant *csum_v, char *buf)
+{
+  const guint8*csum = ostree_checksum_bytes_peek (csum_v);
+  g_assert (csum);
+  ostree_checksum_inplace_from_bytes (csum, buf);
+}
+
 /* XX/checksum-2.extension, but let's just use 256 for a
  * bit of overkill.
  */

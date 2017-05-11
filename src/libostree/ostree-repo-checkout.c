@@ -361,8 +361,7 @@ static gboolean
 checkout_one_file_at (OstreeRepo                        *repo,
                       OstreeRepoCheckoutAtOptions         *options,
                       CheckoutState                     *state,
-                      GFile                             *source,
-                      GFileInfo                         *source_info,
+                      const char                        *checksum,
                       int                                destination_dfd,
                       const char                        *destination_name,
                       GCancellable                      *cancellable,
@@ -371,8 +370,14 @@ checkout_one_file_at (OstreeRepo                        *repo,
   gboolean need_copy = TRUE;
   gboolean is_bare_user_symlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+
+  /* FIXME - avoid the GFileInfo here */
+  g_autoptr(GFileInfo) source_info = NULL;
+  if (!ostree_repo_load_file (repo, checksum, NULL, &source_info, NULL,
+                              cancellable, error))
+    return FALSE;
+
   const gboolean is_symlink = (g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK);
-  const char *checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
   const gboolean is_whiteout = (!is_symlink && options->process_whiteouts &&
                                 g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
 
@@ -592,21 +597,33 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
                           CheckoutState                     *state,
                           int                                destination_parent_fd,
                           const char                        *destination_name,
-                          OstreeRepoFile                    *source,
-                          GFileInfo                         *source_info,
+                          const char                        *dirtree_checksum,
+                          const char                        *dirmeta_checksum,
                           GCancellable                      *cancellable,
                           GError                           **error)
 {
   gboolean did_exist = FALSE;
   const gboolean sepolicy_enabled = options->sepolicy && !self->disable_xattrs;
+  g_autoptr(GVariant) dirtree = NULL;
+  g_autoptr(GVariant) dirmeta = NULL;
   g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GVariant) modified_xattrs = NULL;
 
-  if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
-    {
-      if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
-        return FALSE;
-    }
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_DIR_TREE,
+                                 dirtree_checksum, &dirtree, error))
+    return FALSE;
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_DIR_META,
+                                 dirmeta_checksum, &dirmeta, error))
+    return FALSE;
+
+  /* Parse OSTREE_OBJECT_TYPE_DIR_META */
+  guint32 uid, gid, mode;
+  g_variant_get (dirmeta, "(uuu@a(ayay))",
+                 &uid, &gid, &mode,
+                 options->mode != OSTREE_REPO_CHECKOUT_MODE_USER ? &xattrs : NULL);
+  uid = GUINT32_FROM_BE (uid);
+  gid = GUINT32_FROM_BE (gid);
+  mode = GUINT32_FROM_BE (mode);
 
   /* First, make the directory.  Push a new scope in case we end up using
    * setfscreatecon().
@@ -623,8 +640,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
 
         if (!_ostree_sepolicy_preparefscreatecon (&fscreatecon, options->sepolicy,
                                                   state->selabel_path_buf->str,
-                                                  g_file_info_get_attribute_uint32 (source_info, "unix::mode"),
-                                                  error))
+                                                  mode, error))
           return FALSE;
       }
 
@@ -666,72 +682,78 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
         return FALSE;
     }
 
-  g_autoptr(GFileEnumerator) dir_enum =
-    g_file_enumerate_children ((GFile*)source,
-                               OSTREE_GIO_FAST_QUERYINFO,
-                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                               cancellable,
-                               error);
-  if (!dir_enum)
-    return FALSE;
+  GString *selabel_path_buf = state->selabel_path_buf;
+  /* Process files in this subdir */
+  { g_autoptr(GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
+    GVariantIter viter;
+    g_variant_iter_init (&viter, dir_file_contents);
+    const char *fname;
+    g_autoptr(GVariant) contents_csum_v = NULL;
+    while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, &contents_csum_v))
+      {
+        const size_t namelen = strlen (fname);
+        if (selabel_path_buf)
+          g_string_append_len (selabel_path_buf, fname, namelen);
 
-  while (TRUE)
-    {
-      GFileInfo *file_info;
-      GFile *src_child;
-      const char *name;
-      GString *selabel_path_buf = state->selabel_path_buf;
+        char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
+        _ostree_checksum_inplace_from_bytes_v (contents_csum_v, tmp_checksum);
 
-      if (!g_file_enumerator_iterate (dir_enum, &file_info, &src_child,
-                                      cancellable, error))
-        return FALSE;
-      if (file_info == NULL)
-        break;
+        if (!checkout_one_file_at (self, options, state,
+                                   tmp_checksum,
+                                   destination_dfd, fname,
+                                   cancellable, error))
+          return FALSE;
 
-      name = g_file_info_get_name (file_info);
-      size_t namelen = strlen (name);
-      if (selabel_path_buf)
-        g_string_append_len (selabel_path_buf, name, namelen);
+        if (selabel_path_buf)
+          g_string_truncate (selabel_path_buf, selabel_path_buf->len - namelen);
+      }
+    contents_csum_v = NULL; /* iter_loop freed it */
+  }
 
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
-        {
-          if (selabel_path_buf)
+  /* Process subdirectories */
+  { g_autoptr(GVariant) dir_subdirs = g_variant_get_child_value (dirtree, 1);
+    const char *dname;
+    g_autoptr(GVariant) subdirtree_csum_v = NULL;
+    g_autoptr(GVariant) subdirmeta_csum_v = NULL;
+    GVariantIter viter;
+    g_variant_iter_init (&viter, dir_subdirs);
+    while (g_variant_iter_loop (&viter, "(&s@ay@ay)", &dname,
+                                &subdirtree_csum_v, &subdirmeta_csum_v))
+      {
+        const size_t namelen = strlen (dname);
+        if (selabel_path_buf)
+          {
+            g_string_append_len (selabel_path_buf, dname, namelen);
             g_string_append_c (selabel_path_buf, '/');
-          if (!checkout_tree_at_recurse (self, options, state,
-                                         destination_dfd, name,
-                                         (OstreeRepoFile*)src_child, file_info,
-                                         cancellable, error))
-            return FALSE;
-          if (state->selabel_path_buf)
-            g_string_truncate (selabel_path_buf, state->selabel_path_buf->len-1);
-        }
-      else
-        {
-          if (!checkout_one_file_at (self, options, state,
-                                     src_child, file_info,
-                                     destination_dfd, name,
-                                     cancellable, error))
-            return FALSE;
-        }
+          }
 
-      if (selabel_path_buf)
-        g_string_truncate (selabel_path_buf, selabel_path_buf->len - namelen);
-    }
+        char subdirtree_checksum[OSTREE_SHA256_STRING_LEN+1];
+        _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, subdirtree_checksum);
+        char subdirmeta_checksum[OSTREE_SHA256_STRING_LEN+1];
+        _ostree_checksum_inplace_from_bytes_v (subdirmeta_csum_v, subdirmeta_checksum);
+        if (!checkout_tree_at_recurse (self, options, state,
+                                       destination_dfd, dname,
+                                       subdirtree_checksum, subdirmeta_checksum,
+                                       cancellable, error))
+          return FALSE;
+
+        if (selabel_path_buf)
+          g_string_truncate (selabel_path_buf, selabel_path_buf->len - namelen);
+      }
+  }
 
   /* We do fchmod/fchown last so that no one else could access the
    * partially created directory and change content we're laying out.
    */
   if (!did_exist)
     {
-      if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, g_file_info_get_attribute_uint32 (source_info, "unix::mode"))) < 0)
+      if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, mode)) < 0)
         return glnx_throw_errno (error);
     }
 
   if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      if (TEMP_FAILURE_RETRY (fchown (destination_dfd,
-                                      g_file_info_get_attribute_uint32 (source_info, "unix::uid"),
-                                      g_file_info_get_attribute_uint32 (source_info, "unix::gid"))) < 0)
+      if (TEMP_FAILURE_RETRY (fchown (destination_dfd, uid, gid)) < 0)
         return glnx_throw_errno (error);
     }
 
@@ -783,8 +805,7 @@ checkout_tree_at (OstreeRepo                        *self,
   /* Special case handling for subpath of a non-directory */
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
     return checkout_one_file_at (self, options, &state,
-                                 (GFile *) source,
-                                 source_info,
+                                 ostree_repo_file_get_checksum (source),
                                  destination_parent_fd,
                                  g_file_info_get_name (source_info),
                                  cancellable, error);
@@ -794,9 +815,13 @@ checkout_tree_at (OstreeRepo                        *self,
    */
   g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
   _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
+
+  g_assert_cmpint (g_file_info_get_file_type (source_info), ==, G_FILE_TYPE_DIRECTORY);
+  const char *dirtree_checksum = ostree_repo_file_tree_get_contents_checksum (source);
+  const char *dirmeta_checksum = ostree_repo_file_tree_get_metadata_checksum (source);
   return checkout_tree_at_recurse (self, options, &state, destination_parent_fd,
                                    destination_name,
-                                   source, source_info,
+                                   dirtree_checksum, dirmeta_checksum,
                                    cancellable, error);
 }
 
