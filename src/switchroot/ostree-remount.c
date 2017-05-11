@@ -85,13 +85,13 @@ main(int argc, char *argv[])
       if (S_ISLNK (stbuf.st_mode))
         continue;
       if (mount (target, target, NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-	{
+        {
           /* Also ignore ENINVAL - if the target isn't a mountpoint
            * already, then assume things are OK.
            */
           if (errno != EINVAL)
             err (EXIT_FAILURE, "failed to remount %s", target);
-	}
+        }
     }
 
   maybe_mount_tmpfs_on_var ();
