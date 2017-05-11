@@ -3911,77 +3911,64 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                          GCancellable   *cancellable,
                          GError        **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GBytes) commit_data = NULL;
   g_autoptr(GBytes) signature = NULL;
-  g_autoptr(GVariant) commit_variant = NULL;
-  g_autoptr(GVariant) old_metadata = NULL;
-  g_autoptr(GVariant) new_metadata = NULL;
-  glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-  GError *local_error = NULL;
 
+  g_autoptr(GVariant) commit_variant = NULL;
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit_checksum, &commit_variant, error))
-    {
-      g_prefix_error (error, "Failed to read commit: ");
-      goto out;
-    }
+    return g_prefix_error (error, "Failed to read commit: "), FALSE;
 
+  g_autoptr(GVariant) old_metadata = NULL;
   if (!ostree_repo_read_commit_detached_metadata (self,
                                                   commit_checksum,
                                                   &old_metadata,
                                                   cancellable,
                                                   error))
-    {
-      g_prefix_error (error, "Failed to read detached metadata: ");
-      goto out;
-    }
+    return g_prefix_error (error, "Failed to read detached metadata: "), FALSE;
 
   commit_data = g_variant_get_data_as_bytes (commit_variant);
 
   /* The verify operation is merely to parse any existing signatures to
    * check if the commit has already been signed with the given key ID.
    * We want to avoid storing duplicate signatures in the metadata. */
-  result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                  commit_data,
-                                                  old_metadata,
-                                                  NULL, NULL, NULL,
-                                                  cancellable,
-                                                  &local_error);
-
-  /* "Not found" just means the commit is not yet signed.  That's okay. */
-  if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+  g_autoptr(GError) local_error = NULL;
+  glnx_unref_object OstreeGpgVerifyResult *result
+    =_ostree_repo_gpg_verify_with_metadata (self, commit_data, old_metadata,
+                                            NULL, NULL, NULL,
+                                            cancellable, &local_error);
+  if (!result)
     {
-      g_clear_error (&local_error);
-    }
-  else if (local_error != NULL)
-    {
-      g_propagate_error (error, local_error);
-      goto out;
+      /* "Not found" just means the commit is not yet signed.  That's okay. */
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+        }
+      else
+        return g_propagate_error (error, g_steal_pointer (&local_error)), FALSE;
     }
   else if (ostree_gpg_verify_result_lookup (result, key_id, NULL))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
                    "Commit is already signed with GPG key %s", key_id);
-      goto out;
+      return FALSE;
     }
 
   if (!sign_data (self, commit_data, key_id, homedir,
                   &signature, cancellable, error))
-    goto out;
+    return FALSE;
 
-  new_metadata = _ostree_detached_metadata_append_gpg_sig (old_metadata, signature);
+  g_autoptr(GVariant) new_metadata =
+    _ostree_detached_metadata_append_gpg_sig (old_metadata, signature);
 
   if (!ostree_repo_write_commit_detached_metadata (self,
                                                    commit_checksum,
                                                    new_metadata,
                                                    cancellable,
                                                    error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -4005,8 +3992,9 @@ ostree_repo_sign_delta (OstreeRepo     *self,
                         const gchar    *homedir,
                         GCancellable   *cancellable,
                         GError        **error)
-{      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "ostree_repo_sign_delta is deprecated");
+{
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "ostree_repo_sign_delta is deprecated");
   return FALSE;
 }
 
@@ -4027,34 +4015,29 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                        GCancellable   *cancellable,
                                        GError        **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GBytes) summary_data = NULL;
-  g_autoptr(GVariant) existing_signatures = NULL;
-  g_autoptr(GVariant) new_metadata = NULL;
-  g_autoptr(GVariant) normalized = NULL;
-  guint i;
-
-  summary_data = ot_file_mapat_bytes (self->repo_dir_fd, "summary", error);
+  g_autoptr(GBytes) summary_data = ot_file_mapat_bytes (self->repo_dir_fd, "summary", error);
   if (!summary_data)
-    goto out;
+    return FALSE;
 
+  g_autoptr(GVariant) existing_signatures = NULL;
   if (!ot_util_variant_map_at (self->repo_dir_fd, "summary.sig",
                                G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
                                OT_VARIANT_MAP_ALLOW_NOENT, &existing_signatures, error))
-    goto out;
+    return FALSE;
 
-  for (i = 0; key_id[i]; i++)
+  g_autoptr(GVariant) new_metadata = NULL;
+  for (guint i = 0; key_id[i]; i++)
     {
       g_autoptr(GBytes) signature_data = NULL;
       if (!sign_data (self, summary_data, key_id[i], homedir,
                       &signature_data,
                       cancellable, error))
-        goto out;
+        return FALSE;
 
       new_metadata = _ostree_detached_metadata_append_gpg_sig (existing_signatures, signature_data);
     }
 
-  normalized = g_variant_get_normal_form (new_metadata);
+  g_autoptr(GVariant) normalized = g_variant_get_normal_form (new_metadata);
 
   if (!_ostree_repo_file_replace_contents (self,
                                            self->repo_dir_fd,
@@ -4062,11 +4045,9 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                            g_variant_get_data (normalized),
                                            g_variant_get_size (normalized),
                                            cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /* Special remote for _ostree_repo_gpg_verify_with_metadata() */
@@ -4493,35 +4474,26 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GHashTable) refs = NULL;
-  g_autoptr(GVariantBuilder) refs_builder = NULL;
-  g_autoptr(GVariant) summary = NULL;
-  GList *ordered_keys = NULL;
-  GList *iter = NULL;
-  g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
-
   if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
-    goto out;
+    return FALSE;
 
+  g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
-  refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
+  g_autoptr(GVariantBuilder) refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
 
-  ordered_keys = g_hash_table_get_keys (refs);
+  g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
   ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
 
-  for (iter = ordered_keys; iter; iter = iter->next)
+  for (GList *iter = ordered_keys; iter; iter = iter->next)
     {
       const char *ref = iter->data;
       const char *commit = g_hash_table_lookup (refs, ref);
-      g_autofree char *remotename = NULL;
-      g_autoptr(GVariant) commit_obj = NULL;
       g_auto(GVariantDict) commit_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
-      guint64 commit_timestamp;
-      g_autoptr(GDateTime) dt = NULL;
 
       g_assert (commit);
 
+      g_autofree char *remotename = NULL;
       if (!ostree_parse_refspec (ref, &remotename, NULL, NULL))
         g_assert_not_reached ();
 
@@ -4529,14 +4501,15 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       if (remotename != NULL)
         continue;
 
+      g_autoptr(GVariant) commit_obj = NULL;
       if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
-        goto out;
+        return FALSE;
 
       g_variant_dict_init (&commit_metadata_builder, NULL);
 
       /* Forward the commit’s timestamp if it’s valid. */
-      commit_timestamp = ostree_commit_get_timestamp (commit_obj);
-      dt = g_date_time_new_from_unix_utc (commit_timestamp);
+      guint64 commit_timestamp = ostree_commit_get_timestamp (commit_obj);
+      g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (commit_timestamp);
 
       if (dt != NULL)
         g_variant_dict_insert_value (&commit_metadata_builder, OSTREE_COMMIT_TIMESTAMP,
@@ -4551,44 +4524,36 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
 
 
   {
-    guint i;
     g_autoptr(GPtrArray) delta_names = NULL;
     g_auto(GVariantDict) deltas_builder = OT_VARIANT_BUILDER_INITIALIZER;
 
     if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
-      goto out;
+      return FALSE;
 
     g_variant_dict_init (&deltas_builder, NULL);
-    for (i = 0; i < delta_names->len; i++)
+    for (guint i = 0; i < delta_names->len; i++)
       {
         g_autofree char *from = NULL;
         g_autofree char *to = NULL;
-        g_autofree guchar *csum = NULL;
-        g_autofree char *superblock = NULL;
-        glnx_fd_close int superblock_file_fd = -1;
-        g_autoptr(GInputStream) in_stream = NULL;
-
         if (!_ostree_parse_delta_name (delta_names->pdata[i], &from, &to, error))
-          goto out;
+          return FALSE;
 
-        superblock = _ostree_get_relative_static_delta_superblock_path ((from && from[0]) ? from : NULL, to);
-        superblock_file_fd = openat (self->repo_dir_fd, superblock, O_RDONLY | O_CLOEXEC);
+        g_autofree char *superblock = _ostree_get_relative_static_delta_superblock_path ((from && from[0]) ? from : NULL, to);
+        glnx_fd_close int superblock_file_fd = openat (self->repo_dir_fd, superblock, O_RDONLY | O_CLOEXEC);
         if (superblock_file_fd == -1)
-          {
-            glnx_set_error_from_errno (error);
-            goto out;
-          }
+          return glnx_throw_errno (error);
 
-        in_stream = g_unix_input_stream_new (superblock_file_fd, TRUE);
+        g_autoptr(GInputStream) in_stream = g_unix_input_stream_new (superblock_file_fd, FALSE);
         if (!in_stream)
-          goto out;
+          return FALSE;
         superblock_file_fd = -1; /* Transfer ownership */
 
+        g_autofree guchar *csum = NULL;
         if (!ot_gio_checksum_stream (in_stream,
                                      &csum,
                                      cancellable,
                                      error))
-          goto out;
+          return FALSE;
 
         g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], ot_gvariant_new_bytearray (csum, 32));
       }
@@ -4601,6 +4566,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                  g_variant_new_uint64 (GUINT64_TO_BE (g_get_real_time () / G_USEC_PER_SEC)));
   }
 
+  g_autoptr(GVariant) summary = NULL;
   {
     g_autoptr(GVariantBuilder) summary_builder =
       g_variant_builder_new (OSTREE_SUMMARY_GVARIANT_FORMAT);
@@ -4618,22 +4584,15 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                            g_variant_get_size (summary),
                                            cancellable,
                                            error))
-    goto out;
+    return FALSE;
 
   if (unlinkat (self->repo_dir_fd, "summary.sig", 0) < 0)
     {
       if (errno != ENOENT)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "unlinkat");
     }
 
-  ret = TRUE;
- out:
-  if (ordered_keys)
-    g_list_free (ordered_keys);
-  return ret;
+  return TRUE;
 }
 
 gboolean
