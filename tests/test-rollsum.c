@@ -152,7 +152,7 @@ test_bupsplit_sum(void)
     sum1a = bupsplit_sum(buf, 0, BUP_SELFTEST_SIZE);
     sum1b = bupsplit_sum(buf, 1, BUP_SELFTEST_SIZE);
     sum2a = bupsplit_sum(buf, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE*5/2,
-			BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
+                         BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
     sum2b = bupsplit_sum(buf, 0, BUP_SELFTEST_SIZE - BUP_WINDOWSIZE);
     sum3a = bupsplit_sum(buf, 0, BUP_WINDOWSIZE+3);
     sum3b = bupsplit_sum(buf, 3, BUP_WINDOWSIZE+3);

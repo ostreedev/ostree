@@ -83,7 +83,7 @@ readdir (DIR *dirp)
   struct dirent *(*real_readdir)(DIR *dirp) = dlsym (RTLD_NEXT, READDIR);
   struct dirent *ret;
   gboolean cache_another = TRUE;
-  
+
   ensure_initialized ();
 
   /* The core idea here is that each time through the loop, we read a
@@ -101,40 +101,40 @@ readdir (DIR *dirp)
       errno = 0;
       ret = real_readdir (dirp);
       if (ret == NULL && errno != 0)
-	goto out;
+        goto out;
 
       g_mutex_lock (&direntcache_lock);
       de = g_hash_table_lookup (direntcache, dirp);
       if (ret)
-	{
-	  if (g_random_boolean ())
-	    {
-	      struct dirent *copy;
-	      if (!de)
-		{
-		  de = dir_entries_new ();
-		  g_hash_table_insert (direntcache, dirp, de);
-		}
-	      copy = g_memdup (ret, sizeof (struct dirent));
-	      g_ptr_array_add (de->entries, copy);
-	    }
-	  else
-	    {
-	      cache_another = FALSE;
-	    }
-	}
+        {
+          if (g_random_boolean ())
+            {
+              struct dirent *copy;
+              if (!de)
+                {
+                  de = dir_entries_new ();
+                  g_hash_table_insert (direntcache, dirp, de);
+                }
+              copy = g_memdup (ret, sizeof (struct dirent));
+              g_ptr_array_add (de->entries, copy);
+            }
+          else
+            {
+              cache_another = FALSE;
+            }
+        }
       else
-	{
-	  if (de && de->offset < de->entries->len)
-	    {
-	      ret = de->entries->pdata[de->offset];
-	      de->offset++;
-	    }
-	  cache_another = FALSE;
-	}
+        {
+          if (de && de->offset < de->entries->len)
+            {
+              ret = de->entries->pdata[de->offset];
+              de->offset++;
+            }
+          cache_another = FALSE;
+        }
       g_mutex_unlock (&direntcache_lock);
     }
-  
+
  out:
   return ret;
 }
@@ -145,7 +145,7 @@ closedir (DIR *dirp)
   int (*real_closedir)(DIR *dirp) = dlsym (RTLD_NEXT, "closedir");
 
   ensure_initialized ();
-  
+
   g_mutex_lock (&direntcache_lock);
   g_hash_table_remove (direntcache, dirp);
   g_mutex_unlock (&direntcache_lock);
@@ -170,7 +170,7 @@ seekdir (DIR *dirp, long loc)
 
   ensure_initialized ();
 
-  /* For now, crash if seekdir is called when we have cached entries. 
+  /* For now, crash if seekdir is called when we have cached entries.
    * If some app wants to use this and seekdir() we can implement it.
    */
   assert_no_cached_entries (dirp);

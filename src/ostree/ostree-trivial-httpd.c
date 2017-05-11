@@ -457,10 +457,10 @@ httpd_callback (SoupServer *server, SoupMessage *msg,
 
 static void
 on_dir_changed (GFileMonitor  *mon,
-		GFile *file,
-		GFile *other,
-		GFileMonitorEvent  event,
-		gpointer user_data)
+                GFile *file,
+                GFile *other,
+                GFileMonitorEvent  event,
+                gpointer user_data)
 {
   OtTrivialHttpd *self = user_data;
 

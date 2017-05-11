@@ -1,13 +1,13 @@
 /* -*- c-file-style: "gnu" -*-
  * Switch to new root directory and start init.
- * 
+ *
  * Copyright 2011,2012,2013 Colin Walters <walters@verbum.org>
  *
- * Based on code from util-linux/sys-utils/switch_root.c, 
+ * Based on code from util-linux/sys-utils/switch_root.c,
  * Copyright 2002-2009 Red Hat, Inc.  All rights reserved.
  * Authors:
- *	Peter Jones <pjones@redhat.com>
- *	Jeremy Katz <katzj@redhat.com>
+ *  Peter Jones <pjones@redhat.com>
+ *  Jeremy Katz <katzj@redhat.com>
  *
  * Relicensed with permission to LGPLv2+.
  *
@@ -91,15 +91,15 @@ parse_ostree_cmdline (void)
       const char *next = strchr (iter, ' ');
       const char *next_nonspc = next;
       while (next_nonspc && *next_nonspc == ' ')
-	next_nonspc += 1;
+        next_nonspc += 1;
       if (strncmp (iter, "ostree=", strlen ("ostree=")) == 0)
         {
-	  const char *start = iter + strlen ("ostree=");
-	  if (next)
-	    ret = strndup (start, next - start);
-	  else
-	    ret = strdup (start);
-	  break;
+          const char *start = iter + strlen ("ostree=");
+          if (next)
+            ret = strndup (start, next - start);
+          else
+            ret = strdup (start);
+          break;
         }
       iter = next_nonspc;
     }
@@ -115,7 +115,7 @@ static void
 touch_run_ostree (void)
 {
   int fd;
-  
+
   fd = open ("/run/ostree-booted", O_CREAT | O_WRONLY | O_NOCTTY, 0640);
   /* We ignore failures here in case /run isn't mounted...not much we
    * can do about that, but we don't want to fail.
@@ -239,10 +239,10 @@ main(int argc, char *argv[])
        * later boot and `systemd-remount-fs.service`.
        */
       if (path_is_on_readonly_fs ("."))
-	{
-	  if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-	    err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
-	}
+  {
+    if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+      err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
+  }
       
       if (mount ("overlay", "usr", "overlay", 0, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
