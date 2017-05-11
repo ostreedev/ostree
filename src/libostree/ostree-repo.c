@@ -3947,8 +3947,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
       else
         return g_propagate_error (error, g_steal_pointer (&local_error)), FALSE;
     }
-
-  if (ostree_gpg_verify_result_lookup (result, key_id, NULL))
+  else if (ostree_gpg_verify_result_lookup (result, key_id, NULL))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
                    "Commit is already signed with GPG key %s", key_id);
