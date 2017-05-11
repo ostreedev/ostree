@@ -218,10 +218,10 @@ can_write (const char *path)
   return 0;
 }
 
-#define VERIFY_WRITE(path) do { \
-  int r = can_write (path); \
-  if (r != 0) \
-    return r; \
+#define VERIFY_WRITE(path) do {                 \
+    int r = can_write (path);                   \
+    if (r != 0)                                 \
+      return r;                                 \
   } while (0)
 
 static int
@@ -445,7 +445,7 @@ callback_setxattr (const char *path, const char *name, const char *value,
 
 static int
 callback_getxattr (const char *path, const char *name, char *value,
-       size_t size)
+                   size_t size)
 {
   return -ENOTSUP;
 }
@@ -503,8 +503,7 @@ struct fuse_operations callback_oper = {
   .removexattr = callback_removexattr
 };
 
-enum
-{
+enum {
   KEY_HELP,
   KEY_VERSION,
 };
