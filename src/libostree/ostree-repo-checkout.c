@@ -666,15 +666,6 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
         return FALSE;
     }
 
-  /* Note early return here! */
-  if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
-    return checkout_one_file_at (self, options, state,
-                                 (GFile *) source,
-                                 source_info,
-                                 destination_dfd,
-                                 g_file_info_get_name (source_info),
-                                 cancellable, error);
-
   g_autoptr(GFileEnumerator) dir_enum =
     g_file_enumerate_children ((GFile*)source,
                                OSTREE_GIO_FAST_QUERYINFO,
@@ -788,6 +779,15 @@ checkout_tree_at (OstreeRepo                        *self,
       /* Otherwise it'd just be corrupting things, and there's no use case */
       g_assert (options->force_copy);
     }
+
+  /* Special case handling for subpath of a non-directory */
+  if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
+    return checkout_one_file_at (self, options, &state,
+                                 (GFile *) source,
+                                 source_info,
+                                 destination_parent_fd,
+                                 g_file_info_get_name (source_info),
+                                 cancellable, error);
 
   /* Cache any directory metadata we read during this operation;
    * see commit b7afe91e21143d7abb0adde440683a52712aa246
