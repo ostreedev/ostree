@@ -85,7 +85,7 @@ callback_readlink (const char *path, char *buf, size_t size)
 
 static int
 callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
-      off_t offset, struct fuse_file_info *fi)
+                  off_t offset, struct fuse_file_info *fi)
 {
   DIR *dp;
   struct dirent *de;
@@ -366,7 +366,7 @@ callback_read_buf (const char *path, struct fuse_bufvec **bufp,
 
 static int
 callback_read (const char *path, char *buf, size_t size, off_t offset,
-         struct fuse_file_info *finfo)
+               struct fuse_file_info *finfo)
 {
   int r;
   r = pread (finfo->fh, buf, size, offset);
@@ -390,7 +390,7 @@ callback_write_buf (const char *path, struct fuse_bufvec *buf, off_t offset,
 
 static int
 callback_write (const char *path, const char *buf, size_t size, off_t offset,
-    struct fuse_file_info *finfo)
+                struct fuse_file_info *finfo)
 {
   int r;
   r = pwrite (finfo->fh, buf, size, offset);
@@ -438,7 +438,7 @@ callback_access (const char *path, int mode)
 
 static int
 callback_setxattr (const char *path, const char *name, const char *value,
-       size_t size, int flags)
+                   size_t size, int flags)
 {
   return -ENOTSUP;
 }
@@ -513,19 +513,19 @@ static void
 usage (const char *progname)
 {
   fprintf (stdout,
-     "usage: %s basepath mountpoint [options]\n"
-     "\n"
-     "   Makes basepath visible at mountpoint such that files are read-only, directories are writable\n"
-     "\n"
-     "general options:\n"
-     "   -o opt,[opt...]     mount options\n"
-     "   -h  --help          print help\n"
-     "\n", progname);
+           "usage: %s basepath mountpoint [options]\n"
+           "\n"
+           "   Makes basepath visible at mountpoint such that files are read-only, directories are writable\n"
+           "\n"
+           "general options:\n"
+           "   -o opt,[opt...]     mount options\n"
+           "   -h  --help          print help\n"
+           "\n", progname);
 }
 
 static int
 rofs_parse_opt (void *data, const char *arg, int key,
-    struct fuse_args *outargs)
+                struct fuse_args *outargs)
 {
   (void) data;
 

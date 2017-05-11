@@ -239,11 +239,11 @@ main(int argc, char *argv[])
        * later boot and `systemd-remount-fs.service`.
        */
       if (path_is_on_readonly_fs ("."))
-  {
-    if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-      err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
-  }
-      
+        {
+          if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
+        }
+
       if (mount ("overlay", "usr", "overlay", 0, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
