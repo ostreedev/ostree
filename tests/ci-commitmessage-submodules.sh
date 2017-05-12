@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+
 # Copyright 2017 Colin Walters <walters@verbum.org>
 # Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
 
@@ -12,6 +13,10 @@ set -euo pipefail
 # It's very common for people to accidentally change submodules, and having this
 # requirement is a small hurdle to pass.
 
+# if running under RHCI, use the branch/PR HEAD actually
+# being tested rather than the merge sha
+HEAD=${RHCI_COMMIT:-HEAD}
+
 tmpd=$(mktemp -d)
 touch ${tmpd}/.tmpdir
 cleanup_tmp() {
@@ -22,13 +27,13 @@ cleanup_tmp() {
 }
 trap cleanup_tmp EXIT
 
-gitdir=$(pwd)
+gitdir=$(realpath $(pwd))
 # Create a temporary copy of this (using cp not git clone) so git doesn't
 # try to read the submodules from the Internet again.  If we wanted to
 # require a newer git, we could use `git worktree`.
 cp -a ${gitdir} ${tmpd}/workdir
 cd ${tmpd}/workdir
-git log --pretty=oneline origin/master.. | while read logline; do
+git log --pretty=oneline origin/master..$HEAD | while read logline; do
     commit=$(echo ${logline} | cut -f 1 -d ' ')
     git diff --name-only ${commit}^..${commit} > ${tmpd}/diff.txt
     git log -1 ${commit} > ${tmpd}/log.txt
