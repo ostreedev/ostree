@@ -38,24 +38,6 @@
 
 #include "ostree-mount-util.h"
 
-/* Having a writeable /var is necessary for full system functioning.
- * If /var isn't writeable, we mount tmpfs over it. While this is
- * somewhat outside of ostree's scope, having all /var twiddling
- * in one place will make future maintenance easier.
- */
-static void
-maybe_mount_tmpfs_on_var (void)
-{
-  if (!path_is_on_readonly_fs ("/var"))
-    return;
-
-  if (umount ("/var") < 0 && errno != EINVAL)
-    warn ("failed to unmount /var prior to mounting tmpfs, mounting over");
-
-  if (mount ("tmpfs", "/var", "tmpfs", 0, NULL) < 0)
-    err (EXIT_FAILURE, "failed to mount tmpfs on /var");
-}
-
 int
 main(int argc, char *argv[])
 {
@@ -68,8 +50,6 @@ main(int argc, char *argv[])
       /* If / isn't writable, don't do any remounts; we don't want
        * to clear the readonly flag in that case.
        */
-
-      maybe_mount_tmpfs_on_var ();
 
       exit (EXIT_SUCCESS);
     }
@@ -93,8 +73,6 @@ main(int argc, char *argv[])
             err (EXIT_FAILURE, "failed to remount %s", target);
         }
     }
-
-  maybe_mount_tmpfs_on_var ();
 
   exit (EXIT_SUCCESS);
 }
