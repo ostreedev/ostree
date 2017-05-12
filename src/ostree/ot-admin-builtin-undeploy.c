@@ -83,7 +83,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
            ostree_deployment_get_deployserial (target_deployment));
 
   if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
-    return g_prefix_error (error, "Performing final cleanup: "), FALSE;
+    return glnx_prefix_error (error, "Performing final cleanup");
 
   return TRUE;
 }

@@ -3917,7 +3917,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   g_autoptr(GVariant) commit_variant = NULL;
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit_checksum, &commit_variant, error))
-    return g_prefix_error (error, "Failed to read commit: "), FALSE;
+    return glnx_prefix_error (error, "Failed to read commit");
 
   g_autoptr(GVariant) old_metadata = NULL;
   if (!ostree_repo_read_commit_detached_metadata (self,
@@ -3925,7 +3925,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                                                   &old_metadata,
                                                   cancellable,
                                                   error))
-    return g_prefix_error (error, "Failed to read detached metadata: "), FALSE;
+    return glnx_prefix_error (error, "Failed to read detached metadata");
 
   commit_data = g_variant_get_data_as_bytes (commit_variant);
 

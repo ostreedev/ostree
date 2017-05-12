@@ -459,7 +459,7 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
           glnx_unref_object OstreeBootconfigParser *config = ostree_bootconfig_parser_new ();
 
           if (!ostree_bootconfig_parser_parse_at (config, dfd_iter.fd, dent->d_name, cancellable, error))
-            return g_prefix_error (error, "Parsing %s: ", dent->d_name), FALSE;
+            return glnx_prefix_error (error, "Parsing %s", dent->d_name);
 
           g_ptr_array_add (ret_loader_configs, g_object_ref (config));
         }
@@ -533,7 +533,7 @@ parse_origin (OstreeSysroot   *self,
         return FALSE;
 
       if (!g_key_file_load_from_data (ret_origin, origin_contents, -1, 0, error))
-        return g_prefix_error (error, "Parsing %s: ", origin_path), FALSE;
+        return glnx_prefix_error (error, "Parsing %s", origin_path);
     }
 
   ot_transfer_out_value(out_origin, &ret_origin);
