@@ -516,7 +516,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       if (!checkout_object_for_uncompressed_cache (repo, loose_path_buf,
                                                    source_info, input,
                                                    cancellable, error))
-        return g_prefix_error (error, "Unpacking loose object %s: ", checksum), FALSE;
+        return glnx_prefix_error (error, "Unpacking loose object %s", checksum);
 
       g_clear_object (&input);
 
@@ -549,7 +549,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                    destination_dfd, destination_name,
                                    FALSE, &hardlink_res,
                                    cancellable, error))
-        return g_prefix_error (error, "Using new cached uncompressed hardlink of %s to %s: ", checksum, destination_name), FALSE;
+        return glnx_prefix_error (error, "Using new cached uncompressed hardlink of %s to %s", checksum, destination_name);
 
       need_copy = (hardlink_res == HARDLINK_RESULT_NOT_SUPPORTED);
     }
@@ -571,7 +571,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       if (!create_file_copy_from_input_at (repo, options, state, source_info, xattrs, input,
                                            destination_dfd, destination_name,
                                            cancellable, error))
-        return g_prefix_error (error, "Copy checkout of %s to %s: ", checksum, destination_name), FALSE;
+        return glnx_prefix_error (error, "Copy checkout of %s to %s", checksum, destination_name);
 
       if (input)
         {

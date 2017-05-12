@@ -99,7 +99,7 @@ ot_test_setup_sysroot (GCancellable *cancellable,
 
   { g_autoptr(GString) buf = g_string_new ("mutable-deployments");
     if (statfs ("/", &stbuf) < 0)
-      return glnx_throw_errno (error), NULL;
+      return glnx_null_throw_errno (error);
     /* Keep this in sync with the overlayfs bits in libtest.sh */
 #ifndef OVERLAYFS_SUPER_MAGIC
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630

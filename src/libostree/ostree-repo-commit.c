@@ -2009,13 +2009,13 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
       !ot_util_variant_map_at (self->commit_stagedir_fd, buf,
                                G_VARIANT_TYPE ("a{sv}"),
                                OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
-    return g_prefix_error (error, "Unable to read existing detached metadata: "), FALSE;
+    return glnx_prefix_error (error, "Unable to read existing detached metadata");
 
   if (ret_metadata == NULL &&
       !ot_util_variant_map_at (self->objects_dir_fd, buf,
                                G_VARIANT_TYPE ("a{sv}"),
                                OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
-    return g_prefix_error (error, "Unable to read existing detached metadata: "), FALSE;
+    return glnx_prefix_error (error, "Unable to read existing detached metadata");
 
   if (ret_metadata == NULL && self->parent_repo)
     return ostree_repo_read_commit_detached_metadata (self->parent_repo,

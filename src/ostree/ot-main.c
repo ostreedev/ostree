@@ -377,7 +377,7 @@ ostree_ensure_repo_writable (OstreeRepo *repo,
                              GError **error)
 {
   if (!ostree_repo_is_writable (repo, error))
-    return g_prefix_error (error, "Cannot write to repository: "), FALSE;
+    return glnx_prefix_error (error, "Cannot write to repository");
   return TRUE;
 }
 

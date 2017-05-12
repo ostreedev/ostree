@@ -1306,7 +1306,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
           contents = glnx_file_get_contents_utf8_at (deployment_dfd, "etc/os-release", NULL,
                                                      cancellable, error);
           if (!contents)
-            return g_prefix_error (error, "Reading /etc/os-release: "), FALSE;
+            return glnx_prefix_error (error, "Reading /etc/os-release");
         }
     }
   else
@@ -1314,7 +1314,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
       contents = glnx_file_get_contents_utf8_at (deployment_dfd, "usr/lib/os-release", NULL,
                                                  cancellable, error);
       if (!contents)
-        return g_prefix_error (error, "Reading /usr/lib/os-release: "), FALSE;
+        return glnx_prefix_error (error, "Reading /usr/lib/os-release");
     }
 
   g_autoptr(GHashTable) osrelease_values = parse_os_release (contents, "\n");

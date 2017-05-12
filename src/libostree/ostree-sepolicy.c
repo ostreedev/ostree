@@ -383,7 +383,7 @@ initable_init (GInitable     *initable,
       freecon (con);
 
       if (!get_policy_checksum (&self->selinux_policy_csum, cancellable, error))
-        return g_prefix_error (error, "While calculating SELinux checksum: "), FALSE;
+        return glnx_prefix_error (error, "While calculating SELinux checksum");
 
       self->selinux_policy_name = g_steal_pointer (&policytype);
       self->selinux_policy_root = g_object_ref (etc_selinux_dir);
