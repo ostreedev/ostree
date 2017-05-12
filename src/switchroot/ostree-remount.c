@@ -41,7 +41,7 @@
 int
 main(int argc, char *argv[])
 {
-  const char *remounts[] = { "/sysroot", "/etc", "/home", "/root", "/tmp", "/var", NULL };
+  const char *remounts[] = { "/sysroot", "/var", NULL };
   struct stat stbuf;
   int i;
 
