@@ -812,11 +812,31 @@ checkout_tree_at (OstreeRepo                        *self,
 
   /* Special case handling for subpath of a non-directory */
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
-    return checkout_one_file_at (self, options, &state,
-                                 ostree_repo_file_get_checksum (source),
-                                 destination_parent_fd,
-                                 g_file_info_get_name (source_info),
-                                 cancellable, error);
+    {
+      /* For backwards compat reasons, we do a mkdir() here. However, as a
+       * special case to allow callers to directly check out files without an
+       * intermediate root directory, we will skip mkdirat() if
+       * `destination_name` == `.`, since obviously the current directory
+       * exists.
+       */
+      int destination_dfd = destination_parent_fd;
+      glnx_fd_close int destination_dfd_owned = -1;
+      if (strcmp (destination_name, ".") != 0)
+        {
+          if (mkdirat (destination_parent_fd, destination_name, 0700) < 0
+              && errno != EEXIST)
+            return glnx_throw_errno_prefix (error, "mkdirat");
+          if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE,
+                               &destination_dfd_owned, error))
+            return FALSE;
+          destination_dfd = destination_dfd_owned;
+        }
+      return checkout_one_file_at (self, options, &state,
+                                   ostree_repo_file_get_checksum (source),
+                                   destination_dfd,
+                                   g_file_info_get_name (source_info),
+                                   cancellable, error);
+    }
 
   /* Cache any directory metadata we read during this operation;
    * see commit b7afe91e21143d7abb0adde440683a52712aa246

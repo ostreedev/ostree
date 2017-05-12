@@ -341,6 +341,18 @@ cd ${test_tmpdir}
 $OSTREE checkout --subpath /yet/another test2 checkout-test2-subpath
 cd checkout-test2-subpath
 assert_file_has_content tree/green "leaf"
+cd ${test_tmpdir}
+rm checkout-test2-subpath -rf
+$OSTREE ls -R test2
+# Test checking out a file
+$OSTREE checkout --subpath /baz/saucer test2 checkout-test2-subpath
+assert_file_has_content checkout-test2-subpath/saucer alien
+# Test checking out a file without making a subdir
+mkdir t
+cd t
+$OSTREE checkout --subpath /baz/saucer test2 .
+assert_file_has_content saucer alien
+rm t -rf
 echo "ok checkout subpath"
 
 cd ${test_tmpdir}
