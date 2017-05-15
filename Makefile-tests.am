@@ -82,6 +82,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-local-pull-depth.sh \
 	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-upgrade-unconfigured.sh \
+	tests/test-admin-upgrade-endoflife.sh \
 	tests/test-admin-deploy-syslinux.sh \
 	tests/test-admin-deploy-2.sh \
 	tests/test-admin-deploy-karg.sh \
