@@ -279,20 +279,9 @@ gboolean
 ot_list_cookies_at (int dfd, const char *jar_path, GError **error)
 {
 #ifdef HAVE_LIBCURL
-  glnx_fd_close int tempfile_fd = -1;
-  g_autofree char *tempfile_path = NULL;
-  g_autofree char *dnbuf = NULL;
-  const char *dn = NULL;
   g_autoptr(OtCookieParser) parser = NULL;
 
   if (!ot_parse_cookies_at (AT_FDCWD, jar_path, &parser, NULL, error))
-    return FALSE;
-
-  dnbuf = dirname (g_strdup (jar_path));
-  dn = dnbuf;
-  if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, dn, O_WRONLY | O_CLOEXEC,
-                                      &tempfile_fd, &tempfile_path,
-                                      error))
     return FALSE;
 
   while (ot_parse_cookies_next (parser))
