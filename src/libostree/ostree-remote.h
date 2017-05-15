@@ -48,9 +48,16 @@ G_BEGIN_DECLS
 typedef struct OstreeRemote OstreeRemote;
 #endif
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+_OSTREE_PUBLIC
+GType ostree_remote_get_type (void) G_GNUC_CONST;
+#else
+#ifndef __GI_SCANNER__
 _OSTREE_PUBLIC
 OstreeRemote *ostree_remote_ref (OstreeRemote *remote);
 _OSTREE_PUBLIC
 void ostree_remote_unref (OstreeRemote *remote);
+#endif /* GI_SCANNER */
+#endif
 
 G_END_DECLS

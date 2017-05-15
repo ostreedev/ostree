@@ -142,3 +142,9 @@ ostree_remote_unref (OstreeRemote *remote)
       g_slice_free (OstreeRemote, remote);
     }
 }
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+G_DEFINE_BOXED_TYPE(OstreeRemote, ostree_remote,
+                    ostree_remote_ref,
+                    ostree_remote_unref);
+#endif
