@@ -23,7 +23,10 @@
 #include <glib-unix.h>
 #include <gio/gunixoutputstream.h>
 #include <errno.h>
+#include <stdio.h>
+#ifdef HAVE_LIBMOUNT
 #include <libmount.h>
+#endif
 #include <stdbool.h>
 
 #include "ostree.h"
@@ -32,6 +35,7 @@
 
 #include "libglnx.h"
 
+#ifdef HAVE_LIBMOUNT
 typedef FILE OtLibMountFile;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtLibMountFile, endmntent);
 
@@ -106,6 +110,7 @@ stateroot_from_ostree_cmdline (const char *ostree_cmdline,
 
   return g_match_info_fetch (match, 1);
 }
+#endif
 
 /* Implementation of ostree-system-generator */
 gboolean
@@ -115,6 +120,7 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
                                const char *late_dir,
                                GError    **error)
 {
+#ifdef HAVE_LIBMOUNT
   /* Not currently cancellable, but define a var in case we care later */
   GCancellable *cancellable = NULL;
   /* Some path constants to avoid typos */
@@ -207,4 +213,7 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
     return FALSE;
 
   return TRUE;
+#else
+  return glnx_throw (error, "Not implemented");
+#endif
 }
