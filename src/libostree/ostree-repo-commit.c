@@ -160,8 +160,13 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
 
   if (fd != -1)
     {
-      if (!glnx_link_tmpfile_at (temp_dfd, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
-                                 fd, temp_filename, dest_dfd, tmpbuf, error))
+      /* FIXME: We'll unlink the tmpfile here in the non-O_TMPFILE case, and
+       * then go to unlink it again up the stack. Need to fix this with an
+       * OstreeTempObject struct or so that handles both regfiles and symlinks.
+       */
+      GLnxTmpfile tmpfile = { temp_dfd, fd, temp_filename ? g_strdup (temp_filename) : NULL };
+      if (!glnx_link_tmpfile_at (&tmpfile, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
+                                 dest_dfd, tmpbuf, error))
         return FALSE;
     }
   else
@@ -494,16 +499,18 @@ _ostree_repo_open_content_bare (OstreeRepo          *self,
 
   if (!have_obj)
     {
-      int fd;
-
+      /* TODO - raise this struct into OstreeRepoContentBareCommit */
+      g_auto(GLnxTmpfile) tmpf = GLNX_TMPFILE_INIT;
       if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                          &fd, &temp_filename, error))
+                                          &tmpf, error))
         goto out;
 
-      if (!ot_fallocate (fd, content_len, error))
+      if (!ot_fallocate (tmpf.fd, content_len, error))
         goto out;
 
-      ret_stream = g_unix_output_stream_new (fd, TRUE);
+      /* Destructure and transfer ownership */
+      temp_filename = g_steal_pointer (&tmpf.path);
+      ret_stream = g_unix_output_stream_new (tmpf.fd, TRUE); tmpf.fd = -1;
     }
 
   ret = TRUE;
@@ -558,36 +565,36 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
                                               GCancellable *cancellable,
                                               GError **error)
 {
-  glnx_fd_close int temp_fd = -1;
-  g_autofree char *temp_filename = NULL;
-
+  g_auto(GLnxTmpfile) tmpf = GLNX_TMPFILE_INIT;
   if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                      &temp_fd, &temp_filename,
-                                      error))
+                                      &tmpf, error))
     return FALSE;
 
-  if (!ot_fallocate (temp_fd, length, error))
+  if (!ot_fallocate (tmpf.fd, length, error))
     return FALSE;
 
   if (G_IS_FILE_DESCRIPTOR_BASED (input))
     {
       int infd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*) input);
-      if (glnx_regfile_copy_bytes (infd, temp_fd, (off_t)length, TRUE) < 0)
+      if (glnx_regfile_copy_bytes (infd, tmpf.fd, (off_t)length, TRUE) < 0)
         return glnx_throw_errno_prefix (error, "regfile copy");
     }
   else
     {
-      g_autoptr(GOutputStream) temp_out = g_unix_output_stream_new (temp_fd, FALSE);
+      g_autoptr(GOutputStream) temp_out = g_unix_output_stream_new (tmpf.fd, FALSE);
       if (g_output_stream_splice (temp_out, input, 0,
                                   cancellable, error) < 0)
         return FALSE;
     }
 
-  if (fchmod (temp_fd, 0644) < 0)
+  if (fchmod (tmpf.fd, 0644) < 0)
     return glnx_throw_errno_prefix (error, "fchmod");
 
-  *out_fd = temp_fd; temp_fd = -1;
-  *out_path = g_steal_pointer (&temp_filename);
+  /* Deconstruct and return. It's hard to return the tmpf directly since some
+   * bits of the commit path also use the temp path for symlinks.
+   */
+  *out_fd = tmpf.fd; tmpf.fd = -1;
+  *out_path = g_steal_pointer (&tmpf.path);
   return TRUE;
 }
 
@@ -716,10 +723,15 @@ write_object (OstreeRepo         *self,
           if (self->generate_sizes)
             indexable = TRUE;
 
+          GLnxTmpfile tmpf; /* Not auto, see below */
           if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                              &temp_fd, &temp_filename,
-                                              error))
+                                              &tmpf, error))
             goto out;
+          /* We destructure it here to avoid having to churn too much code;
+           * perhaps down the line we could pass the tmpfile struct down.
+           */
+          temp_fd = tmpf.fd; tmpf.fd = -1;
+          temp_filename = g_steal_pointer (&tmpf.path);
           temp_file_is_regular = TRUE;
           temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
