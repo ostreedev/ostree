@@ -28,12 +28,11 @@
 #include <libmount.h>
 #endif
 #include <stdbool.h>
+#include "otutil.h"
 
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-cmdprivate.h"
-
-#include "libglnx.h"
 
 #ifdef HAVE_LIBMOUNT
 typedef FILE OtLibMountFile;
