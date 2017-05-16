@@ -114,19 +114,14 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
   if (self->cache_dir_fd == -1)
     return TRUE;
 
-  glnx_fd_close int fd = glnx_opendirat_with_errno (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, FALSE);
-  if (fd < 0)
-    {
-      /* Note early return */
-      if (errno == ENOENT)
-        return TRUE;
-      else
-        return glnx_throw_errno_prefix (error, "opendirat(%s)", _OSTREE_SUMMARY_CACHE_DIR);
-    }
-
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  if (!glnx_dirfd_iterator_init_take_fd (dup (fd), &dfd_iter, error))
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR,
+                                     &dfd_iter, &exists, error))
     return FALSE;
+  /* Note early return */
+  if (!exists)
+    return TRUE;
 
   while (TRUE)
     {
@@ -152,7 +147,7 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
           if (has_sig_suffix)
             dent->d_name[len - 4] = '.';
 
-          if (unlinkat (fd, dent->d_name, 0) < 0)
+          if (unlinkat (dfd_iter.fd, dent->d_name, 0) < 0)
             return glnx_throw_errno_prefix (error, "unlinkat");
         }
     }

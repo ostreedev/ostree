@@ -73,99 +73,89 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                      GCancellable                *cancellable,
                                      GError                     **error)
 {
-  g_autoptr(GPtrArray) ret_deltas = NULL;
-  glnx_fd_close int dfd = -1;
+  g_autoptr(GPtrArray) ret_deltas = g_ptr_array_new_with_free_func (g_free);
 
-  ret_deltas = g_ptr_array_new_with_free_func (g_free);
-
-  dfd = glnx_opendirat_with_errno (self->repo_dir_fd, "deltas", TRUE);
-  if (dfd < 0)
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, "deltas", &dfd_iter,
+                                     &exists, error))
+    return FALSE;
+  if (!exists)
     {
-      if (errno != ENOENT)
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+      /* Note early return */
+      ot_transfer_out_value (out_deltas, &ret_deltas);
+      return TRUE;
     }
-  else
-    {
-      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-      if (!glnx_dirfd_iterator_init_take_fd (dfd, &dfd_iter, error))
+  while (TRUE)
+    {
+      g_auto(GLnxDirFdIterator) sub_dfd_iter = { 0, };
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         return FALSE;
-      dfd = -1;
+      if (dent == NULL)
+        break;
+      if (dent->d_type != DT_DIR)
+        continue;
+
+      if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
+                                        &sub_dfd_iter, error))
+        return FALSE;
 
       while (TRUE)
         {
-          g_auto(GLnxDirFdIterator) sub_dfd_iter = { 0, };
-          struct dirent *dent;
+          struct dirent *sub_dent;
+          const char *name1;
+          const char *name2;
+          g_autofree char *superblock_subpath = NULL;
+          struct stat stbuf;
 
-          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&sub_dfd_iter, &sub_dent,
+                                                           cancellable, error))
             return FALSE;
-          if (dent == NULL)
+          if (sub_dent == NULL)
             break;
           if (dent->d_type != DT_DIR)
             continue;
 
-          if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
-                                            &sub_dfd_iter, error))
-            return FALSE;
+          name1 = dent->d_name;
+          name2 = sub_dent->d_name;
 
-          while (TRUE)
+          superblock_subpath = g_strconcat (name2, "/superblock", NULL);
+          if (fstatat (sub_dfd_iter.fd, superblock_subpath, &stbuf, 0) < 0)
             {
-              struct dirent *sub_dent;
-              const char *name1;
-              const char *name2;
-              g_autofree char *superblock_subpath = NULL;
-              struct stat stbuf;
-
-              if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&sub_dfd_iter, &sub_dent,
-                                                               cancellable, error))
-                return FALSE;
-              if (sub_dent == NULL)
-                break;
-              if (dent->d_type != DT_DIR)
-                continue;
-
-              name1 = dent->d_name;
-              name2 = sub_dent->d_name;
-
-              superblock_subpath = g_strconcat (name2, "/superblock", NULL);
-              if (fstatat (sub_dfd_iter.fd, superblock_subpath, &stbuf, 0) < 0)
+              if (errno != ENOENT)
                 {
-                  if (errno != ENOENT)
-                    {
-                      glnx_set_error_from_errno (error);
-                      return FALSE;
-                    }
+                  glnx_set_error_from_errno (error);
+                  return FALSE;
                 }
-              else
-                {
-                  g_autofree char *buf = g_strconcat (name1, name2, NULL);
-                  GString *out = g_string_new ("");
-                  char checksum[OSTREE_SHA256_STRING_LEN+1];
-                  guchar csum[OSTREE_SHA256_DIGEST_LEN];
-                  const char *dash = strchr (buf, '-');
+            }
+          else
+            {
+              g_autofree char *buf = g_strconcat (name1, name2, NULL);
+              GString *out = g_string_new ("");
+              char checksum[OSTREE_SHA256_STRING_LEN+1];
+              guchar csum[OSTREE_SHA256_DIGEST_LEN];
+              const char *dash = strchr (buf, '-');
 
-                  ostree_checksum_b64_inplace_to_bytes (buf, csum);
+              ostree_checksum_b64_inplace_to_bytes (buf, csum);
+              ostree_checksum_inplace_from_bytes (csum, checksum);
+              g_string_append (out, checksum);
+              if (dash)
+                {
+                  g_string_append_c (out, '-');
+                  ostree_checksum_b64_inplace_to_bytes (dash+1, csum);
                   ostree_checksum_inplace_from_bytes (csum, checksum);
                   g_string_append (out, checksum);
-                  if (dash)
-                    {
-                      g_string_append_c (out, '-');
-                      ostree_checksum_b64_inplace_to_bytes (dash+1, csum);
-                      ostree_checksum_inplace_from_bytes (csum, checksum);
-                      g_string_append (out, checksum);
-                    }
-
-                  g_ptr_array_add (ret_deltas, g_string_free (out, FALSE));
                 }
+
+              g_ptr_array_add (ret_deltas, g_string_free (out, FALSE));
             }
         }
     }
 
-  if (out_deltas)
-    *out_deltas = g_steal_pointer (&ret_deltas);
+  ot_transfer_out_value (out_deltas, &ret_deltas);
   return TRUE;
 }
 

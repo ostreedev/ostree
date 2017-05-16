@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ot-unix-utils.h"
+#include "libglnx.h"
 
 G_BEGIN_DECLS
 
@@ -52,6 +53,12 @@ gboolean ot_openat_ignore_enoent (int dfd,
                                   const char *path,
                                   int *out_fd,
                                   GError **error);
+
+gboolean ot_dfd_iter_init_allow_noent (int dfd,
+                                       const char *path,
+                                       GLnxDirFdIterator *dfd_iter,
+                                       gboolean *out_exists,
+                                       GError **error);
 
 GBytes *ot_file_mapat_bytes (int dfd,
                              const char *path,
