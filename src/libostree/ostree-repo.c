@@ -2283,6 +2283,7 @@ list_loose_objects_at (OstreeRepo             *self,
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   if (!glnx_dirfd_iterator_init_take_fd (target_dfd, &dfd_iter, error))
     return FALSE;
+  target_dfd = -1; /* Transferred */
 
   while (TRUE)
     {
