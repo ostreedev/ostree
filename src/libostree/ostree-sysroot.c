@@ -421,23 +421,17 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
     g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
   g_autofree char *entries_path = g_strdup_printf ("boot/loader.%d/entries", bootversion);
-  /* Temporary owned by iterator */
-  int fd = glnx_opendirat_with_errno (self->sysroot_fd, entries_path, TRUE);
-  if (fd == -1)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno (error);
-      else
-        {
-          /* Note early return */
-          *out_loader_configs = g_steal_pointer (&ret_loader_configs);
-          return TRUE;
-        }
-    }
-
+  gboolean entries_exists;
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  if (!glnx_dirfd_iterator_init_take_fd (fd, &dfd_iter, error))
+  if (!ot_dfd_iter_init_allow_noent (self->sysroot_fd, entries_path,
+                                     &dfd_iter, &entries_exists, error))
     return FALSE;
+  if (!entries_exists)
+    {
+      /* Note early return */
+      *out_loader_configs = g_steal_pointer (&ret_loader_configs);
+      return TRUE;
+    }
 
   while (TRUE)
     {

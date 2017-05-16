@@ -25,31 +25,6 @@
 
 #include "ostree-sysroot-private.h"
 
-/* Like glnx_dirfd_iterator_init_at(), but if %ENOENT, then set
- * @out_exists to %FALSE, and return successfully.
- */
-static gboolean
-dfd_iter_init_allow_noent (int dfd,
-                           const char *path,
-                           GLnxDirFdIterator *dfd_iter,
-                           gboolean *out_exists,
-                           GError **error)
-{
-  glnx_fd_close int fd = glnx_opendirat_with_errno (dfd, path, TRUE);
-  if (fd < 0)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno (error);
-      *out_exists = FALSE;
-      return TRUE;
-    }
-  if (!glnx_dirfd_iterator_init_take_fd (fd, dfd_iter, error))
-    return FALSE;
-  fd = -1;
-  *out_exists = TRUE;
-  return TRUE;
-}
-
 /* @deploydir_dfd: Directory FD for ostree/deploy
  * @osname: Target osname
  * @inout_deployments: All deployments in this subdir will be appended to this array
@@ -64,7 +39,7 @@ _ostree_sysroot_list_deployment_dirs_for_os (int                  deploydir_dfd,
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   gboolean exists;
   const char *osdeploy_path = glnx_strjoina (osname, "/deploy");
-  if (!dfd_iter_init_allow_noent (deploydir_dfd, osdeploy_path, &dfd_iter, &exists, error))
+  if (!ot_dfd_iter_init_allow_noent (deploydir_dfd, osdeploy_path, &dfd_iter, &exists, error))
     return FALSE;
   if (!exists)
     return TRUE;
@@ -106,7 +81,7 @@ list_all_deployment_directories (OstreeSysroot       *self,
 
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   gboolean exists;
-  if (!dfd_iter_init_allow_noent (self->sysroot_fd, "ostree/deploy", &dfd_iter, &exists, error))
+  if (!ot_dfd_iter_init_allow_noent (self->sysroot_fd, "ostree/deploy", &dfd_iter, &exists, error))
     return FALSE;
   if (!exists)
     return TRUE;

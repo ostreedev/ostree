@@ -2272,18 +2272,13 @@ list_loose_objects_at (OstreeRepo             *self,
 {
   GVariant *key, *value;
 
-  glnx_fd_close int target_dfd = glnx_opendirat_with_errno (dfd, prefix, FALSE);
-  if (target_dfd < 0)
-    {
-      /* Nothing to do if this dir doesn't exist */
-      if (errno == ENOENT)
-        return TRUE;
-      return glnx_throw_errno (error);
-    }
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  if (!glnx_dirfd_iterator_init_take_fd (target_dfd, &dfd_iter, error))
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (dfd, prefix, &dfd_iter, &exists, error))
     return FALSE;
-  target_dfd = -1; /* Transferred */
+  /* Note early return */
+  if (!exists)
+    return TRUE;
 
   while (TRUE)
     {
