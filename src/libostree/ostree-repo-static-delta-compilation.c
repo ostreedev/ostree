@@ -449,29 +449,25 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
                                GCancellable     *cancellable,
                                GError          **error)
 {
-  g_autofree char *tmpname = NULL;
-  glnx_fd_close int fd = -1;
+  g_auto(GLnxTmpfile) tmpf = GLNX_TMPFILE_INIT;
   g_autoptr(GBytes) ret_content = NULL;
   g_autoptr(GInputStream) istream = NULL;
   g_autoptr(GOutputStream) out = NULL;
 
   if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, "/tmp", O_RDWR | O_CLOEXEC,
-                                      &fd, &tmpname, error))
+                                      &tmpf, error))
     return FALSE;
-  /* We don't need the file name */
-  if (tmpname)
-    (void) unlinkat (AT_FDCWD, tmpname, 0);
 
   if (!ostree_repo_load_file (repo, checksum, &istream, NULL, NULL,
                               cancellable, error))
     return FALSE;
 
-  out = g_unix_output_stream_new (fd, FALSE);
+  out = g_unix_output_stream_new (tmpf.fd, FALSE);
   if (g_output_stream_splice (out, istream, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
                               cancellable, error) < 0)
     return FALSE;
 
-  { g_autoptr(GMappedFile) mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
+  { g_autoptr(GMappedFile) mfile = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
     if (!mfile)
       return FALSE;
     ret_content = g_mapped_file_get_bytes (mfile);
@@ -1273,8 +1269,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   g_autoptr(GVariantBuilder) part_headers = NULL;
-  g_autoptr(GArray) part_temp_fds = NULL;
-  g_autoptr(GPtrArray) part_temp_paths = NULL;
+  g_autoptr(GArray) part_tempf = NULL;
   g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;
   const char *opt_filename;
@@ -1385,8 +1380,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     }
 
   part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
-  part_temp_paths = g_ptr_array_new_with_free_func (g_free);
-  part_temp_fds = g_array_new (FALSE, TRUE, sizeof(int));
+  part_tempf = g_array_new (FALSE, TRUE, sizeof(GLnxTmpfile));
+  g_array_set_clear_func (part_tempf, (GDestroyNotify)glnx_tmpfile_clear);
   for (i = 0; i < builder.parts->len; i++)
     {
       OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];
@@ -1459,17 +1454,12 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
         }
       else
         {
-          char *part_tempfile;
-          int part_temp_fd;
-
+          g_array_set_size (part_tempf, part_tempf->len + 1);
+          GLnxTmpfile *tmpf = &g_array_index(part_tempf, GLnxTmpfile, part_tempf->len-1);
           if (!glnx_open_tmpfile_linkable_at (tmp_dfd, ".", O_WRONLY | O_CLOEXEC,
-                                              &part_temp_fd, &part_tempfile, error))
+                                              tmpf, error))
             goto out;
-
-          /* Transfer tempfile ownership to arrays */
-          g_array_append_val (part_temp_fds, part_temp_fd);
-          g_ptr_array_add (part_temp_paths, g_steal_pointer (&part_tempfile));
-          part_temp_outstream = g_unix_output_stream_new (part_temp_fd, FALSE);
+          part_temp_outstream = g_unix_output_stream_new (tmpf->fd, FALSE);
         }
 
       part_in = ot_variant_read (delta_part);
@@ -1524,21 +1514,19 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       descriptor_name = g_strdup (basename (descriptor_relpath));
     }
 
-  for (i = 0; i < part_temp_paths->len; i++)
+  for (i = 0; i < part_tempf->len; i++)
     {
+      GLnxTmpfile *tmpf = &g_array_index(part_tempf, GLnxTmpfile, i);
       g_autofree char *partstr = g_strdup_printf ("%u", i);
       /* Take ownership of the path/fd here */
-      g_autofree char *path = g_steal_pointer (&part_temp_paths->pdata[i]);
-      glnx_fd_close int fd = g_array_index (part_temp_fds, int, i);
-      g_array_index (part_temp_fds, int, i) = -1;
 
-      if (fchmod (fd, 0644) < 0)
+      if (fchmod (tmpf->fd, 0644) < 0)
         {
           glnx_set_error_from_errno (error);
           goto out;
         }
 
-      if (!glnx_link_tmpfile_at (tmp_dfd, GLNX_LINK_TMPFILE_REPLACE, fd, path,
+      if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_REPLACE,
                                  descriptor_dfd, partstr, error))
         goto out;
     }
@@ -1598,14 +1586,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   ret = TRUE;
  out:
-  if (part_temp_fds)
-    for (i = 0; i < part_temp_fds->len; i++)
-      {
-        int fd = g_array_index (part_temp_fds, int, i);
-        if (fd == -1)
-          continue;
-        (void) close (fd);
-      }
   g_clear_pointer (&builder.parts, g_ptr_array_unref);
   g_clear_pointer (&builder.fallback_objects, g_ptr_array_unref);
   return ret;
