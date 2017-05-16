@@ -378,10 +378,7 @@ dnl We have separate checks for libsystemd and the unit dir for historical reaso
 PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd], [have_libsystemd=yes], [have_libsystemd=no])
 AM_CONDITIONAL(BUILDOPT_LIBSYSTEMD, test x$have_libsystemd = xyes)
 AM_COND_IF(BUILDOPT_LIBSYSTEMD,
-           AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd])
-           systemdsystemgeneratordir=$($PKG_CONFIG --variable=systemdsystemgeneratordir systemd)
-           AC_SUBST(systemdsystemgeneratordir)
-           )
+           AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd]))
 
 AS_IF([test "x$have_libsystemd" = "xyes"], [
   with_systemd=yes
@@ -391,6 +388,13 @@ AS_IF([test "x$have_libsystemd" = "xyes"], [
               [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
   AS_IF([test "x$with_systemdsystemunitdir" != "xno"], [
     AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
+  ])
+  AC_ARG_WITH([systemdsystemgeneratordir],
+              AS_HELP_STRING([--with-systemdsystemgeneratordir=DIR], [Directory for systemd generators]),
+              [],
+              [with_systemdsystemgeneratordir=$($PKG_CONFIG --variable=systemdsystemgeneratordir systemd)])
+  AS_IF([test "x$with_systemdsystemgeneratordir" != "xno"], [
+    AC_SUBST([systemdsystemgeneratordir], [$with_systemdsystemgeneratordir])
   ])
 ])
 AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
