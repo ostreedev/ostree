@@ -191,6 +191,7 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
                                "ConditionKernelCommandLine=!systemd.volatile\n"
                                /* We need /sysroot mounted writable first */
                                "After=ostree-remount.service\n"
+                               "Before=local-fs.target\n"
                                "\n"
                                "[Mount]\n"
                                "Where=%s\n"
