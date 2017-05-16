@@ -82,6 +82,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
     return FALSE;
   if (!exists)
     {
+      /* Note early return */
       ot_transfer_out_value (out_deltas, &ret_deltas);
       return TRUE;
     }
