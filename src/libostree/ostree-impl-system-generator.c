@@ -174,7 +174,7 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
 
   glnx_fd_close int tmpfd = -1;
   g_autofree char *tmppath = NULL;
-  if (!glnx_open_tmpfile_linkable_at (normal_dir_dfd, ".", O_WRONLY,
+  if (!glnx_open_tmpfile_linkable_at (normal_dir_dfd, ".", O_WRONLY | O_CLOEXEC,
                                       &tmpfd, &tmppath, error))
     return FALSE;
   g_autoptr(GOutputStream) outstream = g_unix_output_stream_new (tmpfd, FALSE);
