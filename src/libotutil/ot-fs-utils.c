@@ -186,7 +186,7 @@ ot_dfd_iter_init_allow_noent (int dfd,
   if (fd < 0)
     {
       if (errno != ENOENT)
-        return glnx_throw_errno (error);
+        return glnx_throw_errno_prefix (error, "opendirat");
       *out_exists = FALSE;
       return TRUE;
     }
