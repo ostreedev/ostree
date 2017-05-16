@@ -54,7 +54,7 @@ touch_run_ostree (void)
 {
   int fd;
 
-  fd = open ("/run/ostree-booted", O_CREAT | O_WRONLY | O_NOCTTY, 0640);
+  fd = open ("/run/ostree-booted", O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC, 0640);
   /* We ignore failures here in case /run isn't mounted...not much we
    * can do about that, but we don't want to fail.
    */

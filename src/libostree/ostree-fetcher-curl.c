@@ -272,7 +272,7 @@ ensure_tmpfile (FetcherRequest *req, GError **error)
   if (req->out_tmpfile_fd == -1)
     {
       if (!glnx_open_tmpfile_linkable_at (req->fetcher->tmpdir_dfd, ".",
-                                          O_WRONLY, &req->out_tmpfile_fd,
+                                          O_WRONLY | O_CLOEXEC, &req->out_tmpfile_fd,
                                           &req->out_tmpfile,
                                           error))
         return FALSE;
