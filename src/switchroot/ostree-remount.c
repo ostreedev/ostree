@@ -100,7 +100,8 @@ main(int argc, char *argv[])
           if (errno != EINVAL)
             err (EXIT_FAILURE, "failed to remount %s", target);
         }
-      printf ("Remounted: %s\n", target);
+      else
+        printf ("Remounted: %s\n", target);
     }
 
   maybe_mount_tmpfs_on_var ();
