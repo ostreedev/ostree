@@ -389,11 +389,6 @@ global:
   ostree_sysroot_write_deployments_with_options;
 } LIBOSTREE_2017.3;
 
-/*                         NOTE NOTE NOTE
- * Versions above here are released.  Only add symbols below this line.
- *                         NOTE NOTE NOTE
- */
-
 LIBOSTREE_2017.6 {
 global:
   ostree_async_progress_get;
@@ -401,6 +396,16 @@ global:
   ostree_async_progress_get_variant;
   ostree_async_progress_set_variant;
 } LIBOSTREE_2017.4;
+
+/*                         NOTE NOTE NOTE
+ * Versions above here are released.  Only add symbols below this line.
+ *                         NOTE NOTE NOTE
+ */
+
+LIBOSTREE_2017.$NEWVERSION {
+global:
+	someostree_symbol_deleteme;
+} LIBOSTREE_2017.6;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
