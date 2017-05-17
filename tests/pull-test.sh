@@ -24,7 +24,7 @@ function repo_init() {
     rm repo -rf
     mkdir repo
     ostree_repo_init repo
-    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+    ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo "$@"
 }
 
 function verify_initial_contents() {
@@ -35,10 +35,10 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..16"
+echo "1..18"
 
 # Try both syntaxes
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo pull origin:main
 ${CMD_PREFIX} ostree --repo=repo fsck
@@ -128,7 +128,7 @@ assert_file_has_content main.txt ${rev}
 echo "ok pull specific commit"
 
 cd ${test_tmpdir}
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 # Generate a delta from old to current, even though we aren't going to
@@ -153,7 +153,7 @@ ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 # Explicitly test delta fetches via ref name as well as commit hash
 for delta_target in main ${new_rev}; do
 cd ${test_tmpdir}
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${delta_target} >dry-run-pull.txt
 # Compression can vary, so we support 400-699
@@ -166,7 +166,7 @@ done
 # Explicitly test delta fetches via ref name as well as commit hash
 for delta_target in main ${new_rev}; do
 cd ${test_tmpdir}
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin ${delta_target}
 if test ${delta_target} = main; then
@@ -179,7 +179,7 @@ ${CMD_PREFIX} ostree --repo=repo fsck
 done
 
 cd ${test_tmpdir}
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --disable-static-deltas origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
@@ -197,7 +197,7 @@ cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate --swap-endianness main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas --dry-run origin main >byteswapped-dry-run-pull.txt
 ${CMD_PREFIX} ostree --repo=repo fsck
@@ -211,7 +211,7 @@ echo "ok pull byteswapped delta"
 cd ${test_tmpdir}
 rm ostree-srv/gnomerepo/deltas -rf
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
-repo_init
+repo_init --no-gpg-verify
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
 fi
@@ -219,7 +219,7 @@ assert_file_has_content err.txt "deltas required, but none found"
 ${CMD_PREFIX} ostree --repo=repo fsck
 
 # Now test with a partial commit
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull --commit-metadata-only origin main@${prev_rev}
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
@@ -227,7 +227,7 @@ fi
 assert_file_has_content err.txt "deltas required, but none found"
 echo "ok delta required but don't exist"
 
-repo_init
+repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin ${new_rev} 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
@@ -294,3 +294,27 @@ fi
 assert_file_has_content err.txt "ONE BILLION DOLLARS"
 
 echo "ok unconfigured"
+
+cd ${test_tmpdir}
+repo_init --set=gpg-verify=true
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit \
+  --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1} -b main \
+  -s "A signed commit" --tree=ref=main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+# make sure gpg verification is correctly on
+csum=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse main)
+objpath=objects/${csum::2}/${csum:2}.commitmeta
+remotesig=ostree-srv/gnomerepo/$objpath
+localsig=repo/$objpath
+mv $remotesig $remotesig.bak
+if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main; then
+    assert_not_reached "pull with gpg-verify unexpectedly succeeded?"
+fi
+# ok now check that we can pull correctly
+mv $remotesig.bak $remotesig
+${CMD_PREFIX} ostree --repo=repo pull origin main
+echo "ok pull signed commit"
+rm $localsig
+${CMD_PREFIX} ostree --repo=repo pull origin main
+test -f $localsig
+echo "ok re-pull signature for stored commit"

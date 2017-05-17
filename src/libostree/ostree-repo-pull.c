@@ -80,6 +80,7 @@ typedef struct {
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
   GHashTable       *scanned_metadata; /* Maps object name to itself */
+  GHashTable       *fetched_detached_metadata; /* Set<checksum> */
   GHashTable       *requested_metadata; /* Maps object name to itself */
   GHashTable       *requested_content; /* Maps checksum to itself */
   GHashTable       *requested_fallback_content; /* Maps checksum to itself */
@@ -912,8 +913,15 @@ meta_fetch_on_complete (GObject           *object,
             {
               /* There isn't any detached metadata, just fetch the commit */
               g_clear_error (&local_error);
+
+              /* Now that we've at least tried to fetch it, we can proceed to
+               * scan/fetch the commit object */
+              g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
+
               if (!fetch_data->object_is_stored)
                 enqueue_one_object_request (pull_data, checksum, objtype, fetch_data->path, FALSE, FALSE);
+              else
+                queue_scan_one_metadata_object (pull_data, checksum, objtype, fetch_data->path, 0);
             }
 
           /* When traversing parents, do not fail on a missing commit.
@@ -960,8 +968,12 @@ meta_fetch_on_complete (GObject           *object,
                                                        pull_data->cancellable, error))
         goto out;
 
+      g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
+
       if (!fetch_data->object_is_stored)
         enqueue_one_object_request (pull_data, checksum, objtype, fetch_data->path, FALSE, FALSE);
+      else
+        queue_scan_one_metadata_object (pull_data, checksum, objtype, fetch_data->path, 0);
     }
   else
     {
@@ -977,7 +989,7 @@ meta_fetch_on_complete (GObject           *object,
           if (!write_commitpartial_for (pull_data, checksum, error))
             goto out;
         }
-      
+
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                         pull_data->cancellable,
                                         on_metadata_written, fetch_data);
@@ -1377,15 +1389,20 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     }
   else if (is_stored && objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      /* For commits, always refetch detached metadata. */
-      enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, TRUE, TRUE);
+      /* Even though we already have the commit, we always try to (re)fetch the
+       * detached metadata before scanning it, in case new signatures appear.
+       * https://github.com/projectatomic/rpm-ostree/issues/630 */
+      if (!g_hash_table_contains (pull_data->fetched_detached_metadata, tmp_checksum))
+        enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, TRUE, TRUE);
+      else
+        {
+          if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
+                                   pull_data->cancellable, error))
+            goto out;
 
-      if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
-                               pull_data->cancellable, error))
-        goto out;
-
-      g_hash_table_add (pull_data->scanned_metadata, g_variant_ref (object));
-      pull_data->n_scanned_metadata++;
+          g_hash_table_add (pull_data->scanned_metadata, g_variant_ref (object));
+          pull_data->n_scanned_metadata++;
+        }
     }
   else if (is_stored && objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
     {
@@ -2787,6 +2804,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                (GDestroyNotify)g_free);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
+  pull_data->fetched_detached_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                       (GDestroyNotify)g_free, NULL);
   pull_data->requested_content = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                         (GDestroyNotify)g_free, NULL);
   pull_data->requested_fallback_content = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -3509,6 +3528,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->expected_commit_sizes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->fetched_detached_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
