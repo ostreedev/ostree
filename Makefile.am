@@ -19,7 +19,7 @@ include Makefile-decls.am
 
 shortened_sysconfdir = $$(echo "$(sysconfdir)" | sed -e 's|^$(prefix)||' -e 's|^/||')
 
-OSTREE_GITREV=$(shell if command -v git >/dev/null 2>&1 && test -d $(srcdir)/.git; then git -C $(srcdir) describe --abbrev=42 --tags --always HEAD; fi)
+OSTREE_GITREV=$(shell cd $(srcdir) && if command -v git >/dev/null 2>&1 && test -d .git; then git describe --abbrev=42 --tags --always HEAD; fi)
 
 ACLOCAL_AMFLAGS = -I buildutil -I libglnx ${ACLOCAL_FLAGS}
 AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
@@ -113,11 +113,11 @@ include Makefile-boot.am
 include Makefile-man.am
 
 release-tag:
-	git -C $(srcdir) tag -m "Release $(VERSION)" v$(VERSION)
+	cd $(srcdir) && git $(srcdir) tag -m "Release $(VERSION)" v$(VERSION)
 
 embed_dependency=tar -C $(srcdir) --append --exclude='.git/*' --transform="s,^embedded-dependencies/,ostree-embeddeps-$${GITVERSION}/embedded-dependencies/," --file=$${TARFILE_TMP}
 
-git_version_rpm = $$(git -C $(srcdir) describe | sed -e 's,-,\.,g' -e 's,^v,,')
+git_version_rpm = $$(cd $(srcdir) && git describe | sed -e 's,-,\.,g' -e 's,^v,,')
 
 release-tarball-embedded:
 	set -x; \
