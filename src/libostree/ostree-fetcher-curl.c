@@ -99,8 +99,7 @@ struct FetcherRequest {
   OstreeFetcherRequestFlags flags;
   gboolean is_membuf;
   GError *caught_write_error;
-  char *out_tmpfile;
-  int out_tmpfile_fd;
+  OtTmpfile tmpf;
   GString *output_buf;
 
   CURL *easy;
@@ -269,12 +268,11 @@ request_get_uri (FetcherRequest *req, guint idx)
 static gboolean
 ensure_tmpfile (FetcherRequest *req, GError **error)
 {
-  if (req->out_tmpfile_fd == -1)
+  if (!req->tmpf.initialized)
     {
-      if (!glnx_open_tmpfile_linkable_at (req->fetcher->tmpdir_dfd, ".",
-                                          O_WRONLY | O_CLOEXEC, &req->out_tmpfile_fd,
-                                          &req->out_tmpfile,
-                                          error))
+      if (!ot_open_tmpfile_linkable_at (req->fetcher->tmpdir_dfd, ".",
+                                        O_WRONLY | O_CLOEXEC, &req->tmpf,
+                                        error))
         return FALSE;
     }
   return TRUE;
@@ -387,18 +385,14 @@ check_multi_info (OstreeFetcher *fetcher)
                 {
                   g_task_return_error (task, g_steal_pointer (&local_error));
                 }
-              else if (fchmod (req->out_tmpfile_fd, 0644) < 0)
+              else if (fchmod (req->tmpf.fd, 0644) < 0)
                 {
                   glnx_set_error_from_errno (error);
                   g_task_return_error (task, g_steal_pointer (&local_error));
                 }
-              else if (!glnx_link_tmpfile_at (fetcher->tmpdir_dfd,
-                                         GLNX_LINK_TMPFILE_REPLACE,
-                                         req->out_tmpfile_fd,
-                                         req->out_tmpfile,
-                                         fetcher->tmpdir_dfd,
-                                         tmpfile_path,
-                                         error))
+              else if (!ot_link_tmpfile_at (&req->tmpf, GLNX_LINK_TMPFILE_REPLACE,
+                                            fetcher->tmpdir_dfd, tmpfile_path,
+                                            error))
                 g_task_return_error (task, g_steal_pointer (&local_error));
               else
                 {
@@ -586,8 +580,8 @@ write_cb (void *ptr, size_t size, size_t nmemb, void *data)
     {
       if (!ensure_tmpfile (req, &req->caught_write_error))
         return -1;
-     g_assert (req->out_tmpfile_fd >= 0);
-      if (glnx_loop_write (req->out_tmpfile_fd, ptr, realsize) < 0)
+      g_assert (req->tmpf.fd >= 0);
+      if (glnx_loop_write (req->tmpf.fd, ptr, realsize) < 0)
         {
           glnx_set_error_from_errno (&req->caught_write_error);
           return -1;
@@ -622,9 +616,7 @@ request_unref (FetcherRequest *req)
   g_ptr_array_unref (req->mirrorlist);
   g_free (req->filename);
   g_clear_error (&req->caught_write_error);
-  if (req->out_tmpfile_fd != -1)
-    (void) close (req->out_tmpfile_fd);
-  g_free (req->out_tmpfile);
+  ot_tmpfile_clear (&req->tmpf);
   if (req->output_buf)
     g_string_free (req->output_buf, TRUE);
   curl_easy_cleanup (req->easy);
@@ -847,7 +839,6 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
   /* We'll allocate the tmpfile on demand, so we handle
    * file I/O errors just in the write func.
    */
-  req->out_tmpfile_fd = -1;
   if (req->is_membuf)
     req->output_buf = g_string_new ("");
 
