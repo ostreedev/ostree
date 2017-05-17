@@ -3487,6 +3487,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       /* Ensure the rest of the progress keys are set appropriately. */
       update_progress (pull_data);
 
+      /* Ensure the rest of the progress keys are set appropriately. */
+      update_progress (pull_data);
+
       if (bytes_transferred < 1024)
         shift = 1;
       else
