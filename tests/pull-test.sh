@@ -318,4 +318,3 @@ rm $localsig
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 test -f $localsig
 echo "ok re-pull signature for stored commit"
-
