@@ -60,13 +60,11 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
   guint32 file_mode = g_file_info_get_attribute_uint32 (src_info, "unix::mode");
   file_mode &= ~(S_ISUID|S_ISGID);
 
-  glnx_fd_close int fd = -1;
-  g_autofree char *temp_filename = NULL;
-  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY | O_CLOEXEC,
-                                      &fd, &temp_filename,
-                                      error))
+  g_auto(OtTmpfile) tmpf = { 0, };
+  if (!ot_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY | O_CLOEXEC,
+                                    &tmpf, error))
     return FALSE;
-  g_autoptr(GOutputStream) temp_out = g_unix_output_stream_new (fd, FALSE);
+  g_autoptr(GOutputStream) temp_out = g_unix_output_stream_new (tmpf.fd, FALSE);
 
   if (g_output_stream_splice (temp_out, content, 0, cancellable, error) < 0)
     return FALSE;
@@ -76,14 +74,14 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 
   if (!self->disable_fsync)
     {
-      if (TEMP_FAILURE_RETRY (fsync (fd)) < 0)
+      if (TEMP_FAILURE_RETRY (fsync (tmpf.fd)) < 0)
         return glnx_throw_errno (error);
     }
 
   if (!g_output_stream_close (temp_out, cancellable, error))
     return FALSE;
 
-  if (fchmod (fd, file_mode) < 0)
+  if (fchmod (tmpf.fd, file_mode) < 0)
     return glnx_throw_errno (error);
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->uncompressed_objects_dir_fd,
@@ -91,10 +89,9 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
                                             cancellable, error))
     return FALSE;
 
-  if (!glnx_link_tmpfile_at (self->tmp_dir_fd, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
-                             fd, temp_filename,
-                             self->uncompressed_objects_dir_fd, loose_path,
-                             error))
+  if (!ot_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
+                           self->uncompressed_objects_dir_fd, loose_path,
+                           error))
     return FALSE;
 
   return TRUE;
@@ -185,7 +182,6 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  g_autofree char *temp_filename = NULL;
   const gboolean union_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
   const gboolean add_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
   const gboolean sepolicy_enabled = options->sepolicy && !repo->disable_xattrs;
@@ -252,7 +248,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
-      glnx_fd_close int temp_fd = -1;
+      g_auto(OtTmpfile) tmpf = { 0, };
       guint32 file_mode;
       GLnxLinkTmpfileReplaceMode replace_mode;
 
@@ -261,9 +257,8 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
       if (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
         file_mode &= ~(S_ISUID|S_ISGID);
 
-      if (!glnx_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
-                                          &temp_fd, &temp_filename,
-                                          error))
+      if (!ot_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                        &tmpf, error))
         return FALSE;
 
       if (sepolicy_enabled)
@@ -274,11 +269,11 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                                           g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
                                           &label, cancellable, error))
             return FALSE;
-          if (fsetxattr (temp_fd, "security.selinux", label, strlen (label), 0) < 0)
+          if (fsetxattr (tmpf.fd, "security.selinux", label, strlen (label), 0) < 0)
             return glnx_throw_errno_prefix (error, "Setting security.selinux");
         }
 
-      if (!write_regular_file_content (repo, options, temp_fd, file_info, xattrs, input,
+      if (!write_regular_file_content (repo, options, tmpf.fd, file_info, xattrs, input,
                                        cancellable, error))
         return FALSE;
 
@@ -290,10 +285,9 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
       else
         replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
 
-      if (!glnx_link_tmpfile_at (destination_dfd, replace_mode,
-                                 temp_fd, temp_filename, destination_dfd,
-                                 destination_name,
-                                 error))
+      if (!ot_link_tmpfile_at (&tmpf, replace_mode,
+                               destination_dfd, destination_name,
+                               error))
         return FALSE;
     }
   else

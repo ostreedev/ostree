@@ -25,6 +25,30 @@
 
 G_BEGIN_DECLS
 
+/* This is a copy of https://github.com/GNOME/libglnx/pull/46 until we
+ * can do a full port; see https://github.com/ostreedev/ostree/pull/861 */
+typedef struct {
+  gboolean initialized;
+  int src_dfd;
+  int fd;
+  char *path;
+} OtTmpfile;
+void ot_tmpfile_clear (OtTmpfile *tmpf);
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OtTmpfile, ot_tmpfile_clear);
+
+gboolean
+ot_open_tmpfile_linkable_at (int dfd,
+                             const char *subpath,
+                             int flags,
+                             OtTmpfile *out_tmpf,
+                             GError **error);
+gboolean
+ot_link_tmpfile_at (OtTmpfile *tmpf,
+                    GLnxLinkTmpfileReplaceMode flags,
+                    int target_dfd,
+                    const char *target,
+                    GError **error);
+
 GFile * ot_fdrel_to_gfile (int dfd, const char *path);
 
 gboolean ot_readlinkat_gfile_info (int             dfd,
