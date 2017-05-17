@@ -212,6 +212,16 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
                              "var.mount", error))
     return FALSE;
 
+  /* And ensure it's required; newer systemd will auto-inject fs dependencies
+   * via RequiresMountsFor and the like, but on older versions (e.g. CentOS) we
+   * need this. It's what the fstab generator does.  And my mother always said,
+   * listen to the fstab generator.
+   */
+  if (!glnx_shutil_mkdir_p_at (normal_dir_dfd, "local-fs.target.requires", 0755, cancellable, error))
+    return FALSE;
+  if (symlinkat ("../var.mount", normal_dir_dfd, "local-fs.target.requires/var.mount") < 0)
+    return glnx_throw_errno_prefix (error, "symlinkat");
+
   return TRUE;
 #else
   return glnx_throw (error, "Not implemented");
