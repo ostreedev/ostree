@@ -437,32 +437,22 @@ fetch_mirrored_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
                                        GCancellable   *cancellable,
                                        GError        **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GBytes) bytes = NULL;
-  g_autofree char *ret_contents = NULL;
-  gsize len;
-
   if (!_ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
                                                    filename, TRUE, FALSE,
                                                    &bytes,
                                                    OSTREE_MAX_METADATA_SIZE,
                                                    cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret_contents = g_bytes_unref_to_data (bytes, &len);
-  bytes = NULL;
+  gsize len;
+  g_autofree char *ret_contents = g_bytes_unref_to_data (g_steal_pointer (&bytes), &len);
 
   if (!g_utf8_validate (ret_contents, -1, NULL))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid UTF-8");
-      goto out;
-    }
+    return glnx_throw (error, "Invalid UTF-8");
 
-  ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -485,16 +475,11 @@ write_commitpartial_for (OtPullData *pull_data,
                          GError **error)
 {
   g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-  glnx_fd_close int fd = -1;
-
-  fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
+  glnx_fd_close int fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
   if (fd == -1)
     {
       if (errno != EEXIST)
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+        return glnx_throw_errno_prefix (error, "open(%s)", commitpartial_path);
     }
   return TRUE;
 }
@@ -555,15 +540,12 @@ pull_matches_subdir (OtPullData *pull_data,
                      const char *basename,
                      gboolean basename_is_dir)
 {
-  int i;
-  g_autofree char *file = NULL;
-
   if (pull_data->dirs == NULL)
     return TRUE;
 
-  file = g_strconcat (path, basename, NULL);
+  g_autofree char *file = g_strconcat (path, basename, NULL);
 
-  for (i = 0; i < pull_data->dirs->len; i++)
+  for (guint i = 0; i < pull_data->dirs->len; i++)
     {
       const char *pull_dir = g_ptr_array_index (pull_data->dirs, i);
       if (matches_pull_dir (file, pull_dir, basename_is_dir))
@@ -581,30 +563,18 @@ scan_dirtree_object (OtPullData   *pull_data,
                      GCancellable *cancellable,
                      GError      **error)
 {
-  gboolean ret = FALSE;
-  int i, n;
-  g_autoptr(GVariant) tree = NULL;
-  g_autoptr(GVariant) files_variant = NULL;
-  g_autoptr(GVariant) dirs_variant = NULL;
-  const char *dirname = NULL;
-
   if (recursion_depth > OSTREE_MAX_RECURSION)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Exceeded maximum recursion");
-      goto out;
-    }
+    return glnx_throw (error, "Exceeded maximum recursion");
 
+  g_autoptr(GVariant) tree = NULL;
   if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_DIR_TREE, checksum,
                                  &tree, error))
-    goto out;
+    return FALSE;
 
   /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
-  files_variant = g_variant_get_child_value (tree, 0);
-  dirs_variant = g_variant_get_child_value (tree, 1);
-
-  n = g_variant_n_children (files_variant);
-  for (i = 0; i < n; i++)
+  g_autoptr(GVariant) files_variant = g_variant_get_child_value (tree, 0);
+  const guint n = g_variant_n_children (files_variant);
+  for (guint i = 0; i < n; i++)
     {
       const char *filename;
       gboolean file_is_stored;
@@ -614,7 +584,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum);
 
       if (!ot_util_filename_validate (filename, error))
-        goto out;
+        return FALSE;
 
       /* Skip files if we're traversing a request only directory, unless it exactly
        * matches the path */
@@ -625,14 +595,14 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, file_checksum,
                                    &file_is_stored, cancellable, error))
-        goto out;
+        return FALSE;
 
       if (!file_is_stored && pull_data->remote_repo_local)
         {
           if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
                                                           OSTREE_OBJECT_TYPE_FILE, file_checksum, !pull_data->is_untrusted,
                                                           cancellable, error))
-            goto out;
+            return FALSE;
         }
       else if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
         {
@@ -642,44 +612,38 @@ scan_dirtree_object (OtPullData   *pull_data,
         }
     }
 
-  n = g_variant_n_children (dirs_variant);
-
-  for (i = 0; i < n; i++)
+  g_autoptr(GVariant) dirs_variant = g_variant_get_child_value (tree, 1);
+  const guint m = g_variant_n_children (dirs_variant);
+  for (guint i = 0; i < m; i++)
     {
+      const char *dirname = NULL;
       g_autoptr(GVariant) tree_csum = NULL;
       g_autoptr(GVariant) meta_csum = NULL;
-      const guchar *tree_csum_bytes;
-      const guchar *meta_csum_bytes;
-      g_autofree char *subpath = NULL;
-
       g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                            &dirname, &tree_csum, &meta_csum);
 
       if (!ot_util_filename_validate (dirname, error))
-        goto out;
+        return FALSE;
 
       if (!pull_matches_subdir (pull_data, path, dirname, TRUE))
         continue;
 
-      tree_csum_bytes = ostree_checksum_bytes_peek_validate (tree_csum, error);
+      const guchar *tree_csum_bytes = ostree_checksum_bytes_peek_validate (tree_csum, error);
       if (tree_csum_bytes == NULL)
-        goto out;
+        return FALSE;
 
-      meta_csum_bytes = ostree_checksum_bytes_peek_validate (meta_csum, error);
+      const guchar *meta_csum_bytes = ostree_checksum_bytes_peek_validate (meta_csum, error);
       if (meta_csum_bytes == NULL)
-        goto out;
+        return FALSE;
 
-      subpath = g_strconcat (path, dirname, "/", NULL);
-
+      g_autofree char *subpath = g_strconcat (path, dirname, "/", NULL);
       queue_scan_one_metadata_object_c (pull_data, tree_csum_bytes,
                                         OSTREE_OBJECT_TYPE_DIR_TREE, subpath, recursion_depth + 1);
       queue_scan_one_metadata_object_c (pull_data, meta_csum_bytes,
                                         OSTREE_OBJECT_TYPE_DIR_META, subpath, recursion_depth + 1);
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -689,27 +653,21 @@ fetch_ref_contents (OtPullData    *pull_data,
                     GCancellable  *cancellable,
                     GError       **error)
 {
-  gboolean ret = FALSE;
+  g_autofree char *filename = g_build_filename ("refs", "heads", ref, NULL);
   g_autofree char *ret_contents = NULL;
-  g_autofree char *filename = NULL;
-
-  filename = g_build_filename ("refs", "heads", ref, NULL);
-  
   if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
                                               pull_data->meta_mirrorlist,
                                               filename, &ret_contents,
                                               cancellable, error))
-    goto out;
+    return FALSE;
 
   g_strchomp (ret_contents);
 
   if (!ostree_validate_checksum_string (ret_contents, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -719,34 +677,23 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
                                      gsize         *out_size,
                                      GError       **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GVariant) refs = g_variant_get_child_value (pull_data->summary, 0);
-  g_autoptr(GVariant) refdata = NULL;
-  g_autoptr(GVariant) reftargetdata = NULL;
+  int i;
+  if (!ot_variant_bsearch_str (refs, ref, &i))
+    return glnx_throw (error, "No such branch '%s' in repository summary", ref);
+
+  g_autoptr(GVariant) refdata = g_variant_get_child_value (refs, i);
+  g_autoptr(GVariant) reftargetdata = g_variant_get_child_value (refdata, 1);
   guint64 commit_size;
   g_autoptr(GVariant) commit_csum_v = NULL;
-  int i;
-  
-  if (!ot_variant_bsearch_str (refs, ref, &i))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No such branch '%s' in repository summary",
-                   ref);
-      goto out;
-    }
-      
-  refdata = g_variant_get_child_value (refs, i);
-  reftargetdata = g_variant_get_child_value (refdata, 1);
   g_variant_get (reftargetdata, "(t@ay@a{sv})", &commit_size, &commit_csum_v, NULL);
 
   if (!ostree_validate_structureof_csum_v (commit_csum_v, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
   *out_checksum = ostree_checksum_from_bytes_v (commit_csum_v);
   *out_size = commit_size;
- out:
-  return ret;
+  return TRUE;
 }
 
 static void
@@ -772,7 +719,7 @@ content_fetch_on_write_complete (GObject        *object,
   g_autofree char *checksum = NULL;
   g_autofree char *checksum_obj = NULL;
 
-  if (!ostree_repo_write_content_finish ((OstreeRepo*)object, result, 
+  if (!ostree_repo_write_content_finish ((OstreeRepo*)object, result,
                                          &csum, error))
     goto out;
 
