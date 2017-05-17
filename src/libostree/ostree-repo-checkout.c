@@ -996,6 +996,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   g_return_val_if_fail (!(options->force_copy && options->no_copy_fallback), FALSE);
   g_return_val_if_fail (!options->sepolicy || options->force_copy, FALSE);
 
+  g_return_val_if_fail (!(options->force_copy && options->no_copy_fallback), FALSE);
+
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
     return FALSE;
