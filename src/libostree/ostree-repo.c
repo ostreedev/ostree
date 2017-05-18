@@ -882,10 +882,7 @@ impl_repo_remote_add (OstreeRepo     *self,
                          name, remote->file ? gs_file_get_path_cached (remote->file) : "(in config)");
     }
 
-  remote = ostree_remote_new ();
-  remote->name = g_strdup (name);
-  remote->group = g_strdup_printf ("remote \"%s\"", name);
-  remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", name);
+  remote = ostree_remote_new (name);
 
   /* The OstreeRepo maintains its own internal system root path,
    * so we need to not only check if a "sysroot" argument was given

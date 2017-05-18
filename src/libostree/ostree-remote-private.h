@@ -46,7 +46,7 @@ struct OstreeRemote {
 };
 
 G_GNUC_INTERNAL
-OstreeRemote *ostree_remote_new (void);
+OstreeRemote *ostree_remote_new (const gchar *name);
 
 G_GNUC_INTERNAL
 OstreeRemote *ostree_remote_new_from_keyfile (GKeyFile    *keyfile,
