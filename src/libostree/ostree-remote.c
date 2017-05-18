@@ -148,3 +148,23 @@ G_DEFINE_BOXED_TYPE(OstreeRemote, ostree_remote,
                     ostree_remote_ref,
                     ostree_remote_unref);
 #endif
+
+/**
+ * ostree_remote_get_name:
+ * @remote: an #OstreeRemote
+ *
+ * Get the human-readable name of the remote. This is what the user configured,
+ * if the remote was explicitly configured; and will otherwise be a stable,
+ * arbitrary, string.
+ *
+ * Returns: remote’s name
+ * Since: 2017.7
+ */
+const gchar *
+ostree_remote_get_name (OstreeRemote *remote)
+{
+  g_return_val_if_fail (remote != NULL, NULL);
+  g_return_val_if_fail (remote->ref_count > 0, NULL);
+
+  return remote->name;
+}
