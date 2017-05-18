@@ -60,4 +60,7 @@ void ostree_remote_unref (OstreeRemote *remote);
 #endif /* GI_SCANNER */
 #endif
 
+_OSTREE_PUBLIC
+const gchar *ostree_remote_get_name (OstreeRemote *remote);
+
 G_END_DECLS
