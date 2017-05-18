@@ -169,9 +169,9 @@ _ostree_repo_add_remote (OstreeRepo   *self,
   return already_existed;
 }
 
-static gboolean
-ost_repo_remove_remote (OstreeRepo   *self,
-                        OstreeRemote *remote)
+gboolean
+_ostree_repo_remove_remote (OstreeRepo   *self,
+                            OstreeRemote *remote)
 {
   gboolean removed;
 
@@ -1040,7 +1040,7 @@ impl_repo_remote_delete (OstreeRepo     *self,
   if (!ot_ensure_unlinked_at (self->repo_dir_fd, remote->keyring, error))
     return FALSE;
 
-  ost_repo_remove_remote (self, remote);
+  _ostree_repo_remove_remote (self, remote);
 
   return TRUE;
 }
