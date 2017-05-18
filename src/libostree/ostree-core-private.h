@@ -179,6 +179,13 @@ _ostree_raw_file_to_archive_stream (GInputStream       *input,
 gboolean ostree_validate_collection_id (const char *collection_id, GError **error);
 #endif /* !OSTREE_ENABLE_EXPERIMENTAL_API */
 
+gboolean
+_ostree_compare_timestamps (const char   *current_rev,
+                            guint64       current_ts,
+                            const char   *new_rev,
+                            guint64       new_ts,
+                            GError      **error);
+
 #if (defined(OSTREE_COMPILATION) || GLIB_CHECK_VERSION(2, 44, 0)) && !defined(OSTREE_ENABLE_EXPERIMENTAL_API)
 #include <libglnx.h>
 #include "ostree-ref.h"

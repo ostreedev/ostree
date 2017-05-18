@@ -34,6 +34,7 @@ static gboolean opt_dry_run;
 static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
+static gboolean opt_timestamp_check;
 static gboolean opt_bareuseronly_files;
 static char** opt_subpaths;
 static char** opt_http_headers;
@@ -64,6 +65,7 @@ static GOptionEntry options[] = {
    { "http-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_http_headers, "Add NAME=VALUE as HTTP header to all requests", "NAME=VALUE" },
    { "update-frequency", 0, 0, G_OPTION_ARG_INT, &opt_frequency, "Sets the update frequency, in milliseconds (0=1000ms) (default: 0)", "FREQUENCY" },
    { "localcache-repo", 'L', 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_localcache_repos, "Add REPO as local cache source for objects during this pull", "REPO" },
+   { "timestamp-check", 'T', 0, G_OPTION_ARG_NONE, &opt_timestamp_check, "Require fetched commits to have newer timestamps", NULL },
    { NULL }
  };
 
@@ -288,6 +290,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
     g_variant_builder_add (&builder, "{s@v}", "dry-run",
                            g_variant_new_variant (g_variant_new_boolean (opt_dry_run)));
+    if (opt_timestamp_check)
+      g_variant_builder_add (&builder, "{s@v}", "timestamp-check",
+                             g_variant_new_variant (g_variant_new_boolean (opt_timestamp_check)));
 
     if (override_commit_ids)
       g_variant_builder_add (&builder, "{s@v}", "override-commit-ids",
