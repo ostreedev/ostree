@@ -53,12 +53,17 @@
  */
 
 OstreeRemote *
-ostree_remote_new (void)
+ostree_remote_new (const gchar *name)
 {
   OstreeRemote *remote;
 
+  g_return_val_if_fail (name != NULL && *name != '\0', NULL);
+
   remote = g_slice_new0 (OstreeRemote);
   remote->ref_count = 1;
+  remote->name = g_strdup (name);
+  remote->group = g_strdup_printf ("remote \"%s\"", name);
+  remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", name);
   remote->options = g_key_file_new ();
 
   return remote;
@@ -70,6 +75,7 @@ ostree_remote_new_from_keyfile (GKeyFile    *keyfile,
 {
   g_autoptr(GMatchInfo) match = NULL;
   OstreeRemote *remote;
+  g_autofree gchar *name = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
@@ -88,10 +94,8 @@ ostree_remote_new_from_keyfile (GKeyFile    *keyfile,
   if (!g_regex_match (regex, group, 0, &match))
     return NULL;
 
-  remote = ostree_remote_new ();
-  remote->name = g_match_info_fetch (match, 1);
-  remote->group = g_strdup (group);
-  remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", remote->name);
+  name = g_match_info_fetch (match, 1);
+  remote = ostree_remote_new (name);
 
   ot_keyfile_copy_group (keyfile, remote->options, group);
 
