@@ -150,19 +150,23 @@ _ostree_repo_get_remote_inherited (OstreeRepo  *self,
   return g_steal_pointer (&remote);
 }
 
-void
+gboolean
 _ostree_repo_add_remote (OstreeRepo   *self,
                          OstreeRemote *remote)
 {
-  g_return_if_fail (self != NULL);
-  g_return_if_fail (remote != NULL);
-  g_return_if_fail (remote->name != NULL);
+  gboolean already_existed;
+
+  g_return_val_if_fail (self != NULL, FALSE);
+  g_return_val_if_fail (remote != NULL, FALSE);
+  g_return_val_if_fail (remote->name != NULL, FALSE);
 
   g_mutex_lock (&self->remotes_lock);
 
-  g_hash_table_replace (self->remotes, remote->name, ostree_remote_ref (remote));
+  already_existed = g_hash_table_replace (self->remotes, remote->name, ostree_remote_ref (remote));
 
   g_mutex_unlock (&self->remotes_lock);
+
+  return already_existed;
 }
 
 static gboolean
