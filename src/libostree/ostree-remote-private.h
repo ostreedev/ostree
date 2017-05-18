@@ -38,9 +38,9 @@ G_BEGIN_DECLS
 
 struct OstreeRemote {
   volatile int ref_count;
-  char *name;
-  char *group;   /* group name in options */
-  char *keyring; /* keyring name (NAME.trustedkeys.gpg) */
+  char *name;  /* (not nullable) */
+  char *group;   /* group name in options (not nullable) */
+  char *keyring; /* keyring name (NAME.trustedkeys.gpg) (not nullable) */
   GFile *file;   /* NULL if remote defined in repo/config */
   GKeyFile *options;
 };
