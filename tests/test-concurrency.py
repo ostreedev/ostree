@@ -54,6 +54,8 @@ def wait_check(proc):
         fatal("process {} exited with code {}".format(proc, proc.returncode))
 
 print("1..2")
+print(os.getcwd())
+sys.stdout.flush()
 
 def run(n_committers, n_pruners):
     committers = set()
