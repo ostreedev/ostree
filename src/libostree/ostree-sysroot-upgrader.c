@@ -24,6 +24,7 @@
 
 #include "ostree.h"
 #include "ostree-sysroot-upgrader.h"
+#include "ostree-core-private.h"
 
 /**
  * SECTION:ostree-sysroot-upgrader
@@ -429,26 +430,10 @@ ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
                                  error))
     return FALSE;
 
-  if (ostree_commit_get_timestamp (old_commit) > ostree_commit_get_timestamp (new_commit))
-    {
-      GDateTime *old_ts = g_date_time_new_from_unix_utc (ostree_commit_get_timestamp (old_commit));
-      GDateTime *new_ts = g_date_time_new_from_unix_utc (ostree_commit_get_timestamp (new_commit));
-      g_autofree char *old_ts_str = NULL;
-      g_autofree char *new_ts_str = NULL;
-
-      if (old_ts == NULL || new_ts == NULL)
-        return glnx_throw (error, "Upgrade target revision '%s' timestamp (%" G_GINT64_FORMAT ") or current revision '%s' timestamp (%" G_GINT64_FORMAT ") is invalid",
-                           to_rev, ostree_commit_get_timestamp (new_commit),
-                           from_rev, ostree_commit_get_timestamp (old_commit));
-
-      old_ts_str = g_date_time_format (old_ts, "%c");
-      new_ts_str = g_date_time_format (new_ts, "%c");
-      g_date_time_unref (old_ts);
-      g_date_time_unref (new_ts);
-
-      return glnx_throw (error, "Upgrade target revision '%s' with timestamp '%s' is chronologically older than current revision '%s' with timestamp '%s'; use --allow-downgrade to permit",
-                         to_rev, new_ts_str, from_rev, old_ts_str);
-    }
+  if (!_ostree_compare_timestamps (from_rev, ostree_commit_get_timestamp (old_commit),
+                                   to_rev, ostree_commit_get_timestamp (new_commit),
+                                   error))
+    return FALSE;
 
   return TRUE;
 }
@@ -536,9 +521,23 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
   if (self->origin_remote &&
       (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
     {
-      if (!ostree_repo_pull_one_dir (repo, self->origin_remote, dir_to_pull, refs_to_fetch,
-                             flags, progress,
-                             cancellable, error))
+      g_autoptr(GVariantBuilder) optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+      if (dir_to_pull && *dir_to_pull)
+        g_variant_builder_add (optbuilder, "{s@v}", "subdir",
+                               g_variant_new_variant (g_variant_new_string (dir_to_pull)));
+      g_variant_builder_add (optbuilder, "{s@v}", "flags",
+                             g_variant_new_variant (g_variant_new_int32 (flags)));
+      /* Add the timestamp check, unless disabled */
+      if ((upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER) == 0)
+        g_variant_builder_add (optbuilder, "{s@v}", "timestamp-check",
+                               g_variant_new_variant (g_variant_new_boolean (TRUE)));
+
+      g_variant_builder_add (optbuilder, "{s@v}", "refs",
+                             g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch, -1)));
+      g_autoptr(GVariant) opts = g_variant_ref_sink (g_variant_builder_end (optbuilder));
+      if (!ostree_repo_pull_with_options (repo, self->origin_remote,
+                                          opts, progress,
+                                          cancellable, error))
         return FALSE;
 
       if (progress)

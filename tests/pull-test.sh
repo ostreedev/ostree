@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..28"
+echo "1..29"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -204,6 +204,31 @@ ${CMD_PREFIX} ostree --repo=parentpullrepo pull origin main
 ${CMD_PREFIX} ostree --repo=parentpullrepo rev-parse origin:main > main.txt
 assert_file_has_content main.txt ${rev}
 echo "ok pull specific commit"
+
+# test pull -T
+cd ${test_tmpdir}
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin main
+origrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse main)
+# Check we can pull the same commit with timestamp checking enabled
+${CMD_PREFIX} ostree --repo=repo pull -T origin main
+assert_streq ${origrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
+newrev=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main --tree=ref=main)
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+# New commit with timestamp checking
+${CMD_PREFIX} ostree --repo=repo pull -T origin main
+assert_not_streq "${origrev}" "${newrev}"
+assert_streq ${newrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
+newrev2=$(${CMD_PREFIX} ostree --timestamp="October 25 1985" --repo=ostree-srv/gnomerepo commit -b main --tree=ref=main)
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+if ${CMD_PREFIX} ostree --repo=repo pull -T origin main 2>err.txt; then
+    fatal "pulled older commit with timestamp checking enabled?"
+fi
+assert_file_has_content err.txt "Upgrade.*is chronologically older"
+assert_streq ${newrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
+# But we can pull it without timestamp checking
+${CMD_PREFIX} ostree --repo=repo pull origin main
+echo "ok pull timestamp checking"
 
 cd ${test_tmpdir}
 repo_init --no-gpg-verify
