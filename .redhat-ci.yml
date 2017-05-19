@@ -76,6 +76,8 @@ env:
 tests:
     - make check TESTS=tests/test-rollsum
 
+artifacts:
+  - test-suite.log
 ---
 
 inherit: true
@@ -96,6 +98,8 @@ tests:
     - make check
     - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
 
+artifacts:
+  - test-suite.log
 ---
 
 inherit: true
