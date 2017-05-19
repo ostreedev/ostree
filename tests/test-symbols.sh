@@ -39,7 +39,7 @@ echo "ok exports"
 grep -E -v '(ostree_cmd__private__)|(ostree_fetcher_config_flags_get_type)' found-symbols.txt > expected-documented.txt
 
 echo "Verifying all public symbols are documented:"
-grep '^ostree_' ${G_TEST_SRCDIR}/apidoc/ostree-sections.txt $experimental_sections |sort -u > found-documented.txt
+grep --no-filename '^ostree_' ${G_TEST_SRCDIR}/apidoc/ostree-sections.txt $experimental_sections |sort -u > found-documented.txt
 diff -u expected-documented.txt found-documented.txt
 
 echo 'ok documented symbols'
