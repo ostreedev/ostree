@@ -1,4 +1,8 @@
-# Core source library for shell script tests
+# Core source library for shell script tests; this
+# file is intended to be the canonical source, which at
+# is copied at least into:
+#
+# - https://github.com/projectatomic/rpm-ostree
 #
 # Copyright (C) 2017 Colin Walters <walters@verbum.org>
 #
@@ -36,6 +40,7 @@ fi
 
 # This should really be the default IMO
 export G_DEBUG=fatal-warnings
+
 assert_streq () {
     test "$1" = "$2" || fatal "$1 != $2"
 }
@@ -58,18 +63,29 @@ assert_has_dir () {
     test -d "$1" || fatal "Couldn't find '$1'"
 }
 
+# Dump ls -al + file contents to stderr, then fatal()
+_fatal_print_file() {
+    file="$1"
+    shift
+    ls -al "$file" >&2
+    sed -e 's/^/# /' < "$file" >&2
+    fatal "$@"
+}
+
 assert_not_has_file () {
     if test -f "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' exists"
+        _fatal_print_file "$1" "File '$1' exists"
     fi
 }
 
 assert_not_file_has_content () {
-    if grep -q -e "$2" "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' incorrectly matches regexp '$2'"
-    fi
+    fpath=$1
+    shift
+    for re in "$@"; do
+        if grep -q -e "$re" "$fpath"; then
+            _fatal_print_file "$fpath" "File '$fpath' matches regexp '$re'"
+        fi
+    done
 }
 
 assert_not_has_dir () {
@@ -79,35 +95,33 @@ assert_not_has_dir () {
 }
 
 assert_file_has_content () {
-    if ! grep -q -e "$2" "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' doesn't match regexp '$2'"
-    fi
+    fpath=$1
+    shift
+    for re in "$@"; do
+        if ! grep -q -e "$re" "$fpath"; then
+            _fatal_print_file "$fpath" "File '$fpath' doesn't match regexp '$re'"
+        fi
+    done
 }
 
 assert_file_has_content_literal () {
     if ! grep -q -F -e "$2" "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' doesn't match fixed string list '$2'"
+        _fatal_print_file "$1" "File '$1' doesn't match fixed string list '$2'"
     fi
 }
 
 assert_symlink_has_content () {
     if ! test -L "$1"; then
-        echo 1>&2 "File '$1' is not a symbolic link"
-        exit 1
+        fatal "File '$1' is not a symbolic link"
     fi
     if ! readlink "$1" | grep -q -e "$2"; then
-        sed -e 's/^/# /' < "$1" >&2
-        echo 1>&2 "Symbolic link '$1' doesn't match regexp '$2'"
-        exit 1
+        _fatal_print_file "$1" "Symbolic link '$1' doesn't match regexp '$2'"
     fi
 }
 
 assert_file_empty() {
     if test -s "$1"; then
-        sed -e 's/^/# /' < "$1" >&2
-        fatal "File '$1' is not empty"
+        _fatal_print_file "$1" "File '$1' is not empty"
     fi
 }
 
