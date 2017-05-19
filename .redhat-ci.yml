@@ -79,6 +79,26 @@ tests:
 ---
 
 inherit: true
+
+context: f25-experimental-api
+
+build:
+    config-opts: >
+      --prefix=/usr
+      --libdir=/usr/lib64
+      --enable-gtk-doc
+      --enable-experimental-api
+
+env:
+    CC: 'gcc'
+
+tests:
+    - make check
+    - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
+
+---
+
+inherit: true
 required: true
 
 context: f25-curl-openssl
