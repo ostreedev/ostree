@@ -512,7 +512,7 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
   char *refs_to_fetch[] = { NULL, NULL };
   const char *from_revision = NULL;
   g_autofree char *origin_refspec = NULL;
-  g_autofree char *new_revision;
+  g_autofree char *new_revision = NULL;
   g_autoptr(GVariant) new_variant = NULL;
   g_autoptr(GVariant) new_metadata = NULL;
   g_autoptr(GVariant) rebase = NULL;
@@ -560,26 +560,27 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
 
   g_variant_get_child (new_variant, 0, "@a{sv}", &new_metadata);
   rebase = g_variant_lookup_value (new_metadata, "ostree.endoflife-rebase", G_VARIANT_TYPE_STRING);
-  if (rebase) {
-    const char *new_ref = g_variant_get_string (rebase, 0);
+  if (rebase)
+    {
+      const char *new_ref = g_variant_get_string (rebase, 0);
 
-    /* Pull the new ref */
-    if (self->origin_remote &&
-        (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
-      {
-        refs_to_fetch[0] = new_ref;
-        if (!ostree_repo_pull_one_dir (repo, self->origin_remote, dir_to_pull, refs_to_fetch,
-                                       flags, progress, cancellable, error))
-          return FALSE;
-      }
+      /* Pull the new ref */
+      if (self->origin_remote &&
+          (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
+        {
+          refs_to_fetch[0] = (char *) new_ref;
+          if (!ostree_repo_pull_one_dir (repo, self->origin_remote, dir_to_pull, refs_to_fetch,
+                                         flags, progress, cancellable, error))
+            return FALSE;
+        }
 
-      /* Use the new ref for the rest of the update process */
-      g_free (self->origin_ref);
-      self->origin_ref = g_strdup(new_ref);
-      g_free (origin_refspec);
-      origin_refspec = g_strconcat (self->origin_remote, ":", new_ref, NULL);
-      g_key_file_set_string (self->origin, "origin", "refspec", origin_refspec);
-  }
+        /* Use the new ref for the rest of the update process */
+        g_free (self->origin_ref);
+        self->origin_ref = g_strdup(new_ref);
+        g_free (origin_refspec);
+        origin_refspec = g_strconcat (self->origin_remote, ":", new_ref, NULL);
+        g_key_file_set_string (self->origin, "origin", "refspec", origin_refspec);
+    }
 
   if (self->override_csum != NULL)
     {
