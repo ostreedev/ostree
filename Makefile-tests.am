@@ -200,9 +200,9 @@ test_programs += \
 	tests/test-repo-finder-mount \
 	$(NULL)
 
-if USE_AVAHI
-test_programs += tests/test-repo-finder-avahi
-endif
+#if USE_AVAHI
+#test_programs += tests/test-repo-finder-avahi
+#endif
 endif
 
 # An interactive tool
@@ -235,11 +235,11 @@ tests_test_bloom_SOURCES = src/libostree/ostree-bloom.c tests/test-bloom.c
 tests_test_bloom_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bloom_LDADD = $(TESTS_LDADD)
 
-if USE_AVAHI
-tests_test_repo_finder_avahi_SOURCES = src/libostree/ostree-bloom.c src/libostree/ostree-remote.c src/libostree/ostree-repo-finder-avahi.c tests/test-repo-finder-avahi.c
-tests_test_repo_finder_avahi_CFLAGS = $(TESTS_CFLAGS) $(OT_INTERNAL_SOUP_CFLAGS)
-tests_test_repo_finder_avahi_LDADD = $(TESTS_LDADD) $(OT_INTERNAL_SOUP_LIBS)
-endif
+#if USE_AVAHI
+#tests_test_repo_finder_avahi_SOURCES = src/libostree/ostree-bloom.c src/libostree/ostree-remote.c src/libostree/ostree-repo-finder-avahi.c tests/test-repo-finder-avahi.c
+#tests_test_repo_finder_avahi_CFLAGS = $(TESTS_CFLAGS) $(OT_INTERNAL_SOUP_CFLAGS)
+#tests_test_repo_finder_avahi_LDADD = $(TESTS_LDADD) $(OT_INTERNAL_SOUP_LIBS)
+#endif
 
 tests_test_repo_finder_config_SOURCES = tests/test-repo-finder-config.c
 tests_test_repo_finder_config_CFLAGS = $(TESTS_CFLAGS)
