@@ -578,7 +578,12 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
         g_free (self->origin_ref);
         self->origin_ref = g_strdup(new_ref);
         g_free (origin_refspec);
-        origin_refspec = g_strconcat (self->origin_remote, ":", new_ref, NULL);
+
+        if (self->origin_remote)
+          origin_refspec = g_strconcat (self->origin_remote, ":", new_ref, NULL);
+        else
+          origin_refspec = g_strdup (new_ref);
+
         g_key_file_set_string (self->origin, "origin", "refspec", origin_refspec);
     }
 
