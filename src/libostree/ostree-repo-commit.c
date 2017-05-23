@@ -1511,6 +1511,7 @@ ostree_repo_write_metadata (OstreeRepo         *self,
                             GCancellable       *cancellable,
                             GError            **error)
 {
+  g_autoptr(GVariant) normalized = NULL;
   /* First, if we have an expected checksum, see if we already have this
    * object.  This mirrors the same logic in ostree_repo_write_content().
    */
@@ -1526,9 +1527,17 @@ ostree_repo_write_metadata (OstreeRepo         *self,
             *out_csum = ostree_checksum_to_bytes (expected_checksum);
           return TRUE;
         }
+      /* If the caller is giving us an expected checksum, the object really has
+       * to be normalized already.  Otherwise, how would they know the checksum?
+       * There's no sense in redoing it.
+       */
+      normalized = g_variant_ref (object);
+    }
+  else
+    {
+      normalized = g_variant_get_normal_form (object);
     }
 
-  g_autoptr(GVariant) normalized = g_variant_get_normal_form (object);
   if (!metadata_size_valid (objtype, g_variant_get_size (normalized), error))
     return FALSE;
 
