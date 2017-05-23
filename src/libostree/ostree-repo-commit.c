@@ -1481,6 +1481,25 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   return TRUE;
 }
 
+/* These limits were introduced since in some cases we may be processing
+ * malicious metadata, and we want to make disk space exhaustion attacks harder.
+ */
+static gboolean
+metadata_size_valid (OstreeObjectType objtype,
+                     gsize len,
+                     GError **error)
+{
+  if (G_UNLIKELY (len > OSTREE_MAX_METADATA_SIZE))
+    {
+      g_autofree char *input_bytes = g_format_size (len);
+      g_autofree char *max_bytes = g_format_size (OSTREE_MAX_METADATA_SIZE);
+      return glnx_throw (error, "Metadata object of type '%s' is %s; maximum metadata size is %s",
+                         ostree_object_type_to_string (objtype), input_bytes, max_bytes);
+    }
+
+  return TRUE;
+}
+
 /**
  * ostree_repo_write_metadata:
  * @self: Repo
@@ -1506,20 +1525,11 @@ ostree_repo_write_metadata (OstreeRepo         *self,
                             GCancellable       *cancellable,
                             GError            **error)
 {
-  g_autoptr(GVariant) normalized = NULL;
-
-  normalized = g_variant_get_normal_form (object);
-
-  if (G_UNLIKELY (g_variant_get_size (normalized) > OSTREE_MAX_METADATA_SIZE))
-    {
-      g_autofree char *input_bytes = g_format_size (g_variant_get_size (normalized));
-      g_autofree char *max_bytes = g_format_size (OSTREE_MAX_METADATA_SIZE);
-      return glnx_throw (error, "Metadata object of type '%s' is %s; maximum metadata size is %s",
-                         ostree_object_type_to_string (objtype), input_bytes, max_bytes);
-    }
+  g_autoptr(GVariant) normalized = g_variant_get_normal_form (object);
+  if (!metadata_size_valid (objtype, g_variant_get_size (normalized), error))
+    return FALSE;
 
   g_autoptr(GInputStream) input = ot_variant_read (normalized);
-
   if (!write_object (self, objtype, expected_checksum,
                      input, g_variant_get_size (normalized),
                      out_csum,
@@ -1551,8 +1561,22 @@ ostree_repo_write_metadata_stream_trusted (OstreeRepo        *self,
                                            GCancellable      *cancellable,
                                            GError           **error)
 {
-  return write_object (self, objtype, checksum, object_input, length, NULL,
-                       cancellable, error);
+  if (length > 0 && !metadata_size_valid (objtype, length, error))
+    return FALSE;
+
+  /* This is all pretty ridiculous, but we're keeping this API for backwards
+   * compatibility, it doesn't really need to be fast.
+   */
+  g_autoptr(GMemoryOutputStream) tmpbuf = (GMemoryOutputStream*)g_memory_output_stream_new_resizable ();
+  if (g_output_stream_splice ((GOutputStream*)tmpbuf, object_input,
+                              G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, cancellable, error) < 0)
+    return FALSE;
+  g_autoptr(GBytes) tmpb = g_memory_output_stream_steal_as_bytes (tmpbuf);
+
+  g_autoptr(GVariant) tmpv = g_variant_new_from_bytes (ostree_metadata_variant_type (objtype),
+                                                       tmpb, TRUE);
+  return ostree_repo_write_metadata_trusted (self, objtype, checksum, tmpv,
+                                             cancellable, error);
 }
 
 /**
@@ -1575,16 +1599,9 @@ ostree_repo_write_metadata_trusted (OstreeRepo         *self,
                                     GCancellable       *cancellable,
                                     GError            **error)
 {
-  g_autoptr(GInputStream) input = NULL;
-  g_autoptr(GVariant) normalized = NULL;
-
-  normalized = g_variant_get_normal_form (variant);
-  input = ot_variant_read (normalized);
-
-  return write_object (self, type, checksum,
-                       input, g_variant_get_size (normalized),
-                       NULL,
-                       cancellable, error);
+  return ostree_repo_write_metadata (self, type,
+                                     checksum, variant, NULL,
+                                     cancellable, error);
 }
 
 typedef struct {
