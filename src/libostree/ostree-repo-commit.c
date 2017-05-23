@@ -1748,9 +1748,8 @@ ostree_repo_write_content_trusted (OstreeRepo       *self,
                                    GCancellable     *cancellable,
                                    GError          **error)
 {
-  return write_object (self, OSTREE_OBJECT_TYPE_FILE, checksum,
-                       object_input, length, NULL,
-                       cancellable, error);
+  return ostree_repo_write_content (self, checksum, object_input, length,
+                                    NULL, cancellable, error);
 }
 
 /**
