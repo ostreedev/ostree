@@ -625,20 +625,6 @@ write_object (OstreeRepo         *self,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  if (expected_checksum)
-    {
-      if (!_ostree_repo_has_loose_object (self, expected_checksum, objtype, &have_obj,
-                                          cancellable, error))
-        goto out;
-      if (have_obj)
-        {
-          if (out_csum)
-            *out_csum = ostree_checksum_to_bytes (expected_checksum);
-          ret = TRUE;
-          goto out;
-        }
-    }
-
   repo_mode = ostree_repo_get_mode (self);
 
   if (out_csum)
@@ -1525,6 +1511,23 @@ ostree_repo_write_metadata (OstreeRepo         *self,
                             GCancellable       *cancellable,
                             GError            **error)
 {
+  /* First, if we have an expected checksum, see if we already have this
+   * object.  This mirrors the same logic in ostree_repo_write_content().
+   */
+  if (expected_checksum)
+    {
+      gboolean have_obj;
+      if (!_ostree_repo_has_loose_object (self, expected_checksum, objtype, &have_obj,
+                                          cancellable, error))
+        return FALSE;
+      if (have_obj)
+        {
+          if (out_csum)
+            *out_csum = ostree_checksum_to_bytes (expected_checksum);
+          return TRUE;
+        }
+    }
+
   g_autoptr(GVariant) normalized = g_variant_get_normal_form (object);
   if (!metadata_size_valid (objtype, g_variant_get_size (normalized), error))
     return FALSE;
@@ -1775,6 +1778,24 @@ ostree_repo_write_content (OstreeRepo       *self,
                            GCancellable     *cancellable,
                            GError          **error)
 {
+  /* First, if we have an expected checksum, see if we already have this
+   * object.  This mirrors the same logic in ostree_repo_write_metadata().
+   */
+  if (expected_checksum)
+    {
+      gboolean have_obj;
+      if (!_ostree_repo_has_loose_object (self, expected_checksum,
+                                          OSTREE_OBJECT_TYPE_FILE, &have_obj,
+                                          cancellable, error))
+        return FALSE;
+      if (have_obj)
+        {
+          if (out_csum)
+            *out_csum = ostree_checksum_to_bytes (expected_checksum);
+          return TRUE;
+        }
+    }
+
   return write_object (self, OSTREE_OBJECT_TYPE_FILE, expected_checksum,
                        object_input, length, out_csum,
                        cancellable, error);
