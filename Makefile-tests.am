@@ -27,7 +27,7 @@ EXTRA_DIST += \
 # We should probably consider flipping the default for DEBUG.  Also,
 # include the builddir in $PATH so we find our just-built ostree
 # binary.
-TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
+AM_TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
   OSTREE_UNINSTALLED_SRCDIR=$(abs_top_srcdir) \
 	OSTREE_UNINSTALLED=$(abs_top_builddir) \
 	G_DEBUG=fatal-warnings \
@@ -37,7 +37,7 @@ TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 	OSTREE_FEATURES="$(OSTREE_FEATURES)" \
 	$(NULL)
 if BUILDOPT_ASAN
-TESTS_ENVIRONMENT += OT_SKIP_READDIR_RAND=1 G_SLICE=always-malloc
+AM_TESTS_ENVIRONMENT += OT_SKIP_READDIR_RAND=1 G_SLICE=always-malloc
 endif
 
 uninstalled_test_data = tests/ostree-symlink-stamp tests/ostree-prepare-root-symlink-stamp \
