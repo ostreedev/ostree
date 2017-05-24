@@ -836,31 +836,44 @@ write_metadata_object (OstreeRepo         *self,
    * tempfile until we compute the checksum. Some metadata like dirmeta is
    * commonly duplicated, and computing the checksum is going to be cheaper than
    * making a tempfile.
+   *
+   * However, tombstone commit types don't make sense to checksum, because for
+   * historical reasons we used ostree_repo_write_metadata_trusted() with the
+   * *original* sha256 to say what commit was being killed.
    */
-  g_autofree char *actual_checksum = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, buf);
-  gboolean have_obj;
-  if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype, &have_obj,
-                                      cancellable, error))
-    return FALSE;
-  /* If we already have the object, we just need to update the tried-to-commit
-   * stat for metadata and be done here.
-   */
-  if (have_obj)
+  const gboolean is_tombstone = (objtype == OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT);
+  g_autofree char *actual_checksum = NULL;
+  if (is_tombstone)
     {
-      g_mutex_lock (&self->txn_stats_lock);
-      self->txn_stats.metadata_objects_total++;
-      g_mutex_unlock (&self->txn_stats_lock);
-
-      if (out_csum)
-        *out_csum = ostree_checksum_to_bytes (actual_checksum);
-      /* Note early return */
-      return TRUE;
+      actual_checksum = g_strdup (expected_checksum);
     }
+  else
+    {
+      actual_checksum = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, buf);
+      gboolean have_obj;
+      if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype, &have_obj,
+                                          cancellable, error))
+        return FALSE;
+      /* If we already have the object, we just need to update the tried-to-commit
+       * stat for metadata and be done here.
+       */
+      if (have_obj)
+        {
+          g_mutex_lock (&self->txn_stats_lock);
+          self->txn_stats.metadata_objects_total++;
+          g_mutex_unlock (&self->txn_stats_lock);
 
-  if (expected_checksum && strcmp (actual_checksum, expected_checksum) != 0)
-    return glnx_throw (error, "Corrupted %s object %s (actual checksum is %s)",
-                       ostree_object_type_to_string (objtype),
-                       expected_checksum, actual_checksum);
+          if (out_csum)
+            *out_csum = ostree_checksum_to_bytes (actual_checksum);
+          /* Note early return */
+          return TRUE;
+        }
+
+      if (expected_checksum && strcmp (actual_checksum, expected_checksum) != 0)
+        return glnx_throw (error, "Corrupted %s object %s (actual checksum is %s)",
+                           ostree_object_type_to_string (objtype),
+                           expected_checksum, actual_checksum);
+    }
 
   /* Ok, checksum is known, let's get the data */
   gsize len;
