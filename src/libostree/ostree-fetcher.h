@@ -48,7 +48,8 @@ struct OstreeFetcherClass
 
 typedef enum {
   OSTREE_FETCHER_FLAGS_NONE = 0,
-  OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE = (1 << 0)
+  OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE = (1 << 0),
+  OSTREE_FETCHER_FLAGS_TRANSFER_GZIP = (1 << 1)
 } OstreeFetcherConfigFlags;
 
 void

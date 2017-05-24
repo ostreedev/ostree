@@ -770,6 +770,9 @@ initiate_next_curl_request (FetcherRequest *req,
       curl_easy_setopt (req->easy, CURLOPT_SSLKEY, self->tls_client_key_path);
     }
 
+  if ((self->config_flags & OSTREE_FETCHER_FLAGS_TRANSFER_GZIP) > 0)
+    curl_easy_setopt (req->easy, CURLOPT_ACCEPT_ENCODING, "");
+
   /* We should only speak HTTP; TODO: only enable file if specified */
   curl_easy_setopt (req->easy, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FILE));
   /* Picked the current version in F25 as of 20170127, since
