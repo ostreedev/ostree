@@ -2161,6 +2161,7 @@ _ostree_repo_cache_summary (OstreeRepo        *self,
 static OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,
+                                 gboolean     gzip,
                                  GError     **error)
 {
   OstreeFetcher *fetcher = NULL;
@@ -2178,6 +2179,9 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
 
   if (tls_permissive)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
+
+  if (gzip)
+    fetcher_flags |= OSTREE_FETCHER_FLAGS_TRANSFER_GZIP;
 
   fetcher = _ostree_fetcher_new (self->tmp_dir_fd, remote_name, fetcher_flags);
 
@@ -2436,7 +2440,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
 
-  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, error);
   if (fetcher == NULL)
     goto out;
 
@@ -2544,7 +2548,7 @@ static gboolean
 reinitialize_fetcher (OtPullData *pull_data, const char *remote_name, GError **error)
 {
   g_clear_object (&pull_data->fetcher);
-  pull_data->fetcher = _ostree_repo_remote_new_fetcher (pull_data->repo, remote_name, error);
+  pull_data->fetcher = _ostree_repo_remote_new_fetcher (pull_data->repo, remote_name, FALSE, error);
   if (pull_data->fetcher == NULL)
     return FALSE;
 
