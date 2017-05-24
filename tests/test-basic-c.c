@@ -170,6 +170,54 @@ test_raw_file_to_archive_z2_stream (gconstpointer data)
   g_assert_cmpint (checks, >, 0);
 }
 
+static gboolean hi_content_stream_new (GInputStream **out_stream,
+                                       guint64       *out_length,
+                                       GError **error)
+{
+  static const char hi[] = "hi";
+  g_autoptr(GMemoryInputStream) hi_memstream = (GMemoryInputStream*)g_memory_input_stream_new_from_data (hi, sizeof(hi)-1, NULL);
+  g_autoptr(GFileInfo) finfo = g_file_info_new ();
+  g_file_info_set_attribute_uint32 (finfo, "standard::type", G_FILE_TYPE_REGULAR);
+  g_file_info_set_attribute_boolean (finfo, "standard::is-symlink", FALSE);
+  g_file_info_set_attribute_uint32 (finfo, "unix::uid", 0);
+  g_file_info_set_attribute_uint32 (finfo, "unix::gid", 0);
+  g_file_info_set_attribute_uint32 (finfo, "unix::mode", S_IFREG|0644);
+  return ostree_raw_file_to_content_stream ((GInputStream*)hi_memstream, finfo, NULL, out_stream, out_length, NULL, error);
+}
+
+static void
+test_object_writes (gconstpointer data)
+{
+  OstreeRepo *repo = OSTREE_REPO (data);
+  g_autoptr(GError) error = NULL;
+
+  static const char hi_sha256[] = "2301b5923720c3edc1f0467addb5c287fd5559e3e0cd1396e7f1edb6b01be9f0";
+
+  /* Successful content write */
+  { g_autoptr(GInputStream) hi_memstream = NULL;
+    guint64 len;
+    hi_content_stream_new (&hi_memstream, &len, &error);
+    g_assert_no_error (error);
+    g_autofree guchar *csum = NULL;
+    (void)ostree_repo_write_content (repo, hi_sha256, hi_memstream, len, &csum,
+                                     NULL, &error);
+    g_assert_no_error (error);
+  }
+
+  /* Invalid content write */
+  { g_autoptr(GInputStream) hi_memstream = NULL;
+    guint64 len;
+    hi_content_stream_new (&hi_memstream, &len, &error);
+    g_assert_no_error (error);
+    g_autofree guchar *csum = NULL;
+    static const char invalid_hi_sha256[] = "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
+    g_assert (!ostree_repo_write_content (repo, invalid_hi_sha256, hi_memstream, len, &csum,
+                                          NULL, &error));
+    g_assert (error);
+    g_assert (strstr (error->message, "Corrupted file object"));
+  }
+}
+
 int main (int argc, char **argv)
 {
   g_autoptr(GError) error = NULL;
@@ -180,9 +228,10 @@ int main (int argc, char **argv)
   repo = ot_test_setup_repo (NULL, &error); 
   if (!repo)
     goto out;
-  
+
   g_test_add_data_func ("/repo-not-system", repo, test_repo_is_not_system);
   g_test_add_data_func ("/raw-file-to-archive-z2-stream", repo, test_raw_file_to_archive_z2_stream);
+  g_test_add_data_func ("/objectwrites", repo, test_object_writes);
 
   return g_test_run();
  out:
