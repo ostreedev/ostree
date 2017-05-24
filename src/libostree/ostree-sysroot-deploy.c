@@ -484,7 +484,7 @@ merge_configuration_from (OstreeSysroot    *sysroot,
   if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_IGNORE_XATTRS,
                          orig_etc, modified_etc, modified, removed, added,
                          cancellable, error))
-    return g_prefix_error (error, "While computing configuration diff: "), FALSE;
+    return glnx_prefix_error (error, "While computing configuration diff: ");
 
   ot_log_structured_print_id_v (OSTREE_CONFIGMERGE_ID,
                                 "Copying /etc changes: %u modified, %u removed, %u added",
