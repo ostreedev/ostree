@@ -710,6 +710,12 @@ ostree_repo_is_system (OstreeRepo   *repo)
 
   g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
 
+  /* If we were created via ostree_sysroot_get_repo(), we know the answer is yes
+   * without having to compare file paths.
+   */
+  if (repo->is_system)
+    return TRUE;
+
   default_repo_path = get_default_repo_path (repo->sysroot_dir);
 
   return g_file_equal (repo->repodir, default_repo_path);
