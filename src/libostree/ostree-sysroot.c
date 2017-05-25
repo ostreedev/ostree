@@ -729,6 +729,18 @@ ostree_sysroot_load (OstreeSysroot  *self,
   return ostree_sysroot_load_if_changed (self, NULL, cancellable, error);
 }
 
+static gboolean
+ensure_repo_opened (OstreeSysroot  *self,
+                    GError        **error)
+{
+  if (self->repo_opened)
+    return TRUE;
+  if (!ostree_repo_open (self->repo, NULL, error))
+    return FALSE;
+  self->repo_opened = TRUE;
+  return TRUE;
+}
+
 gboolean
 ostree_sysroot_load_if_changed (OstreeSysroot  *self,
                                 gboolean       *out_changed,
@@ -736,6 +748,13 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
                                 GError        **error)
 {
   if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+
+  /* Here we also lazily initialize the repository.  We didn't do this
+   * previous to v2017.6, but we do now to support the error-free
+   * ostree_sysroot_repo() API.
+   */
+  if (!ensure_repo_opened (self, error))
     return FALSE;
 
   int bootversion = 0;
@@ -918,13 +937,30 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
                          GCancellable  *cancellable,
                          GError       **error)
 {
-  /* ostree_repo_open() is idempotent. */
-  if (!ostree_repo_open (self->repo, cancellable, error))
+  if (!ensure_repo_opened (self, error))
     return FALSE;
 
   if (out_repo != NULL)
     *out_repo = g_object_ref (self->repo);
   return TRUE;
+}
+
+/**
+ * ostree_sysroot_repo:
+ * @self: Sysroot
+ *
+ * This function is a variant of ostree_sysroot_get_repo() that cannot fail, and
+ * returns a cached repository. Can only be called after ostree_sysroot_load()
+ * has been invoked successfully.
+ *
+ * Returns: (transfer none): The OSTree repository in sysroot @self.
+ */
+OstreeRepo *
+ostree_sysroot_repo (OstreeSysroot *self)
+{
+  g_return_val_if_fail (self->loaded, NULL);
+  g_assert (self->repo);
+  return self->repo;
 }
 
 /**

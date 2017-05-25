@@ -402,12 +402,10 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/*
-LIBOSTREE_2017.$NEWVERSION {
+LIBOSTREE_2017.7 {
 global:
-	someostree_symbol_deleteme;
+  ostree_sysroot_repo;
 } LIBOSTREE_2017.6;
-*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
