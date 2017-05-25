@@ -26,6 +26,7 @@
 #include <sys/wait.h>
 
 #include "ostree-core-private.h"
+#include "ostree-repo-private.h"
 #include "ostree-sepolicy-private.h"
 #include "ostree-sysroot-private.h"
 #include "ostree-deployment-private.h"
@@ -133,6 +134,7 @@ ostree_sysroot_constructed (GObject *object)
 
   repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
   self->repo = ostree_repo_new_for_sysroot_path (repo_path, self->path);
+  self->repo->is_system = TRUE;
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->constructed (object);
 }

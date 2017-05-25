@@ -106,6 +106,7 @@ struct OstreeRepo {
 
   gboolean inited;
   gboolean writable;
+  gboolean is_system; /* Was this repo created via ostree_sysroot_get_repo() ? */
   GError *writable_error;
   gboolean in_transaction;
   gboolean disable_fsync;
