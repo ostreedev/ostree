@@ -57,6 +57,7 @@ struct OstreeSysroot {
 
   /* Only access through ostree_sysroot_get_repo() */
   OstreeRepo *repo;
+  gboolean repo_opened;
 
   OstreeSysrootDebugFlags debug_flags;
 };

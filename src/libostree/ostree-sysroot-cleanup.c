@@ -501,8 +501,6 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
                                   GCancellable               *cancellable,
                                   GError                    **error)
 {
-  glnx_unref_object OstreeRepo *repo = NULL;
-
   g_return_val_if_fail (OSTREE_IS_SYSROOT (self), FALSE);
   g_return_val_if_fail (self->loaded, FALSE);
 
@@ -512,9 +510,7 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
   if (!cleanup_old_deployments (self, cancellable, error))
     return FALSE;
 
-  if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
-    return FALSE;
-
+  OstreeRepo *repo = ostree_sysroot_repo (self);
   if (!generate_deployment_refs (self, repo,
                                  self->bootversion,
                                  self->subbootversion,

@@ -1956,10 +1956,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   if (!glnx_opendirat (self->sysroot_fd, osdeploypath, TRUE, &os_deploy_dfd, error))
     return FALSE;
 
-  glnx_unref_object OstreeRepo *repo = NULL;
-  if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
-    return FALSE;
-
+  OstreeRepo *repo = ostree_sysroot_repo (self);
   glnx_unref_object OstreeDeployment *merge_deployment = NULL;
   if (provided_merge_deployment != NULL)
     merge_deployment = g_object_ref (provided_merge_deployment);

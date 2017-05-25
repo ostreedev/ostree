@@ -127,6 +127,9 @@ gboolean ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                            GError               **error);
 
 _OSTREE_PUBLIC
+OstreeRepo * ostree_sysroot_repo (OstreeSysroot *self);
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_get_repo (OstreeSysroot         *self,
                                   OstreeRepo           **out_repo,
                                   GCancellable          *cancellable,
