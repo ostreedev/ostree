@@ -58,7 +58,7 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
   GKeyFile *old_origin;
-  GKeyFile *new_origin = NULL;
+  g_autoptr(GKeyFile) new_origin = NULL;
 
   context = g_option_context_new ("REF - Construct new tree from REF and deploy it");
 
@@ -166,7 +166,5 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
 
   ret = TRUE;
  out:
-  if (new_origin)
-    g_key_file_unref (new_origin);
   return ret;
 }

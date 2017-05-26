@@ -56,7 +56,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   const char *refspec;
   g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
-  GKeyFile *origin = NULL;
+  g_autoptr(GKeyFile) origin = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
   glnx_unref_object OstreeDeployment *new_deployment = NULL;
   glnx_unref_object OstreeDeployment *merge_deployment = NULL;
@@ -171,7 +171,5 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
 
   ret = TRUE;
  out:
-  if (origin)
-    g_key_file_unref (origin);
   return ret;
 }
