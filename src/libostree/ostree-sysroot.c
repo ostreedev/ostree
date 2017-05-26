@@ -737,8 +737,6 @@ ensure_repo_opened (OstreeSysroot  *self,
     return TRUE;
   if (!ostree_repo_open (self->repo, NULL, error))
     return FALSE;
-  /* And flag it as a system repo */
-  self->repo->is_system = TRUE;
   self->repo_opened = TRUE;
   return TRUE;
 }
