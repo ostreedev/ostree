@@ -27,6 +27,8 @@
 #include <sys/ioctl.h>
 #include <ext2fs/ext2_fs.h>
 
+#include "otutil.h"
+
 /**
  * _ostree_linuxfs_fd_alter_immutable_flag:
  * @fd: A file descriptor
@@ -47,29 +49,21 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
                                          GCancellable  *cancellable,
                                          GError       **error)
 {
-  gboolean ret = FALSE;
-  unsigned long flags;
-  int r;
   static gint no_alter_immutable = 0;
 
   if (g_atomic_int_get (&no_alter_immutable))
     return TRUE;
 
-  r = ioctl (fd, EXT2_IOC_GETFLAGS, &flags);
+  unsigned long flags;
+  int r = ioctl (fd, EXT2_IOC_GETFLAGS, &flags);
   if (r == -1)
     {
-      int errsv = errno;
-      if (errsv == EPERM)
+      if (errno == EPERM)
         g_atomic_int_set (&no_alter_immutable, 1);
-      else if (errsv == EOPNOTSUPP || errsv == ENOTTY)
+      else if (errno == EOPNOTSUPP || errno == ENOTTY)
         ;
       else
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "ioctl(EXT2_IOC_GETFLAGS): %s",
-                       g_strerror (errsv));
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "ioctl(EXT2_IOC_GETFLAGS)");
     }
   else
     {
@@ -80,22 +74,14 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
       r = ioctl (fd, EXT2_IOC_SETFLAGS, &flags);
       if (r == -1)
         {
-          int errsv = errno;
-          if (errsv == EPERM)
+          if (errno == EPERM)
             g_atomic_int_set (&no_alter_immutable, 1);
-          else if (errsv == EOPNOTSUPP || errsv == ENOTTY)
+          else if (errno == EOPNOTSUPP || errno == ENOTTY)
             ;
           else
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "ioctl(EXT2_IOC_GETFLAGS): %s",
-                           g_strerror (errsv));
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "ioctl(EXT2_IOC_SETFLAGS)");
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
