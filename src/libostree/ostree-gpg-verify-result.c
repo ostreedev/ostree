@@ -665,9 +665,8 @@ ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
 
   if (ostree_gpg_verify_result_count_valid (result) == 0)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "GPG signatures found, but none are in trusted keyring");
-      return FALSE;
+      return glnx_throw (error, "%s",
+                        "GPG signatures found, but none are in trusted keyring");
     }
 
   return TRUE;

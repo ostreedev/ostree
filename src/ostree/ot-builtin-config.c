@@ -41,9 +41,8 @@ split_key_string (const char   *k,
   
   if (!dot)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Key must be of the form \"sectionname.keyname\"");
-      return FALSE;
+      return glnx_throw (error,
+                        "Key must be of the form \"sectionname.keyname\"");
     }
 
   *out_section = g_strndup (k, dot - k);

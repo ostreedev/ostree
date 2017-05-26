@@ -640,9 +640,8 @@ aic_handle_entry (OstreeRepoArchiveImportContext *ctx,
         return TRUE;
       else
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unsupported file type for path \"%s\"", path);
-          return FALSE;
+          return glnx_throw (error, "Unsupported file type for path \"%s\"",
+                            path);
         }
     }
 }

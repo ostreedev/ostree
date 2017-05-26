@@ -147,9 +147,7 @@ handle_statoverride_line (const char  *line,
   spc = strchr (line, ' ');
   if (spc == NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Malformed statoverride file (no space found)");
-      return FALSE;
+      return glnx_throw (error, "Malformed statoverride file (no space found)");
     }
 
   mode_add = (guint32)(gint32)g_ascii_strtod (line, NULL);
