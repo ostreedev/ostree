@@ -30,10 +30,4 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
                                          GCancellable  *cancellable,
                                          GError       **error);
 
-gboolean
-_ostree_linuxfs_alter_immutable_flag (GFile         *path,
-                                      gboolean       new_immutable_state,
-                                      GCancellable  *cancellable,
-                                      GError       **error);
-
 G_END_DECLS

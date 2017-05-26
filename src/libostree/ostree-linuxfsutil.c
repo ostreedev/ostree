@@ -99,35 +99,3 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
  out:
   return ret;
 }
-
-gboolean
-_ostree_linuxfs_alter_immutable_flag (GFile         *path,
-                                      gboolean       new_immutable_state,
-                                      GCancellable  *cancellable,
-                                      GError       **error)
-{
-  gboolean ret = FALSE;
-  glnx_fd_close int fd = -1;
-
-  if (g_cancellable_set_error_if_cancelled (cancellable, error))
-    return FALSE;
-
-  fd = open (gs_file_get_path_cached (path), O_RDONLY|O_NONBLOCK|O_LARGEFILE);
-  if (fd == -1)
-    {
-      int errsv = errno;
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "open(%s): %s",
-                   gs_file_get_path_cached (path),
-                   g_strerror (errsv));
-      goto out;
-    }
-
-  if (!_ostree_linuxfs_fd_alter_immutable_flag (fd, new_immutable_state,
-                                                cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
