@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..30"
+echo "1..31"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -475,6 +475,16 @@ if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main 2>err.txt; then
 fi
 assert_file_has_content err.txt "GPG verification enabled, but no signatures found"
 echo "ok pull repo 404 (gpg)"
+
+cd ${test_tmpdir}
+find ostree-srv/gnomerepo/objects -name '*.dirtree' | while read f; do mv ${f}{,.orig}; done
+repo_init --set=gpg-verify=false
+if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main 2>err.txt; then
+    assert_not_reached "pull repo 404 succeeded?"
+fi
+assert_file_has_content err.txt "404"
+find ostree-srv/gnomerepo/objects -name '*.dirtree.orig' | while read f; do mv ${f} $(dirname $f)/$(basename ${f} .orig); done
+echo "ok pull repo 404 on dirtree object"
 
 cd ${test_tmpdir}
 repo_init --set=gpg-verify=true
