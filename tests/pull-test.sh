@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..18"
+echo "1..20"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -294,6 +294,23 @@ fi
 assert_file_has_content err.txt "ONE BILLION DOLLARS"
 
 echo "ok unconfigured"
+
+cd ${test_tmpdir}
+repo_init
+${CMD_PREFIX} ostree --repo=repo remote add origin-bad $(cat httpd-address)/ostree/noent
+if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin-bad main 2>err.txt; then
+    assert_not_reached "pull repo 404 succeeded?"
+fi
+assert_file_has_content err.txt "404"
+echo "ok pull repo 404"
+
+cd ${test_tmpdir}
+repo_init --set=gpg-verify=true
+if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main 2>err.txt; then
+    assert_not_reached "pull repo 404 succeeded?"
+fi
+assert_file_has_content err.txt "GPG verification enabled, but no signatures found"
+echo "ok pull repo 404 (gpg)"
 
 cd ${test_tmpdir}
 repo_init --set=gpg-verify=true
