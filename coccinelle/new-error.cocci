@@ -17,4 +17,3 @@ expression p, q;
 - g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, p, q);
 - return FALSE;
 + return glnx_throw (error, p, q);
-
