@@ -41,21 +41,15 @@ ot_util_filename_validate (const char *name,
 {
   if (strcmp (name, ".") == 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid self-referential filename '.'");
-      return FALSE;
+      return glnx_throw (error, "Invalid self-referential filename '.'");
     }
   if (strcmp (name, "..") == 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid path uplink filename '..'");
-      return FALSE;
+      return glnx_throw (error, "Invalid path uplink filename '..'");
     }
   if (strchr (name, '/') != NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid / in filename %s", name);
-      return FALSE;
+      return glnx_throw (error, "Invalid / in filename %s", name);
     }
   return TRUE;
 }

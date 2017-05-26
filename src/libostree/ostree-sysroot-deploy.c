@@ -1028,9 +1028,9 @@ checksum_from_kernel_src (const char   *name,
   const char *last_dash = strrchr (name, '-');
   if (!last_dash)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Malformed kernel/initramfs name '%s', missing '-'", name);
-      return FALSE;
+      return glnx_throw (error,
+                        "Malformed kernel/initramfs name '%s', missing '-'",
+                        name);
     }
   *out_checksum = g_strdup (last_dash + 1);
   return TRUE;

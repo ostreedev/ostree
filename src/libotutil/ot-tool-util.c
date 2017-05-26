@@ -40,9 +40,7 @@ ot_parse_boolean (const char  *value,
     *out_parsed = FALSE;
   else
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid boolean argument '%s'", value);
-      return FALSE;
+      return glnx_throw (error, "Invalid boolean argument '%s'", value);
     }
 
   return TRUE;
@@ -57,9 +55,7 @@ ot_parse_keyvalue (const char  *keyvalue,
   const char *eq = strchr (keyvalue, '=');
   if (!eq)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Missing '=' in KEY=VALUE for --set");
-      return FALSE;
+      return glnx_throw (error, "Missing '=' in KEY=VALUE for --set");
     }
   *out_key = g_strndup (keyvalue, eq - keyvalue);
   *out_value = g_strdup (eq + 1);

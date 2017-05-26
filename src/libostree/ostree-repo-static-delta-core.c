@@ -45,9 +45,8 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
   if (G_UNLIKELY(n > (G_MAXUINT32/OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN) ||
                  (n_checksums * OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN) != n))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid checksum array length %" G_GSIZE_FORMAT, n);
-      return FALSE;
+      return glnx_throw (error,
+                        "Invalid checksum array length %" G_GSIZE_FORMAT, n);
     }
 
   *out_checksums_array = (gpointer)g_variant_get_data (array);

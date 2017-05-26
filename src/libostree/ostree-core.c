@@ -1763,16 +1763,12 @@ validate_variant (GVariant           *variant,
 {
   if (!g_variant_is_normal_form (variant))
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Not normal form");
-      return FALSE;
+      return glnx_throw (error, "%s", "Not normal form");
     }
   if (!g_variant_is_of_type (variant, variant_type))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Doesn't match variant type '%s'",
-                   (char*)variant_type);
-      return FALSE;
+      return glnx_throw (error, "Doesn't match variant type '%s'",
+                        (char *)variant_type);
     }
   return TRUE;
 }
