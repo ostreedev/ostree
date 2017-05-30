@@ -97,24 +97,15 @@ ot_readlinkat_gfile_info (int             dfd,
                           GCancellable   *cancellable,
                           GError        **error)
 {
-  gboolean ret = FALSE;
   char targetbuf[PATH_MAX+1];
   ssize_t len;
 
-  do
-    len = readlinkat (dfd, path, targetbuf, sizeof (targetbuf) - 1);
-  while (G_UNLIKELY (len == -1 && errno == EINTR));
-  if (len == -1)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+  if (TEMP_FAILURE_RETRY (len = readlinkat (dfd, path, targetbuf, sizeof (targetbuf) - 1)) < 0)
+    return glnx_throw_errno_prefix (error, "readlinkat");
   targetbuf[len] = '\0';
   g_file_info_set_symlink_target (target_info, targetbuf);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 
@@ -140,26 +131,17 @@ ot_openat_read_stream (int             dfd,
                        GCancellable   *cancellable,
                        GError        **error)
 {
-  gboolean ret = FALSE;
   int fd = -1;
   int flags = O_RDONLY | O_NOCTTY | O_CLOEXEC;
 
   if (!follow)
     flags |= O_NOFOLLOW;
 
-  do
-    fd = openat (dfd, path, flags, 0);
-  while (G_UNLIKELY (fd == -1 && errno == EINTR));
-  if (fd == -1)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+  if (TEMP_FAILURE_RETRY (fd = openat (dfd, path, flags, 0)) < 0)
+    return glnx_throw_errno_prefix (error, "openat(%s)", path);
 
   *out_istream = g_unix_input_stream_new (fd, TRUE);
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -170,10 +152,7 @@ ot_ensure_unlinked_at (int dfd,
   if (unlinkat (dfd, path, 0) != 0)
     {
       if (G_UNLIKELY (errno != ENOENT))
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+        return glnx_throw_errno_prefix (error, "unlink(%s)", path);
     }
   return TRUE;
 }
@@ -189,10 +168,7 @@ ot_query_exists_at (int dfd, const char *path,
   if (fstatat (dfd, path, &stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
       if (errno != ENOENT)
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+        return glnx_throw_errno_prefix (error, "fstatat(%s)", path);
       ret_exists = FALSE;
     }
   else
@@ -208,23 +184,15 @@ ot_openat_ignore_enoent (int dfd,
                          int *out_fd,
                          GError **error)
 {
-  gboolean ret = FALSE;
-  int target_fd = -1;
-
-  target_fd = openat (dfd, path, O_CLOEXEC | O_RDONLY);
+  int target_fd = openat (dfd, path, O_CLOEXEC | O_RDONLY);
   if (target_fd < 0)
     {
       if (errno != ENOENT)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "openat(%s)", path);
     }
 
-  ret = TRUE;
   *out_fd = target_fd;
- out:
-  return ret;
+  return TRUE;
 }
 
 /* Like glnx_dirfd_iterator_init_at(), but if %ENOENT, then set
@@ -261,10 +229,7 @@ ot_file_mapat_bytes (int dfd,
   g_autoptr(GMappedFile) mfile = NULL;
 
   if (fd < 0)
-    {
-      glnx_set_error_from_errno (error);
-      return FALSE;
-    }
+    return glnx_null_throw_errno_prefix (error, "openat(%s)", path);
 
   mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
   if (!mfile)
