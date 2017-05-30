@@ -134,7 +134,9 @@ ostree_sysroot_constructed (GObject *object)
 
   repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
   self->repo = ostree_repo_new_for_sysroot_path (repo_path, self->path);
-  self->repo->is_system = TRUE;
+  self->repo->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_VIA_SYSROOT;
+  /* Hold a weak ref for the remote-add handling */
+  g_weak_ref_init (&self->repo->sysroot, object);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->constructed (object);
 }
@@ -812,6 +814,26 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   if (!find_booted_deployment (self, deployments, &self->booted_deployment,
                                cancellable, error))
     return FALSE;
+
+  /* Determine whether we're "physical" or not, the first time we initialize */
+  if (!self->loaded)
+    {
+      /* If we have a booted deployment, the sysroot is / and we're definitely
+       * not physical.
+       */
+      if (self->booted_deployment)
+        self->is_physical = FALSE;  /* (the default, but explicit for clarity) */
+      /* Otherwise - check for /sysroot which should only exist in a deployment,
+       * not in ${sysroot} (a metavariable for the real physical root).
+       */
+      else if (fstatat (self->sysroot_fd, "sysroot", &stbuf, 0) < 0)
+        {
+          if (errno != ENOENT)
+            return glnx_throw_errno_prefix (error, "fstatat");
+          self->is_physical = TRUE;
+        }
+      /* Otherwise, the default is FALSE */
+    }
 
   self->bootversion = bootversion;
   self->subbootversion = subbootversion;
