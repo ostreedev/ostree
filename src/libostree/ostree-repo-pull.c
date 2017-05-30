@@ -4541,6 +4541,7 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
       g_auto(GVariantDict) local_options_dict = OT_VARIANT_BUILDER_INITIALIZER;
       g_autoptr(GVariant) local_options = NULL;
       const gchar *checksum;
+      gboolean remove_remote;
 
       refs_to_pull = g_ptr_array_new_with_free_func (NULL);
       checksums_to_pull = g_ptr_array_new_with_free_func (NULL);
@@ -4585,9 +4586,12 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
 
       local_options = g_variant_dict_end (&local_options_dict);
 
+      remove_remote = !_ostree_repo_add_remote (self, result->remote);
       /* TODO: Progress will yo-yo here. */
       ostree_repo_pull_with_options (self, result->remote->name, local_options,
                                      progress, cancellable, &local_error);
+      if (remove_remote)
+        _ostree_repo_remove_remote (self, result->remote);
 
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
         {
@@ -4596,7 +4600,6 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
           g_task_return_error (task, g_steal_pointer (&local_error));
           return;
         }
-      g_clear_error (&local_error);
 
       for (j = 0; refs_to_pull->pdata[j] != NULL; j++)
         g_hash_table_replace (refs_pulled, refs_to_pull->pdata[j],
