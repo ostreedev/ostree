@@ -31,6 +31,7 @@ static gboolean opt_no_gpg_verify;
 static gboolean opt_if_not_exists;
 static char *opt_gpg_import;
 static char *opt_contenturl;
+static char *opt_sysroot;
 
 static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
@@ -38,6 +39,7 @@ static GOptionEntry option_entries[] = {
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
   { "contenturl", 0, 0, G_OPTION_ARG_STRING, &opt_contenturl, "Use URL when fetching content", "URL" },
+  { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Use sysroot at PATH", "PATH" },
   { NULL }
 };
 
@@ -51,6 +53,7 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
   char **iter;
   g_autoptr(GVariantBuilder) optbuilder = NULL;
   g_autoptr(GVariant) options = NULL;
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   gboolean ret = FALSE;
 
   context = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...] - Add a remote repository");
@@ -58,6 +61,20 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
+
+  /* As a special case, we can take a --sysroot argument. Currently we also
+   * require --repo because fixing that needs more cmdline rework.
+   */
+  if (opt_sysroot)
+    {
+      g_clear_object (&repo);
+      g_autoptr(GFile) sysroot_path = g_file_new_for_path (opt_sysroot);
+      sysroot = ostree_sysroot_new (sysroot_path);
+      if (!ostree_sysroot_load (sysroot, cancellable, error))
+        goto out;
+      if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
+        goto out;
+    }
 
   if (argc < 3)
     {

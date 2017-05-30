@@ -32,6 +32,7 @@
 #include <glnx-console.h>
 
 #include "ostree-core-private.h"
+#include "ostree-sysroot-private.h"
 #include "ostree-remote-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-file.h"
@@ -447,6 +448,7 @@ ostree_repo_finalize (GObject *object)
   if (self->uncompressed_objects_dir_fd != -1)
     (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->sysroot_dir);
+  g_weak_ref_clear (&self->sysroot);
   g_free (self->remotes_config_dir);
 
   if (self->loose_object_devino_hash)
@@ -894,22 +896,24 @@ impl_repo_remote_add (OstreeRepo     *self,
 
   remote = ostree_remote_new (name);
 
-  /* The OstreeRepo maintains its own internal system root path,
-   * so we need to not only check if a "sysroot" argument was given
-   * but also whether it's actually different from OstreeRepo's.
-   *
-   * XXX Having API regret about the "sysroot" argument now.
+  /* If a sysroot was provided, use it. Otherwise, see if this repo has a ref to
+   * a sysroot (and it's physical).
    */
-  gboolean different_sysroot = FALSE;
-  if (sysroot != NULL)
-    different_sysroot = !g_file_equal (sysroot, self->sysroot_dir);
+  g_autoptr(OstreeSysroot) sysroot_ref = NULL;
+  if (sysroot == NULL)
+    {
+      sysroot_ref = (OstreeSysroot*)g_weak_ref_get (&self->sysroot);
+      /* Only write to /etc/ostree/remotes.d if we are pointed at a deployment */
+      if (sysroot_ref != NULL && !sysroot_ref->is_physical)
+        sysroot = ostree_sysroot_get_path (sysroot_ref);
+    }
+  /* For backwards compat, also fall back to the sysroot-path variable */
+  if (sysroot == NULL && sysroot_ref == NULL)
+    sysroot = self->sysroot_dir;
 
-  if (different_sysroot || ostree_repo_is_system (self))
+  if (sysroot != NULL)
     {
       g_autoptr(GError) local_error = NULL;
-
-      if (sysroot == NULL)
-        sysroot = self->sysroot_dir;
 
       g_autoptr(GFile) etc_ostree_remotes_d = g_file_resolve_relative_path (sysroot, SYSCONF_REMOTES);
       if (!g_file_make_directory_with_parents (etc_ostree_remotes_d,
