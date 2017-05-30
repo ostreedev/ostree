@@ -234,3 +234,18 @@ curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buil
 assert_streq ${curr_rev} ${head_rev}
 
 echo "ok upgrade with and without override-commit"
+
+deployment=$(${CMD_PREFIX} ostree admin --sysroot=sysroot --print-current-dir)
+${CMD_PREFIX} ostree --sysroot=sysroot remote add --set=gpg-verify=false remote-test-physical file://$(pwd)/testos-repo
+assert_not_has_file ${deployment}/etc/ostree/remotes.d/remote-test-physical.conf testos-repo
+assert_file_has_content sysroot/ostree/repo/config remote-test-physical
+echo "ok remote add physical sysroot"
+
+# Now a hack...symlink ${deployment}/sysroot to the sysroot in lieu of a bind
+# mount which we can't do in unit tests.
+ln -sr sysroot ${deployment}/sysroot
+ln -s sysroot/ostree ${deployment}/ostree
+${CMD_PREFIX} ostree --sysroot=${deployment} remote add --set=gpg-verify=false remote-test-nonphysical file://$(pwd)/testos-repo
+assert_not_file_has_content sysroot/ostree/repo/config remote-test-nonphysical
+assert_file_has_content ${deployment}/etc/ostree/remotes.d/remote-test-nonphysical.conf testos-repo
+echo "ok remote add nonphysical sysroot"

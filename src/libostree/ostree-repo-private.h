@@ -80,6 +80,13 @@ struct OstreeRepoCommitModifier {
   GHashTable *devino_cache;
 };
 
+typedef enum {
+  OSTREE_REPO_SYSROOT_KIND_UNKNOWN,
+  OSTREE_REPO_SYSROOT_KIND_NO,  /* Not a system repo */
+  OSTREE_REPO_SYSROOT_KIND_VIA_SYSROOT, /* Constructed via ostree_sysroot_get_repo() */
+  OSTREE_REPO_SYSROOT_KIND_IS_SYSROOT_OSTREE, /* We match /ostree/repo */
+} OstreeRepoSysrootKind;
+
 /**
  * OstreeRepo:
  *
@@ -101,6 +108,7 @@ struct OstreeRepo {
   int objects_dir_fd;
   int uncompressed_objects_dir_fd;
   GFile *sysroot_dir;
+  GWeakRef sysroot; /* Weak to avoid a circular ref; see also `is_system` */
   char *remotes_config_dir;
 
   GHashTable *txn_refs;  /* (element-type utf8 utf8) */
@@ -118,7 +126,7 @@ struct OstreeRepo {
 
   gboolean inited;
   gboolean writable;
-  gboolean is_system; /* Was this repo created via ostree_sysroot_get_repo() ? */
+  OstreeRepoSysrootKind sysroot_kind;
   GError *writable_error;
   gboolean in_transaction;
   gboolean disable_fsync;
