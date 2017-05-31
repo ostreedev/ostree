@@ -4476,54 +4476,55 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  g_autoptr(GHashTable) refs = NULL;
-  if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
-    return FALSE;
-
   g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   g_autoptr(GVariantBuilder) refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
 
-  g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
-  ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
+  {
+    g_autoptr(GHashTable) refs = NULL;
+    if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
+      return FALSE;
 
-  for (GList *iter = ordered_keys; iter; iter = iter->next)
-    {
-      const char *ref = iter->data;
-      const char *commit = g_hash_table_lookup (refs, ref);
-      g_auto(GVariantDict) commit_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
+    g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
+    ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
 
-      g_assert (commit);
+    for (GList *iter = ordered_keys; iter; iter = iter->next)
+      {
+        const char *ref = iter->data;
+        const char *commit = g_hash_table_lookup (refs, ref);
+        g_auto(GVariantDict) commit_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
 
-      g_autofree char *remotename = NULL;
-      if (!ostree_parse_refspec (ref, &remotename, NULL, NULL))
-        g_assert_not_reached ();
+        g_assert (commit);
 
-      /* Don't put remote refs in the summary */
-      if (remotename != NULL)
-        continue;
+        g_autofree char *remotename = NULL;
+        if (!ostree_parse_refspec (ref, &remotename, NULL, NULL))
+          g_assert_not_reached ();
 
-      g_autoptr(GVariant) commit_obj = NULL;
-      if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
-        return FALSE;
+        /* Don't put remote refs in the summary */
+        if (remotename != NULL)
+          continue;
 
-      g_variant_dict_init (&commit_metadata_builder, NULL);
+        g_autoptr(GVariant) commit_obj = NULL;
+        if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
+          return FALSE;
 
-      /* Forward the commit’s timestamp if it’s valid. */
-      guint64 commit_timestamp = ostree_commit_get_timestamp (commit_obj);
-      g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (commit_timestamp);
+        g_variant_dict_init (&commit_metadata_builder, NULL);
 
-      if (dt != NULL)
-        g_variant_dict_insert_value (&commit_metadata_builder, OSTREE_COMMIT_TIMESTAMP,
-                                     g_variant_new_uint64 (GUINT64_TO_BE (commit_timestamp)));
+        /* Forward the commit’s timestamp if it’s valid. */
+        guint64 commit_timestamp = ostree_commit_get_timestamp (commit_obj);
+        g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (commit_timestamp);
 
-      g_variant_builder_add_value (refs_builder,
-                                   g_variant_new ("(s(t@ay@a{sv}))", ref,
-                                                  (guint64) g_variant_get_size (commit_obj),
-                                                  ostree_checksum_to_bytes_v (commit),
-                                                  g_variant_dict_end (&commit_metadata_builder)));
-    }
+        if (dt != NULL)
+          g_variant_dict_insert_value (&commit_metadata_builder, OSTREE_COMMIT_TIMESTAMP,
+                                       g_variant_new_uint64 (GUINT64_TO_BE (commit_timestamp)));
 
+        g_variant_builder_add_value (refs_builder,
+                                     g_variant_new ("(s(t@ay@a{sv}))", ref,
+                                                    (guint64) g_variant_get_size (commit_obj),
+                                                    ostree_checksum_to_bytes_v (commit),
+                                                    g_variant_dict_end (&commit_metadata_builder)));
+      }
+  }
 
   {
     g_autoptr(GPtrArray) delta_names = NULL;
