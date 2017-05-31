@@ -527,10 +527,6 @@ ostree_repo_constructed (GObject *object)
 
   g_assert (self->repodir != NULL);
 
-  /* Ensure the "sysroot-path" property is set. */
-  if (self->sysroot_dir == NULL)
-    self->sysroot_dir = g_object_ref (_ostree_get_default_sysroot_path ());
-
   G_OBJECT_CLASS (ostree_repo_parent_class)->constructed (object);
 }
 
@@ -708,8 +704,6 @@ ostree_repo_new_default (void)
 gboolean
 ostree_repo_is_system (OstreeRepo   *repo)
 {
-  g_autoptr(GFile) default_repo_path = NULL;
-
   g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
 
   /* If we were created via ostree_sysroot_get_repo(), we know the answer is yes
@@ -718,8 +712,11 @@ ostree_repo_is_system (OstreeRepo   *repo)
   if (repo->is_system)
     return TRUE;
 
-  default_repo_path = get_default_repo_path (repo->sysroot_dir);
+  /* No sysroot_dir set?  Not a system repo then. */
+  if (!repo->sysroot_dir)
+    return FALSE;
 
+  g_autoptr(GFile) default_repo_path = get_default_repo_path (repo->sysroot_dir);
   return g_file_equal (repo->repodir, default_repo_path);
 }
 
