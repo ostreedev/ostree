@@ -42,6 +42,8 @@ ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos
 new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 assert_not_streq "${orig_mtime}" "${new_mtime}"
 ${CMD_PREFIX} ostree admin status | tee status.txt
+assert_not_file_has_content status.txt "pending"
+assert_not_file_has_content status.txt "rollback"
 validate_bootloader
 
 echo "ok deploy command"

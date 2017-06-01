@@ -405,6 +405,7 @@ global:
 LIBOSTREE_2017.7 {
 global:
   ostree_sysroot_repo;
+  ostree_sysroot_query_deployments_for;
 } LIBOSTREE_2017.6;
 
 /* Stub section for the stable release *after* this development one; don't

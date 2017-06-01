@@ -1108,6 +1108,63 @@ find_booted_deployment (OstreeSysroot       *self,
 }
 
 /**
+ * ostree_sysroot_query_deployments_for:
+ * @self: Sysroot
+ * @osname: (allow-none): "stateroot" name
+ * @out_pending: (out) (allow-none) (transfer full): The pending deployment
+ * @out_rollback: (out) (allow-none) (transfer full): The rollback deployment
+ *
+ * Find the pending and rollback deployments for @osname. Pass %NULL for @osname
+ * to use the booted deployment's osname. By default, pending deployment is the
+ * first deployment in the order that matches @osname, and @rollback will be the
+ * next one after the booted deployment, or the deployment after the pending if
+ * we're not looking at the booted deployment.
+ *
+ * Since: 2017.7
+ */
+void
+ostree_sysroot_query_deployments_for (OstreeSysroot     *self,
+                                      const char        *osname,
+                                      OstreeDeployment  **out_pending,
+                                      OstreeDeployment  **out_rollback)
+{
+  g_return_if_fail (osname != NULL || self->booted_deployment != NULL);
+  g_autoptr(OstreeDeployment) ret_pending = NULL;
+  g_autoptr(OstreeDeployment) ret_rollback = NULL;
+
+  if (osname == NULL)
+    osname = ostree_deployment_get_osname (self->booted_deployment);
+
+  gboolean found_booted = FALSE;
+  for (guint i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *deployment = self->deployments->pdata[i];
+
+      /* Is this deployment booted?  If so, note we're past the booted */
+      if (self->booted_deployment != NULL &&
+          ostree_deployment_equal (deployment, self->booted_deployment))
+        {
+          found_booted = TRUE;
+          continue;
+        }
+
+      /* Ignore deployments not for this osname */
+      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
+          continue;
+
+      if (!found_booted && !ret_pending)
+        ret_pending = g_object_ref (deployment);
+      else if (found_booted && !ret_rollback)
+        ret_rollback = g_object_ref (deployment);
+    }
+  if (out_pending)
+    *out_pending = g_steal_pointer (&ret_pending);
+  if (out_rollback)
+    *out_rollback = g_steal_pointer (&ret_rollback);
+}
+
+
+/**
  * ostree_sysroot_get_merge_deployment:
  * @self: Sysroot
  * @osname: (allow-none): Operating system group
@@ -1132,23 +1189,13 @@ ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
    */
   if (self->booted_deployment &&
       g_strcmp0 (ostree_deployment_get_osname (self->booted_deployment), osname) == 0)
-    {
       return g_object_ref (self->booted_deployment);
-    }
   else
     {
-      guint i;
-      for (i = 0; i < self->deployments->len; i++)
-        {
-          OstreeDeployment *deployment = self->deployments->pdata[i];
-
-          if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
-            continue;
-
-          return g_object_ref (deployment);
-        }
+      g_autoptr(OstreeDeployment) pending = NULL;
+      ostree_sysroot_query_deployments_for (self, osname, &pending, NULL);
+      return g_steal_pointer (&pending);
     }
-  return NULL;
 }
 
 /**
