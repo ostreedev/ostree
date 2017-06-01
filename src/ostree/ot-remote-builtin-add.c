@@ -39,7 +39,7 @@ static GOptionEntry option_entries[] = {
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
   { "contenturl", 0, 0, G_OPTION_ARG_STRING, &opt_contenturl, "Use URL when fetching content", "URL" },
-  { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Use sysroot at PATH", "PATH" },
+  { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Use sysroot at PATH (overrides --repo)", "PATH" },
   { NULL }
 };
 
