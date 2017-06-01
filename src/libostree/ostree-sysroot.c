@@ -818,12 +818,21 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   /* Determine whether we're "physical" or not, the first time we initialize */
   if (!self->loaded)
     {
-      if (fstatat (self->sysroot_fd, "sysroot", &stbuf, 0) < 0)
+      /* If we have a booted deployment, the sysroot is / and we're definitely
+       * not physical.
+       */
+      if (self->booted_deployment)
+        self->is_physical = FALSE;  /* (the default, but explicit for clarity) */
+      /* Otherwise - check for /sysroot which should only exist in a deployment,
+       * not in ${sysroot} (a metavariable for the real physical root).
+       */
+      else if (fstatat (self->sysroot_fd, "sysroot", &stbuf, 0) < 0)
         {
           if (errno != ENOENT)
             return glnx_throw_errno_prefix (error, "fstatat");
           self->is_physical = TRUE;
         }
+      /* Otherwise, the default is FALSE */
     }
 
   self->bootversion = bootversion;
