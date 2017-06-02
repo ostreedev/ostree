@@ -32,7 +32,6 @@
 #include <glnx-console.h>
 
 #include "ostree-core-private.h"
-#include "ostree-sysroot-private.h"
 #include "ostree-remote-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-file.h"
@@ -448,7 +447,6 @@ ostree_repo_finalize (GObject *object)
   if (self->uncompressed_objects_dir_fd != -1)
     (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->sysroot_dir);
-  g_weak_ref_clear (&self->sysroot);
   g_free (self->remotes_config_dir);
 
   if (self->loose_object_devino_hash)
@@ -526,6 +524,10 @@ ostree_repo_constructed (GObject *object)
   OstreeRepo *self = OSTREE_REPO (object);
 
   g_assert (self->repodir != NULL);
+
+  /* Ensure the "sysroot-path" property is set. */
+  if (self->sysroot_dir == NULL)
+    self->sysroot_dir = g_object_ref (_ostree_get_default_sysroot_path ());
 
   G_OBJECT_CLASS (ostree_repo_parent_class)->constructed (object);
 }
@@ -704,6 +706,8 @@ ostree_repo_new_default (void)
 gboolean
 ostree_repo_is_system (OstreeRepo   *repo)
 {
+  g_autoptr(GFile) default_repo_path = NULL;
+
   g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
 
   /* If we were created via ostree_sysroot_get_repo(), we know the answer is yes
@@ -712,11 +716,8 @@ ostree_repo_is_system (OstreeRepo   *repo)
   if (repo->is_system)
     return TRUE;
 
-  /* No sysroot_dir set?  Not a system repo then. */
-  if (!repo->sysroot_dir)
-    return FALSE;
+  default_repo_path = get_default_repo_path (repo->sysroot_dir);
 
-  g_autoptr(GFile) default_repo_path = get_default_repo_path (repo->sysroot_dir);
   return g_file_equal (repo->repodir, default_repo_path);
 }
 
@@ -893,24 +894,22 @@ impl_repo_remote_add (OstreeRepo     *self,
 
   remote = ostree_remote_new (name);
 
-  /* If a sysroot was provided, use it. Otherwise, see if this repo has a ref to
-   * a sysroot (and it's physical).
+  /* The OstreeRepo maintains its own internal system root path,
+   * so we need to not only check if a "sysroot" argument was given
+   * but also whether it's actually different from OstreeRepo's.
+   *
+   * XXX Having API regret about the "sysroot" argument now.
    */
-  g_autoptr(OstreeSysroot) sysroot_ref = NULL;
-  if (sysroot == NULL)
-    {
-      sysroot_ref = (OstreeSysroot*)g_weak_ref_get (&self->sysroot);
-      /* Only write to /etc/ostree/remotes.d if we are pointed at a deployment */
-      if (sysroot_ref != NULL && !sysroot_ref->is_physical)
-        sysroot = ostree_sysroot_get_path (sysroot_ref);
-    }
-  /* For backwards compat, also fall back to the sysroot-path variable */
-  if (sysroot == NULL && sysroot_ref == NULL)
-    sysroot = self->sysroot_dir;
-
+  gboolean different_sysroot = FALSE;
   if (sysroot != NULL)
+    different_sysroot = !g_file_equal (sysroot, self->sysroot_dir);
+
+  if (different_sysroot || ostree_repo_is_system (self))
     {
       g_autoptr(GError) local_error = NULL;
+
+      if (sysroot == NULL)
+        sysroot = self->sysroot_dir;
 
       g_autoptr(GFile) etc_ostree_remotes_d = g_file_resolve_relative_path (sysroot, SYSCONF_REMOTES);
       if (!g_file_make_directory_with_parents (etc_ostree_remotes_d,
