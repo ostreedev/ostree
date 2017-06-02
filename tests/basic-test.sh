@@ -559,7 +559,7 @@ ${CMD_PREFIX} ostree --repo=repo2 checkout -U --disable-cache test2 test2-checko
 if test -d repo2/uncompressed-objects-cache; then
     # we're in archive mode, but the repo we pull-local from might be
     # bare-user-only, in which case, we skip these checks since bare-user-only
-    # doesn't apply permission bits
+    # doesn't store permission bits
     if ! is_bare_user_only_repo repo; then
         assert_file_has_mode test2-checkout/baz/cowro 600
         assert_file_has_mode test2-checkout/baz/deeper/ohyeahx 755
