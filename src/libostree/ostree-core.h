@@ -45,13 +45,6 @@ G_BEGIN_DECLS
 #define OSTREE_MAX_METADATA_WARN_SIZE (7 * 1024 * 1024)
 
 /**
- * OSTREE_MAX_RECURSION:
- * 
- * Maximum depth of metadata.
- */
-#define OSTREE_MAX_RECURSION (256)
-
-/**
  * OSTREE_SHA256_DIGEST_LEN:
  *
  * Length of a sha256 digest when expressed as raw bytes
