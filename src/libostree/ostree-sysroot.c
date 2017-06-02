@@ -1412,6 +1412,11 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
  * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT is
  * specified, then instead of prepending, the new deployment will be
  * added right after the booted or merge deployment, instead of first.
+ *
+ * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN is
+ * specified, then no cleanup will be performed after adding the
+ * deployment. Make sure to call ostree_sysroot_cleanup() sometime
+ * later, instead.
  */
 gboolean
 ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
