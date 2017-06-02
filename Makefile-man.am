@@ -29,7 +29,10 @@ ostree-commit.1 ostree-export.1 ostree-gpg-sign.1 ostree-config.1	\
 ostree-diff.1 ostree-fsck.1 ostree-init.1 ostree-log.1 ostree-ls.1	\
 ostree-prune.1 ostree-pull-local.1 ostree-pull.1 ostree-refs.1		\
 ostree-remote.1 ostree-reset.1 ostree-rev-parse.1 ostree-show.1		\
-ostree-summary.1 ostree-static-delta.1 ostree-trivial-httpd.1
+ostree-summary.1 ostree-static-delta.1
+if BUILDOPT_TRIVIAL_HTTPD
+man1_files += ostree-trivial-httpd.1
+endif
 
 if BUILDOPT_FUSE
 man1_files += rofiles-fuse.1
