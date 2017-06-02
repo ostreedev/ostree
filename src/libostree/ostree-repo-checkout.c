@@ -261,14 +261,14 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                                         &tmpf, error))
         return FALSE;
 
-      if (sepolicy_enabled)
+      if (sepolicy_enabled && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
         {
           g_autofree char *label = NULL;
-          if (!ostree_sepolicy_get_label (options->sepolicy,
-                                          state->selabel_path_buf->str,
+          if (!ostree_sepolicy_get_label (options->sepolicy, state->selabel_path_buf->str,
                                           g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
                                           &label, cancellable, error))
             return FALSE;
+
           if (fsetxattr (tmpf.fd, "security.selinux", label, strlen (label), 0) < 0)
             return glnx_throw_errno_prefix (error, "Setting security.selinux");
         }
