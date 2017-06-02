@@ -81,11 +81,11 @@ The `bare-user` mode is useful for build systems that run as non-root
 but want to generate root-owned content, as well as non-root container
 systems.
 
-There is a variant to the `bare-user` mode called `bare-user-only` mode. Unlike
-`bare-user` modes, neither ownership nor extended attributes are stored. These
-repos are meant to to be checked out in user mode (with the `-U` flag), where
-this information is not applied anyway. The main advantage of `bare-user-only`
-is that repos can be stored on filesystems which do not support extended
+There is a variant to the `bare-user` mode called `bare-user-only`. Unlike
+`bare-user`, neither ownership nor extended attributes are stored. These repos
+are meant to to be checked out in user mode (with the `-U` flag), where this
+information is not applied anyway. The main advantage of `bare-user-only` is
+that repos can be stored on filesystems which do not support extended
 attributes, such as tmpfs.
 
 In contrast, the `archive-z2` mode is designed for serving via plain
