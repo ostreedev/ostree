@@ -566,6 +566,10 @@ rm test2-checkout -rf
 ${CMD_PREFIX} ostree --repo=repo2 checkout -U test2 test2-checkout
 assert_file_has_content test2-checkout/baz/cow moo
 assert_has_dir repo2/uncompressed-objects-cache
+ls repo2/uncompressed-objects-cache > ls.txt
+if ! test -s ls.txt; then
+    assert_not_reached "repo didn't cache uncompressed objects"
+fi
 # we're in archive mode, but the repo we pull-local from might be
 # bare-user-only, in which case, we skip these checks since bare-user-only
 # doesn't store permission bits
