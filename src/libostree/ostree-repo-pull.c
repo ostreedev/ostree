@@ -152,7 +152,7 @@ typedef struct {
   guchar csum[OSTREE_SHA256_DIGEST_LEN];
   char *path;
   OstreeObjectType objtype;
-  guint recursion_depth;
+  guint recursion_depth; /* NB: not used anymore, though might be nice to print */
 } ScanObjectQueueData;
 
 static void start_fetch (OtPullData *pull_data, FetchObjectData *fetch);
