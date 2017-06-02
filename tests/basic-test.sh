@@ -557,6 +557,8 @@ ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 rm -rf test2-checkout
 ${CMD_PREFIX} ostree --repo=repo2 checkout -U --disable-cache test2 test2-checkout
 if test -d repo2/uncompressed-objects-cache; then
+    assert_file_has_mode test2-checkout/baz/cowro 600
+    assert_file_has_mode test2-checkout/baz/deeper/ohyeahx 755
     ls repo2/uncompressed-objects-cache > ls.txt
     if test -s ls.txt; then
 	assert_not_reached "repo has uncompressed objects"
@@ -566,6 +568,8 @@ rm test2-checkout -rf
 ${CMD_PREFIX} ostree --repo=repo2 checkout -U test2 test2-checkout
 assert_file_has_content test2-checkout/baz/cow moo
 assert_has_dir repo2/uncompressed-objects-cache
+assert_file_has_mode test2-checkout/baz/cowro 600
+assert_file_has_mode test2-checkout/baz/deeper/ohyeahx 755
 echo "ok disable cache checkout"
 
 cd ${test_tmpdir}

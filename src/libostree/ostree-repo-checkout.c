@@ -140,10 +140,7 @@ write_regular_file_content (OstreeRepo            *self,
     {
       if (TEMP_FAILURE_RETRY (fchown (outfd, g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                                       g_file_info_get_attribute_uint32 (file_info, "unix::gid"))) < 0)
-        return glnx_throw_errno (error);
-
-      if (TEMP_FAILURE_RETRY (fchmod (outfd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"))) < 0)
-        return glnx_throw_errno (error);
+        return glnx_throw_errno_prefix (error, "fchown");
 
       if (xattrs)
         {
@@ -152,10 +149,19 @@ write_regular_file_content (OstreeRepo            *self,
         }
     }
 
+  guint32 file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
+  /* Don't make setuid files on checkout when we're doing --user */
+  if (mode == OSTREE_REPO_CHECKOUT_MODE_USER)
+    file_mode &= ~(S_ISUID|S_ISGID);
+
+  if (TEMP_FAILURE_RETRY (fchmod (outfd, file_mode)) < 0)
+    return glnx_throw_errno_prefix (error, "fchmod");
+
   if (fsync_is_enabled (self, options))
     {
       if (fsync (outfd) == -1)
-        return glnx_throw_errno (error);
+        return glnx_throw_errno_prefix (error, "fsync");
     }
 
   if (outstream)
@@ -249,13 +255,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
       g_auto(OtTmpfile) tmpf = { 0, };
-      guint32 file_mode;
       GLnxLinkTmpfileReplaceMode replace_mode;
-
-      file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-      /* Don't make setuid files on checkout when we're doing --user */
-      if (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
-        file_mode &= ~(S_ISUID|S_ISGID);
 
       if (!ot_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
                                         &tmpf, error))

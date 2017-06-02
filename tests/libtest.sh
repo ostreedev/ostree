@@ -157,9 +157,13 @@ setup_test_repository () {
 
     mkdir baz
     echo moo > baz/cow
+    echo mooro > baz/cowro
+    chmod 600 baz/cowro
     echo alien > baz/saucer
     mkdir baz/deeper
     echo hi > baz/deeper/ohyeah
+    echo hix > baz/deeper/ohyeahx
+    chmod 755 baz/deeper/ohyeahx
     ln -s nonexistent baz/alink
     mkdir baz/another/
     echo x > baz/another/y

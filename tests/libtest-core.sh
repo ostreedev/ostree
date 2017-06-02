@@ -110,6 +110,13 @@ assert_file_has_content_literal () {
     fi
 }
 
+assert_file_has_mode () {
+    mode=$(stat -c '%a' $1)
+    if [ "$mode" != "$2" ]; then
+        fatal "File '$1' has wrong mode: expected $2, but got $mode"
+    fi
+}
+
 assert_symlink_has_content () {
     if ! test -L "$1"; then
         fatal "File '$1' is not a symbolic link"
