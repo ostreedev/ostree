@@ -28,7 +28,7 @@ echo "ok yaml version"
 CHECKOUT_U_ARG=""
 COMMIT_ARGS=""
 DIFF_ARGS=""
-if grep -q bare-user-only repo/config; then
+if is_bare_user_only_repo repo; then
     # In bare-user-only repos we can only represent files with uid/gid 0, no
     # xattrs and canonical permissions, so we need to commit them as such, or
     # we end up with repos that don't pass fsck
@@ -66,7 +66,7 @@ validate_checkout_basic checkout-test2
 rm checkout-test2 -rf
 # Only do these tests on bare-user/bare, not bare-user-only
 # since the latter automatically synthesizes -U if it's not passed.
-if ! grep -q bare-user-only repo/config; then
+if ! is_bare_user_only_repo repo; then
 if grep -q bare-user repo/config; then
     if $OSTREE checkout -H test2 checkout-test2 2>err.txt; then
         assert_not_reached "checkout -H worked?"
@@ -566,6 +566,13 @@ rm test2-checkout -rf
 ${CMD_PREFIX} ostree --repo=repo2 checkout -U test2 test2-checkout
 assert_file_has_content test2-checkout/baz/cow moo
 assert_has_dir repo2/uncompressed-objects-cache
+# we're in archive mode, but the repo we pull-local from might be
+# bare-user-only, in which case, we skip these checks since bare-user-only
+# doesn't store permission bits
+if ! is_bare_user_only_repo repo; then
+    assert_file_has_mode test2-checkout/baz/cowro 600
+    assert_file_has_mode test2-checkout/baz/deeper/ohyeahx 755
+fi
 echo "ok disable cache checkout"
 
 cd ${test_tmpdir}
