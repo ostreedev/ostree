@@ -220,6 +220,31 @@ ot_dfd_iter_init_allow_noent (int dfd,
   return TRUE;
 }
 
+/* Like glnx_dirfd_iterator_init_at(), but if %ENOENT, then set
+ * @out_exists to %FALSE, and return successfully.
+ */
+gboolean
+ot_dfd_iter_init_allow_noent (int dfd,
+                              const char *path,
+                              GLnxDirFdIterator *dfd_iter,
+                              gboolean *out_exists,
+                              GError **error)
+{
+  glnx_fd_close int fd = glnx_opendirat_with_errno (dfd, path, TRUE);
+  if (fd < 0)
+    {
+      if (errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "opendirat");
+      *out_exists = FALSE;
+      return TRUE;
+    }
+  if (!glnx_dirfd_iterator_init_take_fd (fd, dfd_iter, error))
+    return FALSE;
+  fd = -1;
+  *out_exists = TRUE;
+  return TRUE;
+}
+
 GBytes *
 ot_file_mapat_bytes (int dfd,
                      const char *path,
