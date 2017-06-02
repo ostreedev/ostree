@@ -564,9 +564,6 @@ scan_dirtree_object (OtPullData   *pull_data,
                      GCancellable *cancellable,
                      GError      **error)
 {
-  if (recursion_depth > OSTREE_MAX_RECURSION)
-    return glnx_throw (error, "Exceeded maximum recursion");
-
   g_autoptr(GVariant) tree = NULL;
   if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_DIR_TREE, checksum,
                                  &tree, error))
@@ -1187,13 +1184,6 @@ scan_commit_object (OtPullData         *pull_data,
   gpointer depthp;
   gint depth;
   gboolean is_partial;
-
-  if (recursion_depth > OSTREE_MAX_RECURSION)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Exceeded maximum recursion");
-      goto out;
-    }
 
   if (g_hash_table_lookup_extended (pull_data->commit_to_depth, checksum,
                                     NULL, &depthp))
