@@ -283,19 +283,19 @@ commit_loose_object_trusted (OstreeRepo        *self,
       if (objtype == OSTREE_OBJECT_TYPE_FILE &&
           self->mode == OSTREE_REPO_MODE_BARE_USER)
         {
-          if (!object_is_symlink)
-            {
-              /* We need to apply at least some mode bits, because the repo file was created
-                 with mode 644, and we need e.g. exec bits to be right when we do a user-mode
-                 checkout. To make this work we apply all user bits and the read bits for
-                 group/other.  Furthermore, setting user xattrs requires write access, so
-                 this makes sure it's at least writable by us.  (O_TMPFILE uses mode 0 by default) */
-              if (fchmod (fd, mode | 0744) < 0)
-                return glnx_throw_errno (error);
-            }
-
           if (!write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
             return FALSE;
+
+          if (!object_is_symlink)
+            {
+              /* Note that previously this path added `| 0755` which made every
+               * file executable, see
+               * https://github.com/ostreedev/ostree/issues/907
+               */
+              const mode_t content_mode = (mode & (S_IFREG | 0775));
+              if (fchmod (fd, content_mode) < 0)
+                return glnx_throw_errno_prefix (error, "fchmod");
+            }
         }
       else if (objtype == OSTREE_OBJECT_TYPE_FILE &&
                self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY

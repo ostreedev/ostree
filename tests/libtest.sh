@@ -503,3 +503,21 @@ libtest_cleanup_gpg () {
 is_bare_user_only_repo () {
   grep -q 'mode=bare-user-only' $1/config
 }
+
+# Given a path to a file in a repo for a ref, print its checksum
+ostree_file_path_to_checksum() {
+    repo=$1
+    ref=$2
+    path=$3
+    $CMD_PREFIX ostree --repo=$repo ls -C $ref $path | awk '{ print $5 }'
+}
+
+# Given a path to a file in a repo for a ref, print the path to its object
+ostree_file_path_to_object_path() {
+   repo=$1
+   ref=$2
+   path=$3
+   checksum=$(ostree_file_path_to_checksum $repo $ref $path)
+   test -n "${checksum}"
+   echo ${repo}/objects/${checksum:0:2}/${checksum:2}.file
+}
