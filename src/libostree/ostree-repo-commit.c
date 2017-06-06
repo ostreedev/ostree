@@ -281,7 +281,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
         }
 
       if (objtype == OSTREE_OBJECT_TYPE_FILE &&
-          (self->mode == OSTREE_REPO_MODE_BARE_USER || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY))
+          self->mode == OSTREE_REPO_MODE_BARE_USER)
         {
           if (!object_is_symlink)
             {
@@ -294,9 +294,20 @@ commit_loose_object_trusted (OstreeRepo        *self,
                 return glnx_throw_errno (error);
             }
 
-          if (self->mode == OSTREE_REPO_MODE_BARE_USER &&
-              !write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
+          if (!write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
             return FALSE;
+        }
+      else if (objtype == OSTREE_OBJECT_TYPE_FILE &&
+               self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+               && !object_is_symlink)
+        {
+          guint32 invalid_modebits = (mode & ~S_IFMT) & ~0755;
+          if (invalid_modebits > 0)
+            return glnx_throw (error, "Invalid mode 0%04o with bits 0%04o in bare-user-only repository",
+                                   mode, invalid_modebits);
+
+          if (fchmod (fd, mode) < 0)
+            return glnx_throw_errno_prefix (error, "fchmod");
         }
 
       if (objtype == OSTREE_OBJECT_TYPE_FILE && _ostree_repo_mode_is_bare (self->mode))
@@ -2293,11 +2304,23 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
 
   if ((modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) != 0)
     {
-
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+      guint mode = g_file_info_get_attribute_uint32 (modified_info, "unix::mode");
+      switch (g_file_info_get_file_type (file_info))
         {
-          guint current_mode = g_file_info_get_attribute_uint32 (modified_info, "unix::mode");
-          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", current_mode | 0744);
+        case G_FILE_TYPE_REGULAR:
+          /* In particular, we want to squash the s{ug}id bits, but this also
+           * catches the sticky bit for example.
+           */
+          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", mode & (S_IFREG | 0755));
+          break;
+        case G_FILE_TYPE_DIRECTORY:
+          /* Like the above but for directories */
+          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", mode & (S_IFDIR | 0755));
+          break;
+        case G_FILE_TYPE_SYMBOLIC_LINK:
+          break;
+        default:
+          g_assert_not_reached ();
         }
       g_file_info_set_attribute_uint32 (modified_info, "unix::uid", 0);
       g_file_info_set_attribute_uint32 (modified_info, "unix::gid", 0);

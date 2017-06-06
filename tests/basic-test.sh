@@ -312,8 +312,13 @@ cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit ${COMMIT_ARGS} -b test2-override -s "with statoverride" --statoverride=../test-statoverride.txt
 cd ${test_tmpdir}
 $OSTREE checkout test2-override checkout-test2-override
-test -g checkout-test2-override/a/nested/2
-test -u checkout-test2-override/a/nested/3
+if ! is_bare_user_only_repo repo; then
+    test -g checkout-test2-override/a/nested/2
+    test -u checkout-test2-override/a/nested/3
+else
+    test '!' -g checkout-test2-override/a/nested/2
+    test '!' -u checkout-test2-override/a/nested/3
+fi
 echo "ok commit statoverride"
 
 cd ${test_tmpdir}
