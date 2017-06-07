@@ -50,7 +50,7 @@ echo "ok failed to commit suid"
 
 cd ${test_tmpdir}
 rm repo-input -rf
-ostree --repo=repo-input init --mode=archive
+ostree_repo_init repo-input init --mode=archive
 rm files -rf && mkdir files
 echo "a group writable file" > files/some-group-writable
 chmod 0664 files/some-group-writable
