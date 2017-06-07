@@ -338,8 +338,30 @@ $OSTREE prune
 echo "ok prune didn't fail"
 
 cd ${test_tmpdir}
+# Verify we can't cat dirs
+for path in / /baz; do
+    if $OSTREE cat test2 $path 2>err.txt; then
+        assert_not_reached "cat directory"
+    fi
+    assert_file_has_content err.txt "open directory"
+done
+rm checkout-test2 -rf
 $OSTREE cat test2 /yet/another/tree/green > greenfile-contents
 assert_file_has_content greenfile-contents "leaf"
+$OSTREE checkout test2 checkout-test2
+ls -alR checkout-test2
+ln -sr checkout-test2/{four,four-link}
+ln -sr checkout-test2/{baz/cow,cow-link}
+ln -sr checkout-test2/{cow-link,cow-link-link}
+$OSTREE commit -b test2-withlink --tree=dir=checkout-test2
+if $OSTREE cat test2-withlink /four-link 2>err.txt; then
+    assert_not_reached "cat directory"
+fi
+assert_file_has_content err.txt "open directory"
+for path in /cow-link /cow-link-link; do
+    $OSTREE cat test2-withlink $path >contents.txt
+    assert_file_has_content contents.txt moo
+done
 echo "ok cat-file"
 
 cd ${test_tmpdir}

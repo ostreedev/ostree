@@ -928,9 +928,23 @@ ostree_repo_file_read (GFile         *file,
 
   checksum = ostree_repo_file_get_checksum (self);
 
-  if (!ostree_repo_load_file (self->repo, checksum, &ret_stream,
-                              NULL, NULL, cancellable, error))
+  g_autoptr(GFileInfo) finfo = NULL;
+  if (!ostree_repo_load_file (self->repo, checksum, NULL,
+                              &finfo, NULL, cancellable, error))
     return NULL;
+  if (g_file_info_get_file_type (finfo) == G_FILE_TYPE_REGULAR)
+    {
+      if (!ostree_repo_load_file (self->repo, checksum, &ret_stream,
+                                  NULL, NULL, cancellable, error))
+        return NULL;
+    }
+  else
+    {
+      g_autoptr(GFile) parent = g_file_get_parent (file);
+      const char *target = g_file_info_get_symlink_target (finfo);
+      g_autoptr(GFile) dest = g_file_resolve_relative_path (parent, target);
+      return g_file_read (dest, cancellable, error);
+    }
 
   return g_steal_pointer (&ret_stream);
 }
