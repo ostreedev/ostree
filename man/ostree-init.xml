@@ -71,6 +71,32 @@ Boston, MA 02111-1307, USA.
                     Initialize repository in given mode (bare, bare-user, archive-z2).  Default is "bare".
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--collection-id</option>=COLLECTION-ID</term>
+                <listitem><para>
+                    Set the collection ID of the repository. Remotes in clones
+                    of this repository must configure the same value in order to
+                    pull refs which originated in this repository over peer to
+                    peer.</para>
+
+                    <para>This collection ID must be persistent and globally
+                    unique. It is formatted as a reverse DNS name (like a D-Bus
+                    interface). It must be set to a reverse DNS domain under your
+                    control.</para>
+
+                    <para>This option may be omitted (the default) to leave
+                    peer to peer distribution unsupported for the repository. A
+                    collection ID may be added to an existing repository in
+                    future to enable peer to peer distribution from that point
+                    onwards.</para>
+
+                    <para>If the collection ID is changed for the repository
+                    in future, peer to peer distribution of refs from the
+                    repository will break for all peers who do not update their
+                    remote configuration to the new collection ID.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
