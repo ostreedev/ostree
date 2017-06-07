@@ -3174,8 +3174,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     if (pull_data->summary)
       {
         refs = g_variant_get_child_value (pull_data->summary, 0);
-        n = g_variant_n_children (refs);
-        for (i = 0; i < n; i++)
+        for (i = 0, n = g_variant_n_children (refs); i < n; i++)
           {
             const char *refname;
             g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
