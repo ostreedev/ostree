@@ -29,13 +29,105 @@
 static gboolean opt_delete;
 static gboolean opt_list;
 static char *opt_create;
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+static gboolean opt_collections;
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 static GOptionEntry options[] = {
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", NULL },
   { "list", 0, 0, G_OPTION_ARG_NONE, &opt_list, "Do not remove the prefix from the refs", NULL },
   { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit", "NEWREF" },
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections, "Enable listing collection IDs for refs", NULL },
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
   { NULL }
 };
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+static gboolean
+do_ref_with_collections (OstreeRepo    *repo,
+                         const char    *refspec_prefix,
+                         GCancellable  *cancellable,
+                         GError       **error)
+{
+  g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+  GHashTableIter hashiter;
+  gpointer hashkey, hashvalue;
+  gboolean ret = FALSE;
+
+  if (!ostree_repo_list_collection_refs (repo,
+                                         (!opt_create) ? refspec_prefix : NULL,
+                                         &refs, cancellable, error))
+    goto out;
+
+  if (!opt_delete && !opt_create)
+    {
+      g_hash_table_iter_init (&hashiter, refs);
+      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+        {
+          const OstreeCollectionRef *ref = hashkey;
+          g_print ("(%s, %s)\n", ref->collection_id, ref->ref_name);
+        }
+    }
+  else if (opt_create)
+    {
+      g_autofree char *checksum = NULL;
+      g_autofree char *checksum_existing = NULL;
+
+      if (!ostree_repo_resolve_rev_ext (repo, opt_create, TRUE, OSTREE_REPO_RESOLVE_REV_EXT_NONE, &checksum_existing, error))
+        {
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
+            {
+              /* A folder exists with the specified ref name,
+               * which is handled by _ostree_repo_write_ref */
+              g_clear_error (error);
+            }
+          else goto out;
+        }
+
+      if (checksum_existing != NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "--create specified but ref %s already exists", opt_create);
+          goto out;
+        }
+
+      if (!ostree_repo_resolve_rev (repo, refspec_prefix, FALSE, &checksum, error))
+        goto out;
+
+      /* This is technically an abuse of the refspec syntax: collection IDs
+       * should not be treated like remote names. */
+      g_auto(GStrv) parts = g_strsplit (opt_create, ":", 2);
+      const char *collection_id = parts[0];
+      const char *ref_name = parts[1];
+      if (!ostree_validate_collection_id (collection_id, error))
+        goto out;
+      if (!ostree_validate_rev (ref_name, error))
+        goto out;
+
+      const OstreeCollectionRef ref = { (gchar *) collection_id, (gchar *) ref_name };
+      if (!ostree_repo_set_collection_ref_immediate (repo, &ref, checksum,
+                                                     cancellable, error))
+        goto out;
+    }
+  else
+    /* delete */
+    {
+      g_hash_table_iter_init (&hashiter, refs);
+      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+        {
+          const OstreeCollectionRef *ref = hashkey;
+
+          if (!ostree_repo_set_collection_ref_immediate (repo, ref, NULL,
+                                                         cancellable, error))
+            goto out;
+        }
+    }
+  ret = TRUE;
+ out:
+  return ret;
+}
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellable *cancellable, GError **error)
 {
@@ -43,6 +135,11 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  if (opt_collections)
+    return do_ref_with_collections (repo, refspec_prefix, cancellable, error);
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   if (opt_delete || opt_list)
     {

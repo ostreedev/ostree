@@ -83,6 +83,26 @@ Boston, MA 02111-1307, USA.
 		  you will then need to <command>ostree prune</command> or <command>ostree admin cleanup</command>.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--collections</option></term>
+
+                <listitem><para>
+                  Enable interactions with refs using the combination of their
+                  collection IDs and ref names. When listing refs, this changes
+                  the output format to include collection IDs, and enables
+                  listing remote mirrored refs.</para>
+
+                  <para>When creating refs, the refspec value passed to the
+                  <option>--create</option> option is treated as
+                  <literal>COLLECTION-ID:REF-NAME</literal> and a mirrored ref
+                  is created. (This is an abuse of the refspec syntax.)</para>
+
+                  <para>When deleting refs, all refs whose collection ID equals
+                  the value of the <option>--delete</option> argument are
+                  deleted.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
