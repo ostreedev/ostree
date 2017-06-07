@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..66"
+echo "1..$((66 + ${extra_basic_tests:-0}))"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
