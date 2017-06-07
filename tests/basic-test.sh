@@ -492,7 +492,7 @@ echo "ok pull-local with --remote arg"
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo3 prune
 find repo3/objects -name '*.commit' > objlist-before-prune
-rm repo3/refs/heads/* repo3/refs/remotes/* -rf
+rm repo3/refs/heads/* repo3/refs/mirrors/* repo3/refs/remotes/* -rf
 ${CMD_PREFIX} ostree --repo=repo3 prune --refs-only
 find repo3/objects -name '*.commit' > objlist-after-prune
 if cmp -s objlist-before-prune objlist-after-prune; then

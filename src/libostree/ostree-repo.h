@@ -309,6 +309,15 @@ void          ostree_repo_transaction_set_ref     (OstreeRepo *self,
                                                    const char *ref,
                                                    const char *checksum);
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+_OSTREE_PUBLIC
+void          ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
+                                                          const OstreeCollectionRef *ref,
+                                                          const char                *checksum);
+
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 _OSTREE_PUBLIC
 gboolean      ostree_repo_set_ref_immediate (OstreeRepo *self,
                                              const char *remote,
@@ -316,6 +325,17 @@ gboolean      ostree_repo_set_ref_immediate (OstreeRepo *self,
                                              const char *checksum,
                                              GCancellable  *cancellable,
                                              GError       **error);
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
+                                                        const OstreeCollectionRef  *ref,
+                                                        const char                 *checksum,
+                                                        GCancellable               *cancellable,
+                                                        GError                    **error);
+
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_has_object (OstreeRepo           *self,
@@ -1067,6 +1087,17 @@ gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
                                         OstreeAsyncProgress    *progress,
                                         GCancellable           *cancellable,
                                         GError                **error);
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_list_collection_refs (OstreeRepo    *self,
+                                           const char    *match_collection_id,
+                                           GHashTable   **out_all_refs,
+                                           GCancellable  *cancellable,
+                                           GError       **error);
+
+#endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 void ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress,

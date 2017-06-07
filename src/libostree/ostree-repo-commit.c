@@ -1347,6 +1347,11 @@ ensure_txn_refs (OstreeRepo *self)
 {
   if (self->txn_refs == NULL)
     self->txn_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  if (self->txn_collection_refs == NULL)
+    self->txn_collection_refs = g_hash_table_new_full (ostree_collection_ref_hash,
+                                                       ostree_collection_ref_equal,
+                                                       (GDestroyNotify) ostree_collection_ref_free,
+                                                       g_free);
 }
 
 /**
@@ -1411,6 +1416,41 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
 }
 
 /**
+ * ostree_repo_transaction_set_collection_ref:
+ * @self: An #OstreeRepo
+ * @ref: The collection–ref to write
+ * @checksum: (nullable): The checksum to point it to
+ *
+ * If @checksum is not %NULL, then record it as the target of local ref named
+ * @ref.
+ *
+ * Otherwise, if @checksum is %NULL, then record that the ref should
+ * be deleted.
+ *
+ * The change will not be written out immediately, but when the transaction
+ * is completed with ostree_repo_commit_transaction(). If the transaction
+ * is instead aborted with ostree_repo_abort_transaction(), no changes will
+ * be made to the repository.
+ *
+ * Since: 2017.8
+ */
+void
+ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
+                                            const OstreeCollectionRef *ref,
+                                            const char                *checksum)
+{
+  g_return_if_fail (OSTREE_IS_REPO (self));
+  g_return_if_fail (self->in_transaction == TRUE);
+  g_return_if_fail (ref != NULL);
+  g_return_if_fail (checksum == NULL || ostree_validate_checksum_string (checksum, NULL));
+
+  ensure_txn_refs (self);
+
+  g_hash_table_replace (self->txn_collection_refs,
+                        ostree_collection_ref_dup (ref), g_strdup (checksum));
+}
+
+/**
  * ostree_repo_set_ref_immediate:
  * @self: An #OstreeRepo
  * @remote: (allow-none): A remote for the ref
@@ -1431,7 +1471,40 @@ ostree_repo_set_ref_immediate (OstreeRepo *self,
                                GCancellable  *cancellable,
                                GError       **error)
 {
-  return _ostree_repo_write_ref (self, remote, ref, checksum,
+  const OstreeCollectionRef _ref = { NULL, (gchar *) ref };
+  return _ostree_repo_write_ref (self, remote, &_ref, checksum,
+                                 cancellable, error);
+}
+
+/**
+ * ostree_repo_set_collection_ref_immediate:
+ * @self: An #OstreeRepo
+ * @ref: The collection–ref to write
+ * @checksum: (nullable): The checksum to point it to, or %NULL to unset
+ * @cancellable: GCancellable
+ * @error: GError
+ *
+ * This is like ostree_repo_transaction_set_collection_ref(), except it may be
+ * invoked outside of a transaction.  This is presently safe for the
+ * case where we're creating or overwriting an existing ref.
+ *
+ * Returns: %TRUE on success, %FALSE otherwise
+ * Since: 2017.8
+ */
+gboolean
+ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
+                                          const OstreeCollectionRef  *ref,
+                                          const char                 *checksum,
+                                          GCancellable               *cancellable,
+                                          GError                    **error)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (ref != NULL, FALSE);
+  g_return_val_if_fail (checksum == NULL || ostree_validate_checksum_string (checksum, NULL), FALSE);
+  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  return _ostree_repo_write_ref (self, NULL, ref, checksum,
                                  cancellable, error);
 }
 
@@ -1481,6 +1554,11 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
       return FALSE;
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
 
+  if (self->txn_collection_refs)
+    if (!_ostree_repo_update_collection_refs (self, self->txn_collection_refs, cancellable, error))
+      return FALSE;
+  g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
+
   if (self->commit_stagedir_fd != -1)
     {
       (void) close (self->commit_stagedir_fd);
@@ -1518,6 +1596,7 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
 
   if (self->commit_stagedir_fd != -1)
     {
