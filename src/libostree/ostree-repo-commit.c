@@ -301,10 +301,10 @@ commit_loose_object_trusted (OstreeRepo        *self,
                self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
                && !object_is_symlink)
         {
-          guint32 invalid_modebits = (mode & ~S_IFMT) & ~0755;
+          guint32 invalid_modebits = (mode & ~S_IFMT) & ~0775;
           if (invalid_modebits > 0)
             return glnx_throw (error, "Invalid mode 0%04o with bits 0%04o in bare-user-only repository",
-                                   mode, invalid_modebits);
+                               mode, invalid_modebits);
 
           if (fchmod (fd, mode) < 0)
             return glnx_throw_errno_prefix (error, "fchmod");
