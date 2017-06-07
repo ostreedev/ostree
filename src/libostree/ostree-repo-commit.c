@@ -179,10 +179,13 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
   return TRUE;
 }
 
+/* Given either a file or symlink, apply the final metadata to it depending on
+ * the repository mode. Note that @checksum is assumed to have been validated by
+ * the caller.
+ */
 static gboolean
-commit_loose_object_trusted (OstreeRepo        *self,
+commit_loose_content_object (OstreeRepo        *self,
                              const char        *checksum,
-                             OstreeObjectType   objtype,
                              const char        *temp_filename,
                              gboolean           object_is_symlink,
                              guint32            uid,
@@ -239,7 +242,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
     }
   else
     {
-      if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
+      if (self->mode == OSTREE_REPO_MODE_BARE)
         {
           if (TEMP_FAILURE_RETRY (fchown (fd, uid, gid)) < 0)
             return glnx_throw_errno_prefix (error, "fchown");
@@ -254,9 +257,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
                 return FALSE;
             }
         }
-
-      if (objtype == OSTREE_OBJECT_TYPE_FILE &&
-          self->mode == OSTREE_REPO_MODE_BARE_USER)
+      else if (self->mode == OSTREE_REPO_MODE_BARE_USER)
         {
           if (!write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
             return FALSE;
@@ -272,8 +273,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
                 return glnx_throw_errno_prefix (error, "fchmod");
             }
         }
-      else if (objtype == OSTREE_OBJECT_TYPE_FILE &&
-               self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+      else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
                && !object_is_symlink)
         {
           guint32 invalid_modebits = (mode & ~S_IFMT) & ~0775;
@@ -285,7 +285,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
             return glnx_throw_errno_prefix (error, "fchmod");
         }
 
-      if (objtype == OSTREE_OBJECT_TYPE_FILE && _ostree_repo_mode_is_bare (self->mode))
+      if (_ostree_repo_mode_is_bare (self->mode))
         {
           /* To satisfy tools such as guile which compare mtimes
            * to determine whether or not source files need to be compiled,
@@ -306,7 +306,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
         }
     }
 
-  if (!_ostree_repo_commit_loose_final (self, checksum, objtype,
+  if (!_ostree_repo_commit_loose_final (self, checksum, OSTREE_OBJECT_TYPE_FILE,
                                         self->tmp_dir_fd, fd, temp_filename,
                                         cancellable, error))
     return FALSE;
@@ -508,7 +508,7 @@ _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
 
   if (state->fd != -1)
     {
-      if (!commit_loose_object_trusted (self, checksum, OSTREE_OBJECT_TYPE_FILE,
+      if (!commit_loose_content_object (self, checksum,
                                         state->temp_filename,
                                         FALSE, uid, gid, mode,
                                         xattrs, state->fd,
@@ -756,8 +756,7 @@ write_content_object (OstreeRepo         *self,
   const guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   const guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-  if (!commit_loose_object_trusted (self, actual_checksum,
-                                    OSTREE_OBJECT_TYPE_FILE,
+  if (!commit_loose_content_object (self, actual_checksum,
                                     temp_filename,
                                     object_is_symlink,
                                     uid, gid, mode,
