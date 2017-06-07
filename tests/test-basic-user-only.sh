@@ -22,7 +22,7 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 setup_test_repository "bare-user-only"
-extra_basic_tests=2
+extra_basic_tests=3
 . $(dirname $0)/basic-test.sh
 
 # Reset things so we don't inherit a lot of state from earlier tests
@@ -59,3 +59,15 @@ $CMD_PREFIX ostree pull-local --repo=repo repo-input
 $CMD_PREFIX ostree --repo=repo checkout -U -H content-with-group-writable groupwritable-co
 assert_file_has_mode groupwritable-co/some-group-writable 664
 echo "ok supported group writable"
+
+cd ${test_tmpdir}
+rm repo-input -rf
+ostree_repo_init repo-input init --mode=archive
+rm files -rf && mkdir files
+mkdir files/worldwritable-dir
+chmod a+w files/worldwritable-dir
+$CMD_PREFIX ostree --repo=repo-input commit -b content-with-dir-world-writable --tree=dir=files
+$CMD_PREFIX ostree pull-local --repo=repo repo-input
+$CMD_PREFIX ostree --repo=repo checkout -U -H content-with-dir-world-writable dir-co
+assert_file_has_mode dir-co/worldwritable-dir 775
+echo "ok didn't make world-writable dir"

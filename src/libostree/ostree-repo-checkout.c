@@ -749,8 +749,18 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
    */
   if (!did_exist)
     {
-      if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, mode)) < 0)
-        return glnx_throw_errno (error);
+      guint32 canonical_mode;
+      /* Silently ignore world-writable directories (plus sticky, suid bits,
+       * etc.) when doing a checkout for bare-user-only repos. This is related
+       * to the logic in ostree-repo-commit.c for files.
+       * See also: https://github.com/ostreedev/ostree/pull/909 i.e. 0c4b3a2b6da950fd78e63f9afec602f6188f1ab0
+       */
+      if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+        canonical_mode = (mode & 0775) | S_IFDIR;
+      else
+        canonical_mode = mode;
+      if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, canonical_mode)) < 0)
+        return glnx_throw_errno_prefix (error, "fchmod");
     }
 
   if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
