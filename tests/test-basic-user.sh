@@ -34,8 +34,11 @@ setup_test_repository "bare-user"
 
 cd ${test_tmpdir}
 objpath_nonexec=$(ostree_file_path_to_object_path repo test2 baz/cow)
-# This actually depends on umask, that's going to be a pain
-assert_file_has_mode ${objpath_nonexec} 664
+# Sigh, umask
+touch testfile
+default_mode=$(stat -c '%a' testfile)
+rm testfile
+assert_file_has_mode ${objpath_nonexec} ${default_mode}
 objpath_ro=$(ostree_file_path_to_object_path repo test2 baz/cowro)
 assert_file_has_mode ${objpath_ro} 600
 objpath_exec=$(ostree_file_path_to_object_path repo test2 baz/deeper/ohyeahx)
@@ -45,7 +48,7 @@ echo "ok bare-user committed modes"
 rm test2-checkout -rf
 $OSTREE checkout -U -H test2 test2-checkout
 cd test2-checkout
-assert_file_has_mode baz/cow 664
+assert_file_has_mode baz/cow ${default_mode}
 assert_file_has_mode baz/cowro 600
 assert_file_has_mode baz/deeper/ohyeahx 755
 echo "ok bare-user checkout modes"
