@@ -23,5 +23,7 @@ ostree_remote_get_name
 
 <SECTION>
 <FILE>ostree-misc-experimental</FILE>
+ostree_repo_get_collection_id
+ostree_repo_set_collection_id
 ostree_validate_collection_id
 </SECTION>

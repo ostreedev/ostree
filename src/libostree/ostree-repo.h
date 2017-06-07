@@ -89,6 +89,17 @@ gboolean      ostree_repo_create (OstreeRepo     *self,
                                   GCancellable   *cancellable,
                                   GError        **error);
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+_OSTREE_PUBLIC
+const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
+_OSTREE_PUBLIC
+gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
+                                             const gchar  *collection_id,
+                                             GError      **error);
+
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 _OSTREE_PUBLIC
 GFile *       ostree_repo_get_path (OstreeRepo  *self);
 
