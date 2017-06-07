@@ -3241,7 +3241,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
               g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
             }
-          
+
           strviter++;
           if (commitid_strviter)
             commitid_strviter++;
@@ -3377,7 +3377,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       ret = TRUE;
       goto out;
     }
-  
+
   g_assert_cmpint (pull_data->n_outstanding_metadata_fetches, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_metadata_write_requests, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_content_fetches, ==, 0);
@@ -3390,7 +3390,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       const char *checksum = value;
       g_autofree char *remote_ref = NULL;
       g_autofree char *original_rev = NULL;
-          
+
       if (pull_data->remote_name)
         remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
       else
