@@ -3393,7 +3393,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_autofree char *original_rev = NULL;
           
       if (pull_data->remote_name)
-        remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
+        remote_ref = g_strdup_printf ("%s:%s", pull_data->remote_name, ref);
       else
         remote_ref = g_strdup (ref);
 
