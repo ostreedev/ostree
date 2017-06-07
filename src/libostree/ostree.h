@@ -35,5 +35,9 @@
 #include <ostree-diff.h>
 #include <ostree-gpg-verify-result.h>
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+#include <ostree-ref.h>
+#endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 #include <ostree-autocleanups.h>
 #include <ostree-version.h>

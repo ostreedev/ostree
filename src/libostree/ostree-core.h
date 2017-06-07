@@ -242,6 +242,11 @@ int ostree_cmp_checksum_bytes (const guchar *a, const guchar *b);
 _OSTREE_PUBLIC
 gboolean ostree_validate_rev (const char *rev, GError **error);
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+_OSTREE_PUBLIC
+gboolean ostree_validate_collection_id (const char *collection_id, GError **error);
+#endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 _OSTREE_PUBLIC
 gboolean ostree_validate_remote_name (const char *remote_name, GError **error);
 

@@ -34,3 +34,16 @@ LIBOSTREE_2017.7_EXPERIMENTAL {
 global:
   ostree_remote_get_name;
 } LIBOSTREE_2017.6_EXPERIMENTAL;
+
+LIBOSTREE_2017.8_EXPERIMENTAL {
+global:
+  ostree_collection_ref_dup;
+  ostree_collection_ref_dupv;
+  ostree_collection_ref_equal;
+  ostree_collection_ref_free;
+  ostree_collection_ref_freev;
+  ostree_collection_ref_get_type;
+  ostree_collection_ref_hash;
+  ostree_collection_ref_new;
+  ostree_validate_collection_id;
+} LIBOSTREE_2017.7_EXPERIMENTAL;

@@ -173,6 +173,15 @@ _ostree_raw_file_to_archive_stream (GInputStream       *input,
                                     GCancellable       *cancellable,
                                     GError            **error);
 
+#ifndef OSTREE_ENABLE_EXPERIMENTAL_API
+gboolean ostree_validate_collection_id (const char *collection_id, GError **error);
+#endif /* !OSTREE_ENABLE_EXPERIMENTAL_API */
 
+#if (defined(OSTREE_COMPILATION) || GLIB_CHECK_VERSION(2, 44, 0)) && !defined(OSTREE_ENABLE_EXPERIMENTAL_API)
+#include <libglnx.h>
+#include "ostree-ref.h"
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeCollectionRef, ostree_collection_ref_free)
+G_DEFINE_AUTO_CLEANUP_FREE_FUNC (OstreeCollectionRefv, ostree_collection_ref_freev, NULL)
+#endif
 
 G_END_DECLS

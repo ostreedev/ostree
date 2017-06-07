@@ -94,6 +94,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-linuxfsutil.c \
 	src/libostree/ostree-diff.c \
 	src/libostree/ostree-mutable-tree.c \
+	src/libostree/ostree-ref.c \
 	src/libostree/ostree-remote.c \
 	src/libostree/ostree-remote-private.h \
 	src/libostree/ostree-repo.c \
@@ -151,6 +152,7 @@ libostree_1_la_SOURCES += \
 endif
 if !ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += \
+	src/libostree/ostree-ref.h \
 	src/libostree/ostree-remote.h \
 	$(NULL)
 endif
