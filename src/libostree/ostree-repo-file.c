@@ -148,7 +148,6 @@ _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
                                   const char  *commit,
                                   GError     **error)
 {
-  OstreeRepoFile *ret = NULL;
   g_autoptr(GVariant) commit_v = NULL;
   g_autoptr(GVariant) tree_contents_csum_v = NULL;
   g_autoptr(GVariant) tree_metadata_csum_v = NULL;
@@ -161,7 +160,7 @@ _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit, &commit_v, error))
-    goto out;
+    return NULL;
 
   /* PARSE OSTREE_OBJECT_TYPE_COMMIT */
   g_variant_get_child (commit_v, 6, "@ay", &tree_contents_csum_v);
@@ -172,17 +171,13 @@ _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
   ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_metadata_csum_v),
                                       tree_metadata_csum);
 
-  ret = _ostree_repo_file_new_root (repo, tree_contents_csum, tree_metadata_csum);
-
- out:
-  return ret;
+  return _ostree_repo_file_new_root (repo, tree_contents_csum, tree_metadata_csum);
 }
 
 static gboolean
 do_resolve (OstreeRepoFile  *self,
             GError         **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GVariant) root_contents = NULL;
   g_autoptr(GVariant) root_metadata = NULL;
 
@@ -190,27 +185,24 @@ do_resolve (OstreeRepoFile  *self,
 
   if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
                                  self->tree_contents_checksum, &root_contents, error))
-    goto out;
+    return FALSE;
 
   if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
                                  self->tree_metadata_checksum, &root_metadata, error))
-    goto out;
-  
+    return FALSE;
+
   self->tree_metadata = root_metadata;
   root_metadata = NULL;
   self->tree_contents = root_contents;
   root_contents = NULL;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
 do_resolve_nonroot (OstreeRepoFile     *self,
                     GError            **error)
 {
-  gboolean ret = FALSE;
   gboolean is_dir;
   int i;
   g_autoptr(GVariant) container = NULL;
@@ -221,13 +213,13 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   g_autofree char *tmp_checksum = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self->parent, error))
-    goto out;
+    return FALSE;
 
   if (!self->parent->tree_contents)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY,
                    "Not a directory");
-      goto out;
+      return FALSE;
     }
 
   i = ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, &container);
@@ -235,7 +227,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   if (i < 0)
     {
       set_error_noent ((GFile*)self, error);
-      goto out;
+      return FALSE;
     }
 
   if (is_dir)
@@ -255,14 +247,14 @@ do_resolve_nonroot (OstreeRepoFile     *self,
       if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
                                      tmp_checksum, &tree_contents,
                                      error))
-        goto out;
+        return FALSE;
 
       g_free (tmp_checksum);
       tmp_checksum = ostree_checksum_from_bytes_v (metadata_csum_v);
       if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
                                      tmp_checksum, &tree_metadata,
                                      error))
-        goto out;
+        return FALSE;
 
       self->tree_contents = tree_contents;
       tree_contents = NULL;
@@ -274,35 +266,29 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   else
     self->index = i;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
 ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
                                    GError         **error)
 {
-  gboolean ret = FALSE;
-
   if (self->parent == NULL)
     {
       if (self->tree_contents == NULL)
         if (!do_resolve (self, error))
-          goto out;
+          return FALSE;
     }
   else
     {
       if (self->index == -1)
         {
           if (!do_resolve_nonroot (self, error))
-            goto out;
+            return FALSE;
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -311,25 +297,21 @@ ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
                              GCancellable    *cancellable,
                              GError         **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) ret_xattrs = NULL;
-
   if (!ostree_repo_file_ensure_resolved (self, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(GVariant) ret_xattrs = NULL;
   if (self->tree_metadata)
     ret_xattrs = g_variant_get_child_value (self->tree_metadata, 3);
-  else 
+  else
     {
       if (!ostree_repo_load_file (self->repo, ostree_repo_file_get_checksum (self),
                                   NULL, NULL, &ret_xattrs, cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
   ot_transfer_out_value(out_xattrs, &ret_xattrs);
- out:
-  return ret;
+  return TRUE;
 }
 
 GVariant *
@@ -721,28 +703,24 @@ query_child_info_dir (OstreeRepo               *repo,
                       GCancellable             *cancellable,
                       GError                  **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFileInfo) ret_info = NULL;
-  g_autoptr(GVariant) metadata = NULL;
 
-  ret_info = g_file_info_new ();
+  g_autoptr(GFileInfo) ret_info = g_file_info_new ();
 
   g_file_info_set_attribute_uint32 (ret_info, "standard::type",
                                     G_FILE_TYPE_DIRECTORY);
-  
+
   if (g_file_attribute_matcher_matches (matcher, "unix::mode"))
     {
+      g_autoptr(GVariant) metadata = NULL;
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_META,
                                      metadata_checksum, &metadata, error))
-        goto out;
+        return FALSE;
 
       set_info_from_dirmeta (ret_info, metadata);
     }
-  
-  ret = TRUE;
+
   ot_transfer_out_value(out_info, &ret_info);
- out:
-  return ret;
+  return TRUE;
 }
 
 int
@@ -890,12 +868,11 @@ ostree_repo_file_query_info (GFile                *file,
 			     GCancellable         *cancellable,
 			     GError              **error)
 {
-  gboolean ret = FALSE;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
   g_autoptr(GFileInfo) info = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
-    goto out;
+    return NULL;
 
   if (!self->parent)
     {
@@ -904,20 +881,14 @@ ostree_repo_file_query_info (GFile                *file,
     }
   else
     {
-      if (!ostree_repo_file_tree_query_child (self->parent, self->index, 
-                                               attributes, flags, 
+      if (!ostree_repo_file_tree_query_child (self->parent, self->index,
+                                               attributes, flags,
                                                &info, cancellable, error))
-        goto out;
+        return NULL;
       g_assert (info != NULL);
     }
-      
-  ret = TRUE;
- out:
-  if (!ret)
-    g_clear_object (&info);
-  else
-    g_object_ref (info);
-  return info;
+
+  return g_steal_pointer (&info);
 }
 
 static GFileAttributeInfoList *
@@ -938,38 +909,30 @@ ostree_repo_file_query_writable_namespaces (GFile         *file,
 
 static GFileInputStream *
 ostree_repo_file_read (GFile         *file,
-		       GCancellable  *cancellable,
-		       GError       **error)
+                       GCancellable  *cancellable,
+                       GError       **error)
 {
-  gboolean ret = FALSE;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
   const char *checksum;
   g_autoptr(GInputStream) ret_stream = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
-    goto out;
+    return FALSE;
 
   if (self->tree_contents)
     {
-      g_set_error_literal (error, G_IO_ERROR,
-			   G_IO_ERROR_IS_DIRECTORY,
-			   "Can't open directory");
-      goto out;
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY,
+                           "Can't open directory");
+      return NULL;
     }
 
   checksum = ostree_repo_file_get_checksum (self);
 
   if (!ostree_repo_load_file (self->repo, checksum, &ret_stream,
                               NULL, NULL, cancellable, error))
-    goto out;
-  
-  ret = TRUE;
- out:
-  if (!ret)
-    g_clear_object (&ret_stream);
-  else
-    g_object_ref (ret_stream);
-  return (GFileInputStream*)ret_stream;
+    return NULL;
+
+  return g_steal_pointer (&ret_stream);
 }
 
 static void
