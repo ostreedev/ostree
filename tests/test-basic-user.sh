@@ -52,12 +52,12 @@ echo "ok bare-user checkout modes"
 
 rm test2-checkout -rf
 $OSTREE checkout -U -H test2 test2-checkout
-touch test2-checkout/unreadable
-chmod 0400 test2-checkout/unreadable
-$OSTREE commit -b test2-unreadable --tree=dir=test2-checkout
-chmod 0600 test2-checkout/unreadable
+touch test2-checkout/unwritable
+chmod 0400 test2-checkout/unwritable
+$OSTREE commit -b test2-unwritable --tree=dir=test2-checkout
+chmod 0600 test2-checkout/unwritable
 rm test2-checkout -rf
-$OSTREE checkout -U -H test2-unreadable test2-checkout
+$OSTREE checkout -U -H test2-unwritable test2-checkout
 cd test2-checkout
-assert_file_has_mode unreadable 400
-echo "ok bare-user unreadable"
+assert_file_has_mode unwritable 400
+echo "ok bare-user unwritable"
