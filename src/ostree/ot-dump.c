@@ -71,6 +71,18 @@ format_timestamp (guint64  timestamp,
   return str;
 }
 
+static gchar *
+uint64_secs_to_iso8601 (guint64 secs)
+{
+  g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (secs);
+  g_autoptr(GDateTime) local = (dt != NULL) ? g_date_time_to_local (dt) : NULL;
+
+  if (local != NULL)
+    return g_date_time_format (local, "%FT%T%:::z");
+  else
+    return g_strdup ("invalid");
+}
+
 static void
 dump_indented_lines (const gchar *data)
 {
@@ -196,21 +208,25 @@ dump_summary_ref (const char   *ref_name,
 
   while (g_variant_iter_loop (metadata, "{sv}", &key, &value))
     {
-      g_autofree char *string = g_variant_print (value, FALSE);
-      g_print ("    %s: %s\n", key, string);
+      g_autofree gchar *value_str = NULL;
+      const gchar *pretty_key = NULL;
+
+      if (g_strcmp0 (key, OSTREE_COMMIT_TIMESTAMP) == 0)
+        {
+          pretty_key = "Timestamp";
+          value_str = uint64_secs_to_iso8601 (GUINT64_FROM_BE (g_variant_get_uint64 (value)));
+        }
+      else
+        {
+          value_str = g_variant_print (value, FALSE);
+        }
+
+      /* Print out. */
+      if (pretty_key != NULL)
+        g_print ("    %s (%s): %s\n", pretty_key, key, value_str);
+      else
+        g_print ("    %s: %s\n", key, value_str);
     }
-}
-
-static gchar *
-uint64_secs_to_iso8601 (guint64 secs)
-{
-  g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (secs);
-  g_autoptr(GDateTime) local = (dt != NULL) ? g_date_time_to_local (dt) : NULL;
-
-  if (local != NULL)
-    return g_date_time_format (local, "%FT%T%:::z");
-  else
-    return g_strdup ("invalid");
 }
 
 void
