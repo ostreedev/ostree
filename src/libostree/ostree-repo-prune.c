@@ -312,7 +312,6 @@ ostree_repo_prune (OstreeRepo        *self,
   GHashTableIter hash_iter;
   gpointer key, value;
   g_autoptr(GHashTable) objects = NULL;
-  g_autoptr(GHashTable) all_refs = NULL;
   g_autoptr(GHashTable) reachable = NULL;
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
 
@@ -325,11 +324,33 @@ ostree_repo_prune (OstreeRepo        *self,
 
   if (refs_only)
     {
+      /* Ignoring collections. */
+      g_autoptr(GHashTable) all_refs = NULL;  /* (element-type utf8 utf8) */
+
       if (!ostree_repo_list_refs (self, NULL, &all_refs,
                                   cancellable, error))
         return FALSE;
 
       g_hash_table_iter_init (&hash_iter, all_refs);
+
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *checksum = value;
+
+          g_debug ("Finding objects to keep for commit %s", checksum);
+          if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
+                                                  cancellable, error))
+            return FALSE;
+        }
+
+      /* Using collections. */
+      g_autoptr(GHashTable) all_collection_refs = NULL;  /* (element-type OstreeChecksumRef utf8) */
+
+      if (!ostree_repo_list_collection_refs (self, NULL, &all_collection_refs,
+                                             cancellable, error))
+        return FALSE;
+
+      g_hash_table_iter_init (&hash_iter, all_collection_refs);
 
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {

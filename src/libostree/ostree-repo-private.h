@@ -48,6 +48,8 @@ G_BEGIN_DECLS
 /* Well-known keys for the additional metadata field in a summary file. */
 #define OSTREE_SUMMARY_LAST_MODIFIED "ostree.summary.last-modified"
 #define OSTREE_SUMMARY_EXPIRES "ostree.summary.expires"
+#define OSTREE_SUMMARY_COLLECTION_ID "ostree.summary.collection-id"
+#define OSTREE_SUMMARY_COLLECTION_MAP "ostree.summary.collection-map"
 
 /* Well-known keys for the additional metadata field in a commit in a ref entry
  * in a summary file. */
@@ -96,7 +98,8 @@ struct OstreeRepo {
   GFile *sysroot_dir;
   char *remotes_config_dir;
 
-  GHashTable *txn_refs;
+  GHashTable *txn_refs;  /* (element-type utf8 utf8) */
+  GHashTable *txn_collection_refs;  /* (element-type OstreeCollectionRef utf8) */
   GMutex txn_stats_lock;
   OstreeRepoTransactionStats txn_stats;
 
@@ -221,7 +224,13 @@ _ostree_repo_update_refs (OstreeRepo        *self,
                           GCancellable      *cancellable,
                           GError           **error);
 
-gboolean      
+gboolean
+_ostree_repo_update_collection_refs (OstreeRepo    *self,
+                                     GHashTable    *refs,
+                                     GCancellable  *cancellable,
+                                     GError       **error);
+
+gboolean
 _ostree_repo_file_replace_contents (OstreeRepo    *self,
                                     int            dfd,
                                     const char    *path,
@@ -230,13 +239,13 @@ _ostree_repo_file_replace_contents (OstreeRepo    *self,
                                     GCancellable  *cancellable,
                                     GError       **error);
 
-gboolean      
-_ostree_repo_write_ref (OstreeRepo    *self,
-                        const char    *remote,
-                        const char    *ref,
-                        const char    *rev,
-                        GCancellable  *cancellable,
-                        GError       **error);
+gboolean
+_ostree_repo_write_ref (OstreeRepo                 *self,
+                        const char                 *remote,
+                        const OstreeCollectionRef  *ref,
+                        const char                 *rev,
+                        GCancellable               *cancellable,
+                        GError                    **error);
 
 OstreeRepoFile *
 _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
@@ -357,6 +366,22 @@ const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
                                              const gchar  *collection_id,
                                              GError      **error);
+
+gboolean      ostree_repo_list_collection_refs (OstreeRepo    *self,
+                                                const char    *match_collection_id,
+                                                GHashTable   **out_all_refs,
+                                                GCancellable  *cancellable,
+                                                GError       **error);
+
+void          ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
+                                                          const OstreeCollectionRef *ref,
+                                                          const char                *checksum);
+
+gboolean      ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
+                                                        const OstreeCollectionRef  *ref,
+                                                        const char                 *checksum,
+                                                        GCancellable               *cancellable,
+                                                        GError                    **error);
 
 #endif  /* !OSTREE_ENABLE_EXPERIMENTAL_API */
 

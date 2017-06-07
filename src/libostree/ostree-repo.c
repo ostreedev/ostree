@@ -475,6 +475,7 @@ ostree_repo_finalize (GObject *object)
   if (self->config)
     g_key_file_free (self->config);
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
   g_clear_error (&self->writable_error);
   g_clear_pointer (&self->object_sizes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&self->dirmeta_cache, (GDestroyNotify) g_hash_table_unref);
@@ -1703,7 +1704,8 @@ ostree_repo_create (OstreeRepo     *self,
   glnx_fd_close int dfd = -1;
   struct stat stbuf;
   const char *state_dirs[] = { "objects", "tmp", "extensions", "state",
-                               "refs", "refs/heads", "refs/remotes" };
+                               "refs", "refs/heads", "refs/mirrors",
+                               "refs/remotes" };
 
   if (mkdir (repopath, 0755) != 0)
     {
@@ -4568,6 +4570,13 @@ summary_add_ref_entry (OstreeRepo       *self,
  *
  * It is regenerated automatically after a commit if
  * `core/commit-update-summary` is set.
+ *
+ * If the `core/collection-id` key is set in the configuration, it will be
+ * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs from the
+ * `refs/mirrors` directory will be included in the generated summary file,
+ * listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs and refs
+ * in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in lexicographic
+ * order.
  */
 gboolean
 ostree_repo_regenerate_summary (OstreeRepo     *self,
@@ -4579,21 +4588,26 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   g_autoptr(GVariantBuilder) refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
 
+  const gchar *main_collection_id = ostree_repo_get_collection_id (self);
+
   {
-    g_autoptr(GHashTable) refs = NULL;
-    if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
-      return FALSE;
-
-    g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
-    ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
-
-    for (GList *iter = ordered_keys; iter; iter = iter->next)
+    if (main_collection_id == NULL)
       {
-        const char *ref = iter->data;
-        const char *commit = g_hash_table_lookup (refs, ref);
-
-        if (!summary_add_ref_entry (self, ref, commit, refs_builder, error))
+        g_autoptr(GHashTable) refs = NULL;
+        if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
           return FALSE;
+
+        g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
+        ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
+
+        for (GList *iter = ordered_keys; iter; iter = iter->next)
+          {
+            const char *ref = iter->data;
+            const char *commit = g_hash_table_lookup (refs, ref);
+
+            if (!summary_add_ref_entry (self, ref, commit, refs_builder, error))
+              return FALSE;
+          }
       }
   }
 
@@ -4638,6 +4652,88 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   {
     g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_LAST_MODIFIED,
                                  g_variant_new_uint64 (GUINT64_TO_BE (g_get_real_time () / G_USEC_PER_SEC)));
+  }
+
+  /* Add refs which have a collection specified. ostree_repo_list_collection_refs()
+   * is guaranteed to only return refs which are in refs/mirrors, or those which
+   * are in refs/heads if the repository configuration specifies a collection ID
+   * (which we put in the main refs map, rather than the collection map, for
+   * backwards compatibility). */
+  {
+    g_autoptr(GHashTable) collection_refs = NULL;
+    if (!ostree_repo_list_collection_refs (self, NULL, &collection_refs, cancellable, error))
+      return FALSE;
+
+    gsize collection_map_size = 0;
+    GHashTableIter iter;
+    g_autoptr(GHashTable) collection_map = NULL;  /* (element-type utf8 GHashTable) */
+    g_hash_table_iter_init (&iter, collection_refs);
+    collection_map = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+                                            (GDestroyNotify) g_hash_table_unref);
+
+    const OstreeCollectionRef *ref;
+    const char *checksum;
+    while (g_hash_table_iter_next (&iter, (gpointer *) &ref, (gpointer *) &checksum))
+      {
+        GHashTable *ref_map = g_hash_table_lookup (collection_map, ref->collection_id);
+
+        if (ref_map == NULL)
+          {
+            ref_map = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
+            g_hash_table_insert (collection_map, ref->collection_id, ref_map);
+          }
+
+        g_hash_table_insert (ref_map, ref->ref_name, (gpointer) checksum);
+      }
+
+    g_autoptr(GVariantBuilder) collection_refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
+
+    g_autoptr(GList) ordered_collection_ids = g_hash_table_get_keys (collection_map);
+    ordered_collection_ids = g_list_sort (ordered_collection_ids, (GCompareFunc) strcmp);
+
+    for (GList *collection_iter = ordered_collection_ids; collection_iter; collection_iter = collection_iter->next)
+      {
+        const char *collection_id = collection_iter->data;
+        GHashTable *ref_map = g_hash_table_lookup (collection_map, collection_id);
+
+        gboolean is_main_collection_id = (main_collection_id != NULL && g_str_equal (collection_id, main_collection_id));
+
+        if (!is_main_collection_id)
+          {
+            g_variant_builder_open (collection_refs_builder, G_VARIANT_TYPE ("{sa(s(taya{sv}))}"));
+            g_variant_builder_add (collection_refs_builder, "s", collection_id);
+            g_variant_builder_open (collection_refs_builder, G_VARIANT_TYPE ("a(s(taya{sv}))"));
+          }
+
+        g_autoptr(GList) ordered_refs = g_hash_table_get_keys (ref_map);
+        ordered_refs = g_list_sort (ordered_refs, (GCompareFunc) strcmp);
+
+        for (GList *ref_iter = ordered_refs; ref_iter != NULL; ref_iter = ref_iter->next)
+          {
+            const char *ref = ref_iter->data;
+            const char *commit = g_hash_table_lookup (ref_map, ref);
+            GVariantBuilder *builder = is_main_collection_id ? refs_builder : collection_refs_builder;
+
+            if (!summary_add_ref_entry (self, ref, commit, builder, error))
+              return FALSE;
+
+            if (!is_main_collection_id)
+              collection_map_size++;
+          }
+
+        if (!is_main_collection_id)
+          {
+            g_variant_builder_close (collection_refs_builder);  /* array */
+            g_variant_builder_close (collection_refs_builder);  /* dict entry */
+          }
+      }
+
+    if (main_collection_id != NULL)
+      g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_COLLECTION_ID,
+                                   g_variant_new_string (main_collection_id));
+    if (collection_map_size > 0)
+      g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_COLLECTION_MAP,
+                                   g_variant_builder_end (collection_refs_builder));
   }
 
   g_autoptr(GVariant) summary = NULL;

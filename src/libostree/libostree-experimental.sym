@@ -46,6 +46,9 @@ global:
   ostree_collection_ref_hash;
   ostree_collection_ref_new;
   ostree_repo_get_collection_id;
+  ostree_repo_list_collection_refs;
   ostree_repo_set_collection_id;
+  ostree_repo_set_collection_ref_immediate;
+  ostree_repo_transaction_set_collection_ref;
   ostree_validate_collection_id;
 } LIBOSTREE_2017.7_EXPERIMENTAL;
