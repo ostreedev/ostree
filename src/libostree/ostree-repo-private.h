@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "ostree-ref.h"
 #include "ostree-repo.h"
 #include "ostree-remote-private.h"
 #include "libglnx.h"
@@ -129,6 +130,7 @@ struct OstreeRepo {
   gboolean enable_uncompressed_cache;
   gboolean generate_sizes;
   guint64 tmp_expiry_seconds;
+  gchar *collection_id;
 
   OstreeRepo *parent_repo;
 };
@@ -348,5 +350,14 @@ OstreeRemote *
 _ostree_repo_get_remote_inherited (OstreeRepo  *self,
                                    const char  *name,
                                    GError     **error);
+
+#ifndef OSTREE_ENABLE_EXPERIMENTAL_API
+
+const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
+gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
+                                             const gchar  *collection_id,
+                                             GError      **error);
+
+#endif  /* !OSTREE_ENABLE_EXPERIMENTAL_API */
 
 G_END_DECLS

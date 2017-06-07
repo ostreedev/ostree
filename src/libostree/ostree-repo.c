@@ -77,6 +77,25 @@
  * Once the #OstreeMutableTree is complete, write all of its metadata
  * with ostree_repo_write_mtree(), and finally create a commit with
  * ostree_repo_write_commit().
+ *
+ * ## Collection IDs
+ *
+ * A collection ID is a globally unique identifier which, if set, is used to
+ * identify refs from a repository which are mirrored elsewhere, such as in
+ * mirror repositories or peer to peer networks.
+ *
+ * This is separate from the `collection-id` configuration key for a remote, which
+ * is used to store the collection ID of the repository that remote points to.
+ *
+ * The collection ID should only be set on an #OstreeRepo if it is the canonical
+ * collection for some refs.
+ *
+ * A collection ID must be a reverse DNS name, where the domain name is under the
+ * control of the curator of the collection, so they can demonstrate ownership
+ * of the collection. The later elements in the reverse DNS name can be used to
+ * disambiguate between multiple collections from the same curator. For example,
+ * `org.exampleos.Main` and `org.exampleos.Apps`. For the complete format of
+ * collection IDs, see ostree_validate_collection_id().
  */
 typedef struct {
   GObjectClass parent_class;
@@ -461,6 +480,7 @@ ostree_repo_finalize (GObject *object)
   g_clear_pointer (&self->dirmeta_cache, (GDestroyNotify) g_hash_table_unref);
   g_mutex_clear (&self->cache_lock);
   g_mutex_clear (&self->txn_stats_lock);
+  g_free (self->collection_id);
 
   g_clear_pointer (&self->remotes, g_hash_table_destroy);
   g_mutex_clear (&self->remotes_lock);
@@ -1707,6 +1727,9 @@ ostree_repo_create (OstreeRepo     *self,
 
           g_string_append_printf (config_data, "mode=%s\n", mode_str);
 
+          if (self->collection_id != NULL)
+            g_string_append_printf (config_data, "collection-id=%s\n", self->collection_id);
+
           if (!glnx_file_replace_contents_at (dfd, "config",
                                               (guint8*)config_data->str, config_data->len,
                                               0, cancellable, error))
@@ -1937,6 +1960,13 @@ reload_core_config (OstreeRepo          *self,
       self->zlib_compression_level = MAX (1, MIN (9, g_ascii_strtoull (compression_level_str, NULL, 10)));
     else
       self->zlib_compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
+  }
+
+  {
+    g_clear_pointer (&self->collection_id, g_free);
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "collection-id",
+                                            NULL, &self->collection_id, NULL))
+      return FALSE;
   }
 
   if (!ot_keyfile_get_value_with_default (self->config, "core", "parent",
@@ -4826,4 +4856,57 @@ _ostree_repo_memory_cache_ref_destroy (OstreeRepoMemoryCacheRef *state)
     g_clear_pointer (&repo->dirmeta_cache, (GDestroyNotify) g_hash_table_unref);
   g_mutex_unlock (lock);
   g_object_unref (repo);
+}
+
+/**
+ * ostree_repo_get_collection_id:
+ * @self: an #OstreeRepo
+ *
+ * Get the collection ID of this repository. See [collection IDs][collection-ids].
+ *
+ * Returns: (nullable): collection ID for the repository
+ * Since: 2017.8
+ */
+const gchar *
+ostree_repo_get_collection_id (OstreeRepo *self)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+
+  return self->collection_id;
+}
+
+/**
+ * ostree_repo_set_collection_id:
+ * @self: an #OstreeRepo
+ * @collection_id: (nullable): new collection ID, or %NULL to unset it
+ * @error: return location for a #GError, or %NULL
+ *
+ * Set or clear the collection ID of this repository. See [collection IDs][collection-ids].
+ * The update will be made in memory, but must be written out to the repository
+ * configuration on disk using ostree_repo_write_config().
+ *
+ * Returns: %TRUE on success, %FALSE otherwise
+ * Since: 2017.8
+ */
+gboolean
+ostree_repo_set_collection_id (OstreeRepo   *self,
+                               const gchar  *collection_id,
+                               GError      **error)
+{
+  if (collection_id != NULL && !ostree_validate_collection_id (collection_id, error))
+    return FALSE;
+
+  g_autofree gchar *new_collection_id = g_strdup (collection_id);
+  g_free (self->collection_id);
+  self->collection_id = g_steal_pointer (&new_collection_id);
+
+  if (self->config != NULL)
+    {
+      if (collection_id != NULL)
+        g_key_file_set_string (self->config, "core", "collection-id", collection_id);
+      else
+        return g_key_file_remove_key (self->config, "core", "collection-id", error);
+    }
+
+  return TRUE;
 }
