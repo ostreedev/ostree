@@ -137,6 +137,16 @@ Boston, MA 02111-1307, USA.
                   <command>ostree remote gpg-import --keyring=FILE</command>.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--collection-id</option>=COLLECTION-ID</term>
+
+                <listitem><para>
+                  Set the collection ID for the remote to a value provided by
+                  the repository owner, which allows refs from this remote to be
+                  shared peer to peer.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

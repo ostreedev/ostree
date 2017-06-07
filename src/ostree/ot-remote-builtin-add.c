@@ -31,6 +31,9 @@ static gboolean opt_no_gpg_verify;
 static gboolean opt_if_not_exists;
 static char *opt_gpg_import;
 static char *opt_contenturl;
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+static char *opt_collection_id;
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
@@ -38,6 +41,10 @@ static GOptionEntry option_entries[] = {
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
   { "contenturl", 0, 0, G_OPTION_ARG_STRING, &opt_contenturl, "Use URL when fetching content", "URL" },
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id,
+    "Globally unique ID for this repository as an collection of refs for redistribution to other repositories", "COLLECTION-ID" },
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
   { NULL }
 };
 
@@ -109,6 +116,12 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
     g_variant_builder_add (optbuilder, "{s@v}",
                            "gpg-verify",
                            g_variant_new_variant (g_variant_new_boolean (FALSE)));
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  if (opt_collection_id != NULL)
+    g_variant_builder_add (optbuilder, "{s@v}", "collection-id",
+                           g_variant_new_variant (g_variant_new_take_string (g_steal_pointer (&opt_collection_id))));
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   options = g_variant_ref_sink (g_variant_builder_end (optbuilder));
 
