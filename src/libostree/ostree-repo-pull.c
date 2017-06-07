@@ -738,13 +738,20 @@ scan_dirtree_object (OtPullData   *pull_data,
 }
 
 static gboolean
-fetch_ref_contents (OtPullData    *pull_data,
-                    const char    *ref,
-                    char         **out_contents,
-                    GCancellable  *cancellable,
-                    GError       **error)
+fetch_ref_contents (OtPullData                 *pull_data,
+                    const char                 *main_collection_id,
+                    const OstreeCollectionRef  *ref,
+                    char                      **out_contents,
+                    GCancellable               *cancellable,
+                    GError                    **error)
 {
-  g_autofree char *filename = g_build_filename ("refs", "heads", ref, NULL);
+  g_autofree char *filename = NULL;
+
+  if (ref->collection_id == NULL || g_strcmp0 (ref->collection_id, main_collection_id) == 0)
+    filename = g_build_filename ("refs", "heads", ref->ref_name, NULL);
+  else
+    filename = g_build_filename ("refs", "mirrors", ref->collection_id, ref->ref_name, NULL);
+
   g_autofree char *ret_contents = NULL;
   if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
                                               pull_data->meta_mirrorlist,
@@ -762,16 +769,46 @@ fetch_ref_contents (OtPullData    *pull_data,
 }
 
 static gboolean
-lookup_commit_checksum_from_summary (OtPullData    *pull_data,
-                                     const char    *ref,
-                                     char         **out_checksum,
-                                     gsize         *out_size,
-                                     GError       **error)
+lookup_commit_checksum_and_collection_from_summary (OtPullData                 *pull_data,
+                                                    const OstreeCollectionRef  *ref,
+                                                    char                      **out_checksum,
+                                                    gsize                      *out_size,
+                                                    char                      **out_collection_id,
+                                                    GError                    **error)
 {
-  g_autoptr(GVariant) refs = g_variant_get_child_value (pull_data->summary, 0);
+  g_autoptr(GVariant) additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+  const gchar *main_collection_id;
+
+  if (!g_variant_lookup (additional_metadata, OSTREE_SUMMARY_COLLECTION_ID, "&s", &main_collection_id))
+    main_collection_id = NULL;
+
+  g_autoptr(GVariant) refs = NULL;
+  const gchar *resolved_collection_id = NULL;
+
+  if (ref->collection_id == NULL || g_strcmp0 (ref->collection_id, main_collection_id) == 0)
+    {
+      refs = g_variant_get_child_value (pull_data->summary, 0);
+      resolved_collection_id = main_collection_id;
+    }
+  else if (ref->collection_id != NULL)
+    {
+      g_autoptr(GVariant) collection_map = NULL;
+
+      collection_map = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP,
+                                               G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
+      if (collection_map != NULL)
+        refs = g_variant_lookup_value (collection_map, ref->collection_id, G_VARIANT_TYPE ("a(s(taya{sv}))"));
+      resolved_collection_id = ref->collection_id;
+    }
+
   int i;
-  if (!ot_variant_bsearch_str (refs, ref, &i))
-    return glnx_throw (error, "No such branch '%s' in repository summary", ref);
+  if (refs == NULL || !ot_variant_bsearch_str (refs, ref->ref_name, &i))
+    {
+      if (ref->collection_id != NULL)
+        return glnx_throw (error, "No such branch (%s, %s) in repository summary", ref->collection_id, ref->ref_name);
+      else
+        return glnx_throw (error, "No such branch '%s' in repository summary", ref->ref_name);
+    }
 
   g_autoptr(GVariant) refdata = g_variant_get_child_value (refs, i);
   g_autoptr(GVariant) reftargetdata = g_variant_get_child_value (refdata, 1);
@@ -779,11 +816,15 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
   g_autoptr(GVariant) commit_csum_v = NULL;
   g_variant_get (reftargetdata, "(t@ay@a{sv})", &commit_size, &commit_csum_v, NULL);
 
+  if (resolved_collection_id != NULL &&
+      !ostree_validate_collection_id (resolved_collection_id, error))
+    return FALSE;
   if (!ostree_validate_structureof_csum_v (commit_csum_v, error))
     return FALSE;
 
   *out_checksum = ostree_checksum_from_bytes_v (commit_csum_v);
   *out_size = commit_size;
+  *out_collection_id = g_strdup (resolved_collection_id);
   return TRUE;
 }
 
@@ -2675,7 +2716,9 @@ initiate_delta_request (OtPullData *pull_data,
   pull_data->n_requested_metadata++;
 }
 
-/* @ref - Optional ref name
+/*
+ * initiate_request:
+ * @ref: Optional ref name and collection ID
  * @to_revision: Target commit revision we want to fetch
  *
  * Start a request for either a ref or a commit.  In the
@@ -2685,10 +2728,10 @@ initiate_delta_request (OtPullData *pull_data,
  * `disable_static_deltas` and `require_static_deltas`.
  */
 static gboolean
-initiate_request (OtPullData *pull_data,
-                  const char *ref,
-                  const char *to_revision,
-                  GError    **error)
+initiate_request (OtPullData                 *pull_data,
+                  const OstreeCollectionRef  *ref,
+                  const char                 *to_revision,
+                  GError                    **error)
 {
   g_autofree char *delta_from_revision = NULL;
 
@@ -2716,7 +2759,7 @@ initiate_request (OtPullData *pull_data,
         initiate_delta_request (pull_data, NULL, to_revision);
       else if (pull_data->require_static_deltas) /* No deltas found; are they required? */
         {
-          set_required_deltas_error (error, ref, to_revision);
+          set_required_deltas_error (error, (ref != NULL) ? ref->ref_name : "", to_revision);
           return FALSE;
         }
       else /* No deltas, fall back to object fetches. */
@@ -2726,7 +2769,11 @@ initiate_request (OtPullData *pull_data,
     {
       /* Are we doing a delta via a ref?  In that case we can fall back to the older
        * logic of just using the current tip of the ref as a delta FROM source. */
-      if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
+      g_autofree char *refspec = NULL;
+      if (pull_data->remote_name != NULL)
+        refspec = g_strdup_printf ("%s:%s", pull_data->remote_name, ref->ref_name);
+      if (!ostree_repo_resolve_rev (pull_data->repo,
+                                    (refspec != NULL) ? refspec : ref->ref_name, TRUE,
                                     &delta_from_revision, error))
         return FALSE;
 
@@ -2782,6 +2829,9 @@ initiate_request (OtPullData *pull_data,
  * The following are currently defined:
  *
  *   * refs (as): Array of string refs
+ *   * collection-refs (a(sss)): Array of (collection ID, ref name, checksum) tuples to pull;
+ *     mutually exclusive with `refs` and `override-commit-ids`. Checksums may be the empty
+ *     string to pull the latest commit for that ref
  *   * flags (i): An instance of #OstreeRepoPullFlags
  *   * subdir (s): Pull just this subdirectory
  *   * subdirs (as): Pull just these subdirectories
@@ -2811,7 +2861,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gpointer key, value;
   g_autoptr(GBytes) bytes_summary = NULL;
   g_autofree char *metalink_url_str = NULL;
-  g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
+  g_autoptr(GHashTable) requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   g_autoptr(GHashTable) commits_to_fetch = NULL;
   g_autofree char *remote_mode_str = NULL;
   glnx_unref_object OstreeMetalink *metalink = NULL;
@@ -2826,18 +2876,24 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   const char *dir_to_pull = NULL;
   g_autofree char **dirs_to_pull = NULL;
   g_autofree char **refs_to_fetch = NULL;
+  g_autoptr(GVariantIter) collection_refs_iter = NULL;
   g_autofree char **override_commit_ids = NULL;
   GSource *update_timeout = NULL;
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
+  gboolean opt_collection_refs_set = FALSE;
+  const char *main_collection_id = NULL;
   const char *url_override = NULL;
   gboolean inherit_transaction = FALSE;
+  g_autoptr(GHashTable) updated_requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   int i;
 
   if (options)
     {
       int flags_i = OSTREE_REPO_PULL_FLAGS_NONE;
       (void) g_variant_lookup (options, "refs", "^a&s", &refs_to_fetch);
+      opt_collection_refs_set =
+        g_variant_lookup (options, "collection-refs", "a(sss)", &collection_refs_iter);
       (void) g_variant_lookup (options, "flags", "i", &flags_i);
       /* Reduce risk of issues if enum happens to be 64 bit for some reason */
       flags = flags_i;
@@ -2860,6 +2916,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
+  g_return_val_if_fail (!opt_collection_refs_set ||
+                        (refs_to_fetch == NULL && override_commit_ids == NULL), FALSE);
   if (refs_to_fetch && override_commit_ids)
     g_return_val_if_fail (g_strv_length (refs_to_fetch) == g_strv_length (override_commit_ids), FALSE);
 
@@ -2990,7 +3048,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     goto out;
 
   pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
-  requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  requested_refs_to_fetch = g_hash_table_new_full (ostree_collection_ref_hash,
+                                                   ostree_collection_ref_equal,
+                                                   (GDestroyNotify) ostree_collection_ref_free,
+                                                   g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   if (!ostree_repo_get_remote_option (self,
@@ -3102,6 +3163,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
   }
 
+  /* FIXME: Do we want an analogue of this which supports collection IDs? */
   if (!ostree_repo_get_remote_list_option (self,
                                            remote_name_or_baseurl, "branches",
                                            &configured_branches, error))
@@ -3282,6 +3344,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (pull_data->summary)
       {
+        additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+
+        if (!g_variant_lookup (additional_metadata, OSTREE_SUMMARY_COLLECTION_ID, "&s", &main_collection_id))
+          main_collection_id = NULL;
+        else if (!ostree_validate_collection_id (main_collection_id, error))
+          goto out;
+
         refs = g_variant_get_child_value (pull_data->summary, 0);
         for (i = 0, n = g_variant_n_children (refs); i < n; i++)
           {
@@ -3293,11 +3362,47 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             if (!ostree_validate_rev (refname, error))
               goto out;
 
-            if (pull_data->is_mirror && !refs_to_fetch)
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+            if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set)
+              {
+                g_hash_table_insert (requested_refs_to_fetch,
+                                     ostree_collection_ref_new (main_collection_id, refname), NULL);
+              }
           }
 
-        additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+        g_autoptr(GVariant) collection_map = NULL;
+        collection_map = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP, G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
+        if (collection_map != NULL)
+          {
+            GVariantIter collection_map_iter;
+            const char *collection_id;
+            g_autoptr(GVariant) collection_refs = NULL;
+
+            g_variant_iter_init (&collection_map_iter, collection_map);
+
+            while (g_variant_iter_loop (&collection_map_iter, "{&s@a(s(taya{sv}))}", &collection_id, &collection_refs))
+              {
+                if (!ostree_validate_collection_id (collection_id, error))
+                  goto out;
+
+                for (i = 0, n = g_variant_n_children (collection_refs); i < n; i++)
+                  {
+                    const char *refname;
+                    g_autoptr(GVariant) ref = g_variant_get_child_value (collection_refs, i);
+
+                    g_variant_get_child (ref, 0, "&s", &refname);
+
+                    if (!ostree_validate_rev (refname, error))
+                      goto out;
+
+                    if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set)
+                      {
+                        g_hash_table_insert (requested_refs_to_fetch,
+                                             ostree_collection_ref_new (collection_id, refname), NULL);
+                      }
+                  }
+              }
+          }
+
         deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
         n = deltas ? g_variant_n_children (deltas) : 0;
         for (i = 0; i < n; i++)
@@ -3321,7 +3426,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
   }
 
-  if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
+  if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set && !configured_branches)
     {
       if (!bytes_summary)
         {
@@ -3330,7 +3435,18 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           goto out;
         }
 
-    } 
+    }
+  else if (opt_collection_refs_set)
+    {
+      const gchar *collection_id, *ref_name, *checksum;
+
+      while (g_variant_iter_loop (collection_refs_iter, "(&s&s&s)", &collection_id, &ref_name, &checksum))
+        {
+          g_hash_table_insert (requested_refs_to_fetch,
+                               ostree_collection_ref_new (collection_id, ref_name),
+                               (*checksum != '\0') ? g_strdup (checksum) : NULL);
+        }
+    }
   else if (refs_to_fetch != NULL)
     {
       char **strviter = refs_to_fetch;
@@ -3348,7 +3464,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           else
             {
               char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
+              g_hash_table_insert (requested_refs_to_fetch,
+                                   ostree_collection_ref_new (NULL, branch), commitid);
             }
 
           strviter++;
@@ -3371,32 +3488,45 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       for (;branches_iter && *branches_iter; branches_iter++)
         {
           const char *branch = *branches_iter;
-              
-          g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
+
+          g_hash_table_insert (requested_refs_to_fetch,
+                               ostree_collection_ref_new (NULL, branch), NULL);
         }
     }
 
+  /* Resolve the checksum for each ref. This has to be done into a new hash table,
+   * since we can’t modify the keys of @requested_refs_to_fetch while iterating
+   * over it, and we need to ensure the collection IDs are resolved too. */
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
+  updated_requested_refs_to_fetch = g_hash_table_new_full (ostree_collection_ref_hash,
+                                                           ostree_collection_ref_equal,
+                                                           (GDestroyNotify) ostree_collection_ref_free,
+                                                           g_free);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      const char *branch = key;
+      const OstreeCollectionRef *ref = key;
       const char *override_commitid = value;
-      char *contents = NULL;
+      g_autofree char *contents = NULL;
 
       /* Support specifying "" for an override commitid */
       if (override_commitid && *override_commitid)
         {
-          g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), g_strdup (override_commitid));
+          g_hash_table_replace (updated_requested_refs_to_fetch, ostree_collection_ref_dup (ref), g_strdup (override_commitid));
         }
-      else    
+      else
         {
+          g_autoptr(OstreeCollectionRef) ref_with_collection = NULL;
+
           if (pull_data->summary)
             {
               gsize commit_size = 0;
               guint64 *malloced_size;
+              g_autofree gchar *collection_id = NULL;
 
-              if (!lookup_commit_checksum_from_summary (pull_data, branch, &contents, &commit_size, error))
+              if (!lookup_commit_checksum_and_collection_from_summary (pull_data, ref, &contents, &commit_size, &collection_id, error))
                 goto out;
+
+              ref_with_collection = ostree_collection_ref_new (collection_id, ref->ref_name);
 
               malloced_size = g_new0 (guint64, 1);
               *malloced_size = commit_size;
@@ -3404,13 +3534,20 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
           else
             {
-              if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
+              if (!fetch_ref_contents (pull_data, main_collection_id, ref, &contents, cancellable, error))
                 goto out;
+
+              ref_with_collection = ostree_collection_ref_dup (ref);
             }
-          /* Transfer ownership of contents */
-          g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), contents);
+
+          g_hash_table_replace (updated_requested_refs_to_fetch,
+                                g_steal_pointer (&ref_with_collection),
+                                g_steal_pointer (&contents));
         }
     }
+
+  g_hash_table_unref (requested_refs_to_fetch);
+  requested_refs_to_fetch = g_steal_pointer (&updated_requested_refs_to_fetch);
 
   /* Create the state directory here - it's new with the commitpartial code,
    * and may not exist in older repositories.
@@ -3454,7 +3591,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      const char *ref = key;
+      const OstreeCollectionRef *ref = key;
       const char *to_revision = value;
       if (!initiate_request (pull_data, ref, to_revision, error))
         goto out;
@@ -3495,26 +3632,30 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      const char *ref = key;
+      const OstreeCollectionRef *ref = key;
       const char *checksum = value;
       g_autofree char *remote_ref = NULL;
       g_autofree char *original_rev = NULL;
 
       if (pull_data->remote_name)
-        remote_ref = g_strdup_printf ("%s:%s", pull_data->remote_name, ref);
+        remote_ref = g_strdup_printf ("%s:%s", pull_data->remote_name, ref->ref_name);
       else
-        remote_ref = g_strdup (ref);
+        remote_ref = g_strdup (ref->ref_name);
 
       if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
         goto out;
-          
+
       if (original_rev && strcmp (checksum, original_rev) == 0)
         {
         }
       else
         {
-          ostree_repo_transaction_set_ref (pull_data->repo, pull_data->is_mirror ? NULL : pull_data->remote_name,
-                                          ref, checksum);
+          if (pull_data->is_mirror)
+            ostree_repo_transaction_set_collection_ref (pull_data->repo,
+                                                    ref, checksum);
+          else
+            ostree_repo_transaction_set_ref (pull_data->repo, pull_data->remote_name,
+                                             ref->ref_name, checksum);
         }
     }
 
