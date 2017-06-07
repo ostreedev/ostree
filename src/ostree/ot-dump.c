@@ -176,7 +176,8 @@ ot_dump_object (OstreeObjectType   objtype,
 }
 
 static void
-dump_summary_ref (const char   *ref_name,
+dump_summary_ref (const char   *collection_id,
+                  const char   *ref_name,
                   guint64       commit_size,
                   GVariant     *csum_v,
                   GVariantIter *metadata)
@@ -187,7 +188,10 @@ dump_summary_ref (const char   *ref_name,
   GVariant *value;
   char *key;
 
-  g_print ("* %s\n", ref_name);
+  if (collection_id == NULL)
+    g_print ("* %s\n", ref_name);
+  else
+    g_print ("* (%s, %s)\n", collection_id, ref_name);
 
   size = g_format_size (commit_size);
   g_print ("    Latest Commit (%s):\n", size);
@@ -229,6 +233,39 @@ dump_summary_ref (const char   *ref_name,
     }
 }
 
+static void
+dump_summary_refs (const gchar *collection_id,
+                   GVariant    *refs)
+{
+  GVariantIter iter;
+  GVariant *value;
+
+  g_variant_iter_init (&iter, refs);
+
+  while ((value = g_variant_iter_next_value (&iter)) != NULL)
+    {
+      const char *ref_name = NULL;
+
+      g_variant_get_child (value, 0, "&s", &ref_name);
+
+      if (ref_name != NULL)
+        {
+          g_autoptr(GVariant) csum_v = NULL;
+          g_autoptr(GVariantIter) metadata = NULL;
+          guint64 commit_size;
+
+          g_variant_get_child (value, 1, "(t@aya{sv})",
+                               &commit_size, &csum_v, &metadata);
+
+          dump_summary_ref (collection_id, ref_name, commit_size, csum_v, metadata);
+
+          g_print ("\n");
+        }
+
+      g_variant_unref (value);
+    }
+}
+
 void
 ot_dump_summary_bytes (GBytes          *summary_bytes,
                        OstreeDumpFlags  flags)
@@ -254,31 +291,26 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
   refs = g_variant_get_child_value (summary, 0);
   exts = g_variant_get_child_value (summary, 1);
 
-  g_variant_iter_init (&iter, refs);
+  /* Print the refs, including those with a collection ID specified. */
+  const gchar *main_collection_id;
+  g_autoptr(GVariant) collection_map = NULL;
+  const gchar *collection_id;
 
-  while ((value = g_variant_iter_next_value (&iter)) != NULL)
+  if (!g_variant_lookup (exts, OSTREE_SUMMARY_COLLECTION_ID, "&s", &main_collection_id))
+    main_collection_id = NULL;
+
+  dump_summary_refs (main_collection_id, refs);
+
+  collection_map = g_variant_lookup_value (exts, OSTREE_SUMMARY_COLLECTION_MAP, G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
+  if (collection_map != NULL)
     {
-      const char *ref_name = NULL;
+      g_variant_iter_init (&iter, collection_map);
 
-      g_variant_get_child (value, 0, "&s", &ref_name);
-
-      if (ref_name != NULL)
-        {
-          g_autoptr(GVariant) csum_v = NULL;
-          g_autoptr(GVariantIter) metadata = NULL;
-          guint64 commit_size;
-
-          g_variant_get_child (value, 1, "(t@aya{sv})",
-                               &commit_size, &csum_v, &metadata);
-
-          dump_summary_ref (ref_name, commit_size, csum_v, metadata);
-
-          g_print ("\n");
-        }
-
-      g_variant_unref (value);
+      while (g_variant_iter_loop (&iter, "{&s@a(s(taya{sv}))}", &collection_id, &refs))
+        dump_summary_refs (collection_id, refs);
     }
 
+  /* Print out the additional metadata. */
   g_variant_iter_init (&iter, exts);
 
   while (g_variant_iter_loop (&iter, "{sv}", &key, &value))
@@ -300,6 +332,16 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
         {
           pretty_key = "Expires";
           value_str = uint64_secs_to_iso8601 (GUINT64_FROM_BE (g_variant_get_uint64 (value)));
+        }
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_COLLECTION_ID) == 0)
+        {
+          pretty_key = "Collection ID";
+          value_str = g_variant_dup_string (value, NULL);
+        }
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_COLLECTION_MAP) == 0)
+        {
+          pretty_key = "Collection Map";
+          value_str = g_strdup ("(printed above)");
         }
       else
         {
