@@ -210,6 +210,38 @@ ostree_validate_remote_name (const char  *remote_name,
   return TRUE;
 }
 
+/**
+ * ostree_validate_collection_id:
+ * @rev: (nullable): A collection ID
+ * @error: Error
+ *
+ * Check whether the given @collection_id is valid. Return an error if it is
+ * invalid or %NULL.
+ *
+ * Valid collection IDs are reverse DNS names:
+ *  * They are composed of 1 or more elements separated by a period (`.`) character.
+ *    All elements must contain at least one character.
+ *  * Each element must only contain the ASCII characters `[A-Z][a-z][0-9]_` and must not
+ *    begin with a digit.
+ *  * They must contain at least one `.` (period) character (and thus at least two elements).
+ *  * They must not begin with a `.` (period) character.
+ *  * They must not exceed 255 characters in length.
+ *
+ * (This makes their format identical to D-Bus interface names, for consistency.)
+ *
+ * Returns: %TRUE if @collection_id is a valid collection ID, %FALSE if it is invalid
+ *    or %NULL
+ */
+gboolean
+ostree_validate_collection_id (const char *collection_id, GError **error)
+{
+  /* Abuse g_dbus_is_interface_name(), since collection IDs have the same format. */
+  if (collection_id == NULL || !g_dbus_is_interface_name (collection_id))
+    return glnx_throw (error, "Invalid collection ID %s", collection_id);
+
+  return TRUE;
+}
+
 GVariant *
 _ostree_file_header_new (GFileInfo         *file_info,
                          GVariant          *xattrs)

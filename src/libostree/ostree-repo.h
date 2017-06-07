@@ -25,6 +25,9 @@
 #include "ostree-core.h"
 #include "ostree-types.h"
 #include "ostree-async-progress.h"
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+#include "ostree-ref.h"
+#endif
 #include "ostree-sepolicy.h"
 #include "ostree-gpg-verify-result.h"
 

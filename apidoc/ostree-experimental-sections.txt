@@ -1,7 +1,27 @@
 <SECTION>
+<FILE>ostree-ref</FILE>
+OstreeCollectionRef
+ostree_collection_ref_new
+ostree_collection_ref_dup
+ostree_collection_ref_free
+ostree_collection_ref_hash
+ostree_collection_ref_equal
+OstreeCollectionRefv
+ostree_collection_ref_dupv
+ostree_collection_ref_freev
+<SUBSECTION Standard>
+ostree_collection_ref_get_type
+</SECTION>
+
+<SECTION>
 <FILE>ostree-remote</FILE>
 OstreeRemote
 ostree_remote_ref
 ostree_remote_unref
 ostree_remote_get_name
+</SECTION>
+
+<SECTION>
+<FILE>ostree-misc-experimental</FILE>
+ostree_validate_collection_id
 </SECTION>
