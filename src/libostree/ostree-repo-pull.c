@@ -3479,15 +3479,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
             goto out;
         }
-        g_hash_table_iter_init (&hash_iter, commits_to_fetch);
-        while (g_hash_table_iter_next (&hash_iter, &key, &value))
-          {
-            const char *commit = value;
-            g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (commit);
 
-            if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
-              goto out;
-          }
+      g_hash_table_iter_init (&hash_iter, commits_to_fetch);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *commit = value;
+          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (commit);
+
+          if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
+            goto out;
+        }
     }
 
   ret = TRUE;
