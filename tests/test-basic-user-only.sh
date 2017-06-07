@@ -22,7 +22,7 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 setup_test_repository "bare-user-only"
-extra_basic_tests=1
+extra_basic_tests=2
 . $(dirname $0)/basic-test.sh
 
 # Reset things so we don't inherit a lot of state from earlier tests
@@ -47,3 +47,15 @@ if $CMD_PREFIX ostree pull-local --repo=repo repo-input 2>err.txt; then
 fi
 assert_file_has_content err.txt "Invalid mode.*with bits 040.*in bare-user-only"
 echo "ok failed to commit suid"
+
+cd ${test_tmpdir}
+rm repo-input -rf
+ostree_repo_init repo-input init --mode=archive
+rm files -rf && mkdir files
+echo "a group writable file" > files/some-group-writable
+chmod 0664 files/some-group-writable
+$CMD_PREFIX ostree --repo=repo-input commit -b content-with-group-writable --tree=dir=files
+$CMD_PREFIX ostree pull-local --repo=repo repo-input
+$CMD_PREFIX ostree --repo=repo checkout -U -H content-with-group-writable groupwritable-co
+assert_file_has_mode groupwritable-co/some-group-writable 664
+echo "ok supported group writable"
