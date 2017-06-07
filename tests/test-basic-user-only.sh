@@ -28,12 +28,12 @@ extra_basic_tests=2
 # Reset things so we don't inherit a lot of state from earlier tests
 cd ${test_tmpdir}
 rm repo files -rf
-ostree --repo=repo init --mode=bare-user-only
+ostree_repo_init repo init --mode=bare-user-only
 
 # Init an archive repo where we'll store content that can't go into bare-user
 cd ${test_tmpdir}
 rm repo-input -rf
-ostree --repo=repo-input init --mode=archive
+ostree_repo_init repo-input init --mode=archive
 cd ${test_tmpdir}
 cat > statoverride.txt <<EOF
 2048 /some-setuid
