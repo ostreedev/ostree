@@ -51,7 +51,6 @@ ${OSTREE} summary --view > summary.txt
 assert_file_has_content_literal summary.txt "* main"
 assert_file_has_content_literal summary.txt "* other"
 assert_file_has_content_literal summary.txt "ostree.summary.last-modified"
-assert_file_has_content_literal summary.txt "Static Deltas (ostree.static-deltas): {}"
 assert_file_has_content_literal summary.txt "Timestamp (ostree.commit.timestamp): "
 echo "ok view summary"
 
