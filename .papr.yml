@@ -19,7 +19,6 @@ env:
 tests:
   - ci/ci-commitmessage-submodules.sh
   - ci/build-check.sh
-  - make syntax-check
 
 timeout: 30m
 
@@ -30,8 +29,9 @@ artifacts:
 inherit: true
 
 context: f25-rust
+packages:
+  - cargo
 env:
-  CI_PACKAGES: 'cargo'
   CONFIGOPTS: '--enable-rust'
 
 tests:
@@ -56,8 +56,11 @@ required: true
 
 context: f25-curl-openssl
 
+packages:
+  - pkgconfig(libcurl)
+  - pkgconfig(openssl)
+
 env:
-  CI_PACKAGES: "pkgconfig(libcurl) pkgconfig(openssl)"
   CONFIGOPTS: "--with-curl --with-openssl"
 
 tests:

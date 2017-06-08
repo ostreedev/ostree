@@ -10,6 +10,6 @@ install_builddeps ostree
 
 dnf install -y sudo which attr fuse gjs parallel coccinelle clang \
     libubsan libasan libtsan PyYAML gnome-desktop-testing redhat-rpm-config \
-    elfutils ${CI_PACKAGES:-}
+    elfutils
 
-build --enable-gtk-doc --enable-installed-tests ${CONFIGOPTS:-}
+build --enable-gtk-doc --enable-installed-tests=exclusive ${CONFIGOPTS:-}

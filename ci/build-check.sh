@@ -7,6 +7,7 @@ dn=$(dirname $0)
 . ${dn}/libbuild.sh
 ${dn}/build.sh
 make check
+make syntax-check  # TODO: do syntax-check under check
 # And now run the installed tests
 make install
 gnome-desktop-testing-runner -p 0 ostree
