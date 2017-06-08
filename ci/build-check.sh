@@ -14,7 +14,7 @@ git clean -dfx
 # in the future these could parallelize
 export CC=clang
 export CFLAGS='-Werror=unused-variable'
-build_default
+build
 
 # And now run the installed tests
 gnome-desktop-testing-runner -p 0 ostree
