@@ -4,102 +4,48 @@ branches:
     - try
 
 required: true
-context: f25-sanitizer
+context: f25-primary
 
 container:
-    image: projectatomic/ostree-tester
-
+    image: registry.fedoraproject.org/fedora:25
 packages:
-  - libasan
   - git
-  - coccinelle
 
 env:
     CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
     ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
     # TODO when we're doing leak checks: G_SLICE: "always-malloc"
 
-build:
-    config-opts: >
-      --prefix=/usr
-      --libdir=/usr/lib64
-      --enable-installed-tests=exclusive
-      --enable-gtk-doc
-
-# The g-d-t-r timeout is for test-pull-many.sh; if tweaking this,
-# also be sure to change the other cases below
 tests:
-    - make syntax-check
-    - ./tests/ci-commitmessage-submodules.sh
-    - make check
-    - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
+  - ci/ci-commitmessage-submodules.sh
+  - ci/build-check.sh
 
 timeout: 30m
-
-artifacts:
-    - test-suite.log
-
----
-
-inherit: true
-required: true
-
-context: f25-clang
-
-env:
-    CC: 'clang'
-    CFLAGS: '-Werror=unused-variable'
-
-tests:
-artifacts:
-
 
 ---
 
 inherit: true
 
 context: f25-rust
-
-packages:
-  - cargo
-
-build:
-    config-opts: >
-      --prefix=/usr
-      --libdir=/usr/lib64
-      --enable-gtk-doc
-      --enable-rust
-
 env:
-    CC: 'gcc'
+  CI_PACKAGES: 'cargo'
+  CONFIGOPTS: '--enable-rust'
 
 tests:
+    - ci/build.sh
     - make check TESTS=tests/test-rollsum
 
-artifacts:
-  - test-suite.log
 ---
 
 inherit: true
 
 context: f25-experimental-api
-
-build:
-    config-opts: >
-      --prefix=/usr
-      --libdir=/usr/lib64
-      --enable-gtk-doc
-      --enable-experimental-api
-
 env:
-    CC: 'gcc'
+  CONFIGOPTS: '--enable-experimental-api'
 
 tests:
-    - make check
-    - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
+  - ci/build-check.sh
 
-artifacts:
-  - test-suite.log
 ---
 
 inherit: true
@@ -107,25 +53,12 @@ required: true
 
 context: f25-curl-openssl
 
-packages:
-  - pkgconfig(libcurl)
-  - pkgconfig(openssl)
-
-build:
-    config-opts: >
-      --prefix=/usr
-      --libdir=/usr/lib64
-      --enable-installed-tests=exclusive
-      --enable-gtk-doc
-      --with-curl
-      --with-openssl
+env:
+  CI_PACKAGES: "'pkgconfig(libcurl)' 'pkgconfig(openssl)'"
+  CONFIGOPTS: "--with-curl --with-openssl"
 
 tests:
-  - make check
-  - /bin/sh -c 'gnome-desktop-testing-runner -p 0 --timeout $((10 * 60)) libostree/'
-
-artifacts:
-  - test-suite.log
+  - ci/build-check.sh
 
 ---
 
@@ -143,23 +76,15 @@ cluster:
     - name: vmcheck
       distro: fedora/25/atomic
   container:
-    image: projectatomic/ostree-tester
-
-build:
-    config-opts: >
-      --prefix=/usr
-      --libdir=/usr/lib64
-      --enable-gtk-doc
+    image: registry.fedoraproject.org/fedora:25
 
 # Copy the build from the container to the host; ideally down the line
 # this is installing an RPM via https://github.com/jlebon/redhat-ci/issues/10
 tests:
+  - ci/build.sh
   - make install DESTDIR=$(pwd)/insttree
   - rsync -rl -e 'ssh -o User=root' . vmcheck:ostree/
   - ssh root@vmcheck './ostree/tests/installed/fah-prep.sh && ostree admin unlock && rsync -rlv ./ostree/insttree/usr/ /usr/ && ./ostree/tests/installed/run.sh'
-
-artifacts:
-  - test-suite.log
 
 ---
 
