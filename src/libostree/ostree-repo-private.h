@@ -93,6 +93,7 @@ struct OstreeRepo {
   int objects_dir_fd;
   int uncompressed_objects_dir_fd;
   GFile *sysroot_dir;
+  GWeakRef sysroot; /* Weak to avoid a circular ref; see also `is_system` */
   char *remotes_config_dir;
 
   GHashTable *txn_refs;
