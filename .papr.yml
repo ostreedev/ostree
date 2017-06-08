@@ -23,6 +23,8 @@ tests:
 
 timeout: 30m
 
+artifacts:
+  - test-suite.log
 ---
 
 inherit: true
