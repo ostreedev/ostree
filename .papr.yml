@@ -55,7 +55,7 @@ required: true
 context: f25-curl-openssl
 
 env:
-  CI_PACKAGES: "'pkgconfig(libcurl)' 'pkgconfig(openssl)'"
+  CI_PACKAGES: "pkgconfig(libcurl) pkgconfig(openssl)"
   CONFIGOPTS: "--with-curl --with-openssl"
 
 tests:
