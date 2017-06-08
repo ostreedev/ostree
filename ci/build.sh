@@ -9,7 +9,7 @@ dn=$(dirname $0)
 install_builddeps ostree
 
 dnf install -y sudo which attr fuse gjs parallel coccinelle clang \
-    libubsan libasan libtsan PyYAML gnome-desktop-testing redhat-rpm-config
+    libubsan libasan libtsan PyYAML gnome-desktop-testing redhat-rpm-config \
     elfutils ${CI_PACKAGES:-}
 
 build --enable-gtk-doc --enable-installed-tests ${CONFIGOPTS}
