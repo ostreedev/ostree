@@ -2501,19 +2501,33 @@ load_metadata_internal (OstreeRepo       *self,
   return TRUE;
 }
 
+/* Basically fstatat(), but also looks in both the committed and staging
+ * directories, and returns *out_dfd for where we found the object.
+ */
 static gboolean
-query_info_for_bare_content_object (OstreeRepo      *self,
-                                    const char      *loose_path_buf,
-                                    GFileInfo      **out_info,
-                                    GCancellable    *cancellable,
-                                    GError         **error)
+stat_bare_content_object (OstreeRepo      *self,
+                          const char      *loose_path_buf,
+                          int             *out_dfd,
+                          GFileInfo      **out_info,
+                          GCancellable    *cancellable,
+                          GError         **error)
 {
   struct stat stbuf;
+  int res;
+  int dirfd;
 
-  if (TEMP_FAILURE_RETRY (fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW)) < 0)
+  dirfd = self->objects_dir_fd;
+  res = TEMP_FAILURE_RETRY (fstatat (dirfd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW));
+  if (res < 0 && errno == ENOENT && self->commit_stagedir_fd != -1)
+    {
+      dirfd = self->commit_stagedir_fd;
+      res = TEMP_FAILURE_RETRY (fstatat (dirfd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW));
+    }
+  if (res < 0)
     {
       if (errno == ENOENT)
         {
+          *out_dfd = -1;
           *out_info = NULL;
           return TRUE;
         }
@@ -2528,13 +2542,14 @@ query_info_for_bare_content_object (OstreeRepo      *self,
     }
   else if (S_ISLNK (stbuf.st_mode))
     {
-      if (!ot_readlinkat_gfile_info (self->objects_dir_fd, loose_path_buf,
+      if (!ot_readlinkat_gfile_info (dirfd, loose_path_buf,
                                      ret_info, cancellable, error))
         return FALSE;
     }
   else
     return glnx_throw (error, "Not a regular file or symlink: %s", loose_path_buf);
 
+  *out_dfd = dirfd;
   ot_transfer_out_value (out_info, &ret_info);
   return TRUE;
 }
@@ -2574,6 +2589,12 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
 
   if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, out_fd, error))
     return FALSE;
+
+  if (*out_fd == -1 && self->commit_stagedir_fd != -1)
+    {
+      if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, out_fd, error))
+        return FALSE;
+    }
 
   if (*out_fd == -1)
     {
@@ -2661,9 +2682,11 @@ ostree_repo_load_file (OstreeRepo         *self,
     }
   else
     {
-      if (!query_info_for_bare_content_object (self, loose_path_buf,
-                                               &ret_file_info,
-                                               cancellable, error))
+      int objdir_fd; /* referenced */
+      if (!stat_bare_content_object (self, loose_path_buf,
+                                     &objdir_fd,
+                                     &ret_file_info,
+                                     cancellable, error))
         return FALSE;
 
       if (ret_file_info)
@@ -2681,7 +2704,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                * always do an open, then query the user.ostreemeta xattr for
                * more information.
                */
-              fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+              fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
               if (fd < 0)
                 return glnx_throw_errno (error);
 
@@ -2735,7 +2758,7 @@ ostree_repo_load_file (OstreeRepo         *self,
               if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR &&
                   out_input)
                 {
-                  fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+                  fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
                   if (fd < 0)
                     return glnx_throw_errno (error);
 
@@ -2759,7 +2782,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                 {
                   glnx_fd_close int fd = -1;
 
-                  fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+                  fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
                   if (fd < 0)
                     return glnx_throw_errno (error);
 
@@ -2783,7 +2806,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                 {
                   if (self->disable_xattrs)
                     ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
-                  else if (!glnx_dfd_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
+                  else if (!glnx_dfd_name_get_all_xattrs (objdir_fd, loose_path_buf,
                                                           &ret_xattrs,
                                                           cancellable, error))
                     return FALSE;
@@ -3260,9 +3283,14 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
 {
   char loose_path[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (loose_path, sha256, objtype, self->mode);
+  int res;
 
   struct stat stbuf;
-  if (TEMP_FAILURE_RETRY (fstatat (self->objects_dir_fd, loose_path, &stbuf, AT_SYMLINK_NOFOLLOW)) < 0)
+  res = TEMP_FAILURE_RETRY (fstatat (self->objects_dir_fd, loose_path, &stbuf, AT_SYMLINK_NOFOLLOW));
+  if (res < 0 && errno == ENOENT && self->commit_stagedir_fd != -1)
+    res = TEMP_FAILURE_RETRY (fstatat (self->commit_stagedir_fd, loose_path, &stbuf, AT_SYMLINK_NOFOLLOW));
+
+  if (res < 0)
     return glnx_throw_errno_prefix (error, "Querying object %s.%s", sha256, ostree_object_type_to_string (objtype));
 
   *out_size = stbuf.st_size;
