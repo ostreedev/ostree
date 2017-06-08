@@ -7,7 +7,7 @@ make() {
 build() {
     env NOCONFIGURE=1 ./autogen.sh
     ./configure --prefix=/usr --libdir=/usr/lib64 "$@"
-    make
+    make V=1
 }
 
 install_builddeps() {
