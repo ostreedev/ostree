@@ -26,9 +26,20 @@ artifacts:
   - test-suite.log
 ---
 
+context: c7-build
 inherit: true
+required: true
+
+container:
+  image: registry.centos.org/centos/centos:7
+
+tests:
+  - ci/build-check.sh
+
+---
 
 context: f25-rust
+inherit: true
 packages:
   - cargo
 env:
