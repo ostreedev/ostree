@@ -6,10 +6,14 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libbuild.sh
 
-install_builddeps ostree
-
-dnf install -y sudo which attr fuse gjs parallel coccinelle clang \
-    libubsan libasan libtsan PyYAML gnome-desktop-testing redhat-rpm-config \
+pkg_install_builddeps ostree
+pkg_install sudo which attr fuse \
+    libubsan libasan libtsan PyYAML redhat-rpm-config \
     elfutils
+pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang
 
-build --enable-gtk-doc --enable-installed-tests=exclusive ${CONFIGOPTS:-}
+DETECTED_CONFIGOPTS=
+if test -x /usr/bin/gnome-desktop-testing-runner; then
+    DETECTED_CONFIGOPTS="${DETECTED_CONFIGOPTS} --enable-installed-tests=exclusive"
+fi
+build --enable-gtk-doc ${DETECTED_CONFIGOPTS} ${CONFIGOPTS:-}

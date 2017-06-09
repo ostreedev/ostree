@@ -26,9 +26,25 @@ artifacts:
   - test-suite.log
 ---
 
+context: c7-build
 inherit: true
+required: true
+
+container:
+  image: registry.centos.org/centos/centos:7
+
+env:
+    CFLAGS: ''
+
+tests:
+  - ci/build-check.sh
+
+---
 
 context: f25-rust
+inherit: true
+container:
+    image: registry.fedoraproject.org/fedora:25
 packages:
   - cargo
 env:
