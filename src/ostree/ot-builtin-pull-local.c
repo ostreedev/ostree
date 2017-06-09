@@ -111,6 +111,8 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
       if (!ostree_repo_open (src_repo, cancellable, error))
         goto out;
 
+      /* FIXME: This should grow support for pulling refs from refs/mirrors on
+       * a local repository, using ostree_repo_list_collection_refs(). */
       if (!ostree_repo_list_refs (src_repo, NULL, &refs_to_clone,
                                   cancellable, error))
         goto out;
