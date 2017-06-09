@@ -45,6 +45,7 @@ ostree_builtin_reset (int           argc,
   const char *target = NULL;
   g_autofree char *checksum = NULL;
 
+  /* FIXME: Add support for collection–refs. */
   context = g_option_context_new ("REF COMMIT - Reset a REF to a previous COMMIT");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))

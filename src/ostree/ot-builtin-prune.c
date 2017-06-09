@@ -50,11 +50,15 @@ static GOptionEntry options[] = {
 static gboolean
 delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GHashTable) refs = NULL;
+  g_autoptr(GHashTable) refs = NULL;  /* (element-type utf8 utf8) */
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  g_autoptr(GHashTable) collection_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
 
+  /* Check refs which are not in a collection. */
   if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))
     goto out;
 
@@ -70,6 +74,26 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
           goto out;
         }
     }
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  /* And check refs which *are* in a collection. */
+  if (!ostree_repo_list_collection_refs (repo, NULL, &collection_refs, cancellable, error))
+    goto out;
+
+  g_hash_table_iter_init (&hashiter, collection_refs);
+  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+    {
+      const OstreeCollectionRef *ref = hashkey;
+      const char *commit = hashvalue;
+      if (g_strcmp0 (commit_to_delete, commit) == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Commit '%s' is referenced by (%s, %s)",
+                       commit_to_delete, ref->collection_id, ref->ref_name);
+          goto out;
+        }
+    }
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   if (!ot_enable_tombstone_commits (repo, error))
     goto out;
@@ -249,6 +273,7 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
         }
 
       /* We start from the refs */
+      /* FIXME: Do we also want to look at ostree_repo_list_collection_refs()? */
       if (!ostree_repo_list_refs (repo, NULL, &all_refs,
                                   cancellable, error))
         return FALSE;

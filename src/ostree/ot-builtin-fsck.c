@@ -241,6 +241,28 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
         return glnx_prefix_error (error, "Loading commit for ref %s", refname);
     }
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  if (!opt_quiet)
+    g_print ("Validating refs in collections...\n");
+
+  g_autoptr(GHashTable) all_collection_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+  if (!ostree_repo_list_collection_refs (repo, NULL, &all_collection_refs,
+                                         cancellable, error))
+    return FALSE;
+
+  g_hash_table_iter_init (&hash_iter, all_collection_refs);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const OstreeCollectionRef *ref = key;
+      const char *checksum = value;
+      g_autoptr(GVariant) commit = NULL;
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                     checksum, &commit, error))
+        return glnx_prefix_error (error, "Loading commit for ref (%s, %s)",
+                                  ref->collection_id, ref->ref_name);
+    }
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
   if (!opt_quiet)
     g_print ("Enumerating objects...\n");
 
