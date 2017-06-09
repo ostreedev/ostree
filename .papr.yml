@@ -40,6 +40,8 @@ tests:
 
 context: f25-rust
 inherit: true
+container:
+    image: registry.fedoraproject.org/fedora:25
 packages:
   - cargo
 env:

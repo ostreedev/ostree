@@ -13,7 +13,7 @@ pkg_install sudo which attr fuse \
 pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang
 
 DETECTED_CONFIGOPTS=
-if -x /usr/bin/gnome-desktop-testing-runner; then
+if test -x /usr/bin/gnome-desktop-testing-runner; then
     DETECTED_CONFIGOPTS="${DETECTED_CONFIGOPTS} --enable-installed-tests=exclusive"
 fi
 build --enable-gtk-doc ${DETECTED_CONFIGOPTS} ${CONFIGOPTS:-}
