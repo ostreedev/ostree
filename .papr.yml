@@ -33,6 +33,9 @@ required: true
 container:
   image: registry.centos.org/centos/centos:7
 
+env:
+    CFLAGS: ''
+
 tests:
   - ci/build-check.sh
 
