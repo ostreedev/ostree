@@ -4477,6 +4477,51 @@ ostree_repo_verify_summary (OstreeRepo    *self,
                                                 error);
 }
 
+/* Add an entry for a @ref ↦ @checksum mapping to an `a(s(t@ay@a{sv}))`
+ * @refs_builder to go into a `summary` file. This includes building the
+ * standard additional metadata keys for the ref. */
+static gboolean
+summary_add_ref_entry (OstreeRepo       *self,
+                       const char       *ref,
+                       const char       *checksum,
+                       GVariantBuilder  *refs_builder,
+                       GError          **error)
+{
+  g_auto(GVariantDict) commit_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
+
+  g_assert (ref);  g_assert (checksum);
+
+  g_autofree char *remotename = NULL;
+  if (!ostree_parse_refspec (ref, &remotename, NULL, NULL))
+    g_assert_not_reached ();
+
+  /* Don't put remote refs in the summary */
+  if (remotename != NULL)
+    return TRUE;
+
+  g_autoptr(GVariant) commit_obj = NULL;
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, checksum, &commit_obj, error))
+    return FALSE;
+
+  g_variant_dict_init (&commit_metadata_builder, NULL);
+
+  /* Forward the commit’s timestamp if it’s valid. */
+  guint64 commit_timestamp = ostree_commit_get_timestamp (commit_obj);
+  g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (commit_timestamp);
+
+  if (dt != NULL)
+    g_variant_dict_insert_value (&commit_metadata_builder, OSTREE_COMMIT_TIMESTAMP,
+                                 g_variant_new_uint64 (GUINT64_TO_BE (commit_timestamp)));
+
+  g_variant_builder_add_value (refs_builder,
+                               g_variant_new ("(s(t@ay@a{sv}))", ref,
+                                              (guint64) g_variant_get_size (commit_obj),
+                                              ostree_checksum_to_bytes_v (checksum),
+                                              g_variant_dict_end (&commit_metadata_builder)));
+
+  return TRUE;
+}
+
 /**
  * ostree_repo_regenerate_summary:
  * @self: Repo
@@ -4516,37 +4561,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       {
         const char *ref = iter->data;
         const char *commit = g_hash_table_lookup (refs, ref);
-        g_auto(GVariantDict) commit_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
 
-        g_assert (commit);
-
-        g_autofree char *remotename = NULL;
-        if (!ostree_parse_refspec (ref, &remotename, NULL, NULL))
-          g_assert_not_reached ();
-
-        /* Don't put remote refs in the summary */
-        if (remotename != NULL)
-          continue;
-
-        g_autoptr(GVariant) commit_obj = NULL;
-        if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
+        if (!summary_add_ref_entry (self, ref, commit, refs_builder, error))
           return FALSE;
-
-        g_variant_dict_init (&commit_metadata_builder, NULL);
-
-        /* Forward the commit’s timestamp if it’s valid. */
-        guint64 commit_timestamp = ostree_commit_get_timestamp (commit_obj);
-        g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (commit_timestamp);
-
-        if (dt != NULL)
-          g_variant_dict_insert_value (&commit_metadata_builder, OSTREE_COMMIT_TIMESTAMP,
-                                       g_variant_new_uint64 (GUINT64_TO_BE (commit_timestamp)));
-
-        g_variant_builder_add_value (refs_builder,
-                                     g_variant_new ("(s(t@ay@a{sv}))", ref,
-                                                    (guint64) g_variant_get_size (commit_obj),
-                                                    ostree_checksum_to_bytes_v (commit),
-                                                    g_variant_dict_end (&commit_metadata_builder)));
       }
   }
 
