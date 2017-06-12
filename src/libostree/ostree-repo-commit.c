@@ -179,10 +179,13 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
   return TRUE;
 }
 
+/* Given either a file or symlink, apply the final metadata to it depending on
+ * the repository mode. Note that @checksum is assumed to have been validated by
+ * the caller.
+ */
 static gboolean
-commit_loose_object_trusted (OstreeRepo        *self,
+commit_loose_content_object (OstreeRepo        *self,
                              const char        *checksum,
-                             OstreeObjectType   objtype,
                              const char        *temp_filename,
                              gboolean           object_is_symlink,
                              guint32            uid,
@@ -193,8 +196,6 @@ commit_loose_object_trusted (OstreeRepo        *self,
                              GCancellable      *cancellable,
                              GError           **error)
 {
-  gboolean ret = FALSE;
-
   /* We may be writing as root to a non-root-owned repository; if so,
    * automatically inherit the non-root ownership.
    */
@@ -204,19 +205,13 @@ commit_loose_object_trusted (OstreeRepo        *self,
       if (fd != -1)
         {
           if (fchown (fd, self->target_owner_uid, self->target_owner_gid) < 0)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "fchown");
         }
       else if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
                                      self->target_owner_uid,
                                      self->target_owner_gid,
                                      AT_SYMLINK_NOFOLLOW) == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "fchownat");
     }
 
   /* Special handling for symlinks in bare repositories */
@@ -235,53 +230,34 @@ commit_loose_object_trusted (OstreeRepo        *self,
       if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
                                 uid, gid,
                                 AT_SYMLINK_NOFOLLOW) == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "fchownat");
 
       if (xattrs != NULL)
         {
           ot_security_smack_reset_dfd_name (self->tmp_dir_fd, temp_filename);
           if (!glnx_dfd_name_set_all_xattrs (self->tmp_dir_fd, temp_filename,
                                                xattrs, cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
   else
     {
-      int res;
-
-      if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
+      if (self->mode == OSTREE_REPO_MODE_BARE)
         {
-          do
-            res = fchown (fd, uid, gid);
-          while (G_UNLIKELY (res == -1 && errno == EINTR));
-          if (G_UNLIKELY (res == -1))
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+          if (TEMP_FAILURE_RETRY (fchown (fd, uid, gid)) < 0)
+            return glnx_throw_errno_prefix (error, "fchown");
 
-          do
-            res = fchmod (fd, mode);
-          while (G_UNLIKELY (res == -1 && errno == EINTR));
-          if (G_UNLIKELY (res == -1))
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+          if (TEMP_FAILURE_RETRY (fchmod (fd, mode)) < 0)
+            return glnx_throw_errno_prefix (error, "fchmod");
 
           if (xattrs)
             {
               ot_security_smack_reset_fd (fd);
               if (!glnx_fd_set_all_xattrs (fd, xattrs, cancellable, error))
-                goto out;
+                return FALSE;
             }
         }
-
-      if (objtype == OSTREE_OBJECT_TYPE_FILE &&
-          self->mode == OSTREE_REPO_MODE_BARE_USER)
+      else if (self->mode == OSTREE_REPO_MODE_BARE_USER)
         {
           if (!write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
             return FALSE;
@@ -297,8 +273,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
                 return glnx_throw_errno_prefix (error, "fchmod");
             }
         }
-      else if (objtype == OSTREE_OBJECT_TYPE_FILE &&
-               self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+      else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
                && !object_is_symlink)
         {
           guint32 invalid_modebits = (mode & ~S_IFMT) & ~0775;
@@ -310,21 +285,15 @@ commit_loose_object_trusted (OstreeRepo        *self,
             return glnx_throw_errno_prefix (error, "fchmod");
         }
 
-      if (objtype == OSTREE_OBJECT_TYPE_FILE && _ostree_repo_mode_is_bare (self->mode))
+      if (_ostree_repo_mode_is_bare (self->mode))
         {
           /* To satisfy tools such as guile which compare mtimes
            * to determine whether or not source files need to be compiled,
            * set the modification time to OSTREE_TIMESTAMP.
            */
           const struct timespec times[2] = { { OSTREE_TIMESTAMP, UTIME_OMIT }, { OSTREE_TIMESTAMP, 0} };
-          do
-            res = futimens (fd, times);
-          while (G_UNLIKELY (res == -1 && errno == EINTR));
-          if (G_UNLIKELY (res == -1))
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+          if (TEMP_FAILURE_RETRY (futimens (fd, times)) < 0)
+            return glnx_throw_errno_prefix (error, "futimens");
         }
 
       /* Ensure that in case of a power cut, these files have the data we
@@ -333,23 +302,16 @@ commit_loose_object_trusted (OstreeRepo        *self,
       if (!self->in_transaction && !self->disable_fsync)
         {
           if (fsync (fd) == -1)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "fsync");
         }
     }
 
-  if (!_ostree_repo_commit_loose_final (self, checksum, objtype,
+  if (!_ostree_repo_commit_loose_final (self, checksum, OSTREE_OBJECT_TYPE_FILE,
                                         self->tmp_dir_fd, fd, temp_filename,
                                         cancellable, error))
-    goto out;
-  
-  ret = TRUE;
- out:
-  if (G_UNLIKELY (error && *error))
-    g_prefix_error (error, "Writing object %s.%s: ", checksum, ostree_object_type_to_string (objtype));
-  return ret;
+    return FALSE;
+
+  return TRUE;
 }
 
 typedef struct
@@ -546,12 +508,15 @@ _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
 
   if (state->fd != -1)
     {
-      if (!commit_loose_object_trusted (self, checksum, OSTREE_OBJECT_TYPE_FILE,
+      if (!commit_loose_content_object (self, checksum,
                                         state->temp_filename,
                                         FALSE, uid, gid, mode,
                                         xattrs, state->fd,
                                         cancellable, error))
-        goto out;
+        {
+          g_prefix_error (error, "Writing object %s.%s: ", checksum, ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
+          goto out;
+        }
     }
 
   ret = TRUE;
@@ -791,14 +756,14 @@ write_content_object (OstreeRepo         *self,
   const guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   const guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-  if (!commit_loose_object_trusted (self, actual_checksum,
-                                    OSTREE_OBJECT_TYPE_FILE,
+  if (!commit_loose_content_object (self, actual_checksum,
                                     temp_filename,
                                     object_is_symlink,
                                     uid, gid, mode,
                                     xattrs, temp_fd,
                                     cancellable, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Writing object %s.%s: ", actual_checksum,
+                              ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
   /* Clear the unlinker path, it was consumed */
   tmp_unlinker.path = NULL;
 
