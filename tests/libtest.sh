@@ -116,10 +116,16 @@ else
     fi
 fi
 
+files_are_hardlinked() {
+    f1=$(stat -c %i $1)
+    f2=$(stat -c %i $2)
+    [ "$f1" == "$f2" ]
+}
+
 assert_files_hardlinked() {
     f1=$(stat -c %i $1)
     f2=$(stat -c %i $2)
-    if [ "$f1" != "$f2" ]; then
+    if ! files_are_hardlinked "$f1" "$f2"; then
         fatal "Files '$1' and '$2' are not hardlinked"
     fi
 }
@@ -512,12 +518,22 @@ ostree_file_path_to_checksum() {
     $CMD_PREFIX ostree --repo=$repo ls -C $ref $path | awk '{ print $5 }'
 }
 
+# Given a path to a file in a repo for a ref, print the (relative) path to its
+# object
+ostree_file_path_to_relative_object_path() {
+    repo=$1
+    ref=$2
+    path=$3
+    checksum=$(ostree_file_path_to_checksum $repo $ref $path)
+    test -n "${checksum}"
+    echo objects/${checksum:0:2}/${checksum:2}.file
+}
+
 # Given a path to a file in a repo for a ref, print the path to its object
 ostree_file_path_to_object_path() {
-   repo=$1
-   ref=$2
-   path=$3
-   checksum=$(ostree_file_path_to_checksum $repo $ref $path)
-   test -n "${checksum}"
-   echo ${repo}/objects/${checksum:0:2}/${checksum:2}.file
+    repo=$1
+    ref=$2
+    path=$3
+    relpath=$(ostree_file_path_to_relative_object_path $repo $ref $path)
+    echo ${repo}/${relpath}
 }

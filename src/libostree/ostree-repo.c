@@ -3050,6 +3050,20 @@ copy_detached_metadata (OstreeRepo    *self,
   return TRUE;
 }
 
+/* Special case between bare-user and bare-user-only,
+ * mostly for https://github.com/flatpak/flatpak/issues/845
+ * see below for any more comments.
+ */
+static gboolean
+import_is_bareuser_only_conversion (OstreeRepo *src_repo,
+                                    OstreeRepo *dest_repo,
+                                    OstreeObjectType objtype)
+{
+  return src_repo->mode == OSTREE_REPO_MODE_BARE_USER
+    && dest_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+    && objtype == OSTREE_OBJECT_TYPE_FILE;
+}
+
 static gboolean
 import_one_object_link (OstreeRepo    *self,
                         OstreeRepo    *source,
@@ -3061,6 +3075,33 @@ import_one_object_link (OstreeRepo    *self,
 {
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+
+  /* Hardlinking between bare-user → bare-user-only is only possible for regular
+   * files, *not* symlinks, which in bare-user are stored as regular files.  At
+   * this point we need to parse the file to see the difference.
+   */
+  if (import_is_bareuser_only_conversion (source, self, objtype))
+    {
+      g_autoptr(GFileInfo) finfo = NULL;
+
+      if (!ostree_repo_load_file (source, checksum, NULL, &finfo, NULL,
+                                  cancellable, error))
+        return FALSE;
+
+      switch (g_file_info_get_file_type (finfo))
+        {
+        case G_FILE_TYPE_REGULAR:
+          /* This is OK, we'll drop through and try a hardlink */
+          break;
+        case G_FILE_TYPE_SYMBOLIC_LINK:
+          /* NOTE early return */
+          *out_was_supported = FALSE;
+          return TRUE;
+        default:
+          g_assert_not_reached ();
+          break;
+        }
+    }
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path_buf, cancellable, error))
     return FALSE;
@@ -3133,6 +3174,11 @@ import_via_hardlink_is_possible (OstreeRepo *src_repo,
     return TRUE;
   /* Metadata is identical between all modes */
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    return TRUE;
+  /* And now a special case between bare-user and bare-user-only,
+   * mostly for https://github.com/flatpak/flatpak/issues/845
+   */
+  if (import_is_bareuser_only_conversion (src_repo, dest_repo, objtype))
     return TRUE;
   return FALSE;
 }
