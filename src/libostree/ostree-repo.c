@@ -3143,6 +3143,23 @@ ostree_repo_import_object_from (OstreeRepo           *self,
                                                checksum, TRUE, cancellable, error);
 }
 
+static gboolean
+import_via_hardlink_is_possible (OstreeRepo *src_repo,
+                                 OstreeRepo *dest_repo,
+                                 OstreeObjectType objtype)
+{
+  /* We need the ability to make hardlinks */
+  if (src_repo->owner_uid != dest_repo->owner_uid)
+    return FALSE;
+  /* Equal modes are always compatible */
+  if (src_repo->mode == dest_repo->mode)
+    return TRUE;
+  /* Metadata is identical between all modes */
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    return TRUE;
+  return FALSE;
+}
+
 /**
  * ostree_repo_import_object_from_with_trust:
  * @self: Destination repo
@@ -3174,9 +3191,7 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
    * repository modes to match, as well as the owner uid (since we need to be
    * able to make hardlinks).
    */
-  if (trusted &&
-      self->mode == source->mode &&
-      self->owner_uid == source->owner_uid)
+  if (trusted && import_via_hardlink_is_possible (source, self, objtype))
     {
       gboolean hardlink_was_supported = FALSE;
 
