@@ -4549,7 +4549,6 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         g_autoptr(GInputStream) in_stream = g_unix_input_stream_new (superblock_file_fd, FALSE);
         if (!in_stream)
           return FALSE;
-        superblock_file_fd = -1; /* Transfer ownership */
 
         g_autofree guchar *csum = NULL;
         if (!ot_gio_checksum_stream (in_stream,
