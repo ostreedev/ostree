@@ -3174,6 +3174,15 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
 
   /* The copy path */
 
+  /* First, do we have the object already? */
+  gboolean has_object;
+  if (!ostree_repo_has_object (self, objtype, checksum, &has_object,
+                               cancellable, error))
+    return FALSE;
+  /* If we have it, we're done */
+  if (has_object)
+    return TRUE;
+
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
       /* Metadata object */
