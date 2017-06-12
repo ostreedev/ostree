@@ -116,6 +116,7 @@ struct OstreeRepo {
   GHashTable *updated_uncompressed_dirs;
   GHashTable *object_sizes;
 
+  uid_t owner_uid;
   uid_t target_owner_uid;
   gid_t target_owner_gid;
 
