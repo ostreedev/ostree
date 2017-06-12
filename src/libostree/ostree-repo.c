@@ -2092,6 +2092,7 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (fstat (self->objects_dir_fd, &stbuf) != 0)
     return glnx_throw_errno (error);
+  self->owner_uid = stbuf.st_uid;
 
   if (stbuf.st_uid != getuid () || stbuf.st_gid != getgid ())
     {
@@ -3145,8 +3146,14 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
                                            GCancellable         *cancellable,
                                            GError              **error)
 {
-  if (trusted && /* Don't hardlink into untrusted remotes */
-      self->mode == source->mode)
+  /* We try to import via hardlink. If the remote is explicitly not trusted
+   * (i.e.) their checksums may be incorrect, we skip that. Also, we require the
+   * repository modes to match, as well as the owner uid (since we need to be
+   * able to make hardlinks).
+   */
+  if (trusted &&
+      self->mode == source->mode &&
+      self->owner_uid == source->owner_uid)
     {
       gboolean hardlink_was_supported = FALSE;
 
