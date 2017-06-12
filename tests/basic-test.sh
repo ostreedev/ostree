@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((66 + ${extra_basic_tests:-0}))"
+echo "1..$((68 + ${extra_basic_tests:-0}))"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -266,6 +266,32 @@ test2_commitid=$(${CMD_PREFIX} ostree --repo=repo rev-parse test2)
 test2_commit_relpath=/objects/${test2_commitid:0:2}/${test2_commitid:2}.commit
 assert_files_hardlinked repo/${test2_commit_relpath} repo2/${test2_commit_relpath}
 echo "ok pull-local (hardlinking metadata)"
+
+cd ${test_tmpdir}
+rm repo2 -rf && mkdir repo2
+ostree_repo_init repo2 --mode=$opposite_mode
+${CMD_PREFIX} ostree --repo=repo2 pull-local --bareuseronly-files repo test2
+${CMD_PREFIX} ostree --repo=repo2 fsck -q
+echo "ok pull-local --bareuseronly-files"
+
+# This is mostly a copy of the suid test in test-basic-user-only.sh,
+# but for the `pull --bareuseronly-files` case.
+cd ${test_tmpdir}
+rm repo-input -rf
+ostree_repo_init repo-input init --mode=archive
+cd ${test_tmpdir}
+cat > statoverride.txt <<EOF
+2048 /some-setuid
+EOF
+mkdir -p files/
+echo "a setuid file" > files/some-setuid
+chmod 0644 files/some-setuid
+$CMD_PREFIX ostree --repo=repo-input commit -b content-with-suid --statoverride=statoverride.txt --tree=dir=files
+if $CMD_PREFIX ostree pull-local --repo=repo --bareuseronly-files repo-input content-with-suid 2>err.txt; then
+    assert_not_reached "copying suid file with --bareuseronly-files worked?"
+fi
+assert_file_has_content err.txt 'object.*\.file: invalid mode.*with bits 040.*'
+echo "ok pull-local (bareuseronly files)"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo2 checkout ${CHECKOUT_U_ARG} test2 test2-checkout-from-local-clone

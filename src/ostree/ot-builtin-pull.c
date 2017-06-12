@@ -34,6 +34,7 @@ static gboolean opt_dry_run;
 static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
+static gboolean opt_bareuseronly_files;
 static char** opt_subpaths;
 static char** opt_http_headers;
 static char* opt_cache_dir;
@@ -50,6 +51,7 @@ static GOptionEntry options[] = {
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_subpaths, "Only pull the provided subpath(s)", NULL },
    { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust (local) sources", NULL },
+   { "bareuseronly-files", 0, 0, G_OPTION_ARG_NONE, &opt_bareuseronly_files, "Reject regular files with mode outside of 0775 (world writable, suid, etc.)", NULL },
    { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
    { "url", 0, 0, G_OPTION_ARG_STRING, &opt_url, "Pull objects from this URL instead of the one from the remote config", NULL },
@@ -167,6 +169,8 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (opt_untrusted)
     pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
+  if (opt_bareuseronly_files)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES;
 
   if (opt_dry_run && !opt_require_static_deltas)
     {
