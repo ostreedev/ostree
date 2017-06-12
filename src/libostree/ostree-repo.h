@@ -1015,12 +1015,14 @@ gboolean ostree_repo_prune_from_reachable (OstreeRepo             *self,
  * @OSTREE_REPO_PULL_FLAGS_MIRROR: Write out refs suitable for mirrors
  * @OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY: Fetch only the commit metadata
  * @OSTREE_REPO_PULL_FLAGS_UNTRUSTED: Don't trust local remote
+ * @OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES: Since 2017.7.  Reject writes of content objects with modes outside of 0775.
  */
 typedef enum {
   OSTREE_REPO_PULL_FLAGS_NONE,
   OSTREE_REPO_PULL_FLAGS_MIRROR = (1 << 0),
   OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY = (1 << 1),
-  OSTREE_REPO_PULL_FLAGS_UNTRUSTED = (1 << 2)
+  OSTREE_REPO_PULL_FLAGS_UNTRUSTED = (1 << 2),
+  OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES = (1 << 3)
 } OstreeRepoPullFlags;
 
 _OSTREE_PUBLIC
