@@ -3050,77 +3050,6 @@ copy_detached_metadata (OstreeRepo    *self,
 }
 
 static gboolean
-import_one_object_copy (OstreeRepo    *self,
-                        OstreeRepo    *source,
-                        const char   *checksum,
-                        OstreeObjectType objtype,
-                        gboolean      trusted,
-                        GCancellable  *cancellable,
-                        GError        **error)
-{
-  guint64 length;
-  g_autoptr(GInputStream) object_stream = NULL;
-
-  if (!ostree_repo_load_object_stream (source, objtype, checksum,
-                                       &object_stream, &length,
-                                       cancellable, error))
-    return FALSE;
-
-  if (objtype == OSTREE_OBJECT_TYPE_FILE)
-    {
-      if (trusted)
-        {
-          if (!ostree_repo_write_content_trusted (self, checksum,
-                                                  object_stream, length,
-                                                  cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          g_autofree guchar *real_csum = NULL;
-          if (!ostree_repo_write_content (self, checksum,
-                                          object_stream, length,
-                                          &real_csum,
-                                          cancellable, error))
-            return FALSE;
-        }
-    }
-  else
-    {
-      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        {
-          if (!copy_detached_metadata (self, source, checksum, cancellable, error))
-            return FALSE;
-        }
-
-      if (trusted)
-        {
-          if (!ostree_repo_write_metadata_stream_trusted (self, objtype,
-                                                          checksum, object_stream, length,
-                                                          cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          g_autofree guchar *real_csum = NULL;
-          g_autoptr(GVariant) variant = NULL;
-
-          if (!ostree_repo_load_variant (source, objtype, checksum,
-                                         &variant, error))
-            return FALSE;
-
-          if (!ostree_repo_write_metadata (self, objtype,
-                                           checksum, variant,
-                                           &real_csum,
-                                           cancellable, error))
-            return FALSE;
-        }
-    }
-
-  return TRUE;
-}
-
-static gboolean
 import_one_object_link (OstreeRepo    *self,
                         OstreeRepo    *source,
                         const char   *checksum,
@@ -3216,29 +3145,91 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
                                            GCancellable         *cancellable,
                                            GError              **error)
 {
-  gboolean hardlink_was_supported = FALSE;
-
   if (trusted && /* Don't hardlink into untrusted remotes */
       self->mode == source->mode)
     {
+      gboolean hardlink_was_supported = FALSE;
+
       if (!import_one_object_link (self, source, checksum, objtype,
                                    &hardlink_was_supported,
                                    cancellable, error))
         return FALSE;
+
+      /* If we hardlinked, we're done! */
+      if (hardlink_was_supported)
+        return TRUE;
     }
 
-  if (!hardlink_was_supported)
-    {
-      gboolean has_object;
+  /* The copy path */
 
-      if (!ostree_repo_has_object (self, objtype, checksum, &has_object,
-                                   cancellable, error))
+  /* First, do we have the object already? */
+  gboolean has_object;
+  if (!ostree_repo_has_object (self, objtype, checksum, &has_object,
+                               cancellable, error))
+    return FALSE;
+  /* If we have it, we're done */
+  if (has_object)
+    return TRUE;
+
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    {
+      /* Metadata object */
+      g_autoptr(GVariant) variant = NULL;
+
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        {
+          /* FIXME - cleanup detached metadata if copy below fails */
+          if (!copy_detached_metadata (self, source, checksum, cancellable, error))
+            return FALSE;
+        }
+
+      if (!ostree_repo_load_variant (source, objtype, checksum,
+                                     &variant, error))
         return FALSE;
 
-      if (!has_object)
+      if (trusted)
         {
-          if (!import_one_object_copy (self, source, checksum, objtype, trusted,
-                                       cancellable, error))
+          if (!ostree_repo_write_metadata_trusted (self, objtype,
+                                                   checksum, variant,
+                                                   cancellable, error))
+            return FALSE;
+        }
+      else
+        {
+          g_autofree guchar *real_csum = NULL;
+
+          if (!ostree_repo_write_metadata (self, objtype,
+                                           checksum, variant,
+                                           &real_csum,
+                                           cancellable, error))
+            return FALSE;
+        }
+    }
+  else
+    {
+      /* Content object */
+      guint64 length;
+      g_autoptr(GInputStream) object_stream = NULL;
+
+      if (!ostree_repo_load_object_stream (source, objtype, checksum,
+                                           &object_stream, &length,
+                                           cancellable, error))
+        return FALSE;
+
+      if (trusted)
+        {
+          if (!ostree_repo_write_content_trusted (self, checksum,
+                                                  object_stream, length,
+                                                  cancellable, error))
+            return FALSE;
+        }
+      else
+        {
+          g_autofree guchar *real_csum = NULL;
+          if (!ostree_repo_write_content (self, checksum,
+                                          object_stream, length,
+                                          &real_csum,
+                                          cancellable, error))
             return FALSE;
         }
     }
