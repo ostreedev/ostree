@@ -3050,18 +3050,6 @@ copy_detached_metadata (OstreeRepo    *self,
 }
 
 static gboolean
-import_one_object_copy (OstreeRepo    *self,
-                        OstreeRepo    *source,
-                        const char   *checksum,
-                        OstreeObjectType objtype,
-                        gboolean      trusted,
-                        GCancellable  *cancellable,
-                        GError        **error)
-{
-  return TRUE;
-}
-
-static gboolean
 import_one_object_link (OstreeRepo    *self,
                         OstreeRepo    *source,
                         const char   *checksum,
