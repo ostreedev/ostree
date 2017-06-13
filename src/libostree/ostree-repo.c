@@ -2092,6 +2092,7 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (fstat (self->objects_dir_fd, &stbuf) != 0)
     return glnx_throw_errno (error);
+  self->owner_uid = stbuf.st_uid;
 
   if (stbuf.st_uid != getuid () || stbuf.st_gid != getgid ())
     {
@@ -3072,6 +3073,20 @@ copy_detached_metadata (OstreeRepo    *self,
   return TRUE;
 }
 
+/* Special case between bare-user and bare-user-only,
+ * mostly for https://github.com/flatpak/flatpak/issues/845
+ * see below for any more comments.
+ */
+static gboolean
+import_is_bareuser_only_conversion (OstreeRepo *src_repo,
+                                    OstreeRepo *dest_repo,
+                                    OstreeObjectType objtype)
+{
+  return src_repo->mode == OSTREE_REPO_MODE_BARE_USER
+    && dest_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+    && objtype == OSTREE_OBJECT_TYPE_FILE;
+}
+
 static gboolean
 import_one_object_link (OstreeRepo    *self,
                         OstreeRepo    *source,
@@ -3083,6 +3098,33 @@ import_one_object_link (OstreeRepo    *self,
 {
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+
+  /* Hardlinking between bare-user → bare-user-only is only possible for regular
+   * files, *not* symlinks, which in bare-user are stored as regular files.  At
+   * this point we need to parse the file to see the difference.
+   */
+  if (import_is_bareuser_only_conversion (source, self, objtype))
+    {
+      g_autoptr(GFileInfo) finfo = NULL;
+
+      if (!ostree_repo_load_file (source, checksum, NULL, &finfo, NULL,
+                                  cancellable, error))
+        return FALSE;
+
+      switch (g_file_info_get_file_type (finfo))
+        {
+        case G_FILE_TYPE_REGULAR:
+          /* This is OK, we'll drop through and try a hardlink */
+          break;
+        case G_FILE_TYPE_SYMBOLIC_LINK:
+          /* NOTE early return */
+          *out_was_supported = FALSE;
+          return TRUE;
+        default:
+          g_assert_not_reached ();
+          break;
+        }
+    }
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path_buf, cancellable, error))
     return FALSE;
@@ -3142,6 +3184,28 @@ ostree_repo_import_object_from (OstreeRepo           *self,
                                                checksum, TRUE, cancellable, error);
 }
 
+static gboolean
+import_via_hardlink_is_possible (OstreeRepo *src_repo,
+                                 OstreeRepo *dest_repo,
+                                 OstreeObjectType objtype)
+{
+  /* We need the ability to make hardlinks */
+  if (src_repo->owner_uid != dest_repo->owner_uid)
+    return FALSE;
+  /* Equal modes are always compatible */
+  if (src_repo->mode == dest_repo->mode)
+    return TRUE;
+  /* Metadata is identical between all modes */
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    return TRUE;
+  /* And now a special case between bare-user and bare-user-only,
+   * mostly for https://github.com/flatpak/flatpak/issues/845
+   */
+  if (import_is_bareuser_only_conversion (src_repo, dest_repo, objtype))
+    return TRUE;
+  return FALSE;
+}
+
 /**
  * ostree_repo_import_object_from_with_trust:
  * @self: Destination repo
@@ -3168,8 +3232,12 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
                                            GCancellable         *cancellable,
                                            GError              **error)
 {
-  if (trusted && /* Don't hardlink into untrusted remotes */
-      self->mode == source->mode)
+  /* We try to import via hardlink. If the remote is explicitly not trusted
+   * (i.e.) their checksums may be incorrect, we skip that. Also, we require the
+   * repository modes to match, as well as the owner uid (since we need to be
+   * able to make hardlinks).
+   */
+  if (trusted && import_via_hardlink_is_possible (source, self, objtype))
     {
       gboolean hardlink_was_supported = FALSE;
 

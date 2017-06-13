@@ -254,9 +254,18 @@ echo "ok diff file changing type"
 
 cd ${test_tmpdir}
 mkdir repo2
-ostree_repo_init repo2 --mode=bare-user
+# Use a different mode to test hardlinking metadata only
+if grep -q 'mode=archive' repo/config || is_bare_user_only_repo repo; then
+    opposite_mode=bare-user
+else
+    opposite_mode=archive
+fi
+ostree_repo_init repo2 --mode=$opposite_mode
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
-echo "ok pull-local"
+test2_commitid=$(${CMD_PREFIX} ostree --repo=repo rev-parse test2)
+test2_commit_relpath=/objects/${test2_commitid:0:2}/${test2_commitid:2}.commit
+assert_files_hardlinked repo/${test2_commit_relpath} repo2/${test2_commit_relpath}
+echo "ok pull-local (hardlinking metadata)"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo2 checkout ${CHECKOUT_U_ARG} test2 test2-checkout-from-local-clone
