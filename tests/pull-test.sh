@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..20"
+echo "1..21"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -78,6 +78,13 @@ assert_file_has_content err.txt "Can't use static deltas in an archive repo"
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
 echo "ok pull (refuses deltas)"
+
+if ${CMD_PREFIX} ostree --repo=mirrorrepo \
+                 pull origin main --bareuseronly-files 2>err.txt; then
+    assert_not_reached "--bareuseronly-files unexpectedly succeeded"
+fi
+assert_file_has_content err.txt 'bareuseronly-files with non-local'
+echo "ok pull (refuses bareuseronly)"
 
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf

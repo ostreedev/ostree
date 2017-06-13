@@ -111,6 +111,7 @@ typedef struct {
   gboolean          is_mirror;
   gboolean          is_commit_only;
   gboolean          is_untrusted;
+  gboolean          is_bareuseronly_files;
 
   GPtrArray        *dirs;
 
@@ -556,6 +557,94 @@ pull_matches_subdir (OtPullData *pull_data,
   return FALSE;
 }
 
+/* This bit mirrors similar code in commit_loose_content_object() for the
+ * bare-user-only mode. It's opt-in though for all pulls.
+ */
+static gboolean
+validate_bareuseronly_mode (OtPullData *pull_data,
+                            const char *checksum,
+                            guint32     content_mode,
+                            GError    **error)
+{
+  if (!pull_data->is_bareuseronly_files)
+    return TRUE;
+
+  if (S_ISREG (content_mode))
+    {
+      const guint32 invalid_modebits = ((content_mode & ~S_IFMT) & ~0775);
+      if (invalid_modebits > 0)
+        return glnx_throw (error, "object %s.file: invalid mode 0%04o with bits 0%04o",
+                           checksum, content_mode, invalid_modebits);
+    }
+  else if (S_ISLNK (content_mode))
+    ; /* Nothing */
+  else
+    g_assert_not_reached ();
+
+  return TRUE;
+}
+
+/* Import a single content object in the case where
+ * we have pull_data->remote_repo_local.
+ *
+ * One important special case here is handling the
+ * OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES flag.
+ */
+static gboolean
+import_one_local_content_object (OtPullData *pull_data,
+                                 const char *checksum,
+                                 GCancellable *cancellable,
+                                 GError    **error)
+{
+  g_assert (pull_data->remote_repo_local);
+
+  const gboolean trusted = !pull_data->is_untrusted;
+  if (trusted && !pull_data->is_bareuseronly_files)
+    {
+      if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
+                                                      OSTREE_OBJECT_TYPE_FILE, checksum,
+                                                      trusted,
+                                                      cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      /* In this case we either need to validate the checksum
+       * or the file mode.
+       */
+      g_autoptr(GInputStream) content_input = NULL;
+      g_autoptr(GFileInfo) content_finfo = NULL;
+      g_autoptr(GVariant) content_xattrs = NULL;
+
+      if (!ostree_repo_load_file (pull_data->remote_repo_local, checksum,
+                                  &content_input, &content_finfo, &content_xattrs,
+                                  cancellable, error))
+        return FALSE;
+
+      if (!validate_bareuseronly_mode (pull_data, checksum,
+                                       g_file_info_get_attribute_uint32 (content_finfo, "unix::mode"),
+                                       error))
+        return FALSE;
+
+      /* Now that we've potentially validated it, convert to object stream */
+      guint64 length;
+      g_autoptr(GInputStream) object_stream = NULL;
+      if (!ostree_raw_file_to_content_stream (content_input, content_finfo,
+                                              content_xattrs, &object_stream,
+                                              &length, cancellable, error))
+        return FALSE;
+
+      g_autofree guchar *real_csum = NULL;
+      if (!ostree_repo_write_content (pull_data->repo, checksum,
+                                      object_stream, length,
+                                      &real_csum,
+                                      cancellable, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 static gboolean
 scan_dirtree_object (OtPullData   *pull_data,
                      const char   *checksum,
@@ -595,15 +684,19 @@ scan_dirtree_object (OtPullData   *pull_data,
                                    &file_is_stored, cancellable, error))
         return FALSE;
 
-      if (!file_is_stored && pull_data->remote_repo_local)
+      /* If we already have this object, move on to the next */
+      if (file_is_stored)
+        continue;
+
+      /* Is this a local repo? */
+      if (pull_data->remote_repo_local)
         {
-          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
-                                                          OSTREE_OBJECT_TYPE_FILE, file_checksum, !pull_data->is_untrusted,
-                                                          cancellable, error))
+          if (!import_one_local_content_object (pull_data, file_checksum, cancellable, error))
             return FALSE;
         }
-      else if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
+      else if (!g_hash_table_lookup (pull_data->requested_content, file_checksum))
         {
+          /* In this case we're doing HTTP pulls */
           g_hash_table_add (pull_data->requested_content, file_checksum);
           enqueue_one_object_request (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE, path, FALSE, FALSE);
           file_checksum = NULL;  /* Transfer ownership */
@@ -2775,6 +2868,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
   pull_data->is_untrusted = (flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) > 0;
+  pull_data->is_bareuseronly_files = (flags & OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES) > 0;
   pull_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
   if (error)
@@ -3042,11 +3136,21 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   }
 
-  /* For local pulls, default to disabling static deltas so that the
-   * exact object files are copied.
-   */
-  if (pull_data->remote_repo_local && !pull_data->require_static_deltas)
-    pull_data->disable_static_deltas = TRUE;
+  if (pull_data->remote_repo_local)
+    {
+      /* For local pulls, default to disabling static deltas so that the
+       * exact object files are copied.
+       */
+      if (!pull_data->require_static_deltas)
+        pull_data->disable_static_deltas = TRUE;
+
+    }
+  else if (pull_data->is_bareuseronly_files)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Can't use bareuseronly-files with non-local origin repo");
+      goto out;
+    }
 
   /* We can't use static deltas if pulling into an archive-z2 repo. */
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)

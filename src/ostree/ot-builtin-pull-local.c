@@ -33,6 +33,7 @@
 static char *opt_remote;
 static gboolean opt_disable_fsync;
 static gboolean opt_untrusted;
+static gboolean opt_bareuseronly_files;
 static gboolean opt_require_static_deltas;
 static gboolean opt_gpg_verify;
 static gboolean opt_gpg_verify_summary;
@@ -42,6 +43,7 @@ static GOptionEntry options[] = {
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust source", NULL },
+  { "bareuseronly-files", 0, 0, G_OPTION_ARG_NONE, &opt_bareuseronly_files, "Reject regular files with mode outside of 0775 (world writable, suid, etc.)", NULL },
   { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
   { "gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify, "GPG verify commits (must specify --remote)", NULL },
   { "gpg-verify-summary", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify_summary, "GPG verify summary (must specify --remote)", NULL },
@@ -92,6 +94,8 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
 
   if (opt_untrusted)
     pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
+  if (opt_bareuseronly_files)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES;
 
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
