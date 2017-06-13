@@ -111,6 +111,18 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-summary-view.sh \
 	$(NULL)
 
+if ENABLE_EXPERIMENTAL_API
+_installed_or_uninstalled_test_scripts += \
+	tests/test-find-remotes.sh \
+	tests/test-fsck-collections.sh \
+	tests/test-init-collections.sh \
+	tests/test-prune-collections.sh \
+	tests/test-refs-collections.sh \
+	tests/test-remote-add-collections.sh \
+	tests/test-summary-collections.sh \
+	$(NULL)
+endif
+
 if BUILDOPT_FUSE
 _installed_or_uninstalled_test_scripts += tests/test-rofiles-fuse.sh
 else

@@ -537,3 +537,15 @@ ostree_file_path_to_object_path() {
     relpath=$(ostree_file_path_to_relative_object_path $repo $ref $path)
     echo ${repo}/${relpath}
 }
+
+# Assert ref $2 in repo $1 has checksum $3.
+assert_ref () {
+    assert_streq $(${CMD_PREFIX} ostree rev-parse --repo=$1 $2) $3
+}
+
+# Assert no ref named $2 is present in repo $1.
+assert_not_ref () {
+    if ${CMD_PREFIX} ostree rev-parse --repo=$1 $2 2>/dev/null; then
+        fatal "rev-parse $2 unexpectedly succeeded!"
+    fi
+}
