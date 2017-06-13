@@ -63,6 +63,20 @@ tests:
 
 ---
 
+context: f26-gnutls
+inherit: true
+container:
+    image: registry.fedoraproject.org/fedora:26
+env:
+  CONFIGOPTS: '--with-crypto=gnutls'
+  CI_PKGS: pkgconfig(gnutls)
+
+tests:
+    - ci/build.sh
+    - make check TESTS=tests/test-basic.sh
+
+---
+
 inherit: true
 
 context: f26-experimental-api
