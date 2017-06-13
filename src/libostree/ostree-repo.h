@@ -768,7 +768,8 @@ typedef struct {
   gboolean process_whiteouts;
   gboolean no_copy_fallback;
   gboolean force_copy; /* Since: 2017.6 */
-  gboolean unused_bools[6];
+  gboolean bareuseronly_dirs; /* Since: 2017.7 */
+  gboolean unused_bools[5];
 
   const char *subpath;
 
