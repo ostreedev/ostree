@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((68 + ${extra_basic_tests:-0}))"
+echo "1..$((69 + ${extra_basic_tests:-0}))"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -444,6 +444,22 @@ $OSTREE checkout --union-add test-union-add checkout-test-union-add
 assert_file_has_content checkout-test-union-add/union-add-test 'existing file for union add'
 assert_file_has_content checkout-test-union-add/union-add-test2 'another file for union add testing'
 echo "ok checkout union add"
+
+cd ${test_tmpdir}
+rm files -rf && mkdir files
+mkdir files/worldwritable-dir
+chmod a+w files/worldwritable-dir
+$CMD_PREFIX ostree --repo=repo commit -b content-with-dir-world-writable --tree=dir=files
+rm dir-co -rf
+$CMD_PREFIX ostree --repo=repo checkout -U -H -M content-with-dir-world-writable dir-co
+assert_file_has_mode dir-co/worldwritable-dir 775
+if ! is_bare_user_only_repo repo; then
+    rm dir-co -rf
+    $CMD_PREFIX ostree --repo=repo checkout -U -H content-with-dir-world-writable dir-co
+    assert_file_has_mode dir-co/worldwritable-dir 777
+fi
+rm dir-co -rf
+echo "ok checkout bareuseronly dir"
 
 cd ${test_tmpdir}
 rm -rf shadow-repo
