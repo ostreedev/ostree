@@ -188,6 +188,12 @@ gboolean ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
                                            GError           **error);
 
 _OSTREE_PUBLIC
+void ostree_sysroot_query_deployments_for (OstreeSysroot     *self,
+                                           const char        *osname,
+                                           OstreeDeployment  **out_pending,
+                                           OstreeDeployment  **out_rollback);
+
+_OSTREE_PUBLIC
 OstreeDeployment *ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
                                                        const char        *osname);
 

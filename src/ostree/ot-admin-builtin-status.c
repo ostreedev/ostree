@@ -88,6 +88,8 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
   gboolean ret = FALSE;
   glnx_unref_object OstreeRepo *repo = NULL;
   OstreeDeployment *booted_deployment = NULL;
+  g_autoptr(OstreeDeployment) pending_deployment = NULL;
+  g_autoptr(OstreeDeployment) rollback_deployment = NULL;
   g_autoptr(GPtrArray) deployments = NULL;
   const int is_tty = isatty (1);
   const char *red_bold_prefix = is_tty ? "\x1b[31m\x1b[1m" : "";
@@ -110,6 +112,10 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
   deployments = ostree_sysroot_get_deployments (sysroot);
   booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
 
+  if (booted_deployment)
+    ostree_sysroot_query_deployments_for (sysroot, NULL, &pending_deployment,
+                                          &rollback_deployment);
+
   if (deployments->len == 0)
     {
       g_print ("No deployments.\n");
@@ -129,11 +135,17 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
 
           origin = ostree_deployment_get_origin (deployment);
 
-          g_print ("%c %s %s.%d\n",
+          const char *deployment_status = "";
+          if (deployment == pending_deployment)
+            deployment_status = " (pending)";
+          else if (deployment == rollback_deployment)
+            deployment_status = " (rollback)";
+          g_print ("%c %s %s.%d%s\n",
                    deployment == booted_deployment ? '*' : ' ',
                    ostree_deployment_get_osname (deployment),
                    ostree_deployment_get_csum (deployment),
-                   ostree_deployment_get_deployserial (deployment));
+                   ostree_deployment_get_deployserial (deployment),
+                   deployment_status);
           if (version)
             g_print ("    Version: %s\n", version);
           switch (unlocked)
