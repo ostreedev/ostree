@@ -505,10 +505,10 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
   g_return_val_if_fail (self->loaded, FALSE);
 
   if (!cleanup_other_bootversions (self, cancellable, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Cleaning bootversions");
 
   if (!cleanup_old_deployments (self, cancellable, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Cleaning deployments");
 
   OstreeRepo *repo = ostree_sysroot_repo (self);
   if (!generate_deployment_refs (self, repo,
@@ -516,12 +516,12 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
                                  self->subbootversion,
                                  self->deployments,
                                  cancellable, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Generating deployment refs");
 
   if (do_prune_repo)
     {
       if (!prune_repo (repo, cancellable, error))
-        return FALSE;
+        return glnx_prefix_error (error, "Pruning repo");
     }
 
   return TRUE;
