@@ -101,6 +101,7 @@ ostree_validate_checksum_string (const char *sha256,
 
 #define OSTREE_REF_FRAGMENT_REGEXP "[-._\\w\\d]+"
 #define OSTREE_REF_REGEXP "(?:" OSTREE_REF_FRAGMENT_REGEXP "/)*" OSTREE_REF_FRAGMENT_REGEXP
+#define OSTREE_REMOTE_NAME_REGEXP OSTREE_REF_FRAGMENT_REGEXP
 
 /**
  * ostree_parse_refspec:
@@ -125,7 +126,7 @@ ostree_parse_refspec (const char   *refspec,
   static gsize regex_initialized;
   if (g_once_init_enter (&regex_initialized))
     {
-      regex = g_regex_new ("^(" OSTREE_REF_FRAGMENT_REGEXP ":)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
+      regex = g_regex_new ("^(" OSTREE_REMOTE_NAME_REGEXP ":)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
       g_assert (regex);
       g_once_init_leave (&regex_initialized, 1);
     }
@@ -176,6 +177,35 @@ ostree_validate_rev (const char *rev,
 
   if (!g_regex_match (regex, rev, 0, &match))
     return glnx_throw (error, "Invalid ref name %s", rev);
+
+  return TRUE;
+}
+
+/**
+ * ostree_validate_remote_name:
+ * @remote_name: A remote name
+ * @error: Error
+ *
+ * Returns: %TRUE if @remote_name is a valid remote name
+ * Since: 2017.7
+ */
+gboolean
+ostree_validate_remote_name (const char  *remote_name,
+                             GError     **error)
+{
+  g_autoptr(GMatchInfo) match = NULL;
+
+  static gsize regex_initialized;
+  static GRegex *regex;
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^" OSTREE_REMOTE_NAME_REGEXP "$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!g_regex_match (regex, remote_name, 0, &match))
+    return glnx_throw (error, "Invalid remote name %s", remote_name);
 
   return TRUE;
 }
