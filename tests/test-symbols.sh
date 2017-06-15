@@ -46,6 +46,7 @@ diff -u expected-documented.txt found-documented.txt
 
 echo 'ok documented symbols'
 
+# ONLY update this checksum in release commits!
 cat > released-sha256.txt <<EOF
 12b7143af57a65a76e1dd44b1b5f7b4ea23035e491dabe9870d37534bb80ac35  ${released_syms}
 EOF
