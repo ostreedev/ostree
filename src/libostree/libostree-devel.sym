@@ -1,0 +1,35 @@
+/* DEVEL symbol file - add new symbols here
+  Copyright (C) 2016 Colin Walters <walters@verbum.org>
+ 
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2 of the License, or (at your option) any later version.
+ 
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+ 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the
+  Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+  Boston, MA 02111-1307, USA.
+***/
+
+/* Add new symbols here.  Release commits should copy this section into -released.sym. */
+LIBOSTREE_2017.7 {
+global:
+  ostree_sysroot_repo;
+  ostree_sysroot_query_deployments_for;
+} LIBOSTREE_2017.6;
+
+/* Stub section for the stable release *after* this development one; don't
+ * edit this other than to update the last number.  This is just a copy/paste
+ * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
+ * with whatever the next version with new symbols will be.
+LIBOSTREE_2017.$NEWVERSION {
+global:
+	someostree_symbol_deleteme;
+} LIBOSTREE_2017.$LASTSTABLE;
+*/
