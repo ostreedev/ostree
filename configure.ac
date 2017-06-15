@@ -1,5 +1,7 @@
 AC_PREREQ([2.63])
-dnl If incrementing the version here, remember to update libostree.sym too
+dnl If doing a final release, remember to follow the instructions to
+dnl update libostree-released.sym from libostree-devel.sym, and update the checksum
+dnl in test-symbols.sh
 m4_define([year_version], [2017])
 m4_define([release_version], [7])
 m4_define([package_version], [year_version.release_version])
