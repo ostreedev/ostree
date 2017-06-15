@@ -82,7 +82,7 @@ echo "ok pull (refuses deltas)"
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf
 ${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
-ostree --repo=mirrorrepo pull --bareuseronly-files origin main
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --bareuseronly-files origin main
 echo "ok pull (bareuseronly, safe)"
 
 rm checkout-origin-main -rf
@@ -91,11 +91,11 @@ cat > statoverride.txt <<EOF
 2048 /some-setuid
 EOF
 echo asetuid > checkout-origin-main/some-setuid
-$CMD_PREFIX ostree --repo=ostree-srv/gnomerepo commit -b content-with-suid --statoverride=statoverride.txt --tree=dir=checkout-origin-main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b content-with-suid --statoverride=statoverride.txt --tree=dir=checkout-origin-main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 # Verify we reject it both when unpacking and when mirroring
 for flag in "" "--mirror"; do
-    if ostree --repo=mirrorrepo pull ${flag} --bareuseronly-files origin content-with-suid 2>err.txt; then
+    if ${CMD_PREFIX} ostree --repo=mirrorrepo pull ${flag} --bareuseronly-files origin content-with-suid 2>err.txt; then
         assert_not_reached "pulled unsafe bareuseronly"
     fi
     assert_file_has_content err.txt 'object.*\.file: invalid mode.*with bits 040.*'
@@ -105,7 +105,7 @@ echo "ok pull (bareuseronly, unsafe)"
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf
 ${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
-ostree --repo=mirrorrepo pull --mirror --bareuseronly-files origin main
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror --bareuseronly-files origin main
 echo "ok pull (bareuseronly mirror)"
 
 cd ${test_tmpdir}
