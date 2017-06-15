@@ -665,6 +665,26 @@ aic_import_entry (OstreeRepoArchiveImportContext *ctx,
   if (!aic_get_parent_dir (ctx, path, &parent, cancellable, error))
     return FALSE;
 
+  if (ctx->opts->canonicalize_permissions)
+    {
+      guint32 mode = g_file_info_get_attribute_uint32 (fi, "unix::mode");
+
+      /* Disallow:
+       *  - world writable files
+       * TODO: in the future, also world writable directories?
+       */
+      if (S_ISREG (mode))
+        mode &= ~(S_IWOTH);
+
+      /* Ensure:
+       *  - user writable directories (https://bugzilla.redhat.com/show_bug.cgi?id=517575)
+       */
+      if (S_ISDIR (mode))
+        mode |= S_IWUSR;
+
+      g_file_info_set_attribute_uint32 (fi, "unix::mode", mode);
+    }
+
   return aic_handle_entry (ctx, parent, path, fi, cancellable, error);
 }
 
@@ -944,6 +964,88 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
     {
       (void)archive_read_close (a);
     }
+  return ret;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree is not compiled with libarchive support");
+  return FALSE;
+#endif
+}
+
+/**
+ * ostree_repo_import_oci_image_layer:
+ * @self: An #OstreeRepo
+ * @options: (allow-none): An a{sv} containing options for future expansion, must presently be %NULL
+ * @dfd: Directory file descriptor
+ * @path: Path to blob archive
+ * @mtree: Mtree
+ * @modifier: (allow-none): Modifier
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Similar to ostree_repo_import_archive_to_mtree() except tuned with default options
+ * for OCI/Docker image layers (`autocreate_parents` and `ignore_unsupported_content` are enabled by
+ * default for example).  This function is also intended to be exported
+ * via introspection, whereas import_archive_to_mtree() can't due to its use of bitfields
+ * as well as exposing `struct archive*`.
+ */
+gboolean
+ostree_repo_import_oci_image_layer (OstreeRepo                      *self,
+                                    GVariant                        *options,
+                                    int                              dfd,
+                                    const char                      *path,
+                                    OstreeMutableTree               *mtree,
+                                    OstreeRepoCommitModifier        *modifier,
+                                    GCancellable                   *cancellable,
+                                    GError                        **error)
+{
+#ifdef HAVE_LIBARCHIVE
+  gboolean ret = FALSE;
+  glnx_fd_close int fd = -1;
+  struct archive *a = NULL;
+  OstreeRepoImportArchiveOptions opts = { 0, };
+  /* We may extend this layer */
+  g_return_val_if_fail (options == NULL, FALSE);
+
+  dfd = glnx_dirfd_canonicalize (dfd);
+
+  fd = openat (dfd, path, O_RDONLY | O_CLOEXEC | O_NOCTTY);
+  if (fd < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  a = archive_read_new ();
+  /* https://github.com/opencontainers/image-spec/blob/master/media-types.md says:
+   *   application/vnd.oci.image.serialization.rootfs.tar.gzip: "Layer", as a gzipped tar archive
+   * So let's reduce our attack surface by only supporting that.
+   */
+  g_assert_cmpint (0, ==, archive_read_support_filter_gzip (a));
+  g_assert_cmpint (0, ==, archive_read_support_format_tar (a));
+  if (archive_read_open_fd (a, fd, 8192) != ARCHIVE_OK)
+    {
+      propagate_libarchive_error (error, a);
+      goto out;
+    }
+
+  opts.autocreate_parents = TRUE;
+  opts.ignore_unsupported_content = TRUE;
+  opts.canonicalize_permissions = TRUE;
+
+  if (!ostree_repo_import_archive_to_mtree (self, &opts, a, mtree, modifier, cancellable, error))
+    goto out;
+
+  if (archive_read_close (a) != ARCHIVE_OK)
+    {
+      propagate_libarchive_error (error, a);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (a)
+    (void)archive_read_close (a);
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,

@@ -507,6 +507,12 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
                                                        cancellable, error))
                 goto out;
             }
+          else if (strcmp (tree_type, "oci-layer") == 0)
+            {
+              if (!ostree_repo_import_oci_image_layer (repo, NULL, AT_FDCWD, tree, mtree,
+                                                       modifier, cancellable, error))
+                goto out;
+            }
           else if (strcmp (tree_type, "ref") == 0)
             {
               if (!ostree_repo_read_commit (repo, tree, &object_to_commit, NULL, cancellable, error))

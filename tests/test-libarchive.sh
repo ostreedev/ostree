@@ -26,7 +26,7 @@ fi
 
 . $(dirname $0)/libtest.sh
 
-echo "1..20"
+echo "1..21"
 
 setup_test_repository "bare"
 
@@ -154,3 +154,33 @@ $OSTREE checkout partial partial-checkout
 cd partial-checkout
 assert_file_has_content subdir/original "original"
 echo "ok tar partial commit contents"
+
+
+cd ${test_tmpdir}
+# We need a bare-user repo for this
+rm repo -rf
+$OSTREE --repo=repo init --mode=bare-user
+# Yeah this is ugly but it's simpler than adding it to the installed tests etc.
+# We need a tarball that has a device file.
+python -c 'import base64,sys; base64.decode(sys.stdin, sys.stdout)' > testlayer.tar.gz <<EOF
+H4sIAMKpqFcAA+2WS07DMBCGveYUPkEcP2eNRJdsuEEpWSBKjZymErfHjpGCsmioFLs8/m8zeUkz0TdjuxGsOG2ErB1jZB7Ha6nIKqmUkTI+J2od47Z8aYwN/XEbOGfB++O575be/1Ia8dSdCvfAJf5t8i9b4yz81yD7Pwz7fbkcSbBzbtF/bBLtKPaJVM7E+dflSppYy3/+D/kZq5S+Btn/zoeuXI5x/om+6T/NvzbKMK7EW/A78VK0Osx/9P+wub2735TKMc6/MWf802z9Tw3AeFuqoK/8c//Z/M21ywBXohFDH37Q+c/k85+VhPNfDbL/x+dDwR64zD+l9T/ewX8NJv+9f+1i3Ib3tXMs7v9Sz/xr7bD/V2GyjjMAAAAAAAAAAAAAAAAA/CU+AAWVA4wAKAAA
+EOF
+gunzip testlayer.tar.gz
+# Now let's extend it here in a more readable fashion.  This tests unwritable directories
+mkdir -p testlayer.new/usr/notwritable
+echo somebinary > testlayer.new/usr/notwritable/somebinary
+chmod a-w testlayer.new/usr/notwritable
+echo worldwritable > testlayer.new/usr/worldwritablefile
+chmod a+w testlayer.new/usr/worldwritablefile
+tar -r -f testlayer.tar -C testlayer.new .
+gzip testlayer.tar
+$OSTREE commit -b ociimage --tree=oci-layer=testlayer.tar.gz
+chmod -R u+w testlayer.new && rm testlayer.new -rf
+$OSTREE checkout -U ociimage ociimage
+assert_file_has_content ociimage/usr/bin/somebinary somebinary
+assert_not_has_file ociimage/dev/null
+test -L ociimage/dev/core
+test -w ociimage/usr/notwritable
+assert_has_file ociimage/dev/README
+rm -rf testlayer.tar.gz ociimage
+echo "ok ociimage"

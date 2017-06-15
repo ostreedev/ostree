@@ -351,6 +351,7 @@ global:
         ostree_checksum_b64_to_bytes;
         ostree_checksum_b64_from_bytes;
         ostree_repo_checkout_at;
+        ostree_repo_import_oci_image_layer;
 } LIBOSTREE_2016.7;
 
 /* No new symbols in 2016.9 */

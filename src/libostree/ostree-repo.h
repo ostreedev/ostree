@@ -630,7 +630,8 @@ typedef struct {
   guint autocreate_parents : 1;
   guint use_ostree_convention : 1;
   guint callback_with_entry_pathname : 1;
-  guint reserved : 28;
+  guint canonicalize_permissions : 1;
+  guint reserved : 27;
 
   guint unused_uint[8];
   gpointer unused_ptrs[8];
@@ -644,6 +645,16 @@ gboolean      ostree_repo_import_archive_to_mtree (OstreeRepo                   
                                                    OstreeRepoCommitModifier        *modifier,
                                                     GCancellable                   *cancellable,
                                                     GError                        **error);
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_import_oci_image_layer (OstreeRepo                      *self,
+                                                  GVariant                        *options,
+                                                  int                              dfd,
+                                                  const char                      *path,
+                                                  OstreeMutableTree               *mtree,
+                                                  OstreeRepoCommitModifier        *modifier,
+                                                  GCancellable                   *cancellable,
+                                                  GError                        **error);
 
 /**
  * OstreeRepoExportArchiveOptions: (skip)
