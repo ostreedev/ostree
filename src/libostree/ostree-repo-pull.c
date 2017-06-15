@@ -871,7 +871,12 @@ content_fetch_on_complete (GObject        *object,
   checksum_obj = ostree_object_to_string (checksum, objtype);
   g_debug ("fetch of %s complete", checksum_obj);
 
-  if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+  /* If we're mirroring and writing into an archive repo, we can directly copy
+   * the content rather than paying the cost of exploding it, checksumming, and
+   * re-gzip.
+   */
+  if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+      && !pull_data->is_bareuseronly_files)
     {
       gboolean have_object;
       if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
@@ -903,16 +908,22 @@ content_fetch_on_complete (GObject        *object,
         }
 
       /* Also, delete it now that we've opened it, we'll hold
-       * a reference to the fd.  If we fail to write later, then
+       * a reference to the fd.  If we fail to validate or write, then
        * the temp space will be cleaned up.
        */
       (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
+
+      if (!validate_bareuseronly_mode (pull_data,
+                                       checksum,
+                                       g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
+                                       error))
+        goto out;
 
       if (!ostree_raw_file_to_content_stream (file_in, file_info, xattrs,
                                               &object_input, &length,
                                               cancellable, error))
         goto out;
-  
+
       pull_data->n_outstanding_content_write_requests++;
       ostree_repo_write_content_async (pull_data->repo, checksum,
                                        object_input, length,
@@ -3144,12 +3155,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (!pull_data->require_static_deltas)
         pull_data->disable_static_deltas = TRUE;
 
-    }
-  else if (pull_data->is_bareuseronly_files)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Can't use bareuseronly-files with non-local origin repo");
-      goto out;
     }
 
   /* We can't use static deltas if pulling into an archive-z2 repo. */

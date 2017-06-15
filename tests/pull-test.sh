@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..21"
+echo "1..23"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -79,12 +79,34 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo pull origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
 echo "ok pull (refuses deltas)"
 
-if ${CMD_PREFIX} ostree --repo=mirrorrepo \
-                 pull origin main --bareuseronly-files 2>err.txt; then
-    assert_not_reached "--bareuseronly-files unexpectedly succeeded"
-fi
-assert_file_has_content err.txt 'bareuseronly-files with non-local'
-echo "ok pull (refuses bareuseronly)"
+cd ${test_tmpdir}
+rm mirrorrepo/refs/remotes/* -rf
+${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --bareuseronly-files origin main
+echo "ok pull (bareuseronly, safe)"
+
+rm checkout-origin-main -rf
+$OSTREE --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
+cat > statoverride.txt <<EOF
+2048 /some-setuid
+EOF
+echo asetuid > checkout-origin-main/some-setuid
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b content-with-suid --statoverride=statoverride.txt --tree=dir=checkout-origin-main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+# Verify we reject it both when unpacking and when mirroring
+for flag in "" "--mirror"; do
+    if ${CMD_PREFIX} ostree --repo=mirrorrepo pull ${flag} --bareuseronly-files origin content-with-suid 2>err.txt; then
+        assert_not_reached "pulled unsafe bareuseronly"
+    fi
+    assert_file_has_content err.txt 'object.*\.file: invalid mode.*with bits 040.*'
+done
+echo "ok pull (bareuseronly, unsafe)"
+
+cd ${test_tmpdir}
+rm mirrorrepo/refs/remotes/* -rf
+${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror --bareuseronly-files origin main
+echo "ok pull (bareuseronly mirror)"
 
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf
