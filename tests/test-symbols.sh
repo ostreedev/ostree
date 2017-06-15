@@ -17,10 +17,12 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-set -euo pipefail
+set -xeuo pipefail
 
-echo '1..2'
+echo '1..3'
 
+released_syms=${G_TEST_SRCDIR}/src/libostree/libostree-released.sym
+devel_syms=${G_TEST_SRCDIR}/src/libostree/libostree-devel.sym
 if echo "$OSTREE_FEATURES" | grep --quiet --no-messages "experimental"; then
   experimental_sym="${G_TEST_SRCDIR}/src/libostree/libostree-experimental.sym"
   experimental_sections="${G_TEST_SRCDIR}/apidoc/ostree-experimental-sections.txt"
@@ -30,7 +32,7 @@ else
 fi
 
 echo "Verifying all expected symbols are actually exported..."
-grep --no-filename ' ostree_[A-Za-z0-9_]*;' ${G_TEST_SRCDIR}/src/libostree/libostree.sym $experimental_sym | sed -e 's,^ *\([A-Za-z0-9_]*\);,\1,' | sort -u > expected-symbols.txt
+grep --no-filename ' ostree_[A-Za-z0-9_]*;' ${released_syms} ${devel_syms} ${experimental_sym} | sed -e 's,^ *\([A-Za-z0-9_]*\);,\1,' | sort -u > expected-symbols.txt
 eu-readelf -a ${G_TEST_BUILDDIR}/.libs/libostree-1.so | grep 'FUNC.*GLOBAL.*DEFAULT.*@@LIBOSTREE_' | sed -e 's,^.* \(ostree_[A-Za-z0-9_]*\)@@LIBOSTREE_[0-9A-Z_.]*,\1,' |sort -u > found-symbols.txt
 diff -u expected-symbols.txt found-symbols.txt
 echo "ok exports"
@@ -43,3 +45,11 @@ grep --no-filename '^ostree_' ${G_TEST_SRCDIR}/apidoc/ostree-sections.txt $exper
 diff -u expected-documented.txt found-documented.txt
 
 echo 'ok documented symbols'
+
+# ONLY update this checksum in release commits!
+cat > released-sha256.txt <<EOF
+1cacda8ca5f9622da8c36565f58f76d3437f86b276e266a0d4cb531449153404  ${released_syms}
+EOF
+sha256sum -c released-sha256.txt
+
+echo "ok someone didn't add a symbol to a released version"
