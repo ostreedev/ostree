@@ -693,9 +693,9 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
     g_autoptr(GVariant) contents_csum_v = NULL;
     while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, &contents_csum_v))
       {
-        const size_t namelen = strlen (fname);
+        const size_t origlen = selabel_path_buf ? selabel_path_buf->len : 0;
         if (selabel_path_buf)
-          g_string_append_len (selabel_path_buf, fname, namelen);
+          g_string_append (selabel_path_buf, fname);
 
         char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
         _ostree_checksum_inplace_from_bytes_v (contents_csum_v, tmp_checksum);
@@ -707,7 +707,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
           return FALSE;
 
         if (selabel_path_buf)
-          g_string_truncate (selabel_path_buf, selabel_path_buf->len - namelen);
+          g_string_truncate (selabel_path_buf, origlen);
       }
     contents_csum_v = NULL; /* iter_loop freed it */
   }
@@ -722,10 +722,10 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
     while (g_variant_iter_loop (&viter, "(&s@ay@ay)", &dname,
                                 &subdirtree_csum_v, &subdirmeta_csum_v))
       {
-        const size_t namelen = strlen (dname);
+        const size_t origlen = selabel_path_buf ? selabel_path_buf->len : 0;
         if (selabel_path_buf)
           {
-            g_string_append_len (selabel_path_buf, dname, namelen);
+            g_string_append (selabel_path_buf, dname);
             g_string_append_c (selabel_path_buf, '/');
           }
 
@@ -740,7 +740,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
           return FALSE;
 
         if (selabel_path_buf)
-          g_string_truncate (selabel_path_buf, selabel_path_buf->len - namelen);
+          g_string_truncate (selabel_path_buf, origlen);
       }
   }
 
