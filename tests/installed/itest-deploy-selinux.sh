@@ -12,9 +12,9 @@ ostree admin deploy --karg-proc-cmdline ${host_refspec}
 new_deployment_path=/ostree/deploy/${host_osname}/deploy/${host_commit}.1
 
 # A set of files that have a variety of security contexts
-for file in fstab passwd exports hostname sysctl.conf /etc/yum.repos.d \
-            /etc/NetworkManager/dispatcher.d/hook-network-manager; do
-    if ! test -e ${file}; then
+for file in fstab passwd exports hostname sysctl.conf yum.repos.d \
+            NetworkManager/dispatcher.d/hook-network-manager; do
+    if ! test -e /etc/${file}; then
         continue
     fi
 
