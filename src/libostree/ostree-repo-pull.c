@@ -3518,7 +3518,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
     }
 
-  if (pull_data->is_mirror && pull_data->summary_data)
+  if (pull_data->is_mirror && pull_data->summary_data && !refs_to_fetch && !configured_branches)
     {
       GLnxFileReplaceFlags replaceflag =
         pull_data->repo->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : 0;
