@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..23"
+echo "1..25"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -56,6 +56,33 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
 $OSTREE show main >/dev/null
 echo "ok pull mirror"
+
+mkdir otherbranch
+echo someothercontent > otherbranch/someothercontent
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b otherbranch --tree=dir=otherbranch
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+rm mirrorrepo -rf
+# All refs
+ostree_repo_init mirrorrepo --mode=archive-z2
+${CMD_PREFIX} ostree --repo=mirrorrepo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin
+${CMD_PREFIX} ostree --repo=mirrorrepo fsck
+for ref in main otherbranch; do
+    ${CMD_PREFIX} ostree --repo=mirrorrepo rev-parse $ref
+done
+echo "ok pull mirror (all refs)"
+
+rm mirrorrepo -rf
+ostree_repo_init mirrorrepo --mode=archive-z2
+${CMD_PREFIX} ostree --repo=mirrorrepo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+# Generate a summary in the mirror
+${CMD_PREFIX} ostree --repo=mirrorrepo summary -u
+summarysig=$(sha256sum < mirrorrepo/summary | cut -f 1 -d ' ')
+# Mirror subset of refs: https://github.com/ostreedev/ostree/issues/846
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
+newsummarysig=$(sha256sum < mirrorrepo/summary | cut -f 1 -d ' ')
+assert_streq ${summarysig} ${newsummarysig}
+echo "ok pull mirror (ref subset with summary)"
 
 cd ${test_tmpdir}
 rm checkout-origin-main -rf
