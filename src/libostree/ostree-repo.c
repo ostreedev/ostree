@@ -2618,9 +2618,9 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
  * ostree_repo_load_file:
  * @self: Repo
  * @checksum: ASCII SHA256 checksum
- * @out_input: (out) (allow-none): File content
- * @out_file_info: (out) (allow-none): File information
- * @out_xattrs: (out) (allow-none): Extended attributes
+ * @out_input: (out) (optional) (nullable): File content
+ * @out_file_info: (out) (optional) (nullable): File information
+ * @out_xattrs: (out) (optional) (nullable): Extended attributes
  * @cancellable: Cancellable
  * @error: Error
  *
