@@ -155,15 +155,16 @@ libostree_1_la_SOURCES += \
 	$(NULL)
 endif
 
-symbol_files = $(top_srcdir)/src/libostree/libostree-released.sym \
-               $(top_srcdir)/src/libostree/libostree-devel.sym
+symbol_files = $(top_srcdir)/src/libostree/libostree-released.sym
+if BUILDOPT_IS_DEVEL_BUILD
+symbol_files += $(top_srcdir)/src/libostree/libostree-devel.sym
+endif
 if ENABLE_EXPERIMENTAL_API
 symbol_files += $(top_srcdir)/src/libostree/libostree-experimental.sym
 endif
 # http://blog.jgc.org/2007/06/escaping-comma-and-space-in-gnu-make.html
 wl_versionscript_arg = -Wl,--version-script=
 EXTRA_DIST += $(symbol_files)
-
 
 libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_OPENSSL_CFLAGS) \
