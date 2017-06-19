@@ -3320,28 +3320,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         goto out;
       }
 
-    if (bytes_summary)
-      {
-        pull_data->summary_data = g_bytes_ref (bytes_summary);
-        pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
-
-        if (bytes_sig)
-          pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
-      }
-
-
-    if (!summary_from_cache && bytes_summary && bytes_sig)
-      {
-        if (!pull_data->remote_repo_local &&
-            !_ostree_repo_cache_summary (self,
-                                         remote_name_or_baseurl,
-                                         bytes_summary,
-                                         bytes_sig,
-                                         cancellable,
-                                         error))
-          goto out;
-      }
-
     if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
       {
         g_autoptr(GVariant) sig_variant = NULL;
@@ -3357,6 +3335,27 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                         cancellable,
                                                         error);
         if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+          goto out;
+      }
+
+    if (bytes_summary)
+      {
+        pull_data->summary_data = g_bytes_ref (bytes_summary);
+        pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
+
+        if (bytes_sig)
+          pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+      }
+
+    if (!summary_from_cache && bytes_summary && bytes_sig)
+      {
+        if (!pull_data->remote_repo_local &&
+            !_ostree_repo_cache_summary (self,
+                                         remote_name_or_baseurl,
+                                         bytes_summary,
+                                         bytes_sig,
+                                         cancellable,
+                                         error))
           goto out;
       }
 
