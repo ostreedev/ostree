@@ -2683,7 +2683,7 @@ ostree_repo_load_file (OstreeRepo         *self,
     }
   else
     {
-      int objdir_fd; /* referenced */
+      int objdir_fd = -1; /* referenced */
       if (!stat_bare_content_object (self, loose_path_buf,
                                      &objdir_fd,
                                      &ret_file_info,
