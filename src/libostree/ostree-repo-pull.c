@@ -3343,6 +3343,20 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         pull_data->summary_data = g_bytes_ref (bytes_summary);
         pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
 
+        if (!g_variant_is_normal_form (pull_data->summary))
+          {
+            g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "Not normal form");
+            goto out;
+          }
+        if (!g_variant_is_of_type (pull_data->summary, OSTREE_SUMMARY_GVARIANT_FORMAT))
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Doesn't match variant type '%s'",
+                         (char *)OSTREE_SUMMARY_GVARIANT_FORMAT);
+            goto out;
+          }
+
         if (bytes_sig)
           pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
       }
