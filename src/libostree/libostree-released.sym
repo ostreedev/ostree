@@ -401,3 +401,13 @@ global:
   ostree_async_progress_get_variant;
   ostree_async_progress_set_variant;
 } LIBOSTREE_2017.4;
+
+LIBOSTREE_2017.7 {
+global:
+  ostree_sysroot_repo;
+  ostree_sysroot_query_deployments_for;
+} LIBOSTREE_2017.6;
+
+/* NOTE: Only add more content here in release commits!  See the
+ * comments at the top of this file.
+ */
