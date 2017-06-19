@@ -19,6 +19,7 @@ env:
 tests:
   - ci/ci-commitmessage-submodules.sh
   - ci/build-check.sh
+  - ci/ci-release-build.sh
 
 timeout: 30m
 
