@@ -690,7 +690,8 @@ dispatch_open (OstreeRepo                 *repo,
   if (!state->stats_only)
     {
       g_assert (repo->mode == OSTREE_REPO_MODE_BARE ||
-                repo->mode == OSTREE_REPO_MODE_BARE_USER);
+                repo->mode == OSTREE_REPO_MODE_BARE_USER ||
+                repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY);
     }
   
   if (!open_output_target (state, cancellable, error))
