@@ -22,7 +22,11 @@ set -xeuo pipefail
 echo '1..3'
 
 released_syms=${G_TEST_SRCDIR}/src/libostree/libostree-released.sym
-devel_syms=${G_TEST_SRCDIR}/src/libostree/libostree-devel.sym
+if echo "$OSTREE_FEATURES" | grep --quiet --no-messages "DevelBuild"; then
+    devel_syms=${G_TEST_SRCDIR}/src/libostree/libostree-devel.sym
+else
+    devel_syms=
+fi
 if echo "$OSTREE_FEATURES" | grep --quiet --no-messages "experimental"; then
   experimental_sym="${G_TEST_SRCDIR}/src/libostree/libostree-experimental.sym"
   experimental_sections="${G_TEST_SRCDIR}/apidoc/ostree-experimental-sections.txt"

@@ -460,7 +460,10 @@ AS_IF([test x$enable_experimental_api = xyes],
 )
 AM_CONDITIONAL([ENABLE_EXPERIMENTAL_API],[test x$enable_experimental_api = xyes])
 AM_CONDITIONAL([BUILDOPT_IS_DEVEL_BUILD],[test x$is_release_build != xyes])
-AM_COND_IF([BUILDOPT_IS_DEVEL_BUILD], release_build_type=devel, release_build_type=release)
+AM_COND_IF([BUILDOPT_IS_DEVEL_BUILD],
+            AC_DEFINE([BUILDOPT_IS_DEVEL_BUILD], [1], [Define if doing a development build])
+            release_build_type=devel,
+            release_build_type=release)
 
 AC_CONFIG_FILES([
 Makefile
