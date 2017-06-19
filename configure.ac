@@ -4,10 +4,10 @@ dnl update libostree-released.sym from libostree-devel.sym, and update the check
 dnl in test-symbols.sh, and also set is_release_build=yes below.  Then make
 dnl another post-release commit to bump the version, and set is_release_build=no.
 m4_define([year_version], [2017])
-m4_define([release_version], [7])
+m4_define([release_version], [8])
 m4_define([package_version], [year_version.release_version])
 AC_INIT([libostree], [package_version], [walters@verbum.org])
-is_release_build=yes
+is_release_build=no
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -460,7 +460,10 @@ AS_IF([test x$enable_experimental_api = xyes],
 )
 AM_CONDITIONAL([ENABLE_EXPERIMENTAL_API],[test x$enable_experimental_api = xyes])
 AM_CONDITIONAL([BUILDOPT_IS_DEVEL_BUILD],[test x$is_release_build != xyes])
-AM_COND_IF([BUILDOPT_IS_DEVEL_BUILD], release_build_type=devel, release_build_type=release)
+AM_COND_IF([BUILDOPT_IS_DEVEL_BUILD],
+            AC_DEFINE([BUILDOPT_IS_DEVEL_BUILD], [1], [Define if doing a development build])
+            release_build_type=devel,
+            release_build_type=release)
 
 AC_CONFIG_FILES([
 Makefile

@@ -242,6 +242,9 @@ ostree_option_context_parse (GOptionContext *context,
       g_print (" Version: %s\n", PACKAGE_VERSION);
       if (strlen (OSTREE_GITREV) > 0)
         g_print (" Git: %s\n", OSTREE_GITREV);
+#ifdef BUILDOPT_IS_DEVEL_BUILD
+      g_print (" DevelBuild: yes\n");
+#endif
       g_print (" Features:\n");
       for (char **iter = features; iter && *iter; iter++)
         g_print ("  - %s\n", *iter);
