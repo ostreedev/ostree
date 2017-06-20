@@ -186,6 +186,25 @@ static gboolean hi_content_stream_new (GInputStream **out_stream,
 }
 
 static void
+test_validate_remotename (void)
+{
+  const char *valid[] = {"foo", "hello-world"};
+  const char *invalid[] = {"foo/bar", ""};
+  for (guint i = 0; i < G_N_ELEMENTS(valid); i++)
+    {
+      g_autoptr(GError) error = NULL;
+      g_assert (ostree_validate_remote_name (valid[i], &error));
+      g_assert_no_error (error);
+    }
+  for (guint i = 0; i < G_N_ELEMENTS(invalid); i++)
+    {
+      g_autoptr(GError) error = NULL;
+      g_assert (!ostree_validate_remote_name (invalid[i], &error));
+      g_assert (error != NULL);
+    }
+}
+
+static void
 test_object_writes (gconstpointer data)
 {
   OstreeRepo *repo = OSTREE_REPO (data);
@@ -232,6 +251,7 @@ int main (int argc, char **argv)
   g_test_add_data_func ("/repo-not-system", repo, test_repo_is_not_system);
   g_test_add_data_func ("/raw-file-to-archive-z2-stream", repo, test_raw_file_to_archive_z2_stream);
   g_test_add_data_func ("/objectwrites", repo, test_object_writes);
+  g_test_add_func ("/remotename", test_validate_remotename);
 
   return g_test_run();
  out:

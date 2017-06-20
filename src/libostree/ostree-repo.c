@@ -876,8 +876,8 @@ impl_repo_remote_add (OstreeRepo     *self,
   g_return_val_if_fail (url != NULL, FALSE);
   g_return_val_if_fail (options == NULL || g_variant_is_of_type (options, G_VARIANT_TYPE ("a{sv}")), FALSE);
 
-  if (strchr (name, '/') != NULL)
-    return glnx_throw (error, "Invalid character '/' in remote name: %s", name);
+  if (!ostree_validate_remote_name (name, error))
+    return FALSE;
 
   g_autoptr(OstreeRemote) remote = _ostree_repo_get_remote (self, name, NULL);
   if (remote != NULL && if_not_exists)
@@ -1005,8 +1005,8 @@ impl_repo_remote_delete (OstreeRepo     *self,
 {
   g_return_val_if_fail (name != NULL, FALSE);
 
-  if (strchr (name, '/') != NULL)
-    return glnx_throw (error, "Invalid character '/' in remote name: %s", name);
+  if (!ostree_validate_remote_name (name, error))
+    return FALSE;
 
   g_autoptr(OstreeRemote) remote = NULL;
   if (if_exists)

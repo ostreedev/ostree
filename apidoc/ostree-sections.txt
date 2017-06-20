@@ -118,6 +118,7 @@ ostree_checksum_b64_inplace_from_bytes
 ostree_checksum_b64_inplace_to_bytes
 ostree_cmp_checksum_bytes
 ostree_validate_rev
+ostree_validate_remote_name
 ostree_parse_refspec
 ostree_object_type_to_string
 ostree_object_type_from_string

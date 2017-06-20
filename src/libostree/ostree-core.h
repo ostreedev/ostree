@@ -243,6 +243,9 @@ _OSTREE_PUBLIC
 gboolean ostree_validate_rev (const char *rev, GError **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_validate_remote_name (const char *remote_name, GError **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_parse_refspec (const char *refspec,
                                char      **out_remote,
                                char      **out_ref,
