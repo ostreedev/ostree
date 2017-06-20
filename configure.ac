@@ -464,6 +464,7 @@ AM_COND_IF([BUILDOPT_IS_DEVEL_BUILD],
             AC_DEFINE([BUILDOPT_IS_DEVEL_BUILD], [1], [Define if doing a development build])
             release_build_type=devel,
             release_build_type=release)
+OSTREE_FEATURES="$OSTREE_FEATURES $release_build_type"
 
 AC_CONFIG_FILES([
 Makefile
