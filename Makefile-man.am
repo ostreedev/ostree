@@ -32,6 +32,9 @@ ostree-remote.1 ostree-reset.1 ostree-rev-parse.1 ostree-show.1		\
 ostree-summary.1 ostree-static-delta.1
 if BUILDOPT_TRIVIAL_HTTPD
 man1_files += ostree-trivial-httpd.1
+else
+# We still want to distribute the source, even if we are not building it
+EXTRA_DIST += man/ostree-trivial-httpd.xml
 endif
 
 if BUILDOPT_FUSE
