@@ -30,7 +30,7 @@ global:
   ostree_remote_unref;
 } LIBOSTREE_2017.6;
 
-LIBOSTREE_2016.7_EXPERIMENTAL {
+LIBOSTREE_2017.7_EXPERIMENTAL {
 global:
   ostree_remote_get_name;
 } LIBOSTREE_2017.6_EXPERIMENTAL;
