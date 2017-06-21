@@ -187,7 +187,7 @@ ostree_validate_rev (const char *rev,
  * @error: Error
  *
  * Returns: %TRUE if @remote_name is a valid remote name
- * Since: 2017.7
+ * Since: 2017.8
  */
 gboolean
 ostree_validate_remote_name (const char  *remote_name,
