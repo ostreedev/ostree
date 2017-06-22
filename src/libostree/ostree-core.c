@@ -644,7 +644,7 @@ ostree_content_stream_parse (gboolean                compressed,
   if (compressed)
     {
       if (!zlib_file_header_parse (file_header,
-                                   out_file_info ? &ret_file_info : NULL,
+                                   &ret_file_info,
                                    out_xattrs ? &ret_xattrs : NULL,
                                    error))
         return FALSE;
@@ -652,12 +652,11 @@ ostree_content_stream_parse (gboolean                compressed,
   else
     {
       if (!file_header_parse (file_header,
-                              out_file_info ? &ret_file_info : NULL,
+                              &ret_file_info,
                               out_xattrs ? &ret_xattrs : NULL,
                               error))
         return FALSE;
-      if (ret_file_info)
-        g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
+      g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
     }
 
   g_autoptr(GInputStream) ret_input = NULL;
