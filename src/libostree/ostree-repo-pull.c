@@ -1369,6 +1369,142 @@ commitstate_is_partial (OtPullData   *pull_data,
     || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
 }
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+/* Reads the collection-id of a given remote from the repo
+ * configuration.
+ */
+static char *
+get_real_remote_repo_collection_id (OstreeRepo  *repo,
+                                    const gchar *remote_name)
+{
+  g_autofree gchar *remote_collection_id = NULL;
+  if (!ostree_repo_get_remote_option (repo, remote_name, "collection-id", NULL,
+                                      &remote_collection_id, NULL) ||
+      (remote_collection_id == NULL) ||
+      (remote_collection_id[0] == '\0'))
+    return NULL;
+
+  return g_steal_pointer (&remote_collection_id);
+}
+
+/* Reads the collection-id of the remote repo. Where it will be read
+ * from depends on whether we pull from the "local" remote repo (the
+ * "file://" URL) or "remote" remote repo (likely the "http(s)://"
+ * URL).
+ */
+static char *
+get_remote_repo_collection_id (OtPullData *pull_data)
+{
+  if (pull_data->remote_repo_local != NULL)
+    {
+      const char *remote_collection_id =
+        ostree_repo_get_collection_id (pull_data->remote_repo_local);
+      if ((remote_collection_id == NULL) ||
+          (remote_collection_id[0] == '\0'))
+        return NULL;
+      return g_strdup (remote_collection_id);
+    }
+
+  return get_real_remote_repo_collection_id (pull_data->repo,
+                                             pull_data->remote_name);
+}
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
+/* Verify the ref and collection bindings.
+ *
+ * The ref binding is verified only if it exists. But if we have the
+ * collection ID specified in the remote configuration then the ref
+ * binding must exist, otherwise the verification will fail. Parts of
+ * the verification can be skipped by passing NULL to the requested_ref
+ * parameter (in case we requested a checksum directly, without looking it up
+ * from a ref).
+ *
+ * The collection binding is verified only when we have collection ID
+ * specified in the remote configuration. If it is specified, then the
+ * binding must exist and must be equal to the remote repository
+ * collection ID.
+ */
+static gboolean
+verify_bindings (OtPullData                 *pull_data,
+                 GVariant                   *commit,
+                 const OstreeCollectionRef  *requested_ref,
+                 GError                    **error)
+{
+  g_autofree char *remote_collection_id = NULL;
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  remote_collection_id = get_remote_repo_collection_id (pull_data);
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+  g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
+  g_autofree const char **refs = NULL;
+  if (!g_variant_lookup (metadata,
+                         OSTREE_REF_BINDING,
+                         "^a&s",
+                         &refs))
+    {
+      /* Early return here - if the remote collection ID is NULL, then
+       * we certainly will not verify the collection binding in the
+       * commit.
+       */
+      if (remote_collection_id == NULL)
+        return TRUE;
+
+      return glnx_throw (error,
+                         "expected commit metadata to have ref "
+                         "binding information, found none");
+    }
+
+  if (requested_ref != NULL)
+    {
+      if (!g_strv_contains ((const char *const *) refs, requested_ref->ref_name))
+        {
+          g_autoptr(GString) refs_dump = g_string_new (NULL);
+          const char *refs_str;
+
+          if (refs != NULL && (*refs) != NULL)
+            {
+              for (const char **iter = refs; *iter != NULL; ++iter)
+                {
+                  const char *ref = *iter;
+
+                  if (refs_dump->len > 0)
+                    g_string_append (refs_dump, ", ");
+                  g_string_append_printf (refs_dump, "‘%s’", ref);
+                }
+
+              refs_str = refs_dump->str;
+            }
+          else
+            {
+              refs_str = "no refs";
+            }
+
+          return glnx_throw (error, "commit has no requested ref ‘%s’ "
+                             "in ref binding metadata (%s)",
+                             requested_ref->ref_name, refs_str);
+        }
+    }
+
+  if (remote_collection_id != NULL)
+    {
+      const char *collection_id;
+      if (!g_variant_lookup (metadata,
+                             OSTREE_COLLECTION_BINDING,
+                             "&s",
+                             &collection_id))
+        return glnx_throw (error,
+                           "expected commit metadata to have collection ID "
+                           "binding information, found none");
+      if (!g_str_equal (collection_id, remote_collection_id))
+        return glnx_throw (error,
+                           "commit has collection ID ‘%s’ in collection binding "
+                           "metadata, while the remote it came from has "
+                           "collection ID ‘%s’",
+                           collection_id, remote_collection_id);
+    }
+
+  return TRUE;
+}
+
 static gboolean
 scan_commit_object (OtPullData                 *pull_data,
                     const char                 *checksum,
@@ -1417,6 +1553,15 @@ scan_commit_object (OtPullData                 *pull_data,
 
   if (!ostree_repo_load_commit (pull_data->repo, checksum, &commit, &commitstate, error))
     goto out;
+
+  /* If ref is non-NULL then the commit we fetched was requested through the
+   * branch, otherwise we requested a commit checksum without specifying a branch.
+   */
+  if (!verify_bindings (pull_data, commit, ref, error))
+    {
+      g_prefix_error (error, "Commit %s: ", checksum);
+      goto out;
+    }
 
   /* If we found a legacy transaction flag, assume all commits are partial */
   is_partial = commitstate_is_partial (pull_data, commitstate);
@@ -5124,9 +5269,8 @@ check_remote_matches_collection_id (OstreeRepo  *repo,
 {
   g_autofree gchar *remote_collection_id = NULL;
 
-  if (!ostree_repo_get_remote_option (repo, remote_name, "collection-id", NULL,
-                                      &remote_collection_id, NULL) ||
-      remote_collection_id == NULL)
+  remote_collection_id = get_real_remote_repo_collection_id (repo, remote_name);
+  if (remote_collection_id == NULL)
     return FALSE;
 
   return g_str_equal (remote_collection_id, collection_id);
