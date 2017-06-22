@@ -2614,6 +2614,207 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
   return TRUE;
 }
 
+static gboolean
+repo_load_file_archive (OstreeRepo *self,
+                        const char         *checksum,
+                        GInputStream      **out_input,
+                        GFileInfo         **out_file_info,
+                        GVariant          **out_xattrs,
+                        GCancellable       *cancellable,
+                        GError            **error)
+{
+  struct stat stbuf;
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
+
+  glnx_fd_close int fd = -1;
+  if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
+                                error))
+    return FALSE;
+
+  if (fd < 0 && self->commit_stagedir_fd != -1)
+    {
+      if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, &fd,
+                                    error))
+        return FALSE;
+    }
+
+  if (fd != -1)
+    {
+      if (!glnx_fstat (fd, &stbuf, error))
+        return FALSE;
+
+      g_autoptr(GInputStream) tmp_stream = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+      /* Note return here */
+      return ostree_content_stream_parse (TRUE, tmp_stream, stbuf.st_size, TRUE,
+                                          out_input, out_file_info, out_xattrs,
+                                          cancellable, error);
+    }
+  else
+    {
+      if (self->parent_repo)
+        {
+          return ostree_repo_load_file (self->parent_repo, checksum,
+                                        out_input, out_file_info, out_xattrs,
+                                        cancellable, error);
+        }
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Couldn't find file object '%s'", checksum);
+          return FALSE;
+        }
+    }
+}
+
+static gboolean
+repo_load_file_bare (OstreeRepo *self,
+                     const char         *checksum,
+                     GInputStream      **out_input,
+                     GFileInfo         **out_file_info,
+                     GVariant          **out_xattrs,
+                     GCancellable       *cancellable,
+                     GError            **error)
+{
+  g_autoptr(GInputStream) ret_input = NULL;
+  g_autoptr(GFileInfo) ret_file_info = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
+
+  int objdir_fd = -1; /* referenced */
+  if (!stat_bare_content_object (self, loose_path_buf,
+                                 &objdir_fd,
+                                 &ret_file_info,
+                                 cancellable, error))
+    return FALSE;
+
+  if (!ret_file_info)
+    {
+      if (self->parent_repo)
+        {
+          return ostree_repo_load_file (self->parent_repo, checksum,
+                                        out_input, out_file_info, out_xattrs,
+                                        cancellable, error);
+        }
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Couldn't find file object '%s'", checksum);
+          return FALSE;
+        }
+    }
+
+  if (self->mode == OSTREE_REPO_MODE_BARE_USER)
+    {
+      /* In bare-user, symlinks are stored as regular files, so we just
+       * always do an open, then query the user.ostreemeta xattr for
+       * more information.
+       */
+      glnx_fd_close int fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+      if (fd < 0)
+        return glnx_throw_errno (error);
+
+      g_autoptr(GBytes) bytes = glnx_fgetxattr_bytes (fd, "user.ostreemeta", error);
+      if (bytes == NULL)
+        return FALSE;
+
+      g_autoptr(GVariant) metadata = g_variant_ref_sink (g_variant_new_from_bytes (OSTREE_FILEMETA_GVARIANT_FORMAT,
+                                                                                   bytes, FALSE));
+      ret_xattrs = set_info_from_filemeta (ret_file_info, metadata);
+
+      guint32 mode = g_file_info_get_attribute_uint32 (ret_file_info, "unix::mode");
+      if (S_ISREG (mode) && out_input)
+        {
+          g_assert (fd != -1);
+          ret_input = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+        }
+      else if (S_ISLNK (mode))
+        {
+          g_file_info_set_file_type (ret_file_info, G_FILE_TYPE_SYMBOLIC_LINK);
+          g_file_info_set_size (ret_file_info, 0);
+
+          char targetbuf[PATH_MAX+1];
+          gsize target_size;
+          g_autoptr(GInputStream) target_input = g_unix_input_stream_new (fd, FALSE);
+          if (!g_input_stream_read_all (target_input, targetbuf, sizeof (targetbuf),
+                                        &target_size, cancellable, error))
+            return FALSE;
+
+          g_file_info_set_symlink_target (ret_file_info, targetbuf);
+        }
+    }
+  else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    {
+
+      /* Canonical info is: uid/gid is 0 and no xattrs, which
+         might be wrong and thus not validate correctly, but
+         at least we report something consistent. */
+      g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", 0);
+      g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", 0);
+
+      if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR &&
+          out_input)
+        {
+          glnx_fd_close int fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+          if (fd < 0)
+            return glnx_throw_errno (error);
+
+          ret_input = g_unix_input_stream_new (fd, TRUE);
+          fd = -1; /* Transfer ownership */
+        }
+
+      if (out_xattrs)
+        {
+          GVariantBuilder builder;
+          g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+          ret_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
+        }
+    }
+  else
+    {
+      g_assert (self->mode == OSTREE_REPO_MODE_BARE);
+
+      if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
+          && (out_input || out_xattrs))
+        {
+          glnx_fd_close int fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+          if (fd < 0)
+            return glnx_throw_errno (error);
+
+          if (out_xattrs)
+            {
+              if (self->disable_xattrs)
+                ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+              else if (!glnx_fd_get_all_xattrs (fd, &ret_xattrs,
+                                                cancellable, error))
+                return FALSE;
+            }
+
+          if (out_input)
+            {
+              ret_input = g_unix_input_stream_new (fd, TRUE);
+              fd = -1; /* Transfer ownership */
+            }
+        }
+      else if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_SYMBOLIC_LINK
+               && out_xattrs)
+        {
+          if (self->disable_xattrs)
+            ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+          else if (!glnx_dfd_name_get_all_xattrs (objdir_fd, loose_path_buf,
+                                                  &ret_xattrs,
+                                                  cancellable, error))
+            return FALSE;
+        }
+    }
+
+  ot_transfer_out_value (out_input, &ret_input);
+  ot_transfer_out_value (out_file_info, &ret_file_info);
+  ot_transfer_out_value (out_xattrs, &ret_xattrs);
+  return TRUE;
+}
+
 /**
  * ostree_repo_load_file:
  * @self: Repo
@@ -2636,209 +2837,12 @@ ostree_repo_load_file (OstreeRepo         *self,
                        GCancellable       *cancellable,
                        GError            **error)
 {
-  gboolean found = FALSE;
-  g_autoptr(GInputStream) ret_input = NULL;
-  g_autoptr(GFileInfo) ret_file_info = NULL;
-  g_autoptr(GVariant) ret_xattrs = NULL;
-
-  OstreeRepoMode repo_mode = ostree_repo_get_mode (self);
-
-  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, repo_mode);
-
-  if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
-    {
-      int fd = -1;
-      struct stat stbuf;
-      g_autoptr(GInputStream) tmp_stream = NULL;
-
-      if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
-                                    error))
-        return FALSE;
-
-      if (fd < 0 && self->commit_stagedir_fd != -1)
-        {
-          if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, &fd,
-                                        error))
-            return FALSE;
-        }
-
-      if (fd != -1)
-        {
-          tmp_stream = g_unix_input_stream_new (fd, TRUE);
-          fd = -1; /* Transfer ownership */
-
-          if (!glnx_stream_fstat ((GFileDescriptorBased*) tmp_stream, &stbuf,
-                                  error))
-            return FALSE;
-
-          if (!ostree_content_stream_parse (TRUE, tmp_stream, stbuf.st_size, TRUE,
-                                            out_input ? &ret_input : NULL,
-                                            &ret_file_info, &ret_xattrs,
-                                            cancellable, error))
-            return FALSE;
-
-          found = TRUE;
-        }
-    }
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+    return repo_load_file_archive (self, checksum, out_input, out_file_info, out_xattrs,
+                                   cancellable, error);
   else
-    {
-      int objdir_fd = -1; /* referenced */
-      if (!stat_bare_content_object (self, loose_path_buf,
-                                     &objdir_fd,
-                                     &ret_file_info,
-                                     cancellable, error))
-        return FALSE;
-
-      if (ret_file_info)
-        {
-          found = TRUE;
-
-          if (repo_mode == OSTREE_REPO_MODE_BARE_USER)
-            {
-              guint32 mode;
-              g_autoptr(GVariant) metadata = NULL;
-              g_autoptr(GBytes) bytes = NULL;
-              glnx_fd_close int fd = -1;
-
-              /* In bare-user, symlinks are stored as regular files, so we just
-               * always do an open, then query the user.ostreemeta xattr for
-               * more information.
-               */
-              fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
-              if (fd < 0)
-                return glnx_throw_errno (error);
-
-              bytes = glnx_fgetxattr_bytes (fd, "user.ostreemeta", error);
-              if (bytes == NULL)
-                return FALSE;
-
-              metadata = g_variant_new_from_bytes (OSTREE_FILEMETA_GVARIANT_FORMAT,
-                                                   bytes, FALSE);
-              g_variant_ref_sink (metadata);
-
-              ret_xattrs = set_info_from_filemeta (ret_file_info, metadata);
-
-              mode = g_file_info_get_attribute_uint32 (ret_file_info, "unix::mode");
-
-              if (S_ISREG (mode) && out_input)
-                {
-                  g_assert (fd != -1);
-                  ret_input = g_unix_input_stream_new (fd, TRUE);
-                  fd = -1; /* Transfer ownership */
-                }
-              else if (S_ISLNK (mode))
-                {
-                  g_autoptr(GInputStream) target_input = NULL;
-                  char targetbuf[PATH_MAX+1];
-                  gsize target_size;
-
-                  g_file_info_set_file_type (ret_file_info, G_FILE_TYPE_SYMBOLIC_LINK);
-                  g_file_info_set_size (ret_file_info, 0);
-
-                  target_input = g_unix_input_stream_new (fd, TRUE);
-                  fd = -1; /* Transfer ownership */
-
-                  if (!g_input_stream_read_all (target_input, targetbuf, sizeof (targetbuf),
-                                                &target_size, cancellable, error))
-                    return FALSE;
-
-                  g_file_info_set_symlink_target (ret_file_info, targetbuf);
-                }
-            }
-          else if (repo_mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
-            {
-              glnx_fd_close int fd = -1;
-
-              /* Canonical info is: uid/gid is 0 and no xattrs, which
-                 might be wrong and thus not validate correctly, but
-                 at least we report something consistent. */
-              g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", 0);
-              g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", 0);
-
-              if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR &&
-                  out_input)
-                {
-                  fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
-                  if (fd < 0)
-                    return glnx_throw_errno (error);
-
-                  ret_input = g_unix_input_stream_new (fd, TRUE);
-                  fd = -1; /* Transfer ownership */
-                }
-
-              if (out_xattrs)
-                {
-                  GVariantBuilder builder;
-                  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
-                  ret_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
-                }
-            }
-          else
-            {
-              g_assert (repo_mode == OSTREE_REPO_MODE_BARE);
-
-              if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
-                  && (out_input || out_xattrs))
-                {
-                  glnx_fd_close int fd = -1;
-
-                  fd = openat (objdir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
-                  if (fd < 0)
-                    return glnx_throw_errno (error);
-
-                  if (out_xattrs)
-                    {
-                      if (self->disable_xattrs)
-                        ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
-                      else if (!glnx_fd_get_all_xattrs (fd, &ret_xattrs,
-                                                        cancellable, error))
-                        return FALSE;
-                    }
-
-                  if (out_input)
-                    {
-                      ret_input = g_unix_input_stream_new (fd, TRUE);
-                      fd = -1; /* Transfer ownership */
-                    }
-                }
-              else if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_SYMBOLIC_LINK
-                       && out_xattrs)
-                {
-                  if (self->disable_xattrs)
-                    ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
-                  else if (!glnx_dfd_name_get_all_xattrs (objdir_fd, loose_path_buf,
-                                                          &ret_xattrs,
-                                                          cancellable, error))
-                    return FALSE;
-                }
-            }
-        }
-    }
-
-  if (!found)
-    {
-      if (self->parent_repo)
-        {
-          if (!ostree_repo_load_file (self->parent_repo, checksum,
-                                      out_input ? &ret_input : NULL,
-                                      out_file_info ? &ret_file_info : NULL,
-                                      out_xattrs ? &ret_xattrs : NULL,
-                                      cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Couldn't find file object '%s'", checksum);
-          return FALSE;
-        }
-    }
-
-  ot_transfer_out_value (out_input, &ret_input);
-  ot_transfer_out_value (out_file_info, &ret_file_info);
-  ot_transfer_out_value (out_xattrs, &ret_xattrs);
-  return TRUE;
+    return repo_load_file_bare (self, checksum, out_input, out_file_info, out_xattrs,
+                                cancellable, error);
 }
 
 /**
