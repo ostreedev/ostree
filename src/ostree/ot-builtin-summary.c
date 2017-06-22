@@ -30,6 +30,7 @@
 static gboolean opt_update, opt_view, opt_raw;
 static char **opt_key_ids;
 static char *opt_gpg_homedir;
+static char **opt_metadata;
 
 static GOptionEntry options[] = {
   { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
@@ -37,8 +38,43 @@ static GOptionEntry options[] = {
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "View the raw bytes of the summary file", NULL },
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the summary with", "KEY-ID"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
+  { "add-metadata", 'm', 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata, "Additional metadata field to add to the summary", "KEY=VALUE" },
   { NULL }
 };
+
+/* Take arguments of the form KEY=VALUE and put them into an a{sv} variant. The
+ * value arguments must be parsable using g_variant_parse(). */
+static GVariant *
+build_additional_metadata (const char * const  *args,
+                           GError             **error)
+{
+  g_autoptr(GVariantBuilder) builder = NULL;
+
+  builder = g_variant_builder_new (G_VARIANT_TYPE_VARDICT);
+
+  for (gsize i = 0; args[i] != NULL; i++)
+    {
+      const gchar *equals = strchr (args[i], '=');
+      g_autofree gchar *key = NULL;
+      const gchar *value_str;
+      g_autoptr(GVariant) value = NULL;
+
+      if (equals == NULL)
+        return glnx_null_throw (error,
+                                "Missing '=' in KEY=VALUE metadata '%s'", args[i]);
+
+      key = g_strndup (args[i], equals - args[i]);
+      value_str = equals + 1;
+
+      value = g_variant_parse (NULL, value_str, NULL, NULL, error);
+      if (value == NULL)
+        return glnx_prefix_error_null (error, "Error parsing variant ‘%s’: ", value_str);
+
+      g_variant_builder_add (builder, "{sv}", key, value);
+    }
+
+  return g_variant_ref_sink (g_variant_builder_end (builder));
+}
 
 gboolean
 ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError **error)
@@ -55,10 +91,19 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
 
   if (opt_update)
     {
+      g_autoptr(GVariant) additional_metadata = NULL;
+
       if (!ostree_ensure_repo_writable (repo, error))
         goto out;
 
-      if (!ostree_repo_regenerate_summary (repo, NULL, cancellable, error))
+      if (opt_metadata != NULL)
+        {
+          additional_metadata = build_additional_metadata ((const char * const *) opt_metadata, error);
+          if (additional_metadata == NULL)
+            goto out;
+        }
+
+      if (!ostree_repo_regenerate_summary (repo, additional_metadata, cancellable, error))
         goto out;
 
       if (opt_key_ids)

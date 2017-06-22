@@ -73,7 +73,16 @@ Boston, MA 02111-1307, USA.
                 <term><option>-u</option></term>
 
                 <listitem><para>
-		  Update the summary file.
+                  Update the summary file.
+                </para><para>
+                  Any additional arguments to the command
+                  are treated as additional key–value pairs to be added to the
+                  summary file as additional metadata. They must be in the format
+                  <command><replaceable>KEY</replaceable>=<replaceable>VALUE</replaceable></command>
+                  or as two separate arguments. The keys must be namespaced for
+                  your organisation or repository using a dot prefix. The values
+                  must be in GVariant text format. For example,
+                  <command>exampleos.end-of-life "@t 1445385600"</command>.
                 </para></listitem>
             </varlistentry>
 
