@@ -56,6 +56,10 @@ G_BEGIN_DECLS
  * in a summary file. */
 #define OSTREE_COMMIT_TIMESTAMP "ostree.commit.timestamp"
 
+/* Well-known keys for the commit metadata */
+#define OSTREE_REF_BINDING "ostree.ref-binding"
+#define OSTREE_COLLECTION_BINDING "ostree.collection-binding"
+
 typedef enum {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0)
 } OstreeRepoTestErrorFlags;

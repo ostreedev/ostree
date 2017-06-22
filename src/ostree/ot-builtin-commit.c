@@ -29,6 +29,7 @@
 #include "otutil.h"
 #include "ot-tool-util.h"
 #include "parse-datetime.h"
+#include "ostree-repo-private.h"
 
 static char *opt_subject;
 static char *opt_body;
@@ -36,6 +37,7 @@ static char *opt_body_file;
 static gboolean opt_editor;
 static char *opt_parent;
 static gboolean opt_orphan;
+static char **opt_bind_refs;
 static char *opt_branch;
 static char *opt_statoverride_file;
 static char *opt_skiplist_file;
@@ -78,6 +80,7 @@ static GOptionEntry options[] = {
   { "editor", 'e', 0, G_OPTION_ARG_NONE, &opt_editor, "Use an editor to write the commit message", NULL },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "BRANCH" },
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
+  { "bind-ref", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_bind_refs, "Add a ref to ref binding commit metadata", "BRANCH" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-detached-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_detached_metadata_strings, "Add a key/value pair to detached metadata", "KEY=VALUE" },
@@ -301,6 +304,70 @@ parse_keyvalue_strings (char             **strings,
 
   *out_metadata = g_variant_ref_sink (g_variant_builder_end (builder));
   return TRUE;
+}
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+static void
+add_collection_binding (OstreeRepo       *repo,
+                        GVariantBuilder  *metadata_builder)
+{
+  const char *collection_id = ostree_repo_get_collection_id (repo);
+
+  if (collection_id == NULL)
+    return;
+
+  g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COLLECTION_BINDING,
+                         g_variant_new_variant (g_variant_new_string (collection_id)));
+}
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
+static int
+compare_strings (gconstpointer a, gconstpointer b)
+{
+  const char **sa = (const char **)a;
+  const char **sb = (const char **)b;
+
+  return strcmp (*sa, *sb);
+}
+
+static void
+add_ref_binding (GVariantBuilder *metadata_builder)
+{
+  if (opt_orphan)
+    return;
+
+  g_assert_nonnull (opt_branch);
+
+  g_autoptr(GPtrArray) refs = g_ptr_array_new ();
+  g_ptr_array_add (refs, opt_branch);
+  for (char **iter = opt_bind_refs; iter != NULL && *iter != NULL; ++iter)
+    g_ptr_array_add (refs, *iter);
+  g_ptr_array_sort (refs, compare_strings);
+  g_autoptr(GVariant) refs_v = g_variant_new_strv ((const char *const *)refs->pdata,
+                                                   refs->len);
+  g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_REF_BINDING,
+                         g_variant_new_variant (g_steal_pointer (&refs_v)));
+}
+
+static void
+fill_bindings (OstreeRepo    *repo,
+               GVariant      *metadata,
+               GVariant     **out_metadata)
+{
+  g_autoptr(GVariantBuilder) metadata_builder =
+    ot_util_variant_builder_from_variant (metadata, G_VARIANT_TYPE_VARDICT);
+
+  add_ref_binding (metadata_builder);
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+  /* Allow the collection ID to be overridden using
+   * --add-metadata-string=ostree.collection-binding=blah */
+  if (metadata == NULL ||
+      !g_variant_lookup (metadata, OSTREE_COLLECTION_BINDING, "*", NULL))
+    add_collection_binding (repo, metadata_builder);
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
+  *out_metadata = g_variant_ref_sink (g_variant_builder_end (metadata_builder));
 }
 
 gboolean
@@ -559,6 +626,10 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
     {
       gboolean update_summary;
       guint64 timestamp;
+      g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
+
+      fill_bindings (repo, old_metadata, &metadata);
+
       if (!opt_timestamp)
         {
           GDateTime *now = g_date_time_new_now_utc ();
