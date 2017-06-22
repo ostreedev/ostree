@@ -171,8 +171,10 @@ assert_streq $($OSTREE log test2-no-parent |grep '^commit' | wc -l) "1"
 echo "ok commit no parent"
 
 cd ${test_tmpdir}
-empty_rev=$($OSTREE commit ${COMMIT_ARGS} -b test2-no-subject -s '' --timestamp="2005-10-29 12:43:29 +0000" $test_tmpdir/checkout-test2-4)
-omitted_rev=$($OSTREE commit ${COMMIT_ARGS} -b test2-no-subject-2 --timestamp="2005-10-29 12:43:29 +0000" $test_tmpdir/checkout-test2-4)
+# Do the --bind-ref=<the other test branch>, so we store both branches sorted
+# in metadata and thus the checksums remain the same.
+empty_rev=$($OSTREE commit ${COMMIT_ARGS} -b test2-no-subject --bind-ref=test2-no-subject-2 -s '' --timestamp="2005-10-29 12:43:29 +0000" $test_tmpdir/checkout-test2-4)
+omitted_rev=$($OSTREE commit ${COMMIT_ARGS} -b test2-no-subject-2 --bind-ref=test2-no-subject --timestamp="2005-10-29 12:43:29 +0000" $test_tmpdir/checkout-test2-4)
 assert_streq $empty_rev $omitted_rev
 echo "ok commit no subject"
 
