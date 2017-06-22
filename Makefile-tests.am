@@ -108,6 +108,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-switchroot.sh \
 	tests/test-pull-contenturl.sh \
 	tests/test-pull-mirrorlist.sh \
+	tests/test-summary-update.sh \
 	tests/test-summary-view.sh \
 	$(NULL)
 
