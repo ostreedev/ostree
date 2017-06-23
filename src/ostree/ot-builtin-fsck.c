@@ -69,7 +69,7 @@ load_and_fsck_one_object (OstreeRepo            *repo,
           else
             {
               g_propagate_error (error, g_steal_pointer (&temp_error));
-              return glnx_prefix_error (error, "Loading metadata object %s: ", checksum);
+              return glnx_prefix_error (error, "Loading metadata object %s", checksum);
             }
         }
       else
@@ -77,17 +77,17 @@ load_and_fsck_one_object (OstreeRepo            *repo,
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!ostree_validate_structureof_commit (metadata, error))
-                return glnx_prefix_error (error, "While validating commit metadata '%s': ", checksum);
+                return glnx_prefix_error (error, "While validating commit metadata '%s'", checksum);
             }
           else if (objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
             {
               if (!ostree_validate_structureof_dirtree (metadata, error))
-                return glnx_prefix_error (error, "While validating directory tree '%s': ", checksum);
+                return glnx_prefix_error (error, "While validating directory tree '%s'", checksum);
             }
           else if (objtype == OSTREE_OBJECT_TYPE_DIR_META)
             {
               if (!ostree_validate_structureof_dirmeta (metadata, error))
-                return glnx_prefix_error (error, "While validating directory metadata '%s': ", checksum);
+                return glnx_prefix_error (error, "While validating directory metadata '%s'", checksum);
             }
 
           input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata),
@@ -113,14 +113,14 @@ load_and_fsck_one_object (OstreeRepo            *repo,
           else
             {
               g_propagate_error (error, g_steal_pointer (&temp_error));
-              return glnx_prefix_error (error, "Loading file object %s: ", checksum);
+              return glnx_prefix_error (error, "Loading file object %s", checksum);
             }
         }
       else
         {
           mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
           if (!ostree_validate_structureof_file_mode (mode, error))
-            return glnx_prefix_error (error, "While validating file '%s': ", checksum);
+            return glnx_prefix_error (error, "While validating file '%s'", checksum);
         }
     }
 
@@ -238,7 +238,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       g_autoptr(GVariant) commit = NULL;
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                      checksum, &commit, error))
-        return glnx_prefix_error (error, "Loading commit for ref %s: ", refname);
+        return glnx_prefix_error (error, "Loading commit for ref %s", refname);
     }
 
   if (!opt_quiet)
