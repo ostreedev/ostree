@@ -84,13 +84,13 @@ if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-sum
     assert_not_reached "GPG summary verification with no summary unexpectedly succeeded"
 fi
 
-${OSTREE} summary -u update
+${OSTREE} summary --update
 
 if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
     assert_not_reached "GPG summary verification with signed no summary unexpectedly succeeded"
 fi
 
-${OSTREE} summary -u update --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_GPG_KEYHOME}
+${OSTREE} summary --update --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_GPG_KEYHOME}
 
 ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1
 
