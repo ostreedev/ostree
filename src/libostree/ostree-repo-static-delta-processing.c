@@ -830,11 +830,13 @@ dispatch_set_read_source (OstreeRepo                 *repo,
 
   g_free (state->read_source_object);
   state->read_source_object = ostree_checksum_from_bytes (state->payload_data + source_offset);
-  
-  if (!_ostree_repo_read_bare_fd (repo, state->read_source_object, &state->read_source_fd,
-                                  cancellable, error))
+
+  if (!_ostree_repo_load_file_bare (repo, state->read_source_object,
+                                    &state->read_source_fd,
+                                    NULL, NULL, NULL,
+                                    cancellable, error))
     goto out;
-  
+
   ret = TRUE;
  out:
   if (!ret)
