@@ -47,13 +47,12 @@ load_and_fsck_one_object (OstreeRepo            *repo,
                           GCancellable          *cancellable,
                           GError               **error)
 {
-  gboolean ret = FALSE;
   gboolean missing = FALSE;
   g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GInputStream) input = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
   g_autoptr(GVariant) xattrs = NULL;
-  GError *temp_error = NULL;
+  g_autoptr(GError) temp_error = NULL;
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
@@ -69,8 +68,8 @@ load_and_fsck_one_object (OstreeRepo            *repo,
             }
           else
             {
-              g_prefix_error (error, "Loading metadata object %s: ", checksum);
-              goto out;
+              g_propagate_error (error, g_steal_pointer (&temp_error));
+              return glnx_prefix_error (error, "Loading metadata object %s: ", checksum);
             }
         }
       else
@@ -78,28 +77,19 @@ load_and_fsck_one_object (OstreeRepo            *repo,
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!ostree_validate_structureof_commit (metadata, error))
-                {
-                  g_prefix_error (error, "While validating commit metadata '%s': ", checksum);
-                  goto out;
-                }
+                return glnx_prefix_error (error, "While validating commit metadata '%s': ", checksum);
             }
           else if (objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
             {
               if (!ostree_validate_structureof_dirtree (metadata, error))
-                {
-                  g_prefix_error (error, "While validating directory tree '%s': ", checksum);
-                  goto out;
-                }
+                return glnx_prefix_error (error, "While validating directory tree '%s': ", checksum);
             }
           else if (objtype == OSTREE_OBJECT_TYPE_DIR_META)
             {
               if (!ostree_validate_structureof_dirmeta (metadata, error))
-                {
-                  g_prefix_error (error, "While validating directory metadata '%s': ", checksum);
-                  goto out;
-                }
+                return glnx_prefix_error (error, "While validating directory metadata '%s': ", checksum);
             }
-      
+
           input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata),
                                                        g_variant_get_size (metadata),
                                                        NULL);
@@ -122,19 +112,15 @@ load_and_fsck_one_object (OstreeRepo            *repo,
             }
           else
             {
-              *error = temp_error;
-              g_prefix_error (error, "Loading file object %s: ", checksum);
-              goto out;
+              g_propagate_error (error, g_steal_pointer (&temp_error));
+              return glnx_prefix_error (error, "Loading file object %s: ", checksum);
             }
         }
       else
         {
           mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
           if (!ostree_validate_structureof_file_mode (mode, error))
-            {
-              g_prefix_error (error, "While validating file '%s': ", checksum);
-              goto out;
-            }
+            return glnx_prefix_error (error, "While validating file '%s': ", checksum);
         }
     }
 
@@ -150,8 +136,8 @@ load_and_fsck_one_object (OstreeRepo            *repo,
       if (!ostree_checksum_file_from_input (file_info, xattrs, input,
                                             objtype, &computed_csum,
                                             cancellable, error))
-        goto out;
-      
+        return FALSE;
+
       tmp_checksum = ostree_checksum_from_bytes (computed_csum);
       if (strcmp (checksum, tmp_checksum) != 0)
         {
@@ -165,16 +151,11 @@ load_and_fsck_one_object (OstreeRepo            *repo,
               *out_found_corruption = TRUE;
             }
           else
-            {
-              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, msg);
-              goto out;
-            }
+            return glnx_throw (error, "%s", msg);
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -184,16 +165,10 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
                                      GCancellable          *cancellable,
                                      GError               **error)
 {
-  gboolean ret = FALSE;
+  g_autoptr(GHashTable) reachable_objects = ostree_repo_traverse_new_reachable ();
+
   GHashTableIter hash_iter;
   gpointer key, value;
-  g_autoptr(GHashTable) reachable_objects = NULL;
-  guint i;
-  guint mod;
-  guint count;
-
-  reachable_objects = ostree_repo_traverse_new_reachable ();
-
   g_hash_table_iter_init (&hash_iter, commits);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
@@ -207,12 +182,12 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       if (!ostree_repo_traverse_commit_union (repo, checksum, 0, reachable_objects,
                                               cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  count = g_hash_table_size (reachable_objects);
-  mod = count / 10;
-  i = 0;
+  const guint count = g_hash_table_size (reachable_objects);
+  const guint mod = count / 10;
+  guint i = 0;
   g_hash_table_iter_init (&hash_iter, reachable_objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
@@ -224,44 +199,37 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       if (!load_and_fsck_one_object (repo, checksum, objtype, out_found_corruption,
                                      cancellable, error))
-        goto out;
+        return FALSE;
 
       if (mod == 0 || (i % mod == 0))
         g_print ("%u/%u objects\n", i + 1, count);
       i++;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
 ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GOptionContext) context = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
-  GHashTableIter hash_iter;
-  gpointer key, value;
   gboolean found_corruption = FALSE;
-  guint n_partial = 0;
-  g_autoptr(GHashTable) all_refs = NULL;
-  g_autoptr(GHashTable) objects = NULL;
-  g_autoptr(GHashTable) commits = NULL;
-  g_autoptr(GPtrArray) tombstones = NULL;
-  context = g_option_context_new ("- Check the repository for consistency");
 
+  g_autoptr(GOptionContext) context = g_option_context_new ("- Check the repository for consistency");
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!opt_quiet)
     g_print ("Validating refs...\n");
 
   /* Validate that the commit for each ref is available */
+  g_autoptr(GHashTable) all_refs = NULL;
   if (!ostree_repo_list_refs (repo, NULL, &all_refs,
                               cancellable, error))
     return FALSE;
+
+  GHashTableIter hash_iter;
+  gpointer key, value;
   g_hash_table_iter_init (&hash_iter, all_refs);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
@@ -270,27 +238,27 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       g_autoptr(GVariant) commit = NULL;
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                      checksum, &commit, error))
-        {
-          g_prefix_error (error, "Loading commit for ref %s: ", refname);
-          goto out;
-        }
+        return glnx_prefix_error (error, "Loading commit for ref %s: ", refname);
     }
 
   if (!opt_quiet)
     g_print ("Enumerating objects...\n");
 
+  g_autoptr(GHashTable) objects = NULL;
   if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL,
                                  &objects, cancellable, error))
-    goto out;
+    return FALSE;
 
-  commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
-                                   (GDestroyNotify)g_variant_unref, NULL);
-  
-  g_hash_table_iter_init (&hash_iter, objects);
+  g_autoptr(GHashTable) commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
+                                                         (GDestroyNotify)g_variant_unref, NULL);
 
+
+  g_autoptr(GPtrArray) tombstones = NULL;
   if (opt_add_tombstones)
     tombstones = g_ptr_array_new_with_free_func (g_free);
 
+  guint n_partial = 0;
+  g_hash_table_iter_init (&hash_iter, objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       GVariant *serialized_key = key;
@@ -304,7 +272,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
           if (!ostree_repo_load_commit (repo, checksum, &commit, &commitstate, error))
-            goto out;
+            return FALSE;
 
           if (opt_add_tombstones)
             {
@@ -324,7 +292,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
                       else
                         {
                           g_propagate_error (error, local_error);
-                          goto out;
+                          return FALSE;
                         }
                     }
                 }
@@ -345,7 +313,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (!fsck_reachable_objects_from_commits (repo, commits, &found_corruption,
                                             cancellable, error))
-    goto out;
+    return FALSE;
 
   if (opt_add_tombstones)
     {
@@ -353,14 +321,14 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       if (tombstones->len)
         {
           if (!ot_enable_tombstone_commits (repo, error))
-            goto out;
+            return FALSE;
         }
       for (i = 0; i < tombstones->len; i++)
         {
           const char *checksum = tombstones->pdata[i];
           g_print ("Adding tombstone for commit %s\n", checksum);
           if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
   else if (n_partial > 0)
@@ -369,13 +337,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
     }
 
   if (found_corruption)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Repository corruption encountered");
-      goto out;
-    }
+    return glnx_throw (error, "Repository corruption encountered");
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
