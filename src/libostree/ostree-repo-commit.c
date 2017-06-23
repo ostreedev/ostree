@@ -614,29 +614,31 @@ write_content_object (OstreeRepo         *self,
                                     cancellable, error))
     return FALSE;
 
-  gboolean temp_file_is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
-  gboolean temp_file_is_symlink = g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK;
-  gboolean object_is_symlink = temp_file_is_symlink;
+  gboolean phys_object_is_symlink = FALSE;
+  const GFileType object_file_type = g_file_info_get_file_type (file_info);
+  switch (object_file_type)
+    {
+    case G_FILE_TYPE_REGULAR:
+      break;
+    case G_FILE_TYPE_SYMBOLIC_LINK:
+      if (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+        phys_object_is_symlink = TRUE;
+      break;
+    default:
+      return glnx_throw (error, "Unsupported file type %u", object_file_type);
+    }
 
-  if (repo_mode == OSTREE_REPO_MODE_BARE_USER && object_is_symlink)
+  /* For bare-user, convert the symlink target to the input stream */
+  if (repo_mode == OSTREE_REPO_MODE_BARE_USER && object_file_type == G_FILE_TYPE_SYMBOLIC_LINK)
     {
       const char *target_str = g_file_info_get_symlink_target (file_info);
       g_autoptr(GBytes) target = g_bytes_new (target_str, strlen (target_str) + 1);
-
-      /* For bare-user we can't store symlinks as symlinks, as symlinks don't
-         support user xattrs to store the ownership. So, instead store them
-         as regular files */
-      temp_file_is_regular = TRUE;
-      temp_file_is_symlink = FALSE;
 
       if (file_input != NULL)
         g_object_unref (file_input);
       /* Include the terminating zero so we can e.g. mmap this file */
       file_input = g_memory_input_stream_new_from_bytes (target);
     }
-
-  if (!(temp_file_is_regular || temp_file_is_symlink))
-    return glnx_throw (error, "Unsupported file type %u", g_file_info_get_file_type (file_info));
 
   /* For regular files, we create them with default mode, and only
    * later apply any xattrs and setuid bits.  The rationale here
@@ -654,7 +656,7 @@ write_content_object (OstreeRepo         *self,
   g_autofree char *temp_filename = NULL;
   gssize unpacked_size = 0;
   gboolean indexable = FALSE;
-  if ((_ostree_repo_mode_is_bare (repo_mode)) && temp_file_is_regular)
+  if ((_ostree_repo_mode_is_bare (repo_mode)) && !phys_object_is_symlink)
     {
       guint64 size = g_file_info_get_size (file_info);
 
@@ -664,7 +666,7 @@ write_content_object (OstreeRepo         *self,
         return FALSE;
       tmp_unlinker.path = temp_filename;
     }
-  else if (_ostree_repo_mode_is_bare (repo_mode) && temp_file_is_symlink)
+  else if (_ostree_repo_mode_is_bare (repo_mode) && phys_object_is_symlink)
     {
       /* Note: This will not be hit for bare-user mode because its converted to a
          regular file and take the branch above */
@@ -690,7 +692,6 @@ write_content_object (OstreeRepo         *self,
                                           error))
         return FALSE;
       tmp_unlinker.path = temp_filename;
-      temp_file_is_regular = TRUE;
       temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
       file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
@@ -758,7 +759,7 @@ write_content_object (OstreeRepo         *self,
   const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
   if (!commit_loose_content_object (self, actual_checksum,
                                     temp_filename,
-                                    object_is_symlink,
+                                    object_file_type == G_FILE_TYPE_SYMBOLIC_LINK,
                                     uid, gid, mode,
                                     xattrs, temp_fd,
                                     cancellable, error))
@@ -768,7 +769,7 @@ write_content_object (OstreeRepo         *self,
   tmp_unlinker.path = NULL;
 
   /* Update size metadata if configured */
-  if (indexable && temp_file_is_regular)
+  if (indexable && object_file_type == G_FILE_TYPE_REGULAR)
     {
       struct stat stbuf;
 
