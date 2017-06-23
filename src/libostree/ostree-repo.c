@@ -2650,20 +2650,17 @@ repo_load_file_archive (OstreeRepo *self,
                                           out_input, out_file_info, out_xattrs,
                                           cancellable, error);
     }
+  else if (self->parent_repo)
+    {
+      return ostree_repo_load_file (self->parent_repo, checksum,
+                                    out_input, out_file_info, out_xattrs,
+                                    cancellable, error);
+    }
   else
     {
-      if (self->parent_repo)
-        {
-          return ostree_repo_load_file (self->parent_repo, checksum,
-                                        out_input, out_file_info, out_xattrs,
-                                        cancellable, error);
-        }
-      else
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Couldn't find file object '%s'", checksum);
-          return FALSE;
-        }
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "Couldn't find file object '%s'", checksum);
+      return FALSE;
     }
 }
 
