@@ -769,6 +769,13 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
 
   g_return_val_if_fail (remote == NULL || ref->collection_id == NULL, FALSE);
 
+  if (remote != NULL && !ostree_validate_remote_name (remote, error))
+    return FALSE;
+  if (ref->collection_id != NULL && !ostree_validate_collection_id (ref->collection_id, error))
+    return FALSE;
+  if (!ostree_validate_rev (ref->ref_name, error))
+    return FALSE;
+
   if (remote == NULL &&
       (ref->collection_id == NULL || g_strcmp0 (ref->collection_id, ostree_repo_get_collection_id (self)) == 0))
     {
@@ -928,10 +935,11 @@ ostree_repo_list_collection_refs (OstreeRepo    *self,
                                   GError       **error)
 {
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
-  g_return_val_if_fail (match_collection_id == NULL ||
-                        ostree_validate_collection_id (match_collection_id, NULL), FALSE);
   g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  if (match_collection_id != NULL && !ostree_validate_collection_id (match_collection_id, error))
+    return FALSE;
 
   g_autoptr(GHashTable) ret_all_refs = NULL;
 
