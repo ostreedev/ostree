@@ -762,7 +762,7 @@ write_content_object (OstreeRepo         *self,
                                     uid, gid, mode,
                                     xattrs, temp_fd,
                                     cancellable, error))
-    return glnx_prefix_error (error, "Writing object %s.%s: ", actual_checksum,
+    return glnx_prefix_error (error, "Writing object %s.%s", actual_checksum,
                               ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
   /* Clear the unlinker path, it was consumed */
   tmp_unlinker.path = NULL;
