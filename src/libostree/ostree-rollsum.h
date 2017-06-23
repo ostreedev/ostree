@@ -39,5 +39,6 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
                                  GBytes                           *to);
 
 void _ostree_rollsum_matches_free (OstreeRollsumMatches *rollsum);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeRollsumMatches, _ostree_rollsum_matches_free)
 
 G_END_DECLS
