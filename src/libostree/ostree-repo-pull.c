@@ -3341,18 +3341,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
       {
-        g_autoptr(GVariant) sig_variant = NULL;
-        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+        g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
-        sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
-        result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                        bytes_summary,
-                                                        sig_variant,
-                                                        pull_data->remote_name,
-                                                        NULL,
-                                                        NULL,
-                                                        cancellable,
-                                                        error);
+        result = ostree_repo_verify_summary (self, pull_data->remote_name,
+                                             bytes_summary, bytes_sig,
+                                             cancellable, error);
         if (!ostree_gpg_verify_result_require_valid_signature (result, error))
           goto out;
       }
