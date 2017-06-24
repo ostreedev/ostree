@@ -172,12 +172,11 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
   /* Generate our bind mount unit */
   const char *stateroot_var_path = glnx_strjoina ("/sysroot/ostree/deploy/", stateroot, "/var");
 
-  glnx_fd_close int tmpfd = -1;
-  g_autofree char *tmppath = NULL;
+  g_auto(GLnxTmpfile) tmpf = { 0, };
   if (!glnx_open_tmpfile_linkable_at (normal_dir_dfd, ".", O_WRONLY | O_CLOEXEC,
-                                      &tmpfd, &tmppath, error))
+                                      &tmpf, error))
     return FALSE;
-  g_autoptr(GOutputStream) outstream = g_unix_output_stream_new (tmpfd, FALSE);
+  g_autoptr(GOutputStream) outstream = g_unix_output_stream_new (tmpf.fd, FALSE);
   gsize bytes_written;
   /* This code is inspired by systemd's fstab-generator.c.
    *
@@ -204,12 +203,11 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
     return FALSE;
   g_clear_object (&outstream);
   /* It should be readable */
-  if (fchmod (tmpfd, 0644) < 0)
+  if (fchmod (tmpf.fd, 0644) < 0)
     return glnx_throw_errno_prefix (error, "fchmod");
   /* Error out if somehow it already exists, that'll help us debug conflicts */
-  if (!glnx_link_tmpfile_at (normal_dir_dfd, GLNX_LINK_TMPFILE_NOREPLACE,
-                             tmpfd, tmppath, normal_dir_dfd,
-                             "var.mount", error))
+  if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_NOREPLACE,
+                             normal_dir_dfd, "var.mount", error))
     return FALSE;
 
   /* And ensure it's required; newer systemd will auto-inject fs dependencies

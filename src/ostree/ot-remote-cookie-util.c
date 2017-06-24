@@ -202,7 +202,7 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
 {
   gboolean found = FALSE;
 #ifdef HAVE_LIBCURL
-  g_auto(OtTmpfile) tmpf = { 0, };
+  g_auto(GLnxTmpfile) tmpf = { 0, };
   g_autofree char *dnbuf = NULL;
   const char *dn = NULL;
   g_autoptr(OtCookieParser) parser = NULL;
@@ -212,8 +212,8 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
 
   dnbuf = g_strdup (jar_path);
   dn = dirname (dnbuf);
-  if (!ot_open_tmpfile_linkable_at (AT_FDCWD, dn, O_WRONLY | O_CLOEXEC,
-                                    &tmpf, error))
+  if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, dn, O_WRONLY | O_CLOEXEC,
+                                      &tmpf, error))
     return FALSE;
 
   while (ot_parse_cookies_next (parser))
@@ -232,9 +232,9 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
         return glnx_throw_errno_prefix (error, "write");
     }
 
-  if (!ot_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                           AT_FDCWD, jar_path,
-                           error))
+  if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE,
+                             AT_FDCWD, jar_path,
+                             error))
     return FALSE;
 #else
   GSList *cookies;
