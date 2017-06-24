@@ -56,7 +56,7 @@ typedef struct {
   GError        **async_error;
 
   OstreeObjectType output_objtype;
-  OtTmpfile        tmpf;
+  GLnxTmpfile      tmpf;
   guint64          content_size;
   GOutputStream   *content_out;
   GChecksum       *content_checksum;
@@ -281,7 +281,7 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
 
   ret = TRUE;
  out:
-  ot_tmpfile_clear (&state->tmpf);
+  glnx_tmpfile_clear (&state->tmpf);
   g_clear_object (&state->content_out);
   g_clear_pointer (&state->content_checksum, g_checksum_free);
   return ret;

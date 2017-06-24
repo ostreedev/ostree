@@ -3862,8 +3862,7 @@ sign_data (OstreeRepo     *self,
            GError        **error)
 {
   gboolean ret = FALSE;
-  glnx_fd_close int tmp_fd = -1;
-  g_autofree char *tmp_path = NULL;
+  g_auto(GLnxTmpfile) tmpf = { 0, };
   g_autoptr(GOutputStream) tmp_signature_output = NULL;
   gpgme_ctx_t context = NULL;
   g_autoptr(GBytes) ret_signature = NULL;
@@ -3874,9 +3873,9 @@ sign_data (OstreeRepo     *self,
   g_autoptr(GMappedFile) signature_file = NULL;
   
   if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_RDWR | O_CLOEXEC,
-                                      &tmp_fd, &tmp_path, error))
+                                      &tmpf, error))
     goto out;
-  tmp_signature_output = g_unix_output_stream_new (tmp_fd, FALSE);
+  tmp_signature_output = g_unix_output_stream_new (tmpf.fd, FALSE);
 
   context = ot_gpgme_new_ctx (homedir, error);
   if (!context)
@@ -3930,7 +3929,7 @@ sign_data (OstreeRepo     *self,
   if (!g_output_stream_close (tmp_signature_output, cancellable, error))
     goto out;
   
-  signature_file = g_mapped_file_new_from_fd (tmp_fd, FALSE, error);
+  signature_file = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
   if (!signature_file)
     goto out;
   ret_signature = g_mapped_file_get_bytes (signature_file);

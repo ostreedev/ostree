@@ -60,9 +60,9 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
   guint32 file_mode = g_file_info_get_attribute_uint32 (src_info, "unix::mode");
   file_mode &= ~(S_ISUID|S_ISGID);
 
-  g_auto(OtTmpfile) tmpf = { 0, };
-  if (!ot_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY | O_CLOEXEC,
-                                    &tmpf, error))
+  g_auto(GLnxTmpfile) tmpf = { 0, };
+  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY | O_CLOEXEC,
+                                      &tmpf, error))
     return FALSE;
   g_autoptr(GOutputStream) temp_out = g_unix_output_stream_new (tmpf.fd, FALSE);
 
@@ -89,9 +89,9 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
                                             cancellable, error))
     return FALSE;
 
-  if (!ot_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
-                           self->uncompressed_objects_dir_fd, loose_path,
-                           error))
+  if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
+                             self->uncompressed_objects_dir_fd, loose_path,
+                             error))
     return FALSE;
 
   return TRUE;
@@ -254,11 +254,11 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
-      g_auto(OtTmpfile) tmpf = { 0, };
+      g_auto(GLnxTmpfile) tmpf = { 0, };
       GLnxLinkTmpfileReplaceMode replace_mode;
 
-      if (!ot_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
-                                        &tmpf, error))
+      if (!glnx_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                          &tmpf, error))
         return FALSE;
 
       if (sepolicy_enabled && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
@@ -285,9 +285,9 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
       else
         replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
 
-      if (!ot_link_tmpfile_at (&tmpf, replace_mode,
-                               destination_dfd, destination_name,
-                               error))
+      if (!glnx_link_tmpfile_at (&tmpf, replace_mode,
+                                 destination_dfd, destination_name,
+                                 error))
         return FALSE;
     }
   else
