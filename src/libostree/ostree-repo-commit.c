@@ -567,23 +567,6 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
   return TRUE;
 }
 
-/* A little helper to call unlinkat() as a cleanup
- * function.  Mostly only necessary to handle
- * deletion of temporary symlinks.
- */
-typedef struct {
-  int dfd;
-  const char *path;
-} CleanupUnlinkat;
-
-static void
-cleanup_unlinkat (CleanupUnlinkat *cleanup)
-{
-  if (cleanup->path)
-    (void) unlinkat (cleanup->dfd, cleanup->path, 0);
-}
-G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(CleanupUnlinkat, cleanup_unlinkat);
-
 /* Write a content object. */
 static gboolean
 write_content_object (OstreeRepo         *self,
@@ -651,9 +634,8 @@ write_content_object (OstreeRepo         *self,
    * temp_filename might also be a symlink.  Hence the CleanupUnlinkat
    * which handles that case.
    */
-  g_auto(CleanupUnlinkat) tmp_unlinker = { self->tmp_dir_fd, NULL };
+  g_auto(OtCleanupUnlinkat) tmp_unlinker = { self->tmp_dir_fd, NULL };
   glnx_fd_close int temp_fd = -1;
-  g_autofree char *temp_filename = NULL;
   gssize unpacked_size = 0;
   gboolean indexable = FALSE;
   if ((_ostree_repo_mode_is_bare (repo_mode)) && !phys_object_is_symlink)
@@ -661,10 +643,9 @@ write_content_object (OstreeRepo         *self,
       guint64 size = g_file_info_get_size (file_info);
 
       if (!create_regular_tmpfile_linkable_with_content (self, size, file_input,
-                                                         &temp_fd, &temp_filename,
+                                                         &temp_fd, &tmp_unlinker.path,
                                                          cancellable, error))
         return FALSE;
-      tmp_unlinker.path = temp_filename;
     }
   else if (_ostree_repo_mode_is_bare (repo_mode) && phys_object_is_symlink)
     {
@@ -672,10 +653,9 @@ write_content_object (OstreeRepo         *self,
          regular file and take the branch above */
       if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd,
                                               g_file_info_get_symlink_target (file_info),
-                                              &temp_filename,
+                                              &tmp_unlinker.path,
                                               cancellable, error))
         return FALSE;
-      tmp_unlinker.path = temp_filename;
     }
   else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
@@ -688,10 +668,9 @@ write_content_object (OstreeRepo         *self,
         indexable = TRUE;
 
       if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                          &temp_fd, &temp_filename,
+                                          &temp_fd, &tmp_unlinker.path,
                                           error))
         return FALSE;
-      tmp_unlinker.path = temp_filename;
       temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
       file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
@@ -758,15 +737,15 @@ write_content_object (OstreeRepo         *self,
   const guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
   if (!commit_loose_content_object (self, actual_checksum,
-                                    temp_filename,
+                                    tmp_unlinker.path,
                                     object_file_type == G_FILE_TYPE_SYMBOLIC_LINK,
                                     uid, gid, mode,
                                     xattrs, temp_fd,
                                     cancellable, error))
     return glnx_prefix_error (error, "Writing object %s.%s", actual_checksum,
                               ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
-  /* Clear the unlinker path, it was consumed */
-  tmp_unlinker.path = NULL;
+  /* Clear the unlinker, it was consumed */
+  ot_cleanup_unlinkat_clear (&tmp_unlinker);
 
   /* Update size metadata if configured */
   if (indexable && object_file_type == G_FILE_TYPE_REGULAR)
