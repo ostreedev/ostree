@@ -1108,7 +1108,7 @@ meta_fetch_on_complete (GObject           *object,
       goto out;
     }
 
-  /* Now delete it, keeping the fd open as the last reference); see comment in
+  /* Now delete it, keeping the fd open as the last reference; see comment in
    * corresponding content fetch path.
    */
   ot_cleanup_unlinkat (&tmp_unlinker);

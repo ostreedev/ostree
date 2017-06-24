@@ -446,57 +446,39 @@ ot_fallocate (int fd, goffset size, GError **error)
   return TRUE;
 }
 
+/* Combines a check for whether or not we already have the object with
+ * allocating a tempfile if we don't.  Used by the static delta code.
+ */
 gboolean
 _ostree_repo_open_content_bare (OstreeRepo          *self,
                                 const char          *checksum,
                                 guint64              content_len,
-                                OstreeRepoContentBareCommit *out_state,
-                                GOutputStream      **out_stream,
+                                OtTmpfile           *out_tmpf,
                                 gboolean            *out_have_object,
                                 GCancellable        *cancellable,
                                 GError             **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *temp_filename = NULL;
-  g_autoptr(GOutputStream) ret_stream = NULL;
   gboolean have_obj;
-
   if (!_ostree_repo_has_loose_object (self, checksum, OSTREE_OBJECT_TYPE_FILE, &have_obj,
                                       cancellable, error))
-    goto out;
-
-  if (!have_obj)
-    {
-      int fd;
-
-      if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                          &fd, &temp_filename, error))
-        goto out;
-
-      if (!ot_fallocate (fd, content_len, error))
-        goto out;
-
-      ret_stream = g_unix_output_stream_new (fd, TRUE);
-    }
-
-  ret = TRUE;
-  if (!have_obj)
-    {
-      out_state->temp_filename = temp_filename;
-      temp_filename = NULL;
-      out_state->fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)ret_stream);
-      if (out_stream)
-        *out_stream = g_steal_pointer (&ret_stream);
-    }
+    return FALSE;
+  /* Do we already have this object? */
   *out_have_object = have_obj;
- out:
-  return ret;
+  if (have_obj)
+    {
+      /* Make sure the tempfile is unset */
+      out_tmpf->initialized = 0;
+      return TRUE;
+    }
+
+  return ot_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+                                      out_tmpf, error);
 }
 
 gboolean
 _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           const char          *checksum,
-                                          OstreeRepoContentBareCommit *state,
+                                          OtTmpfile           *tmpf,
                                           guint32              uid,
                                           guint32              gid,
                                           guint32              mode,
@@ -504,25 +486,22 @@ _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           GCancellable        *cancellable,
                                           GError             **error)
 {
-  gboolean ret = FALSE;
+  /* I don't think this is necessary, but a similar check was here previously,
+   * keeping it for extra redundancy.
+   */
+  if (!tmpf->initialized || tmpf->fd == -1)
+    return TRUE;
 
-  if (state->fd != -1)
-    {
-      if (!commit_loose_content_object (self, checksum,
-                                        state->temp_filename,
-                                        FALSE, uid, gid, mode,
-                                        xattrs, state->fd,
-                                        cancellable, error))
-        {
-          g_prefix_error (error, "Writing object %s.%s: ", checksum, ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
-          goto out;
-        }
-    }
-
-  ret = TRUE;
- out:
-  g_free (state->temp_filename);
-  return ret;
+  if (!commit_loose_content_object (self, checksum,
+                                    tmpf->path,
+                                    FALSE, uid, gid, mode,
+                                    xattrs, tmpf->fd,
+                                    cancellable, error))
+    return glnx_prefix_error (error, "Writing object %s.%s", checksum, ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
+  /* The path was consumed */
+  g_clear_pointer (&tmpf->path, g_free);
+  tmpf->initialized = FALSE;
+  return TRUE;
 }
 
 static gboolean

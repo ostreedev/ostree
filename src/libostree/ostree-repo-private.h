@@ -23,7 +23,7 @@
 #include "ostree-ref.h"
 #include "ostree-repo.h"
 #include "ostree-remote-private.h"
-#include "libglnx.h"
+#include "otutil.h"
 
 G_BEGIN_DECLS
 
@@ -305,17 +305,11 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
                                  GCancellable      *cancellable,
                                  GError           **error);
 
-typedef struct {
-  int fd;
-  char *temp_filename;
-} OstreeRepoContentBareCommit;
-
 gboolean
 _ostree_repo_open_content_bare (OstreeRepo          *self,
                                 const char          *checksum,
                                 guint64              content_len,
-                                OstreeRepoContentBareCommit *out_state,
-                                GOutputStream      **out_stream,
+                                OtTmpfile           *out_tmpf,
                                 gboolean            *out_have_object,
                                 GCancellable        *cancellable,
                                 GError             **error);
@@ -323,7 +317,7 @@ _ostree_repo_open_content_bare (OstreeRepo          *self,
 gboolean
 _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           const char          *checksum,
-                                          OstreeRepoContentBareCommit *state,
+                                          OtTmpfile           *tmpf,
                                           guint32              uid,
                                           guint32              gid,
                                           guint32              mode,
