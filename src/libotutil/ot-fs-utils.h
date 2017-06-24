@@ -49,6 +49,34 @@ ot_link_tmpfile_at (OtTmpfile *tmpf,
                     const char *target,
                     GError **error);
 
+
+/* A little helper to call unlinkat() as a cleanup
+ * function.  Mostly only necessary to handle
+ * deletion of temporary symlinks.
+ */
+typedef struct {
+  int dfd;
+  char *path;
+} OtCleanupUnlinkat;
+
+static inline void
+ot_cleanup_unlinkat_clear (OtCleanupUnlinkat *cleanup)
+{
+  g_clear_pointer (&cleanup->path, g_free);
+}
+
+static inline void
+ot_cleanup_unlinkat (OtCleanupUnlinkat *cleanup)
+{
+  if (cleanup->path)
+    {
+      (void) unlinkat (cleanup->dfd, cleanup->path, 0);
+      ot_cleanup_unlinkat_clear (cleanup);
+    }
+}
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OtCleanupUnlinkat, ot_cleanup_unlinkat);
+
+
 GFile * ot_fdrel_to_gfile (int dfd, const char *path);
 
 gboolean ot_readlinkat_gfile_info (int             dfd,

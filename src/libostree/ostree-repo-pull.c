@@ -856,13 +856,13 @@ content_fetch_on_complete (GObject        *object,
   g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GInputStream) file_in = NULL;
   g_autoptr(GInputStream) object_input = NULL;
-  g_autofree char *temp_path = NULL;
+  g_auto(OtCleanupUnlinkat) tmp_unlinker = { _ostree_fetcher_get_dfd (fetcher), NULL };
   const char *checksum;
   g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
   gboolean free_fetch_data = TRUE;
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &temp_path, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmp_unlinker.path, error))
     goto out;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
@@ -887,9 +887,11 @@ content_fetch_on_complete (GObject        *object,
       if (!have_object)
         {
           if (!_ostree_repo_commit_loose_final (pull_data->repo, checksum, OSTREE_OBJECT_TYPE_FILE,
-                                                _ostree_fetcher_get_dfd (fetcher), -1, temp_path,
+                                                tmp_unlinker.dfd, -1, tmp_unlinker.path,
                                                 cancellable, error))
             goto out;
+          /* The path was consumed */
+          ot_cleanup_unlinkat_clear (&tmp_unlinker);
         }
       pull_data->n_fetched_content++;
     }
@@ -898,20 +900,16 @@ content_fetch_on_complete (GObject        *object,
       /* Non-mirroring path */
 
       if (!ostree_content_file_parse_at (TRUE, _ostree_fetcher_get_dfd (fetcher),
-                                         temp_path, FALSE,
+                                         tmp_unlinker.path, FALSE,
                                          &file_in, &file_info, &xattrs,
                                          cancellable, error))
-        {
-          /* If it appears corrupted, delete it */
-          (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
-          goto out;
-        }
+        goto out;
 
       /* Also, delete it now that we've opened it, we'll hold
        * a reference to the fd.  If we fail to validate or write, then
        * the temp space will be cleaned up.
        */
-      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
+      ot_cleanup_unlinkat (&tmp_unlinker);
 
       if (!validate_bareuseronly_mode (pull_data,
                                        checksum,
@@ -992,7 +990,7 @@ meta_fetch_on_complete (GObject           *object,
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   g_autoptr(GVariant) metadata = NULL;
-  g_autofree char *temp_path = NULL;
+  g_auto(OtCleanupUnlinkat) tmp_unlinker = { _ostree_fetcher_get_dfd (fetcher), NULL };
   const char *checksum;
   g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
@@ -1006,7 +1004,7 @@ meta_fetch_on_complete (GObject           *object,
   g_debug ("fetch of %s%s complete", checksum_obj,
            fetch_data->is_detached_meta ? " (detached)" : "");
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &temp_path, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmp_unlinker.path, error))
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
@@ -1049,21 +1047,23 @@ meta_fetch_on_complete (GObject           *object,
   if (objtype == OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT)
     goto out;
 
-  fd = openat (_ostree_fetcher_get_dfd (fetcher), temp_path, O_RDONLY | O_CLOEXEC);
+  fd = openat (_ostree_fetcher_get_dfd (fetcher), tmp_unlinker.path, O_RDONLY | O_CLOEXEC);
   if (fd == -1)
     {
       glnx_set_error_from_errno (error);
       goto out;
     }
 
+  /* Now delete it, keeping the fd open as the last reference); see comment in
+   * corresponding content fetch path.
+   */
+  ot_cleanup_unlinkat (&tmp_unlinker);
+
   if (fetch_data->is_detached_meta)
     {
       if (!ot_util_variant_map_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"),
                                    FALSE, &metadata, error))
         goto out;
-
-      /* Now delete it, see comment in corresponding content fetch path */
-      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
 
       if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
                                                        pull_data->cancellable, error))
@@ -1081,8 +1081,6 @@ meta_fetch_on_complete (GObject           *object,
       if (!ot_util_variant_map_fd (fd, 0, ostree_metadata_variant_type (objtype),
                                    FALSE, &metadata, error))
         goto out;
-
-      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
 
       /* Write the commitpartial file now while we're still fetching data */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
