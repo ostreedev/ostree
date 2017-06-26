@@ -56,7 +56,7 @@ typedef struct {
   GError        **async_error;
 
   OstreeObjectType output_objtype;
-  OstreeRepoContentBareCommit barecommitstate;
+  OtTmpfile        tmpf;
   guint64          content_size;
   GOutputStream   *content_out;
   GChecksum       *content_checksum;
@@ -281,6 +281,8 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
 
   ret = TRUE;
  out:
+  ot_tmpfile_clear (&state->tmpf);
+  g_clear_object (&state->content_out);
   g_clear_pointer (&state->content_checksum, g_checksum_free);
   return ret;
 }
@@ -418,8 +420,6 @@ do_content_open_generic (OstreeRepo                 *repo,
     goto out;
   if (!read_varuint64 (state, &xattr_offset, error))
     goto out;
-
-  state->barecommitstate.fd = -1;
 
   modev = g_variant_get_child_value (state->mode_dict, mode_offset);
   g_variant_get (modev, "(uuu)", &uid, &gid, &mode);
@@ -608,14 +608,14 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
         {
           if (!_ostree_repo_open_content_bare (repo, state->checksum,
                                                state->content_size,
-                                               &state->barecommitstate,
-                                               &state->content_out,
+                                               &state->tmpf,
                                                &state->have_obj,
                                                cancellable, error))
             goto out;
 
           if (!state->have_obj)
             {
+              state->content_out = g_unix_output_stream_new (state->tmpf.fd, FALSE);
               if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
                 goto out;
 
@@ -711,11 +711,12 @@ dispatch_open (OstreeRepo                 *repo,
   
   if (!_ostree_repo_open_content_bare (repo, state->checksum,
                                        state->content_size,
-                                       &state->barecommitstate,
-                                       &state->content_out,
+                                       &state->tmpf,
                                        &state->have_obj,
                                        cancellable, error))
     goto out;
+  if (!state->have_obj)
+    state->content_out = g_unix_output_stream_new (state->tmpf.fd, FALSE);
 
   if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
     goto out;
@@ -899,11 +900,12 @@ dispatch_close (OstreeRepo                 *repo,
             }
         }
 
-      if (!_ostree_repo_commit_trusted_content_bare (repo, state->checksum, &state->barecommitstate,
+      if (!_ostree_repo_commit_trusted_content_bare (repo, state->checksum, &state->tmpf,
                                                      state->uid, state->gid, state->mode,
                                                      state->xattrs,
                                                      cancellable, error))
         goto out;
+      g_clear_object (&state->content_out);
     }
 
   if (!dispatch_unset_read_source (repo, state, cancellable, error))
@@ -911,7 +913,6 @@ dispatch_close (OstreeRepo                 *repo,
       
   g_clear_pointer (&state->xattrs, g_variant_unref);
   g_clear_pointer (&state->content_checksum, g_checksum_free);
-  g_clear_object (&state->content_out);
   
   state->checksum_index++;
   state->output_target = NULL;

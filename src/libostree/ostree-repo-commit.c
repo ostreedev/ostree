@@ -446,57 +446,39 @@ ot_fallocate (int fd, goffset size, GError **error)
   return TRUE;
 }
 
+/* Combines a check for whether or not we already have the object with
+ * allocating a tempfile if we don't.  Used by the static delta code.
+ */
 gboolean
 _ostree_repo_open_content_bare (OstreeRepo          *self,
                                 const char          *checksum,
                                 guint64              content_len,
-                                OstreeRepoContentBareCommit *out_state,
-                                GOutputStream      **out_stream,
+                                OtTmpfile           *out_tmpf,
                                 gboolean            *out_have_object,
                                 GCancellable        *cancellable,
                                 GError             **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *temp_filename = NULL;
-  g_autoptr(GOutputStream) ret_stream = NULL;
   gboolean have_obj;
-
   if (!_ostree_repo_has_loose_object (self, checksum, OSTREE_OBJECT_TYPE_FILE, &have_obj,
                                       cancellable, error))
-    goto out;
-
-  if (!have_obj)
-    {
-      int fd;
-
-      if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                          &fd, &temp_filename, error))
-        goto out;
-
-      if (!ot_fallocate (fd, content_len, error))
-        goto out;
-
-      ret_stream = g_unix_output_stream_new (fd, TRUE);
-    }
-
-  ret = TRUE;
-  if (!have_obj)
-    {
-      out_state->temp_filename = temp_filename;
-      temp_filename = NULL;
-      out_state->fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)ret_stream);
-      if (out_stream)
-        *out_stream = g_steal_pointer (&ret_stream);
-    }
+    return FALSE;
+  /* Do we already have this object? */
   *out_have_object = have_obj;
- out:
-  return ret;
+  if (have_obj)
+    {
+      /* Make sure the tempfile is unset */
+      out_tmpf->initialized = 0;
+      return TRUE;
+    }
+
+  return ot_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+                                      out_tmpf, error);
 }
 
 gboolean
 _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           const char          *checksum,
-                                          OstreeRepoContentBareCommit *state,
+                                          OtTmpfile           *tmpf,
                                           guint32              uid,
                                           guint32              gid,
                                           guint32              mode,
@@ -504,25 +486,22 @@ _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           GCancellable        *cancellable,
                                           GError             **error)
 {
-  gboolean ret = FALSE;
+  /* I don't think this is necessary, but a similar check was here previously,
+   * keeping it for extra redundancy.
+   */
+  if (!tmpf->initialized || tmpf->fd == -1)
+    return TRUE;
 
-  if (state->fd != -1)
-    {
-      if (!commit_loose_content_object (self, checksum,
-                                        state->temp_filename,
-                                        FALSE, uid, gid, mode,
-                                        xattrs, state->fd,
-                                        cancellable, error))
-        {
-          g_prefix_error (error, "Writing object %s.%s: ", checksum, ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
-          goto out;
-        }
-    }
-
-  ret = TRUE;
- out:
-  g_free (state->temp_filename);
-  return ret;
+  if (!commit_loose_content_object (self, checksum,
+                                    tmpf->path,
+                                    FALSE, uid, gid, mode,
+                                    xattrs, tmpf->fd,
+                                    cancellable, error))
+    return glnx_prefix_error (error, "Writing object %s.%s", checksum, ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
+  /* The path was consumed */
+  g_clear_pointer (&tmpf->path, g_free);
+  tmpf->initialized = FALSE;
+  return TRUE;
 }
 
 static gboolean
@@ -567,23 +546,6 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
   return TRUE;
 }
 
-/* A little helper to call unlinkat() as a cleanup
- * function.  Mostly only necessary to handle
- * deletion of temporary symlinks.
- */
-typedef struct {
-  int dfd;
-  const char *path;
-} CleanupUnlinkat;
-
-static void
-cleanup_unlinkat (CleanupUnlinkat *cleanup)
-{
-  if (cleanup->path)
-    (void) unlinkat (cleanup->dfd, cleanup->path, 0);
-}
-G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(CleanupUnlinkat, cleanup_unlinkat);
-
 /* Write a content object. */
 static gboolean
 write_content_object (OstreeRepo         *self,
@@ -614,29 +576,38 @@ write_content_object (OstreeRepo         *self,
                                     cancellable, error))
     return FALSE;
 
-  gboolean temp_file_is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
-  gboolean temp_file_is_symlink = g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK;
-  gboolean object_is_symlink = temp_file_is_symlink;
+  gboolean phys_object_is_symlink = FALSE;
+  const GFileType object_file_type = g_file_info_get_file_type (file_info);
+  switch (object_file_type)
+    {
+    case G_FILE_TYPE_REGULAR:
+      break;
+    case G_FILE_TYPE_SYMBOLIC_LINK:
+      if (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+        phys_object_is_symlink = TRUE;
+      break;
+    default:
+      return glnx_throw (error, "Unsupported file type %u", object_file_type);
+    }
 
-  if (repo_mode == OSTREE_REPO_MODE_BARE_USER && object_is_symlink)
+  guint64 size;
+
+  /* For bare-user, convert the symlink target to the input stream */
+  if (repo_mode == OSTREE_REPO_MODE_BARE_USER && object_file_type == G_FILE_TYPE_SYMBOLIC_LINK)
     {
       const char *target_str = g_file_info_get_symlink_target (file_info);
       g_autoptr(GBytes) target = g_bytes_new (target_str, strlen (target_str) + 1);
-
-      /* For bare-user we can't store symlinks as symlinks, as symlinks don't
-         support user xattrs to store the ownership. So, instead store them
-         as regular files */
-      temp_file_is_regular = TRUE;
-      temp_file_is_symlink = FALSE;
 
       if (file_input != NULL)
         g_object_unref (file_input);
       /* Include the terminating zero so we can e.g. mmap this file */
       file_input = g_memory_input_stream_new_from_bytes (target);
+      size = g_bytes_get_size (target);
     }
-
-  if (!(temp_file_is_regular || temp_file_is_symlink))
-    return glnx_throw (error, "Unsupported file type %u", g_file_info_get_file_type (file_info));
+  else if (!phys_object_is_symlink)
+    size = g_file_info_get_size (file_info);
+  else
+    size = 0;
 
   /* For regular files, we create them with default mode, and only
    * later apply any xattrs and setuid bits.  The rationale here
@@ -649,31 +620,26 @@ write_content_object (OstreeRepo         *self,
    * temp_filename might also be a symlink.  Hence the CleanupUnlinkat
    * which handles that case.
    */
-  g_auto(CleanupUnlinkat) tmp_unlinker = { self->tmp_dir_fd, NULL };
+  g_auto(OtCleanupUnlinkat) tmp_unlinker = { self->tmp_dir_fd, NULL };
   glnx_fd_close int temp_fd = -1;
-  g_autofree char *temp_filename = NULL;
   gssize unpacked_size = 0;
   gboolean indexable = FALSE;
-  if ((_ostree_repo_mode_is_bare (repo_mode)) && temp_file_is_regular)
+  if ((_ostree_repo_mode_is_bare (repo_mode)) && !phys_object_is_symlink)
     {
-      guint64 size = g_file_info_get_size (file_info);
-
       if (!create_regular_tmpfile_linkable_with_content (self, size, file_input,
-                                                         &temp_fd, &temp_filename,
+                                                         &temp_fd, &tmp_unlinker.path,
                                                          cancellable, error))
         return FALSE;
-      tmp_unlinker.path = temp_filename;
     }
-  else if (_ostree_repo_mode_is_bare (repo_mode) && temp_file_is_symlink)
+  else if (_ostree_repo_mode_is_bare (repo_mode) && phys_object_is_symlink)
     {
       /* Note: This will not be hit for bare-user mode because its converted to a
          regular file and take the branch above */
       if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd,
                                               g_file_info_get_symlink_target (file_info),
-                                              &temp_filename,
+                                              &tmp_unlinker.path,
                                               cancellable, error))
         return FALSE;
-      tmp_unlinker.path = temp_filename;
     }
   else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
@@ -686,11 +652,9 @@ write_content_object (OstreeRepo         *self,
         indexable = TRUE;
 
       if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                          &temp_fd, &temp_filename,
+                                          &temp_fd, &tmp_unlinker.path,
                                           error))
         return FALSE;
-      tmp_unlinker.path = temp_filename;
-      temp_file_is_regular = TRUE;
       temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
       file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
@@ -757,18 +721,18 @@ write_content_object (OstreeRepo         *self,
   const guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
   if (!commit_loose_content_object (self, actual_checksum,
-                                    temp_filename,
-                                    object_is_symlink,
+                                    tmp_unlinker.path,
+                                    object_file_type == G_FILE_TYPE_SYMBOLIC_LINK,
                                     uid, gid, mode,
                                     xattrs, temp_fd,
                                     cancellable, error))
     return glnx_prefix_error (error, "Writing object %s.%s", actual_checksum,
                               ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
-  /* Clear the unlinker path, it was consumed */
-  tmp_unlinker.path = NULL;
+  /* Clear the unlinker, it was consumed */
+  ot_cleanup_unlinkat_clear (&tmp_unlinker);
 
   /* Update size metadata if configured */
-  if (indexable && temp_file_is_regular)
+  if (indexable && object_file_type == G_FILE_TYPE_REGULAR)
     {
       struct stat stbuf;
 
