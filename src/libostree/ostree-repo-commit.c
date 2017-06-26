@@ -281,7 +281,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
        */
       const struct timespec times[2] = { { OSTREE_TIMESTAMP, UTIME_OMIT }, { OSTREE_TIMESTAMP, 0} };
       if (TEMP_FAILURE_RETRY (futimens (tmpf->fd, times)) < 0)
-            return glnx_throw_errno_prefix (error, "futimens");
+        return glnx_throw_errno_prefix (error, "futimens");
     }
 
   /* Ensure that in case of a power cut, these files have the data we
@@ -739,7 +739,7 @@ write_content_object (OstreeRepo         *self,
                                         uid, gid, mode,
                                         xattrs,
                                         cancellable, error))
-        return glnx_prefix_error (error, "Writing object %s.%s: ", actual_checksum,
+        return glnx_prefix_error (error, "Writing object %s.%s", actual_checksum,
                                   ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
     }
 
