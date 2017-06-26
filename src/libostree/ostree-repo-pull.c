@@ -49,6 +49,7 @@
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #include <gio/gunixinputstream.h>
+#include <sys/statvfs.h>
 
 #define OSTREE_REPO_PULL_CONTENT_PRIORITY  (OSTREE_FETCHER_DEFAULT_PRIORITY)
 #define OSTREE_REPO_PULL_METADATA_PRIORITY (OSTREE_REPO_PULL_CONTENT_PRIORITY - 100)
@@ -1814,6 +1815,11 @@ process_one_static_delta (OtPullData   *pull_data,
   headers = g_variant_get_child_value (delta_superblock, 6);
   fallback_objects = g_variant_get_child_value (delta_superblock, 7);
 
+  /* Gather free space so we can do a check below */
+  struct statvfs stvfsbuf;
+  if (TEMP_FAILURE_RETRY (fstatvfs (pull_data->repo->repo_dir_fd, &stvfsbuf)) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs");
+
   /* First process the fallbacks */
   n = g_variant_n_children (fallback_objects);
   for (i = 0; i < n; i++)
@@ -1980,6 +1986,21 @@ process_one_static_delta (OtPullData   *pull_data,
               g_hash_table_add (pull_data->pending_fetch_deltaparts, fetch_data);
             }
         }
+    }
+
+  /* The free space check is here since at this point we've parsed the delta not
+   * only the total size of the parts, but also whether or not we already have
+   * them. TODO: Ideally this free space check would be above, but we'd have to
+   * walk everything twice and keep track of state.
+   */
+  const guint64 delta_required_blocks = (pull_data->total_deltapart_usize / stvfsbuf.f_bsize);
+  if (delta_required_blocks > stvfsbuf.f_bfree)
+    {
+      g_autofree char *formatted_required = g_format_size (pull_data->total_deltapart_usize);
+      g_autofree char *formatted_avail = g_format_size (((guint64)stvfsbuf.f_bsize) * stvfsbuf.f_bfree);
+      glnx_throw (error, "Delta requires %s free space, but only %s available",
+                  formatted_required, formatted_avail);
+      goto out;
     }
 
   ret = TRUE;
