@@ -95,6 +95,7 @@ struct OstreeRepo {
   GFile *sysroot_dir;
   char *remotes_config_dir;
 
+  GLnxLockFile transaction_repo_lock;
   GHashTable *txn_refs;
   GMutex txn_stats_lock;
   OstreeRepoTransactionStats txn_stats;
@@ -348,5 +349,17 @@ OstreeRemote *
 _ostree_repo_get_remote_inherited (OstreeRepo  *self,
                                    const char  *name,
                                    GError     **error);
+
+gboolean
+_ostree_repo_lock_shared (OstreeRepo        *self,
+                          gboolean           non_blocking,
+                          GLnxLockFile      *lockfile,
+                          GError           **error);
+
+gboolean
+_ostree_repo_lock_exclusive (OstreeRepo        *self,
+                             gboolean           non_blocking,
+                             GLnxLockFile      *lockfile,
+                             GError           **error);
 
 G_END_DECLS

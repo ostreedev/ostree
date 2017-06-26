@@ -315,6 +315,12 @@ ostree_repo_prune (OstreeRepo        *self,
   g_autoptr(GHashTable) all_refs = NULL;
   g_autoptr(GHashTable) reachable = NULL;
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
+  gboolean non_blocking = flags & OSTREE_REPO_PRUNE_FLAGS_NON_BLOCKING;
+  g_auto(GLnxLockFile) repo_lock = GLNX_LOCK_FILE_INIT;
+
+  if (!_ostree_repo_lock_exclusive (self, non_blocking,
+                                    &repo_lock, error))
+    return FALSE;
 
   reachable = ostree_repo_traverse_new_reachable ();
 
@@ -406,6 +412,12 @@ ostree_repo_prune_from_reachable (OstreeRepo        *self,
                                   GError           **error)
 {
   g_autoptr(GHashTable) objects = NULL;
+  g_auto(GLnxLockFile) repo_lock = GLNX_LOCK_FILE_INIT;
+  const gboolean non_blocking = options && (options->flags & OSTREE_REPO_PRUNE_FLAGS_NON_BLOCKING) > 0;
+
+  if (!_ostree_repo_lock_exclusive (self, non_blocking,
+                                    &repo_lock, error))
+    return FALSE;
 
   if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
                                  &objects, cancellable, error))
