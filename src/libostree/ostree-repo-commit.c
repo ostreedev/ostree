@@ -590,6 +590,8 @@ write_content_object (OstreeRepo         *self,
       return glnx_throw (error, "Unsupported file type %u", object_file_type);
     }
 
+  guint64 size;
+
   /* For bare-user, convert the symlink target to the input stream */
   if (repo_mode == OSTREE_REPO_MODE_BARE_USER && object_file_type == G_FILE_TYPE_SYMBOLIC_LINK)
     {
@@ -600,7 +602,12 @@ write_content_object (OstreeRepo         *self,
         g_object_unref (file_input);
       /* Include the terminating zero so we can e.g. mmap this file */
       file_input = g_memory_input_stream_new_from_bytes (target);
+      size = g_bytes_get_size (target);
     }
+  else if (!phys_object_is_symlink)
+    size = g_file_info_get_size (file_info);
+  else
+    size = 0;
 
   /* For regular files, we create them with default mode, and only
    * later apply any xattrs and setuid bits.  The rationale here
@@ -619,8 +626,6 @@ write_content_object (OstreeRepo         *self,
   gboolean indexable = FALSE;
   if ((_ostree_repo_mode_is_bare (repo_mode)) && !phys_object_is_symlink)
     {
-      guint64 size = g_file_info_get_size (file_info);
-
       if (!create_regular_tmpfile_linkable_with_content (self, size, file_input,
                                                          &temp_fd, &tmp_unlinker.path,
                                                          cancellable, error))
