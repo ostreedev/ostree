@@ -52,7 +52,6 @@ typedef struct
 #ifndef __GI_SCANNER__
 _OSTREE_PUBLIC
 GType ostree_collection_ref_get_type (void);
-#endif
 
 _OSTREE_PUBLIC
 OstreeCollectionRef *ostree_collection_ref_new (const gchar *collection_id,
@@ -61,6 +60,7 @@ _OSTREE_PUBLIC
 OstreeCollectionRef *ostree_collection_ref_dup (const OstreeCollectionRef *ref);
 _OSTREE_PUBLIC
 void ostree_collection_ref_free (OstreeCollectionRef *ref);
+#endif
 
 _OSTREE_PUBLIC
 guint ostree_collection_ref_hash (gconstpointer ref);
