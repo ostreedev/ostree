@@ -23,6 +23,10 @@ local-checks-to-skip = \
     sc_prohibit_path_max_allocation \
     sc_trailing_blank \
 
+sc_glnx_prefix_error_colon:
+	@prohibit='\<glnx_prefix_error *\(.*: ",' halt="don't add trailing : for glnx_prefix_error"	\
+	  $(_sc_search_regexp)
+
 sc_glnx_errno_prefix_colon:
 	@prohibit='\<glnx_throw_errno_prefix *\(.*: ",' halt="don't add trailing : for glnx_throw_errno_prefix"	\
 	  $(_sc_search_regexp)
