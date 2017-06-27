@@ -50,51 +50,48 @@ argv_to_additional_metadata (int      *argc,
 {
   g_autoptr(GVariantBuilder) builder = NULL;
   int i;
+  char **args = *argv;
 
   builder = g_variant_builder_new (G_VARIANT_TYPE_VARDICT);
 
   for (i = 1; i < *argc; i++)
     {
-      const gchar *equals = strchr ((*argv)[i], '=');
+      const gchar *equals = strchr (args[i], '=');
       g_autofree gchar *key = NULL;
       const gchar *value_str;
       g_autoptr(GVariant) value = NULL;
 
       if (equals != NULL)
         {
-          key = g_strndup ((*argv)[i], equals - (*argv)[i]);
+          key = g_strndup (args[i], equals - args[i]);
           value_str = equals + 1;
         }
       else
         {
-          key = g_strdup ((*argv)[i]);
+          key = g_strdup (args[i]);
 
           if (i + 1 >= *argc)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Invalid additional metadata list: not an even number of arguments");
-              return NULL;
-            }
+            return glnx_null_throw (error,
+                                    "Invalid additional metadata list: not an even number of arguments");
 
-          value_str = (*argv)[i + 1];
+          value_str = args[i + 1];
           i++;
         }
 
       value = g_variant_parse (NULL, value_str, NULL, NULL, error);
       if (value == NULL)
-        {
-          g_prefix_error (error, "Error parsing variant ‘%s’: ", value_str);
-          return NULL;
-        }
+        return glnx_prefix_error_null (error, "Error parsing variant ‘%s’: ", value_str);
 
       g_variant_builder_add (builder, "{sv}", key, value);
     }
 
   /* Update the argument list. */
   for (; i > 1; i--)
-    (*argv)[i] = NULL;
+    args[i] = NULL;
 
-  return g_variant_builder_end (builder);
+  *argv = args;
+
+  return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 
 gboolean
