@@ -31,18 +31,22 @@ artifacts:
   - test-suite.log
 ---
 
-context: c7-build
+context: c7-primary
 inherit: true
 required: true
 
-container:
-  image: registry.centos.org/centos/centos:7
+packages:
+
+host:
+  distro: centos/7/atomic
 
 env:
     CFLAGS: ''
 
 tests:
-  - ci/build-check.sh
+  - docker run --privileged -v $PWD:$PWD --workdir $PWD
+    registry.centos.org/centos/centos:7 sh -c
+    'yum install -y git && ci/build-check.sh'
 
 ---
 
