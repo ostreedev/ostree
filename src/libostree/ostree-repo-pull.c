@@ -3339,15 +3339,39 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         goto out;
       }
 
+    if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
+      {
+        g_autoptr(OstreeGpgVerifyResult) result = NULL;
+
+        result = ostree_repo_verify_summary (self, pull_data->remote_name,
+                                             bytes_summary, bytes_sig,
+                                             cancellable, error);
+        if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+          goto out;
+      }
+
     if (bytes_summary)
       {
         pull_data->summary_data = g_bytes_ref (bytes_summary);
         pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
 
+        if (!g_variant_is_normal_form (pull_data->summary))
+          {
+            g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "Not normal form");
+            goto out;
+          }
+        if (!g_variant_is_of_type (pull_data->summary, OSTREE_SUMMARY_GVARIANT_FORMAT))
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Doesn't match variant type '%s'",
+                         (char *)OSTREE_SUMMARY_GVARIANT_FORMAT);
+            goto out;
+          }
+
         if (bytes_sig)
           pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
       }
-
 
     if (!summary_from_cache && bytes_summary && bytes_sig)
       {
@@ -3358,24 +3382,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                          bytes_sig,
                                          cancellable,
                                          error))
-          goto out;
-      }
-
-    if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
-      {
-        g_autoptr(GVariant) sig_variant = NULL;
-        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-
-        sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
-        result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                        bytes_summary,
-                                                        sig_variant,
-                                                        pull_data->remote_name,
-                                                        NULL,
-                                                        NULL,
-                                                        cancellable,
-                                                        error);
-        if (!ostree_gpg_verify_result_require_valid_signature (result, error))
           goto out;
       }
 
