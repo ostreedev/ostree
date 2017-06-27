@@ -24,10 +24,46 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..1"
+echo "1..2"
 
 cd ${test_tmpdir}
 mkdir repo
+ostree_repo_init repo
+
+mkdir -p tree/root
+touch tree/root/a
+
+# Add a few commits
+seq 5 | while read i; do
+    echo a >> tree/root/a
+    ${CMD_PREFIX} ostree --repo=repo commit --branch=test-$i -m test -s test tree
+done
+
+# Generate a plain summary file.
+${CMD_PREFIX} ostree --repo=repo summary --update
+
+# Generate a signed summary file.
+${CMD_PREFIX} ostree --repo=repo summary --update --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}
+
+# Try various ways of adding additional data.
+${CMD_PREFIX} ostree --repo=repo summary --update key="'value'" key2 true
+${CMD_PREFIX} ostree --repo=repo summary --update some-int '@t 123'
+${CMD_PREFIX} ostree --repo=repo summary --update map='@a{sv} {}'
+
+# Check the additional metadata turns up in the output.
+${CMD_PREFIX} ostree --repo=repo summary --view > summary
+assert_file_has_content summary "^map: {}$"
+
+echo "ok 1 update summary"
+
+# Test again, but with collections enabled in the repository (if supported).
+if ! ostree --version | grep -q -e '- experimental'; then
+    echo "ok 2 # skip No experimental API is compiled in"
+    exit 0
+fi
+
+cd ${test_tmpdir}
+rm -rf repo
 ostree_repo_init repo --collection-id org.example.Collection1
 
 mkdir -p tree/root
@@ -55,4 +91,4 @@ ${CMD_PREFIX} ostree --repo=repo summary --update map='@a{sv} {}'
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
 assert_file_has_content summary "^map: {}$"
 
-echo "ok 1 update summary"
+echo "ok 2 update summary with collections"
