@@ -3322,7 +3322,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
       {
-        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+        g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
         result = ostree_repo_verify_summary (self, pull_data->remote_name,
                                              bytes_summary, bytes_sig,
