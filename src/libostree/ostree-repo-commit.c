@@ -599,9 +599,8 @@ write_content_object (OstreeRepo         *self,
   /* Is it a symlink physically? */
   if (phys_object_is_symlink)
     {
-      g_assert (_ostree_repo_mode_is_bare (repo_mode));
-      /* Note: This will not be hit for bare-user mode because its converted to a
-         regular file and take the branch above */
+      /* This will not be hit for bare-user or archive */
+      g_assert (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER);
       if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd,
                                               g_file_info_get_symlink_target (file_info),
                                               &tmp_unlinker.path,
