@@ -941,12 +941,10 @@ content_fetch_on_complete (GObject        *object,
 
       if (!have_object)
         {
-          if (!_ostree_repo_commit_loose_final (pull_data->repo, checksum, OSTREE_OBJECT_TYPE_FILE,
-                                                tmp_unlinker.dfd, -1, tmp_unlinker.path,
-                                                cancellable, error))
+          if (!_ostree_repo_commit_path_final (pull_data->repo, checksum, objtype,
+                                               &tmp_unlinker,
+                                               cancellable, error))
             goto out;
-          /* The path was consumed */
-          ot_cleanup_unlinkat_clear (&tmp_unlinker);
         }
       pull_data->n_fetched_content++;
     }
@@ -954,6 +952,7 @@ content_fetch_on_complete (GObject        *object,
     {
       /* Non-mirroring path */
 
+      /* If it appears corrupted, we'll delete it below */
       if (!ostree_content_file_parse_at (TRUE, _ostree_fetcher_get_dfd (fetcher),
                                          tmp_unlinker.path, FALSE,
                                          &file_in, &file_info, &xattrs,
