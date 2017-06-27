@@ -127,6 +127,8 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 	. $(dirname $0)/libtest.sh
 	unshare -m true || \
 	    skip "this test needs to set up mount namespaces, rerun as root"
+	[ -f /bin/busybox ] || \
+	    skip "this test needs busybox"
 
 	echo "1..3"
 	test_that_prepare_root_sets_sysroot_up_correctly_with_initrd
