@@ -30,6 +30,7 @@
 static gboolean opt_update, opt_view, opt_raw;
 static char **opt_key_ids;
 static char *opt_gpg_homedir;
+static char **opt_metadata;
 
 static GOptionEntry options[] = {
   { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
@@ -37,46 +38,33 @@ static GOptionEntry options[] = {
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "View the raw bytes of the summary file", NULL },
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the summary with", "KEY-ID"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
+  { "add-metadata", 'm', 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata, "Additional metadata field to add to the summary", "KEY=VALUE" },
   { NULL }
 };
 
-/* Take arguments of the form [key=value] or [key, value] out of @argv and put
- * them into an a{sv} variant. The value arguments must be parsable using
- * g_variant_parse(). */
+/* Take arguments of the form KEY=VALUE and put them into an a{sv} variant. The
+ * value arguments must be parsable using g_variant_parse(). */
 static GVariant *
-argv_to_additional_metadata (int      *argc,
-                             char   ***argv,
-                             GError  **error)
+build_additional_metadata (const char * const  *args,
+                           GError             **error)
 {
   g_autoptr(GVariantBuilder) builder = NULL;
-  int i;
-  char **args = *argv;
 
   builder = g_variant_builder_new (G_VARIANT_TYPE_VARDICT);
 
-  for (i = 1; i < *argc; i++)
+  for (gsize i = 0; args[i] != NULL; i++)
     {
       const gchar *equals = strchr (args[i], '=');
       g_autofree gchar *key = NULL;
       const gchar *value_str;
       g_autoptr(GVariant) value = NULL;
 
-      if (equals != NULL)
-        {
-          key = g_strndup (args[i], equals - args[i]);
-          value_str = equals + 1;
-        }
-      else
-        {
-          key = g_strdup (args[i]);
+      if (equals == NULL)
+        return glnx_null_throw (error,
+                                "Missing '=' in KEY=VALUE metadata '%s'", args[i]);
 
-          if (i + 1 >= *argc)
-            return glnx_null_throw (error,
-                                    "Invalid additional metadata list: not an even number of arguments");
-
-          value_str = args[i + 1];
-          i++;
-        }
+      key = g_strndup (args[i], equals - args[i]);
+      value_str = equals + 1;
 
       value = g_variant_parse (NULL, value_str, NULL, NULL, error);
       if (value == NULL)
@@ -84,12 +72,6 @@ argv_to_additional_metadata (int      *argc,
 
       g_variant_builder_add (builder, "{sv}", key, value);
     }
-
-  /* Update the argument list. */
-  for (; i > 1; i--)
-    args[i] = NULL;
-
-  *argv = args;
 
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
@@ -114,9 +96,12 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
       if (!ostree_ensure_repo_writable (repo, error))
         goto out;
 
-      additional_metadata = argv_to_additional_metadata (&argc, &argv, error);
-      if (additional_metadata == NULL)
-        goto out;
+      if (opt_metadata != NULL)
+        {
+          additional_metadata = build_additional_metadata ((const char * const *) opt_metadata, error);
+          if (additional_metadata == NULL)
+            goto out;
+        }
 
       if (!ostree_repo_regenerate_summary (repo, additional_metadata, cancellable, error))
         goto out;

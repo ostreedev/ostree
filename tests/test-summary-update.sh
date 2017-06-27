@@ -46,9 +46,9 @@ ${CMD_PREFIX} ostree --repo=repo summary --update
 ${CMD_PREFIX} ostree --repo=repo summary --update --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}
 
 # Try various ways of adding additional data.
-${CMD_PREFIX} ostree --repo=repo summary --update key="'value'" key2 true
-${CMD_PREFIX} ostree --repo=repo summary --update some-int '@t 123'
-${CMD_PREFIX} ostree --repo=repo summary --update map='@a{sv} {}'
+${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata key="'value'" --add-metadata=key2=true
+${CMD_PREFIX} ostree --repo=repo summary --update -m some-int='@t 123'
+${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata=map='@a{sv} {}'
 
 # Check the additional metadata turns up in the output.
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
@@ -83,9 +83,9 @@ ${CMD_PREFIX} ostree --repo=repo summary --update
 ${CMD_PREFIX} ostree --repo=repo summary --update --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}
 
 # Try various ways of adding additional data.
-${CMD_PREFIX} ostree --repo=repo summary --update key="'value'" key2 true
-${CMD_PREFIX} ostree --repo=repo summary --update some-int '@t 123'
-${CMD_PREFIX} ostree --repo=repo summary --update map='@a{sv} {}'
+${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata key="'value'" --add-metadata=key2=true
+${CMD_PREFIX} ostree --repo=repo summary --update -m some-int='@t 123'
+${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata=map='@a{sv} {}'
 
 # Check the additional metadata turns up in the output.
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
