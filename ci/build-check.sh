@@ -11,7 +11,7 @@ make syntax-check  # TODO: do syntax-check under check
 # And now run the installed tests
 make install
 if test -x /usr/bin/gnome-desktop-testing-runner; then
-    gnome-desktop-testing-runner -p 0 ostree
+    gnome-desktop-testing-runner -p 0 libostree/
 fi
 
 if test -x /usr/bin/clang; then
