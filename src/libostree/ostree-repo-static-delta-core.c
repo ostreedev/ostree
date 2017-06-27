@@ -165,31 +165,30 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
                                                  GCancellable           *cancellable,
                                                  GError                **error)
 {
-  gboolean ret = FALSE;
   guint8 *checksums_data;
-  guint i,n_checksums;
+  guint n_checksums;
   gboolean have_object = TRUE;
 
   if (!_ostree_static_delta_parse_checksum_array (checksum_array,
                                                   &checksums_data,
                                                   &n_checksums,
                                                   error))
-    goto out;
+    return FALSE;
 
-  for (i = 0; i < n_checksums; i++)
+  for (guint i = 0; i < n_checksums; i++)
     {
       guint8 objtype = *checksums_data;
       const guint8 *csum = checksums_data + 1;
       char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
 
       if (G_UNLIKELY(!ostree_validate_structureof_objtype (objtype, error)))
-        goto out;
+        return FALSE;
 
       ostree_checksum_inplace_from_bytes (csum, tmp_checksum);
 
       if (!ostree_repo_has_object (repo, (OstreeObjectType) objtype, tmp_checksum,
                                    &have_object, cancellable, error))
-        goto out;
+        return FALSE;
 
       if (!have_object)
         break;
@@ -197,10 +196,8 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
       checksums_data += OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN;
     }
 
-  ret = TRUE;
   *out_have_all = have_object;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -223,57 +220,43 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                                           GCancellable                  *cancellable,
                                           GError                      **error)
 {
-  gboolean ret = FALSE;
-  guint i, n;
-  const char *dir_or_file_path = NULL;
-  glnx_fd_close int meta_fd = -1;
-  glnx_fd_close int dfd = -1;
-  g_autoptr(GVariant) meta = NULL;
-  g_autoptr(GVariant) headers = NULL;
-  g_autoptr(GVariant) metadata = NULL;
-  g_autoptr(GVariant) fallback = NULL;
-  g_autofree char *to_checksum = NULL;
-  g_autofree char *from_checksum = NULL;
   g_autofree char *basename = NULL;
 
-  dir_or_file_path = gs_file_get_path_cached (dir_or_file);
+  const char *dir_or_file_path = gs_file_get_path_cached (dir_or_file);
 
   /* First, try opening it as a directory */
-  dfd = glnx_opendirat_with_errno (AT_FDCWD, dir_or_file_path, TRUE);
+  glnx_fd_close int dfd = glnx_opendirat_with_errno (AT_FDCWD, dir_or_file_path, TRUE);
   if (dfd < 0)
     {
       if (errno != ENOTDIR)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "openat(O_DIRECTORY)");
       else
         {
           g_autofree char *dir = dirname (g_strdup (dir_or_file_path));
           basename = g_path_get_basename (dir_or_file_path);
 
           if (!glnx_opendirat (AT_FDCWD, dir, TRUE, &dfd, error))
-            goto out;
+            return FALSE;
         }
     }
   else
     basename = g_strdup ("superblock");
 
-  meta_fd = openat (dfd, basename, O_RDONLY | O_CLOEXEC);
+  glnx_fd_close int meta_fd = openat (dfd, basename, O_RDONLY | O_CLOEXEC);
   if (meta_fd < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
-  
+    return glnx_throw_errno_prefix (error, "openat(%s)", basename);
+
+  g_autoptr(GVariant) meta = NULL;
   if (!ot_util_variant_map_fd (meta_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
                                FALSE, &meta, error))
-    goto out;
+    return FALSE;
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
 
-  metadata = g_variant_get_child_value (meta, 0);
+  g_autoptr(GVariant) metadata = g_variant_get_child_value (meta, 0);
 
+  g_autofree char *to_checksum = NULL;
+  g_autofree char *from_checksum = NULL;
   /* Write the to-commit object */
   {
     g_autoptr(GVariant) to_csum_v = NULL;
@@ -284,32 +267,28 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
     to_csum_v = g_variant_get_child_value (meta, 3);
     if (!ostree_validate_structureof_csum_v (to_csum_v, error))
-      goto out;
+      return FALSE;
     to_checksum = ostree_checksum_from_bytes_v (to_csum_v);
 
     from_csum_v = g_variant_get_child_value (meta, 2);
     if (g_variant_n_children (from_csum_v) > 0)
       {
         if (!ostree_validate_structureof_csum_v (from_csum_v, error))
-          goto out;
+          return FALSE;
         from_checksum = ostree_checksum_from_bytes_v (from_csum_v);
 
         if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT, from_checksum,
                                      &have_from_commit, cancellable, error))
-          goto out;
+          return FALSE;
 
         if (!have_from_commit)
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "Commit %s, which is the delta source, is not in repository", from_checksum);
-            goto out;
-          }
+          return glnx_throw (error, "Commit %s, which is the delta source, is not in repository", from_checksum);
       }
 
     if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
                                  &have_to_commit, cancellable, error))
-      goto out;
-    
+      return FALSE;
+
     if (!have_to_commit)
       {
         g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_checksum, to_checksum, "commitmeta");
@@ -321,27 +300,23 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                                                                           detached_data,
                                                                           cancellable,
                                                                           error))
-          goto out;
+          return FALSE;
 
         to_commit = g_variant_get_child_value (meta, 4);
         if (!ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_COMMIT,
                                          to_checksum, to_commit, NULL,
                                          cancellable, error))
-          goto out;
+          return FALSE;
       }
   }
 
-  fallback = g_variant_get_child_value (meta, 7);
+  g_autoptr(GVariant) fallback = g_variant_get_child_value (meta, 7);
   if (g_variant_n_children (fallback) > 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Cannot execute delta offline: contains nonempty http fallback entries");
-      goto out;
-    }
+    return glnx_throw (error, "Cannot execute delta offline: contains nonempty http fallback entries");
 
-  headers = g_variant_get_child_value (meta, 6);
-  n = g_variant_n_children (headers);
-  for (i = 0; i < n; i++)
+  g_autoptr(GVariant) headers = g_variant_get_child_value (meta, 6);
+  const guint n = g_variant_n_children (headers);
+  for (guint i = 0; i < n; i++)
     {
       guint32 version;
       guint64 size;
@@ -349,29 +324,21 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       const guchar *csum;
       char checksum[OSTREE_SHA256_STRING_LEN+1];
       gboolean have_all;
-      g_autoptr(GInputStream) part_in = NULL;
-      g_autoptr(GVariant) inline_part_data = NULL;
-      g_autoptr(GVariant) header = NULL;
       g_autoptr(GVariant) csum_v = NULL;
       g_autoptr(GVariant) objects = NULL;
       g_autoptr(GVariant) part = NULL;
       g_autofree char *deltapart_path = NULL;
-      OstreeStaticDeltaOpenFlags delta_open_flags = 
+      OstreeStaticDeltaOpenFlags delta_open_flags =
         skip_validation ? OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM : 0;
-
-      header = g_variant_get_child_value (headers, i);
+      g_autoptr(GVariant) header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
 
       if (version > OSTREE_DELTAPART_VERSION)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Delta part has too new version %u", version);
-          goto out;
-        }
+        return glnx_throw (error, "Delta part has too new version %u", version);
 
       if (!_ostree_repo_static_delta_part_have_all_objects (self, objects, &have_all,
                                                             cancellable, error))
-        goto out;
+        return FALSE;
 
       /* If we already have these objects, don't bother executing the
        * static delta.
@@ -381,13 +348,14 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
       csum = ostree_checksum_bytes_peek_validate (csum_v, error);
       if (!csum)
-        goto out;
+        return FALSE;
       ostree_checksum_inplace_from_bytes (csum, checksum);
 
       deltapart_path =
         _ostree_get_relative_static_delta_part_path (from_checksum, to_checksum, i);
 
-      inline_part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE("(yay)"));
+      g_autoptr(GInputStream) part_in = NULL;
+      g_autoptr(GVariant) inline_part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE("(yay)"));
       if (inline_part_data)
         {
           g_autoptr(GBytes) inline_part_bytes = g_variant_get_data_as_bytes (inline_part_data);
@@ -405,40 +373,31 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                                                NULL,
                                                &part,
                                                cancellable, error))
-            goto out;
+            return FALSE;
         }
       else
         {
           g_autofree char *relpath = g_strdup_printf ("%u", i); /* TODO avoid malloc here */
           glnx_fd_close int part_fd = openat (dfd, relpath, O_RDONLY | O_CLOEXEC);
           if (part_fd < 0)
-            {
-              glnx_set_error_from_errno (error);
-              g_prefix_error (error, "Opening deltapart '%s': ", deltapart_path);
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "Opening deltapart '%s'", relpath);
 
           part_in = g_unix_input_stream_new (part_fd, FALSE);
 
-          if (!_ostree_static_delta_part_open (part_in, NULL, 
+          if (!_ostree_static_delta_part_open (part_in, NULL,
                                                delta_open_flags,
                                                checksum,
                                                &part,
                                                cancellable, error))
-            goto out;
+            return FALSE;
         }
 
       if (!_ostree_static_delta_part_execute (self, objects, part, skip_validation,
                                               NULL, cancellable, error))
-        {
-          g_prefix_error (error, "Executing delta part %i: ", i);
-          goto out;
-        }
+        return glnx_prefix_error (error, "Executing delta part %i", i);
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -781,35 +740,30 @@ _ostree_repo_static_delta_delete (OstreeRepo                    *self,
                                   GCancellable                  *cancellable,
                                   GError                      **error)
 {
-  gboolean ret = FALSE;
   g_autofree char *from = NULL;
   g_autofree char *to = NULL;
-  g_autofree char *deltadir = NULL;
-  struct stat buf;
-
   if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
-    goto out;
+    return FALSE;
 
-  deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
-
+  g_autofree char *deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
+  struct stat buf;
   if (fstatat (self->repo_dir_fd, deltadir, &buf, 0) != 0)
     {
       if (errno == ENOENT)
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                     "Can't find delta %s", delta_id);
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Can't find delta %s", delta_id);
+          return FALSE;
+        }
       else
-        glnx_set_error_from_errno (error);
-
-      goto out;
+        return glnx_throw_errno_prefix (error, "fstatat(%s)", deltadir);
     }
 
   if (!glnx_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
                              cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -852,28 +806,27 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 GCancellable                  *cancellable,
                                 GError                       **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *from = NULL; 
+  g_autofree char *from = NULL;
   g_autofree char *to = NULL;
   g_autofree char *superblock_path = NULL;
   g_autoptr(GVariant) delta_superblock = NULL;
   guint64 total_size = 0, total_usize = 0;
   guint64 total_fallback_size = 0, total_fallback_usize = 0;
-  guint i;
   OstreeDeltaEndianness endianness;
   gboolean swap_endian = FALSE;
 
   if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
-    goto out;
+    return FALSE;
 
   superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
 
   if (!ot_util_variant_map_at (self->repo_dir_fd, superblock_path,
                                (GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
                                OT_VARIANT_MAP_TRUSTED, &delta_superblock, error))
-    goto out;
+    return FALSE;
 
   g_print ("Delta: %s\n", delta_id);
+
   { const char *endianness_description;
     gboolean was_heuristic;
 
@@ -903,65 +856,63 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
       default:
         g_assert_not_reached ();
       }
-    
+
     g_print ("Endianness: %s\n", endianness_description);
   }
-  { guint64 ts;
-    g_variant_get_child (delta_superblock, 1, "t", &ts);
-    g_print ("Timestamp: %" G_GUINT64_FORMAT "\n", GUINT64_FROM_BE (ts));
-  }
-  { g_autoptr(GVariant) recurse = NULL;
-    g_variant_get_child (delta_superblock, 5, "@ay", &recurse);
-    g_print ("Number of parents: %u\n", (guint)(g_variant_get_size (recurse) / (OSTREE_SHA256_DIGEST_LEN * 2)));
-  }
-  { g_autoptr(GVariant) fallback = NULL;
-    guint n_fallback;
+  guint64 ts;
+  g_variant_get_child (delta_superblock, 1, "t", &ts);
+  g_print ("Timestamp: %" G_GUINT64_FORMAT "\n", GUINT64_FROM_BE (ts));
 
-    g_variant_get_child (delta_superblock, 7, "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT, &fallback);
-    n_fallback = g_variant_n_children (fallback);
+  g_autoptr(GVariant) recurse = NULL;
+  g_variant_get_child (delta_superblock, 5, "@ay", &recurse);
+  g_print ("Number of parents: %u\n", (guint)(g_variant_get_size (recurse) / (OSTREE_SHA256_DIGEST_LEN * 2)));
 
-    g_print ("Number of fallback entries: %u\n", n_fallback);
+  g_autoptr(GVariant) fallback = NULL;
+  g_variant_get_child (delta_superblock, 7, "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT, &fallback);
+  const guint n_fallback = g_variant_n_children (fallback);
 
-    for (i = 0; i < n_fallback; i++)
-      {
-        guint64 size, usize;
-        g_autoptr(GVariant) checksum_v = NULL;
-        char checksum[OSTREE_SHA256_STRING_LEN+1];
-        g_variant_get_child (fallback, i, "(y@aytt)", NULL, &checksum_v, &size, &usize);
-        ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (checksum_v), checksum);
-        size = maybe_swap_endian_u64 (swap_endian, size);
-        usize = maybe_swap_endian_u64 (swap_endian, usize);
-        g_print ("  %s\n", checksum);
-        total_fallback_size += size;
-        total_fallback_usize += usize;
-      }
-    { g_autofree char *sizestr = g_format_size (total_fallback_size);
-      g_autofree char *usizestr = g_format_size (total_fallback_usize);
-      g_print ("Total Fallback Size: %" G_GUINT64_FORMAT " (%s)\n", total_fallback_size, sizestr);
-      g_print ("Total Fallback Uncompressed Size: %" G_GUINT64_FORMAT " (%s)\n", total_fallback_usize, usizestr);
+  g_print ("Number of fallback entries: %u\n", n_fallback);
+
+  for (guint i = 0; i < n_fallback; i++)
+    {
+      guint64 size, usize;
+      g_autoptr(GVariant) checksum_v = NULL;
+      char checksum[OSTREE_SHA256_STRING_LEN+1];
+      g_variant_get_child (fallback, i, "(y@aytt)", NULL, &checksum_v, &size, &usize);
+      ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (checksum_v), checksum);
+      size = maybe_swap_endian_u64 (swap_endian, size);
+      usize = maybe_swap_endian_u64 (swap_endian, usize);
+      g_print ("  %s\n", checksum);
+      total_fallback_size += size;
+      total_fallback_usize += usize;
     }
+  { g_autofree char *sizestr = g_format_size (total_fallback_size);
+    g_autofree char *usizestr = g_format_size (total_fallback_usize);
+    g_print ("Total Fallback Size: %" G_GUINT64_FORMAT " (%s)\n", total_fallback_size, sizestr);
+    g_print ("Total Fallback Uncompressed Size: %" G_GUINT64_FORMAT " (%s)\n", total_fallback_usize, usizestr);
   }
-  { g_autoptr(GVariant) meta_entries = NULL;
-    guint n_parts;
 
-    g_variant_get_child (delta_superblock, 6, "@a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT, &meta_entries);
-    n_parts = g_variant_n_children (meta_entries);
-    g_print ("Number of parts: %u\n", n_parts);
+  g_autoptr(GVariant) meta_entries = NULL;
+  guint n_parts;
 
-    for (i = 0; i < n_parts; i++)
-      {
-        if (!show_one_part (self, swap_endian, from, to, meta_entries, i,
-                            &total_size, &total_usize,
-                            cancellable, error))
-          goto out;
-      }
-  }
+  g_variant_get_child (delta_superblock, 6, "@a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT, &meta_entries);
+  n_parts = g_variant_n_children (meta_entries);
+  g_print ("Number of parts: %u\n", n_parts);
+
+  for (guint i = 0; i < n_parts; i++)
+    {
+      if (!show_one_part (self, swap_endian, from, to, meta_entries, i,
+                          &total_size, &total_usize,
+                          cancellable, error))
+        return FALSE;
+    }
 
   { g_autofree char *sizestr = g_format_size (total_size);
     g_autofree char *usizestr = g_format_size (total_usize);
     g_print ("Total Part Size: %" G_GUINT64_FORMAT " (%s)\n", total_size, sizestr);
     g_print ("Total Part Uncompressed Size: %" G_GUINT64_FORMAT " (%s)\n", total_usize, usizestr);
   }
+
   { guint64 overall_size = total_size + total_fallback_size;
     guint64 overall_usize = total_usize + total_fallback_usize;
     g_autofree char *sizestr = g_format_size (overall_size);
@@ -970,7 +921,5 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
     g_print ("Total Uncompressed Size: %" G_GUINT64_FORMAT " (%s)\n", overall_usize, usizestr);
   }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
