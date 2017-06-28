@@ -353,14 +353,10 @@ compare_ascii_checksums_for_sorting (gconstpointer  a_pp,
 /*
  * Create sizes metadata GVariant and add it to the metadata variant given.
  */
-static gboolean
+static GVariant *
 add_size_index_to_metadata (OstreeRepo        *self,
-                            GVariant          *original_metadata,
-                            GVariant         **out_metadata,
-                            GCancellable      *cancellable,
-                            GError           **error)
+                            GVariant          *original_metadata)
 {
-  gboolean ret = FALSE;
   g_autoptr(GVariantBuilder) builder = NULL;
 
   /* original_metadata may be NULL */
@@ -401,11 +397,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
                              g_variant_builder_end (&index_builder));
     }
 
-  ret = TRUE;
-  *out_metadata = g_variant_builder_end (builder);
-  g_variant_ref_sink (*out_metadata);
-
-  return ret;
+  return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 
 /* Combines a check for whether or not we already have the object with
@@ -2093,10 +2085,7 @@ ostree_repo_write_commit_with_time (OstreeRepo      *self,
   OstreeRepoFile *repo_root = OSTREE_REPO_FILE (root);
 
   /* Add sizes information to our metadata object */
-  g_autoptr(GVariant) new_metadata = NULL;
-  if (!add_size_index_to_metadata (self, metadata, &new_metadata,
-                                   cancellable, error))
-    return FALSE;
+  g_autoptr(GVariant) new_metadata = add_size_index_to_metadata (self, metadata);
 
   g_autoptr(GVariant) commit =
     g_variant_new ("(@a{sv}@ay@a(say)sst@ay@ay)",

@@ -24,6 +24,7 @@
 #include "libglnx.h"
 #include <sys/xattr.h>
 #include <gio/gunixinputstream.h>
+#include <gio/gunixoutputstream.h>
 
 /* Convert a fd-relative path to a GFile* - use
  * for legacy code.
@@ -179,5 +180,31 @@ ot_file_mapat_bytes (int dfd,
   if (!mfile)
     return FALSE;
 
+  return g_mapped_file_get_bytes (mfile);
+}
+
+/* Given an input stream, splice it to an anonymous file (O_TMPFILE).
+ * Useful for potentially large but transient files.
+ */
+GBytes *
+ot_map_anonymous_tmpfile_from_content (GInputStream *instream,
+                                       GCancellable *cancellable,
+                                       GError      **error)
+{
+  g_auto(GLnxTmpfile) tmpf = { 0, };
+  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &tmpf, error))
+    return NULL;
+
+  g_autoptr(GOutputStream) out = g_unix_output_stream_new (tmpf.fd, FALSE);
+  gssize n_bytes_written = g_output_stream_splice (out, instream,
+                                                   G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
+                                                   G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                                   cancellable, error);
+  if (n_bytes_written < 0)
+    return NULL;
+
+  g_autoptr(GMappedFile) mfile = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
+  if (!mfile)
+    return NULL;
   return g_mapped_file_get_bytes (mfile);
 }

@@ -86,6 +86,11 @@ gboolean ot_dfd_iter_init_allow_noent (int dfd,
                                        gboolean *out_exists,
                                        GError **error);
 
+GBytes *
+ot_map_anonymous_tmpfile_from_content (GInputStream *instream,
+                                       GCancellable *cancellable,
+                                       GError      **error);
+
 GBytes *ot_file_mapat_bytes (int dfd,
                              const char *path,
                              GError **error);

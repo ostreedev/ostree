@@ -65,7 +65,7 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
  *
  * This function synchronously enumerates all static deltas in the
  * repository, returning its result in @out_deltas.
- */ 
+ */
 gboolean
 ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                      GPtrArray                  **out_deltas,
@@ -409,14 +409,12 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
                                 GCancellable *cancellable,
                                 GError      **error)
 {
-  gboolean ret = FALSE;
   const gboolean trusted = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED) > 0;
   const gboolean skip_checksum = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM) > 0;
   gsize bytes_read;
   guint8 comptype;
   g_autoptr(GChecksum) checksum = NULL;
   g_autoptr(GInputStream) checksum_in = NULL;
-  g_autoptr(GVariant) ret_part = NULL;
   GInputStream *source_in;
 
   /* We either take a fd or a GBytes reference */
@@ -438,13 +436,11 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
     /* First byte is compression type */
     if (!g_input_stream_read_all (source_in, buf, sizeof(buf), &bytes_read,
                                   cancellable, error))
-      {
-        g_prefix_error (error, "Reading initial compression flag byte: ");
-      goto out;
-      }
+      return glnx_prefix_error (error, "Reading initial compression flag byte");
     comptype = buf[0];
   }
 
+  g_autoptr(GVariant) ret_part = NULL;
   switch (comptype)
     {
     case 0:
@@ -455,7 +451,7 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
           /* No compression, no checksums - a fast path */
           if (!ot_util_variant_map_fd (part_fd, 1, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
                                        trusted, &ret_part, error))
-            goto out;
+            return FALSE;
         }
       else
         {
@@ -469,51 +465,22 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
       if (!skip_checksum)
         g_checksum_update (checksum, g_variant_get_data (ret_part),
                            g_variant_get_size (ret_part));
-      
+
       break;
     case 'x':
       {
-        g_autofree char *tmppath = g_strdup ("/var/tmp/ostree-delta-XXXXXX");
         g_autoptr(GConverter) decomp = (GConverter*) _ostree_lzma_decompressor_new ();
         g_autoptr(GInputStream) convin = g_converter_input_stream_new (source_in, decomp);
-        g_autoptr(GOutputStream) unpacked_out = NULL;
-        glnx_fd_close int unpacked_fd = -1;
-        gssize n_bytes_written;
+        g_autoptr(GBytes) buf = ot_map_anonymous_tmpfile_from_content (convin, cancellable, error);
+        if (!buf)
+          return FALSE;
 
-        unpacked_fd = g_mkstemp_full (tmppath, O_RDWR | O_CLOEXEC, 0640);
-        if (unpacked_fd < 0)
-          {
-            glnx_set_error_from_errno (error);
-            goto out;
-          }
-        
-        /* Now make it autocleanup on process exit - in the future, we
-         * should consider caching unpacked deltas as well.
-         */
-        if (unlink (tmppath) < 0)
-          {
-            glnx_set_error_from_errno (error);
-            goto out;
-          }
-        
-        unpacked_out = g_unix_output_stream_new (unpacked_fd, FALSE);
-
-        n_bytes_written = g_output_stream_splice (unpacked_out, convin,
-                                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
-                                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                                  cancellable, error);
-        if (n_bytes_written < 0)
-          goto out;
-
-        if (!ot_util_variant_map_fd (unpacked_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
-                                     trusted, &ret_part, error))
-          goto out;
+        ret_part = g_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
+                                             buf, FALSE);
       }
       break;
     default:
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid compression type '%u'", comptype);
-      goto out;
+      return glnx_throw (error, "Invalid compression type '%u'", comptype);
     }
 
   if (checksum)
@@ -521,18 +488,12 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
       const char *actual_checksum = g_checksum_get_string (checksum);
       g_assert (expected_checksum != NULL);
       if (strcmp (actual_checksum, expected_checksum) != 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Checksum mismatch in static delta part; expected=%s actual=%s",
-                       expected_checksum, actual_checksum);
-          goto out;
-        }
+        return glnx_throw (error, "Checksum mismatch in static delta part; expected=%s actual=%s",
+                           expected_checksum, actual_checksum);
     }
-        
-  ret = TRUE;
+
   *out_part = g_steal_pointer (&ret_part);
- out:
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -551,15 +512,12 @@ show_one_part (OstreeRepo                    *self,
                GCancellable                  *cancellable,
                GError                      **error)
 {
-  gboolean ret = FALSE;
+  g_autoptr(GVariant) part = NULL;
+  g_autofree char *part_path = _ostree_get_relative_static_delta_part_path (from, to, i);
+
   guint32 version;
   guint64 size, usize;
   g_autoptr(GVariant) objects = NULL;
-  g_autoptr(GInputStream) part_in = NULL;
-  g_autoptr(GVariant) part = NULL;
-  g_autofree char *part_path = _ostree_get_relative_static_delta_part_path (from, to, i);
-  gint part_fd = -1;
-
   g_variant_get_child (meta_entries, i, "(u@aytt@ay)", &version, NULL, &size, &usize, &objects);
   size = maybe_swap_endian_u64 (swap_endian, size);
   usize = maybe_swap_endian_u64 (swap_endian, usize);
@@ -568,21 +526,17 @@ show_one_part (OstreeRepo                    *self,
   g_print ("PartMeta%u: nobjects=%u size=%" G_GUINT64_FORMAT " usize=%" G_GUINT64_FORMAT "\n",
            i, (guint)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN), size, usize);
 
-  part_fd = openat (self->repo_dir_fd, part_path, O_RDONLY | O_CLOEXEC);
+  glnx_fd_close gint part_fd = openat (self->repo_dir_fd, part_path, O_RDONLY | O_CLOEXEC);
   if (part_fd < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "openat(%s)", part_path);
+  g_autoptr(GInputStream) part_in = g_unix_input_stream_new (part_fd, FALSE);
 
-  part_in = g_unix_input_stream_new (part_fd, FALSE);
-  
-  if (!_ostree_static_delta_part_open (part_in, NULL, 
+  if (!_ostree_static_delta_part_open (part_in, NULL,
                                        OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
                                        NULL,
                                        &part,
                                        cancellable, error))
-    goto out;
+    return FALSE;
 
   { g_autoptr(GVariant) modes = NULL;
     g_autoptr(GVariant) xattrs = NULL;
@@ -607,7 +561,7 @@ show_one_part (OstreeRepo                    *self,
     if (!_ostree_static_delta_part_execute (self, objects,
                                             part, TRUE,
                                             &stats, cancellable, error))
-      goto out;
+      return FALSE;
 
     { const guint *n_ops = stats.n_ops_executed;
       g_print ("PartPayloadOps%u: openspliceclose=%u open=%u write=%u setread=%u "
@@ -615,10 +569,8 @@ show_one_part (OstreeRepo                    *self,
                i, n_ops[0], n_ops[1], n_ops[2], n_ops[3], n_ops[4], n_ops[5], n_ops[6]);
     }
   }
-    
-  ret = TRUE;
- out:
-  return ret;
+
+  return TRUE;
 }
 
 OstreeDeltaEndianness
@@ -775,13 +727,12 @@ _ostree_repo_static_delta_query_exists (OstreeRepo                    *self,
 {
   g_autofree char *from = NULL; 
   g_autofree char *to = NULL;
-  g_autofree char *superblock_path = NULL;
   struct stat stbuf;
 
   if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
     return FALSE;
 
-  superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
+  g_autofree char *superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
 
   if (fstatat (self->repo_dir_fd, superblock_path, &stbuf, 0) < 0)
     {
@@ -791,10 +742,7 @@ _ostree_repo_static_delta_query_exists (OstreeRepo                    *self,
           return TRUE;
         }
       else
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
-        }
+        return glnx_throw_errno_prefix (error, "fstatat(%s)", superblock_path);
     }
   *out_exists = TRUE;
   return TRUE;
