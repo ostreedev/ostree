@@ -442,8 +442,7 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
   g_autoptr(GInputStream) istream = NULL;
   g_autoptr(GOutputStream) out = NULL;
 
-  if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, "/tmp", O_RDWR | O_CLOEXEC,
-                                      &tmpf, error))
+  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &tmpf, error))
     return FALSE;
 
   if (!ostree_repo_load_file (repo, checksum, &istream, NULL, NULL,
@@ -1159,15 +1158,6 @@ get_fallback_headers (OstreeRepo               *self,
   return TRUE;
 }
 
-static inline void
-glnx_tmpfile_clear_p (void *ptr)
-{
-  GLnxTmpfile *tmpf = ptr;
-  if (!tmpf)
-    return;
-  glnx_tmpfile_clear (tmpf);
-}
-
 /**
  * ostree_repo_static_delta_generate:
  * @self: Repo
@@ -1329,7 +1319,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     }
 
   part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
-  part_temp_paths = g_ptr_array_new_with_free_func (glnx_tmpfile_clear_p);
+  part_temp_paths = g_ptr_array_new_with_free_func ((GDestroyNotify)glnx_tmpfile_clear);
   for (i = 0; i < builder.parts->len; i++)
     {
       OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];

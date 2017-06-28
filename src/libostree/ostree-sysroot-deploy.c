@@ -73,15 +73,9 @@ symlink_at_replace (const char    *oldpath,
       goto out;
     }
 
-  /* Rename it into place */ 
-  do
-    res = renameat (parent_dfd, temppath, parent_dfd, newpath);
-  while (G_UNLIKELY (res == -1 && errno == EINTR));
-  if (res == -1)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+  /* Rename it into place */
+  if (!glnx_renameat (parent_dfd, temppath, parent_dfd, newpath, error))
+    goto out;
 
   ret = TRUE;
  out:
@@ -819,8 +813,8 @@ merge_configuration (OstreeSysroot         *sysroot,
   else if (etc_exists)
     {
       /* Compatibility hack */
-      if (renameat (deployment_dfd, "etc", deployment_dfd, "usr/etc") < 0)
-        return glnx_throw_errno_prefix (error, "renameat");
+      if (!glnx_renameat (deployment_dfd, "etc", deployment_dfd, "usr/etc", error))
+        return FALSE;
       usretc_exists = TRUE;
       etc_exists = FALSE;
     }
@@ -1424,7 +1418,6 @@ swap_bootloader (OstreeSysroot  *sysroot,
                  GError        **error)
 {
   glnx_fd_close int boot_dfd = -1;
-  int res;
 
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
@@ -1436,11 +1429,8 @@ swap_bootloader (OstreeSysroot  *sysroot,
    * its data is in place.  Renaming now should give us atomic semantics;
    * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
    */
-  do
-    res = renameat (boot_dfd, "loader.tmp", boot_dfd, "loader");
-  while (G_UNLIKELY (res == -1 && errno == EINTR));
-  if (res == -1)
-    return glnx_throw_errno (error);
+  if (!glnx_renameat (boot_dfd, "loader.tmp", boot_dfd, "loader", error))
+    return FALSE;
 
   /* Now we explicitly fsync this directory, even though it
    * isn't required for atomicity, for two reasons:
