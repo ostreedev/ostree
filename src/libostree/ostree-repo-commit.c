@@ -416,22 +416,6 @@ add_size_index_to_metadata (OstreeRepo        *self,
   return ret;
 }
 
-static gboolean
-ot_fallocate (int fd, goffset size, GError **error)
-{
-  if (size == 0)
-    return TRUE;
-
-  int r = posix_fallocate (fd, 0, size);
-  if (r != 0)
-    {
-      /* posix_fallocate is a weird deviation from errno standards */
-      errno = r;
-      return glnx_throw_errno_prefix (error, "fallocate");
-    }
-  return TRUE;
-}
-
 /* Combines a check for whether or not we already have the object with
  * allocating a tempfile if we don't.  Used by the static delta code.
  */
@@ -496,7 +480,7 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
                                       &tmpf, error))
     return FALSE;
 
-  if (!ot_fallocate (tmpf.fd, length, error))
+  if (!glnx_try_fallocate (tmpf.fd, 0, length, error))
     return FALSE;
 
   if (G_IS_FILE_DESCRIPTOR_BASED (input))
@@ -847,7 +831,7 @@ write_metadata_object (OstreeRepo         *self,
   if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
                                       &tmpf, error))
     return FALSE;
-  if (!ot_fallocate (tmpf.fd, len, error))
+  if (!glnx_try_fallocate (tmpf.fd, 0, len, error))
     return FALSE;
   if (glnx_loop_write (tmpf.fd, bufp, len) < 0)
     return glnx_throw_errno_prefix (error, "write()");
@@ -1179,9 +1163,9 @@ rename_pending_loose_objects (OstreeRepo        *self,
                                                     cancellable, error))
             return FALSE;
 
-          if (G_UNLIKELY (renameat (child_dfd_iter.fd, loose_objpath + 3,
-                                    self->objects_dir_fd, loose_objpath) < 0))
-            return glnx_throw_errno (error);
+          if (!glnx_renameat (child_dfd_iter.fd, loose_objpath + 3,
+                              self->objects_dir_fd, loose_objpath, error))
+            return FALSE;
 
           renamed_some_object = TRUE;
         }
