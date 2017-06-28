@@ -773,14 +773,11 @@ aic_import_deferred_hardlinks (OstreeRepoArchiveImportContext *ctx,
                                GCancellable  *cancellable,
                                GError       **error)
 {
-  GHashTableIter iter;
-  gpointer key, value;
-
-  g_hash_table_iter_init (&iter, ctx->deferred_hardlinks);
-  while (g_hash_table_iter_next (&iter, &key, &value))
-    if (!aic_import_deferred_hardlinks_for (ctx, key, value, error))
-      return FALSE;
-
+  GLNX_HASH_TABLE_FOREACH_KV (ctx->deferred_hardlinks, const char*, target, GSList*, links)
+    {
+      if (!aic_import_deferred_hardlinks_for (ctx, target, links, error))
+        return FALSE;
+    }
   return TRUE;
 }
 

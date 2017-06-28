@@ -232,8 +232,6 @@ repo_prune_internal (OstreeRepo        *self,
                      GCancellable      *cancellable,
                      GError           **error)
 {
-  GHashTableIter hash_iter;
-  gpointer key, value;
   OtPruneData data = { 0, };
 
   data.repo = self;
@@ -241,11 +239,8 @@ repo_prune_internal (OstreeRepo        *self,
   g_autoptr(GHashTable) reachable_owned = g_hash_table_ref (options->reachable);
   data.reachable = reachable_owned;
 
-  g_hash_table_iter_init (&hash_iter, objects);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH_KV (objects, GVariant*, serialized_key, GVariant*, objdata)
     {
-      GVariant *serialized_key = key;
-      GVariant *objdata = value;
       const char *checksum;
       OstreeObjectType objtype;
       gboolean is_loose;
@@ -309,13 +304,10 @@ ostree_repo_prune (OstreeRepo        *self,
                    GCancellable      *cancellable,
                    GError           **error)
 {
-  GHashTableIter hash_iter;
-  gpointer key, value;
   g_autoptr(GHashTable) objects = NULL;
-  g_autoptr(GHashTable) reachable = NULL;
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
 
-  reachable = ostree_repo_traverse_new_reachable ();
+  g_autoptr(GHashTable) reachable = ostree_repo_traverse_new_reachable ();
 
   /* This original prune API has fixed logic for traversing refs or all commits
    * combined with actually deleting content. The newer backend API just does
@@ -331,12 +323,8 @@ ostree_repo_prune (OstreeRepo        *self,
                                   cancellable, error))
         return FALSE;
 
-      g_hash_table_iter_init (&hash_iter, all_refs);
-
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+      GLNX_HASH_TABLE_FOREACH_V (all_refs, const char*, checksum)
         {
-          const char *checksum = value;
-
           g_debug ("Finding objects to keep for commit %s", checksum);
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
                                                   cancellable, error))
@@ -350,12 +338,8 @@ ostree_repo_prune (OstreeRepo        *self,
                                              cancellable, error))
         return FALSE;
 
-      g_hash_table_iter_init (&hash_iter, all_collection_refs);
-
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+      GLNX_HASH_TABLE_FOREACH_V (all_collection_refs, const char*, checksum)
         {
-          const char *checksum = value;
-
           g_debug ("Finding objects to keep for commit %s", checksum);
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
                                                   cancellable, error))
@@ -369,10 +353,8 @@ ostree_repo_prune (OstreeRepo        *self,
 
   if (!refs_only)
     {
-      g_hash_table_iter_init (&hash_iter, objects);
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+      GLNX_HASH_TABLE_FOREACH (objects, GVariant*, serialized_key)
         {
-          GVariant *serialized_key = key;
           const char *checksum;
           OstreeObjectType objtype;
 

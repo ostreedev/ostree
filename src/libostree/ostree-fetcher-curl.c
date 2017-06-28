@@ -690,9 +690,6 @@ static void
 adopt_steal_mainctx (OstreeFetcher *self,
                      GMainContext *mainctx)
 {
-  GHashTableIter hiter;
-  gpointer key, value;
-
   g_assert (self->mainctx == NULL);
   self->mainctx = mainctx; /* Transfer */
 
@@ -706,12 +703,8 @@ adopt_steal_mainctx (OstreeFetcher *self,
       update_timeout_cb (self->multi, timeout_micros / 1000, self);
     }
 
-  g_hash_table_iter_init (&hiter, self->sockets);
-  while (g_hash_table_iter_next (&hiter, &key, &value))
-    {
-      SockInfo *fdp = key;
-      setsock (fdp, fdp->sockfd, fdp->action, self);
-    }
+  GLNX_HASH_TABLE_FOREACH (self->sockets, SockInfo*, fdp)
+    setsock (fdp, fdp->sockfd, fdp->action, self);
 }
 
 static void

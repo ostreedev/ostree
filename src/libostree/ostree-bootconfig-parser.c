@@ -48,15 +48,11 @@ OstreeBootconfigParser *
 ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
 {
   OstreeBootconfigParser *parser = ostree_bootconfig_parser_new ();
-  guint i;
-  GHashTableIter hashiter;
-  gpointer k, v;
 
-  for (i = 0; i < self->lines->len; i++)
+  for (guint i = 0; i < self->lines->len; i++)
     g_ptr_array_add (parser->lines, g_variant_ref (self->lines->pdata[i]));
 
-  g_hash_table_iter_init (&hashiter, self->options);
-  while (g_hash_table_iter_next (&hashiter, &k, &v))
+  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
     g_hash_table_replace (parser->options, g_strdup (k), g_strdup (v));
 
   return parser;
@@ -183,14 +179,11 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
         }
     }
 
-  GHashTableIter hashiter;
-  gpointer hashkey, hashvalue;
-  g_hash_table_iter_init (&hashiter, self->options);
-  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
     {
-      if (g_hash_table_lookup (written_overrides, hashkey))
+      if (g_hash_table_lookup (written_overrides, k))
         continue;
-      write_key (self, buf, hashkey, hashvalue);
+      write_key (self, buf, k, v);
     }
 
   if (!glnx_file_replace_contents_at (dfd, path, (guint8*)buf->str, buf->len,

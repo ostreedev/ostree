@@ -362,33 +362,24 @@ add_size_index_to_metadata (OstreeRepo        *self,
 {
   gboolean ret = FALSE;
   g_autoptr(GVariantBuilder) builder = NULL;
-    
+
   /* original_metadata may be NULL */
   builder = ot_util_variant_builder_from_variant (original_metadata, G_VARIANT_TYPE ("a{sv}"));
 
   if (self->object_sizes &&
       g_hash_table_size (self->object_sizes) > 0)
     {
-      GHashTableIter entries = { 0 };
-      gchar *e_checksum = NULL;
-      OstreeContentSizeCacheEntry *e_size = NULL;
       GVariantBuilder index_builder;
-      guint i;
-      g_autoptr(GPtrArray) sorted_keys = NULL;
-      
-      g_hash_table_iter_init (&entries, self->object_sizes);
       g_variant_builder_init (&index_builder,
                               G_VARIANT_TYPE ("a" _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE));
 
       /* Sort the checksums so we can bsearch if desired */
-      sorted_keys = g_ptr_array_new ();
-      while (g_hash_table_iter_next (&entries,
-                                     (gpointer *) &e_checksum,
-                                     (gpointer *) &e_size))
-        g_ptr_array_add (sorted_keys, e_checksum);
+      g_autoptr(GPtrArray) sorted_keys = g_ptr_array_new ();
+      GLNX_HASH_TABLE_FOREACH (self->object_sizes, const char*, e_checksum)
+        g_ptr_array_add (sorted_keys, (gpointer)e_checksum);
       g_ptr_array_sort (sorted_keys, compare_ascii_checksums_for_sorting);
 
-      for (i = 0; i < sorted_keys->len; i++)
+      for (guint i = 0; i < sorted_keys->len; i++)
         {
           guint8 csum[OSTREE_SHA256_DIGEST_LEN];
           const char *e_checksum = sorted_keys->pdata[i];
@@ -397,18 +388,19 @@ add_size_index_to_metadata (OstreeRepo        *self,
           ostree_checksum_inplace_to_bytes (e_checksum, csum);
           g_string_append_len (buffer, (char*)csum, sizeof (csum));
 
-          e_size = g_hash_table_lookup (self->object_sizes, e_checksum);
+          OstreeContentSizeCacheEntry *e_size =
+            g_hash_table_lookup (self->object_sizes, e_checksum);
           _ostree_write_varuint64 (buffer, e_size->archived);
           _ostree_write_varuint64 (buffer, e_size->unpacked);
 
           g_variant_builder_add (&index_builder, "@ay",
                                  ot_gvariant_new_bytearray ((guint8*)buffer->str, buffer->len));
         }
-      
+
       g_variant_builder_add (builder, "{sv}", "ostree.sizes",
                              g_variant_builder_end (&index_builder));
     }
-    
+
   ret = TRUE;
   *out_metadata = g_variant_builder_end (builder);
   g_variant_ref_sink (*out_metadata);
@@ -2234,8 +2226,6 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
                                  GHashTable            *dir_contents_checksums,
                                  GHashTable            *dir_metadata_checksums)
 {
-  GHashTableIter hash_iter;
-  gpointer key, value;
   GVariantBuilder files_builder;
   GVariantBuilder dirs_builder;
   GSList *sorted_filenames = NULL;
@@ -2245,11 +2235,8 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   g_variant_builder_init (&files_builder, G_VARIANT_TYPE ("a(say)"));
   g_variant_builder_init (&dirs_builder, G_VARIANT_TYPE ("a(sayay)"));
 
-  g_hash_table_iter_init (&hash_iter, file_checksums);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH (file_checksums, const char*, name)
     {
-      const char *name = key;
-
       /* Should have been validated earlier, but be paranoid */
       g_assert (ot_util_filename_validate (name, NULL));
 
@@ -2270,13 +2257,8 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
 
   g_slist_free (sorted_filenames);
   sorted_filenames = NULL;
-
-  g_hash_table_iter_init (&hash_iter, dir_metadata_checksums);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *name = key;
-      sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
-    }
+  GLNX_HASH_TABLE_FOREACH (dir_metadata_checksums, const char*, name)
+    sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
 
   sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
 
@@ -2993,15 +2975,10 @@ ostree_repo_write_mtree (OstreeRepo           *self,
       dir_metadata_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                       (GDestroyNotify)g_free, (GDestroyNotify)g_free);
 
-      GHashTableIter hash_iter;
-      gpointer key, value;
-      g_hash_table_iter_init (&hash_iter, ostree_mutable_tree_get_subdirs (mtree));
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+      GLNX_HASH_TABLE_FOREACH_KV (ostree_mutable_tree_get_subdirs (mtree),
+                                  const char*, name, OstreeMutableTree*, child_dir)
         {
-          const char *name = key;
           g_autoptr(GFile) child_file = NULL;
-          OstreeMutableTree *child_dir = value;
-
           if (!ostree_repo_write_mtree (self, child_dir, &child_file,
                                         cancellable, error))
             return FALSE;
