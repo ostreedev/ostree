@@ -33,8 +33,6 @@ G_BEGIN_DECLS
 #define OSTREE_GIO_FAST_QUERYINFO ("standard::name,standard::type,standard::size,standard::is-symlink,standard::symlink-target," \
                                    "unix::device,unix::inode,unix::mode,unix::uid,unix::gid,unix::rdev")
 
-GFileType ot_gfile_type_for_mode (guint32 mode);
-
 GFile * ot_gfile_resolve_path_printf (GFile       *path,
                                       const char  *format,
                                       ...) G_GNUC_PRINTF(2, 3);

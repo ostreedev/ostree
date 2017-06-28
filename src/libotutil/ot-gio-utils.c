@@ -35,22 +35,6 @@
 #define O_BINARY 0
 #endif
 
-GFileType
-ot_gfile_type_for_mode (guint32 mode)
-{
-  if (S_ISDIR (mode))
-    return G_FILE_TYPE_DIRECTORY;
-  else if (S_ISREG (mode))
-    return G_FILE_TYPE_REGULAR;
-  else if (S_ISLNK (mode))
-    return G_FILE_TYPE_SYMBOLIC_LINK;
-  else if (S_ISBLK (mode) || S_ISCHR(mode) || S_ISFIFO(mode))
-    return G_FILE_TYPE_SPECIAL;
-  else
-    return G_FILE_TYPE_UNKNOWN;
-}
-
-
 GFile *
 ot_gfile_resolve_path_printf (GFile       *path,
                               const char  *format,

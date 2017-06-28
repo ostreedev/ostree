@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ostree-core.h"
+#include <sys/stat.h>
 
 G_BEGIN_DECLS
 
@@ -88,7 +89,8 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
                                    GCancellable   *cancellable,
                                    GError        **error);
 
-GFileInfo * _ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid);
+GFileInfo * _ostree_stbuf_to_gfileinfo (const struct stat *stbuf);
+GFileInfo * _ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid);
 
 static inline void
 _ostree_checksum_inplace_from_bytes_v (GVariant *csum_v, char *buf)
