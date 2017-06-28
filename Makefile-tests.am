@@ -122,6 +122,7 @@ _installed_or_uninstalled_test_scripts += \
 	tests/test-refs-collections.sh \
 	tests/test-remote-add-collections.sh \
 	tests/test-summary-collections.sh \
+	tests/test-pull-collections.sh \
 	$(NULL)
 endif
 
