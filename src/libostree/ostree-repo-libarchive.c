@@ -126,32 +126,23 @@ squash_trailing_slashes (char *path)
 static GFileInfo *
 file_info_from_archive_entry (struct archive_entry *entry)
 {
-  g_autoptr(GFileInfo) info = NULL;
-  const struct stat *st = NULL;
-  guint32 file_type;
-  mode_t mode;
-
-  st = archive_entry_stat (entry);
-  mode = st->st_mode;
+  const struct stat *st = archive_entry_stat (entry);
+  struct stat st_copy;
 
   /* Some archives only store the permission mode bits in hardlink entries, so
    * let's just make it into a regular file. Yes, this hack will work even if
    * it's a hardlink to a symlink. */
   if (archive_entry_hardlink (entry))
-    mode |= S_IFREG;
-
-  info = _ostree_header_gfile_info_new (mode, st->st_uid, st->st_gid);
-
-  file_type = ot_gfile_type_for_mode (mode);
-  if (file_type == G_FILE_TYPE_REGULAR)
     {
-      g_file_info_set_attribute_uint64 (info, "standard::size", st->st_size);
+      st_copy = *st;
+      st_copy.st_mode |= S_IFREG;
+      st = &st_copy;
     }
-  else if (file_type == G_FILE_TYPE_SYMBOLIC_LINK)
-    {
-      g_file_info_set_attribute_byte_string (info, "standard::symlink-target",
-                                             archive_entry_symlink (entry));
-    }
+
+  g_autoptr(GFileInfo) info = _ostree_stbuf_to_gfileinfo (st);
+  if (S_ISLNK (st->st_mode))
+    g_file_info_set_attribute_byte_string (info, "standard::symlink-target",
+                                           archive_entry_symlink (entry));
 
   return g_steal_pointer (&info);
 }

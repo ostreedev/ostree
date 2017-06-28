@@ -515,18 +515,15 @@ dispatch_bspatch (OstreeRepo                 *repo,
 static gboolean
 handle_untrusted_content_checksum (OstreeRepo                 *repo,
                                    StaticDeltaExecutionState  *state,
-                                   GCancellable               *cancellable,  
+                                   GCancellable               *cancellable,
                                    GError                    **error)
 {
-  g_autoptr(GVariant) header = NULL;
-  g_autoptr(GFileInfo) finfo = NULL;
-  gsize bytes_written;
-
-  finfo = _ostree_header_gfile_info_new (state->mode, state->uid, state->gid);
-  header = _ostree_file_header_new (finfo, state->xattrs);
+  g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (state->mode, state->uid, state->gid);
+  g_autoptr(GVariant) header = _ostree_file_header_new (finfo, state->xattrs);
 
   state->content_checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
+  gsize bytes_written;
   if (!_ostree_write_variant_with_size (NULL, header, 0, &bytes_written, state->content_checksum,
                                         cancellable, error))
     return FALSE;
@@ -629,9 +626,8 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       else
         {
           /* Slower path, for symlinks and unpacking deltas into archive-z2 */
-          g_autoptr(GFileInfo) finfo = NULL;
-      
-          finfo = _ostree_header_gfile_info_new (state->mode, state->uid, state->gid);
+          g_autoptr(GFileInfo) finfo =
+            _ostree_mode_uidgid_to_gfileinfo (state->mode, state->uid, state->gid);
 
           if (S_ISLNK (state->mode))
             {
