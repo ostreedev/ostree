@@ -1088,13 +1088,12 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
   self->updated_uncompressed_dirs = g_hash_table_new (NULL, NULL);
   g_mutex_unlock (&self->cache_lock);
 
-  GHashTableIter iter;
-  gpointer key, value;
-  if (to_clean_dirs)
-    g_hash_table_iter_init (&iter, to_clean_dirs);
-  while (to_clean_dirs && g_hash_table_iter_next (&iter, &key, &value))
+  if (!to_clean_dirs)
+    return TRUE; /* Note early return */
+
+  GLNX_HASH_TABLE_FOREACH (to_clean_dirs, guint, prefix)
     {
-      g_autofree char *objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
+      g_autofree char *objdir_name = g_strdup_printf ("%02x", prefix);
       g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
       if (!glnx_dirfd_iterator_init_at (self->uncompressed_objects_dir_fd, objdir_name, FALSE,
