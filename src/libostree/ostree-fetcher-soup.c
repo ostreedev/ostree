@@ -1323,24 +1323,18 @@ _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
 guint64
 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 {
-  GHashTableIter hiter;
-  gpointer key, value;
-  guint64 ret;
-
   g_return_val_if_fail (OSTREE_IS_FETCHER (self), 0);
 
   g_mutex_lock (&self->thread_closure->output_stream_set_lock);
 
-  ret = self->thread_closure->total_downloaded;
+  guint64 ret = self->thread_closure->total_downloaded;
 
-  g_hash_table_iter_init (&hiter, self->thread_closure->output_stream_set);
-  while (g_hash_table_iter_next (&hiter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH (self->thread_closure->output_stream_set,
+                           GFileOutputStream*, stream)
     {
-      GFileOutputStream *stream = key;
-      struct stat stbuf;
-      
       if (G_IS_FILE_DESCRIPTOR_BASED (stream))
         {
+          struct stat stbuf;
           if (glnx_stream_fstat ((GFileDescriptorBased*)stream, &stbuf, NULL))
             ret += stbuf.st_size;
         }

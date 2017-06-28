@@ -114,9 +114,6 @@ ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
 const char *
 ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self)
 {
-  GHashTableIter iter;
-  gpointer key, value;
-
   if (!self->contents_checksum)
     return NULL;
 
@@ -127,10 +124,8 @@ ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self)
    *
    * However, we only call this function once right now.
    */
-  g_hash_table_iter_init (&iter, self->subdirs);
-  while (g_hash_table_iter_next (&iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH_V (self->subdirs, OstreeMutableTree*, subdir)
     {
-      OstreeMutableTree *subdir = value;
       if (!ostree_mutable_tree_get_contents_checksum (subdir))
         {
           g_free (self->contents_checksum);

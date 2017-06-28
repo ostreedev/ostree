@@ -2023,23 +2023,19 @@ get_best_static_delta_start_for (OtPullData *pull_data,
                                  GCancellable *cancellable,
                                  GError      **error)
 {
-  GHashTableIter hiter;
-  gpointer hkey, hvalue;
   /* Array<char*> of possible from checksums */
   g_autoptr(GPtrArray) candidates = g_ptr_array_new_with_free_func (g_free);
   const char *newest_candidate = NULL;
   guint64 newest_candidate_timestamp = 0;
 
   g_assert (pull_data->summary_deltas_checksums != NULL);
-  g_hash_table_iter_init (&hiter, pull_data->summary_deltas_checksums);
 
   *out_have_scratch_delta = FALSE;
 
   /* Loop over all deltas known from the summary file,
    * finding ones which go to to_revision */
-  while (g_hash_table_iter_next (&hiter, &hkey, &hvalue))
+  GLNX_HASH_TABLE_FOREACH (pull_data->summary_deltas_checksums, const char*, delta_name)
     {
-      const char *delta_name = hkey;
       g_autofree char *cur_from_rev = NULL;
       g_autofree char *cur_to_rev = NULL;
 
@@ -2893,8 +2889,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                GError                **error)
 {
   gboolean ret = FALSE;
-  GHashTableIter hash_iter;
-  gpointer key, value;
   g_autoptr(GBytes) bytes_summary = NULL;
   g_autofree char *metalink_url_str = NULL;
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
@@ -3539,15 +3533,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   /* Resolve the checksum for each ref. This has to be done into a new hash table,
    * since we can’t modify the keys of @requested_refs_to_fetch while iterating
    * over it, and we need to ensure the collection IDs are resolved too. */
-  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   updated_requested_refs_to_fetch = g_hash_table_new_full (ostree_collection_ref_hash,
                                                            ostree_collection_ref_equal,
                                                            (GDestroyNotify) ostree_collection_ref_free,
                                                            g_free);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH_KV (requested_refs_to_fetch, const OstreeCollectionRef*, ref,
+                                                       const char*, override_commitid)
     {
-      const OstreeCollectionRef *ref = key;
-      const char *override_commitid = value;
       g_autofree char *contents = NULL;
 
       /* Support specifying "" for an override commitid */
@@ -3621,20 +3613,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_debug ("resuming legacy transaction");
 
   /* Initiate requests for explicit commit revisions */
-  g_hash_table_iter_init (&hash_iter, commits_to_fetch);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH_V (commits_to_fetch, const char*, commit)
     {
-      const char *commit = value;
       if (!initiate_request (pull_data, NULL, commit, error))
         goto out;
     }
 
   /* Initiate requests for refs */
-  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH_KV (requested_refs_to_fetch, const OstreeCollectionRef*, ref,
+                                                       const char*, to_revision)
     {
-      const OstreeCollectionRef *ref = key;
-      const char *to_revision = value;
       if (!initiate_request (pull_data, ref, to_revision, error))
         goto out;
     }
@@ -3671,11 +3659,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_assert_cmpint (pull_data->n_outstanding_content_fetches, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_content_write_requests, ==, 0);
 
-  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH_KV (requested_refs_to_fetch, const OstreeCollectionRef*, ref,
+                                                       const char*, checksum)
     {
-      const OstreeCollectionRef *ref = key;
-      const char *checksum = value;
       g_autofree char *remote_ref = NULL;
       g_autofree char *original_rev = NULL;
 
@@ -3762,22 +3748,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   /* iterate over commits fetched and delete any commitpartial files */
   if (pull_data->dirs == NULL && !pull_data->is_commit_only)
     {
-      g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+      GLNX_HASH_TABLE_FOREACH_V (requested_refs_to_fetch, const char*, checksum)
         {
-          const char *checksum = value;
           g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-
           if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
             goto out;
         }
 
-      g_hash_table_iter_init (&hash_iter, commits_to_fetch);
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+      GLNX_HASH_TABLE_FOREACH_V (commits_to_fetch, const char*, commit)
         {
-          const char *commit = value;
           g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (commit);
-
           if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
             goto out;
         }
@@ -4326,18 +4306,16 @@ find_remotes_cb (GObject      *obj,
   GCancellable *cancellable;
   const FindRemotesData *data;
   const OstreeCollectionRef * const *refs;
-  OstreeAsyncProgress *progress;
+  /* FIXME: We currently do nothing with @progress. Comment out to assuage -Wunused-variable */
+  /* OstreeAsyncProgress *progress; */
   g_autoptr(GError) error = NULL;
   g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
   gsize i;
-  GHashTableIter iter;
-  CommitMetadata *commit_metadata;
   g_autoptr(PointerTable) refs_and_remotes_table = NULL;  /* (element-type commit-checksum) */
   g_autoptr(GHashTable) commit_metadatas = NULL;  /* (element-type commit-checksum CommitMetadata) */
   g_autoptr(OstreeFetcher) fetcher = NULL;
   g_autofree const gchar **ref_to_latest_commit = NULL;  /* indexed as @refs; (element-type commit-checksum) */
   gsize n_refs;
-  const gchar *checksum;
   g_autoptr(GPtrArray) remotes_to_remove = NULL;  /* (element-type OstreeRemote) */
   g_autoptr(GPtrArray) final_results = NULL;  /* (element-type OstreeRepoFinderResult) */
 
@@ -4347,7 +4325,7 @@ find_remotes_cb (GObject      *obj,
   data = g_task_get_task_data (task);
 
   refs = (const OstreeCollectionRef * const *) data->refs;
-  progress = data->progress;
+  /* progress = data->progress; */
 
   /* Finish finding the remotes. */
   results = ostree_repo_finder_resolve_all_finish (result, &error);
@@ -4382,8 +4360,6 @@ find_remotes_cb (GObject      *obj,
    * phase, so that we have all the metadata we need for accurate size
    * estimation for the actual pull operation. This should check the
    * disable-static-deltas option first. */
-
-  /* FIXME: We currently do nothing with @progress. */
 
   /* Each key must be a pointer to the #CommitMetadata.checksum field of its value. */
   commit_metadatas = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, (GDestroyNotify) commit_metadata_free);
@@ -4496,9 +4472,7 @@ find_remotes_cb (GObject      *obj,
    * the commit metadata from the remotes. The ‘most recent commits’ are the
    * set of head commits pointed to by the refs we just resolved from the
    * summary files. */
-  g_hash_table_iter_init (&iter, commit_metadatas);
-
-  while (g_hash_table_iter_next (&iter, (gpointer *) &checksum, (gpointer *) &commit_metadata))
+  GLNX_HASH_TABLE_FOREACH_V (commit_metadatas, CommitMetadata*, commit_metadata)
     {
       char buf[_OSTREE_LOOSE_PATH_MAX];
       g_autofree gchar *commit_filename = NULL;
@@ -4853,9 +4827,6 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
   g_autoptr(GHashTable) refs_pulled = NULL;  /* (element-type OstreeCollectionRef gboolean) */
   gsize i, j;
   g_autoptr(GString) refs_unpulled_string = NULL;
-  GHashTableIter iter;
-  const OstreeCollectionRef *ref;
-  gpointer is_pulled_pointer;
   g_autoptr(GError) local_error = NULL;
   g_auto(GVariantDict) options_dict = OT_VARIANT_BUILDER_INITIALIZER;
   OstreeRepoPullFlags flags;
@@ -4900,16 +4871,14 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
       g_auto(GVariantBuilder) refs_to_pull_builder = OT_VARIANT_BUILDER_INITIALIZER;
       g_auto(GVariantDict) local_options_dict = OT_VARIANT_BUILDER_INITIALIZER;
       g_autoptr(GVariant) local_options = NULL;
-      const gchar *checksum;
       gboolean remove_remote;
 
       refs_to_pull = g_ptr_array_new_with_free_func (NULL);
       refs_to_pull_str = g_string_new ("");
       g_variant_builder_init (&refs_to_pull_builder, G_VARIANT_TYPE ("a(sss)"));
 
-      g_hash_table_iter_init (&iter, result->ref_to_checksum);
-
-      while (g_hash_table_iter_next (&iter, (gpointer *) &ref, (gpointer *) &checksum))
+      GLNX_HASH_TABLE_FOREACH_KV (result->ref_to_checksum, const OstreeCollectionRef*, ref,
+                                                           const char*, checksum)
         {
           if (checksum != NULL &&
               !GPOINTER_TO_INT (g_hash_table_lookup (refs_pulled, ref)))
@@ -4996,12 +4965,9 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
     }
 
   /* Any refs left un-downloaded? If so, we’ve failed. */
-  g_hash_table_iter_init (&iter, refs_pulled);
-
-  while (g_hash_table_iter_next (&iter, (gpointer *) &ref, (gpointer *) &is_pulled_pointer))
+  GLNX_HASH_TABLE_FOREACH_KV (refs_pulled, const OstreeCollectionRef*, ref,
+                                           gboolean, is_pulled)
     {
-      gboolean is_pulled = GPOINTER_TO_INT (is_pulled_pointer);
-
       if (is_pulled)
         continue;
 
