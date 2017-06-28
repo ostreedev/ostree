@@ -14,7 +14,7 @@ packages:
 env:
     # Enable all the sanitizers for this primary build.
     # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
-    CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2 -Werror=maybe-uninitialized'
+    CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
     # Only for CI with a known g-ir-scanner
     GI_SCANNERFLAGS: '--warn-error'
     ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
