@@ -437,31 +437,15 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
                                GCancellable     *cancellable,
                                GError          **error)
 {
-  g_auto(GLnxTmpfile) tmpf = { 0, };
-  g_autoptr(GBytes) ret_content = NULL;
   g_autoptr(GInputStream) istream = NULL;
-  g_autoptr(GOutputStream) out = NULL;
-
-  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &tmpf, error))
-    return FALSE;
 
   if (!ostree_repo_load_file (repo, checksum, &istream, NULL, NULL,
                               cancellable, error))
     return FALSE;
 
-  out = g_unix_output_stream_new (tmpf.fd, FALSE);
-  if (g_output_stream_splice (out, istream, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                              cancellable, error) < 0)
+  *out_content = ot_map_anonymous_tmpfile_from_content (istream, cancellable, error);
+  if (!*out_content)
     return FALSE;
-
-  { g_autoptr(GMappedFile) mfile = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
-    if (!mfile)
-      return FALSE;
-    ret_content = g_mapped_file_get_bytes (mfile);
-  }
-
-  if (out_content)
-    *out_content = g_steal_pointer (&ret_content);
   return TRUE;
 }
 

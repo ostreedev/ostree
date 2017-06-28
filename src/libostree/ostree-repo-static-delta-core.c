@@ -473,41 +473,14 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
       break;
     case 'x':
       {
-        g_autofree char *tmppath = g_strdup ("/var/tmp/ostree-delta-XXXXXX");
         g_autoptr(GConverter) decomp = (GConverter*) _ostree_lzma_decompressor_new ();
         g_autoptr(GInputStream) convin = g_converter_input_stream_new (source_in, decomp);
-        g_autoptr(GOutputStream) unpacked_out = NULL;
-        glnx_fd_close int unpacked_fd = -1;
-        gssize n_bytes_written;
-
-        unpacked_fd = g_mkstemp_full (tmppath, O_RDWR | O_CLOEXEC, 0640);
-        if (unpacked_fd < 0)
-          {
-            glnx_set_error_from_errno (error);
-            goto out;
-          }
-        
-        /* Now make it autocleanup on process exit - in the future, we
-         * should consider caching unpacked deltas as well.
-         */
-        if (unlink (tmppath) < 0)
-          {
-            glnx_set_error_from_errno (error);
-            goto out;
-          }
-        
-        unpacked_out = g_unix_output_stream_new (unpacked_fd, FALSE);
-
-        n_bytes_written = g_output_stream_splice (unpacked_out, convin,
-                                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
-                                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                                  cancellable, error);
-        if (n_bytes_written < 0)
+        g_autoptr(GBytes) buf = ot_map_anonymous_tmpfile_from_content (convin, cancellable, error);
+        if (!buf)
           goto out;
 
-        if (!ot_util_variant_map_fd (unpacked_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
-                                     trusted, &ret_part, error))
-          goto out;
+        ret_part = g_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
+                                             buf, FALSE);
       }
       break;
     default:
