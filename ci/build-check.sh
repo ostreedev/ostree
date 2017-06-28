@@ -20,6 +20,5 @@ if test -x /usr/bin/clang; then
     # job than gcc for vars with cleanups; perhaps in the future these could
     # parallelize
     export CC=clang
-    export CFLAGS='-Werror=unused-variable'
     build
 fi
