@@ -12,6 +12,9 @@ pkg_install sudo which attr fuse \
     elfutils
 pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang
 
+# always fail on warnings; https://github.com/ostreedev/ostree/pull/971
+export CFLAGS="-Werror ${CFLAGS:-}"
+
 DETECTED_CONFIGOPTS=
 if test -x /usr/bin/gnome-desktop-testing-runner; then
     DETECTED_CONFIGOPTS="${DETECTED_CONFIGOPTS} --enable-installed-tests=exclusive"
