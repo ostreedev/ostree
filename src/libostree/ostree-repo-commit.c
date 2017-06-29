@@ -2748,7 +2748,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   if (fstat (src_dfd_iter->fd, &dir_stbuf) != 0)
     return glnx_throw_errno (error);
 
-  child_info = _ostree_header_gfile_info_new (dir_stbuf.st_mode, dir_stbuf.st_uid, dir_stbuf.st_gid);
+  child_info = _ostree_stbuf_to_gfileinfo (&dir_stbuf);
 
   if (modifier != NULL)
     {
@@ -2809,13 +2809,11 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
           continue;
         }
 
-      child_info = _ostree_header_gfile_info_new (stbuf.st_mode, stbuf.st_uid, stbuf.st_gid);
+      child_info = _ostree_stbuf_to_gfileinfo (&stbuf);
       g_file_info_set_name (child_info, dent->d_name);
 
       if (S_ISREG (stbuf.st_mode))
-        {
-          g_file_info_set_size (child_info, stbuf.st_size);
-        }
+        ;
       else if (S_ISLNK (stbuf.st_mode))
         {
           if (!ot_readlinkat_gfile_info (src_dfd_iter->fd, dent->d_name,

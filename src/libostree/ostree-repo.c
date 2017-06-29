@@ -2791,18 +2791,11 @@ ostree_repo_load_file (OstreeRepo         *self,
         }
       if (out_file_info)
         {
-          *out_file_info = _ostree_header_gfile_info_new (stbuf.st_mode, stbuf.st_uid, stbuf.st_gid);
-          if (S_ISREG (stbuf.st_mode))
-            {
-              g_file_info_set_size (*out_file_info, stbuf.st_size);
-            }
-          else if (S_ISLNK (stbuf.st_mode))
-            {
-              g_file_info_set_size (*out_file_info, 0);
-              g_file_info_set_symlink_target (*out_file_info, symlink_target);
-            }
+          *out_file_info = _ostree_stbuf_to_gfileinfo (&stbuf);
+          if (S_ISLNK (stbuf.st_mode))
+            g_file_info_set_symlink_target (*out_file_info, symlink_target);
           else
-            g_assert_not_reached ();
+            g_assert (S_ISREG (stbuf.st_mode));
         }
 
       ot_transfer_out_value (out_xattrs, &ret_xattrs);

@@ -1493,7 +1493,7 @@ _ostree_loose_path (char              *buf,
 }
 
 /**
- * _ostree_header_gfile_info_new:
+ * _ostree_stbuf_to_gfileinfo:
  * @mode: File mode
  * @uid: File uid
  * @gid: File gid
@@ -1506,15 +1506,40 @@ _ostree_loose_path (char              *buf,
  * Returns: (transfer full): A new #GFileInfo mapping a subset of @stbuf.
  */
 GFileInfo *
-_ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid)
+_ostree_stbuf_to_gfileinfo (const struct stat *stbuf)
 {
   GFileInfo *ret = g_file_info_new ();
-  g_file_info_set_attribute_uint32 (ret, "standard::type", ot_gfile_type_for_mode (mode));
+  GFileType ftype;
+  const mode_t mode = stbuf->st_mode;
+  if (S_ISDIR (mode))
+    ftype = G_FILE_TYPE_DIRECTORY;
+  else if (S_ISREG (mode))
+    ftype = G_FILE_TYPE_REGULAR;
+  else if (S_ISLNK (mode))
+    ftype = G_FILE_TYPE_SYMBOLIC_LINK;
+  else if (S_ISBLK (mode) || S_ISCHR(mode) || S_ISFIFO(mode))
+    ftype = G_FILE_TYPE_SPECIAL;
+  else
+    ftype = G_FILE_TYPE_UNKNOWN;
+  g_file_info_set_attribute_uint32 (ret, "standard::type", ftype);
   g_file_info_set_attribute_boolean (ret, "standard::is-symlink", S_ISLNK (mode));
-  g_file_info_set_attribute_uint32 (ret, "unix::uid", uid);
-  g_file_info_set_attribute_uint32 (ret, "unix::gid", gid);
+  g_file_info_set_attribute_uint32 (ret, "unix::uid", stbuf->st_uid);
+  g_file_info_set_attribute_uint32 (ret, "unix::gid", stbuf->st_gid);
   g_file_info_set_attribute_uint32 (ret, "unix::mode", mode);
+  if (S_ISREG (mode))
+    g_file_info_set_attribute_uint64 (ret, "standard::size", stbuf->st_size);
+
   return ret;
+}
+
+GFileInfo *
+_ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid)
+{
+  struct stat stbuf;
+  stbuf.st_mode = mode;
+  stbuf.st_uid = uid;
+  stbuf.st_gid = gid;
+  return _ostree_stbuf_to_gfileinfo (&stbuf);
 }
 
 /*
@@ -1680,8 +1705,7 @@ file_header_parse (GVariant         *metadata,
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-
-  g_autoptr(GFileInfo) ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
+  g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
 
   if (S_ISREG (mode))
     {
@@ -1731,7 +1755,7 @@ zlib_file_header_parse (GVariant         *metadata,
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-  g_autoptr(GFileInfo) ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
+  g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
   g_file_info_set_size (ret_file_info, GUINT64_FROM_BE (size));
 
   if (S_ISREG (mode))
