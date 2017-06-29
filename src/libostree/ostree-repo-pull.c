@@ -119,7 +119,7 @@ typedef struct {
   guint             n_fetched_deltapart_fallbacks;
   guint             n_fetched_metadata;
   guint             n_fetched_content;
-  /* Objects from pull --reference */
+  /* Objects from pull --localcache-repo */
   guint             n_fetched_localcache_metadata;
   guint             n_fetched_localcache_content;
 
@@ -1559,7 +1559,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
       is_stored = TRUE;
       is_requested = TRUE;
     }
-  /* Do we have any --reference local repos? */
+  /* Do we have any localcache repos? */
   else if (!is_stored && pull_data->localcache_repos)
     {
       for (guint i = 0; i < pull_data->localcache_repos->len; i++)
@@ -1577,6 +1577,9 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
                                                           !pull_data->is_untrusted,
                                                           cancellable, error))
             return FALSE;
+          /* See comment above */
+          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+            g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
           is_stored = TRUE;
           is_requested = TRUE;
           pull_data->n_fetched_localcache_metadata++;
