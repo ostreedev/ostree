@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include <glib-unix.h>
+#include <sys/statvfs.h>
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
@@ -574,6 +575,24 @@ write_content_object (OstreeRepo         *self,
   else
     size = 0;
 
+  /* Free space check; only applies during transactions */
+  if (self->min_free_space_percent > 0 && self->in_transaction)
+    {
+      g_mutex_lock (&self->txn_stats_lock);
+      g_assert_cmpint (self->txn_blocksize, >, 0);
+      const fsblkcnt_t object_blocks = (size / self->txn_blocksize) + 1;
+      if (object_blocks > self->max_txn_blocks)
+        {
+          g_mutex_unlock (&self->txn_stats_lock);
+          g_autofree char *formatted_required = g_format_size ((guint64)object_blocks * self->txn_blocksize);
+          return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s more required",
+                             self->min_free_space_percent, formatted_required);
+        }
+      /* This is the main bit that needs mutex protection */
+      self->max_txn_blocks -= object_blocks;
+      g_mutex_unlock (&self->txn_stats_lock);
+    }
+
   /* For regular files, we create them with default mode, and only
    * later apply any xattrs and setuid bits.  The rationale here
    * is that an attacker on the network with the ability to MITM
@@ -1080,6 +1099,29 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
 
   self->in_transaction = TRUE;
+  if (self->min_free_space_percent > 0)
+    {
+      struct statvfs stvfsbuf;
+      if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
+        return glnx_throw_errno_prefix (error, "fstatvfs");
+      g_mutex_lock (&self->txn_stats_lock);
+      self->txn_blocksize = stvfsbuf.f_bsize;
+      /* Convert fragment to blocks to compute the total */
+      guint64 total_blocks = (stvfsbuf.f_frsize * stvfsbuf.f_blocks) / stvfsbuf.f_bsize;
+      /* Use the appropriate free block count if we're unprivileged */
+      guint64 bfree = (getuid () != 0 ? stvfsbuf.f_bavail : stvfsbuf.f_bfree);
+      guint64 reserved_blocks = ((double)total_blocks) * (self->min_free_space_percent/100.0);
+      if (bfree > reserved_blocks)
+        self->max_txn_blocks = bfree - reserved_blocks;
+      else
+        {
+          g_mutex_unlock (&self->txn_stats_lock);
+          g_autofree char *formatted_free = g_format_size (bfree * self->txn_blocksize);
+          return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s available",
+                             self->min_free_space_percent, formatted_free);
+        }
+      g_mutex_unlock (&self->txn_stats_lock);
+    }
 
   gboolean ret_transaction_resume = FALSE;
   if (!_ostree_repo_allocate_tmpdir (self->tmp_dir_fd,

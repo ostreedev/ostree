@@ -190,6 +190,14 @@ Boston, MA 02111-1307, USA.
         <term><varname>unconfigured-state</varname></term>
         <listitem><para>If set, pulls from this remote will fail with the configured text.  This is intended for OS vendors which have a subscription process to access content.</para></listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><varname>min-free-space-percent</varname></term>
+        <listitem><para>Integer percentage value (0-99) that specifies a minimum
+        percentage of total space (in blocks) in the underlying filesystem to
+        keep free. The default value is 3.</para></listitem>
+      </varlistentry>
+
     </variablelist>
 
   </refsect1>

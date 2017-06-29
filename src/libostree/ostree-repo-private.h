@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <sys/statvfs.h>
 #include "ostree-ref.h"
 #include "ostree-repo.h"
 #include "ostree-remote-private.h"
@@ -102,6 +103,9 @@ struct OstreeRepo {
   GHashTable *txn_collection_refs;  /* (element-type OstreeCollectionRef utf8) */
   GMutex txn_stats_lock;
   OstreeRepoTransactionStats txn_stats;
+  /* Implementation of min-free-space-percent */
+  gulong txn_blocksize;
+  fsblkcnt_t max_txn_blocks;
 
   GMutex cache_lock;
   guint dirmeta_cache_refcount;
@@ -123,6 +127,7 @@ struct OstreeRepo {
   uid_t owner_uid;
   uid_t target_owner_uid;
   gid_t target_owner_gid;
+  guint min_free_space_percent;
 
   guint test_error_flags; /* OstreeRepoTestErrorFlags */
 
