@@ -39,8 +39,10 @@ echo "1..25"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
-${CMD_PREFIX} ostree --repo=repo pull origin main
-${CMD_PREFIX} ostree --repo=repo pull origin:main
+${CMD_PREFIX} ostree --repo=repo pull origin main >out.txt
+assert_file_has_content out.txt "[1-9][0-9]* metadata, [1-9][0-9]* content objects fetched"
+${CMD_PREFIX} ostree --repo=repo pull origin:main > out.txt
+assert_not_file_has_content out.txt "content objects fetched"
 ${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok pull"
 
