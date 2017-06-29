@@ -1495,7 +1495,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
   if (g_hash_table_lookup (pull_data->scanned_metadata, object))
     return TRUE;
 
-  gboolean is_requested = g_hash_table_lookup (pull_data->requested_metadata, object) != NULL;;
+  gboolean is_requested = g_hash_table_lookup (pull_data->requested_metadata, object) != NULL;
   gboolean is_stored;
   if (!ostree_repo_has_object (pull_data->repo, objtype, tmp_checksum, &is_stored,
                                cancellable, error))
