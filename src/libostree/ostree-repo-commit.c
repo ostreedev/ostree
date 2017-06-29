@@ -481,10 +481,27 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
     }
   else
     {
-      g_autoptr(GOutputStream) temp_out = g_unix_output_stream_new (tmpf.fd, FALSE);
-      if (g_output_stream_splice (temp_out, input, 0,
-                                  cancellable, error) < 0)
-        return FALSE;
+      /* We used to do a g_output_stream_splice(), but there are two issues with that:
+       *  - We want to honor the size provided, to avoid malicious content that says it's
+       *    e.g. 10 bytes but is actually gigabytes.
+       *  - Due to GLib bugs that pointlessly calls `poll()` on the output fd for every write
+       */
+      char buf[8192];
+      guint64 remaining = length;
+      while (remaining > 0)
+        {
+          const gssize bytes_read =
+            g_input_stream_read (input, buf, MIN (remaining, sizeof (buf)), cancellable, error);
+          if (bytes_read < 0)
+            return FALSE;
+          else if (G_UNLIKELY (bytes_read == 0 && remaining > 0))
+            return glnx_throw (error, "Unexpected EOF with %" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT " bytes remaining", remaining, length);
+          else if (bytes_read == 0)
+            break;
+          if (glnx_loop_write (tmpf.fd, buf, bytes_read) < 0)
+            return glnx_throw_errno_prefix (error, "write");
+          remaining -= bytes_read;
+        }
     }
 
   if (fchmod (tmpf.fd, 0644) < 0)
