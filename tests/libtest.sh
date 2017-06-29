@@ -117,15 +117,14 @@ else
 fi
 
 files_are_hardlinked() {
-    f1=$(stat -c %i $1)
-    f2=$(stat -c %i $2)
-    [ "$f1" == "$f2" ]
+    inode1=$(stat -c %i $1)
+    inode2=$(stat -c %i $2)
+    test -n "${inode1}" && test -n "${inode2}"
+    [ "${inode1}" == "${inode2}" ]
 }
 
 assert_files_hardlinked() {
-    f1=$(stat -c %i $1)
-    f2=$(stat -c %i $2)
-    if ! files_are_hardlinked "$f1" "$f2"; then
+    if ! files_are_hardlinked "$1" "$2"; then
         fatal "Files '$1' and '$2' are not hardlinked"
     fi
 }
