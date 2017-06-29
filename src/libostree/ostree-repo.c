@@ -3074,25 +3074,24 @@ import_one_object_link (OstreeRepo    *self,
    */
   if (import_is_bareuser_only_conversion (source, self, objtype))
     {
-      g_autoptr(GFileInfo) finfo = NULL;
+      struct stat stbuf;
 
-      if (!ostree_repo_load_file (source, checksum, NULL, &finfo, NULL,
-                                  cancellable, error))
+      if (!_ostree_repo_load_file_bare (source, checksum, NULL, &stbuf,
+                                        NULL, NULL, cancellable, error))
         return FALSE;
 
-      switch (g_file_info_get_file_type (finfo))
+      if (S_ISREG (stbuf.st_mode))
         {
-        case G_FILE_TYPE_REGULAR:
           /* This is OK, we'll drop through and try a hardlink */
-          break;
-        case G_FILE_TYPE_SYMBOLIC_LINK:
+        }
+      else if (S_ISLNK (stbuf.st_mode))
+        {
           /* NOTE early return */
           *out_was_supported = FALSE;
           return TRUE;
-        default:
-          g_assert_not_reached ();
-          break;
         }
+      else
+        g_assert_not_reached ();
     }
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path_buf, cancellable, error))
