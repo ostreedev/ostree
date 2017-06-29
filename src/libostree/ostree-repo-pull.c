@@ -1489,22 +1489,17 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
                             GCancellable       *cancellable,
                             GError            **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) object = NULL;
-  g_autofree char *tmp_checksum = NULL;
-  gboolean is_requested;
-  gboolean is_stored;
-
-  tmp_checksum = ostree_checksum_from_bytes (csum);
-  object = ostree_object_name_serialize (tmp_checksum, objtype);
+  g_autofree char *tmp_checksum = ostree_checksum_from_bytes (csum);
+  g_autoptr(GVariant) object = ostree_object_name_serialize (tmp_checksum, objtype);
 
   if (g_hash_table_lookup (pull_data->scanned_metadata, object))
     return TRUE;
 
-  is_requested = g_hash_table_lookup (pull_data->requested_metadata, object) != NULL;
+  gboolean is_requested = g_hash_table_lookup (pull_data->requested_metadata, object) != NULL;
+  gboolean is_stored;
   if (!ostree_repo_has_object (pull_data->repo, objtype, tmp_checksum, &is_stored,
                                cancellable, error))
-    goto out;
+    return FALSE;
 
   if (pull_data->remote_repo_local)
     {
@@ -1513,12 +1508,12 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!write_commitpartial_for (pull_data, tmp_checksum, error))
-                goto out;
+                return FALSE;
             }
           if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
                                                           objtype, tmp_checksum, !pull_data->is_untrusted,
                                                           cancellable, error))
-            goto out;
+            return FALSE;
         }
       is_stored = TRUE;
       is_requested = TRUE;
@@ -1544,7 +1539,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
         {
           if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
                                    pull_data->cancellable, error))
-            goto out;
+            return FALSE;
 
           g_hash_table_add (pull_data->scanned_metadata, g_variant_ref (object));
           pull_data->n_scanned_metadata++;
@@ -1554,15 +1549,13 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     {
       if (!scan_dirtree_object (pull_data, tmp_checksum, path, recursion_depth,
                                 pull_data->cancellable, error))
-        goto out;
+        return FALSE;
 
       g_hash_table_add (pull_data->scanned_metadata, g_variant_ref (object));
       pull_data->n_scanned_metadata++;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static void
@@ -1677,26 +1670,21 @@ load_remote_repo_config (OtPullData    *pull_data,
                          GCancellable  *cancellable,
                          GError       **error)
 {
-  gboolean ret = FALSE;
   g_autofree char *contents = NULL;
-  GKeyFile *ret_keyfile = NULL;
 
   if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
                                               pull_data->meta_mirrorlist,
                                               "config", &contents,
                                               cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret_keyfile = g_key_file_new ();
+  g_autoptr(GKeyFile) ret_keyfile = g_key_file_new ();
   if (!g_key_file_load_from_data (ret_keyfile, contents, strlen (contents),
                                   0, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
   ot_transfer_out_value (out_keyfile, &ret_keyfile);
- out:
-  g_clear_pointer (&ret_keyfile, (GDestroyNotify) g_key_file_unref);
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -1706,20 +1694,17 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
                                    GCancellable *cancellable,
                                    GError      **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) csum_v = NULL;
-  g_autofree char *checksum = NULL;
   guint8 objtype_y;
-  OstreeObjectType objtype;
-  gboolean is_stored;
+  g_autoptr(GVariant) csum_v = NULL;
   guint64 compressed_size, uncompressed_size;
 
   g_variant_get (fallback_object, "(y@aytt)",
                  &objtype_y, &csum_v, &compressed_size, &uncompressed_size);
+
   if (!ostree_validate_structureof_objtype (objtype_y, error))
-    goto out;
+    return FALSE;
   if (!ostree_validate_structureof_csum_v (csum_v, error))
-    goto out;
+    return FALSE;
 
   compressed_size = maybe_swap_endian_u64 (delta_byteswap, compressed_size);
   uncompressed_size = maybe_swap_endian_u64 (delta_byteswap, uncompressed_size);
@@ -1728,33 +1713,27 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
   pull_data->total_deltapart_size += compressed_size;
   pull_data->total_deltapart_usize += uncompressed_size;
 
-  objtype = (OstreeObjectType)objtype_y;
-  checksum = ostree_checksum_from_bytes_v (csum_v);
+  OstreeObjectType objtype = (OstreeObjectType)objtype_y;
+  g_autofree char *checksum = ostree_checksum_from_bytes_v (csum_v);
 
+  gboolean is_stored;
   if (!ostree_repo_has_object (pull_data->repo, objtype, checksum,
                                &is_stored,
                                cancellable, error))
-    goto out;
+    return FALSE;
 
   if (is_stored)
     pull_data->fetched_deltapart_size += compressed_size;
 
   if (pull_data->dry_run)
-    {
-      ret = TRUE;
-      goto out;
-    }
+    return TRUE; /* Note early return */
 
   if (!is_stored)
     {
       /* The delta compiler never did this, there's no reason to support it */
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Found metadata object as fallback: %s.%s", checksum,
-                       ostree_object_type_to_string (objtype));
-          goto out;
-        }
+        return glnx_throw (error, "Found metadata object as fallback: %s.%s", checksum,
+                           ostree_object_type_to_string (objtype));
       else
         {
           if (!g_hash_table_lookup (pull_data->requested_content, checksum))
@@ -1771,9 +1750,7 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static void
