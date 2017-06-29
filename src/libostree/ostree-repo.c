@@ -2793,10 +2793,7 @@ ostree_repo_load_file (OstreeRepo         *self,
         {
           *out_file_info = _ostree_stbuf_to_gfileinfo (&stbuf);
           if (S_ISLNK (stbuf.st_mode))
-            {
-              g_file_info_set_size (*out_file_info, 0);
-              g_file_info_set_symlink_target (*out_file_info, symlink_target);
-            }
+            g_file_info_set_symlink_target (*out_file_info, symlink_target);
           else
             g_assert (S_ISREG (stbuf.st_mode));
         }
