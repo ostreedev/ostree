@@ -702,13 +702,17 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (file_is_stored)
         continue;
 
+      /* Already have a request pending?  If so, move on to the next */
+      if (g_hash_table_lookup (pull_data->requested_content, file_checksum))
+        continue;
+
       /* Is this a local repo? */
       if (pull_data->remote_repo_local)
         {
           if (!import_one_local_content_object (pull_data, file_checksum, cancellable, error))
             return FALSE;
         }
-      else if (!g_hash_table_lookup (pull_data->requested_content, file_checksum))
+      else
         {
           /* In this case we're doing HTTP pulls */
           g_hash_table_add (pull_data->requested_content, file_checksum);
