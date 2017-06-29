@@ -866,22 +866,18 @@ scan_one_loose_devino (OstreeRepo                     *self,
                        GCancellable                   *cancellable,
                        GError                        **error)
 {
-  gboolean ret = FALSE;
-  int res;
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-
   if (!glnx_dirfd_iterator_init_at (object_dir_fd, ".", FALSE,
                                     &dfd_iter, error))
-    goto out;
-  
+    return FALSE;
+
   while (TRUE)
     {
       struct dirent *dent;
       g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
 
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
-        goto out;
-          
+        return FALSE;
       if (dent == NULL)
         break;
 
@@ -891,25 +887,20 @@ scan_one_loose_devino (OstreeRepo                     *self,
 
       if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
                                         &child_dfd_iter, error))
-        goto out;
+        return FALSE;
 
       while (TRUE)
         {
-          struct stat stbuf;
-          OstreeDevIno *key;
           struct dirent *child_dent;
-          const char *dot;
-          gboolean skip;
-          const char *name;
 
           if (!glnx_dirfd_iterator_next_dent (&child_dfd_iter, &child_dent, cancellable, error))
-            goto out;
-          
+            return FALSE;
           if (child_dent == NULL)
             break;
 
-          name = child_dent->d_name;
+          const char *name = child_dent->d_name;
 
+          gboolean skip;
           switch (self->mode)
             {
             case OSTREE_REPO_MODE_ARCHIVE_Z2:
@@ -924,36 +915,29 @@ scan_one_loose_devino (OstreeRepo                     *self,
           if (skip)
             continue;
 
-          dot = strrchr (name, '.');
+          const char *dot = strrchr (name, '.');
           g_assert (dot);
-          
+
           /* Skip anything that doesn't look like a 64 character checksum */
           if ((dot - name) != 62)
             continue;
 
-          do
-            res = fstatat (child_dfd_iter.fd, child_dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW);
-          while (G_UNLIKELY (res == -1 && errno == EINTR));
-          if (res == -1)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+          struct stat stbuf;
+          if (!glnx_fstatat (child_dfd_iter.fd, child_dent->d_name,
+                             &stbuf, AT_SYMLINK_NOFOLLOW, error))
+            return FALSE;
 
-          key = g_new (OstreeDevIno, 1);
+          OstreeDevIno *key = g_new (OstreeDevIno, 1);
           key->dev = stbuf.st_dev;
           key->ino = stbuf.st_ino;
           memcpy (key->checksum, dent->d_name, 2);
           memcpy (key->checksum + 2, name, 62);
           key->checksum[sizeof(key->checksum)-1] = '\0';
-          
           g_hash_table_add (devino_cache, key);
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -962,28 +946,24 @@ scan_loose_devino (OstreeRepo                     *self,
                    GCancellable                   *cancellable,
                    GError                        **error)
 {
-  gboolean ret = FALSE;
-
   if (self->parent_repo)
     {
       if (!scan_loose_devino (self->parent_repo, devino_cache, cancellable, error))
-        goto out;
+        return FALSE;
     }
 
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
       if (!scan_one_loose_devino (self, self->uncompressed_objects_dir_fd, devino_cache,
                                   cancellable, error))
-        goto out;
+        return FALSE;
     }
 
   if (!scan_one_loose_devino (self, self->objects_dir_fd,
                               devino_cache, cancellable, error))
-    goto out;
-    
-  ret = TRUE;
- out:
-  return ret;
+    return FALSE;
+
+  return TRUE;
 }
 
 static const char *
