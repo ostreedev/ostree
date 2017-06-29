@@ -66,8 +66,8 @@ is reverted to use zero again.
 
 # Repository types and locations
 
-Also unlike git, an OSTree repository can be in one of three separate
-modes: `bare`, `bare-user`, and `archive-z2`.  A bare repository is
+Also unlike git, an OSTree repository can be in one of four separate
+modes: `bare`, `bare-user`, `bare-user-only`, and `archive`.  A bare repository is
 one where content files are just stored as regular files; it's
 designed to be the source of a "hardlink farm", where each operating
 system checkout is merely links into it.  If you want to store files
@@ -88,7 +88,7 @@ information is not applied anyway. The main advantage of `bare-user-only` is
 that repos can be stored on filesystems which do not support extended
 attributes, such as tmpfs.
 
-In contrast, the `archive-z2` mode is designed for serving via plain
+In contrast, the `archive` mode is designed for serving via plain
 HTTP.  Like tar files, it can be read/written by non-root users.
 
 On an OSTree-deployed system, the "system repository" is

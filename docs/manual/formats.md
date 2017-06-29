@@ -14,22 +14,23 @@ primary advantages are security and compute efficiency.  Services like
 Amazon S3 and CDNs are a canonical target, as well as a stock static
 nginx server.
 
-## The archive-z2 format
+## The archive format
 
 In the [repo](repo) section, the concept of objects was introduced,
 where file/content objects are checksummed and managed individually.
 (Unlike a package system, which operates on compressed aggregates).
 
-The archive-z2 format simply gzip-compresses each content object.
+The `archive` format simply gzip-compresses each content object.
 Metadata objects are stored uncompressed.  This means that it's easy
-to serve via static HTTP.
+to serve via static HTTP.  Note: this format used to be called `archive-z2`
+for historical reasons.
 
 When you commit new content, you will see new `.filez` files appearing
 in `objects/`.
 
-## archive-z2 efficiency
+## archive efficiency
 
-The advantages of `archive-z2`:
+The advantages of `archive`:
 
  - It's easy to understand and implement
  - Can be served directly over plain HTTP by a static webserver
@@ -47,7 +48,7 @@ such that large data that changes infrequently (e.g. graphic images)
 are stored separately from small frequently changing data (application
 code).
 
-Other disadvantages of `archive-z2`:
+Other disadvantages of `archive`:
 
  - It's quite bad when clients are performing an initial pull (without HTTP/2),
  - One doesn't know the total size (compressed or uncompressed) of content
@@ -55,7 +56,7 @@ Other disadvantages of `archive-z2`:
 
 ## Aside: the bare and bare-user formats
 
-The most common operation is to pull from an `archive-z2` repository
+The most common operation is to pull from an `archive` repository
 into a `bare` or `bare-user` formatted repository.  These latter two
 are not compressed on disk.  In other words, pulling to them is
 similar to unpacking (but not installing) an RPM/deb package.
@@ -72,7 +73,7 @@ client systems are expected to update regularly.  However, many OS vendors
 would like to supply content that's updated e.g. once a month or less often.
 
 For this model, we can do a lot better to support batched updates than
-a basic `archive-z2` repo. However, we still want to preserve the
+a basic `archive` repo. However, we still want to preserve the
 model of "static webserver only".  Given this, OSTree has gained the
 concept of a "static delta".
 

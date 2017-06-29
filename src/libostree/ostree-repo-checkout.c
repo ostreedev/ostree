@@ -446,7 +446,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
           /* But only under these conditions */
           if (is_bare || is_archive_z2_with_cache)
             {
-              /* Override repo mode; for archive-z2 we're looking in
+              /* Override repo mode; for archive we're looking in
                  the cache, which is in "bare" form */
               _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, OSTREE_REPO_MODE_BARE);
               if (!checkout_file_hardlink (current_repo,
@@ -488,7 +488,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   g_autoptr(GInputStream) input = NULL;
   g_autoptr(GVariant) xattrs = NULL;
 
-  /* Ok, if we're archive-z2 and we didn't find an object, uncompress
+  /* Ok, if we're archive and we didn't find an object, uncompress
    * it now, stick it in the cache, and then hardlink to that.
    */
   if (can_cache
