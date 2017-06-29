@@ -41,5 +41,5 @@ echo anewfile > files/anewfile
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main --tree=dir=files
 
 ${CMD_PREFIX} ostree --repo=repo pull -L repo-local origin main >out.txt
-assert_file_has_content out.txt '3 metadata, 1 content objects fetched (7 meta, 5 content local)'
+assert_file_has_content out.txt '3 metadata, 1 content objects fetched (4 meta, 5 content local)'
 echo "ok pull --reference"
