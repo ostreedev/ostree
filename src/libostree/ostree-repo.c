@@ -181,7 +181,7 @@ _ostree_repo_add_remote (OstreeRepo   *self,
 
   g_mutex_lock (&self->remotes_lock);
 
-  already_existed = g_hash_table_replace (self->remotes, remote->name, ostree_remote_ref (remote));
+  already_existed = !g_hash_table_replace (self->remotes, remote->name, ostree_remote_ref (remote));
 
   g_mutex_unlock (&self->remotes_lock);
 
