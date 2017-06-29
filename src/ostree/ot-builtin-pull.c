@@ -125,6 +125,13 @@ dry_run_console_progress_changed (OstreeAsyncProgress *progress,
   g_print ("%s\n", buf->str);
 }
 
+static void
+noninteractive_console_progress_changed (OstreeAsyncProgress *progress,
+                                         gpointer             user_data)
+{
+  /* We do nothing here - we just want the final status */
+}
+
 gboolean
 ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
@@ -302,6 +309,8 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
       {
         if (console.is_tty)
           progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
+        else
+          progress = ostree_async_progress_new_and_connect (noninteractive_console_progress_changed, &console);
       }
     else
       {
@@ -321,8 +330,15 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
                                         progress, cancellable, error))
       goto out;
 
-    if (progress)
-      ostree_async_progress_finish (progress);
+    if (!console.is_tty && !opt_dry_run)
+      {
+        g_assert (progress);
+        const char *status = ostree_async_progress_get_status (progress);
+        if (status)
+          g_print ("%s\n", status);
+      }
+
+    ostree_async_progress_finish (progress);
 
     if (opt_dry_run)
       g_assert (printed_console_progress);
