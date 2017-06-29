@@ -21,6 +21,6 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-setup_fake_remote_repo1 "archive-z2"
+setup_fake_remote_repo1 "archive"
 
 . ${test_srcdir}/pull-test.sh

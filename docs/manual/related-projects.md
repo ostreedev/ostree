@@ -300,7 +300,7 @@ Docker (natively) only shares storage via layering.
 
 The biggest feature OSTree has over Docker though is support for
 (static) deltas, and even without pre-configured static deltas, the
-archive-z2 format has "natural" deltas.  Particularly for a "base
+`archive` format has "natural" deltas.  Particularly for a "base
 operating system", one really wants on-wire deltas.  It'd likely be
 possible to extend Docker with this concept.
 
