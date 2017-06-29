@@ -29,14 +29,14 @@ It's very common to want to perform a full or partial mirror, in
 particular across organizational boundaries (e.g. an upstream OS
 provider, and a user that wants offline and faster access to the
 content).  OSTree supports both full and partial mirroring of the base
-`archive-z2` content, although not yet of static deltas.
+`archive` content, although not yet of static deltas.
 
-To create a mirror, first create an `archive-z2` repository (you don't
+To create a mirror, first create an `archive` repository (you don't
 need to run this as root), then add the upstream as a remote, then use
 `pull --mirror`.
 
 ```
-ostree --repo=repo init --mode=archive-z2
+ostree --repo=repo init --mode=archive
 ostree --repo=repo remote add exampleos https://exampleos.com/ostree/repo
 ostree --repo=repo pull --mirror exampleos:exampleos/x86_64/standard
 ```
@@ -66,7 +66,7 @@ unlikely most of your content consumers (i.e. not developers/testers)
 will be interested in all of it.
 
 The original vision of OSTree was to fulfill this "dev" role, and in
-particular the "archive-z2" format was designed for it.
+particular the "archive" format was designed for it.
 
 Then, what you'll want to do is promote content from "dev" to "prod".
 We'll discuss this later, but first, let's talk about promotion
@@ -138,7 +138,7 @@ We'll have other business requirements such as writing release notes
 
 In [Build Systems](buildsystem-and-repos.md) we saw how the
 `pull-local` command can be used to migrate content from the "build"
-repository (in `bare-user` mode) into an `archive-z2` repository for
+repository (in `bare-user` mode) into an `archive` repository for
 serving to client systems.
 
 Following this section, we now have three repositories, let's call
@@ -146,7 +146,7 @@ them `repo-build`, `repo-dev`, and `repo-prod`.  We've been pulling
 content from `repo-build` into `repo-dev` (which involves gzip
 compression among other things since it is a format change).
 
-When using `pull-local` to migrate content between two `archive-z2`
+When using `pull-local` to migrate content between two `archive`
 repositories, the binary content is taken unmodified.  Let's go ahead
 and generate a new commit in our prod repository:
 
@@ -178,7 +178,7 @@ default.
 
 ## Derived data - static deltas and the summary file
 
-As discussed in [Formats](formats.md), the `archive-z2` repository we
+As discussed in [Formats](formats.md), the `archive` repository we
 use for "prod" requires one HTTP fetch per client request by default.
 If we're only performing a release e.g. once a week, it's appropriate
 to use "static deltas" to speed up client updates.

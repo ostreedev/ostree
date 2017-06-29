@@ -67,7 +67,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-help.sh \
 	tests/test-libarchive.sh \
 	tests/test-parent.sh \
-	tests/test-pull-archive-z.sh \
+	tests/test-pull-archive.sh \
 	tests/test-pull-commit-only.sh \
 	tests/test-pull-depth.sh \
 	tests/test-pull-mirror-summary.sh \

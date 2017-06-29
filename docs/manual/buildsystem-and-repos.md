@@ -21,11 +21,11 @@ side, but aiming to do client side too).
 ## Initializing
 
 For this initial discussion, we're assuming you have a single
-`archive-z2` repository:
+`archive` repository:
 
 ```
 mkdir repo
-ostree --repo=repo init --mode=archive-z2
+ostree --repo=repo init --mode=archive
 ```
 
 You can export this via a static webserver, and configure clients to
@@ -107,7 +107,7 @@ equivalent to RPMs/debs.
 
 Further, in order to make things fast, we will need a separate
 `bare-user` repository in order to perform checkouts quickly via
-hardlinks.  We'll then export content into the `archive-z2` repository
+hardlinks.  We'll then export content into the `archive` repository
 for use by client systems.
 
 ```
@@ -161,7 +161,7 @@ checksum).
 
 Now that we have content in our `build-repo` repository (in
 `bare-user` mode), we need to move the `exampleos/x86_64/standard`
-branch content into the repository just named `repo` (in `archive-z2`
+branch content into the repository just named `repo` (in `archive`
 mode) for export, which will involve zlib compression of new objects.
 We likely want to generate static deltas after that as well.
 

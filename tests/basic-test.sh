@@ -512,7 +512,7 @@ find repo3/objects -name '*.filez' > file-objects
 if test -s file-objects; then
     assert_not_reached "prune didn't delete all objects"
 fi
-echo "ok prune in archive-z2 deleted everything"
+echo "ok prune in archive deleted everything"
 
 cd ${test_tmpdir}
 rm -rf test2-checkout
@@ -730,7 +730,7 @@ $OSTREE commit ${COMMIT_ARGS} -b test2 -s "Unfsynced commit" --fsync=false
 if test "$(id -u)" != "0"; then
     cd ${test_tmpdir}
     rm -f expected-fail error-message
-    $OSTREE init --mode=archive-z2 --repo=repo-noperm
+    $OSTREE init --mode=archive --repo=repo-noperm
     chmod -w repo-noperm/objects
     $OSTREE --repo=repo-noperm pull-local repo 2> error-message || touch expected-fail
     chmod +w repo-noperm/objects
