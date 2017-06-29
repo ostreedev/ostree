@@ -1514,6 +1514,11 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
                                                           objtype, tmp_checksum, !pull_data->is_untrusted,
                                                           cancellable, error))
             return FALSE;
+          /* The import API will fetch both the commit and detached metadata, so
+           * add it to the hash to avoid re-fetching it below.
+           */
+          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+            g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
         }
       is_stored = TRUE;
       is_requested = TRUE;
