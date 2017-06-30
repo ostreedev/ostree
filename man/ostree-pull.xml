@@ -74,6 +74,16 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+              <term><option>--localcache-repo</option></term>
+
+              <listitem><para>
+                Like git's <literal>clone --reference</literal>.  Reuse the provided
+                OSTree repo as a local object cache of objects when doing HTTP fetches.
+                May be specified multiple times.
+              </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--untrusted</option></term>
 
                 <listitem><para>

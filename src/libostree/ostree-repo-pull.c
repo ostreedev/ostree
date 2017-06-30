@@ -64,6 +64,7 @@ typedef struct {
   GPtrArray     *meta_mirrorlist;    /* List of base URIs for fetching metadata */
   GPtrArray     *content_mirrorlist; /* List of base URIs for fetching content */
   OstreeRepo   *remote_repo_local;
+  GPtrArray    *localcache_repos; /* Array<OstreeRepo> */
 
   GMainContext    *main_context;
   GCancellable *cancellable;
@@ -118,6 +119,9 @@ typedef struct {
   guint             n_fetched_deltapart_fallbacks;
   guint             n_fetched_metadata;
   guint             n_fetched_content;
+  /* Objects from pull --localcache-repo */
+  guint             n_fetched_localcache_metadata;
+  guint             n_fetched_localcache_content;
 
   int               maxdepth;
   guint64           start_time;
@@ -236,6 +240,8 @@ update_progress (gpointer user_data)
                              "scanned-metadata", "u", n_scanned_metadata,
                              "bytes-transferred", "t", bytes_transferred,
                              "start-time", "t", start_time,
+                             "metadata-fetched-localcache", "u", pull_data->n_fetched_localcache_metadata,
+                             "content-fetched-localcache", "u", pull_data->n_fetched_localcache_content,
                              /* Deltas */
                              "fetched-delta-parts",
                                   "u", pull_data->n_fetched_deltaparts,
@@ -606,16 +612,15 @@ validate_bareuseronly_mode (OtPullData *pull_data,
  */
 static gboolean
 import_one_local_content_object (OtPullData *pull_data,
+                                 OstreeRepo *src_repo,
                                  const char *checksum,
                                  GCancellable *cancellable,
                                  GError    **error)
 {
-  g_assert (pull_data->remote_repo_local);
-
   const gboolean trusted = !pull_data->is_untrusted;
   if (trusted && !pull_data->is_bareuseronly_files)
     {
-      if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
+      if (!ostree_repo_import_object_from_with_trust (pull_data->repo, src_repo,
                                                       OSTREE_OBJECT_TYPE_FILE, checksum,
                                                       trusted,
                                                       cancellable, error))
@@ -630,7 +635,7 @@ import_one_local_content_object (OtPullData *pull_data,
       g_autoptr(GFileInfo) content_finfo = NULL;
       g_autoptr(GVariant) content_xattrs = NULL;
 
-      if (!ostree_repo_load_file (pull_data->remote_repo_local, checksum,
+      if (!ostree_repo_load_file (src_repo, checksum,
                                   &content_input, &content_finfo, &content_xattrs,
                                   cancellable, error))
         return FALSE;
@@ -702,19 +707,50 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (file_is_stored)
         continue;
 
+      /* Already have a request pending?  If so, move on to the next */
+      if (g_hash_table_lookup (pull_data->requested_content, file_checksum))
+        continue;
+
       /* Is this a local repo? */
       if (pull_data->remote_repo_local)
         {
-          if (!import_one_local_content_object (pull_data, file_checksum, cancellable, error))
+          if (!import_one_local_content_object (pull_data, pull_data->remote_repo_local,
+                                                file_checksum, cancellable, error))
             return FALSE;
+
+          /* Note early loop continue */
+          continue;
         }
-      else if (!g_hash_table_lookup (pull_data->requested_content, file_checksum))
+
+      /* We're doing HTTP, but see if we have the object in a local cache first */
+      gboolean did_import_from_cache_repo = FALSE;
+      if (pull_data->localcache_repos)
         {
-          /* In this case we're doing HTTP pulls */
-          g_hash_table_add (pull_data->requested_content, file_checksum);
-          enqueue_one_object_request (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE, path, FALSE, FALSE);
-          file_checksum = NULL;  /* Transfer ownership */
+          for (guint j = 0; j < pull_data->localcache_repos->len; j++)
+            {
+              OstreeRepo *localcache_repo = pull_data->localcache_repos->pdata[j];
+              gboolean localcache_repo_has_obj;
+
+              if (!ostree_repo_has_object (localcache_repo, OSTREE_OBJECT_TYPE_FILE, file_checksum,
+                                           &localcache_repo_has_obj, cancellable, error))
+                return FALSE;
+              if (!localcache_repo_has_obj)
+                continue;
+              if (!import_one_local_content_object (pull_data, localcache_repo, file_checksum,
+                                                    cancellable, error))
+                return FALSE;
+              did_import_from_cache_repo = TRUE;
+              pull_data->n_fetched_localcache_content++;
+              break;
+            }
         }
+      if (did_import_from_cache_repo)
+        continue; /* Note early continue */
+
+      /* Not available locally, queue a HTTP request */
+      g_hash_table_add (pull_data->requested_content, file_checksum);
+      enqueue_one_object_request (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE, path, FALSE, FALSE);
+      file_checksum = NULL;  /* Transfer ownership */
     }
 
   g_autoptr(GVariant) dirs_variant = g_variant_get_child_value (tree, 1);
@@ -1522,6 +1558,33 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
         }
       is_stored = TRUE;
       is_requested = TRUE;
+    }
+  /* Do we have any localcache repos? */
+  else if (!is_stored && pull_data->localcache_repos)
+    {
+      for (guint i = 0; i < pull_data->localcache_repos->len; i++)
+        {
+          OstreeRepo *refd_repo = pull_data->localcache_repos->pdata[i];
+          gboolean localcache_repo_has_obj;
+
+          if (!ostree_repo_has_object (refd_repo, objtype, tmp_checksum,
+                                       &localcache_repo_has_obj, cancellable, error))
+            return FALSE;
+          if (!localcache_repo_has_obj)
+            continue;
+          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, refd_repo,
+                                                          objtype, tmp_checksum,
+                                                          !pull_data->is_untrusted,
+                                                          cancellable, error))
+            return FALSE;
+          /* See comment above */
+          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+            g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
+          is_stored = TRUE;
+          is_requested = TRUE;
+          pull_data->n_fetched_localcache_metadata++;
+          break;
+        }
     }
 
   if (!is_stored && !is_requested)
@@ -2861,6 +2924,7 @@ initiate_request (OtPullData                 *pull_data,
  *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
  *   * http-headers (a(ss)): Additional headers to add to all HTTP requests
  *   * update-frequency (u): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
+ *   * localcache-repos (as): File paths for local repos to use as caches when doing remote fetches
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -2899,6 +2963,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean inherit_transaction = FALSE;
   g_autoptr(GHashTable) updated_requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   int i;
+  g_autofree char **opt_localcache_repos = NULL;
 
   if (options)
     {
@@ -2925,6 +2990,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "inherit-transaction", "b", &inherit_transaction);
       (void) g_variant_lookup (options, "http-headers", "@a(ss)", &pull_data->extra_headers);
       (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
+      (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -2988,6 +3054,20 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                              (GDestroyNotify)g_variant_unref,
                                                              (GDestroyNotify)fetch_object_data_free);
   pull_data->pending_fetch_deltaparts = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)fetch_static_delta_data_free, NULL);
+
+  if (opt_localcache_repos && *opt_localcache_repos)
+    {
+      pull_data->localcache_repos = g_ptr_array_new_with_free_func (g_object_unref);
+      for (char **it = opt_localcache_repos; it && *it; it++)
+        {
+          const char *localcache_path = *it;
+          g_autoptr(GFile) localcache_file = g_file_new_for_path (localcache_path);
+          g_autoptr(OstreeRepo) cacherepo = ostree_repo_new (localcache_file);
+          if (!ostree_repo_open (cacherepo, cancellable, error))
+            goto out;
+          g_ptr_array_add (pull_data->localcache_repos, g_steal_pointer (&cacherepo));
+        }
+    }
 
   if (dir_to_pull != NULL || dirs_to_pull != NULL)
     {
@@ -3718,6 +3798,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       else
         g_string_append_printf (buf, "%u metadata, %u content objects fetched",
                                 pull_data->n_fetched_metadata, pull_data->n_fetched_content);
+      if (pull_data->n_fetched_localcache_metadata ||
+          pull_data->n_fetched_localcache_content)
+        g_string_append_printf (buf, " (%u meta, %u content local)",
+                                pull_data->n_fetched_localcache_metadata,
+                                pull_data->n_fetched_localcache_content);
 
       g_string_append_printf (buf, "; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
                               (guint64)(bytes_transferred / shift),
@@ -3765,6 +3850,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_object (&pull_data->fetcher);
   g_clear_pointer (&pull_data->extra_headers, (GDestroyNotify)g_variant_unref);
   g_clear_object (&pull_data->cancellable);
+  g_clear_pointer (&pull_data->localcache_repos, (GDestroyNotify)g_ptr_array_unref);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
