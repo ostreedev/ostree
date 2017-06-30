@@ -253,13 +253,15 @@ commit_loose_regfile_object (OstreeRepo        *self,
       /* Note that previously this path added `| 0755` which made every
        * file executable, see
        * https://github.com/ostreedev/ostree/issues/907
+       * We then changed it to mask by 0775, but we always need at least read
+       * permission when running as non-root, so explicitly mask that in.
        *
        * Again here, symlinks in bare-user are a hairy special case; only do a
        * chmod for a *real* regular file, otherwise we'll take the default 0644.
        */
       if (S_ISREG (mode))
         {
-          const mode_t content_mode = (mode & (S_IFREG | 0775));
+          const mode_t content_mode = (mode & (S_IFREG | 0775)) | S_IRUSR;
           if (fchmod (tmpf->fd, content_mode) < 0)
             return glnx_throw_errno_prefix (error, "fchmod");
         }
