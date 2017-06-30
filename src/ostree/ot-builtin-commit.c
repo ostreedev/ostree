@@ -126,19 +126,35 @@ parse_file_by_line (const char    *path,
   return TRUE;
 }
 
+struct CommitFilterData {
+  GHashTable *mode_adds;
+  GHashTable *mode_overrides;
+  GHashTable *skip_list;
+};
+
 static gboolean
 handle_statoverride_line (const char  *line,
                           void        *data,
                           GError     **error)
 {
-  GHashTable *files = data;
+  struct CommitFilterData *cf = data;
   const char *spc = strchr (line, ' ');
   if (spc == NULL)
     return glnx_throw (error, "Malformed statoverride file (no space found)");
+  const char *fn = spc + 1;
 
-  guint mode_add = (guint32)(gint32)g_ascii_strtod (line, NULL);
-  g_hash_table_insert (files, g_strdup (spc + 1),
-                       GUINT_TO_POINTER((gint32)mode_add));
+  if (g_str_has_prefix (line, "="))
+    {
+      guint mode_override = (guint32)(gint32)g_ascii_strtod (line+1, NULL);
+      g_hash_table_insert (cf->mode_overrides, g_strdup (fn),
+                           GUINT_TO_POINTER((gint32)mode_override));
+    }
+  else
+    {
+      guint mode_add = (guint32)(gint32)g_ascii_strtod (line, NULL);
+      g_hash_table_insert (cf->mode_adds, g_strdup (fn),
+                           GUINT_TO_POINTER((gint32)mode_add));
+    }
   return TRUE;
 }
 
@@ -152,11 +168,6 @@ handle_skiplist_line (const char  *line,
   return TRUE;
 }
 
-struct CommitFilterData {
-  GHashTable *mode_adds;
-  GHashTable *skip_list;
-};
-
 static OstreeRepoCommitFilterResult
 commit_filter (OstreeRepo         *self,
                const char         *path,
@@ -165,6 +176,7 @@ commit_filter (OstreeRepo         *self,
 {
   struct CommitFilterData *data = user_data;
   GHashTable *mode_adds = data->mode_adds;
+  GHashTable *mode_overrides = data->mode_overrides;
   GHashTable *skip_list = data->skip_list;
   gpointer value;
 
@@ -179,6 +191,14 @@ commit_filter (OstreeRepo         *self,
       guint mode_add = GPOINTER_TO_UINT (value);
       g_file_info_set_attribute_uint32 (file_info, "unix::mode",
                                         current_mode | mode_add);
+      g_hash_table_remove (mode_adds, path);
+    }
+  else if (mode_overrides && g_hash_table_lookup_extended (mode_overrides, path, NULL, &value))
+    {
+      guint current_fmt = g_file_info_get_attribute_uint32 (file_info, "unix::mode") & S_IFMT;
+      guint mode_override = GPOINTER_TO_UINT (value);
+      g_file_info_set_attribute_uint32 (file_info, "unix::mode",
+                                        current_fmt | mode_override);
       g_hash_table_remove (mode_adds, path);
     }
 
@@ -299,6 +319,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   glnx_unref_object OstreeMutableTree *mtree = NULL;
   g_autofree char *tree_type = NULL;
   g_autoptr(GHashTable) mode_adds = NULL;
+  g_autoptr(GHashTable) mode_overrides = NULL;
   g_autoptr(GHashTable) skip_list = NULL;
   OstreeRepoCommitModifierFlags flags = 0;
   OstreeRepoCommitModifier *modifier = NULL;
@@ -316,9 +337,10 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (opt_statoverride_file)
     {
-      mode_adds = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+      filter_data.mode_adds = mode_adds = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+      filter_data.mode_overrides = mode_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
       if (!parse_file_by_line (opt_statoverride_file, handle_statoverride_line,
-                               mode_adds, cancellable, error))
+                               &filter_data, cancellable, error))
         goto out;
     }
 

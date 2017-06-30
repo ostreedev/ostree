@@ -25,7 +25,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare-user"
 
-extra_basic_tests=3
+extra_basic_tests=4
 . $(dirname $0)/basic-test.sh
 
 # Reset things so we don't inherit a lot of state from earlier tests
@@ -64,3 +64,16 @@ $OSTREE checkout -U -H test2-unwritable test2-checkout
 cd test2-checkout
 assert_file_has_mode unwritable 400
 echo "ok bare-user unwritable"
+
+rm test2-checkout -rf
+$OSTREE checkout -U -H test2 test2-checkout
+cat > statoverride.txt <<EOF
+=0 /unreadable
+EOF
+touch test2-checkout/unreadable
+$OSTREE commit -b test2-unreadable --statoverride=statoverride.txt --tree=dir=test2-checkout
+$OSTREE fsck
+rm test2-checkout -rf
+$OSTREE checkout -U -H test2-unreadable test2-checkout
+assert_file_has_mode test2-checkout/unreadable 400
+echo "ok bare-user handled unreadable file"
