@@ -342,8 +342,11 @@ cd ${test_tmpdir}
 cat > test-statoverride.txt <<EOF
 +1048 /a/nested/2
 2048 /a/nested/3
+=384 /a/readable-only
 EOF
 cd ${test_tmpdir}/checkout-test2-4
+echo readable only > a/readable-only
+chmod 664 a/readable-only
 $OSTREE commit ${COMMIT_ARGS} -b test2-override -s "with statoverride" --statoverride=../test-statoverride.txt
 cd ${test_tmpdir}
 $OSTREE checkout test2-override checkout-test2-override
@@ -354,6 +357,7 @@ else
     test '!' -g checkout-test2-override/a/nested/2
     test '!' -u checkout-test2-override/a/nested/3
 fi
+assert_file_has_mode checkout-test2-override/a/readable-only 600
 echo "ok commit statoverride"
 
 cd ${test_tmpdir}
