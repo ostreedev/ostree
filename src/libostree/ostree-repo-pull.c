@@ -4948,8 +4948,10 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
 
   /* Any refs left un-downloaded? If so, we’ve failed. */
   GLNX_HASH_TABLE_FOREACH_KV (refs_pulled, const OstreeCollectionRef*, ref,
-                                           gboolean, is_pulled)
+                                           gpointer, is_pulled_pointer)
     {
+      gboolean is_pulled = GPOINTER_TO_INT (is_pulled_pointer);
+
       if (is_pulled)
         continue;
 
