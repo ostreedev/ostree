@@ -156,8 +156,12 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
                                             cancellable, error))
     return FALSE;
 
-  return glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
-                               dest_dfd, tmpbuf, error);
+  if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
+                             dest_dfd, tmpbuf, error))
+    return FALSE;
+  /* We're done with the fd */
+  glnx_tmpfile_clear (tmpf);
+  return TRUE;
 }
 
 /* Given a dfd+path combination (may be regular file or symlink),
