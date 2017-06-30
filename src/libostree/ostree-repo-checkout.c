@@ -1091,9 +1091,9 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
   if (!to_clean_dirs)
     return TRUE; /* Note early return */
 
-  GLNX_HASH_TABLE_FOREACH (to_clean_dirs, guint, prefix)
+  GLNX_HASH_TABLE_FOREACH (to_clean_dirs, gpointer, prefix)
     {
-      g_autofree char *objdir_name = g_strdup_printf ("%02x", prefix);
+      g_autofree char *objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (prefix));
       g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
       if (!glnx_dirfd_iterator_init_at (self->uncompressed_objects_dir_fd, objdir_name, FALSE,
