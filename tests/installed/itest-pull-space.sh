@@ -16,8 +16,7 @@ mkfs.xfs ${blkdev}
 mkdir mnt
 mount ${blkdev} mnt
 ostree --repo=mnt/repo init --mode=bare-user
-host_nonremoteref=$(echo ${host_refspec} | sed 's,[^:]*:,,')
-if ostree --repo=mnt/repo pull-local /ostree/repo ${host_nonremoteref} 2>err.txt; then
+if ostree --repo=mnt/repo pull-local /ostree/repo ${host_commit} 2>err.txt; then
     fatal "succeeded in doing a pull with no free space"
 fi
 assert_file_has_content err.txt "min-free-space-percent"
