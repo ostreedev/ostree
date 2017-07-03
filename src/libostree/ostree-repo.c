@@ -44,6 +44,7 @@
 #include <locale.h>
 #include <glib/gstdio.h>
 #include <sys/file.h>
+#include <sys/statvfs.h>
 
 /**
  * SECTION:ostree-repo
@@ -1962,6 +1963,20 @@ reload_core_config (OstreeRepo          *self,
       self->zlib_compression_level = MAX (1, MIN (9, g_ascii_strtoull (compression_level_str, NULL, 10)));
     else
       self->zlib_compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
+  }
+
+  { g_autofree char *min_free_space_percent_str = NULL;
+    /* If changing this, be sure to change the man page too */
+    const char *default_min_free_space = "3";
+
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "min-free-space-percent",
+                                            default_min_free_space,
+                                            &min_free_space_percent_str, error))
+      return FALSE;
+
+    self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
+    if (self->min_free_space_percent > 99)
+      return glnx_throw (error, "Invalid min-free-space-percent '%s'", min_free_space_percent_str);
   }
 
   {
