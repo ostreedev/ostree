@@ -3561,6 +3561,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
           else
             {
+              if (!ostree_validate_rev (branch, error))
+                goto out;
               char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
               g_hash_table_insert (requested_refs_to_fetch,
                                    ostree_collection_ref_new (NULL, branch), commitid);
