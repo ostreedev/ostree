@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..25"
+echo "1..26"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -160,6 +160,26 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo-local pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local fsck
 $OSTREE show main >/dev/null
 echo "ok pull local mirror"
+
+cd ${test_tmpdir}
+# This is more of a known issue; test that we give a clean error right now
+rm otherrepo -rf
+ostree_repo_init otherrepo --mode=archive
+rm checkout-origin-main -rf
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
+${CMD_PREFIX} ostree --repo=otherrepo commit -b localbranch --tree=dir=checkout-origin-main
+${CMD_PREFIX} ostree --repo=otherrepo remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
+${CMD_PREFIX} ostree --repo=otherrepo pull origin main
+rm mirrorrepo-local -rf
+ostree_repo_init mirrorrepo-local --mode=archive
+if ${CMD_PREFIX} ostree --repo=mirrorrepo-local pull-local otherrepo 2>err.txt; then
+    fatal "pull with mixed refs succeeded?"
+fi
+assert_file_has_content err.txt "error: Invalid ref name origin:main"
+${CMD_PREFIX} ostree --repo=mirrorrepo-local pull-local otherrepo localbranch
+${CMD_PREFIX} ostree --repo=mirrorrepo-local rev-parse localbranch
+${CMD_PREFIX} ostree --repo=mirrorrepo-local fsck
+echo "ok pull-local mirror errors with mixed refs"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
