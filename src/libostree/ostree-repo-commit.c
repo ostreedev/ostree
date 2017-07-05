@@ -82,31 +82,21 @@ create_file_metadata (guint32       uid,
   return ret_metadata;
 }
 
-static gboolean
-write_file_metadata_to_xattr (int fd,
-                              guint32       uid,
-                              guint32       gid,
-                              guint32       mode,
-                              GVariant     *xattrs,
-                              GError       **error)
+gboolean
+_ostree_write_bareuser_metadata (int fd,
+                                 guint32       uid,
+                                 guint32       gid,
+                                 guint32       mode,
+                                 GVariant     *xattrs,
+                                 GError       **error)
 {
-  g_autoptr(GVariant) filemeta = NULL;
-  int res;
+  g_autoptr(GVariant) filemeta = create_file_metadata (uid, gid, mode, xattrs);
 
-  filemeta = create_file_metadata (uid, gid, mode, xattrs);
-
-  do
-    res = fsetxattr (fd, "user.ostreemeta",
-                     (char*)g_variant_get_data (filemeta),
-                     g_variant_get_size (filemeta),
-                     0);
-  while (G_UNLIKELY (res == -1 && errno == EINTR));
-  if (G_UNLIKELY (res == -1))
-    {
-      glnx_set_error_from_errno (error);
-      g_prefix_error (error, "Unable to set xattr: ");
-      return FALSE;
-    }
+  if (TEMP_FAILURE_RETRY (fsetxattr (fd, "user.ostreemeta",
+                                     (char*)g_variant_get_data (filemeta),
+                                     g_variant_get_size (filemeta),
+                                     0)) != 0)
+    return glnx_throw_errno_prefix (error, "fsetxattr(user.ostreemeta)");
 
   return TRUE;
 }
@@ -248,7 +238,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
     }
   else if (self->mode == OSTREE_REPO_MODE_BARE_USER)
     {
-      if (!write_file_metadata_to_xattr (tmpf->fd, uid, gid, mode, xattrs, error))
+      if (!_ostree_write_bareuser_metadata (tmpf->fd, uid, gid, mode, xattrs, error))
         return FALSE;
 
       /* Note that previously this path added `| 0755` which made every
