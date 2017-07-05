@@ -176,7 +176,10 @@ if ${CMD_PREFIX} ostree --repo=mirrorrepo-local pull-local otherrepo 2>err.txt; 
     fatal "pull with mixed refs succeeded?"
 fi
 assert_file_has_content err.txt "error: Invalid ref name origin:main"
-echo "ok pull local mirror error (mixed refs)"
+${CMD_PREFIX} ostree --repo=mirrorrepo-local pull-local otherrepo localbranch
+${CMD_PREFIX} ostree --repo=mirrorrepo-local rev-parse localbranch
+${CMD_PREFIX} ostree --repo=mirrorrepo-local fsck
+echo "ok pull-local mirror errors with mixed refs"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
