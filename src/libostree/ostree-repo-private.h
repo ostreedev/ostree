@@ -217,6 +217,14 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
                                GError             **error);
 
 gboolean
+_ostree_write_bareuser_metadata (int fd,
+                                 guint32       uid,
+                                 guint32       gid,
+                                 guint32       mode,
+                                 GVariant     *xattrs,
+                                 GError       **error);
+
+gboolean
 _ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    GFileInfo    *file_info,
                                    GVariant     *xattrs,
