@@ -55,8 +55,7 @@ gboolean
 _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
                                             GPtrArray     *mirrorlist,
                                             const char     *filename,
-                                            gboolean        add_nul,
-                                            gboolean        allow_noent,
+                                            OstreeFetcherRequestFlags flags,
                                             GBytes         **out_contents,
                                             guint64        max_size,
                                             GCancellable   *cancellable,
@@ -79,7 +78,7 @@ _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
   data.error = error;
 
   _ostree_fetcher_request_to_membuf (fetcher, mirrorlist, filename,
-                                     add_nul ? OSTREE_FETCHER_REQUEST_NUL_TERMINATION : 0,
+                                     flags,
                                      max_size, OSTREE_FETCHER_DEFAULT_PRIORITY,
                                      cancellable, fetch_uri_sync_on_complete, &data);
   while (!data.done)
@@ -87,7 +86,7 @@ _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
 
   if (!data.result_buf)
     {
-      if (allow_noent)
+      if (flags & OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT)
         {
           if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
@@ -112,8 +111,7 @@ _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
 gboolean
 _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
                                        OstreeFetcherURI *uri,
-                                       gboolean        add_nul,
-                                       gboolean        allow_noent,
+                                       OstreeFetcherRequestFlags flags,
                                        GBytes         **out_contents,
                                        guint64        max_size,
                                        GCancellable   *cancellable,
@@ -121,8 +119,7 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
 {
   g_autoptr(GPtrArray) mirrorlist = g_ptr_array_new ();
   g_ptr_array_add (mirrorlist, uri); /* no transfer */
-  return _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, NULL,
-                                                     add_nul, allow_noent,
+  return _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, NULL, flags,
                                                      out_contents, max_size,
                                                      cancellable, error);
 }

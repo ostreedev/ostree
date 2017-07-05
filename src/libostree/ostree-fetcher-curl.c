@@ -353,7 +353,9 @@ check_multi_info (OstreeFetcher *fetcher)
                   g_autofree char *msg = g_strdup_printf ("Server returned HTTP %lu", response);
                   g_task_return_new_error (task, G_IO_ERROR, giocode,
                                            "%s", msg);
-                  if (req->fetcher->remote_name)
+                  if (req->fetcher->remote_name &&
+                      !((req->flags & OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT) > 0 &&
+                        giocode == G_IO_ERROR_NOT_FOUND))
                     _ostree_fetcher_journal_failure (req->fetcher->remote_name,
                                                      eff_url, msg);
 
@@ -859,13 +861,14 @@ void
 _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
                                     GPtrArray             *mirrorlist,
                                     const char            *filename,
+                                    OstreeFetcherRequestFlags flags,
                                     guint64                max_size,
                                     int                    priority,
                                     GCancellable          *cancellable,
                                     GAsyncReadyCallback    callback,
                                     gpointer               user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, 0, FALSE,
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, FALSE,
                                  max_size, priority, cancellable,
                                  callback, user_data);
 }

@@ -54,6 +54,11 @@ typedef enum {
   OSTREE_FETCHER_FLAGS_TRANSFER_GZIP = (1 << 1)
 } OstreeFetcherConfigFlags;
 
+typedef enum {
+  OSTREE_FETCHER_REQUEST_NUL_TERMINATION = (1 << 0),
+  OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT = (1 << 1)
+} OstreeFetcherRequestFlags;
+
 void
 _ostree_fetcher_uri_free (OstreeFetcherURI *uri);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeFetcherURI, _ostree_fetcher_uri_free)
@@ -111,6 +116,7 @@ guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
 void _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
                                          GPtrArray             *mirrorlist,
                                          const char            *filename,
+                                         OstreeFetcherRequestFlags flags,
                                          guint64                max_size,
                                          int                    priority,
                                          GCancellable          *cancellable,
@@ -121,10 +127,6 @@ gboolean _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
                                                     GAsyncResult  *result,
                                                     char         **out_filename,
                                                     GError       **error);
-
-typedef enum {
-  OSTREE_FETCHER_REQUEST_NUL_TERMINATION = (1 << 0)
-} OstreeFetcherRequestFlags;
 
 void _ostree_fetcher_request_to_membuf (OstreeFetcher         *self,
                                         GPtrArray             *mirrorlist,
