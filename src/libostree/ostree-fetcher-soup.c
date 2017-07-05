@@ -1128,7 +1128,9 @@ on_request_sent (GObject        *object,
                 g_prefix_error (&local_error,
                                 "All %u mirrors failed. Last error was: ",
                                 pending->mirrorlist->len);
-              if (pending->thread_closure->remote_name)
+              if (pending->thread_closure->remote_name &&
+                  !((pending->flags & OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT) > 0 &&
+                    code == G_IO_ERROR_NOT_FOUND))
                 _ostree_fetcher_journal_failure (pending->thread_closure->remote_name,
                                                  uristring, local_error->message);
 
@@ -1238,13 +1240,14 @@ void
 _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
                                     GPtrArray             *mirrorlist,
                                     const char            *filename,
+                                    OstreeFetcherRequestFlags flags,
                                     guint64                max_size,
                                     int                    priority,
                                     GCancellable          *cancellable,
                                     GAsyncReadyCallback    callback,
                                     gpointer               user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, 0, FALSE,
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, FALSE,
                                  max_size, priority, cancellable,
                                  callback, user_data);
 }
