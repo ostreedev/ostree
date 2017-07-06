@@ -408,6 +408,11 @@ global:
   ostree_sysroot_query_deployments_for;
 } LIBOSTREE_2017.6;
 
+LIBOSTREE_2017.8 {
+global:
+  ostree_validate_remote_name;
+} LIBOSTREE_2017.7;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
