@@ -52,34 +52,24 @@ symlink_at_replace (const char    *oldpath,
                     GCancellable  *cancellable,
                     GError       **error)
 {
-  gboolean ret = FALSE;
-  int res;
   /* Possibly in the future generate a temporary random name here,
    * would need to move "generate a temporary name" code into
    * libglnx or glib?
    */
   g_autofree char *temppath = g_strconcat (newpath, ".tmp", NULL);
 
-  /* Clean up any stale temporary links */ 
+  /* Clean up any stale temporary links */
   (void) unlinkat (parent_dfd, temppath, 0);
 
-  /* Create the temp link */ 
-  do
-    res = symlinkat (oldpath, parent_dfd, temppath);
-  while (G_UNLIKELY (res == -1 && errno == EINTR));
-  if (res == -1)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+  /* Create the temp link */
+  if (TEMP_FAILURE_RETRY (symlinkat (oldpath, parent_dfd, temppath)) < 0)
+    return glnx_throw_errno_prefix (error, "symlinkat");
 
   /* Rename it into place */
   if (!glnx_renameat (parent_dfd, temppath, parent_dfd, newpath, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static GLnxFileCopyFlags
@@ -104,26 +94,17 @@ hardlink_or_copy_at (int         src_dfd,
                      GCancellable  *cancellable,
                      GError       **error)
 {
-  gboolean ret = FALSE;
-
   if (linkat (src_dfd, src_subpath, dest_dfd, dest_subpath, 0) != 0)
     {
-      if (errno == EMLINK || errno == EXDEV)
-        {
-          return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath,
-                                    sysroot_flags_to_copy_flags (0, flags),
-                                    cancellable, error);
-        }
+      if (G_IN_SET (errno, EMLINK, EXDEV))
+        return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath,
+                                  sysroot_flags_to_copy_flags (0, flags),
+                                  cancellable, error);
       else
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "linkat");
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -135,8 +116,6 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
                                   GCancellable  *cancellable,
                                   GError       **error)
 {
-  gboolean ret = FALSE;
-  struct stat src_stbuf;
   g_autoptr(GVariant) xattrs = NULL;
 
   /* Clone all xattrs first, so we get the SELinux security context
@@ -147,31 +126,21 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
     {
       if (!glnx_dfd_name_get_all_xattrs (src_parent_dfd, src_name,
                                          &xattrs, cancellable, error))
-        goto out;
+        return FALSE;
       if (!glnx_fd_set_all_xattrs (dest_dfd, xattrs,
                                    cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  if (fstat (src_dfd, &src_stbuf) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+  struct stat src_stbuf;
+  if (!glnx_fstat (src_dfd, &src_stbuf, error))
+    return FALSE;
   if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "fchown");
   if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "fchmod");
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -199,7 +168,7 @@ copy_dir_recurse (int              src_parent_dfd,
   if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd_iter.fd, dest_dfd,
                                          flags, cancellable, error))
     return FALSE;
- 
+
   while (TRUE)
     {
       struct stat child_stbuf;
@@ -242,7 +211,6 @@ ensure_directory_from_template (int                 orig_etc_fd,
                                 GCancellable       *cancellable,
                                 GError            **error)
 {
-  gboolean ret = FALSE;
   glnx_fd_close int src_dfd = -1;
   glnx_fd_close int target_dfd = -1;
 
@@ -250,7 +218,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
   g_assert (*path != '/' && *path != '\0');
 
   if (!glnx_opendirat (modified_etc_fd, path, TRUE, &src_dfd, error))
-    goto out;
+    return FALSE;
 
   /* Create with mode 0700, we'll fchmod/fchown later */
  again:
@@ -268,7 +236,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
             {
               if (!ensure_directory_from_template (orig_etc_fd, modified_etc_fd, new_etc_fd,
                                                    parent_path, NULL, flags, cancellable, error))
-                goto out;
+                return FALSE;
 
               /* Loop */
               goto again;
@@ -280,29 +248,19 @@ ensure_directory_from_template (int                 orig_etc_fd,
             }
         }
       else
-        {
-          glnx_set_error_from_errno (error);
-          g_prefix_error (error, "mkdirat: ");
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "mkdirat");
     }
 
   if (!glnx_opendirat (new_etc_fd, path, TRUE, &target_dfd, error))
-    goto out;
+    return FALSE;
 
   if (!dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd,
                                          flags, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
   if (out_dfd)
-    {
-      g_assert (target_dfd != -1);
-      *out_dfd = target_dfd;
-      target_dfd = -1;
-    }
- out:
-  return ret;
+    *out_dfd = glnx_steal_fd (&target_dfd);
+  return TRUE;
 }
 
 /**
@@ -321,100 +279,79 @@ copy_modified_config_file (int                 orig_etc_fd,
                            GCancellable       *cancellable,
                            GError            **error)
 {
-  gboolean ret = FALSE;
   struct stat modified_stbuf;
   struct stat new_stbuf;
+
+  if (!glnx_fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return glnx_prefix_error (error, "Reading modified config file");
+
   glnx_fd_close int dest_parent_dfd = -1;
-
-  if (fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      g_prefix_error (error, "Failed to read modified config file '%s': ", path);
-      goto out;
-    }
-
   if (strchr (path, '/') != NULL)
     {
       g_autofree char *parent = g_path_get_dirname (path);
 
       if (!ensure_directory_from_template (orig_etc_fd, modified_etc_fd, new_etc_fd,
                                            parent, &dest_parent_dfd, flags, cancellable, error))
-        goto out;
+        return FALSE;
     }
   else
     {
       dest_parent_dfd = dup (new_etc_fd);
       if (dest_parent_dfd == -1)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "dup");
     }
 
   g_assert (dest_parent_dfd != -1);
 
   if (fstatat (new_etc_fd, path, &new_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
-      if (errno == ENOENT)
-        ;
-      else
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+      if (errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "fstatat");
     }
   else if (S_ISDIR(new_stbuf.st_mode))
     {
       if (!S_ISDIR(modified_stbuf.st_mode))
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Modified config file newly defaults to directory '%s', cannot merge",
-                       path);
-          goto out;
+          return g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                              "Modified config file newly defaults to directory '%s', cannot merge",
+                              path), FALSE;
         }
       else
         {
           /* Do nothing here - we assume that we've already
            * recursively copied the parent directory.
            */
-          ret = TRUE;
-          goto out;
+          return TRUE;
         }
     }
   else
     {
-      if (unlinkat (new_etc_fd, path, 0) < 0)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+      if (!glnx_unlinkat (new_etc_fd, path, 0, error))
+        return FALSE;
     }
 
   if (S_ISDIR (modified_stbuf.st_mode))
     {
       if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path, flags,
                              cancellable, error))
-        goto out;
+        return FALSE;
     }
   else if (S_ISLNK (modified_stbuf.st_mode) || S_ISREG (modified_stbuf.st_mode))
     {
-      if (!glnx_file_copy_at (modified_etc_fd, path, &modified_stbuf, 
+      if (!glnx_file_copy_at (modified_etc_fd, path, &modified_stbuf,
                               new_etc_fd, path,
                               sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
                               cancellable, error))
-        goto out;
+        return FALSE;
     }
   else
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unsupported non-regular/non-symlink file in /etc '%s'",
-                   path);
-      goto out;
+      return glnx_throw (error,
+                         "Unsupported non-regular/non-symlink file in /etc '%s'",
+                         path);
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -575,7 +512,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
 
   if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_fd, error))
     goto out;
-  
+
   ret = TRUE;
   *out_deployment_dfd = ret_fd;
  out:
@@ -652,7 +589,7 @@ relabel_recursively (OstreeSysroot  *sysroot,
                                        cancellable, error);
   if (!direnum)
     goto out;
-  
+
   while (TRUE)
     {
       GFileInfo *file_info;
@@ -706,7 +643,7 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
                                  cancellable, error);
   if (!root_info)
     goto out;
-  
+
   g_ptr_array_add (path_parts, (char*)prefix);
   if (!relabel_recursively (sysroot, sepolicy, dir, root_info, path_parts,
                             cancellable, error))
@@ -959,7 +896,7 @@ get_kernel_from_tree (int             deployment_dfd,
 
       if (!glnx_dirfd_iterator_next_dent (&dfditer, &dent, cancellable, error))
         goto out;
-          
+
       if (dent == NULL)
         break;
 
@@ -983,7 +920,7 @@ get_kernel_from_tree (int             deployment_dfd,
               ret_initramfs_name = g_strdup (dent->d_name);
             }
         }
-      
+
       if (ret_kernel_name != NULL && ret_initramfs_name != NULL)
         break;
     }
@@ -1451,7 +1388,7 @@ static GHashTable *
 assign_bootserials (GPtrArray   *deployments)
 {
   guint i;
-  GHashTable *ret = 
+  GHashTable *ret =
     g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
 
   for (i = 0; i < deployments->len; i++)
@@ -1488,7 +1425,7 @@ deployment_bootconfigs_equal (OstreeDeployment *a,
     __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *b_kargs = NULL;
     g_autofree char *a_boot_options_without_ostree = NULL;
     g_autofree char *b_boot_options_without_ostree = NULL;
-      
+
     /* We checksum the kernel arguments *except* ostree= */
     a_kargs = _ostree_kernel_args_from_string (a_boot_options);
     _ostree_kernel_args_replace (a_kargs, "ostree");
@@ -1662,10 +1599,10 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
       g_autoptr(GFile) deployment_root = NULL;
-      
+
       if (deployment == self->booted_deployment)
         found_booted_deployment = TRUE;
-      
+
       deployment_root = ostree_sysroot_get_deployment_directory (self, deployment);
       if (!g_file_query_exists (deployment_root, NULL))
         {
@@ -1693,7 +1630,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
           g_prefix_error (error, "Creating new current bootlinks: ");
           goto out;
         }
-      
+
       if (!full_system_sync (self, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
@@ -1707,7 +1644,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
           g_prefix_error (error, "Swapping current bootlinks: ");
           goto out;
         }
-      
+
       bootloader_is_atomic = TRUE;
     }
   else
@@ -1741,7 +1678,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, new_loader_entries_dir, 0755,
                                    cancellable, error))
         goto out;
-      
+
       /* Need the repo to try and extract the versions for deployments.
        * But this is a "nice-to-have" for the bootloader UI, so failure
        * here is not fatal to the whole operation.  We just gracefully
@@ -1819,7 +1756,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
           g_prefix_error (error, "Full sync: ");
           goto out;
         }
-      
+
       if (!swap_bootloader (self, self->bootversion, new_bootversion,
                             cancellable, error))
         {
