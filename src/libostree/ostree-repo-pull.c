@@ -1415,8 +1415,9 @@ get_remote_repo_collection_id (OtPullData *pull_data)
  * The ref binding is verified only if it exists. But if we have the
  * collection ID specified in the remote configuration then the ref
  * binding must exist, otherwise the verification will fail. Parts of
- * the verification can be skipped by passing NULL to requested_ref or
- * checksum parameters.
+ * the verification can be skipped by passing NULL to the requested_ref
+ * parameter (in case we requested a checksum directly, without looking it up
+ * from a ref).
  *
  * The collection binding is verified only when we have collection ID
  * specified in the remote configuration. If it is specified, then the
@@ -1441,7 +1442,7 @@ verify_bindings (OtPullData                 *pull_data,
                          &refs))
     {
       /* Early return here - if the remote collection ID is NULL, then
-       * we certainly will verify the collection binding in the
+       * we certainly will not verify the collection binding in the
        * commit.
        */
       if (remote_collection_id == NULL)
