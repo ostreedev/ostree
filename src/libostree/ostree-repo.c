@@ -1752,6 +1752,21 @@ ostree_repo_create (OstreeRepo     *self,
         }
     }
 
+  /* Test that the fs supports user xattrs now, so we get an error early rather
+   * than during an object write later.
+   */
+  if (mode == OSTREE_REPO_MODE_BARE_USER)
+    {
+      g_auto(GLnxTmpfile) tmpf = { 0, };
+
+      if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_RDWR|O_CLOEXEC, &tmpf, error))
+        return FALSE;
+      if (fchmod (tmpf.fd, 0600) < 0)
+        return glnx_throw_errno_prefix (error, "fchmod");
+      if (!_ostree_write_bareuser_metadata (tmpf.fd, 0, 0, 644, NULL, error))
+        return FALSE;
+  }
+
   if (!ostree_repo_open (self, cancellable, error))
     return FALSE;
 
