@@ -17,7 +17,8 @@ cd ${test_tmpdir}
 mkdir mnt
 mount -t tmpfs tmpfs mnt
 if ostree --repo=mnt/repo init --mode=bare-user 2>err.txt; then
+    umount mnt
     assert_not_reached "bare-user on tmpfs worked?"
 fi
-assert_file_has_content err.txt "Operation not supported"
 umount mnt
+assert_file_has_content err.txt "Operation not supported"
