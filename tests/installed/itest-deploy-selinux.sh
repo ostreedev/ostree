@@ -11,6 +11,12 @@ dn=$(dirname $0)
 ostree admin deploy --karg-proc-cmdline ${host_refspec}
 new_deployment_path=/ostree/deploy/${host_osname}/deploy/${host_commit}.1
 
+# Test /etc directory mtime
+if ! test ${new_deployment_path}/etc/NetworkManager -nt /etc/NetworkManager; then
+    ls -al ${new_deployment_path}/etc/NetworkManager -nt /etc/NetworkManager
+    fatal "/etc directory mtime not newer"
+fi
+
 # A set of files that have a variety of security contexts
 for file in fstab passwd exports hostname sysctl.conf yum.repos.d \
             NetworkManager/dispatcher.d/hook-network-manager; do
