@@ -13,7 +13,7 @@ new_deployment_path=/ostree/deploy/${host_osname}/deploy/${host_commit}.1
 
 # Test /etc directory mtime
 if ! test ${new_deployment_path}/etc/NetworkManager -nt /etc/NetworkManager; then
-    ls -al ${new_deployment_path}/etc/NetworkManager -nt /etc/NetworkManager
+    ls -al ${new_deployment_path}/etc/NetworkManager /etc/NetworkManager
     fatal "/etc directory mtime not newer"
 fi
 
