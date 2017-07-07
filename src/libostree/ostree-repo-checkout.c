@@ -770,9 +770,11 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
     }
 
   /* Set directory mtime to OSTREE_TIMESTAMP, so that it is constant for all checkouts.
-   * Must be done after setting permissions and creating all children.
+   * Must be done after setting permissions and creating all children.  Note we skip doing
+   * this for directories that already exist (under the theory we possibly don't own them),
+   * and we also skip it if doing copying checkouts, which is mostly for /etc.
    */
-  if (!did_exist)
+  if (!did_exist && !options->force_copy)
     {
       const struct timespec times[2] = { { OSTREE_TIMESTAMP, UTIME_OMIT }, { OSTREE_TIMESTAMP, 0} };
       if (TEMP_FAILURE_RETRY (futimens (destination_dfd, times)) < 0)
