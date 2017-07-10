@@ -23,7 +23,7 @@ function repo_init() {
     cd ${test_tmpdir}
     rm repo -rf
     mkdir repo
-    ostree_repo_init repo
+    ostree_repo_init repo --mode=${repo_mode}
     ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo "$@"
 }
 
