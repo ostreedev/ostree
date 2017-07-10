@@ -299,13 +299,13 @@ commit_loose_regfile_object (OstreeRepo        *self,
 
 typedef struct
 {
-  gsize unpacked;
-  gsize archived;
+  goffset unpacked;
+  goffset archived;
 } OstreeContentSizeCacheEntry;
 
 static OstreeContentSizeCacheEntry *
-content_size_cache_entry_new (gsize unpacked,
-                              gsize archived)
+content_size_cache_entry_new (goffset unpacked,
+                              goffset archived)
 {
   OstreeContentSizeCacheEntry *entry = g_slice_new0 (OstreeContentSizeCacheEntry);
 
@@ -325,8 +325,8 @@ content_size_cache_entry_free (gpointer entry)
 static void
 repo_store_size_entry (OstreeRepo       *self,
                        const gchar      *checksum,
-                       gsize             unpacked,
-                       gsize             archived)
+                       goffset           unpacked,
+                       goffset           archived)
 {
   if (G_UNLIKELY (self->object_sizes == NULL))
     self->object_sizes = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -594,7 +594,7 @@ write_content_object (OstreeRepo         *self,
    */
   g_auto(OtCleanupUnlinkat) tmp_unlinker = { self->tmp_dir_fd, NULL };
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  gssize unpacked_size = 0;
+  goffset unpacked_size = 0;
   gboolean indexable = FALSE;
   /* Is it a symlink physically? */
   if (phys_object_is_symlink)
@@ -643,10 +643,11 @@ write_content_object (OstreeRepo         *self,
           /* Don't close the base; we'll do that later */
           g_filter_output_stream_set_close_base_stream ((GFilterOutputStream*)compressed_out_stream, FALSE);
 
-          unpacked_size = g_output_stream_splice (compressed_out_stream, file_input,
-                                                  0, cancellable, error);
-          if (unpacked_size < 0)
+          if (g_output_stream_splice (compressed_out_stream, file_input,
+                                      0, cancellable, error) < 0)
             return FALSE;
+
+          unpacked_size = g_file_info_get_size (file_info);
         }
 
       if (!g_output_stream_flush (temp_out, cancellable, error))
