@@ -23,4 +23,5 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive"
 
+repo_mode=bare-user
 . ${test_srcdir}/pull-test.sh
