@@ -1244,6 +1244,32 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+/**
+ * OSTREE_REPO_METADATA_REF:
+ *
+ * The name of a ref which is used to store metadata for the entire repository,
+ * such as its expected update time (`ostree.summary.expires`), name, or new
+ * GPG keys. Metadata is stored on contentless commits in the ref, and hence is
+ * signed with the commits.
+ *
+ * This supersedes the additional metadata dictionary in the `summary` file
+ * (see ostree_repo_regenerate_summary()), as the use of a ref means that the
+ * metadata for multiple upstream repositories can be included in a single mirror
+ * repository, disambiguating the refs using collection IDs. In order to support
+ * peer to peer redistribution of repository metadata, repositories must set a
+ * collection ID (ostree_repo_set_collection_id()).
+ *
+ * Users of OSTree may place arbitrary metadata in commits on this ref, but the
+ * keys must be namespaced by product or developer. For example,
+ * `exampleos.end-of-life`. The `ostree.` prefix is reserved.
+ *
+ * Since: 2017.8
+ */
+#define OSTREE_REPO_METADATA_REF "ostree-metadata"
+
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 G_END_DECLS
 

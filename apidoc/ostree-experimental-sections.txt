@@ -28,6 +28,7 @@ ostree_repo_find_remotes_finish
 ostree_repo_pull_from_remotes_async
 ostree_repo_pull_from_remotes_finish
 ostree_repo_resolve_keyring_for_collection
+OSTREE_REPO_METADATA_REF
 </SECTION>
 
 <SECTION>
