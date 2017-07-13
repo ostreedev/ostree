@@ -470,7 +470,7 @@ fetch_mirrored_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
 {
   g_autoptr(GBytes) bytes = NULL;
   if (!_ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
-                                                   filename, TRUE, FALSE,
+                                                   filename, OSTREE_FETCHER_REQUEST_NUL_TERMINATION,
                                                    &bytes,
                                                    OSTREE_MAX_METADATA_SIZE,
                                                    cancellable, error))
@@ -1864,6 +1864,7 @@ start_fetch (OtPullData *pull_data,
   else
     pull_data->n_outstanding_content_fetches++;
 
+  OstreeFetcherRequestFlags flags = 0;
   /* Override the path if we're trying to fetch the .commitmeta file first */
   if (fetch->is_detached_meta)
     {
@@ -1871,6 +1872,7 @@ start_fetch (OtPullData *pull_data,
       _ostree_loose_path (buf, expected_checksum, OSTREE_OBJECT_TYPE_COMMIT_META, pull_data->remote_mode);
       obj_subpath = g_build_filename ("objects", buf, NULL);
       mirrorlist = pull_data->meta_mirrorlist;
+      flags |= OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT;
     }
   else
     {
@@ -1890,7 +1892,7 @@ start_fetch (OtPullData *pull_data,
     expected_max_size = 0;
 
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher, mirrorlist,
-                                      obj_subpath, expected_max_size,
+                                      obj_subpath, flags, expected_max_size,
                                       is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
                                       : OSTREE_REPO_PULL_CONTENT_PRIORITY,
                                       pull_data->cancellable,
@@ -1995,7 +1997,7 @@ start_fetch_deltapart (OtPullData *pull_data,
   g_assert_cmpint (pull_data->n_outstanding_deltapart_fetches, <=, _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher,
                                       pull_data->content_mirrorlist,
-                                      deltapart_path, fetch->size,
+                                      deltapart_path, 0, fetch->size,
                                       OSTREE_FETCHER_DEFAULT_PRIORITY,
                                       pull_data->cancellable,
                                       static_deltapart_fetch_on_complete,
@@ -2677,7 +2679,8 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
   else
     {
       ret = _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
-                                                        filename, FALSE, TRUE,
+                                                        filename,
+                                                        OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
                                                         out_bytes,
                                                         OSTREE_MAX_METADATA_SIZE,
                                                         cancellable, error);
@@ -3514,7 +3517,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       {
         if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                          pull_data->meta_mirrorlist,
-                                                         "summary.sig", FALSE, TRUE,
+                                                         "summary.sig", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
                                                          &bytes_sig,
                                                          OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error))
@@ -3538,7 +3541,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       {
         if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                          pull_data->meta_mirrorlist,
-                                                         "summary", FALSE, TRUE,
+                                                         "summary", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
                                                          &bytes_summary,
                                                          OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error))
@@ -4776,8 +4779,7 @@ find_remotes_cb (GObject      *obj,
               if (!_ostree_fetcher_mirrored_request_to_membuf (fetcher,
                                                                mirrorlist,
                                                                commit_filename,
-                                                               FALSE,  /* don’t add trailing nul */
-                                                               TRUE,  /* return NULL on ENOENT */
+                                                               OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
                                                                &commit_bytes,
                                                                0,  /* no maximum size */
                                                                cancellable,
