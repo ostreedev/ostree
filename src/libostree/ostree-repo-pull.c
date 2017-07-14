@@ -614,18 +614,19 @@ validate_bareuseronly_mode (OtPullData *pull_data,
   return TRUE;
 }
 
-/* Import a single content object in the case where
- * we have pull_data->remote_repo_local.
+/* Synchronously import a single content object; this is used async for content,
+ * or synchronously for metadata. @src_repo is either
+ * pull_data->remote_repo_local or one of pull_data->localcache_repos.
  *
  * One important special case here is handling the
  * OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES flag.
  */
 static gboolean
-import_one_local_content_object (OtPullData *pull_data,
-                                 OstreeRepo *src_repo,
-                                 const char *checksum,
-                                 GCancellable *cancellable,
-                                 GError    **error)
+import_one_local_content_object_sync (OtPullData *pull_data,
+                                      OstreeRepo *src_repo,
+                                      const char *checksum,
+                                      GCancellable *cancellable,
+                                      GError    **error)
 {
   const gboolean trusted = !pull_data->is_untrusted;
   if (trusted && !pull_data->is_bareuseronly_files)
@@ -672,6 +673,83 @@ import_one_local_content_object (OtPullData *pull_data,
     }
 
   return TRUE;
+}
+
+typedef struct {
+  OtPullData *pull_data;
+  OstreeRepo *src_repo;
+  char checksum[OSTREE_SHA256_STRING_LEN+1];
+} ImportLocalAsyncData;
+
+static void
+async_import_in_thread (GTask *task,
+                        gpointer source,
+                        gpointer task_data,
+                        GCancellable *cancellable)
+{
+  ImportLocalAsyncData *iataskdata = task_data;
+  g_autoptr(GError) local_error = NULL;
+  if (!import_one_local_content_object_sync (iataskdata->pull_data,
+                                             iataskdata->src_repo,
+                                             iataskdata->checksum,
+                                             cancellable,
+                                             &local_error))
+    g_task_return_error (task, g_steal_pointer (&local_error));
+  else
+    g_task_return_boolean (task, TRUE);
+}
+
+/* Start an async import of a single object; currently used for content objects.
+ * @src_repo is from pull_data->remote_repo_local or
+ * pull_data->localcache_repos.
+ *
+ * One important special case here is handling the
+ * OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES flag.
+ */
+static void
+async_import_one_local_content_object (OtPullData *pull_data,
+                                       OstreeRepo *src_repo,
+                                       const char *checksum,
+                                       GCancellable *cancellable,
+                                       GAsyncReadyCallback callback,
+                                       gpointer user_data)
+{
+  ImportLocalAsyncData *iataskdata = g_new0 (ImportLocalAsyncData, 1);
+  iataskdata->pull_data = pull_data;
+  iataskdata->src_repo = src_repo;
+  memcpy (iataskdata->checksum, checksum, OSTREE_SHA256_STRING_LEN);
+  g_autoptr(GTask) task = g_task_new (pull_data->repo, cancellable, callback, user_data);
+  g_task_set_source_tag (task, async_import_one_local_content_object);
+  g_task_set_task_data (task, iataskdata, g_free);
+  pull_data->n_outstanding_content_write_requests++;
+  g_task_run_in_thread (task, async_import_in_thread);
+}
+
+static gboolean
+async_import_one_local_content_object_finish (OtPullData *pull_data,
+                                              GAsyncResult *result,
+                                              GError **error)
+{
+  g_return_val_if_fail (g_task_is_valid (result, pull_data->repo), FALSE);
+  return g_task_propagate_boolean ((GTask*)result, error);
+}
+
+static void
+on_local_object_imported (GObject        *object,
+                          GAsyncResult   *result,
+                          gpointer        user_data)
+{
+  OtPullData *pull_data = user_data;
+  g_autoptr(GError) local_error = NULL;
+  GError **error = &local_error;
+
+  if (!async_import_one_local_content_object_finish (pull_data, result, error))
+    goto out;
+
+ out:
+  g_assert_cmpint (pull_data->n_outstanding_content_write_requests, >, 0);
+  pull_data->n_outstanding_content_write_requests--;
+  check_outstanding_requests_handle_error (pull_data, &local_error);
 }
 
 static gboolean
@@ -724,10 +802,11 @@ scan_dirtree_object (OtPullData   *pull_data,
       /* Is this a local repo? */
       if (pull_data->remote_repo_local)
         {
-          if (!import_one_local_content_object (pull_data, pull_data->remote_repo_local,
-                                                file_checksum, cancellable, error))
-            return FALSE;
-
+          async_import_one_local_content_object (pull_data, pull_data->remote_repo_local,
+                                                 file_checksum, cancellable,
+                                                 on_local_object_imported,
+                                                 pull_data);
+          g_hash_table_add (pull_data->requested_content, g_steal_pointer (&file_checksum));
           /* Note early loop continue */
           continue;
         }
@@ -746,9 +825,9 @@ scan_dirtree_object (OtPullData   *pull_data,
                 return FALSE;
               if (!localcache_repo_has_obj)
                 continue;
-              if (!import_one_local_content_object (pull_data, localcache_repo, file_checksum,
-                                                    cancellable, error))
-                return FALSE;
+              async_import_one_local_content_object (pull_data, localcache_repo, file_checksum, cancellable,
+                                                     on_local_object_imported, pull_data);
+              g_hash_table_add (pull_data->requested_content, g_steal_pointer (&file_checksum));
               did_import_from_cache_repo = TRUE;
               pull_data->n_fetched_localcache_content++;
               break;
