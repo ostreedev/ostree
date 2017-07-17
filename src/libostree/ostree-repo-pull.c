@@ -614,8 +614,9 @@ validate_bareuseronly_mode (OtPullData *pull_data,
   return TRUE;
 }
 
-/* Import a single content object in the case where
- * we have pull_data->remote_repo_local.
+/* Synchronously import a single content object; this is used async for content,
+ * or synchronously for metadata. @src_repo is either
+ * pull_data->remote_repo_local or one of pull_data->localcache_repos.
  *
  * One important special case here is handling the
  * OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES flag.
@@ -698,8 +699,9 @@ async_import_in_thread (GTask *task,
     g_task_return_boolean (task, TRUE);
 }
 
-/* Import a single content object in the case where
- * we have pull_data->remote_repo_local.
+/* Start an async import of a single object; currently used for content objects.
+ * @src_repo is from pull_data->remote_repo_local or
+ * pull_data->localcache_repos.
  *
  * One important special case here is handling the
  * OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES flag.
