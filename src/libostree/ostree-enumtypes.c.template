@@ -23,6 +23,8 @@
 #endif
 #include <string.h>
 
+#include "ostree-enumtypes.h"
+
 /*** END file-header ***/
 
 /*** BEGIN file-production ***/
