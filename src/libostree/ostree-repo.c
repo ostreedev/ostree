@@ -647,6 +647,7 @@ ostree_repo_init (OstreeRepo *self)
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
   self->commit_stagedir_lock = empty_lockfile;
+  self->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_UNKNOWN;
 }
 
 /**
@@ -1887,6 +1888,7 @@ get_remotes_d_dir (OstreeRepo          *self,
         {
         case OSTREE_REPO_SYSROOT_KIND_UNKNOWN:
           g_assert_not_reached ();
+          break;
         case OSTREE_REPO_SYSROOT_KIND_NO:
           break;
         case OSTREE_REPO_SYSROOT_KIND_IS_SYSROOT_OSTREE:
@@ -2232,6 +2234,8 @@ ostree_repo_open (OstreeRepo    *self,
           else
             self->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_NO;
         }
+      else
+        self->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_NO;
     }
 
   if (!ostree_repo_reload_config (self, cancellable, error))
