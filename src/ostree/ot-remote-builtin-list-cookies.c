@@ -35,13 +35,8 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_list_cookies (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
-  const char *remote_name;
-  g_autofree char *jar_path = NULL;
-  g_autofree char *cookie_file = NULL;
-
-  context = g_option_context_new ("NAME - Show remote repository cookies");
+  g_autoptr(GOptionContext) context = g_option_context_new ("NAME - Show remote repository cookies");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
@@ -53,12 +48,9 @@ ot_remote_builtin_list_cookies (int argc, char **argv, GCancellable *cancellable
       return FALSE;
     }
 
-  remote_name = argv[1];
-
-  cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
-  jar_path = g_build_filename (g_file_get_path (repo->repodir), cookie_file, NULL);
-
-  if (!ot_list_cookies_at (AT_FDCWD, jar_path, error))
+  const char *remote_name = argv[1];
+  g_autofree char *cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
+  if (!ot_list_cookies_at (ostree_repo_get_dfd (repo), cookie_file, error))
     return FALSE;
 
   return TRUE;
