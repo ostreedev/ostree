@@ -799,7 +799,7 @@ dispatch_unset_read_source (OstreeRepo                 *repo,
                             GCancellable               *cancellable,
                             GError                    **error)
 {
-  GLNX_AUTO_PREFIX_ERROR("opcode unset-read-source: ", error);
+  GLNX_AUTO_PREFIX_ERROR("opcode unset-read-source", error);
 
   if (state->stats_only)
     return TRUE; /* Early return */
