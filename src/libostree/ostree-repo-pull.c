@@ -1386,11 +1386,10 @@ process_verify_result (OtPullData            *pull_data,
                        OstreeGpgVerifyResult *result,
                        GError               **error)
 {
+  const char *error_prefix = glnx_strjoina ("Commit ", checksum);
+  GLNX_AUTO_PREFIX_ERROR(error_prefix, error);
   if (result == NULL)
-    {
-      g_prefix_error (error, "Commit %s: ", checksum);
-      return FALSE;
-    }
+    return FALSE;
 
   /* Allow callers to output the results immediately. */
   g_signal_emit_by_name (pull_data->repo,
@@ -1398,10 +1397,8 @@ process_verify_result (OtPullData            *pull_data,
                          checksum, result);
 
   if (!ostree_gpg_verify_result_require_valid_signature (result, error))
-    {
-      g_prefix_error (error, "Commit %s: ", checksum);
-      return FALSE;
-    }
+    return FALSE;
+
   return TRUE;
 }
 

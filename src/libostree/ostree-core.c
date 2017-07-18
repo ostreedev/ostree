@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <gio/gfiledescriptorbased.h>
+#include <gio/gunixinputstream.h>
 #include "libglnx.h"
 #include "ostree.h"
 #include "ostree-core-private.h"
@@ -740,14 +741,15 @@ ostree_content_file_parse_at (gboolean                compressed,
                               GCancellable           *cancellable,
                               GError                **error)
 {
-  g_autoptr(GInputStream) file_input = NULL;
-  if (!ot_openat_read_stream (parent_dfd, path, TRUE, &file_input,
-                              cancellable, error))
-    return FALSE;
+  int glnx_fd_close fd = openat (parent_dfd, path, O_RDONLY | O_CLOEXEC);
+  if (fd < 0)
+    return glnx_throw_errno_prefix (error, "open(%s)", path);
 
   struct stat stbuf;
-  if (!glnx_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, error))
+  if (!glnx_fstat (fd, &stbuf, error))
     return FALSE;
+
+  g_autoptr(GInputStream) file_input = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
 
   g_autoptr(GFileInfo) ret_file_info = NULL;
   g_autoptr(GVariant) ret_xattrs = NULL;

@@ -253,8 +253,8 @@ commit_loose_regfile_object (OstreeRepo        *self,
       if (S_ISREG (mode))
         {
           const mode_t content_mode = (mode & (S_IFREG | 0775)) | S_IRUSR;
-          if (fchmod (tmpf->fd, content_mode) < 0)
-            return glnx_throw_errno_prefix (error, "fchmod");
+          if (!glnx_fchmod (tmpf->fd, content_mode, error))
+            return FALSE;
         }
       else
         g_assert (S_ISLNK (mode));
@@ -266,8 +266,8 @@ commit_loose_regfile_object (OstreeRepo        *self,
         return glnx_throw (error, "Invalid mode 0%04o with bits 0%04o in bare-user-only repository",
                            mode, invalid_modebits);
 
-      if (fchmod (tmpf->fd, mode) < 0)
-        return glnx_throw_errno_prefix (error, "fchmod");
+      if (!glnx_fchmod (tmpf->fd, mode, error))
+        return FALSE;
     }
 
   if (_ostree_repo_mode_is_bare (self->mode))
@@ -495,8 +495,8 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
         }
     }
 
-  if (fchmod (tmpf.fd, 0644) < 0)
-    return glnx_throw_errno_prefix (error, "fchmod");
+  if (!glnx_fchmod (tmpf.fd, 0644, error))
+    return FALSE;
 
   *out_tmpf = tmpf; tmpf.initialized = FALSE;
   return TRUE;
@@ -653,8 +653,8 @@ write_content_object (OstreeRepo         *self,
       if (!g_output_stream_flush (temp_out, cancellable, error))
         return FALSE;
 
-      if (fchmod (tmpf.fd, 0644) < 0)
-        return glnx_throw_errno_prefix (error, "fchmod");
+      if (!glnx_fchmod (tmpf.fd, 0644, error))
+        return FALSE;
     }
 
   const char *actual_checksum = NULL;
@@ -852,8 +852,8 @@ write_metadata_object (OstreeRepo         *self,
     return FALSE;
   if (glnx_loop_write (tmpf.fd, bufp, len) < 0)
     return glnx_throw_errno_prefix (error, "write()");
-  if (fchmod (tmpf.fd, 0644) < 0)
-    return glnx_throw_errno_prefix (error, "fchmod");
+  if (!glnx_fchmod (tmpf.fd, 0644, error))
+    return FALSE;
 
   /* And commit it into place */
   if (!_ostree_repo_commit_tmpf_final (self, actual_checksum, objtype,

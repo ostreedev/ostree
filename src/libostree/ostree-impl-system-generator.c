@@ -203,8 +203,8 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
     return FALSE;
   g_clear_object (&outstream);
   /* It should be readable */
-  if (fchmod (tmpf.fd, 0644) < 0)
-    return glnx_throw_errno_prefix (error, "fchmod");
+  if (!glnx_fchmod (tmpf.fd, 0644, error))
+    return FALSE;
   /* Error out if somehow it already exists, that'll help us debug conflicts */
   if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_NOREPLACE,
                              normal_dir_dfd, "var.mount", error))
