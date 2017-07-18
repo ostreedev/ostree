@@ -46,6 +46,14 @@ int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
 
 int ostree_usage (OstreeCommand *commands, gboolean is_error);
 
+gboolean ostree_parse_sysroot_or_repo_option (GOptionContext *context,
+                                              const char *sysroot_path,
+                                              const char *repo_path,
+                                              OstreeSysroot **out_sysroot,
+                                              OstreeRepo **out_repo,
+                                              GCancellable *cancellable,
+                                              GError **error);
+
 gboolean ostree_option_context_parse (GOptionContext *context,
                                       const GOptionEntry *main_entries,
                                       int *argc, char ***argv,
