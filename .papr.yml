@@ -114,6 +114,7 @@ cluster:
 tests:
   - ci/build.sh
   - make install DESTDIR=$(pwd)/insttree
+  - yum -y install rsync
   - rsync -rl -e 'ssh -o User=root' . vmcheck:ostree/
   - ssh root@vmcheck './ostree/tests/installed/fah-prep.sh && ostree admin unlock && rsync -rlv ./ostree/insttree/usr/ /usr/ && ./ostree/tests/installed/run.sh'
 
