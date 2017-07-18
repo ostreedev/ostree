@@ -4,10 +4,10 @@ branches:
     - try
 
 required: true
-context: f25-primary
+context: f26-primary
 
 container:
-    image: registry.fedoraproject.org/fedora:25
+    image: registry.fedoraproject.org/fedora:26
 packages:
   - git
 
@@ -50,10 +50,10 @@ tests:
 
 ---
 
-context: f25-rust
+context: f26-rust
 inherit: true
 container:
-    image: registry.fedoraproject.org/fedora:25
+    image: registry.fedoraproject.org/fedora:26
 packages:
   - cargo
 env:
@@ -67,7 +67,7 @@ tests:
 
 inherit: true
 
-context: f25-experimental-api
+context: f26-experimental-api
 env:
   CONFIGOPTS: '--enable-experimental-api'
 
@@ -79,7 +79,7 @@ tests:
 inherit: true
 required: true
 
-context: f25-curl-openssl
+context: f26-curl-openssl
 
 packages:
   - pkgconfig(libcurl)
@@ -99,21 +99,22 @@ branches:
     - auto
     - try
 
-context: f25ah-insttest
+context: f26ah-insttest
 required: false
 
 cluster:
   hosts:
     - name: vmcheck
-      distro: fedora/25/atomic
+      distro: fedora/26/atomic
   container:
-    image: registry.fedoraproject.org/fedora:25
+    image: registry.fedoraproject.org/fedora:26
 
 # Copy the build from the container to the host; ideally down the line
 # this is installing an RPM via https://github.com/jlebon/redhat-ci/issues/10
 tests:
   - ci/build.sh
   - make install DESTDIR=$(pwd)/insttree
+  - yum -y install rsync
   - rsync -rl -e 'ssh -o User=root' . vmcheck:ostree/
   - ssh root@vmcheck './ostree/tests/installed/fah-prep.sh && ostree admin unlock && rsync -rlv ./ostree/insttree/usr/ /usr/ && ./ostree/tests/installed/run.sh'
 
@@ -125,19 +126,19 @@ branches:
     - auto
     - try
 
-context: f25-flatpak
+context: f26-flatpak
 required: false
 
 # This test case wants an "unprivileged container with bubblewrap",
 # which we don't have right now; so just provision a VM and do a
 # docker --privileged run.
 host:
-  distro: fedora/25/atomic
+  distro: fedora/26/atomic
   specs:
     ram: 4096  # build-bundle is a static delta, which needs RAM right now
 
 tests:
-  - docker run --rm --privileged -v $(pwd):/srv/code registry.fedoraproject.org/fedora:25 /bin/sh -c "cd /srv/code && ./ci/flatpak.sh"
+  - docker run --rm --privileged -v $(pwd):/srv/code registry.fedoraproject.org/fedora:26 /bin/sh -c "cd /srv/code && ./ci/flatpak.sh"
 
 artifacts:
   - test-suite.log
