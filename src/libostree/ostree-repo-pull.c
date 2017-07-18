@@ -2697,16 +2697,16 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
   }
 
   {
-    g_autofree char *jar_path = NULL;
-    g_autofree char *cookie_file = g_strdup_printf ("%s.cookies.txt",
-                                                    remote_name);
+    g_autofree char *cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
+    /* TODO; port away from this; a bit hard since both libsoup and libcurl
+     * expect a file. Doing ot_fdrel_to_gfile() works for now though.
+     */
+    GFile*repo_path = ostree_repo_get_path (self);
+    g_autofree char *jar_path =
+      g_build_filename (gs_file_get_path_cached (repo_path), cookie_file, NULL);
 
-    jar_path = g_build_filename (gs_file_get_path_cached (self->repodir), cookie_file,
-                                 NULL);
-
-    if (g_file_test(jar_path, G_FILE_TEST_IS_REGULAR))
+    if (g_file_test (jar_path, G_FILE_TEST_IS_REGULAR))
       _ostree_fetcher_set_cookie_jar (fetcher, jar_path);
-
   }
 
   success = TRUE;

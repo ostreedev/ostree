@@ -153,13 +153,13 @@ ot_add_cookie_at (int dfd, const char *jar_path,
 
   /* Adapted from soup-cookie-jar-text.c:write_cookie() */
   g_autofree char *buf = g_strdup_printf ("%s\t%s\t%s\t%s\t%llu\t%s\t%s\n",
-                         domain,
-                         *domain == '.' ? "TRUE" : "FALSE",
-                         path,
-                         "FALSE",
-                         (long long unsigned)g_date_time_to_unix (expires),
-                         name,
-                         value);
+                                          domain,
+                                          *domain == '.' ? "TRUE" : "FALSE",
+                                          path,
+                                          "FALSE",
+                                          (long long unsigned)g_date_time_to_unix (expires),
+                                          name,
+                                          value);
   if (glnx_loop_write (fd, buf, strlen (buf)) < 0)
     return glnx_throw_errno_prefix (error, "write");
   return TRUE;
