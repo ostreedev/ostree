@@ -93,6 +93,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                       GCancellable       *cancellable,
                                       GError            **error)
 {
+  GLNX_AUTO_PREFIX_ERROR("GPG", error);
   gpgme_error_t gpg_error = 0;
   ot_auto_gpgme_data gpgme_data_t data_buffer = NULL;
   ot_auto_gpgme_data gpgme_data_t signature_buffer = NULL;
@@ -252,8 +253,6 @@ out:
       if (tmp_dir != NULL)
         (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
     }
-
-  g_prefix_error (error, "GPG: ");
 
   return result;
 }

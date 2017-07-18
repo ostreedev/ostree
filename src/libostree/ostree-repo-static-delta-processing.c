@@ -50,7 +50,7 @@ typedef struct {
 
   GVariant       *mode_dict;
   GVariant       *xattr_dict;
-  
+
   gboolean        object_start;
   gboolean        caught_error;
   GError        **async_error;
@@ -68,12 +68,12 @@ typedef struct {
   guint32         gid;
   guint32         mode;
   GVariant       *xattrs;
-  
+
   const guint8   *output_target;
   const guint8   *input_target_csum;
 
   const guint8   *payload_data;
-  guint64         payload_size; 
+  guint64         payload_size;
 } StaticDeltaExecutionState;
 
 typedef struct {
@@ -127,26 +127,21 @@ open_output_target (StaticDeltaExecutionState   *state,
                     GCancellable                *cancellable,
                     GError                     **error)
 {
-  gboolean ret = FALSE;
-  guint8 *objcsum;
-
   g_assert (state->checksums != NULL);
   g_assert (state->output_target == NULL);
   g_assert (state->checksum_index < state->n_checksums);
 
-  objcsum = (guint8*)state->checksums + (state->checksum_index * OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN);
+  guint8 *objcsum = (guint8*)state->checksums + (state->checksum_index * OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN);
 
   if (G_UNLIKELY(!ostree_validate_structureof_objtype (*objcsum, error)))
-    goto out;
+    return FALSE;
 
   state->output_objtype = (OstreeObjectType) *objcsum;
   state->output_target = objcsum + 1;
 
   ostree_checksum_inplace_from_bytes (state->output_target, state->checksum);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static guint
@@ -353,7 +348,7 @@ _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
 gboolean
 _ostree_static_delta_part_execute_finish (OstreeRepo      *repo,
                                           GAsyncResult    *result,
-                                          GError         **error) 
+                                          GError         **error)
 {
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
 
@@ -386,7 +381,7 @@ content_out_write (OstreeRepo                 *repo,
                    StaticDeltaExecutionState  *state,
                    const guint8*               buf,
                    gsize                       len,
-                   GCancellable               *cancellable,  
+                   GCancellable               *cancellable,
                    GError                    **error)
 {
   gsize bytes_written;
@@ -407,21 +402,19 @@ content_out_write (OstreeRepo                 *repo,
 static gboolean
 do_content_open_generic (OstreeRepo                 *repo,
                          StaticDeltaExecutionState  *state,
-                         GCancellable               *cancellable,  
+                         GCancellable               *cancellable,
                          GError                    **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) modev = NULL;
   guint64 mode_offset;
   guint64 xattr_offset;
-  guint32 uid, gid, mode;
 
   if (!read_varuint64 (state, &mode_offset, error))
-    goto out;
+    return FALSE;
   if (!read_varuint64 (state, &xattr_offset, error))
-    goto out;
+    return FALSE;
 
-  modev = g_variant_get_child_value (state->mode_dict, mode_offset);
+  g_autoptr(GVariant) modev = g_variant_get_child_value (state->mode_dict, mode_offset);
+  guint32 uid, gid, mode;
   g_variant_get (modev, "(uuu)", &uid, &gid, &mode);
   state->uid = GUINT32_FROM_BE (uid);
   state->gid = GUINT32_FROM_BE (gid);
@@ -429,9 +422,7 @@ do_content_open_generic (OstreeRepo                 *repo,
 
   state->xattrs = g_variant_get_child_value (state->xattr_dict, xattr_offset);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 struct bzpatch_opaque_s
@@ -460,35 +451,29 @@ dispatch_bspatch (OstreeRepo                 *repo,
                   GCancellable               *cancellable,
                   GError                    **error)
 {
-  gboolean ret = FALSE;
   guint64 offset, length;
-  g_autoptr(GMappedFile) input_mfile = NULL;
-  g_autofree guchar *buf = NULL;
-  struct bspatch_stream stream;
-  struct bzpatch_opaque_s opaque;
 
   if (!read_varuint64 (state, &offset, error))
-    goto out;
+    return FALSE;
   if (!read_varuint64 (state, &length, error))
-    goto out;
+    return FALSE;
 
   if (state->stats_only)
-    {
-      ret = TRUE;
-      goto out;
-    }
+    return TRUE; /* Early return */
 
   if (!state->have_obj)
     {
-      input_mfile = g_mapped_file_new_from_fd (state->read_source_fd, FALSE, error);
+      g_autoptr(GMappedFile) input_mfile = g_mapped_file_new_from_fd (state->read_source_fd, FALSE, error);
       if (!input_mfile)
-        goto out;
+        return FALSE;
 
-      buf = g_malloc0 (state->content_size);
+      g_autofree guchar *buf = g_malloc0 (state->content_size);
 
+      struct bzpatch_opaque_s opaque;
       opaque.state = state;
       opaque.offset = offset;
       opaque.length = length;
+      struct bspatch_stream stream;
       stream.read = bspatch_read;
       stream.opaque = &opaque;
       if (bspatch ((const guint8*)g_mapped_file_get_contents (input_mfile),
@@ -496,16 +481,14 @@ dispatch_bspatch (OstreeRepo                 *repo,
                    buf,
                    state->content_size,
                    &stream) < 0)
-        goto out;
+        return FALSE;
 
       if (!content_out_write (repo, state, buf, state->content_size,
                               cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /* Before, we had a distinction between "trusted" and "untrusted" deltas
@@ -534,7 +517,7 @@ handle_untrusted_content_checksum (OstreeRepo                 *repo,
 static gboolean
 dispatch_open_splice_and_close (OstreeRepo                 *repo,
                                 StaticDeltaExecutionState  *state,
-                                GCancellable               *cancellable,  
+                                GCancellable               *cancellable,
                                 GError                    **error)
 {
   gboolean ret = FALSE;
@@ -560,7 +543,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
           ret = TRUE;
           goto out;
         }
-      
+
       metadata = g_variant_new_from_data (ostree_metadata_variant_type (state->output_objtype),
                                           state->payload_data + offset, length, TRUE, NULL, NULL);
 
@@ -581,7 +564,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       guint64 objlen;
       g_autoptr(GInputStream) object_input = NULL;
       g_autoptr(GInputStream) memin = NULL;
-      
+
       if (!do_content_open_generic (repo, state, cancellable, error))
         goto out;
 
@@ -591,7 +574,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
         goto out;
       if (!validate_ofs (state, content_offset, state->content_size, error))
         goto out;
-      
+
       if (state->stats_only)
         {
           ret = TRUE;
@@ -599,7 +582,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
         }
 
       /* Fast path for regular files to bare repositories */
-      if (S_ISREG (state->mode) && 
+      if (S_ISREG (state->mode) &&
           (repo->mode == OSTREE_REPO_MODE_BARE ||
            repo->mode == OSTREE_REPO_MODE_BARE_USER))
         {
@@ -676,10 +659,10 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
 static gboolean
 dispatch_open (OstreeRepo                 *repo,
                StaticDeltaExecutionState  *state,
-               GCancellable               *cancellable,  
+               GCancellable               *cancellable,
                GError                    **error)
 {
-  gboolean ret = FALSE;
+  GLNX_AUTO_PREFIX_ERROR("opcode open", error);
 
   g_assert (state->output_target == NULL);
   /* FIXME - lift this restriction */
@@ -689,71 +672,58 @@ dispatch_open (OstreeRepo                 *repo,
                 repo->mode == OSTREE_REPO_MODE_BARE_USER ||
                 repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY);
     }
-  
+
   if (!open_output_target (state, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!do_content_open_generic (repo, state, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!read_varuint64 (state, &state->content_size, error))
-    goto out;
+    return FALSE;
 
   if (state->stats_only)
-    {
-      ret = TRUE;
-      goto out;
-    }
-  
+    return TRUE; /* Early return */
+
   if (!_ostree_repo_open_content_bare (repo, state->checksum,
                                        state->content_size,
                                        &state->tmpf,
                                        &state->have_obj,
                                        cancellable, error))
-    goto out;
+    return FALSE;
   if (!state->have_obj)
     state->content_out = g_unix_output_stream_new (state->tmpf.fd, FALSE);
 
   if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  if (!ret)
-    g_prefix_error (error, "opcode open: ");
-  return ret;
+  return TRUE;
 }
 
 static gboolean
 dispatch_write (OstreeRepo                 *repo,
                StaticDeltaExecutionState  *state,
-               GCancellable               *cancellable,  
+               GCancellable               *cancellable,
                GError                    **error)
 {
-  gboolean ret = FALSE;
+  GLNX_AUTO_PREFIX_ERROR("opcode open-splice-and-close", error);
   guint64 content_size;
   guint64 content_offset;
-      
+
   if (!read_varuint64 (state, &content_size, error))
-    goto out;
+    return FALSE;
   if (!read_varuint64 (state, &content_offset, error))
-    goto out;
+    return FALSE;
 
   if (state->stats_only)
-    {
-      ret = TRUE;
-      goto out;
-    }
+    return TRUE; /* Early return */
 
   if (!state->have_obj)
     {
       if (state->read_source_fd != -1)
         {
           if (lseek (state->read_source_fd, content_offset, SEEK_SET) == -1)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "lseek");
           while (content_size > 0)
             {
               char buf[4096];
@@ -763,49 +733,38 @@ dispatch_write (OstreeRepo                 *repo,
                 bytes_read = read (state->read_source_fd, buf, MIN(sizeof(buf), content_size));
               while (G_UNLIKELY (bytes_read == -1 && errno == EINTR));
               if (bytes_read == -1)
-                {
-                  glnx_set_error_from_errno (error);
-                  goto out;
-                }
+                return glnx_throw_errno_prefix (error, "read");
               if (G_UNLIKELY (bytes_read == 0))
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Unexpected EOF reading object %s", state->read_source_object);
-                  goto out;
-                }
-              
+                return glnx_throw (error, "Unexpected EOF reading object %s", state->read_source_object);
+
               if (!content_out_write (repo, state, (guint8*)buf, bytes_read,
                                       cancellable, error))
-                goto out;
-              
+                return FALSE;
+
               content_size -= bytes_read;
             }
         }
       else
         {
           if (!validate_ofs (state, content_offset, content_size, error))
-            goto out;
+            return FALSE;
 
           if (!content_out_write (repo, state, state->payload_data + content_offset, content_size,
                                   cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
-  
-  ret = TRUE;
- out:
-  if (!ret)
-    g_prefix_error (error, "opcode open-splice-and-close: ");
-  return ret;
+
+  return TRUE;
 }
 
 static gboolean
 dispatch_set_read_source (OstreeRepo                 *repo,
                           StaticDeltaExecutionState  *state,
-                          GCancellable               *cancellable,  
+                          GCancellable               *cancellable,
                           GError                    **error)
 {
-  gboolean ret = FALSE;
+  GLNX_AUTO_PREFIX_ERROR("opcode set-read-source", error);
   guint64 source_offset;
 
   if (state->read_source_fd != -1)
@@ -815,15 +774,12 @@ dispatch_set_read_source (OstreeRepo                 *repo,
     }
 
   if (!read_varuint64 (state, &source_offset, error))
-    goto out;
+    return FALSE;
   if (!validate_ofs (state, source_offset, 32, error))
-    goto out;
+    return FALSE;
 
   if (state->stats_only)
-    {
-      ret = TRUE;
-      goto out;
-    }
+    return TRUE; /* Early return */
 
   g_free (state->read_source_object);
   state->read_source_object = ostree_checksum_from_bytes (state->payload_data + source_offset);
@@ -832,28 +788,21 @@ dispatch_set_read_source (OstreeRepo                 *repo,
                                     &state->read_source_fd,
                                     NULL, NULL, NULL,
                                     cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  if (!ret)
-    g_prefix_error (error, "opcode set-read-source: ");
-  return ret;
+  return TRUE;
 }
 
 static gboolean
 dispatch_unset_read_source (OstreeRepo                 *repo,
                             StaticDeltaExecutionState  *state,
-                            GCancellable               *cancellable,  
+                            GCancellable               *cancellable,
                             GError                    **error)
 {
-  gboolean ret = FALSE;
+  GLNX_AUTO_PREFIX_ERROR("opcode unset-read-source", error);
 
   if (state->stats_only)
-    {
-      ret = TRUE;
-      goto out;
-    }
+    return TRUE; /* Early return */
 
   if (state->read_source_fd != -1)
     {
@@ -862,60 +811,48 @@ dispatch_unset_read_source (OstreeRepo                 *repo,
     }
 
   g_clear_pointer (&state->read_source_object, g_free);
-  
-  ret = TRUE;
- out:
-  if (!ret)
-    g_prefix_error (error, "opcode unset-read-source: ");
-  return ret;
+
+  return TRUE;
 }
 
 static gboolean
 dispatch_close (OstreeRepo                 *repo,
                 StaticDeltaExecutionState  *state,
-                GCancellable               *cancellable,  
+                GCancellable               *cancellable,
                 GError                    **error)
 {
-  gboolean ret = FALSE;
-  
+  GLNX_AUTO_PREFIX_ERROR("opcode open-splice-and-close", error);
+
   if (state->content_out)
     {
       if (!g_output_stream_flush (state->content_out, cancellable, error))
-        goto out;
+        return FALSE;
 
       if (state->content_checksum)
         {
           const char *actual_checksum = g_checksum_get_string (state->content_checksum);
 
           if (strcmp (actual_checksum, state->checksum) != 0)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Corrupted object %s (actual checksum is %s)",
-                           state->checksum, actual_checksum);
-              goto out;
-            }
+            return glnx_throw (error, "Corrupted object %s (actual checksum is %s)",
+                               state->checksum, actual_checksum);
         }
 
       if (!_ostree_repo_commit_trusted_content_bare (repo, state->checksum, &state->tmpf,
                                                      state->uid, state->gid, state->mode,
                                                      state->xattrs,
                                                      cancellable, error))
-        goto out;
+        return FALSE;
       g_clear_object (&state->content_out);
     }
 
   if (!dispatch_unset_read_source (repo, state, cancellable, error))
-    goto out;
-      
+    return FALSE;
+
   g_clear_pointer (&state->xattrs, g_variant_unref);
   g_clear_pointer (&state->content_checksum, g_checksum_free);
-  
+
   state->checksum_index++;
   state->output_target = NULL;
 
-  ret = TRUE;
- out:
-  if (!ret)
-    g_prefix_error (error, "opcode open-splice-and-close: ");
-  return ret;
+  return TRUE;
 }
