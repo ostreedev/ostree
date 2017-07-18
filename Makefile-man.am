@@ -46,7 +46,7 @@ man5_files = ostree.repo.5 ostree.repo-config.5
 man1_MANS = $(addprefix man/,$(man1_files))
 man5_MANS = $(addprefix man/,$(man5_files))
 
-EXTRA_DIST += $(man1_MANS) $(man5_MANS) $(man1_MANS:.1=.xml) $(man5_MANS:.5=.xml)
+EXTRA_DIST += $(man1_MANS:.1=.xml) $(man5_MANS:.5=.xml)
 
 XSLT_STYLESHEET = http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
 
