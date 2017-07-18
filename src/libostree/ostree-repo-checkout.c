@@ -81,8 +81,8 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
   if (!g_output_stream_close (temp_out, cancellable, error))
     return FALSE;
 
-  if (fchmod (tmpf.fd, file_mode) < 0)
-    return glnx_throw_errno (error);
+  if (!glnx_fchmod (tmpf.fd, file_mode, error))
+    return FALSE;
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->uncompressed_objects_dir_fd,
                                             loose_path,
