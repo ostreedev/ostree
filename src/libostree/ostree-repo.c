@@ -1895,12 +1895,10 @@ get_remotes_d_dir (OstreeRepo          *self,
           sysroot = sysroot_owned = g_file_new_for_path ("/");
           break;
         case OSTREE_REPO_SYSROOT_KIND_VIA_SYSROOT:
-          {
-            sysroot_ref = (OstreeSysroot*)g_weak_ref_get (&self->sysroot);
-            /* Only write to /etc/ostree/remotes.d if we are pointed at a deployment */
-            if (sysroot_ref != NULL && !sysroot_ref->is_physical)
-              sysroot = ostree_sysroot_get_path (sysroot_ref);
-          }
+          sysroot_ref = (OstreeSysroot*)g_weak_ref_get (&self->sysroot);
+          /* Only write to /etc/ostree/remotes.d if we are pointed at a deployment */
+          if (sysroot_ref != NULL && !sysroot_ref->is_physical)
+            sysroot = ostree_sysroot_get_path (sysroot_ref);
           break;
         }
     }

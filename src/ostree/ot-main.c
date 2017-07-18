@@ -207,6 +207,88 @@ ostree_run (int    argc,
   return 0;
 }
 
+/* Process a --repo arg; used below, and for the remote builtins */
+static OstreeRepo *
+parse_repo_option (GOptionContext *context,
+                   const char     *repo_path,
+                   gboolean        skip_repo_open,
+                   GCancellable   *cancellable,
+                   GError        **error)
+{
+  g_autoptr(OstreeRepo) repo = NULL;
+
+  if (repo_path == NULL)
+    {
+      g_autoptr(GError) local_error = NULL;
+
+      repo = ostree_repo_new_default ();
+      if (!ostree_repo_open (repo, cancellable, &local_error))
+        {
+          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_autofree char *help = NULL;
+
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Command requires a --repo argument");
+
+              help = g_option_context_get_help (context, FALSE, NULL);
+              g_printerr ("%s", help);
+            }
+          else
+            {
+              g_propagate_error (error, g_steal_pointer (&local_error));
+            }
+          return NULL;
+        }
+    }
+  else
+    {
+      g_autoptr(GFile) repo_file = g_file_new_for_path (repo_path);
+
+      repo = ostree_repo_new (repo_file);
+      if (!skip_repo_open)
+        {
+          if (!ostree_repo_open (repo, cancellable, error))
+            return NULL;
+        }
+    }
+
+  return g_steal_pointer (&repo);
+}
+
+/* Used by the remote builtins which are special in taking --sysroot or --repo */
+gboolean
+ostree_parse_sysroot_or_repo_option (GOptionContext *context,
+                                     const char *sysroot_path,
+                                     const char *repo_path,
+                                     OstreeSysroot **out_sysroot,
+                                     OstreeRepo **out_repo,
+                                     GCancellable *cancellable,
+                                     GError **error)
+{
+  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
+  if (sysroot_path)
+    {
+      g_autoptr(GFile) sysroot_file = g_file_new_for_path (sysroot_path);
+      sysroot = ostree_sysroot_new (sysroot_file);
+      if (!ostree_sysroot_load (sysroot, cancellable, error))
+        return FALSE;
+      if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      repo = parse_repo_option (context, repo_path, FALSE, cancellable, error);
+      if (!repo)
+        return FALSE;
+    }
+
+  ot_transfer_out_value (out_sysroot, &sysroot);
+  ot_transfer_out_value (out_repo, &repo);
+  return TRUE;
+}
+
 gboolean
 ostree_option_context_parse (GOptionContext *context,
                              const GOptionEntry *main_entries,
@@ -217,7 +299,7 @@ ostree_option_context_parse (GOptionContext *context,
                              GCancellable *cancellable,
                              GError **error)
 {
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
 
   /* Entries are listed in --help output in the order added.  We add the
    * main entries ourselves so that we can add the --repo entry first. */
@@ -254,40 +336,12 @@ ostree_option_context_parse (GOptionContext *context,
   if (opt_verbose)
     g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, message_handler, NULL);
 
-  if (opt_repo == NULL && !(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
+  if (!(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      g_autoptr(GError) local_error = NULL;
-
-      repo = ostree_repo_new_default ();
-      if (!ostree_repo_open (repo, cancellable, &local_error))
-        {
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-            {
-              g_autofree char *help = NULL;
-
-              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "Command requires a --repo argument");
-
-              help = g_option_context_get_help (context, FALSE, NULL);
-              g_printerr ("%s", help);
-            }
-          else
-            {
-              g_propagate_error (error, g_steal_pointer (&local_error));
-            }
-          return FALSE;
-        }
-    }
-  else if (opt_repo != NULL)
-    {
-      g_autoptr(GFile) repo_file = g_file_new_for_path (opt_repo);
-
-      repo = ostree_repo_new (repo_file);
-      if (!(flags & OSTREE_BUILTIN_FLAG_NO_CHECK))
-        {
-          if (!ostree_repo_open (repo, cancellable, error))
-            return FALSE;
-        }
+      repo = parse_repo_option (context, opt_repo, (flags & OSTREE_BUILTIN_FLAG_NO_CHECK) > 0,
+                                cancellable, error);
+      if (!repo)
+        return FALSE;
     }
 
   if (out_repo)

@@ -35,6 +35,7 @@ static char *opt_contenturl;
 static char *opt_collection_id;
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 static char *opt_sysroot;
+static char *opt_repo;
 
 static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
@@ -46,6 +47,7 @@ static GOptionEntry option_entries[] = {
   { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id,
     "Globally unique ID for this repository as an collection of refs for redistribution to other repositories", "COLLECTION-ID" },
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &opt_repo, "Path to OSTree repository (defaults to /sysroot/ostree/repo)", "PATH" },
   { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Use sysroot at PATH (overrides --repo)", "PATH" },
   { NULL }
 };
@@ -54,34 +56,25 @@ gboolean
 ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   const char *remote_name;
   const char *remote_url;
   char **iter;
   g_autoptr(GVariantBuilder) optbuilder = NULL;
   g_autoptr(GVariant) options = NULL;
-  g_autoptr(OstreeSysroot) sysroot = NULL;
   gboolean ret = FALSE;
 
   context = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...] - Add a remote repository");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+                                    OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     goto out;
 
-  /* As a special case, we can take a --sysroot argument. Currently we also
-   * require --repo because fixing that needs more cmdline rework.
-   */
-  if (opt_sysroot)
-    {
-      g_clear_object (&repo);
-      g_autoptr(GFile) sysroot_path = g_file_new_for_path (opt_sysroot);
-      sysroot = ostree_sysroot_new (sysroot_path);
-      if (!ostree_sysroot_load (sysroot, cancellable, error))
-        goto out;
-      if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
-        goto out;
-    }
+  if (!ostree_parse_sysroot_or_repo_option (context, opt_sysroot, opt_repo,
+                                            &sysroot, &repo,
+                                            cancellable, error))
+    goto out;
 
   if (argc < 3)
     {
