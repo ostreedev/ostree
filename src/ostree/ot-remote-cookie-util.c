@@ -23,10 +23,6 @@
 
 #include "ot-remote-cookie-util.h"
 
-#ifndef HAVE_LIBCURL
-#include <libsoup/soup.h>
-#endif
-
 #include "otutil.h"
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
@@ -148,49 +144,24 @@ ot_add_cookie_at (int dfd, const char *jar_path,
                   const char *name, const char *value,
                   GError **error)
 {
-#ifdef HAVE_LIBCURL
-  glnx_fd_close int fd = openat (AT_FDCWD, jar_path, O_WRONLY | O_APPEND | O_CREAT, 0644);
-  g_autofree char *buf = NULL;
-  g_autoptr(GDateTime) now = NULL;
-  g_autoptr(GDateTime) expires = NULL;
-
+  glnx_fd_close int fd = openat (dfd, jar_path, O_WRONLY | O_APPEND | O_CREAT, 0644);
   if (fd < 0)
-    {
-      glnx_set_error_from_errno (error);
-      return FALSE;
-    }
+    return glnx_throw_errno_prefix (error, "open(%s)", jar_path);
 
-  now = g_date_time_new_now_utc ();
-  expires = g_date_time_add_years (now, 25);
+  g_autoptr(GDateTime) now = g_date_time_new_now_utc ();
+  g_autoptr(GDateTime) expires = g_date_time_add_years (now, 25);
 
   /* Adapted from soup-cookie-jar-text.c:write_cookie() */
-  buf = g_strdup_printf ("%s\t%s\t%s\t%s\t%llu\t%s\t%s\n",
-                         domain,
-                         *domain == '.' ? "TRUE" : "FALSE",
-                         path,
-                         "FALSE",
-                         (long long unsigned)g_date_time_to_unix (expires),
-                         name,
-                         value);
+  g_autofree char *buf = g_strdup_printf ("%s\t%s\t%s\t%s\t%llu\t%s\t%s\n",
+                                          domain,
+                                          *domain == '.' ? "TRUE" : "FALSE",
+                                          path,
+                                          "FALSE",
+                                          (long long unsigned)g_date_time_to_unix (expires),
+                                          name,
+                                          value);
   if (glnx_loop_write (fd, buf, strlen (buf)) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      return FALSE;
-    }
-#else
-  glnx_unref_object SoupCookieJar *jar = NULL;
-  SoupCookie *cookie;
-
-  jar = soup_cookie_jar_text_new (jar_path, FALSE);
-
-  /* Pick a silly long expire time, we're just storing the cookies in the
-   * jar and on pull the jar is read-only so expiry has little actual value */
-  cookie = soup_cookie_new (name, value, domain, path,
-                            SOUP_COOKIE_MAX_AGE_ONE_YEAR * 25);
-
-  /* jar takes ownership of cookie */
-  soup_cookie_jar_add_cookie (jar, cookie);
-#endif
+    return glnx_throw_errno_prefix (error, "write");
   return TRUE;
 }
 
@@ -201,18 +172,14 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
                      GError **error)
 {
   gboolean found = FALSE;
-#ifdef HAVE_LIBCURL
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  g_autofree char *dnbuf = NULL;
-  const char *dn = NULL;
   g_autoptr(OtCookieParser) parser = NULL;
 
   if (!ot_parse_cookies_at (dfd, jar_path, &parser, NULL, error))
     return FALSE;
 
-  dnbuf = g_strdup (jar_path);
-  dn = dirname (dnbuf);
-  if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, dn, O_WRONLY | O_CLOEXEC,
+  g_assert (!strchr (jar_path, '/'));
+  if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_WRONLY | O_CLOEXEC,
                                       &tmpf, error))
     return FALSE;
 
@@ -233,33 +200,9 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
     }
 
   if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                             AT_FDCWD, jar_path,
+                             dfd, jar_path,
                              error))
     return FALSE;
-#else
-  GSList *cookies;
-  glnx_unref_object SoupCookieJar *jar = NULL;
-
-  jar = soup_cookie_jar_text_new (jar_path, FALSE);
-  cookies = soup_cookie_jar_all_cookies (jar);
-
-  while (cookies != NULL)
-    {
-      SoupCookie *cookie = cookies->data;
-
-      if (!strcmp (domain, soup_cookie_get_domain (cookie)) &&
-          !strcmp (path, soup_cookie_get_path (cookie)) &&
-          !strcmp (name, soup_cookie_get_name (cookie)))
-        {
-          soup_cookie_jar_delete_cookie (jar, cookie);
-
-          found = TRUE;
-        }
-
-      soup_cookie_free (cookie);
-      cookies = g_slist_delete_link (cookies, cookies);
-    }
-#endif
 
   if (!found)
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Cookie not found in jar");
@@ -271,7 +214,6 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
 gboolean
 ot_list_cookies_at (int dfd, const char *jar_path, GError **error)
 {
-#ifdef HAVE_LIBCURL
   g_autoptr(OtCookieParser) parser = NULL;
 
   if (!ot_parse_cookies_at (AT_FDCWD, jar_path, &parser, NULL, error))
@@ -294,26 +236,6 @@ ot_list_cookies_at (int dfd, const char *jar_path, GError **error)
         g_print ("Expires: %s\n", expires_str);
       g_print ("Value: %s\n", parser->value);
     }
-#else
-  glnx_unref_object SoupCookieJar *jar = soup_cookie_jar_text_new (jar_path, TRUE);
-  GSList *cookies = soup_cookie_jar_all_cookies (jar);
 
-  while (cookies != NULL)
-    {
-      SoupCookie *cookie = cookies->data;
-      SoupDate *expiry = soup_cookie_get_expires (cookie);
-
-      g_print ("--\n");
-      g_print ("Domain: %s\n", soup_cookie_get_domain (cookie));
-      g_print ("Path: %s\n", soup_cookie_get_path (cookie));
-      g_print ("Name: %s\n", soup_cookie_get_name (cookie));
-      g_print ("Secure: %s\n", soup_cookie_get_secure (cookie) ? "yes" : "no");
-      g_print ("Expires: %s\n", soup_date_to_string (expiry, SOUP_DATE_COOKIE));
-      g_print ("Value: %s\n", soup_cookie_get_value (cookie));
-
-      soup_cookie_free (cookie);
-      cookies = g_slist_delete_link (cookies, cookies);
-  }
-#endif
   return TRUE;
 }

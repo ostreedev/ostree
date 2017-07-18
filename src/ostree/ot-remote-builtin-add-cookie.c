@@ -36,18 +36,8 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("NAME DOMAIN PATH COOKIE_NAME VALUE - Add a cookie to remote");
   g_autoptr(OstreeRepo) repo = NULL;
-  const char *remote_name;
-  const char *domain;
-  const char *path;
-  const char *cookie_name;
-  const char *value;
-  g_autofree char *jar_path = NULL;
-  g_autofree char *cookie_file = NULL;
-
-  context = g_option_context_new ("NAME DOMAIN PATH COOKIE_NAME VALUE - Add a cookie to remote");
-
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     return FALSE;
@@ -58,16 +48,13 @@ ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, 
       return FALSE;
     }
 
-  remote_name = argv[1];
-  domain = argv[2];
-  path = argv[3];
-  cookie_name = argv[4];
-  value = argv[5];
-
-  cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
-  jar_path = g_build_filename (gs_file_get_path_cached (repo->repodir), cookie_file, NULL);
-
-  if (!ot_add_cookie_at (AT_FDCWD, jar_path, domain, path, cookie_name, value, error))
+  const char *remote_name = argv[1];
+  const char *domain = argv[2];
+  const char *path = argv[3];
+  const char *cookie_name = argv[4];
+  const char *value = argv[5];
+  g_autofree char *cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
+  if (!ot_add_cookie_at (ostree_repo_get_dfd (repo), cookie_file, domain, path, cookie_name, value, error))
     return FALSE;
 
   return TRUE;
