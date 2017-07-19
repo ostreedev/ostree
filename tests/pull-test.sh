@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..26"
+echo "1..27"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -413,3 +413,15 @@ rm $localsig
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 test -f $localsig
 echo "ok re-pull signature for stored commit"
+
+cd ${test_tmpdir}
+repo_init --no-gpg-verify
+mv ostree-srv/gnomerepo/refs/heads/main{,.orig}
+rm ostree-srv/gnomerepo/summary
+(for x in $(seq 20); do echo "lots of html here "; done) > ostree-srv/gnomerepo/refs/heads/main
+if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
+    fatal "pull of invalid ref succeeded"
+fi
+assert_file_has_content_literal err.txt 'error: Fetching refs/heads/main: Invalid rev lots of html here  lots of html here  lots of html here  lots of'
+echo "ok pull got HTML for a ref"
+
