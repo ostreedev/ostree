@@ -424,4 +424,3 @@ if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
 fi
 assert_file_has_content_literal err.txt 'error: Fetching refs/heads/main: Invalid rev lots of html here  lots of html here  lots of html here  lots of'
 echo "ok pull got HTML for a ref"
-
