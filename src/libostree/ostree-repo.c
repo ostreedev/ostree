@@ -2201,6 +2201,20 @@ ostree_repo_open (OstreeRepo    *self,
       self->target_owner_uid = self->target_owner_gid = -1;
     }
 
+  if (self->writable)
+    {
+      /* Always try to recreate the tmpdir to be nice to people
+       * who are looking to free up space.
+       *
+       * https://github.com/ostreedev/ostree/issues/1018
+       */
+      if (mkdirat (self->repo_dir_fd, "tmp", 0755) == -1)
+        {
+          if (G_UNLIKELY (errno != EEXIST))
+            return glnx_throw_errno_prefix (error, "mkdir(tmp)");
+        }
+    }
+
   if (!glnx_opendirat (self->repo_dir_fd, "tmp", TRUE, &self->tmp_dir_fd, error))
     return FALSE;
 
