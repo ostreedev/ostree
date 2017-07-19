@@ -7,6 +7,8 @@ dn=$(dirname $0)
 . ${dn}/libbuild.sh
 
 pkg_install_builddeps ostree
+# Until this propagates farther
+pkg_install 'pkgconfig(libcurl)' 'pkgconfig(openssl)'
 pkg_install sudo which attr fuse \
     libubsan libasan libtsan PyYAML redhat-rpm-config \
     elfutils

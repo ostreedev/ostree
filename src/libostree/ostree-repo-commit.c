@@ -734,6 +734,17 @@ write_content_object (OstreeRepo         *self,
     }
   else
     {
+      /* Update size metadata if configured */
+      if (indexable && object_file_type == G_FILE_TYPE_REGULAR)
+        {
+          struct stat stbuf;
+
+          if (!glnx_fstat (tmpf.fd, &stbuf, error))
+            return FALSE;
+
+          repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
+        }
+
       /* This path is for regular files */
       if (!commit_loose_regfile_object (self, actual_checksum, &tmpf,
                                         uid, gid, mode,
@@ -741,17 +752,6 @@ write_content_object (OstreeRepo         *self,
                                         cancellable, error))
         return glnx_prefix_error (error, "Writing object %s.%s", actual_checksum,
                                   ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
-    }
-
-  /* Update size metadata if configured */
-  if (indexable && object_file_type == G_FILE_TYPE_REGULAR)
-    {
-      struct stat stbuf;
-
-      if (!glnx_fstat (tmpf.fd, &stbuf, error))
-        return FALSE;
-
-      repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
     }
 
   /* Update statistics */
