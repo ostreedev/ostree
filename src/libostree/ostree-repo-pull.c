@@ -876,6 +876,7 @@ scan_dirtree_object (OtPullData   *pull_data,
   return TRUE;
 }
 
+/* Given a @ref, fetch its contents (should be a SHA256 ASCII string) */
 static gboolean
 fetch_ref_contents (OtPullData                 *pull_data,
                     const char                 *main_collection_id,
@@ -901,7 +902,7 @@ fetch_ref_contents (OtPullData                 *pull_data,
   g_strchomp (ret_contents);
 
   if (!ostree_validate_checksum_string (ret_contents, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Fetching %s", filename);
 
   ot_transfer_out_value (out_contents, &ret_contents);
   return TRUE;
@@ -1992,7 +1993,7 @@ load_remote_repo_config (OtPullData    *pull_data,
   g_autoptr(GKeyFile) ret_keyfile = g_key_file_new ();
   if (!g_key_file_load_from_data (ret_keyfile, contents, strlen (contents),
                                   0, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Parsing config");
 
   ot_transfer_out_value (out_keyfile, &ret_keyfile);
   return TRUE;
