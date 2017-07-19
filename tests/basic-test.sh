@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((69 + ${extra_basic_tests:-0}))"
+echo "1..$((70 + ${extra_basic_tests:-0}))"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -111,6 +111,14 @@ ostree_repo_init test-repo --mode=bare-user
 ostree_repo_init test-repo --mode=bare-user
 rm test-repo -rf
 echo "ok repo-init on existing repo"
+
+rm test-repo -rf
+ostree_repo_init test-repo --mode=bare-user
+${CMD_PREFIX} ostree --repo=test-repo refs
+rm -rf test-repo/tmp
+${CMD_PREFIX} ostree --repo=test-repo refs
+assert_has_dir test-repo/tmp
+echo "ok autocreate tmp"
 
 rm checkout-test2 -rf
 $OSTREE checkout test2 checkout-test2
