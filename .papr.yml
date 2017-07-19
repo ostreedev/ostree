@@ -91,6 +91,21 @@ tests:
 
 ---
 
+inherit: true
+required: true
+
+context: f26-introspection-tests
+
+env:
+    CFLAGS: ''  # Reset ASAN
+    CONFIGOPTS: "--without-curl --without-openssl"
+    INSTALLED_TESTS_PATTERN: "tests/test-sizes.js"
+
+tests:
+  - ci/build-check.sh
+
+---
+
 inherit: false
 branches:
     - master
