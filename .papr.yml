@@ -12,6 +12,8 @@ packages:
   - git
 
 env:
+    # At some point soon will encourage distros to use libcurl
+    CONFIGOPTS: "--with-curl --with-openssl"
     # Enable all the sanitizers for this primary build.
     # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
     CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
@@ -79,14 +81,10 @@ tests:
 inherit: true
 required: true
 
-context: f26-curl-openssl
-
-packages:
-  - pkgconfig(libcurl)
-  - pkgconfig(openssl)
+context: f26-libsoup
 
 env:
-  CONFIGOPTS: "--with-curl --with-openssl"
+  CONFIGOPTS: "--without-curl --without-openssl"
 
 tests:
   - ci/build-check.sh
