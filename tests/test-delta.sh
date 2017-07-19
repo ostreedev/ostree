@@ -258,6 +258,6 @@ ${CMD_PREFIX} ostree --repo=repo summary -u
 if ${CMD_PREFIX} ostree --repo=repo static-delta show GARBAGE 2> err.txt; then
     assert_not_reached "static-delta show GARBAGE unexpectedly succeeded"
 fi
-assert_file_has_content err.txt "Invalid rev 'GARBAGE'"
+assert_file_has_content err.txt "Invalid rev GARBAGE"
 
 echo 'ok handle bad delta name'
