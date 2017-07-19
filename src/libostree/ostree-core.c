@@ -41,9 +41,11 @@
  */
 static char *
 quash_string_for_error_message (const char *input,
-                                int         maxlen)
+                                ssize_t     len,
+                                ssize_t     maxlen)
 {
-  size_t len = strlen (input);
+  if (len == -1)
+    len = strlen (input);
   if (maxlen != -1 && maxlen < len)
     len = maxlen;
 #if GLIB_CHECK_VERSION(2, 52, 0)
@@ -1860,7 +1862,7 @@ ostree_validate_structureof_checksum_string (const char *checksum,
        * dump it all to the error.
        * https://github.com/projectatomic/rpm-ostree/issues/885
        */
-      g_autofree char *sanitized = quash_string_for_error_message (checksum,
+      g_autofree char *sanitized = quash_string_for_error_message (checksum, len,
                                                                    OSTREE_SHA256_STRING_LEN);
       return glnx_throw (error, "Invalid rev %s", sanitized);
     }
