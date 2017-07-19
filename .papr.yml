@@ -91,6 +91,22 @@ tests:
 
 ---
 
+inherit: true
+required: true
+
+context: f26-introspection-tests
+
+env:
+    CONFIGOPTS: "--with-curl --with-openssl"
+    # ASAN conflicts with introspection testing;
+    # See https://github.com/ostreedev/ostree/issues/1014
+    INSTALLED_TESTS_PATTERN: "libostree/test-sizes.js libostree/test-sysroot.js libostree/test-core.js libostree/test-corrupt-repo-ref.js"
+
+tests:
+  - ci/build-check.sh
+
+---
+
 inherit: false
 branches:
     - master
