@@ -191,7 +191,7 @@ js_installed_tests = \
 	$(NULL)
 
 if BUILDOPT_GJS
-dist_installed_test_scripts = $(js_installed_tests)
+_installed_or_uninstalled_test_scripts += $(js_installed_tests)
 else
 EXTRA_DIST += $(js_installed_tests)
 endif
