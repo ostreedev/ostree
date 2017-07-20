@@ -33,10 +33,12 @@ function assertNotEquals(a, b) {
 
 function libtestExec(shellCode) {
     let testdatadir = GLib.getenv("G_TEST_SRCDIR");
-    let libtestPath = GLib.build_filenamev([testdatadir, 'libtest.sh'])
+    let libtestPath = GLib.build_filenamev([testdatadir, 'tests/libtest.sh'])
     let proc = Gio.Subprocess.new(['bash', '-c', 'set -xeuo pipefail; . ' + GLib.shell_quote(libtestPath) + '; ' + shellCode], 0);
     proc.wait_check(null);
 }
+
+print('1..1')
 
 libtestExec('setup_os_repository archive-z2 syslinux');
 
@@ -145,3 +147,5 @@ newDeployments = [deployment, newDeployment, thirdDeployment];
 sysroot.write_deployments(newDeployments, null);
 deployments = sysroot.get_deployments();
 assertEquals(deployments.length, 3);
+
+print("ok test-sysroot")
