@@ -216,6 +216,16 @@ typedef enum {
  * Since: 2017.7
  */
 #define OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE "ostree.endoflife-rebase"
+/**
+ * OSTREE_COMMIT_META_KEY_ENDOFLIFE:
+ *
+ * GVariant type `s`. This metadata key is used to display vendor's message
+ * when an update stream for a particular branch ends. It usually provides
+ * update instructions for the users.
+ *
+ * Since: 2017.7
+ */
+#define OSTREE_COMMIT_META_KEY_ENDOFLIFE "ostree.endoflife"
 
 _OSTREE_PUBLIC
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
