@@ -195,6 +195,28 @@ typedef enum {
   OSTREE_REPO_MODE_BARE_USER_ONLY,
 } OstreeRepoMode;
 
+/**
+ * OSTREE_COMMIT_META_KEY_VERSION:
+ *
+ * GVariant type `s`. This metadata key is used for version numbers. A freeform
+ * string; the intention is that systems using ostree do not interpret this
+ * semantically as traditional package managers do.
+ *
+ * This is the only ostree-defined metadata key that does not start with `ostree.`.
+ * Since: 2014.9
+ */
+#define OSTREE_COMMIT_META_KEY_VERSION "version"
+/**
+ * OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE:
+ *
+ * GVariant type `s`.  Should contain a refspec defining a new target branch;
+ * `ostree admin upgrade` and `OstreeSysrootUpgrader` will automatically initiate
+ * a rebase upon encountering this metadata key.
+ *
+ * Since: 2017.7
+ */
+#define OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE "ostree.endoflife-rebase"
+
 _OSTREE_PUBLIC
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
 

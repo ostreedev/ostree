@@ -559,7 +559,7 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
     return FALSE;
 
   g_variant_get_child (new_variant, 0, "@a{sv}", &new_metadata);
-  rebase = g_variant_lookup_value (new_metadata, "ostree.endoflife-rebase", G_VARIANT_TYPE_STRING);
+  rebase = g_variant_lookup_value (new_metadata, OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE, G_VARIANT_TYPE_STRING);
   if (rebase)
     {
       const char *new_ref = g_variant_get_string (rebase, 0);
