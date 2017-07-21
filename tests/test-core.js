@@ -25,6 +25,8 @@ function assertEquals(a, b) {
 	throw new Error("assertion failed " + JSON.stringify(a) + " == " + JSON.stringify(b));
 }
 
+print('1..1')
+
 let testDataDir = Gio.File.new_for_path('test-data');
 testDataDir.make_directory(null);
 testDataDir.get_child('some-file').replace_contents("hello world!", null, false, 0, null);
@@ -66,4 +68,4 @@ repo.commit_transaction(null, null);
 [,readCommit] = repo.resolve_rev('someref', true);
 assertEquals(readCommit, null);
 
-print("test-core complete");
+print("ok test-core");

@@ -26,6 +26,8 @@ function assertEquals(a, b) {
 	throw new Error("assertion failed " + JSON.stringify(a) + " == " + JSON.stringify(b));
 }
 
+print('1..1')
+
 let testDataDir = Gio.File.new_for_path('test-data');
 testDataDir.make_directory(null);
 testDataDir.get_child('some-file').replace_contents("hello world!", null, false, 0, null);
@@ -79,4 +81,4 @@ if (expectedUncompressedSizes.length > 0) {
     throw new Error("Failed to match expectedUncompressedSizes: " + JSON.stringify(expectedUncompressedSizes));
 }
 
-print("test-sizes complete");
+print("ok test-sizes");
