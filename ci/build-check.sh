@@ -15,6 +15,9 @@ if test -x /usr/bin/gnome-desktop-testing-runner; then
 fi
 
 if test -x /usr/bin/clang; then
+    # always fail on warnings; https://github.com/ostreedev/ostree/pull/971
+    # Except for clang-4.0: error: argument unused during compilation: '-specs=/usr/lib/rpm/redhat/redhat-hardened-cc1' [-Werror,-Wunused-command-line-argument]
+    export CFLAGS="-Wno-error=unused-command-line-argument -Werror ${CFLAGS:-}"
     git clean -dfx && git submodule foreach git clean -dfx
     # And now a clang build to find unused variables because it does a better
     # job than gcc for vars with cleanups; perhaps in the future these could

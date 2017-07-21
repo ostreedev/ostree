@@ -28,6 +28,7 @@ AC_SUBST([YEAR_VERSION], [year_version])
 AC_SUBST([RELEASE_VERSION], [release_version])
 AC_SUBST([PACKAGE_VERSION], [package_version])
 
+AS_IF([echo "$CFLAGS" | grep -q -E -e '-Werror($| )'], [], [
 CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
         -pipe \
         -Wall \
@@ -46,7 +47,7 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
         -Werror=misleading-indentation \
 	-Werror=missing-include-dirs -Werror=aggregate-return \
   -Werror=unused-result \
-])
+])])
 AC_SUBST(WARN_CFLAGS)
 
 AC_MSG_CHECKING([for -fsanitize=address in CFLAGS])

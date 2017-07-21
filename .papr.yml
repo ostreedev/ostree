@@ -31,6 +31,7 @@ timeout: 30m
 
 artifacts:
   - test-suite.log
+  - config.log
 ---
 
 context: c7-primary
