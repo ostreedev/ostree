@@ -57,7 +57,7 @@ ot_admin_checksum_version (GVariant *checksum)
 
   metadata = g_variant_get_child_value (checksum, 0);
 
-  if (!g_variant_lookup (metadata, "version", "&s", &ret))
+  if (!g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "&s", &ret))
     return NULL;
 
   return g_strdup (ret);

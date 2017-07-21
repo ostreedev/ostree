@@ -1265,7 +1265,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                                     &variant, NULL))
         {
           metadata = g_variant_get_child_value (variant, 0);
-          g_variant_lookup (metadata, "version", "s", &deployment_version);
+          g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &deployment_version);
         }
     }
 
@@ -1292,7 +1292,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   ostree_bootconfig_parser_set (bootconfig, "title", title_key->str);
 
   g_autofree char *version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
-  ostree_bootconfig_parser_set (bootconfig, "version", version_key);
+  ostree_bootconfig_parser_set (bootconfig, OSTREE_COMMIT_META_KEY_VERSION, version_key);
   g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_kernel_name, NULL);
   ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
 
