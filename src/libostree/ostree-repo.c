@@ -4718,9 +4718,10 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
           return FALSE;
 
         g_autofree char *superblock = _ostree_get_relative_static_delta_superblock_path ((from && from[0]) ? from : NULL, to);
-        glnx_fd_close int superblock_file_fd = openat (self->repo_dir_fd, superblock, O_RDONLY | O_CLOEXEC);
-        if (superblock_file_fd == -1)
-          return glnx_throw_errno (error);
+        glnx_fd_close int superblock_file_fd = -1;
+
+        if (!glnx_openat_rdonly (self->repo_dir_fd, superblock, TRUE, &superblock_file_fd, error))
+          return FALSE;
 
         g_autoptr(GInputStream) in_stream = g_unix_input_stream_new (superblock_file_fd, FALSE);
         if (!in_stream)
