@@ -167,12 +167,8 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
           glnx_fd_close int fd = -1;
           ot_auto_gpgme_data gpgme_data_t kdata = NULL;
 
-          fd = openat (AT_FDCWD, path, O_RDONLY | O_CLOEXEC) ;
-          if (fd < 0)
-            {
-              glnx_set_prefix_error_from_errno (error, "Opening %s", path);
-              goto out;
-            }
+          if (!glnx_openat_rdonly (AT_FDCWD, path, TRUE, &fd, error))
+            goto out;
 
           gpg_error = gpgme_data_new_from_fd (&kdata, fd);
           if (gpg_error != GPG_ERR_NO_ERROR)

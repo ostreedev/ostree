@@ -178,9 +178,9 @@ copy_dir_recurse (int              src_parent_dfd,
       if (dent == NULL)
         break;
 
-      if (fstatat (src_dfd_iter.fd, dent->d_name, &child_stbuf,
-                   AT_SYMLINK_NOFOLLOW) != 0)
-        return glnx_throw_errno (error);
+      if (!glnx_fstatat (src_dfd_iter.fd, dent->d_name, &child_stbuf,
+                         AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
 
       if (S_ISDIR (child_stbuf.st_mode))
         {
