@@ -4202,31 +4202,52 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
 /* Special remote for _ostree_repo_gpg_verify_with_metadata() */
 static const char *OSTREE_ALL_REMOTES = "__OSTREE_ALL_REMOTES__";
 
-static GFile *
+/* Look for a keyring for @remote in the repo itself, or in
+ * /etc/ostree/remotes.d.
+ */
+static gboolean
 find_keyring (OstreeRepo          *self,
               OstreeRemote        *remote,
-              GCancellable        *cancellable)
+              GBytes             **ret_bytes,
+              GCancellable        *cancellable,
+              GError             **error)
 {
-  g_autoptr(GFile) file = g_file_get_child (self->repodir, remote->keyring);
+  glnx_fd_close int fd = -1;
+  if (!ot_openat_ignore_enoent (self->repo_dir_fd, remote->keyring, &fd, error))
+    return FALSE;
 
-  if (g_file_query_exists (file, cancellable))
+  if (fd != -1)
     {
-      return g_steal_pointer (&file);
+      GBytes *ret = glnx_fd_readall_bytes (fd, cancellable, error);
+      if (!ret)
+        return FALSE;
+      *ret_bytes = ret;
+      return TRUE;
     }
 
   g_autoptr(GFile) remotes_d = get_remotes_d_dir (self, NULL);
   if (remotes_d)
     {
-      g_autoptr(GFile) file2 = g_file_get_child (remotes_d, remote->keyring);
+      g_autoptr(GFile) child = g_file_get_child (remotes_d, remote->keyring);
 
-      if (g_file_query_exists (file2, cancellable))
-        return g_steal_pointer (&file2);
+      if (!ot_openat_ignore_enoent (AT_FDCWD, gs_file_get_path_cached (child), &fd, error))
+        return FALSE;
+
+      if (fd != -1)
+        {
+          GBytes *ret = glnx_fd_readall_bytes (fd, cancellable, error);
+          if (!ret)
+            return FALSE;
+          *ret_bytes = ret;
+          return TRUE;
+        }
     }
 
   if (self->parent_repo)
-    return find_keyring (self->parent_repo, remote, cancellable);
+    return find_keyring (self->parent_repo, remote, ret_bytes, cancellable, error);
 
-  return NULL;
+  *ret_bytes = NULL;
+  return TRUE;
 }
 
 static OstreeGpgVerifyResult *
@@ -4248,8 +4269,8 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
     {
       /* Add all available remote keyring files. */
 
-      if (!_ostree_gpg_verifier_add_keyring_dir (verifier, self->repodir,
-                                                 cancellable, error))
+      if (!_ostree_gpg_verifier_add_keyring_dir_at (verifier, self->repo_dir_fd, ".",
+                                                    cancellable, error))
         return NULL;
     }
   else if (remote_name != NULL)
@@ -4258,17 +4279,18 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
       /* Add the remote's keyring file if it exists. */
 
       OstreeRemote *remote;
-      g_autoptr(GFile) file = NULL;
 
       remote = _ostree_repo_get_remote_inherited (self, remote_name, error);
       if (remote == NULL)
         return NULL;
 
-      file = find_keyring (self, remote, cancellable);
+      g_autoptr(GBytes) keyring_data = NULL;
+      if (!find_keyring (self, remote, &keyring_data, cancellable, error))
+        return NULL;
 
-      if (file != NULL)
+      if (keyring_data != NULL)
         {
-          _ostree_gpg_verifier_add_keyring (verifier, file);
+          _ostree_gpg_verifier_add_keyring_data (verifier, keyring_data);
           add_global_keyring_dir = FALSE;
         }
 
@@ -4297,7 +4319,7 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
     }
   if (extra_keyring != NULL)
     {
-      _ostree_gpg_verifier_add_keyring (verifier, extra_keyring);
+      _ostree_gpg_verifier_add_keyring_file (verifier, extra_keyring);
     }
 
   return _ostree_gpg_verifier_check_signature (verifier,
