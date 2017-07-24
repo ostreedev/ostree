@@ -2824,18 +2824,16 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   while (TRUE)
     {
       struct dirent *dent;
-      struct stat stbuf;
-      g_autoptr(GFileInfo) child_info = NULL;
-      const char *loose_checksum;
       if (!glnx_dirfd_iterator_next_dent (src_dfd_iter, &dent, cancellable, error))
         return FALSE;
       if (dent == NULL)
         break;
 
-      if (fstatat (src_dfd_iter->fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
-        return glnx_throw_errno (error);
+      struct stat stbuf;
+      if (!glnx_fstatat (src_dfd_iter->fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
 
-      loose_checksum = devino_cache_lookup (self, modifier, stbuf.st_dev, stbuf.st_ino);
+      const char *loose_checksum = devino_cache_lookup (self, modifier, stbuf.st_dev, stbuf.st_ino);
       if (loose_checksum)
         {
           if (!ostree_mutable_tree_replace_file (mtree, dent->d_name, loose_checksum,
@@ -2845,7 +2843,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
           continue;
         }
 
-      child_info = _ostree_stbuf_to_gfileinfo (&stbuf);
+      g_autoptr(GFileInfo) child_info = _ostree_stbuf_to_gfileinfo (&stbuf);
       g_file_info_set_name (child_info, dent->d_name);
 
       if (S_ISREG (stbuf.st_mode))

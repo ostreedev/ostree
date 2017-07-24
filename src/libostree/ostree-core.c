@@ -775,9 +775,9 @@ ostree_content_file_parse_at (gboolean                compressed,
                               GCancellable           *cancellable,
                               GError                **error)
 {
-  int glnx_fd_close fd = openat (parent_dfd, path, O_RDONLY | O_CLOEXEC);
-  if (fd < 0)
-    return glnx_throw_errno_prefix (error, "open(%s)", path);
+  glnx_fd_close int fd = -1;
+  if (!glnx_openat_rdonly (parent_dfd, path, TRUE, &fd, error))
+    return FALSE;
 
   struct stat stbuf;
   if (!glnx_fstat (fd, &stbuf, error))
