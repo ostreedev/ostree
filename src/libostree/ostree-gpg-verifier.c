@@ -40,6 +40,7 @@ struct OstreeGpgVerifier {
   GObject parent;
 
   GList *keyrings;
+  GPtrArray *keyring_data;
   GPtrArray *key_ascii_files;
 };
 
@@ -53,6 +54,7 @@ ostree_gpg_verifier_finalize (GObject *object)
   g_list_free_full (self->keyrings, g_object_unref);
   if (self->key_ascii_files)
     g_ptr_array_unref (self->key_ascii_files);
+  g_clear_pointer (&self->keyring_data, (GDestroyNotify)g_ptr_array_unref);
 
   G_OBJECT_CLASS (_ostree_gpg_verifier_parent_class)->finalize (object);
 }
@@ -71,6 +73,7 @@ _ostree_gpg_verifier_class_init (OstreeGpgVerifierClass *klass)
 static void
 _ostree_gpg_verifier_init (OstreeGpgVerifier *self)
 {
+  self->keyring_data = g_ptr_array_new_with_free_func ((GDestroyNotify)g_bytes_unref);
 }
 
 static void
@@ -148,6 +151,17 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                               G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                                               cancellable, error);
       if (bytes_written < 0)
+        goto out;
+    }
+
+  for (guint i = 0; i < self->keyring_data->len; i++)
+    {
+      GBytes *keyringd = self->keyring_data->pdata[i];
+      gsize len;
+      gsize bytes_written;
+      const guint8 *buf = g_bytes_get_data (keyringd, &len);
+      if (!g_output_stream_write_all (target_stream, buf, len, &bytes_written,
+                                      cancellable, error))
         goto out;
     }
 
@@ -253,13 +267,26 @@ out:
   return result;
 }
 
+/* Given @path which should contain a GPG keyring file, add it
+ * to the list of trusted keys.
+ */
 void
-_ostree_gpg_verifier_add_keyring (OstreeGpgVerifier  *self,
-                                  GFile              *path)
+_ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier  *self,
+                                       GFile              *path)
 {
   g_return_if_fail (G_IS_FILE (path));
 
   self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
+}
+
+/* Given @path which should contain a GPG keyring file, add it
+ * to the list of trusted keys.
+ */
+void
+_ostree_gpg_verifier_add_keyring_data (OstreeGpgVerifier  *self,
+                                       GBytes             *keyring)
+{
+  g_ptr_array_add (self->keyring_data, g_bytes_ref (keyring));
 }
 
 void
@@ -276,32 +303,39 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                       GFile               *path,
                                       GCancellable        *cancellable,
                                       GError             **error)
+
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFileEnumerator) enumerator = NULL;
-  
-  enumerator = g_file_enumerate_children (path, OSTREE_GIO_FAST_QUERYINFO,
-                                          G_FILE_QUERY_INFO_NONE,
-                                          cancellable, error);
-  if (!enumerator)
-    goto out;
+  return _ostree_gpg_verifier_add_keyring_dir_at (self, AT_FDCWD,
+                                                  gs_file_get_path_cached (path),
+                                                  cancellable, error);
+}
+
+gboolean
+_ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier   *self,
+                                         int                  dfd,
+                                         const char          *path,
+                                         GCancellable        *cancellable,
+                                         GError             **error)
+
+{
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE,
+                                    &dfd_iter, error))
+    return FALSE;
 
   while (TRUE)
     {
-      GFileInfo *file_info;
-      GFile *path;
-      const char *name;
+      struct dirent *dent;
 
-      if (!g_file_enumerator_iterate (enumerator, &file_info, &path,
-                                      cancellable, error))
-        goto out;
-      if (file_info == NULL)
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
         break;
 
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_REGULAR)
+      if (dent->d_type != DT_REG)
         continue;
 
-      name = g_file_info_get_name (file_info);
+      const char *name = dent->d_name;
 
       /* Files with a .gpg suffix are typically keyrings except
        * for trustdb.gpg, which is the GPG trust database. */
@@ -315,12 +349,18 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
       if (g_str_equal (name, "secring.gpg"))
         continue;
 
-      self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
+      glnx_fd_close int fd = -1;
+      if (!glnx_openat_rdonly (dfd_iter.fd, dent->d_name, TRUE, &fd, error))
+        return FALSE;
+
+      g_autoptr(GBytes) data = glnx_fd_readall_bytes (fd, cancellable, error);
+      if (!data)
+        return FALSE;
+
+      g_ptr_array_add (self->keyring_data, g_steal_pointer (&data));
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
