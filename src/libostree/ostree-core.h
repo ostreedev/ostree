@@ -226,6 +226,33 @@ typedef enum {
  * Since: 2017.7
  */
 #define OSTREE_COMMIT_META_KEY_ENDOFLIFE "ostree.endoflife"
+/**
+ * OSTREE_COMMIT_META_KEY_REF_BINDING:
+ *
+ * GVariant type `as`; each element is a branch name. If this is added to a
+ * commit, `ostree_repo_pull()` will enforce that the commit was retrieved from
+ * one of the branch names in this array.  This prevents "sidegrade" attacks.
+ * The rationale for having this support multiple branch names is that it helps
+ * support a "promotion" model of taking a commit and moving it between development
+ * and production branches.
+ *
+ * Since: 2017.9
+ */
+#define OSTREE_COMMIT_META_KEY_REF_BINDING "ostree.ref-binding"
+/**
+ * OSTREE_COMMIT_META_KEY_COLLECTION_BINDING:
+ *
+ * GVariant type `s`.  If this is added to a commit, `ostree_repo_pull()`
+ * will enforce that the commit was retrieved from a repository which has
+ * the same collection ID.  See `ostree_repo_set_collection_id()`.
+ * This is most useful in concert with `OSTREE_COMMIT_META_KEY_REF_BINDING`,
+ * as it more strongly binds the commit to the repository and branch.
+ *
+ * Since: 2017.9
+ */
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+#define OSTREE_COMMIT_META_KEY_COLLECTION_BINDING "ostree.collection-binding"
+#endif
 
 _OSTREE_PUBLIC
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);

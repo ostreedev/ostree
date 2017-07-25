@@ -1506,7 +1506,7 @@ verify_bindings (OtPullData                 *pull_data,
   g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
   g_autofree const char **refs = NULL;
   if (!g_variant_lookup (metadata,
-                         OSTREE_REF_BINDING,
+                         OSTREE_COMMIT_META_KEY_REF_BINDING,
                          "^a&s",
                          &refs))
     {
@@ -1555,9 +1555,10 @@ verify_bindings (OtPullData                 *pull_data,
 
   if (remote_collection_id != NULL)
     {
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
       const char *collection_id;
       if (!g_variant_lookup (metadata,
-                             OSTREE_COLLECTION_BINDING,
+                             OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
                              "&s",
                              &collection_id))
         return glnx_throw (error,
@@ -1569,6 +1570,7 @@ verify_bindings (OtPullData                 *pull_data,
                            "metadata, while the remote it came from has "
                            "collection ID ‘%s’",
                            collection_id, remote_collection_id);
+#endif
     }
 
   return TRUE;
