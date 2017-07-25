@@ -1555,6 +1555,7 @@ verify_bindings (OtPullData                 *pull_data,
 
   if (remote_collection_id != NULL)
     {
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
       const char *collection_id;
       if (!g_variant_lookup (metadata,
                              OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
@@ -1569,6 +1570,7 @@ verify_bindings (OtPullData                 *pull_data,
                            "metadata, while the remote it came from has "
                            "collection ID ‘%s’",
                            collection_id, remote_collection_id);
+#endif
     }
 
   return TRUE;
