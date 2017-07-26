@@ -243,7 +243,7 @@ typedef enum {
  * OSTREE_COMMIT_META_KEY_COLLECTION_BINDING:
  *
  * GVariant type `s`.  If this is added to a commit, `ostree_repo_pull()`
- * will enforce that the commit was retrieved from repository which has
+ * will enforce that the commit was retrieved from a repository which has
  * the same collection ID.  See `ostree_repo_set_collection_id()`.
  * This is most useful in concert with `OSTREE_COMMIT_META_KEY_REF_BINDING`,
  * as it more strongly binds the commit to the repository and branch.
