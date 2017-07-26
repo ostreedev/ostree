@@ -413,6 +413,9 @@ global:
   ostree_validate_remote_name;
 } LIBOSTREE_2017.7;
 
+LIBOSTREE_2017.9 {
+};
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
