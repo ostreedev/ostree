@@ -316,7 +316,7 @@ add_collection_binding (OstreeRepo       *repo,
   if (collection_id == NULL)
     return;
 
-  g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COLLECTION_BINDING,
+  g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
                          g_variant_new_variant (g_variant_new_string (collection_id)));
 }
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
@@ -345,10 +345,11 @@ add_ref_binding (GVariantBuilder *metadata_builder)
   g_ptr_array_sort (refs, compare_strings);
   g_autoptr(GVariant) refs_v = g_variant_new_strv ((const char *const *)refs->pdata,
                                                    refs->len);
-  g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_REF_BINDING,
+  g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COMMIT_META_KEY_REF_BINDING,
                          g_variant_new_variant (g_steal_pointer (&refs_v)));
 }
 
+/* Note if you're using the API, you currently need to do this yourself */
 static void
 fill_bindings (OstreeRepo    *repo,
                GVariant      *metadata,
@@ -363,7 +364,7 @@ fill_bindings (OstreeRepo    *repo,
   /* Allow the collection ID to be overridden using
    * --add-metadata-string=ostree.collection-binding=blah */
   if (metadata == NULL ||
-      !g_variant_lookup (metadata, OSTREE_COLLECTION_BINDING, "*", NULL))
+      !g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING, "*", NULL))
     add_collection_binding (repo, metadata_builder);
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
