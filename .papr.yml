@@ -12,8 +12,6 @@ packages:
   - git
 
 env:
-    # At some point soon will encourage distros to use libcurl
-    CONFIGOPTS: "--with-curl --with-openssl"
     # Enable all the sanitizers for this primary build.
     # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
     CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
@@ -85,7 +83,7 @@ required: true
 context: f26-libsoup
 
 env:
-  CONFIGOPTS: "--without-curl --without-openssl"
+  CONFIGOPTS: "--without-curl --without-openssl --with-libsoup"
 
 tests:
   - ci/build-check.sh
@@ -98,7 +96,6 @@ required: true
 context: f26-introspection-tests
 
 env:
-    CONFIGOPTS: "--with-curl --with-openssl"
     # ASAN conflicts with introspection testing;
     # See https://github.com/ostreedev/ostree/issues/1014
     INSTALLED_TESTS_PATTERN: "libostree/test-sizes.js libostree/test-sysroot.js libostree/test-core.js"
