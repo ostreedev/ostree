@@ -38,9 +38,19 @@
  * among others.
  */
 #if defined(__i386__) || defined(__x86_64__)
-#define GRUB2_USES_16 1
+#define GRUB2_SUFFIX "16"
 #else
-#define GRUB2_USES_16 0
+#define GRUB2_SUFFIX ""
+#endif
+/* https://github.com/projectatomic/rpm-ostree-toolbox/issues/102#issuecomment-316483554
+ * https://github.com/rhboot/grubby/blob/34b1436ccbd56eab8024314cab48f2fc880eef08/grubby.c#L63
+ *
+ * This is true at least on Fedora/Red Hat Enterprise Linux for aarch64.
+ */
+#if defined(__aarch64__)
+#define GRUB2_EFI_SUFFIX ""
+#else
+#define GRUB2_EFI_SUFFIX "efi"
 #endif
 
 struct _OstreeBootloaderGrub2
@@ -214,16 +224,12 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
                        "No \"linux\" key in bootloader config");
           goto out;
         }
+      g_string_append (output, "linux");
       if (is_efi)
-        g_string_append (output, "linuxefi ");
+        g_string_append (output, GRUB2_EFI_SUFFIX);
       else
-        {
-#if GRUB2_USES_16
-          g_string_append (output, "linux16 ");
-#else
-          g_string_append (output, "linux ");
-#endif
-        }
+        g_string_append (output, GRUB2_SUFFIX);
+      g_string_append_c (output, ' ');
       g_string_append (output, kernel);
 
       options = ostree_bootconfig_parser_get (config, "options");
@@ -237,16 +243,12 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
       initrd = ostree_bootconfig_parser_get (config, "initrd");
       if (initrd)
         {
+          g_string_append (output, "initrd");
           if (is_efi)
-            g_string_append (output, "initrdefi ");
+            g_string_append (output, GRUB2_EFI_SUFFIX);
           else
-            {
-#if GRUB2_USES_16
-              g_string_append (output, "initrd16 ");
-#else
-              g_string_append (output, "initrd ");
-#endif
-            }
+            g_string_append (output, GRUB2_SUFFIX);
+          g_string_append_c (output, ' ');
           g_string_append (output, initrd);
           g_string_append_c (output, '\n');
         }
