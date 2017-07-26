@@ -25,7 +25,7 @@ fi
 if sh -c '. /etc/os-release; test "${ID}" = fedora'; then
     case "${CONFIGOPTS:-}" in
         *--with-soup*) ;;
-        *) CONFIGOPTS="${CONFIGOPTS} --with-curl"
+        *) CONFIGOPTS="${CONFIGOPTS:-} --with-curl"
     esac
 fi
 build --enable-gtk-doc ${DETECTED_CONFIGOPTS} ${CONFIGOPTS:-}
