@@ -121,7 +121,7 @@ echo "ok refs"
 # Test symlinking a ref
 ${CMD_PREFIX} ostree --repo=repo refs ctest --create=exampleos/x86_64/26/server
 ${CMD_PREFIX} ostree --repo=repo refs -A exampleos/x86_64/26/server --create=exampleos/x86_64/stable/server
-ostree --repo=repo summary -u
+${CMD_PREFIX} ostree --repo=repo summary -u
 ${CMD_PREFIX} ostree --repo=repo refs > refs.txt
 for v in 26 stable; do
     assert_file_has_content refs.txt exampleos/x86_64/${v}/server
@@ -133,7 +133,7 @@ stable=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/stable/serv
 current=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/26/server)
 assert_streq "${stable}" "${current}"
 ${CMD_PREFIX} ostree --repo=repo commit -b exampleos/x86_64/26/server --tree=dir=tree
-ostree --repo=repo summary -u
+${CMD_PREFIX} ostree --repo=repo summary -u
 newcurrent=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/26/server)
 assert_not_streq "${newcurrent}" "${current}"
 newstable=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/stable/server)
@@ -154,6 +154,6 @@ done
 ${CMD_PREFIX} ostree --repo=repo refs -A > refs.txt
 assert_file_has_content_literal refs.txt 'exampleos/x86_64/stable/server -> exampleos/x86_64/27/server'
 
-ostree --repo=repo summary -u
+${CMD_PREFIX} ostree --repo=repo summary -u
 
 echo "ok ref symlink"
