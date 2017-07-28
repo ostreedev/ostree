@@ -50,9 +50,20 @@
 
 #include <gio/gunixinputstream.h>
 #include <sys/statvfs.h>
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-journal.h>
+#endif
+
+#define OSTREE_MESSAGE_FETCH_COMPLETE_ID SD_ID128_MAKE(75,ba,3d,eb,0a,f0,41,a9,a4,62,72,ff,85,d9,e7,3e)
 
 #define OSTREE_REPO_PULL_CONTENT_PRIORITY  (OSTREE_FETCHER_DEFAULT_PRIORITY)
 #define OSTREE_REPO_PULL_METADATA_PRIORITY (OSTREE_REPO_PULL_CONTENT_PRIORITY - 100)
+
+typedef enum {
+  OSTREE_FETCHER_SECURITY_STATE_CA_PINNED,
+  OSTREE_FETCHER_SECURITY_STATE_TLS,
+  OSTREE_FETCHER_SECURITY_STATE_INSECURE,
+} OstreeFetcherSecurityState;
 
 typedef struct {
   OstreeRepo   *repo;
@@ -61,6 +72,8 @@ typedef struct {
   char         *remote_name;
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
+  OstreeFetcherSecurityState fetcher_security_state;
+
   GPtrArray     *meta_mirrorlist;    /* List of base URIs for fetching metadata */
   GPtrArray     *content_mirrorlist; /* List of base URIs for fetching content */
   OstreeRepo   *remote_repo_local;
@@ -2612,11 +2625,13 @@ static OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,
                                  gboolean     gzip,
+                                 OstreeFetcherSecurityState *out_state,
                                  GError     **error)
 {
   OstreeFetcher *fetcher = NULL;
   OstreeFetcherConfigFlags fetcher_flags = 0;
   gboolean tls_permissive = FALSE;
+  OstreeFetcherSecurityState ret_state = OSTREE_FETCHER_SECURITY_STATE_TLS;
   gboolean success = FALSE;
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
@@ -2628,7 +2643,10 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
     goto out;
 
   if (tls_permissive)
-    fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
+    {
+      fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
+      ret_state = OSTREE_FETCHER_SECURITY_STATE_INSECURE;
+    }
 
   if (gzip)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TRANSFER_GZIP;
@@ -2673,6 +2691,10 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
     if (tls_ca_path != NULL)
       {
         _ostree_fetcher_set_tls_database (fetcher, tls_ca_path);
+
+        /* Don't change if it's already _INSECURE */
+        if (ret_state == OSTREE_FETCHER_SECURITY_STATE_TLS)
+          ret_state = OSTREE_FETCHER_SECURITY_STATE_CA_PINNED;
       }
   }
 
@@ -2706,6 +2728,8 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
 out:
   if (!success)
     g_clear_object (&fetcher);
+  if (out_state)
+    *out_state = ret_state;
 
   return fetcher;
 }
@@ -2891,7 +2915,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
 
-  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, error);
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, NULL, error);
   if (fetcher == NULL)
     goto out;
 
@@ -3001,10 +3025,13 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  * any options specific to this pull (such as extra headers).
  */
 static gboolean
-reinitialize_fetcher (OtPullData *pull_data, const char *remote_name, GError **error)
+reinitialize_fetcher (OtPullData *pull_data, const char *remote_name,
+                      GError **error)
 {
   g_clear_object (&pull_data->fetcher);
-  pull_data->fetcher = _ostree_repo_remote_new_fetcher (pull_data->repo, remote_name, FALSE, error);
+  pull_data->fetcher = _ostree_repo_remote_new_fetcher (pull_data->repo, remote_name, FALSE,
+                                                        &pull_data->fetcher_security_state,
+                                                        error);
   if (pull_data->fetcher == NULL)
     return FALSE;
 
@@ -3210,6 +3237,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autoptr(GHashTable) updated_requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   int i;
   g_autofree char **opt_localcache_repos = NULL;
+  /* If refs or collection-refs has exactly one value, this will point to that
+   * value, otherwise NULL. Used for logging.
+   */
+  const char *the_ref_to_fetch = NULL;
 
   if (options)
     {
@@ -3892,6 +3923,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   g_hash_table_unref (requested_refs_to_fetch);
   requested_refs_to_fetch = g_steal_pointer (&updated_requested_refs_to_fetch);
+  if (g_hash_table_size (requested_refs_to_fetch) == 1)
+    {
+      GLNX_HASH_TABLE_FOREACH (requested_refs_to_fetch,
+                               const OstreeCollectionRef *, ref)
+        {
+          the_ref_to_fetch = ref->ref_name;
+          break;
+        }
+    }
 
   /* Create the state directory here - it's new with the commitpartial code,
    * and may not exist in older repositories.
@@ -4059,6 +4099,59 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
       ostree_async_progress_set_status (pull_data->progress, buf->str);
     }
+
+#ifdef HAVE_LIBSYSTEMD
+  if (bytes_transferred > 0 && pull_data->remote_name)
+    {
+      g_autoptr(GString) msg = g_string_new ("");
+      if (the_ref_to_fetch)
+        g_string_append_printf (msg, "libostree pull from '%s' for %s complete",
+                                pull_data->remote_name, the_ref_to_fetch);
+      else
+        g_string_append_printf (msg, "libostree pull from '%s' for %u refs complete",
+                                pull_data->remote_name, g_hash_table_size (requested_refs_to_fetch));
+
+      g_string_append_printf (msg, "\nsecurity: GPG: %s ", pull_data->gpg_verify ? "yes" : "no");
+      OstreeFetcherURI *first_uri = pull_data->meta_mirrorlist->pdata[0];
+      g_autofree char *first_scheme = _ostree_fetcher_uri_get_scheme (first_uri);
+      if (g_str_has_prefix (first_scheme, "http"))
+        {
+          g_string_append (msg, "http: ");
+          switch (pull_data->fetcher_security_state)
+            {
+            case OSTREE_FETCHER_SECURITY_STATE_CA_PINNED:
+              g_string_append (msg, "CA-pinned");
+              break;
+            case OSTREE_FETCHER_SECURITY_STATE_TLS:
+              g_string_append (msg, "TLS");
+              break;
+            case OSTREE_FETCHER_SECURITY_STATE_INSECURE:
+              g_string_append (msg, "insecure");
+              break;
+            }
+        }
+      g_string_append (msg, "\n");
+
+      if (pull_data->n_fetched_deltaparts > 0)
+        g_string_append_printf (msg, "delta: parts: %u loose: %u",
+                                pull_data->n_fetched_deltaparts,
+                                pull_data->n_fetched_metadata + pull_data->n_fetched_content);
+      else
+        g_string_append_printf (msg, "non-delta: meta: %u content: %u",
+                                pull_data->n_fetched_metadata, pull_data->n_fetched_content);
+      const guint n_seconds = (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC);
+      g_autofree char *formatted_xferred = g_format_size (bytes_transferred);
+      g_string_append_printf (msg, "\ntransfer: secs: %u size: %s", n_seconds, formatted_xferred);
+
+      sd_journal_send ("MESSAGE=%s", msg->str,
+                       "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_MESSAGE_FETCH_COMPLETE_ID),
+                       "OSTREE_REMOTE=%s", pull_data->remote_name,
+                       "OSTREE_GPG=%s", pull_data->gpg_verify ? "yes" : "no",
+                       "OSTREE_SECONDS=%u", n_seconds,
+                       "OSTREE_XFER_SIZE=%s", formatted_xferred,
+                       NULL);
+    }
+#endif
 
   /* iterate over commits fetched and delete any commitpartial files */
   if (pull_data->dirs == NULL && !pull_data->is_commit_only)
@@ -4836,7 +4929,7 @@ find_remotes_cb (GObject      *obj,
                 goto error;
 
               fetcher = _ostree_repo_remote_new_fetcher (self, result->remote->name,
-                                                         TRUE, &error);
+                                                         TRUE, NULL, &error);
               if (fetcher == NULL)
                 goto error;
 
