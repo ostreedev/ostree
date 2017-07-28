@@ -307,6 +307,7 @@ ostree_repo_abort_transaction
 ostree_repo_transaction_set_refspec
 ostree_repo_transaction_set_ref
 ostree_repo_set_ref_immediate
+ostree_repo_set_alias_ref_immediate
 ostree_repo_set_cache_dir
 ostree_repo_sign_delta
 ostree_repo_has_object

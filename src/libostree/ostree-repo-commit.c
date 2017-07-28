@@ -1448,7 +1448,31 @@ ostree_repo_set_ref_immediate (OstreeRepo *self,
                                GError       **error)
 {
   const OstreeCollectionRef _ref = { NULL, (gchar *) ref };
-  return _ostree_repo_write_ref (self, remote, &_ref, checksum,
+  return _ostree_repo_write_ref (self, remote, &_ref, checksum, NULL,
+                                 cancellable, error);
+}
+
+/**
+ * ostree_repo_set_alias_ref_immediate:
+ * @self: An #OstreeRepo
+ * @remote: (allow-none): A remote for the ref
+ * @ref: The ref to write
+ * @target: (allow-none): The ref target to point it to, or %NULL to unset
+ * @cancellable: GCancellable
+ * @error: GError
+ *
+ * Like ostree_repo_set_ref_immediate(), but creates an alias.
+ */
+gboolean
+ostree_repo_set_alias_ref_immediate (OstreeRepo *self,
+                                     const char *remote,
+                                     const char *ref,
+                                     const char *target,
+                                     GCancellable  *cancellable,
+                                     GError       **error)
+{
+  const OstreeCollectionRef _ref = { NULL, (gchar *) ref };
+  return _ostree_repo_write_ref (self, remote, &_ref, NULL, target,
                                  cancellable, error);
 }
 
@@ -1480,7 +1504,7 @@ ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
   g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  return _ostree_repo_write_ref (self, NULL, ref, checksum,
+  return _ostree_repo_write_ref (self, NULL, ref, checksum, NULL,
                                  cancellable, error);
 }
 

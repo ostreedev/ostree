@@ -28,6 +28,7 @@
 
 static gboolean opt_delete;
 static gboolean opt_list;
+static gboolean opt_alias;
 static char *opt_create;
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 static gboolean opt_collections;
@@ -36,6 +37,7 @@ static gboolean opt_collections;
 static GOptionEntry options[] = {
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", NULL },
   { "list", 0, 0, G_OPTION_ARG_NONE, &opt_list, "Do not remove the prefix from the refs", NULL },
+  { "alias", 'A', 0, G_OPTION_ARG_NONE, &opt_alias, "If used with --create, create an alias, otherwise just list aliases", NULL },
   { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit", "NEWREF" },
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections, "Enable listing collection IDs for refs", NULL },
@@ -132,18 +134,36 @@ do_ref_with_collections (OstreeRepo    *repo,
 static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GHashTable) refs = NULL;
+  g_autoptr(GHashTable) ref_aliases = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
+  gboolean is_list;
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   if (opt_collections)
     return do_ref_with_collections (repo, refspec_prefix, cancellable, error);
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
-  if (opt_delete || opt_list)
+  /* If we're doing aliasing, we need the full list of aliases mostly to allow
+   * replacing existing aliases.
+   */
+  if (opt_alias)
     {
-      if (!ostree_repo_list_refs_ext (repo, refspec_prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE,
+      if (!ostree_repo_list_refs_ext (repo, NULL, &ref_aliases,
+                                      OSTREE_REPO_LIST_REFS_EXT_ALIASES,
+                                      cancellable, error))
+        goto out;
+    }
+
+  is_list = !(opt_delete || opt_create);
+
+  if (opt_delete || opt_list || (!opt_create && opt_alias))
+    {
+      OstreeRepoListRefsExtFlags flags = OSTREE_REPO_LIST_REFS_EXT_NONE;
+      if (opt_alias)
+        flags |= OSTREE_REPO_LIST_REFS_EXT_ALIASES;
+      if (!ostree_repo_list_refs_ext (repo, refspec_prefix, &refs, flags,
                                       cancellable, error))
         goto out;
     }
@@ -156,13 +176,17 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
   else if (!ostree_repo_list_refs (repo, refspec_prefix, &refs, cancellable, error))
     goto out;
 
-  if (!opt_delete && !opt_create)
+  if (is_list)
     {
       g_hash_table_iter_init (&hashiter, refs);
       while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
         {
           const char *ref = hashkey;
-          g_print ("%s\n", ref);
+          const char *value = hashvalue;
+          if (opt_alias)
+            g_print ("%s -> %s\n", ref, value);
+          else
+            g_print ("%s\n", ref);
         }
     }
   else if (opt_create)
@@ -183,22 +207,35 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
           else goto out;
         }
 
-      if (checksum_existing != NULL)
+      const gboolean creating_alias = opt_alias && opt_create;
+      if (!creating_alias || !g_hash_table_contains (ref_aliases, opt_create))
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "--create specified but ref %s already exists", opt_create);
-          goto out;
+          if (checksum_existing != NULL)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "--create specified but ref %s already exists", opt_create);
+              goto out;
+            }
         }
-
-      if (!ostree_repo_resolve_rev (repo, refspec_prefix, FALSE, &checksum, error))
-        goto out;
 
       if (!ostree_parse_refspec (opt_create, &remote, &ref, error))
         goto out;
 
-      if (!ostree_repo_set_ref_immediate (repo, remote, ref, checksum,
-                                          cancellable, error))
-        goto out;
+      if (opt_alias)
+        {
+          if (!ostree_repo_set_alias_ref_immediate (repo, remote, ref, refspec_prefix,
+                                                    cancellable, error))
+            goto out;
+        }
+      else
+        {
+          if (!ostree_repo_resolve_rev (repo, refspec_prefix, FALSE, &checksum, error))
+            goto out;
+
+          if (!ostree_repo_set_ref_immediate (repo, remote, ref, checksum,
+                                              cancellable, error))
+            goto out;
+        }
     }
   else
     /* delete */
