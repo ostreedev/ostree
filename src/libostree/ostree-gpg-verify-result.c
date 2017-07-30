@@ -334,7 +334,8 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
    * (OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING). */
   for (ii = 0; ii < n_attrs; ii++)
     {
-      if (attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_USER_NAME ||
+      if (attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT ||
+          attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_USER_NAME ||
           attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL)
         {
           (void) gpgme_get_key (result->context, signature->fpr, &key, 0);
@@ -378,7 +379,11 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
             break;
 
           case OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT:
-            child = g_variant_new_string (signature->fpr);
+            if (key != NULL && key->subkeys != NULL)
+              v_string = key->subkeys->fpr;
+            else
+              v_string = signature->fpr;
+            child = g_variant_new_string (v_string);
             break;
 
           case OSTREE_GPG_SIGNATURE_ATTR_TIMESTAMP:
