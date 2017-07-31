@@ -43,7 +43,7 @@ ot_admin_builtin_unlock (int argc, char **argv, GCancellable *cancellable, GErro
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeSysroot *sysroot = NULL;
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   OstreeDeployment *booted_deployment = NULL;
   OstreeDeploymentUnlockedState target_state;
 

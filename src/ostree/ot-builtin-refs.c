@@ -260,7 +260,7 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   int i;
 
   context = g_option_context_new ("[PREFIX] - List refs");

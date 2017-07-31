@@ -350,7 +350,7 @@ session_thread_set_tls_interaction_cb (ThreadClosure *thread_closure,
   const char *cert_and_key_path = data; /* str\0str\0 in one malloc buf */
   const char *cert_path = cert_and_key_path;
   const char *key_path = cert_and_key_path + strlen (cert_and_key_path) + 1;
-  glnx_unref_object OstreeTlsCertInteraction *interaction = NULL;
+  g_autoptr(OstreeTlsCertInteraction) interaction = NULL;
 
   /* The GTlsInteraction instance must be created in the
    * session thread so it uses the correct GMainContext. */

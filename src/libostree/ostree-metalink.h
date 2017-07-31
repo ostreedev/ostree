@@ -40,6 +40,7 @@ struct OstreeMetalinkClass
 {
   GObjectClass parent_class;
 };
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeMetalink, g_object_unref)
 
 GType   _ostree_metalink_get_type (void) G_GNUC_CONST;
 
