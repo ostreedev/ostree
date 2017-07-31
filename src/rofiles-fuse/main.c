@@ -96,6 +96,8 @@ callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
   if (!*path)
     {
       dfd = fcntl (basefd, F_DUPFD_CLOEXEC, 3);
+      if (dfd < 0)
+        return -errno;
       lseek (dfd, 0, SEEK_SET);
     }
   else
