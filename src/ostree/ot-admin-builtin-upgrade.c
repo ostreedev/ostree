@@ -54,10 +54,10 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeSysroot *sysroot = NULL;
-  glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
+  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr(OstreeSysrootUpgrader) upgrader = NULL;
   g_autoptr(GKeyFile) origin = NULL;
-  glnx_unref_object OstreeAsyncProgress *progress = NULL;
+  g_autoptr(OstreeAsyncProgress) progress = NULL;
   gboolean changed;
   OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;
 

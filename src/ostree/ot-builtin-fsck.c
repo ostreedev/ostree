@@ -212,7 +212,7 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 gboolean
 ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   gboolean found_corruption = FALSE;
 
   g_autoptr(GOptionContext) context = g_option_context_new ("- Check the repository for consistency");

@@ -55,7 +55,7 @@ delete_signatures (OstreeRepo *repo,
                    GError **error)
 {
   GVariantDict metadata_dict;
-  glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+  g_autoptr(OstreeGpgVerifyResult) result = NULL;
   g_autoptr(GVariant) old_metadata = NULL;
   g_autoptr(GVariant) new_metadata = NULL;
   g_autoptr(GVariant) signature_data = NULL;
@@ -199,7 +199,7 @@ gboolean
 ostree_builtin_gpg_sign (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   g_autofree char *resolved_commit = NULL;
   const char *commit;
   char **key_ids;

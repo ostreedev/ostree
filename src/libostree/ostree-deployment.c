@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "ostree.h"
 #include "ostree-deployment-private.h"
 #include "libglnx.h"
 
@@ -138,7 +139,7 @@ _ostree_deployment_set_bootcsum (OstreeDeployment *self,
 OstreeDeployment *
 ostree_deployment_clone (OstreeDeployment *self)
 {
-  glnx_unref_object OstreeBootconfigParser *new_bootconfig = NULL;
+  g_autoptr(OstreeBootconfigParser) new_bootconfig = NULL;
   OstreeDeployment *ret = ostree_deployment_new (self->index, self->osname, self->csum,
                                                  self->deployserial,
                                                  self->bootcsum, self->bootserial);

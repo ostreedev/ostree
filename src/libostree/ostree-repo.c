@@ -4082,7 +4082,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
    * check if the commit has already been signed with the given key ID.
    * We want to avoid storing duplicate signatures in the metadata. */
   g_autoptr(GError) local_error = NULL;
-  glnx_unref_object OstreeGpgVerifyResult *result
+  g_autoptr(OstreeGpgVerifyResult) result
     =_ostree_repo_gpg_verify_with_metadata (self, commit_data, old_metadata,
                                             NULL, NULL, NULL,
                                             cancellable, &local_error);
@@ -4239,7 +4239,7 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
                                        GCancellable  *cancellable,
                                        GError       **error)
 {
-  glnx_unref_object OstreeGpgVerifier *verifier = NULL;
+  g_autoptr(OstreeGpgVerifier) verifier = NULL;
   gboolean add_global_keyring_dir = TRUE;
 
   verifier = _ostree_gpg_verifier_new ();
@@ -4441,7 +4441,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                            GCancellable *cancellable,
                            GError      **error)
 {
-  glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+  g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
   result = ostree_repo_verify_commit_ext (self, commit_checksum,
                                           keyringdir, extra_keyring,

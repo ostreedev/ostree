@@ -38,7 +38,7 @@ ostree_builtin_reset (int           argc,
                       GError      **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   g_autoptr(GHashTable) known_refs = NULL;
   gboolean ret = FALSE;
   const char *ref;

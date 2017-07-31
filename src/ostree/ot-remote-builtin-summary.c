@@ -101,7 +101,7 @@ ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GEr
    *     option for raw signature data like "--raw-signatures". */
   if (signature_bytes != NULL && !opt_raw)
     {
-      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+      g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
       /* The actual signed summary verification happens above in
        * ostree_repo_remote_fetch_summary().  Here we just parse

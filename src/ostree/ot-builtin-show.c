@@ -147,7 +147,7 @@ print_object (OstreeRepo          *repo,
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+      g_autoptr(OstreeGpgVerifyResult) result = NULL;
       g_autoptr(GError) local_error = NULL;
       g_autoptr(GFile) gpg_homedir = opt_gpg_homedir ? g_file_new_for_path (opt_gpg_homedir) : NULL;
 
@@ -223,7 +223,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
 {
   g_autoptr(GOptionContext) context = g_option_context_new ("OBJECT - Output a metadata object");
 
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     return FALSE;
 

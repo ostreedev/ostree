@@ -37,7 +37,7 @@ gboolean
 ot_admin_builtin_cleanup (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeSysroot *sysroot = NULL;
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   gboolean ret = FALSE;
 
   context = g_option_context_new ("Delete untagged deployments and repository objects");

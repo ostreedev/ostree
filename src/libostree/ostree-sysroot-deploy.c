@@ -32,6 +32,7 @@
 #include <systemd/sd-journal.h>
 #endif
 
+#include "ostree.h"
 #include "ostree-sysroot-private.h"
 #include "ostree-sepolicy-private.h"
 #include "ostree-deployment-private.h"
@@ -722,7 +723,7 @@ merge_configuration (OstreeSysroot         *sysroot,
                      GCancellable          *cancellable,
                      GError               **error)
 {
-  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
+  g_autoptr(OstreeSePolicy) sepolicy = NULL;
 
   if (previous_deployment)
     {
@@ -1587,7 +1588,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   gboolean bootloader_is_atomic = FALSE;
   gboolean boot_was_ro_mount = FALSE;
   SyncStats syncstats = { 0, };
-  glnx_unref_object OstreeBootloader *bootloader = NULL;
+  g_autoptr(OstreeBootloader) bootloader = NULL;
 
   g_assert (self->loaded);
 
@@ -1671,7 +1672,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     {
       int new_bootversion = self->bootversion ? 0 : 1;
       g_autofree char* new_loader_entries_dir = NULL;
-      glnx_unref_object OstreeRepo *repo = NULL;
+      g_autoptr(OstreeRepo) repo = NULL;
       gboolean show_osname = FALSE;
 
       if (self->booted_deployment)
@@ -1918,7 +1919,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
     return FALSE;
 
   OstreeRepo *repo = ostree_sysroot_repo (self);
-  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
+  g_autoptr(OstreeDeployment) merge_deployment = NULL;
   if (provided_merge_deployment != NULL)
     merge_deployment = g_object_ref (provided_merge_deployment);
 
@@ -1928,7 +1929,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
     return FALSE;
 
   g_autofree char *new_bootcsum = NULL;
-  glnx_unref_object OstreeDeployment *new_deployment =
+  g_autoptr(OstreeDeployment) new_deployment =
     ostree_deployment_new (0, osname, revision, new_deployserial,
                            new_bootcsum, -1);
   ostree_deployment_set_origin (new_deployment, origin);
@@ -1966,10 +1967,10 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   /* Create an empty boot configuration; we will merge things into
    * it as we go.
    */
-  glnx_unref_object OstreeBootconfigParser *bootconfig = ostree_bootconfig_parser_new ();
+  g_autoptr(OstreeBootconfigParser) bootconfig = ostree_bootconfig_parser_new ();
   ostree_deployment_set_bootconfig (new_deployment, bootconfig);
 
-  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
+  g_autoptr(OstreeSePolicy) sepolicy = NULL;
   if (!merge_configuration (self, repo, merge_deployment, new_deployment,
                             deployment_dfd,
                             &sepolicy,
@@ -2047,7 +2048,7 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
 {
   guint i;
   g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
-  glnx_unref_object OstreeDeployment *new_deployment = NULL;
+  g_autoptr(OstreeDeployment) new_deployment = NULL;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
   g_autofree char *new_options = NULL;
   OstreeBootconfigParser *new_bootconfig;

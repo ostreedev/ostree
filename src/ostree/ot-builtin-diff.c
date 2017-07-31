@@ -126,7 +126,7 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   const char *src;
   const char *target;
   g_autofree char *src_prev = NULL;

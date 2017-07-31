@@ -25,6 +25,7 @@
 #include <sys/mount.h>
 #include <sys/wait.h>
 
+#include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-sepolicy-private.h"
@@ -307,7 +308,7 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
       else
         {
           g_autoptr(GFile) repo_dir = g_file_resolve_relative_path (self->path, "ostree/repo");
-          glnx_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
+          g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_dir);
           if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE,
                                    cancellable, error))
             return FALSE;
@@ -454,7 +455,7 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
           g_str_has_suffix (dent->d_name, ".conf") &&
           S_ISREG (stbuf.st_mode))
         {
-          glnx_unref_object OstreeBootconfigParser *config = ostree_bootconfig_parser_new ();
+          g_autoptr(OstreeBootconfigParser) config = ostree_bootconfig_parser_new ();
 
           if (!ostree_bootconfig_parser_parse_at (config, dfd_iter.fd, dent->d_name, cancellable, error))
             return glnx_prefix_error (error, "Parsing %s", dent->d_name);
@@ -624,7 +625,7 @@ parse_deployment (OstreeSysroot       *self,
                      cancellable, error))
     return FALSE;
 
-  glnx_unref_object OstreeDeployment *ret_deployment
+  g_autoptr(OstreeDeployment) ret_deployment
     = ostree_deployment_new (-1, osname, treecsum, deployserial,
                              bootcsum, treebootserial);
   if (origin)
@@ -691,7 +692,7 @@ list_deployments_process_one_boot_entry (OstreeSysroot               *self,
   if (ostree_arg == NULL)
     return glnx_throw (error, "No ostree= kernel argument found");
 
-  glnx_unref_object OstreeDeployment *deployment = NULL;
+  g_autoptr(OstreeDeployment) deployment = NULL;
   if (!parse_deployment (self, ostree_arg, &deployment,
                          cancellable, error))
     return FALSE;
@@ -999,7 +1000,7 @@ _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
                                   GError           **error)
 {
   gboolean is_active;
-  glnx_unref_object OstreeBootloader *ret_loader =
+  g_autoptr(OstreeBootloader) ret_loader =
     (OstreeBootloader*)_ostree_bootloader_syslinux_new (sysroot);
   if (!_ostree_bootloader_query (ret_loader, &is_active,
                                  cancellable, error))
@@ -1078,7 +1079,7 @@ find_booted_deployment (OstreeSysroot       *self,
 {
   struct stat root_stbuf;
   struct stat self_stbuf;
-  glnx_unref_object OstreeDeployment *ret_deployment = NULL;
+  g_autoptr(OstreeDeployment) ret_deployment = NULL;
 
   if (stat ("/", &root_stbuf) != 0)
     return glnx_throw_errno_prefix (error, "stat /");
@@ -1549,7 +1550,7 @@ clone_deployment (OstreeSysroot  *sysroot,
 {
   gboolean ret = FALSE;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
-  glnx_unref_object OstreeDeployment *new_deployment = NULL;
+  g_autoptr(OstreeDeployment) new_deployment = NULL;
 
   /* Ensure we have a clean slate */
   if (!ostree_sysroot_prepare_cleanup (sysroot, cancellable, error))
@@ -1617,12 +1618,12 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
                                   GError           **error)
 {
   gboolean ret = FALSE;
-  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
+  g_autoptr(OstreeSePolicy) sepolicy = NULL;
   OstreeDeploymentUnlockedState current_unlocked =
     ostree_deployment_get_unlocked (deployment); 
-  glnx_unref_object OstreeDeployment *deployment_clone =
+  g_autoptr(OstreeDeployment) deployment_clone =
     ostree_deployment_clone (deployment);
-  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
+  g_autoptr(OstreeDeployment) merge_deployment = NULL;
   GKeyFile *origin_clone = ostree_deployment_get_origin (deployment_clone);
   const char hotfix_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
   const char *ovl_options = NULL;

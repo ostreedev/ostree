@@ -125,9 +125,9 @@ ostree_builtin_find_remotes (int            argc,
                              GError       **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   g_autoptr(GPtrArray) refs = NULL;  /* (element-type OstreeCollectionRef) */
-  glnx_unref_object OstreeAsyncProgress *progress = NULL;
+  g_autoptr(OstreeAsyncProgress) progress = NULL;
   gsize i;
   g_autoptr(GAsyncResult) find_result = NULL, pull_result = NULL;
   g_auto(OstreeRepoFinderResultv) results = NULL;

@@ -27,16 +27,16 @@
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
-#include "otutil.h"
+#include <sys/xattr.h>
+#include <glib/gprintf.h>
 
+#include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-checksum-input-stream.h"
-#include "ostree-mutable-tree.h"
 #include "ostree-varint.h"
-#include <sys/xattr.h>
-#include <glib/gprintf.h>
+#include "otutil.h"
 
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
@@ -2555,7 +2555,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
 {
   g_autoptr(GFile) child = NULL;
   g_autoptr(GFileInfo) modified_info = NULL;
-  glnx_unref_object OstreeMutableTree *child_mtree = NULL;
+  g_autoptr(OstreeMutableTree) child_mtree = NULL;
   g_autofree char *child_relpath = NULL;
   const char *name;
   GFileType file_type;
