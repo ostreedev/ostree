@@ -1331,9 +1331,9 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                GError            **error)
 {
   OstreeRemote *remote;
-  ot_auto_gpgme_ctx gpgme_ctx_t source_context = NULL;
-  ot_auto_gpgme_ctx gpgme_ctx_t target_context = NULL;
-  ot_auto_gpgme_data gpgme_data_t data_buffer = NULL;
+  g_auto(gpgme_ctx_t) source_context = NULL;
+  g_auto(gpgme_ctx_t) target_context = NULL;
+  g_auto(gpgme_data_t) data_buffer = NULL;
   gpgme_import_result_t import_result;
   gpgme_import_status_t import_status;
   g_autofree char *source_tmp_dir = NULL;
