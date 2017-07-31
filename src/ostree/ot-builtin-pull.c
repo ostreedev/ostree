@@ -209,11 +209,13 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
                     goto out;
 
                   if (!override_commit_ids)
-                    override_commit_ids = g_ptr_array_new_with_free_func (g_free);
+                    {
+                      override_commit_ids = g_ptr_array_new_with_free_func (g_free);
 
-                  /* Backfill */
-                  for (j = 2; j < i; i++)
-                    g_ptr_array_add (override_commit_ids, g_strdup (""));
+                      /* Backfill */
+                      for (j = 2; j < i; j++)
+                        g_ptr_array_add (override_commit_ids, g_strdup (""));
+                    }
 
                   g_ptr_array_add (override_commit_ids, g_strdup (override_commit_id));
                   g_ptr_array_add (refs_to_fetch, g_strndup (argv[i], at - argv[i]));
@@ -221,6 +223,8 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
               else
                 {
                   g_ptr_array_add (refs_to_fetch, g_strdup (argv[i]));
+                  if (override_commit_ids)
+                    g_ptr_array_add (override_commit_ids, g_strdup (""));
                 }
             }
 
