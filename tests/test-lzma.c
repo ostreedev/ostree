@@ -81,9 +81,9 @@ test_lzma_random (void)
   gssize i;
   const guint32 buffer_size = 4096 + 1;
   guint8 buffer[buffer_size];
-  srandom (1);
+  g_autoptr(GRand) r = g_rand_new ();
   for (i = 0; i < buffer_size; i++)
-    buffer[i] = random ();
+    buffer[i] = g_rand_int (r);
 
   for (i = 2; i <= buffer_size; i *= 2)
     {
