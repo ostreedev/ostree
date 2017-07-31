@@ -95,8 +95,8 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
 {
   GLNX_AUTO_PREFIX_ERROR("GPG", error);
   gpgme_error_t gpg_error = 0;
-  ot_auto_gpgme_data gpgme_data_t data_buffer = NULL;
-  ot_auto_gpgme_data gpgme_data_t signature_buffer = NULL;
+  g_auto(gpgme_data_t) data_buffer = NULL;
+  g_auto(gpgme_data_t) signature_buffer = NULL;
   g_autofree char *tmp_dir = NULL;
   g_autoptr(GOutputStream) target_stream = NULL;
   OstreeGpgVerifyResult *result = NULL;
@@ -165,7 +165,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
         {
           const char *path = self->key_ascii_files->pdata[i];
           glnx_fd_close int fd = -1;
-          ot_auto_gpgme_data gpgme_data_t kdata = NULL;
+          g_auto(gpgme_data_t) kdata = NULL;
 
           if (!glnx_openat_rdonly (AT_FDCWD, path, TRUE, &fd, error))
             goto out;
