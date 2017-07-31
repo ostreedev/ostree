@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "config.h"
+
 #include <gio/gio.h>
 #include "libglnx.h"
 #ifdef HAVE_LIBARCHIVE
@@ -32,14 +34,10 @@
 G_BEGIN_DECLS
 
 #ifdef HAVE_LIBARCHIVE
-GLNX_DEFINE_CLEANUP_FUNCTION (void *, flatpak_local_free_write_archive, archive_write_free)
-#define ot_cleanup_write_archive __attribute__((cleanup (flatpak_local_free_write_archive)))
-
-GLNX_DEFINE_CLEANUP_FUNCTION (void *, flatpak_local_free_read_archive, archive_read_free)
-#define ot_cleanup_read_archive __attribute__((cleanup (flatpak_local_free_read_archive)))
-#else
-#define ot_cleanup_write_archive
-#define ot_cleanup_read_archive
+typedef struct archive OtAutoArchiveWrite;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtAutoArchiveWrite, archive_write_free)
+typedef struct archive OtAutoArchiveRead;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtAutoArchiveRead, archive_read_free)
 #endif
 
 G_END_DECLS
