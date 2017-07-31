@@ -425,11 +425,9 @@ static gboolean
 timer_cb (gpointer data)
 {
   OstreeFetcher *fetcher = data;
-  CURLMcode rc;
   GSource *orig_src = fetcher->timer_event;
 
-  rc = curl_multi_socket_action (fetcher->multi, CURL_SOCKET_TIMEOUT, 0, &fetcher->curl_running);
-  g_assert (rc == CURLM_OK);
+  (void)curl_multi_socket_action (fetcher->multi, CURL_SOCKET_TIMEOUT, 0, &fetcher->curl_running);
   check_multi_info (fetcher);
   if (fetcher->timer_event == orig_src)
     fetcher->timer_event = NULL;
@@ -460,15 +458,12 @@ static gboolean
 event_cb (int fd, GIOCondition condition, gpointer data)
 {
   OstreeFetcher *fetcher = data;
-  CURLMcode rc;
 
   int action =
     (condition & G_IO_IN ? CURL_CSELECT_IN : 0) |
     (condition & G_IO_OUT ? CURL_CSELECT_OUT : 0);
 
-  rc = curl_multi_socket_action (fetcher->multi, fd, action, &fetcher->curl_running);
-  g_assert (rc == CURLM_OK);
-
+  (void)curl_multi_socket_action (fetcher->multi, fd, action, &fetcher->curl_running);
   check_multi_info (fetcher);
   if (fetcher->curl_running > 0)
     {
