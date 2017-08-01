@@ -977,7 +977,7 @@ syncfs_dir_at (int            dfd,
   if (!glnx_opendirat (dfd, path, TRUE, &child_dfd, error))
     return FALSE;
   if (syncfs (child_dfd) != 0)
-    return glnx_throw_errno (error);
+    return glnx_throw_errno_prefix (error, "syncfs(%s)", path);
 
   return TRUE;
 }
@@ -992,7 +992,7 @@ full_system_sync (OstreeSysroot     *self,
                   GError           **error)
 {
   if (syncfs (self->sysroot_fd) != 0)
-    return glnx_throw_errno (error);
+    return glnx_throw_errno_prefix (error, "syncfs(sysroot)");
 
   if (!syncfs_dir_at (self->sysroot_fd, "boot", cancellable, error))
     return FALSE;
@@ -1379,7 +1379,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
    *    admin by going back to the previous session.
    */
   if (fsync (boot_dfd) != 0)
-    return glnx_throw_errno (error);
+    return glnx_throw_errno_prefix (error, "fsync(boot)");
 
   return TRUE;
 }
@@ -1452,10 +1452,9 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
                                  GCancellable          *cancellable,
                                  GError               **error)
 {
-  guint i;
   g_autoptr(GString) buf = g_string_new ("");
 
-  for (i = 0; i < self->deployments->len; i++)
+  for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
       const char *osname = ostree_deployment_get_osname (deployment);
@@ -1463,11 +1462,8 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
       g_string_truncate (buf, 0);
       g_string_append_printf (buf, "ostree/deploy/%s/current", osname);
 
-      if (unlinkat (self->sysroot_fd, buf->str, 0) < 0)
-        {
-          if (errno != ENOENT)
-            return glnx_throw_errno (error);
-        }
+      if (!ot_ensure_unlinked_at (self->sysroot_fd, buf->str, error))
+        return FALSE;
     }
 
   return TRUE;
