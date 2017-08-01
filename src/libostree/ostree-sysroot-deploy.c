@@ -28,6 +28,9 @@
 #ifdef HAVE_LIBMOUNT
 #include <libmount.h>
 #endif
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-journal.h>
+#endif
 
 #include "ostree-sysroot-private.h"
 #include "ostree-sepolicy-private.h"
@@ -39,7 +42,9 @@
 
 #define OSTREE_VARRELABEL_ID          "da679b08acd34504b789d96f818ea781"
 #define OSTREE_CONFIGMERGE_ID         "d3863baec13e4449ab0384684a8af3a7"
-#define OSTREE_DEPLOYMENT_COMPLETE_ID "dd440e3e549083b63d0efc7dc15255f1"
+#ifdef HAVE_LIBSYSTEMD
+#define OSTREE_DEPLOYMENT_COMPLETE_ID SD_ID128_MAKE(dd,44,0e,3e,54,90,83,b6,3d,0e,fc,7d,c1,52,55,f1)
+#endif
 
 /*
  * Like symlinkat() but overwrites (atomically) an existing
@@ -982,20 +987,34 @@ syncfs_dir_at (int            dfd,
   return TRUE;
 }
 
+typedef struct {
+  guint64 root_syncfs_msec;
+  guint64 boot_syncfs_msec;
+  guint64 extra_syncfs_msec;
+} SyncStats;
+
 /* First, sync the root directory as well as /var and /boot which may
  * be separate mount points.  Then *in addition*, do a global
  * `sync()`.
  */
 static gboolean
 full_system_sync (OstreeSysroot     *self,
+                  SyncStats         *out_stats,
                   GCancellable      *cancellable,
                   GError           **error)
 {
+  guint64 start_msec = g_get_monotonic_time () / 1000;
   if (syncfs (self->sysroot_fd) != 0)
     return glnx_throw_errno_prefix (error, "syncfs(sysroot)");
+  guint64 end_msec = g_get_monotonic_time () / 1000;
 
+  out_stats->root_syncfs_msec = (end_msec - start_msec);
+
+  start_msec = g_get_monotonic_time () / 1000;
   if (!syncfs_dir_at (self->sysroot_fd, "boot", cancellable, error))
     return FALSE;
+  end_msec = g_get_monotonic_time () / 1000;
+  out_stats->boot_syncfs_msec = (end_msec - start_msec);
 
   /* And now out of an excess of conservativism, we still invoke
    * sync().  The advantage of still using `syncfs()` above is that we
@@ -1003,7 +1022,10 @@ full_system_sync (OstreeSysroot     *self,
    * delineate what we actually want to sync in the future when this
    * global sync call is removed.
    */
+  start_msec = g_get_monotonic_time () / 1000;
   sync ();
+  end_msec = g_get_monotonic_time () / 1000;
+  out_stats->extra_syncfs_msec = (end_msec - start_msec);
 
   return TRUE;
 }
@@ -1564,6 +1586,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   gboolean found_booted_deployment = FALSE;
   gboolean bootloader_is_atomic = FALSE;
   gboolean boot_was_ro_mount = FALSE;
+  SyncStats syncstats = { 0, };
+  glnx_unref_object OstreeBootloader *bootloader = NULL;
 
   g_assert (self->loaded);
 
@@ -1627,7 +1651,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
           goto out;
         }
 
-      if (!full_system_sync (self, cancellable, error))
+      if (!full_system_sync (self, &syncstats, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
           goto out;
@@ -1646,7 +1670,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   else
     {
       int new_bootversion = self->bootversion ? 0 : 1;
-      glnx_unref_object OstreeBootloader *bootloader = NULL;
       g_autofree char* new_loader_entries_dir = NULL;
       glnx_unref_object OstreeRepo *repo = NULL;
       gboolean show_osname = FALSE;
@@ -1747,7 +1770,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
           goto out;
         }
 
-      if (!full_system_sync (self, cancellable, error))
+      if (!full_system_sync (self, &syncstats, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
           goto out;
@@ -1761,11 +1784,26 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
         }
     }
 
-  ot_log_structured_print_id_v (OSTREE_DEPLOYMENT_COMPLETE_ID,
-                                "%s; bootconfig swap: %s deployment count change: %i",
-                                (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
-                                requires_new_bootversion ? "yes" : "no",
-                                new_deployments->len - self->deployments->len);
+  { g_autofree char *msg =
+      g_strdup_printf ("%s; bootconfig swap: %s deployment count change: %i",
+                       (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
+                       requires_new_bootversion ? "yes" : "no",
+                       new_deployments->len - self->deployments->len);
+#ifdef HAVE_LIBSYSTEMD
+    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_DEPLOYMENT_COMPLETE_ID),
+                     "MESSAGE=%s", msg,
+                     "OSTREE_BOOTLOADER=%s", bootloader ? _ostree_bootloader_get_name (bootloader) : "none",
+                     "OSTREE_BOOTLOADER_ATOMIC=%s", bootloader_is_atomic ? "yes" : "no",
+                     "OSTREE_DID_BOOTSWAP=%s", requires_new_bootversion ? "yes" : "no",
+                     "OSTREE_N_DEPLOYMENTS=%u", new_deployments->len,
+                     "OSTREE_SYNCFS_ROOT_MSEC=%" G_GUINT64_FORMAT, syncstats.root_syncfs_msec,
+                     "OSTREE_SYNCFS_BOOT_MSEC=%" G_GUINT64_FORMAT, syncstats.boot_syncfs_msec,
+                     "OSTREE_SYNCFS_EXTRA_MSEC=%" G_GUINT64_FORMAT, syncstats.extra_syncfs_msec,
+                     NULL);
+#endif
+    if (!ot_stdout_is_journal ())
+      g_print ("%s\n", msg);
+  }
 
   if (!_ostree_sysroot_bump_mtime (self, error))
     goto out;

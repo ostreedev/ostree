@@ -88,7 +88,7 @@ ot_log_structured (const char *message,
  *
  * Returns: %TRUE if stdout is (probably) connnected to the systemd journal
  */
-static gboolean
+gboolean
 ot_stdout_is_journal (void)
 {
   static gsize initialized;
