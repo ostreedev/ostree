@@ -136,8 +136,11 @@ Boston, MA 02111-1307, USA.
         </para>
 
 	<para>
-	  A special syntax in the <literal>@</literal> character allows
-	  specifying a specific commit to retrieve from a branch.  This
+    A special syntax in the <literal>@</literal> character allows
+    specifying a specific commit to retrieve from a branch.  The
+    use cases for this are somewhat similar to pulling a specific
+    git tag; one could e.g. script a system upgrade to a known-good
+    version, rather than the latest from the content provider.
 	</para>
 
     </refsect1>
