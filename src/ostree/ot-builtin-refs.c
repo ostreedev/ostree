@@ -264,7 +264,8 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
           goto out;
         }
 
-      ret = do_ref (repo, NULL, cancellable, error);
+      if (!do_ref (repo, NULL, cancellable, error))
+        goto out;
     }
 
   ret = TRUE;

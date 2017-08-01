@@ -79,13 +79,12 @@ static void
 test_lzma_random (void)
 {
   gssize i;
-  const guint32 buffer_size = 4096 + 1;
-  guint8 buffer[buffer_size];
-  srandom (1);
-  for (i = 0; i < buffer_size; i++)
-    buffer[i] = random ();
+  guint8 buffer[4096];
+  g_autoptr(GRand) r = g_rand_new ();
+  for (i = 0; i < sizeof(buffer); i++)
+    buffer[i] = g_rand_int (r);
 
-  for (i = 2; i <= buffer_size; i *= 2)
+  for (i = 2; i < (sizeof(buffer) - 1); i *= 2)
     {
       helper_test_compress_decompress (buffer, i - 1);
       helper_test_compress_decompress (buffer, i);

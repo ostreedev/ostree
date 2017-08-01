@@ -94,7 +94,7 @@ httpd_log (OtTrivialHttpd *httpd, const gchar *format, ...)
   g_string_append_vprintf (str, format, args);
   va_end (args);
 
-  g_output_stream_write_all (httpd->log, str->str, str->len, &written, NULL, NULL);
+  (void)g_output_stream_write_all (httpd->log, str->str, str->len, &written, NULL, NULL);
 }
 
 static int

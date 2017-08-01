@@ -485,10 +485,13 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
             g_input_stream_read (input, buf, MIN (remaining, sizeof (buf)), cancellable, error);
           if (bytes_read < 0)
             return FALSE;
-          else if (G_UNLIKELY (bytes_read == 0 && remaining > 0))
-            return glnx_throw (error, "Unexpected EOF with %" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT " bytes remaining", remaining, length);
           else if (bytes_read == 0)
-            break;
+            {
+              if (G_UNLIKELY (remaining > 0))
+                return glnx_throw (error, "Unexpected EOF with %" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT " bytes remaining", remaining, length);
+              else
+                break;
+            }
           if (glnx_loop_write (tmpf.fd, buf, bytes_read) < 0)
             return glnx_throw_errno_prefix (error, "write");
           remaining -= bytes_read;
