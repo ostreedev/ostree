@@ -900,7 +900,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
-  ot_cleanup_read_archive struct archive *a = archive_read_new ();
+  g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
 
 #ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL

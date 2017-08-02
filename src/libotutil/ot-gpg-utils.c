@@ -413,7 +413,7 @@ ot_gpgme_new_ctx (const char *homedir,
                   GError    **error)
 {
   gpgme_error_t err;
-  ot_auto_gpgme_ctx gpgme_ctx_t context = NULL;
+  g_auto(gpgme_ctx_t) context = NULL;
 
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
     {
