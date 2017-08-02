@@ -784,7 +784,7 @@ relative_symlink_to (const char *relpath,
                      const char *target)
 {
   g_assert (*relpath);
-  g_assert (*target);
+  g_assert (*target && *target != '/');
 
   g_autoptr(GString) buf = g_string_new ("");
 
@@ -797,7 +797,6 @@ relative_symlink_to (const char *relpath,
       g_string_append (buf, "../");
     }
 
-  g_assert (*target != '/');
   g_string_append (buf, target);
 
   return g_string_free (g_steal_pointer (&buf), FALSE);

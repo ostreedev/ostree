@@ -178,11 +178,8 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
   if (is_list)
     {
-      g_hash_table_iter_init (&hashiter, refs);
-      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+      GLNX_HASH_TABLE_FOREACH_KV (refs, const char *, ref, const char *, value)
         {
-          const char *ref = hashkey;
-          const char *value = hashvalue;
           if (opt_alias)
             g_print ("%s -> %s\n", ref, value);
           else
@@ -207,15 +204,13 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
           else goto out;
         }
 
-      const gboolean creating_alias = opt_alias && opt_create;
-      if (!creating_alias || !g_hash_table_contains (ref_aliases, opt_create))
+      /* We want to allow replacing an existing alias */
+      gboolean replacing_alias = opt_alias && g_hash_table_contains (ref_aliases, opt_create);
+      if (!replacing_alias && checksum_existing != NULL)
         {
-          if (checksum_existing != NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "--create specified but ref %s already exists", opt_create);
-              goto out;
-            }
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "--create specified but ref %s already exists", opt_create);
+          goto out;
         }
 
       if (!ostree_parse_refspec (opt_create, &remote, &ref, error))
