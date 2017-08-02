@@ -122,7 +122,7 @@ write_regular_file_content (OstreeRepo            *self,
       int infd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*) input);
       guint64 len = g_file_info_get_size (file_info);
 
-      if (glnx_regfile_copy_bytes (infd, outfd, (off_t)len, TRUE) < 0)
+      if (glnx_regfile_copy_bytes (infd, outfd, (off_t)len) < 0)
         return glnx_throw_errno_prefix (error, "regfile copy");
     }
   else
