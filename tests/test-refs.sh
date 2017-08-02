@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo '1..1'
+echo '1..2'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -117,3 +117,43 @@ ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create6
 assert_file_has_content refscount.create6 "^11$"
 
 echo "ok refs"
+
+# Test symlinking a ref
+${CMD_PREFIX} ostree --repo=repo refs ctest --create=exampleos/x86_64/26/server
+${CMD_PREFIX} ostree --repo=repo refs -A exampleos/x86_64/26/server --create=exampleos/x86_64/stable/server
+${CMD_PREFIX} ostree --repo=repo summary -u
+${CMD_PREFIX} ostree --repo=repo refs > refs.txt
+for v in 26 stable; do
+    assert_file_has_content refs.txt exampleos/x86_64/${v}/server
+done
+${CMD_PREFIX} ostree --repo=repo refs -A > refs.txt
+assert_file_has_content_literal refs.txt 'exampleos/x86_64/stable/server -> exampleos/x86_64/26/server'
+assert_not_file_has_content refs.txt '^exampleos/x86_64/26/server'
+stable=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/stable/server)
+current=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/26/server)
+assert_streq "${stable}" "${current}"
+${CMD_PREFIX} ostree --repo=repo commit -b exampleos/x86_64/26/server --tree=dir=tree
+${CMD_PREFIX} ostree --repo=repo summary -u
+newcurrent=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/26/server)
+assert_not_streq "${newcurrent}" "${current}"
+newstable=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/stable/server)
+assert_streq "${newcurrent}" "${newstable}"
+
+# Test that we can swap the symlink
+${CMD_PREFIX} ostree --repo=repo commit -b exampleos/x86_64/27/server --tree=dir=tree
+newcurrent=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/27/server)
+assert_not_streq "${newcurrent}" "${newstable}"
+${CMD_PREFIX} ostree --repo=repo refs -A exampleos/x86_64/27/server --create=exampleos/x86_64/stable/server
+newnewstable=$(${CMD_PREFIX} ostree --repo=repo rev-parse exampleos/x86_64/stable/server)
+assert_not_streq "${newnewstable}" "${newstable}"
+assert_streq "${newnewstable}" "${newcurrent}"
+${CMD_PREFIX} ostree --repo=repo refs > refs.txt
+for v in 26 27 stable; do
+    assert_file_has_content refs.txt exampleos/x86_64/${v}/server
+done
+${CMD_PREFIX} ostree --repo=repo refs -A > refs.txt
+assert_file_has_content_literal refs.txt 'exampleos/x86_64/stable/server -> exampleos/x86_64/27/server'
+
+${CMD_PREFIX} ostree --repo=repo summary -u
+
+echo "ok ref symlink"

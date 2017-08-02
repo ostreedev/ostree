@@ -265,6 +265,7 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
                         const char                 *remote,
                         const OstreeCollectionRef  *ref,
                         const char                 *rev,
+                        const char                 *alias,
                         GCancellable               *cancellable,
                         GError                    **error);
 
