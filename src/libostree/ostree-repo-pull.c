@@ -4111,7 +4111,17 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         g_string_append_printf (msg, "libostree pull from '%s' for %u refs complete",
                                 pull_data->remote_name, g_hash_table_size (requested_refs_to_fetch));
 
-      g_string_append_printf (msg, "\nsecurity: GPG: %s ", pull_data->gpg_verify ? "yes" : "no");
+      const char *gpg_verify_state;
+      if (pull_data->gpg_verify_summary)
+        {
+          if (pull_data->gpg_verify)
+            gpg_verify_state = "summary+commit";
+          else
+            gpg_verify_state = "summary-only";
+        }
+      else
+        gpg_verify_state = (pull_data->gpg_verify ? "commit" : "disabled");
+      g_string_append_printf (msg, "\nsecurity: GPG: %s ", gpg_verify_state);
       OstreeFetcherURI *first_uri = pull_data->meta_mirrorlist->pdata[0];
       g_autofree char *first_scheme = _ostree_fetcher_uri_get_scheme (first_uri);
       if (g_str_has_prefix (first_scheme, "http"))
@@ -4146,7 +4156,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       sd_journal_send ("MESSAGE=%s", msg->str,
                        "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_MESSAGE_FETCH_COMPLETE_ID),
                        "OSTREE_REMOTE=%s", pull_data->remote_name,
-                       "OSTREE_GPG=%s", pull_data->gpg_verify ? "yes" : "no",
+                       "OSTREE_GPG=%s", gpg_verify_state,
                        "OSTREE_SECONDS=%u", n_seconds,
                        "OSTREE_XFER_SIZE=%s", formatted_xferred,
                        NULL);
