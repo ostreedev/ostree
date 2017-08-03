@@ -25,7 +25,7 @@
 #include "config.h"
 
 #include <gio/gio.h>
-#include "libglnx.h"
+#include "otutil.h"
 #ifdef HAVE_LIBARCHIVE
 #include <archive.h>
 #include <archive_entry.h>

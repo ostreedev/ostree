@@ -30,13 +30,13 @@
 #include <sys/xattr.h>
 #include <glib/gprintf.h>
 
+#include "otutil.h"
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-checksum-input-stream.h"
 #include "ostree-varint.h"
-#include "otutil.h"
 
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,

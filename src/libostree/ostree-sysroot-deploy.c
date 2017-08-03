@@ -32,13 +32,13 @@
 #include <systemd/sd-journal.h>
 #endif
 
+#include "otutil.h"
 #include "ostree.h"
 #include "ostree-sysroot-private.h"
 #include "ostree-sepolicy-private.h"
 #include "ostree-deployment-private.h"
 #include "ostree-core-private.h"
 #include "ostree-linuxfsutil.h"
-#include "otutil.h"
 #include "libglnx.h"
 
 #define OSTREE_VARRELABEL_ID          "da679b08acd34504b789d96f818ea781"
