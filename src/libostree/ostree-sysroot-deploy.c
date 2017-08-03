@@ -22,8 +22,14 @@
 
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
+#include <glib-unix.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <sys/poll.h>
+#include <linux/fs.h>
+#include <err.h>
 
 #ifdef HAVE_LIBMOUNT
 #include <libmount.h>
@@ -973,18 +979,125 @@ checksum_from_kernel_src (const char   *name,
   return TRUE;
 }
 
+/* We used to syncfs(), but doesn't flush the journal on XFS,
+ * and since GRUB2 can't read the XFS journal, the system
+ * could fail to boot.
+ *
+ * http://marc.info/?l=linux-fsdevel&m=149520244919284&w=2
+ * https://github.com/ostreedev/ostree/pull/1049
+ */
 static gboolean
-syncfs_dir_at (int            dfd,
-               const char    *path,
-               GCancellable  *cancellable,
-               GError       **error)
+fsfreeze_thaw_cycle (OstreeSysroot *self,
+                     int            rootfs_dfd,
+                     GCancellable *cancellable,
+                     GError       **error)
 {
-  glnx_fd_close int child_dfd = -1;
-  if (!glnx_opendirat (dfd, path, TRUE, &child_dfd, error))
-    return FALSE;
-  if (syncfs (child_dfd) != 0)
-    return glnx_throw_errno_prefix (error, "syncfs(%s)", path);
+  GLNX_AUTO_PREFIX_ERROR ("During fsfreeze-thaw", error);
 
+  int sockpair[2];
+  if (socketpair (AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockpair) < 0)
+    return glnx_throw_errno_prefix (error, "socketpair");
+  glnx_fd_close int sock_parent = sockpair[0];
+  glnx_fd_close int sock_watchdog = sockpair[1];
+
+  pid_t pid = fork ();
+  if (pid < 0)
+    return glnx_throw_errno_prefix (error, "fork");
+
+  const gboolean debug_fifreeze = (self->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE)>0;
+  char c = '!';
+  if (pid == 0) /* Child watchdog/unfreezer process. */
+    {
+      (void) close (glnx_steal_fd (&sock_parent));
+      /* Daemonize, and mask SIGINT/SIGTERM, so we're likely to survive e.g.
+       * someone doing a `systemctl restart rpm-ostreed` or a Ctrl-C of
+       * `ostree admin upgrade`.
+       */
+      if (daemon (0, debug_fifreeze ? 1 : 0) < 0)
+        err (1, "daemon");
+      int sigs[] = { SIGINT, SIGTERM };
+      for (guint i = 0; i < G_N_ELEMENTS (sigs); i++)
+        {
+          if (signal (sigs[i], SIG_IGN) == SIG_ERR)
+            err (1, "signal");
+        }
+      /* Tell the parent we're ready */
+      if (write (sock_watchdog, &c, sizeof (c)) != 1)
+        err (1, "write");
+      /* Wait for the parent to say it's going to freeze. */
+      ssize_t bytes_read = TEMP_FAILURE_RETRY (read (sock_watchdog, &c, sizeof (c)));
+      if (bytes_read < 0)
+        err (1, "read");
+      if (bytes_read != 1)
+        errx (1, "failed to read from parent");
+      /* Now we wait for the second message from the parent saying the freeze is
+       * complete. We have a 30 second timeout; if somehow the parent hasn't
+       * signaled completion, go ahead and unfreeze. But for debugging, just 1
+       * second to avoid exessively lengthining the test suite.
+       */
+      const int timeout_ms = debug_fifreeze ? 1000 : 30000;
+      struct pollfd pfds[1];
+      pfds[0].fd = sock_watchdog;
+      pfds[0].events = POLLIN | POLLHUP;
+      int r = TEMP_FAILURE_RETRY (poll (pfds, 1, timeout_ms));
+      /* Do a thaw if we hit an error, or if the poll timed out */
+      if (r <= 0)
+        {
+          if (TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0)) != 0)
+            {
+              if (errno == EPERM && getuid () != 0)
+                ; /* Ignore this for the test suite */
+              else
+                err (1, "FITHAW");
+            }
+          /* But if we got an error from poll, let's log it */
+          if (r < 0)
+            err (1, "poll");
+        }
+      if (debug_fifreeze)
+        g_printerr ("fifreeze watchdog was run\n");
+      exit (EXIT_SUCCESS);
+    }
+  else /* Parent process. */
+    {
+      (void) close (glnx_steal_fd (&sock_watchdog));
+      /* Wait for the watchdog to say it's set up; mainly that it's
+       * masked SIGTERM successfully.
+       */
+      ssize_t bytes_read = TEMP_FAILURE_RETRY (read (sock_parent, &c, sizeof (c)));
+      if (bytes_read < 0)
+        return glnx_throw_errno_prefix (error, "read(watchdog init)");
+      if (bytes_read != 1)
+        return glnx_throw (error, "read(watchdog init)");
+      /* And tell the watchdog that we're ready to start */
+      if (write (sock_parent, &c, sizeof (c)) != sizeof (c))
+        return glnx_throw_errno_prefix (error, "write(watchdog start)");
+      /* Testing infrastructure */
+      if (debug_fifreeze)
+        return glnx_throw (error, "aborting due to test-fifreeze");
+      /* Do a freeze/thaw cycle; TODO add a FIFREEZETHAW ioctl */
+      if (ioctl (rootfs_dfd, FIFREEZE, 0) != 0)
+        {
+          /* Not supported, or we're running in the unit tests (as non-root)?
+           * OK, let's just do a syncfs.
+           */
+          if (errno == EOPNOTSUPP || (errno == EPERM && getuid () != 0))
+            {
+              if (TEMP_FAILURE_RETRY (syncfs (rootfs_dfd)) != 0)
+                return glnx_throw_errno_prefix (error, "syncfs");
+              /* Write the completion, and return */
+              if (write (sock_parent, &c, sizeof (c)) != sizeof (c))
+                return glnx_throw_errno_prefix (error, "write(watchdog syncfs complete)");
+              return TRUE;
+            }
+          else
+            return glnx_throw_errno_prefix (error, "ioctl(FIFREEZE)");
+        }
+      if (TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0)) != 0)
+        return glnx_throw_errno_prefix (error, "ioctl(FITHAW)");
+      if (write (sock_parent, &c, sizeof (c)) != sizeof (c))
+        return glnx_throw_errno_prefix (error, "write(watchdog FITHAW complete)");
+    }
   return TRUE;
 }
 
@@ -1012,7 +1125,10 @@ full_system_sync (OstreeSysroot     *self,
   out_stats->root_syncfs_msec = (end_msec - start_msec);
 
   start_msec = g_get_monotonic_time () / 1000;
-  if (!syncfs_dir_at (self->sysroot_fd, "boot", cancellable, error))
+  glnx_fd_close int boot_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+    return FALSE;
+  if (!fsfreeze_thaw_cycle (self, boot_dfd, cancellable, error))
     return FALSE;
   end_msec = g_get_monotonic_time () / 1000;
   out_stats->boot_syncfs_msec = (end_msec - start_msec);
