@@ -979,7 +979,7 @@ checksum_from_kernel_src (const char   *name,
   return TRUE;
 }
 
-/* We used to syncfs(), but doesn't flush the journal on XFS,
+/* We used to syncfs(), but that doesn't flush the journal on XFS,
  * and since GRUB2 can't read the XFS journal, the system
  * could fail to boot.
  *
@@ -1093,6 +1093,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
           else
             return glnx_throw_errno_prefix (error, "ioctl(FIFREEZE)");
         }
+      /* And finally thaw, then signal our completion to the watchdog */
       if (TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0)) != 0)
         return glnx_throw_errno_prefix (error, "ioctl(FITHAW)");
       if (write (sock_parent, &c, sizeof (c)) != sizeof (c))
