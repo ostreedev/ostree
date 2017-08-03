@@ -1045,7 +1045,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
         {
           if (TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0)) != 0)
             {
-              if (errno == EPERM && getuid () != 0)
+              if (errno == EPERM)
                 ; /* Ignore this for the test suite */
               else
                 err (1, "FITHAW");
@@ -1081,7 +1081,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
           /* Not supported, or we're running in the unit tests (as non-root)?
            * OK, let's just do a syncfs.
            */
-          if (errno == EOPNOTSUPP || (errno == EPERM && getuid () != 0))
+          if (G_IN_SET (errno, EOPNOTSUPP, EPERM))
             {
               if (TEMP_FAILURE_RETRY (syncfs (rootfs_dfd)) != 0)
                 return glnx_throw_errno_prefix (error, "syncfs");
