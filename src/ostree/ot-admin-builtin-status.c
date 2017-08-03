@@ -84,9 +84,9 @@ gboolean
 ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeSysroot *sysroot = NULL;
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   gboolean ret = FALSE;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   OstreeDeployment *booted_deployment = NULL;
   g_autoptr(OstreeDeployment) pending_deployment = NULL;
   g_autoptr(OstreeDeployment) rollback_deployment = NULL;
@@ -129,7 +129,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
           const char *ref = ostree_deployment_get_csum (deployment);
           OstreeDeploymentUnlockedState unlocked = ostree_deployment_get_unlocked (deployment);
           g_autofree char *version = version_of_commit (repo, ref);
-          glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+          g_autoptr(OstreeGpgVerifyResult) result = NULL;
           guint jj, n_signatures;
           GError *local_error = NULL;
 

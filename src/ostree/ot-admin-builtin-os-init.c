@@ -37,7 +37,7 @@ gboolean
 ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeSysroot *sysroot = NULL;
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   gboolean ret = FALSE;
   const char *osname = NULL;
 

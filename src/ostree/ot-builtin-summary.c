@@ -81,7 +81,7 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 
   context = g_option_context_new ("Manage summary metadata");

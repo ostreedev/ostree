@@ -113,7 +113,7 @@ ot_static_delta_builtin_list (int argc, char **argv, GCancellable *cancellable, 
   g_autoptr(GPtrArray) delta_names = NULL;
   guint i;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
 
   context = g_option_context_new ("LIST - list static delta files");
 
@@ -145,7 +145,7 @@ ot_static_delta_builtin_show (int argc, char **argv, GCancellable *cancellable, 
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   const char *delta_id = NULL;
 
   context = g_option_context_new ("SHOW - Dump information on a delta");
@@ -175,7 +175,7 @@ ot_static_delta_builtin_delete (int argc, char **argv, GCancellable *cancellable
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
   const char *delta_id = NULL;
 
   context = g_option_context_new ("DELETE - Remove a delta");
@@ -206,7 +206,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
 
   context = g_option_context_new ("GENERATE [TO] - Generate static delta files");
   if (!ostree_option_context_parse (context, generate_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
@@ -357,7 +357,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, GCancellable *canc
   const char *patharg;
   g_autoptr(GFile) path = NULL;
   g_autoptr(GOptionContext) context = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
 
   context = g_option_context_new ("APPLY-OFFLINE - Apply static delta file");
   if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))

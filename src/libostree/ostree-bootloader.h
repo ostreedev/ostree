@@ -48,6 +48,7 @@ struct _OstreeBootloaderInterface
                                                    GError       **error);
   gboolean             (* is_atomic)              (OstreeBootloader  *self);
 };
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeBootloader, g_object_unref)
 
 GType _ostree_bootloader_get_type (void) G_GNUC_CONST;
 

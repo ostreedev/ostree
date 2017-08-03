@@ -372,7 +372,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
   if (opt_sysroot != NULL)
     sysroot_path = g_file_new_for_path (opt_sysroot);
 
-  glnx_unref_object OstreeSysroot *sysroot = ostree_sysroot_new (sysroot_path);
+  g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
 
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {

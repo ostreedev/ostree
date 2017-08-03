@@ -1418,7 +1418,7 @@ gpg_verify_unwritten_commit (OtPullData         *pull_data,
 {
   if (pull_data->gpg_verify)
     {
-      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+      g_autoptr(OstreeGpgVerifyResult) result = NULL;
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
 
       if (!detached_metadata)
@@ -1624,7 +1624,7 @@ scan_commit_object (OtPullData                 *pull_data,
 
   if (pull_data->gpg_verify)
     {
-      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+      g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
       result = ostree_repo_verify_commit_for_remote (pull_data->repo,
                                                      checksum,
@@ -2748,7 +2748,7 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
 
   if (is_metalink)
     {
-      glnx_unref_object OstreeMetalink *metalink = NULL;
+      g_autoptr(OstreeMetalink) metalink = NULL;
       GError *local_error = NULL;
 
       /* the metalink uri is buried in the mirrorlist as the first (and only)
@@ -2898,7 +2898,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                            GCancellable  *cancellable,
                            GError       **error)
 {
-  glnx_unref_object OstreeFetcher *fetcher = NULL;
+  g_autoptr(OstreeFetcher) fetcher = NULL;
   g_autoptr(GMainContext) mainctx = NULL;
   gboolean ret = FALSE;
   gboolean from_cache = FALSE;
@@ -3213,7 +3213,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   g_autoptr(GHashTable) commits_to_fetch = NULL;
   g_autofree char *remote_mode_str = NULL;
-  glnx_unref_object OstreeMetalink *metalink = NULL;
+  g_autoptr(OstreeMetalink) metalink = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
   GKeyFile *remote_config = NULL;
@@ -4960,7 +4960,7 @@ find_remotes_cb (GObject      *obj,
                                                                &error))
                 goto error;
 
-              glnx_unref_object OstreeGpgVerifyResult *verify_result = NULL;
+              g_autoptr(OstreeGpgVerifyResult) verify_result = NULL;
 
               verify_result = ostree_repo_verify_commit_for_remote (self,
                                                                     commit_metadata->checksum,
@@ -5608,7 +5608,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   /* Verify any summary signatures. */
   if (gpg_verify_summary && summary != NULL && signatures != NULL)
     {
-      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+      g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
       result = ostree_repo_verify_summary (self,
                                            name,
