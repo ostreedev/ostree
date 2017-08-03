@@ -64,6 +64,11 @@ typedef struct OstreeGpgVerifyResult OstreeGpgVerifyResult;
  * @OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL:
  *   [#G_VARIANT_TYPE_STRING] The email address of the signing key's primary
  *   user
+ * @OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY:
+ *   [#G_VARIANT_TYPE_STRING] Fingerprint of the signing key's primary key
+ *   (will be the same as OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT if the
+ *   the signature is already from the primary key rather than a subkey,
+ *   and will be the empty string if the key is missing.)
  *
  * Signature attributes available from an #OstreeGpgVerifyResult.
  * The attribute's #GVariantType is shown in brackets.
@@ -80,7 +85,8 @@ typedef enum {
   OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME,
   OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME,
   OSTREE_GPG_SIGNATURE_ATTR_USER_NAME,
-  OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL
+  OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL,
+  OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY,
 } OstreeGpgSignatureAttr;
 
 _OSTREE_PUBLIC
