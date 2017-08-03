@@ -279,8 +279,8 @@ _ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier  *self,
   self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
 }
 
-/* Given @path which should contain a GPG keyring file, add it
- * to the list of trusted keys.
+/* Given @keyring which should be the contents of a GPG keyring file, add it to
+ * the list of trusted keys.
  */
 void
 _ostree_gpg_verifier_add_keyring_data (OstreeGpgVerifier  *self,
