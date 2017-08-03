@@ -4261,11 +4261,14 @@ ostree_repo_sign_commit (OstreeRepo     *self,
 
   /* The verify operation is merely to parse any existing signatures to
    * check if the commit has already been signed with the given key ID.
-   * We want to avoid storing duplicate signatures in the metadata. */
+   * We want to avoid storing duplicate signatures in the metadata. We
+   * pass the homedir so that the signing key can be imported, allowing
+   * subkey signatures to be recognised. */
   g_autoptr(GError) local_error = NULL;
+  g_autoptr(GFile) verify_keydir = g_file_new_for_path (homedir);
   g_autoptr(OstreeGpgVerifyResult) result
     =_ostree_repo_gpg_verify_with_metadata (self, commit_data, old_metadata,
-                                            NULL, NULL, NULL,
+                                            NULL, verify_keydir, NULL,
                                             cancellable, &local_error);
   if (!result)
     {
