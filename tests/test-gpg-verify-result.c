@@ -173,7 +173,7 @@ test_attribute_basics (TestFixture *fixture,
       tuple = ostree_gpg_verify_result_get_all (fixture->result, ii);
 
       type_string = g_variant_get_type_string (tuple);
-      g_assert_cmpstr (type_string, ==, "(bbbbbsxxssss)");
+      g_assert_cmpstr (type_string, ==, "(bbbbbsxxsssss)");
 
       /* Check attributes which should be common to all signatures. */
 
