@@ -22,8 +22,8 @@
 
 #include "config.h"
 
-#include "ostree.h"
 #include "otutil.h"
+#include "ostree.h"
 
 /**
  * SECTION:ostree-mutable-tree
