@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "otutil.h"
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"

@@ -20,9 +20,9 @@
 
 #include "config.h"
 
+#include "otutil.h"
 #include "ostree.h"
 #include "ostree-deployment-private.h"
-#include "libglnx.h"
 
 typedef GObjectClass OstreeDeploymentClass;
 

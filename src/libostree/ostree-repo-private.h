@@ -21,10 +21,10 @@
 #pragma once
 
 #include <sys/statvfs.h>
+#include "otutil.h"
 #include "ostree-ref.h"
 #include "ostree-repo.h"
 #include "ostree-remote-private.h"
-#include "otutil.h"
 
 G_BEGIN_DECLS
 
