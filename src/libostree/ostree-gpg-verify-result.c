@@ -237,10 +237,9 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
                                  const gchar *key_id,
                                  guint *out_signature_index)
 {
-  gpgme_key_t lookup_key = NULL;
+  g_auto(gpgme_key_t) lookup_key = NULL;
   gpgme_signature_t signature;
   guint signature_index;
-  gboolean ret = FALSE;
 
   g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), FALSE);
   g_return_val_if_fail (key_id != NULL, FALSE);
@@ -258,7 +257,7 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
        signature != NULL;
        signature = signature->next, signature_index++)
     {
-      gpgme_key_t signature_key = NULL;
+      g_auto(gpgme_key_t) signature_key = NULL;
 
       (void) gpgme_get_key (result->context, signature->fpr, &signature_key, 0);
 
@@ -274,18 +273,13 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
         {
           if (out_signature_index != NULL)
             *out_signature_index = signature_index;
-          ret = TRUE;
+          /* Note early return */
+          return TRUE;
         }
 
-      gpgme_key_unref (signature_key);
-
-      if (ret)
-        break;
     }
 
-  gpgme_key_unref (lookup_key);
-
-  return ret;
+  return FALSE;
 }
 
 /**
@@ -312,7 +306,7 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
                               guint n_attrs)
 {
   GVariantBuilder builder;
-  gpgme_key_t key = NULL;
+  g_auto(gpgme_key_t) key = NULL;
   gpgme_signature_t signature;
   guint ii;
 
@@ -432,9 +426,6 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
 
       g_variant_builder_add_value (&builder, child);
     }
-
-  if (key != NULL)
-    gpgme_key_unref (key);
 
   return g_variant_builder_end (&builder);
 }
