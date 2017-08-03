@@ -166,6 +166,7 @@ ostree_sysroot_init (OstreeSysroot *self)
 {
   const GDebugKey keys[] = {
     { "mutable-deployments", OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS },
+    { "test-fifreeze", OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE },
     { "no-xattrs", OSTREE_SYSROOT_DEBUG_NO_XATTRS },
   };
 
