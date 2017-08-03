@@ -652,6 +652,9 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
 
   if (exp_timestamp > 0)
     {
+      if (line_prefix != NULL)
+        g_string_append (output_buffer, line_prefix);
+
       date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
       if (date_time_utc == NULL)
         {
@@ -663,9 +666,6 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
 
       date_time_local = g_date_time_to_local (date_time_utc);
       formatted_date_time = g_date_time_format (date_time_local, "%c");
-
-      if (line_prefix != NULL)
-        g_string_append (output_buffer, line_prefix);
 
       if (sig_expired)
         {
