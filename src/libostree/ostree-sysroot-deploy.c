@@ -425,15 +425,15 @@ merge_configuration_from (OstreeSysroot    *sysroot,
 
   { g_autofree char *msg =
       g_strdup_printf ("Copying /etc changes: %u modified, %u removed, %u added",
-                       modified->len,
-                       removed->len,
-                       added->len);
-    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, OSTREE_CONFIGMERGE_ID,
+                       modified->len, removed->len, added->len);
+#ifdef HAVE_LIBSYSTEMD
+    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_CONFIGMERGE_ID),
                      "MESSAGE=%s", msg,
                      "ETC_N_MODIFIED=%u", modified->len,
                      "ETC_N_REMOVED=%u", removed->len,
                      "ETC_N_ADDED=%u", added->len,
                      NULL);
+#endif
     _ostree_sysroot_emit_journal_msg (sysroot, msg);
   }
 
@@ -692,9 +692,11 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
     {
       { g_autofree char *msg =
           g_strdup_printf ("Relabeling /var (no stamp file '%s' found)", selabeled);
-        sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, OSTREE_VARRELABEL_ID,
+#ifdef HAVE_LIBSYSTEMD
+        sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_VARRELABEL_ID),
                          "MESSAGE=%s", msg,
                          NULL);
+#endif
         _ostree_sysroot_emit_journal_msg (sysroot, msg);
       }
 
