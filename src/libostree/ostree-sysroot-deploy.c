@@ -41,9 +41,9 @@
 #include "ostree-linuxfsutil.h"
 #include "libglnx.h"
 
-#define OSTREE_VARRELABEL_ID          "da679b08acd34504b789d96f818ea781"
-#define OSTREE_CONFIGMERGE_ID         "d3863baec13e4449ab0384684a8af3a7"
 #ifdef HAVE_LIBSYSTEMD
+#define OSTREE_VARRELABEL_ID          SD_ID128_MAKE(da,67,9b,08,ac,d3,45,04,b7,89,d9,6f,81,8e,a7,81)
+#define OSTREE_CONFIGMERGE_ID         SD_ID128_MAKE(d3,86,3b,ae,c1,3e,44,49,ab,03,84,68,4a,8a,f3,a7)
 #define OSTREE_DEPLOYMENT_COMPLETE_ID SD_ID128_MAKE(dd,44,0e,3e,54,90,83,b6,3d,0e,fc,7d,c1,52,55,f1)
 #endif
 
@@ -423,11 +423,19 @@ merge_configuration_from (OstreeSysroot    *sysroot,
                          cancellable, error))
     return glnx_prefix_error (error, "While computing configuration diff");
 
-  ot_log_structured_print_id_v (OSTREE_CONFIGMERGE_ID,
-                                "Copying /etc changes: %u modified, %u removed, %u added",
-                                modified->len,
-                                removed->len,
-                                added->len);
+  { g_autofree char *msg =
+      g_strdup_printf ("Copying /etc changes: %u modified, %u removed, %u added",
+                       modified->len,
+                       removed->len,
+                       added->len);
+    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, OSTREE_CONFIGMERGE_ID,
+                     "MESSAGE=%s", msg,
+                     "ETC_N_MODIFIED=%u", modified->len,
+                     "ETC_N_REMOVED=%u", removed->len,
+                     "ETC_N_ADDED=%u", added->len,
+                     NULL);
+    _ostree_sysroot_emit_journal_msg (sysroot, msg);
+  }
 
   glnx_fd_close int orig_etc_fd = -1;
   if (!glnx_opendirat (merge_deployment_dfd, "usr/etc", TRUE, &orig_etc_fd, error))
@@ -682,9 +690,13 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
 
   if (!deployment_var_labeled)
     {
-      ot_log_structured_print_id_v (OSTREE_VARRELABEL_ID,
-                                    "Relabeling /var (no stamp file '%s' found)",
-                                    selabeled);
+      { g_autofree char *msg =
+          g_strdup_printf ("Relabeling /var (no stamp file '%s' found)", selabeled);
+        sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, OSTREE_VARRELABEL_ID,
+                         "MESSAGE=%s", msg,
+                         NULL);
+        _ostree_sysroot_emit_journal_msg (sysroot, msg);
+      }
 
       g_autoptr(GFile) deployment_var_path = ot_fdrel_to_gfile (os_deploy_dfd, "var");
       if (!selinux_relabel_dir (sysroot, sepolicy,
@@ -1802,8 +1814,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                      "OSTREE_SYNCFS_EXTRA_MSEC=%" G_GUINT64_FORMAT, syncstats.extra_syncfs_msec,
                      NULL);
 #endif
-    if (!ot_stdout_is_journal ())
-      g_print ("%s\n", msg);
+    _ostree_sysroot_emit_journal_msg (self, msg);
   }
 
   if (!_ostree_sysroot_bump_mtime (self, error))

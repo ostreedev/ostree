@@ -58,7 +58,17 @@ find_booted_deployment (OstreeSysroot       *self,
  */
 typedef struct {
   GObjectClass parent_class;
+
+  /* Signals */
+  void (*journal_msg) (OstreeSysroot *sysroot,
+                       const char    *msg);
 } OstreeSysrootClass;
+
+enum {
+  JOURNAL_MSG_SIGNAL,
+  LAST_SIGNAL,
+};
+static guint signals[LAST_SIGNAL] = { 0 };
 
 enum {
   PROP_0,
@@ -159,6 +169,27 @@ ostree_sysroot_class_init (OstreeSysrootClass *klass)
                                                         "",
                                                         G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  /**
+   * OstreeSysroot::journal-msg:
+   * @self: Self
+   * @msg: Human-readable string (should not contain newlines)
+   *
+   * libostree will log to the journal various events, such as the /etc merge
+   * status, and transaction completion. Connect to this signal to also
+   * synchronously receive the text for those messages. This is intended to be
+   * used by command line tools which link to libostree as a library.
+   *
+   * Currently, the structured data is only available via the systemd journal.
+   *
+   * Since: 2017.10
+   */
+  signals[JOURNAL_MSG_SIGNAL] =
+    g_signal_new ("journal-msg",
+                  G_OBJECT_CLASS_TYPE (object_class),
+                  G_SIGNAL_RUN_LAST,
+                  G_STRUCT_OFFSET (OstreeSysrootClass, journal_msg),
+                  NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
 static void
@@ -316,6 +347,13 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
     }
 
   return TRUE;
+}
+
+void
+_ostree_sysroot_emit_journal_msg (OstreeSysroot  *self,
+                                  const char     *msg)
+{
+  g_signal_emit (self, signals[JOURNAL_MSG_SIGNAL], 0, msg);
 }
 
 gboolean
