@@ -358,6 +358,13 @@ ostree_option_context_parse (GOptionContext *context,
   return TRUE;
 }
 
+static void
+on_sysroot_journal_msg (OstreeSysroot *sysroot,
+                        const char    *msg)
+{
+  g_print ("%s\n", msg);
+}
+
 gboolean
 ostree_admin_option_context_parse (GOptionContext *context,
                                    const GOptionEntry *main_entries,
@@ -381,6 +388,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
     sysroot_path = g_file_new_for_path (opt_sysroot);
 
   g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
+  g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
 
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {

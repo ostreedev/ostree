@@ -51,7 +51,6 @@
 #include <ot-variant-utils.h>
 #include <ot-checksum-utils.h>
 #include <ot-gpg-utils.h>
-#include <ot-log-utils.h>
 #include <ot-checksum-instream.h>
 
 void ot_ptrarray_add_many (GPtrArray  *a, ...) G_GNUC_NULL_TERMINATED; 
