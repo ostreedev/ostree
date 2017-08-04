@@ -30,8 +30,7 @@ setup_os_repository "archive-z2" "uboot"
 . $(dirname $0)/admin-test.sh
 
 cd ${test_tmpdir}
-ln -s ../../boot/ osdata/usr/lib/ostree-boot
-cat << 'EOF' > osdata/boot/uEnv.txt
+cat << 'EOF' > osdata/usr/lib/ostree-boot/uEnv.txt
 loaduimage=load mmc ${bootpart} ${loadaddr} ${kernel_image}
 loadfdt=load mmc ${bootpart} ${fdtaddr} ${bootdir}${fdtfile}
 loadramdisk=load mmc ${bootpart} ${rdaddr} ${ramdisk_image}

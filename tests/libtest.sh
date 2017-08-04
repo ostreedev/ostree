@@ -363,8 +363,10 @@ setup_os_boot_grub2() {
 
 setup_os_repository () {
     mode=$1
-    bootmode=$2
     shift
+    bootmode=$1
+    shift
+    bootdir=${1:-usr/lib/ostree-boot}
 
     oldpwd=`pwd`
 
@@ -379,14 +381,19 @@ setup_os_repository () {
     cd ${test_tmpdir}
     mkdir osdata
     cd osdata
-    mkdir -p boot usr/bin usr/lib/modules/3.6.0 usr/share usr/etc
-    echo "a kernel" > boot/vmlinuz-3.6.0
-    echo "an initramfs" > boot/initramfs-3.6.0
-    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
+    mkdir -p usr/bin usr/lib/modules/3.6.0 usr/share usr/etc
+    mkdir -p ${bootdir}
+    echo "a kernel" > ${bootdir}/vmlinuz-3.6.0
+    echo "an initramfs" > ${bootdir}/initramfs-3.6.0
+    bootcsum=$(cat ${bootdir}/vmlinuz-3.6.0 ${bootdir}/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
     export bootcsum
-    mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}
-    mv boot/initramfs-3.6.0 boot/initramfs-3.6.0-${bootcsum}
-    
+    # Add the checksum for legacy dirs (/boot, /usr/lib/ostree-boot), but not
+    # /usr/lib/modules.
+    if [[ $bootdir != usr/lib/modules ]]; then
+        mv ${bootdir}/vmlinuz-3.6.0{,-${bootcsum}}
+        mv ${bootdir}/initramfs-3.6.0{,-${bootcsum}}
+    fi
+
     echo "an executable" > usr/bin/sh
     echo "some shared data" > usr/share/langs.txt
     echo "a library" > usr/lib/libfoo.so.0
@@ -458,13 +465,17 @@ os_repository_new_commit ()
     branch=${3:-testos/buildmaster/x86_64-runtime}
     echo "BOOT ITERATION: $boot_checksum_iteration"
     cd ${test_tmpdir}/osdata
-    rm boot/*
-    echo "new: a kernel ${boot_checksum_iteration}" > boot/vmlinuz-3.6.0
-    echo "new: an initramfs ${boot_checksum_iteration}" > boot/initramfs-3.6.0
-    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
+    bootdir=usr/lib/ostree-boot
+    if ! test -d ${bootdir}; then
+        bootdir=boot
+    fi
+    rm ${bootdir}/*
+    echo "new: a kernel ${boot_checksum_iteration}" > ${bootdir}/vmlinuz-3.6.0
+    echo "new: an initramfs ${boot_checksum_iteration}" > ${bootdir}/initramfs-3.6.0
+    bootcsum=$(cat ${bootdir}/vmlinuz-3.6.0 ${bootdir}/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
     export bootcsum
-    mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}
-    mv boot/initramfs-3.6.0 boot/initramfs-3.6.0-${bootcsum}
+    mv ${bootdir}/vmlinuz-3.6.0 ${bootdir}/vmlinuz-3.6.0-${bootcsum}
+    mv ${bootdir}/initramfs-3.6.0 ${bootdir}/initramfs-3.6.0-${bootcsum}
 
     echo "a new default config file" > usr/etc/a-new-default-config-file
     mkdir -p usr/etc/new-default-dir
