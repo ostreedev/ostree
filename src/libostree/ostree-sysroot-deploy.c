@@ -113,7 +113,7 @@ hardlink_or_copy_at (int         src_dfd,
                                   sysroot_flags_to_copy_flags (0, flags),
                                   cancellable, error);
       else
-        return glnx_throw_errno_prefix (error, "linkat");
+        return glnx_throw_errno_prefix (error, "linkat(%s)", dest_subpath);
     }
 
   return TRUE;
@@ -868,16 +868,29 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                      cancellable, error);
 }
 
+/* Originally OSTree defined kernels to be found underneath /boot
+ * in the tree.  But that means when mounting /boot at runtime
+ * we end up masking the content underneath, triggering a warning.
+ *
+ * For that reason, and also consistency with the "/usr defines the OS" model we
+ * later switched to defining the in-tree kernels to be found under
+ * /usr/lib/ostree-boot.
+ */
 static gboolean
 get_kernel_from_tree (int             deployment_dfd,
                       int            *out_boot_dfd,
-                      char          **out_kernel_name,
-                      char          **out_initramfs_name,
+                      char          **out_kernel_srcpath,
+                      char          **out_kernel_namever,
+                      char          **out_initramfs_srcpath,
+                      char          **out_initramfs_namever,
+                      char          **out_bootcsum,
                       GCancellable   *cancellable,
                       GError        **error)
 {
-  g_autofree char *ret_kernel_name = NULL;
-  g_autofree char *ret_initramfs_name = NULL;
+  g_autofree char *ret_kernel_srcpath = NULL;
+  g_autofree char *ret_kernel_namever = NULL;
+  g_autofree char *ret_initramfs_srcpath = NULL;
+  g_autofree char *ret_initramfs_namever = NULL;
   g_autofree char *kernel_checksum = NULL;
   g_autofree char *initramfs_checksum = NULL;
 
@@ -907,67 +920,57 @@ get_kernel_from_tree (int             deployment_dfd,
       if (dent == NULL)
         break;
 
-      if (ret_kernel_name == NULL && g_str_has_prefix (dent->d_name, "vmlinuz-"))
+      const char *name = dent->d_name;
+      if (ret_kernel_srcpath == NULL && g_str_has_prefix (dent->d_name, "vmlinuz-"))
         {
-          const char *dash = strrchr (dent->d_name, '-');
+          const char *dash = strrchr (name, '-');
           g_assert (dash);
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               kernel_checksum = g_strdup (dash + 1);
-              ret_kernel_name = g_strdup (dent->d_name);
+              ret_kernel_srcpath = g_strdup (name);
+              ret_kernel_namever = g_strndup (name, dash - name);
             }
         }
-      else if (ret_initramfs_name == NULL && g_str_has_prefix (dent->d_name, "initramfs-"))
+      else if (ret_initramfs_srcpath == NULL && g_str_has_prefix (name, "initramfs-"))
         {
-          const char *dash = strrchr (dent->d_name, '-');
+          const char *dash = strrchr (name, '-');
           g_assert (dash);
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               initramfs_checksum = g_strdup (dash + 1);
-              ret_initramfs_name = g_strdup (dent->d_name);
+              ret_initramfs_srcpath = g_strdup (name);
+              ret_initramfs_namever = g_strndup (name, dash - name);
             }
         }
 
-      if (ret_kernel_name != NULL && ret_initramfs_name != NULL)
+      if (ret_kernel_srcpath != NULL && ret_initramfs_srcpath != NULL)
         break;
     }
 
-  if (ret_kernel_name == NULL)
+  if (ret_kernel_srcpath == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Failed to find boot/vmlinuz-<CHECKSUM> in tree");
+                   "Failed to find kernel in /usr/lib/ostree-boot or /boot");
       return FALSE;
     }
 
-  if (ret_initramfs_name != NULL)
+  if (ret_initramfs_srcpath != NULL)
     {
       if (strcmp (kernel_checksum, initramfs_checksum) != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Mismatched kernel checksum vs initrd in tree");
+                       "Mismatched kernel checksum vs initrd");
           return FALSE;
         }
     }
 
   *out_boot_dfd = glnx_steal_fd (&ret_boot_dfd);
-  *out_kernel_name = g_steal_pointer (&ret_kernel_name);
-  *out_initramfs_name = g_steal_pointer (&ret_initramfs_name);
-  return TRUE;
-}
-
-static gboolean
-checksum_from_kernel_src (const char   *name,
-                          char        **out_checksum,
-                          GError     **error)
-{
-  const char *last_dash = strrchr (name, '-');
-  if (!last_dash)
-    {
-      return glnx_throw (error,
-                        "Malformed kernel/initramfs name '%s', missing '-'",
-                        name);
-    }
-  *out_checksum = g_strdup (last_dash + 1);
+  *out_kernel_srcpath = g_steal_pointer (&ret_kernel_srcpath);
+  *out_kernel_namever = g_steal_pointer (&ret_kernel_namever);
+  *out_initramfs_srcpath = g_steal_pointer (&ret_initramfs_srcpath);
+  *out_initramfs_namever = g_steal_pointer (&ret_initramfs_namever);
+  *out_bootcsum = g_steal_pointer (&kernel_checksum);
   return TRUE;
 }
 
@@ -1231,15 +1234,6 @@ swap_bootlinks (OstreeSysroot *self,
   return TRUE;
 }
 
-static char *
-remove_checksum_from_kernel_name (const char *name,
-                                  const char *csum)
-{
-  const char *p = strrchr (name, '-');
-  g_assert_cmpstr (p+1, ==, csum);
-  return g_strndup (name, p-name);
-}
-
 static GHashTable *
 parse_os_release (const char *contents,
                   const char *split)
@@ -1293,11 +1287,19 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                        &deployment_dfd, error))
     return FALSE;
 
+  /* Find the kernel/initramfs in the tree */
   glnx_fd_close int tree_boot_dfd = -1;
-  g_autofree char *tree_kernel_name = NULL;
-  g_autofree char *tree_initramfs_name = NULL;
+  g_autofree char *tree_kernel_srcpath = NULL;
+  g_autofree char *tree_kernel_namever = NULL;
+  g_autofree char *tree_initramfs_srcpath = NULL;
+  g_autofree char *tree_initramfs_namever = NULL;
+  g_autofree char *tree_bootcsum = NULL;
   if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
-                             &tree_kernel_name, &tree_initramfs_name,
+                             &tree_kernel_srcpath,
+                             &tree_kernel_namever,
+                             &tree_initramfs_srcpath,
+                             &tree_initramfs_namever,
+                             &tree_bootcsum,
                              cancellable, error))
     return FALSE;
 
@@ -1307,6 +1309,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
+  g_assert_cmpstr (bootcsum, ==, tree_bootcsum);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
   g_autofree char *bootconf_name = g_strdup_printf ("ostree-%s-%d.conf", osname,
@@ -1321,30 +1324,33 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   if (!glnx_shutil_mkdir_p_at (boot_dfd, bootconfdir, 0775, cancellable, error))
     return FALSE;
 
-  g_autofree char *dest_kernel_name = remove_checksum_from_kernel_name (tree_kernel_name, bootcsum);
+  /* Install (hardlink/copy) the kernel into /boot/ostree/osname-${bootcsum} if
+   * it doesn't exist already.
+   */
   struct stat stbuf;
-  if (fstatat (bootcsum_dfd, dest_kernel_name, &stbuf, 0) != 0)
+  if (fstatat (bootcsum_dfd, tree_kernel_namever, &stbuf, 0) != 0)
     {
       if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "fstat %s", dest_kernel_name);
-      if (!hardlink_or_copy_at (tree_boot_dfd, tree_kernel_name,
-                                bootcsum_dfd, dest_kernel_name,
+        return glnx_throw_errno_prefix (error, "fstat %s", tree_kernel_namever);
+      if (!hardlink_or_copy_at (tree_boot_dfd, tree_kernel_srcpath,
+                                bootcsum_dfd, tree_kernel_namever,
                                 sysroot->debug_flags,
                                 cancellable, error))
         return FALSE;
     }
 
-  g_autofree char *dest_initramfs_name = NULL;
-  if (tree_initramfs_name)
+  /* If we have an initramfs, then install it into /boot/ostree/osname-${bootcsum} if
+   * if todesn't exist already.
+   */
+  if (tree_initramfs_srcpath)
     {
-      dest_initramfs_name = remove_checksum_from_kernel_name (tree_initramfs_name, bootcsum);
-
-      if (fstatat (bootcsum_dfd, dest_initramfs_name, &stbuf, 0) != 0)
+      g_assert (tree_initramfs_namever);
+      if (fstatat (bootcsum_dfd, tree_initramfs_namever, &stbuf, 0) != 0)
         {
           if (errno != ENOENT)
-            return glnx_throw_errno_prefix (error, "fstat %s", dest_initramfs_name);
-          if (!hardlink_or_copy_at (tree_boot_dfd, tree_initramfs_name,
-                                    bootcsum_dfd, dest_initramfs_name,
+            return glnx_throw_errno_prefix (error, "fstat %s", tree_initramfs_namever);
+          if (!hardlink_or_copy_at (tree_boot_dfd, tree_initramfs_srcpath,
+                                    bootcsum_dfd, tree_initramfs_namever,
                                     sysroot->debug_flags,
                                     cancellable, error))
             return FALSE;
@@ -1425,12 +1431,12 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   g_autofree char *version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
   ostree_bootconfig_parser_set (bootconfig, OSTREE_COMMIT_META_KEY_VERSION, version_key);
-  g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_kernel_name, NULL);
+  g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", tree_kernel_namever, NULL);
   ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
 
-  if (dest_initramfs_name)
+  if (tree_initramfs_namever)
     {
-      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_initramfs_name, NULL);
+      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", tree_initramfs_namever, NULL);
       ostree_bootconfig_parser_set (bootconfig, "initrd", boot_relpath);
     }
 
@@ -2053,23 +2059,19 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
     }
 
   glnx_fd_close int tree_boot_dfd = -1;
-  g_autofree char *tree_kernel_path = NULL;
-  g_autofree char *tree_initramfs_path = NULL;
+  g_autofree char *tree_kernel_srcpath = NULL;
+  g_autofree char *tree_kernel_namever = NULL;
+  g_autofree char *tree_initramfs_srcpath = NULL;
+  g_autofree char *tree_initramfs_namever = NULL;
+  g_autofree char *tree_bootcsum = NULL;
   if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
-                             &tree_kernel_path, &tree_initramfs_path,
+                             &tree_kernel_srcpath,
+                             &tree_kernel_namever,
+                             &tree_initramfs_srcpath,
+                             &tree_initramfs_namever,
+                             &new_bootcsum,
                              cancellable, error))
     return FALSE;
-
-  if (tree_initramfs_path != NULL)
-    {
-      if (!checksum_from_kernel_src (tree_initramfs_path, &new_bootcsum, error))
-        return FALSE;
-    }
-  else
-    {
-      if (!checksum_from_kernel_src (tree_kernel_path, &new_bootcsum, error))
-        return FALSE;
-    }
 
   _ostree_deployment_set_bootcsum (new_deployment, new_bootcsum);
 
