@@ -876,38 +876,33 @@ get_kernel_from_tree (int             deployment_dfd,
                       GCancellable   *cancellable,
                       GError        **error)
 {
-  gboolean ret = FALSE;
-  glnx_fd_close int ret_boot_dfd = -1;
-  g_auto(GLnxDirFdIterator) dfditer = { 0, };
   g_autofree char *ret_kernel_name = NULL;
   g_autofree char *ret_initramfs_name = NULL;
   g_autofree char *kernel_checksum = NULL;
   g_autofree char *initramfs_checksum = NULL;
 
-  ret_boot_dfd = glnx_opendirat_with_errno (deployment_dfd, "usr/lib/ostree-boot", TRUE);
+  glnx_fd_close int ret_boot_dfd = glnx_opendirat_with_errno (deployment_dfd, "usr/lib/ostree-boot", TRUE);
   if (ret_boot_dfd == -1)
     {
       if (errno != ENOENT)
-        {
-          glnx_set_prefix_error_from_errno (error, "%s", "openat");
-          goto out;
-        }
+        return glnx_throw_errno_prefix (error, "%s", "openat(usr/lib/ostree-boot)");
       else
         {
           if (!glnx_opendirat (deployment_dfd, "boot", TRUE, &ret_boot_dfd, error))
-            goto out;
+            return FALSE;
         }
     }
 
+  g_auto(GLnxDirFdIterator) dfditer = { 0, };
   if (!glnx_dirfd_iterator_init_at (ret_boot_dfd, ".", FALSE, &dfditer, error))
-    goto out;
+    return FALSE;
 
   while (TRUE)
     {
       struct dirent *dent;
 
       if (!glnx_dirfd_iterator_next_dent (&dfditer, &dent, cancellable, error))
-        goto out;
+        return FALSE;
 
       if (dent == NULL)
         break;
@@ -941,7 +936,7 @@ get_kernel_from_tree (int             deployment_dfd,
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "Failed to find boot/vmlinuz-<CHECKSUM> in tree");
-      goto out;
+      return FALSE;
     }
 
   if (ret_initramfs_name != NULL)
@@ -950,17 +945,14 @@ get_kernel_from_tree (int             deployment_dfd,
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                        "Mismatched kernel checksum vs initrd in tree");
-          goto out;
+          return FALSE;
         }
     }
 
-  *out_boot_dfd = ret_boot_dfd;
-  ret_boot_dfd = -1;
+  *out_boot_dfd = glnx_steal_fd (&ret_boot_dfd);
   *out_kernel_name = g_steal_pointer (&ret_kernel_name);
   *out_initramfs_name = g_steal_pointer (&ret_initramfs_name);
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
