@@ -36,7 +36,7 @@
 
 #ifdef HAVE_LIBMOUNT
 typedef FILE OtLibMountFile;
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtLibMountFile, endmntent);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtLibMountFile, endmntent)
 
 /* Taken from systemd path-util.c */
 static bool
