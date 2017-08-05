@@ -117,6 +117,9 @@ ostree_run (int    argc,
   OstreeCommand *command;
   GError *error = NULL;
   GCancellable *cancellable = NULL;
+#ifndef BUILDOPT_TSAN
+  g_autofree char *prgname = NULL;
+#endif
   const char *command_name = NULL;
   gboolean success = FALSE;
   int in, out;
@@ -191,6 +194,11 @@ ostree_run (int    argc,
 
       goto out;
     }
+
+#ifndef BUILDOPT_TSAN
+  prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
+  g_set_prgname (prgname);
+#endif
 
   if (!command->fn (argc, argv, cancellable, &error))
     goto out;

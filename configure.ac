@@ -58,6 +58,19 @@ else
   AC_MSG_RESULT([no])
 fi
 AM_CONDITIONAL(BUILDOPT_ASAN, [test x$using_asan = xyes])
+AM_COND_IF([BUILDOPT_ASAN],
+  [AC_DEFINE([BUILDOPT_ASAN], 1, [Define if we are building with -fsanitize=address])])
+
+AC_MSG_CHECKING([for -fsanitize=thread in CFLAGS])
+if echo $CFLAGS | grep -q -e -fsanitize=thread; then
+  AC_MSG_RESULT([yes])
+  using_tsan=yes
+else
+  AC_MSG_RESULT([no])
+fi
+AM_CONDITIONAL(BUILDOPT_TSAN, [test x$using_tsan = xyes])
+AM_COND_IF([BUILDOPT_TSAN],
+  [AC_DEFINE([BUILDOPT_TSAN], 1, [Define if we are building with -fsanitize=thread])])
 
 # Initialize libtool
 LT_PREREQ([2.2.4])
