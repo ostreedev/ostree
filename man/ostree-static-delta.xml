@@ -90,6 +90,8 @@ Boston, MA 02111-1307, USA.
 
                 <listitem><para>
                     Create delta to revision REV.  (This option is required.)
+                    The delta is from the parent of REV, unless specified otherwise by <option>--from</option>
+                    or <option>--empty</option>.
                 </para></listitem>
             </varlistentry>
 
