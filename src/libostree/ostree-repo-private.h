@@ -173,7 +173,7 @@ _ostree_repo_memory_cache_ref_init (OstreeRepoMemoryCacheRef *state,
 
 void
 _ostree_repo_memory_cache_ref_destroy (OstreeRepoMemoryCacheRef *state);
-G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OstreeRepoMemoryCacheRef, _ostree_repo_memory_cache_ref_destroy);
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OstreeRepoMemoryCacheRef, _ostree_repo_memory_cache_ref_destroy)
 
 #define OSTREE_REPO_TMPDIR_STAGING "staging-"
 #define OSTREE_REPO_TMPDIR_FETCHER "fetcher-"
