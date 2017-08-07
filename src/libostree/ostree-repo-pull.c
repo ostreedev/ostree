@@ -5077,7 +5077,7 @@ find_remotes_cb (GObject      *obj,
     {
       OstreeRepoFinderResult *result = g_ptr_array_index (results, i);
       g_autoptr(GHashTable) validated_ref_to_checksum = NULL;  /* (element-type utf8 utf8) */
-      gsize j;
+      gsize j, n_latest_refs;
 
       /* Previous error processing this result? */
       if (result == NULL)
@@ -5089,6 +5089,7 @@ find_remotes_cb (GObject      *obj,
                                                          ostree_collection_ref_equal,
                                                          (GDestroyNotify) ostree_collection_ref_free,
                                                          g_free);
+      n_latest_refs = 0;
 
       for (j = 0; refs[j] != NULL; j++)
         {
@@ -5096,11 +5097,13 @@ find_remotes_cb (GObject      *obj,
 
           if (pointer_table_get (refs_and_remotes_table, j, i) != latest_commit_for_ref)
             latest_commit_for_ref = NULL;
+          if (latest_commit_for_ref != NULL)
+            n_latest_refs++;
 
           g_hash_table_insert (validated_ref_to_checksum, ostree_collection_ref_dup (refs[j]), g_strdup (latest_commit_for_ref));
         }
 
-      if (g_hash_table_size (validated_ref_to_checksum) == 0)
+      if (n_latest_refs == 0)
         {
           g_debug ("%s: Omitting remote ‘%s’ from results as none of its refs are new enough.",
                    G_STRFUNC, result->remote->name);
