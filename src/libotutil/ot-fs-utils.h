@@ -49,7 +49,7 @@ ot_cleanup_unlinkat (OtCleanupUnlinkat *cleanup)
       ot_cleanup_unlinkat_clear (cleanup);
     }
 }
-G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OtCleanupUnlinkat, ot_cleanup_unlinkat);
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OtCleanupUnlinkat, ot_cleanup_unlinkat)
 
 GFile * ot_fdrel_to_gfile (int dfd, const char *path);
 
