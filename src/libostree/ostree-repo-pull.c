@@ -3270,6 +3270,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
     }
 
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
   g_return_val_if_fail (!opt_collection_refs_set ||
                         (refs_to_fetch == NULL && override_commit_ids == NULL), FALSE);
