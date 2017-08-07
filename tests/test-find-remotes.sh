@@ -71,10 +71,15 @@ ${CMD_PREFIX} ostree --repo=local-mirror pull --mirror os-remote os/amd64/master
 
 ${CMD_PREFIX} ostree --repo=local-mirror refs | wc -l > refscount
 assert_file_has_content refscount "^0$"
+ls -1 local-mirror/refs/remotes | wc -l > remotescount
+assert_file_has_content remotescount "^0$"
 
 ${CMD_PREFIX} ostree --repo=local-mirror refs --collections > refs
 assert_file_has_content refs "^(org.example.AppsCollection, app1)$"
 assert_file_has_content refs "^(org.example.OsCollection, os/amd64/master)$"
+
+assert_file_has_content local-mirror/refs/mirrors/org.example.AppsCollection/app1 "^$(cat app1-checksum)$"
+assert_file_has_content local-mirror/refs/mirrors/org.example.OsCollection/os/amd64/master "^$(cat os-checksum)$"
 
 for repo in local local-mirror; do
     # Try finding an update for an existing branch.
@@ -169,14 +174,16 @@ for repo in local-mirror; do
     assert_file_has_content pull "^Pulled 1/1 refs successfully.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo os/amd64/master $(cat os-checksum-2)
+
+    # We need to manually update the refs afterwards, since the original pull
+    # into the local-mirror was a --mirror pull — so it wrote refs/mirrors/blah.
+    # This pull was not, so it wrote refs/remotes/blah.
+    ${CMD_PREFIX} ostree --repo=$repo refs --collections --create org.example.OsCollection:os/amd64/master os-remote:os/amd64/master
 done
 
 # Add the local mirror to the local repository as a remote, so that the local repo
 # has two configured remotes for the os-collection. Ensure its summary is up to date first.
-#${CMD_PREFIX} ostree --repo=local-mirror summary --update
-# FIXME: This `cp` can be changed to `ostree summary --update` once PR #946 lands.
-# Prior to that, we need to preserve the signatures.
-cp os-collection/summary{,.sig} local-mirror/
+${CMD_PREFIX} ostree --repo=local-mirror summary --update
 ${CMD_PREFIX} ostree --repo=local remote add os-remote-local-mirror file://$(pwd)/local-mirror --collection-id org.example.OsCollection --gpg-import=${test_tmpdir}/gpghome/key2.asc
 
 for repo in local; do
@@ -211,9 +218,6 @@ for repo in local; do
     ${CMD_PREFIX} ostree --repo=$repo find-remotes org.example.OsCollection os/amd64/master > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/os-collection$"
     assert_file_has_content find "^ - Keyring: os-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum-3)$"
-    assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/local-mirror$"
-    assert_file_has_content find "^ - Keyring: os-remote-local-mirror.trustedkeys.gpg$"
     assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum-3)$"
     assert_file_has_content find "^1/1 refs were found.$"
     assert_not_file_has_content find "^No results.$"
