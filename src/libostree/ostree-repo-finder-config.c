@@ -139,7 +139,8 @@ ostree_repo_finder_config_resolve_async (OstreeRepoFinder                  *find
 
       for (j = 0; refs[j] != NULL; j++)
         {
-          if (g_hash_table_lookup_extended (remote_refs, refs[j], NULL, (gpointer *) &checksum))
+          if (g_strcmp0 (refs[j]->collection_id, remote_collection_id) == 0 &&
+              g_hash_table_lookup_extended (remote_refs, refs[j], NULL, (gpointer *) &checksum))
             {
               /* The requested ref is listed in the refs for this remote. Add
                * the remote to the results, and the ref to its
