@@ -1280,8 +1280,8 @@ parse_datetime (struct timespec *result, char const *p,
   time_t Start;
   long int Start_ns;
   struct tm const *tmp;
-  struct tm tm;
-  struct tm tm0;
+  struct tm tm = { 0, };
+  struct tm tm0 = { 0, };
   parser_control pc;
   struct timespec gettime_buffer;
   unsigned char c;
