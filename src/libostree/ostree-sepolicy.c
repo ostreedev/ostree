@@ -328,7 +328,7 @@ initable_init (GInitable     *initable,
   g_autoptr(GFile) policy_root = NULL;
   if (g_file_query_exists (policy_config_path, NULL))
     {
-      g_autoptr(GFileInputStream) filein = filein = g_file_read (policy_config_path, cancellable, error);
+      g_autoptr(GFileInputStream) filein = g_file_read (policy_config_path, cancellable, error);
 
       if (!filein)
         return FALSE;
