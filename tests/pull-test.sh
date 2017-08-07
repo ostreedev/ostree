@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..27"
+echo "1..28"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -363,6 +363,10 @@ assert_file_has_content baz/cow "further modified file for static deltas"
 assert_not_has_file baz/saucer
 
 echo "ok static delta 2"
+
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo pull origin main main@${rev} main@${rev} main main@${rev} main 
+echo "ok pull specific commit array"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false --set=unconfigured-state="Access to ExampleOS requires ONE BILLION DOLLARS." origin-subscription file://$(pwd)/ostree-srv/gnomerepo

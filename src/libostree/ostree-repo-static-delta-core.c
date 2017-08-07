@@ -649,7 +649,7 @@ _ostree_delta_get_endianness (GVariant *superblock,
          * deltas, period.  Past the gigabyte scale you really want
          * bittorrent or something.
          */
-        if ((total_size / total_objects) > G_MAXUINT32)
+        if (total_objects > 0 && (total_size / total_objects) > G_MAXUINT32)
           {
             is_byteswapped = TRUE;
           }
