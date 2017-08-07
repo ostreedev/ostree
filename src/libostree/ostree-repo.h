@@ -482,6 +482,15 @@ gboolean ostree_repo_remote_list_refs (OstreeRepo       *self,
                                        GCancellable     *cancellable,
                                        GError          **error);
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+_OSTREE_PUBLIC
+gboolean ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
+                                                  const char    *remote_name,
+                                                  GHashTable   **out_all_refs,
+                                                  GCancellable  *cancellable,
+                                                  GError       **error);
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType objtype,
