@@ -5344,7 +5344,7 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
       g_variant_dict_insert (&local_options_dict, "flags", "i", OSTREE_REPO_PULL_FLAGS_UNTRUSTED | flags);
       g_variant_dict_insert_value (&local_options_dict, "collection-refs", g_variant_builder_end (&refs_to_pull_builder));
       g_variant_dict_insert (&local_options_dict, "gpg-verify", "b", TRUE);
-      g_variant_dict_insert (&local_options_dict, "gpg-verify-summary", "b", TRUE);
+      g_variant_dict_insert (&local_options_dict, "gpg-verify-summary", "b", FALSE);
       g_variant_dict_insert (&local_options_dict, "inherit-transaction", "b", TRUE);
       copy_option (&options_dict, &local_options_dict, "depth", G_VARIANT_TYPE ("i"));
       copy_option (&options_dict, &local_options_dict, "disable-static-deltas", G_VARIANT_TYPE ("b"));
