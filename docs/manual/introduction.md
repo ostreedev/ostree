@@ -2,7 +2,7 @@
 
 ## Introduction
 
-OSTree an upgrade system for Linux-based operating systems that
+OSTree is an upgrade system for Linux-based operating systems that
 performs atomic upgrades of complete filesystem trees.  It is
 not a package system; rather, it is intended to complement them.
 A primary model is composing packages on a server, and then
