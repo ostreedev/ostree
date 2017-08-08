@@ -550,7 +550,9 @@ ostree_repo_finder_result_free (OstreeRepoFinderResult *result)
 {
   g_return_if_fail (result != NULL);
 
-  g_hash_table_unref (result->ref_to_checksum);
+  /* This may be NULL iff the result is freed half-way through find_remotes_cb()
+   * in ostree-repo-pull.c, and at no other time. */
+  g_clear_pointer (&result->ref_to_checksum, g_hash_table_unref);
   g_object_unref (result->finder);
   ostree_remote_unref (result->remote);
   g_free (result);

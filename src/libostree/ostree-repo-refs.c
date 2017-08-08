@@ -779,6 +779,126 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
   return TRUE;
 }
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+static gboolean
+remote_list_collection_refs_process_refs (OstreeRepo   *self,
+                                          const gchar  *remote_name,
+                                          const gchar  *summary_collection_id,
+                                          GVariant     *summary_refs,
+                                          GHashTable   *ret_all_refs,
+                                          GError      **error)
+{
+  gsize j, n;
+
+  for (j = 0, n = g_variant_n_children (summary_refs); j < n; j++)
+    {
+      const guchar *csum_bytes;
+      g_autoptr(GVariant) ref_v = NULL, csum_v = NULL;
+      gchar tmp_checksum[OSTREE_SHA256_STRING_LEN + 1];
+      const gchar *ref_name;
+
+      /* Check the ref name. */
+      ref_v = g_variant_get_child_value (summary_refs, j);
+      g_variant_get_child (ref_v, 0, "&s", &ref_name);
+
+      if (!ostree_validate_rev (ref_name, error))
+        return FALSE;
+
+      /* Check the commit checksum. */
+      g_variant_get_child (ref_v, 1, "(t@ay@a{sv})", NULL, &csum_v, NULL);
+
+      csum_bytes = ostree_checksum_bytes_peek_validate (csum_v, error);
+      if (csum_bytes == NULL)
+        return FALSE;
+
+      ostree_checksum_inplace_from_bytes (csum_bytes, tmp_checksum);
+
+      g_hash_table_insert (ret_all_refs,
+                           ostree_collection_ref_new (summary_collection_id, ref_name),
+                           g_strdup (tmp_checksum));
+    }
+
+  return TRUE;
+}
+
+/**
+ * ostree_repo_remote_list_collection_refs:
+ * @self: Repo
+ * @remote_name: Name of the remote.
+ * @out_all_refs: (out) (element-type OstreeCollectionRef utf8): Mapping from collection–ref to checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * List refs advertised by @remote_name, including refs which are part of
+ * collections. If the repository at @remote_name has a collection ID set, its
+ * refs will be returned with that collection ID; otherwise, they will be returned
+ * with a %NULL collection ID in each #OstreeCollectionRef key in @out_all_refs.
+ * Any refs for other collections stored in the repository will also be returned.
+ * No filtering is performed.
+ *
+ * Since: 2017.10
+ */
+gboolean
+ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
+                                         const char    *remote_name,
+                                         GHashTable   **out_all_refs,
+                                         GCancellable  *cancellable,
+                                         GError       **error)
+{
+  g_autoptr(GBytes) summary_bytes = NULL;
+  g_autoptr(GHashTable) ret_all_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+  g_autoptr(GVariant) summary_v = NULL;
+  g_autoptr(GVariant) additional_metadata_v = NULL;
+  g_autoptr(GVariant) summary_refs = NULL;
+  const char *summary_collection_id;
+  g_autoptr(GVariantIter) summary_collection_map = NULL;
+
+  if (!ostree_repo_remote_fetch_summary (self, remote_name,
+                                         &summary_bytes, NULL,
+                                         cancellable, error))
+    return FALSE;
+
+  if (summary_bytes == NULL)
+    return glnx_throw (error, "Remote refs not available; server has no summary file");
+
+  ret_all_refs = g_hash_table_new_full (ostree_collection_ref_hash,
+                                        ostree_collection_ref_equal,
+                                        (GDestroyNotify) ostree_collection_ref_free,
+                                        g_free);
+
+  summary_v = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                        summary_bytes, FALSE);
+  additional_metadata_v = g_variant_get_child_value (summary_v, 1);
+
+  /* List the refs in the main map. */
+  if (!g_variant_lookup (additional_metadata_v, OSTREE_SUMMARY_COLLECTION_ID, "&s", &summary_collection_id))
+    summary_collection_id = NULL;
+
+  summary_refs = g_variant_get_child_value (summary_v, 0);
+
+  if (!remote_list_collection_refs_process_refs (self, remote_name,
+                                                summary_collection_id, summary_refs,
+                                                ret_all_refs, error))
+    return FALSE;
+
+  /* List the refs in the collection map. */
+  if (!g_variant_lookup (additional_metadata_v, OSTREE_SUMMARY_COLLECTION_MAP, "a{sa(s(taya{sv}))}", &summary_collection_map))
+    summary_collection_map = NULL;
+
+  while (summary_collection_map != NULL &&
+         g_variant_iter_loop (summary_collection_map, "{s@a(s(taya{sv}))}", &summary_collection_id, &summary_refs))
+    {
+      if (!remote_list_collection_refs_process_refs (self, remote_name,
+                                                     summary_collection_id, summary_refs,
+                                                     ret_all_refs, error))
+        return FALSE;
+    }
+
+  ot_transfer_out_value (out_all_refs, &ret_all_refs);
+  return TRUE;
+}
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 static char *
 relative_symlink_to (const char *relpath,
                      const char *target)
