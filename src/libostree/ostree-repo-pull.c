@@ -4834,6 +4834,14 @@ find_remotes_cb (GObject      *obj,
           g_clear_error (&error);
           continue;
         }
+      else if (summary_bytes == NULL)
+        {
+          g_debug ("%s: Failed to download summary for result ‘%s’. Ignoring. %s",
+                   G_STRFUNC, result->remote->name,
+                   "No summary file exists on server");
+          g_clear_pointer (&g_ptr_array_index (results, i), (GDestroyNotify) ostree_repo_finder_result_free);
+          continue;
+        }
 
       /* Check the metadata in the summary file, especially whether it contains
        * all the @refs we are interested in. */

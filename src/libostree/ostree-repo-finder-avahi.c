@@ -556,7 +556,8 @@ get_refs_and_checksums_from_summary (GBytes      *summary_bytes,
 }
 
 /* Download the summary file from @remote, and return the bytes of the file in
- * @out_summary_bytes. */
+ * @out_summary_bytes. This will return %TRUE and set @out_summary_bytes to %NULL
+ * if the summary file does not exist. */
 static gboolean
 fetch_summary_from_remote (OstreeRepo    *repo,
                            OstreeRemote  *remote,
@@ -647,6 +648,13 @@ get_checksums (OstreeRepoFinderAvahi  *finder,
                                   finder->avahi_cancellable,
                                   error))
     return FALSE;
+
+  if (summary_bytes == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No summary file found on server");
+      return FALSE;
+    }
 
   return get_refs_and_checksums_from_summary (summary_bytes, supported_ref_to_checksum, error);
 }
