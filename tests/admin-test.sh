@@ -249,3 +249,11 @@ ${CMD_PREFIX} ostree --sysroot=${deployment} remote add --set=gpg-verify=false r
 assert_not_file_has_content sysroot/ostree/repo/config remote-test-nonphysical
 assert_file_has_content ${deployment}/etc/ostree/remotes.d/remote-test-nonphysical.conf testos-repo
 echo "ok remote add nonphysical sysroot"
+
+if env OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},test-fifreeze" \
+       ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime 2>err.txt; then
+    fatal "fifreeze-test exited successfully?"
+fi
+assert_file_has_content err.txt "fifreeze watchdog was run"
+assert_file_has_content err.txt "During fsfreeze-thaw: aborting due to test-fifreeze"
+echo "ok fifreeze test"
