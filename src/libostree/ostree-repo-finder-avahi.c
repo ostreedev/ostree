@@ -824,9 +824,10 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
       g_clear_pointer (&remote->keyring, g_free);
       remote->keyring = g_strdup (repo->keyring);
 
+      /* gpg-verify-summary is false since we use the unsigned summary file support. */
       g_key_file_set_string (remote->options, remote->group, "url", repo->uri);
       g_key_file_set_boolean (remote->options, remote->group, "gpg-verify", TRUE);
-      g_key_file_set_boolean (remote->options, remote->group, "gpg-verify-summary", TRUE);
+      g_key_file_set_boolean (remote->options, remote->group, "gpg-verify-summary", FALSE);
 
       get_checksums (finder, parent_repo, remote, supported_ref_to_checksum, &error);
       if (error != NULL)

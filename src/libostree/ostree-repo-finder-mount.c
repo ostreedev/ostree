@@ -392,9 +392,10 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
           g_clear_pointer (&remote->keyring, g_free);
           remote->keyring = g_strdup (repo->keyring);
 
+          /* gpg-verify-summary is false since we use the unsigned summary file support. */
           g_key_file_set_string (remote->options, remote->group, "url", repo->uri);
           g_key_file_set_boolean (remote->options, remote->group, "gpg-verify", TRUE);
-          g_key_file_set_boolean (remote->options, remote->group, "gpg-verify-summary", TRUE);
+          g_key_file_set_boolean (remote->options, remote->group, "gpg-verify-summary", FALSE);
 
           /* Set the timestamp in the #OstreeRepoFinderResult to 0 because
            * the code in ostree_repo_pull_from_remotes_async() will be able to
