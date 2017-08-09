@@ -921,7 +921,7 @@ get_kernel_from_tree (int             deployment_dfd,
         break;
 
       const char *name = dent->d_name;
-      if (ret_kernel_srcpath == NULL && g_str_has_prefix (dent->d_name, "vmlinuz-"))
+      if (ret_kernel_srcpath == NULL && g_str_has_prefix (name, "vmlinuz-"))
         {
           const char *dash = strrchr (name, '-');
           g_assert (dash);
@@ -1339,8 +1339,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         return FALSE;
     }
 
-  /* If we have an initramfs, then install it into /boot/ostree/osname-${bootcsum} if
-   * if todesn't exist already.
+  /* If we have an initramfs, then install it into
+   * /boot/ostree/osname-${bootcsum} if it doesn't exist already.
    */
   if (tree_initramfs_srcpath)
     {

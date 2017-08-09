@@ -366,12 +366,7 @@ setup_os_repository () {
     shift
     bootmode=$1
     shift
-    if test -n "${1:-}"; then
-        bootdir=${1}
-        shift
-    else
-        bootdir=usr/lib/ostree-boot
-    fi
+    bootdir=${1:-usr/lib/ostree-boot}
 
     oldpwd=`pwd`
 
@@ -394,7 +389,7 @@ setup_os_repository () {
     export bootcsum
     # Add the checksum for legacy dirs (/boot, /usr/lib/ostree-boot), but not
     # /usr/lib/modules.
-    if test ${bootdir#usr/lib/modules} = ${bootdir}; then
+    if [[ $bootdir != usr/lib/modules ]]; then
         mv ${bootdir}/vmlinuz-3.6.0{,-${bootcsum}}
         mv ${bootdir}/initramfs-3.6.0{,-${bootcsum}}
     fi
