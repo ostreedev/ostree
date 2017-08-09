@@ -194,6 +194,7 @@ ostree_diff_item_get_type
 
 <SECTION>
 <FILE>ostree-gpg-verify-result</FILE>
+OstreeGpgError
 OstreeGpgVerifyResult
 OstreeGpgSignatureAttr
 ostree_gpg_verify_result_count_all
@@ -210,6 +211,8 @@ OSTREE_GPG_VERIFY_RESULT
 OSTREE_IS_GPG_VERIFY_RESULT
 OSTREE_TYPE_GPG_VERIFY_RESULT
 ostree_gpg_verify_result_get_type
+OSTREE_GPG_ERROR
+ostree_gpg_error_quark
 </SECTION>
 
 <FILE>ostree-lzma-compressor</FILE>
