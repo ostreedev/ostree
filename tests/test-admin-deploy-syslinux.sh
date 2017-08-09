@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..19"
+echo "1..20"
 
 . $(dirname $0)/libtest.sh
 
@@ -27,3 +27,23 @@ echo "1..19"
 setup_os_repository "archive-z2" "syslinux"
 
 . $(dirname $0)/admin-test.sh
+
+cd ${test_tmpdir}
+rm httpd osdata testos-repo sysroot -rf
+setup_os_repository "archive-z2" "syslinux" "boot"
+
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* quiet'
+assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
+assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0 'an initramfs'
+# kernel/initrams should also be in the tree's /boot with the checksum
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/boot/vmlinuz-3.6.0-${bootcsum} 'a kernel'
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/boot/initramfs-3.6.0-${bootcsum} 'an initramfs'
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
+assert_file_has_content sysroot/ostree/boot.1/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
+${CMD_PREFIX} ostree admin status
+validate_bootloader
+echo "ok kernel in tree's /boot"
