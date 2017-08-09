@@ -4089,7 +4089,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   if (!result)
     {
       /* "Not found" just means the commit is not yet signed.  That's okay. */
-      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+      if (g_error_matches (local_error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE))
         {
           g_clear_error (&local_error);
         }
@@ -4351,7 +4351,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                             _OSTREE_METADATA_GPGSIGS_TYPE);
   if (!signaturedata)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+      g_set_error_literal (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
                            "GPG verification enabled, but no signatures found (use gpg-verify=false in remote config to disable)");
       return NULL;
     }

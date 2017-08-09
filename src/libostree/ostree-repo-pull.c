@@ -1423,7 +1423,7 @@ gpg_verify_unwritten_commit (OtPullData         *pull_data,
 
       if (!detached_metadata)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
                        "Commit %s: no detached metadata found for GPG verification",
                        checksum);
           return FALSE;
@@ -2463,7 +2463,7 @@ on_superblock_fetched (GObject   *src,
        */
       if (pull_data->gpg_verify_summary && !summary_csum)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
                        "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
           goto out;
         }
@@ -3653,21 +3653,21 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!bytes_summary && pull_data->gpg_verify_summary)
       {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                      "GPG verification enabled, but no summary found (use gpg-verify-summary=false in remote config to disable)");
         goto out;
       }
 
     if (!bytes_summary && pull_data->require_static_deltas)
       {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                      "Fetch configured to require static deltas, but no summary found");
         goto out;
       }
 
     if (!bytes_sig && pull_data->gpg_verify_summary)
       {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+        g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
                      "GPG verification enabled, but no summary.sig found (use gpg-verify-summary=false in remote config to disable)");
         goto out;
       }
@@ -5612,7 +5612,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
 
   if (gpg_verify_summary && signatures == NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+      g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
                    "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
       goto out;
     }

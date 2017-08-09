@@ -163,7 +163,7 @@ print_object (OstreeRepo          *repo,
                                                   &local_error);
         }
 
-      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+      if (g_error_matches (local_error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE))
         {
           /* Ignore */
         }

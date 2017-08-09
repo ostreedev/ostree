@@ -137,4 +137,25 @@ _OSTREE_PUBLIC
 gboolean ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
                                                            GError **error);
 
+/**
+ * OstreeGpgError:
+ * @OSTREE_GPG_ERROR_NO_SIGNATURE: A signature was expected, but not found.
+ * @OSTREE_GPG_ERROR_INVALID_SIGNATURE: A signature was malformed.
+ * @OSTREE_GPG_ERROR_MISSING_KEY: A signature was found, but was created with a key not in the configured keyrings.
+ *
+ * Errors returned by signature creation and verification operations in OSTree.
+ * These may be returned by any API which creates or verifies signatures.
+ *
+ * Since: 2017.10
+ */
+typedef enum {
+  OSTREE_GPG_ERROR_NO_SIGNATURE = 0,
+  OSTREE_GPG_ERROR_INVALID_SIGNATURE,
+  OSTREE_GPG_ERROR_MISSING_KEY,
+} OstreeGpgError;
+
+_OSTREE_PUBLIC
+GQuark ostree_gpg_error_quark (void);
+#define OSTREE_GPG_ERROR (ostree_gpg_error_quark ())
+
 G_END_DECLS
