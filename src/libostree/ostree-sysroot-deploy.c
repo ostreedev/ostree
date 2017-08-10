@@ -1083,7 +1083,12 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
         return glnx_throw_errno_prefix (error, "write(watchdog start)");
       /* Testing infrastructure */
       if (debug_fifreeze)
-        return glnx_throw (error, "aborting due to test-fifreeze");
+        {
+          int wstatus;
+          /* Ensure the child has written its data */
+          (void) TEMP_FAILURE_RETRY (waitpid (pid, &wstatus, 0));
+          return glnx_throw (error, "aborting due to test-fifreeze");
+        }
       /* Do a freeze/thaw cycle; TODO add a FIFREEZETHAW ioctl */
       if (ioctl (rootfs_dfd, FIFREEZE, 0) != 0)
         {
