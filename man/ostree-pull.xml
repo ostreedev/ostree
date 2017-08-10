@@ -132,7 +132,7 @@ Boston, MA 02111-1307, USA.
 	  This command can retrieve just a specific commit, or go all
 	  the way to performing a full mirror of the remote
 	  repository.  If no <literal>BRANCH</literal> is specified,
-	  all branches are retrieved.
+	  all configured branches are retrieved.
         </para>
 
 	<para>

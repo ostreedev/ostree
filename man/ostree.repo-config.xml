@@ -148,6 +148,13 @@ Boston, MA 02111-1307, USA.
       </varlistentry>
 
       <varlistentry>
+        <term><varname>branches</varname></term>
+        <listitem><para>A list of strings. Represents the default configured
+        branches to fetch from the remote when no specific branches are
+        requested during a pull operation.</para></listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><varname>proxy</varname></term>
         <listitem><para>A string value, if given should be a URL for a
         HTTP proxy to use for access to this repository.</para></listitem>
