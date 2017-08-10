@@ -69,6 +69,10 @@ struct OstreeSysroot {
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_DIR "/run/ostree/deployment-state/"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT "unlocked-development"
 
+void
+_ostree_sysroot_emit_journal_msg (OstreeSysroot  *self,
+                                  const char     *msg);
+
 gboolean
 _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
                                           int            bootversion,
