@@ -51,13 +51,17 @@ Boston, MA 02111-1307, USA.
             <cmdsynopsis>
                 <command>ostree refs</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="opt">PREFIX</arg>
             </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree refs</command> <arg choice="req">EXISTING</arg> <arg choice="req">--create=NEWREF</arg>
+            </cmdsynopsis>
     </refsynopsisdiv>
 
 <!-- Could this be more specific?  What defines a "ref"?  etc -->
     <refsect1>
         <title>Description</title>
         <para>
-            Lists all refs available on the host.  If specified, PREFIX assigns the refspec prefix; default prefix is null, which lists all refs.
+            Lists all refs available on the host.  If specified, PREFIX assigns the refspec prefix; default
+            prefix is null, which lists all refs. This command can also be used to create or delete refs.
         </para>
     </refsect1>
 
@@ -75,6 +79,16 @@ Boston, MA 02111-1307, USA.
                 printed in full, rather than
                 truncated. </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--create</option>=NEWREF</term>
+
+                <listitem><para>
+                    Create a ref pointing to the commit EXISTING. NEWREF must not already exist, and EXISTING
+                    must be an existing commit. More than one ref can point to the same commit.
+                </para></listitem>
+            </varlistentry>
+
             <varlistentry>
                 <term><option>--delete</option></term>
 
@@ -85,7 +99,15 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--collections</option></term>
+                <term><option>--alias</option>, <option>-A</option></term>
+
+                <listitem><para>
+                    If used with <option>--create</option>, create an alias. Otherwise just list aliases.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--collections</option>, <option>-c</option></term>
 
                 <listitem><para>
                   Enable interactions with refs using the combination of their
@@ -99,8 +121,7 @@ Boston, MA 02111-1307, USA.
                   is created. (This is an abuse of the refspec syntax.)</para>
 
                   <para>When deleting refs, all refs whose collection ID equals
-                  the value of the <option>--delete</option> argument are
-                  deleted.
+                  PREFIX are deleted.
                 </para></listitem>
             </varlistentry>
         </variablelist>
