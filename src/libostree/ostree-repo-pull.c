@@ -1790,6 +1790,7 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
         {
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
+              /* mark as partial to ensure we scan the commit below */
               if (!write_commitpartial_for (pull_data, tmp_checksum, error))
                 return FALSE;
             }
@@ -1819,6 +1820,12 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
             return FALSE;
           if (!localcache_repo_has_obj)
             continue;
+          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+            {
+              /* mark as partial to ensure we scan the commit below */
+              if (!write_commitpartial_for (pull_data, tmp_checksum, error))
+                return FALSE;
+            }
           if (!ostree_repo_import_object_from_with_trust (pull_data->repo, refd_repo,
                                                           objtype, tmp_checksum,
                                                           !pull_data->is_untrusted,
