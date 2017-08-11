@@ -114,6 +114,7 @@ ostree_repo_finder_config_resolve_async (OstreeRepoFinder                  *find
       g_autoptr(GHashTable) remote_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
       const gchar *checksum;
       g_autofree gchar *remote_collection_id = NULL;
+      gboolean resolved_a_ref = FALSE;
 
       remote_name = remotes[i];
 
@@ -147,6 +148,7 @@ ostree_repo_finder_config_resolve_async (OstreeRepoFinder                  *find
                * @supported_ref_to_checksum. */
               g_debug ("Resolved ref (%s, %s) to remote ‘%s’.",
                        refs[j]->collection_id, refs[j]->ref_name, remote_name);
+              resolved_a_ref = TRUE;
 
               supported_ref_to_checksum = g_hash_table_lookup (repo_name_to_refs, remote_name);
 
@@ -162,6 +164,9 @@ ostree_repo_finder_config_resolve_async (OstreeRepoFinder                  *find
                                    (gpointer) refs[j], g_strdup (checksum));
             }
         }
+
+      if (!resolved_a_ref)
+        g_debug ("Ignoring remote ‘%s’ due to it not advertising any of the requested refs.", remote_name);
     }
 
   /* Aggregate the results. */
