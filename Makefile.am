@@ -111,6 +111,7 @@ endif
 include Makefile-tests.am
 include Makefile-boot.am
 include Makefile-man.am
+include Makefile-bash.am
 
 release-tag:
 	cd $(srcdir) && git $(srcdir) tag -m "Release $(VERSION)" v$(VERSION)

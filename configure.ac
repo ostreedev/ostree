@@ -88,6 +88,17 @@ AS_IF([test "$YACC" != "bison -y"], [AC_MSG_ERROR([bison not found but required]
 
 PKG_PROG_PKG_CONFIG
 
+# PKG_CHECK_VAR added to pkg-config 0.28
+m4_define_default(
+    [PKG_CHECK_VAR],
+    [AC_ARG_VAR([$1], [value of $3 for $2, overriding pkg-config])
+     AS_IF([test -z "$$1"], [$1=`$PKG_CONFIG --variable="$3" "$2"`])
+     AS_IF([test -n "$$1"], [$4], [$5])])
+
+PKG_CHECK_VAR(bashcompdir, [bash-completion], [completionsdir], ,
+  bashcompdir="${sysconfdir}/bash_completion.d")
+AC_SUBST(bashcompdir)
+
 AM_PATH_GLIB_2_0(,,AC_MSG_ERROR([GLib not found]))
 
 dnl When bumping the gio-unix-2.0 dependency (or glib-2.0 in general),
