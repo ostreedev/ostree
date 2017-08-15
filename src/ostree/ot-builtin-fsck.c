@@ -32,6 +32,11 @@ static gboolean opt_quiet;
 static gboolean opt_delete;
 static gboolean opt_add_tombstones;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-fsck.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones, "Add tombstones for missing commits", NULL },
   { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },

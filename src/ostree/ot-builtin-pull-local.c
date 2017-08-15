@@ -39,6 +39,11 @@ static gboolean opt_gpg_verify;
 static gboolean opt_gpg_verify_summary;
 static int opt_depth = 0;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-pull-local.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },

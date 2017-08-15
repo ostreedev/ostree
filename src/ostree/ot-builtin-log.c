@@ -30,6 +30,11 @@
 
 static gboolean opt_raw;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-log.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
   { NULL }

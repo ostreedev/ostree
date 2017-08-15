@@ -36,6 +36,11 @@ static gboolean opt_raw;
 static char *opt_gpg_homedir;
 static char *opt_gpg_verify_remote;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-show.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "print-related", 0, 0, G_OPTION_ARG_NONE, &opt_print_related, "Show the \"related\" commits", NULL },
   { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &opt_print_variant_type, "Memory map OBJECT (in this case a filename) to the GVariant type string", "TYPE" },

@@ -29,6 +29,11 @@
 
 #include "otutil.h"
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-admin-instutil.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { NULL }
 };

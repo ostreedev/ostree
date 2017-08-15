@@ -37,6 +37,11 @@ static char *opt_collection_id;
 static char *opt_sysroot;
 static char *opt_repo;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-remote.xml) when changing the option list.
+ */
+
 static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },

@@ -72,6 +72,11 @@ parse_fsync_cb (const char  *option_name,
   return TRUE;
 }
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-commit.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "parent", 0, 0, G_OPTION_ARG_STRING, &opt_parent, "Parent ref, or \"none\"", "REF" },
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "SUBJECT" },
