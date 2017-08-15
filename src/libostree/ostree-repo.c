@@ -713,8 +713,7 @@ OstreeRepo *
 ostree_repo_new_for_sysroot_path (GFile *repo_path,
                                   GFile *sysroot_path)
 {
-  return g_object_new (OSTREE_TYPE_REPO, "path", repo_path, "sysroot-path", sysroot_path,
-                       "is-system", TRUE, NULL);
+  return g_object_new (OSTREE_TYPE_REPO, "path", repo_path, "sysroot-path", sysroot_path, NULL);
 }
 
 /**
