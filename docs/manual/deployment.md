@@ -43,8 +43,13 @@ to a filesystem tree that represents the underlying basis of a
 deployment.  For short, we will call this the "tree", to
 distinguish it from the concept of a deployment.
 
-First, the tree must include a kernel stored as
-`vmlinuz(-.*)?-$checksum` in either `/boot` or `/usr/lib/ostree-boot`.
+First, the tree must include a kernel (and optionally an initramfs).  The
+current standard locations for these are `/usr/lib/modules/$kver/vmlinuz` and
+`/usr/lib/modules/$kver/initramfs`.  The "boot checksum" will be computed
+automatically.  This follows the current Fedora kernel layout, and is
+the current recommended path.  However, older versions of libostree don't
+support this; you may need to also put kernels in the previous (legacy)
+paths, which are `vmlinuz(-.*)?-$checksum` in either `/boot` or `/usr/lib/ostree-boot`.
 The checksum should be a SHA256 hash of the kernel contents; it must be
 pre-computed before storing the kernel in the repository.  Optionally,
 the directory can also contain an initramfs, stored as
