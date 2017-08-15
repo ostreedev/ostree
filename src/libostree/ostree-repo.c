@@ -1824,7 +1824,7 @@ repo_create_at_internal (int             dfd,
  * Since 2017.9, "existing repository" is defined by the existence of an
  * `objects` subdirectory.
  *
- * This is function predates ostree_repo_create_at(). It is an error to call
+ * This function predates ostree_repo_create_at(). It is an error to call
  * this function on a repository initialized via ostree_repo_open_at().
  */
 gboolean
