@@ -1,0 +1,2148 @@
+#!/bin/bash
+#
+# bash completion file for ostree commands
+#
+# This script provides completion of:
+#  - commands and their options
+#  - ostree commit checksums
+#  - ostree ref names
+#
+# To enable the completions either:
+#  - place this file in /etc/bash_completion.d
+# or
+#  - copy this file to e.g. ~/.ostree-completion.sh and add the line
+#    below to your .bashrc after bash completion features are loaded
+#    . ~/.ostree-completion.sh
+#
+# Note for developers:
+# Please arrange options sorted alphabetically by long name with the short
+# options immediately following their corresponding long form.
+# This order should be applied to lists, alternatives and code blocks.
+
+# TODO
+#
+#  - Long form options with an equal sign (--foo=BAR) are not parsed.
+#
+#  - Structured option arguments (e.g. --foo KEY=VALUE) are not parsed.
+#
+#  - Static deltas could likely be completed. (e.g. ostree static-delta delete [TAB])
+#
+#  - The "--repo PATH" option needs to come after the subcommand or it
+#    won't be picked up for completion of subsequent options.
+#      i.e. ostree commit --repo PATH ...   <-- works
+#           ostree --repo PATH commit ...   <-- does not work
+#    (Possibly an easy fix.)
+
+
+# Finds the position of the first non-flag word.
+__ostree_pos_first_nonflag() {
+    local argument_flags=$1
+
+    local counter=$cpos
+    while [ $counter -le $cword ]; do
+        if [ -n "$argument_flags" ] && eval "case '${words[$counter]}' in $argument_flags) true ;; *) false ;; esac"; then
+            (( counter++ ))
+        else
+            case "${words[$counter]}" in
+                -*)
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        fi
+        (( counter++ ))
+    done
+
+    echo $counter
+}
+
+# Transforms a multiline list of strings into a single line string
+# with the words separated by "|".
+# This is used to prepare arguments to __ostree_pos_first_nonflag().
+__ostree_to_alternatives() {
+    local parts=( $1 )
+    local IFS='|'
+    echo "${parts[*]}"
+}
+
+# Transforms a multiline list of options into an extglob pattern
+# suitable for use in case statements.
+__ostree_to_extglob() {
+    local extglob=$( __ostree_to_alternatives "$1" )
+    echo "@($extglob)"
+}
+
+# Transform object path to a 64-char checksum.
+__ostree_object_to_checksum() {
+    local str=( $1 )
+    # Trim off extension (e.g. .commit)
+    str=${str%.*}
+    # Isolate checksum portion (nn/nnn...)
+    str=${str: -65}
+    # Drop the slash
+    echo "${str/\//}"
+}
+
+__ostree_compreply_all_options() {
+    COMPREPLY+=( $( compgen -W "$all_options" -- "$cur" ) )
+}
+
+__ostree_compreply_all_files() {
+    COMPREPLY+=( $( compgen -f "$cur" ) )
+}
+
+__ostree_compreply_dirs_only() {
+    COMPREPLY+=( $( compgen -d "$cur" ) )
+}
+
+# Find commit objects under $repo_path.
+__ostree_compreply_commits() {
+    local objectsdir="$repo_path/objects"
+    if test -d "$objectsdir"; then
+        local commits=()
+        for path in `find "$objectsdir" -name "*.commit"`; do
+            commits+=( $( __ostree_object_to_checksum "$path" ) )
+        done
+        COMPREPLY+=( $( compgen -W "$commits" -- "$cur" ) )
+    fi
+}
+
+# Find oses under $sysroot_path
+__ostree_compreply_oses() {
+    local deploydir="$sysroot_path/ostree/deploy"
+    if test -d "$deploydir"; then
+        local oses=()
+        for path in `find "$deploydir" -mindepth 1 -maxdepth 1 -type d`; do
+            oses+=( $( basename "$path" ) )
+        done
+        COMPREPLY+=( $( compgen -W "$oses" -- "$cur" ) )
+    fi
+}
+
+# Find refs under $repo_path.
+__ostree_compreply_refs() {
+    refs=$( ostree refs --repo $repo_path 2>/dev/null )
+    COMPREPLY+=( $( compgen -W "$refs" -- "$cur" ) )
+}
+
+# Find remotes under $repo_path.
+__ostree_compreply_remotes() {
+    remotes=$( ostree remote list --repo $repo_path 2> /dev/null )
+    COMPREPLY+=( $( compgen -W "$remotes" -- "$cur" ) )
+}
+
+# Find commit objects and refs under $repo_path.
+__ostree_compreply_revisions() {
+    __ostree_compreply_commits
+    __ostree_compreply_refs
+}
+
+# Subcommand processing.
+# Locates the first occurrence of any of the subcommands contained in the
+# first argument. In case of a match, calls the corresponding completion
+# function and returns 0.
+# If no match is found, 1 is returned. The calling function can then
+# continue processing its completion.
+#
+# TODO If the preceding command has options that accept arguments and an
+#      argument is equal to one of the subcommands, this is falsely detected
+#      as a match.
+__ostree_subcommands() {
+    local subcommands="$1"
+
+    local counter=$cpos
+    while [ $counter -lt $cword ]; do
+        case "${words[$counter]}" in
+            $( __ostree_to_extglob "$subcommands" ) )
+                local subcommand=${words[$counter]}
+                cpos=$counter
+                (( cpos++ ))
+                local completions_func=_ostree_${command//-/_}_${subcommand//-/_}
+                declare -F $completions_func >/dev/null && $completions_func
+                return 0
+                ;;
+        esac
+        (( counter++ ))
+    done
+    return 1
+}
+
+# This handles "ostree [TAB]" (without a subcommand).
+_ostree_ostree() {
+    case "$cur" in
+        -*)
+            COMPREPLY=( $( compgen -W "$main_boolean_options" -- "$cur" ) )
+            ;;
+        *)
+            COMPREPLY=( $( compgen -W "$commands" -- "$cur" ) )
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_cleanup() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_config_diff() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --os
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --os)
+            __ostree_compreply_oses
+            return 0
+            ;;
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_deploy() {
+    local boolean_options="
+        $main_boolean_options
+        --retain
+        --karg-proc-cmdline
+    "
+
+    local options_with_args="
+        --karg
+        --karg-append
+        --origin-file
+        --os
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --origin-file)
+            __ostree_compreply_all_files
+            return 0
+            ;;
+        --os)
+            __ostree_compreply_oses
+            return 0
+            ;;
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_init_fs() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_instutil() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+            if [ $cword -eq $argpos ]; then
+                local instutil_commands="
+                    grub2-generate
+                    selinux-ensure-labeled
+                    set-kargs
+                "
+                COMPREPLY=( $( compgen -W "$instutil_commands" -- "$cur" ) )
+            fi
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_os_init() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_set_origin() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --index
+        --set -s
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_status() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_switch() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --os
+        --reboot -r
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --os)
+            __ostree_compreply_oses
+            return 0
+            ;;
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_refs
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_admin_undeploy() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_unlock() {
+    local boolean_options="
+        $main_boolean_options
+        --hotfix
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin_upgrade() {
+    local boolean_options="
+        $main_boolean_options
+        --allow-downgrade
+        --deploy-only
+        --pull-only
+        --reboot -r
+    "
+
+    local options_with_args="
+        --os
+        --override-commit
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --override-commit)
+            __ostree_compreply_commits
+            return 0
+            ;;
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_admin() {
+    local subcommands="
+        cleanup
+        config-diff
+        deploy
+        init-fs
+        instutil
+        os-init
+        set-origin
+        status
+        switch
+        undeploy
+        unlock
+        upgrade
+    "
+
+    __ostree_subcommands "$subcommands" && return 0
+
+    case "$cur" in
+        -*)
+            COMPREPLY=( $( compgen -W "$main_boolean_options" -- "$cur" ) )
+            ;;
+        *)
+            COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_cat() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_commits
+            elif [ $cword -eq $(($argpos + 1)) ]; then
+                __ostree_compreply_dirs_only
+            fi
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_checkout() {
+    local boolean_options="
+        $main_boolean_options
+        --allow-noent
+        --bareuseronly-dirs -M
+        --disable-cache
+        --force-copy -C
+        --from-stdin
+        --require-hardlinks -H
+        --union
+        --union-add
+        --user-mode -U
+        --whiteouts
+    "
+
+    local options_with_args="
+        --from-file
+        --fsync
+        --repo
+        --subpath
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --from-file)
+            __ostree_compreply_all_files
+            return 0
+            ;;
+        --repo|--subpath)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_commits
+            elif [ $cword -eq $(($argpos + 1)) ]; then
+                __ostree_compreply_dirs_only
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_checksum() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "") )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_all_files
+            fi
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_commit() {
+    local boolean_options="
+        $main_boolean_options
+        --canonical-permissions
+        --editor -e
+        --generate-sizes
+        --link-checkout-speedup
+        --no-xattrs
+        --orphan
+        --skip-if-unchanged
+        --table-output
+        --tar-autocreate-parents
+    "
+
+    local options_with_args="
+        --add-detached-metadata-string
+        --add-metadata-string
+        --bind-ref
+        --body -m
+        --body-file -F
+        --branch -b
+        --fsync
+        --gpg-homedir
+        --gpg-sign
+        --owner-gid
+        --owner-uid
+        --parent
+        --repo
+        --skip-list
+        --statoverride
+        --subject -s
+        --timestamp
+        --tree
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --body-file|--skip-list|--statoverride)
+            __ostree_compreply_all_files
+            return 0
+            ;;
+        --gpg-homedir|--repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        --bind-ref)
+            __ostree_compreply_refs
+            return 0
+            ;;
+        --parent)
+            __ostree_compreply_commits
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_all_files
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_config() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_diff() {
+    local boolean_options="
+        $main_boolean_options
+        --fs-diff
+        --no-xattrs
+        --stats
+    "
+
+    local options_with_args="
+        --owner-gid
+        --owner-uid
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_revisions
+            elif [ $cword -eq $(($argpos + 1)) ]; then
+                __ostree_compreply_dirs_only
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_export() {
+    local boolean_options="
+        $main_boolean_options
+        --no-xattrs
+    "
+
+    local options_with_args="
+        --output -o
+        --prefix
+        --repo
+        --subpath
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --prefix|--repo|--subpath)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_commits
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_fsck() {
+    local boolean_options="
+        $main_boolean_options
+        --add-tombstones
+        --delete
+        --quiet -q
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_gpg_sign() {
+    local boolean_options="
+        $main_boolean_options
+        --delete -d
+    "
+
+    local options_with_args="
+        --gpg-homedir
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --gpg-homedir|--repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_commits
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_init() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --mode
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --mode)
+            COMPREPLY=( $( compgen -W "bare archive-z2" -- "$cur" ) )
+            return 0
+            ;;
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_log() {
+    local boolean_options="
+        $main_boolean_options
+        --raw
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_revisions
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_ls() {
+    local boolean_options="
+        $main_boolean_options
+        --checksum -C
+        --dironly -d
+        --nul-filenames-only
+        --recursive -R
+        --xattrs -X
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_revisions
+                return 0
+            fi
+
+            __ostree_compreply_all_files
+    esac
+
+    return 0
+}
+
+_ostree_prune() {
+    local boolean_options="
+        $main_boolean_options
+        --no-prune
+        --refs-only
+        --static-deltas-only
+    "
+
+    local options_with_args="
+        --delete-commit
+        --depth
+        --keep-younger-than
+        --repo
+        --retain-branch-depth
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --delete-commit)
+            __ostree_compreply_commits
+            return 0
+            ;;
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_pull_local() {
+    local boolean_options="
+        $main_boolean_options
+        --bareuseronly-files
+        --disable-fsync
+        --gpg-verify
+        --gpg-verify-summary
+        --require-static-deltas
+        --untrusted
+    "
+
+    local options_with_args="
+        --depth
+        --remote
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --remote)
+            __ostree_compreply_remotes
+            return 0
+            ;;
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_dirs_only
+                return 0
+            fi
+
+            __ostree_revisions
+    esac
+
+    return 0
+}
+
+_ostree_pull() {
+    local boolean_options="
+        $main_boolean_options
+        --commit-metadata-only
+        --cache-dir
+        --disable-fsync
+        --disable-static-deltas
+        --require-static-deltas
+        --mirror
+        --untrusted
+        --bareuseronly-files
+        --dry-run
+    "
+
+    local options_with_args="
+        --depth
+        --http-header
+        --localcache-repo -L
+        --repo
+        --subpath
+        --update-frequency
+        --url
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --localcache-repo|-L|--repo|--subpath)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_refs() {
+    local boolean_options="
+        $main_boolean_options
+        --alias -A
+        --delete
+        --list
+    "
+
+    local options_with_args="
+        --create
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_remote_add() {
+    local boolean_options="
+        $main_boolean_options
+        --if-not-exists
+        --no-gpg-verify
+    "
+
+    local options_with_args="
+        --contenturl
+        --gpg-import
+        --repo
+        --set
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo|--sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        --gpg-import)
+            __ostree_compreply_all_files
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_remote_add_cookie() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote_delete() {
+    local boolean_options="
+        $main_boolean_options
+        --if-exists
+    "
+
+    local options_with_args="
+        --repo
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo|--sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote_delete_cookie() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote_gpg_import() {
+    local boolean_options="
+        $main_boolean_options
+        --stdin
+    "
+
+    local options_with_args="
+        --keyfile -k
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --keyfile|-k)
+            __ostree_compreply_all_files
+            return 0
+            ;;
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote_list() {
+    local boolean_options="
+        $main_boolean_options
+        --show-urls -u
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_remote_list_cookies() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote_refs() {
+    local boolean_options="
+        $main_boolean_options
+        --cache-dir
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote_show_url() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote_summary() {
+    local boolean_options="
+        $main_boolean_options
+        --cache-dir
+        --raw
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_remote() {
+    local subcommands="
+        add
+        add-cookie
+        delete
+        delete-cookie
+        gpg-import
+        list
+        list-cookies
+        refs
+        show-url
+        summary
+    "
+
+    __ostree_subcommands "$subcommands" && return 0
+
+    case "$cur" in
+        -*)
+            COMPREPLY=( $( compgen -W "$main_boolean_options" -- "$cur" ) )
+            ;;
+        *)
+            COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_reset() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_refs
+            elif [ $cword -eq $(($argpos + 1)) ]; then
+                __ostree_compreply_commits
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_rev_parse() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_revisions
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_show() {
+    local boolean_options="
+        $main_boolean_options
+        --print-related
+        --raw
+    "
+
+    local options_with_args="
+        --gpg-homedir
+        --gpg-verify-remote
+        --print-detached-metadata-key
+        --print-metadata-key
+        --print-variant-type
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --gpg-homedir|--repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        --gpg-verify-remote)
+            __ostree_compreply_remotes
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_static_delta_apply_offline() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_all_files
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_static_delta_delete() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_static_delta_generate() {
+    local boolean_options="
+        $main_boolean_options
+        --disable-bsdiff
+        --empty
+        --in-not-exists -n
+        --inline
+        --max-bsdiff-size
+        --max-chunk-size
+        --min-fallback-size
+        --swap-endianness
+    "
+
+    local options_with_args="
+        --filename
+        --from
+        --repo
+        --set-endianness
+        --to
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --filename|--repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        --from|--to)
+            __ostree_compreply_revisions
+            return 0
+            ;;
+        --set-endianness)
+            COMPREPLY=( $( compgen -W "l B" -- "$cur" ) )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_static_delta_list() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_static_delta_show() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_static_delta() {
+    local subcommands="
+        apply-offline
+        delete
+        generate
+        list
+        show
+    "
+
+    __ostree_subcommands "$subcommands" && return 0
+
+    case "$cur" in
+        -*)
+            COMPREPLY=( $( compgen -W "$main_boolean_options" -- "$cur" ) )
+            ;;
+        *)
+            COMPREPLY=( $( compgen -W "$subcommands" -- "$cur" ) )
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_summary() {
+    local boolean_options="
+        $main_boolean_options
+        --raw
+        --update -u
+        --view -v
+    "
+
+    local options_with_args="
+        --add-metadata -m
+        --gpg-homedir
+        --gpg-sign
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --gpg-homedir|--repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree() {
+    local commands="
+        admin
+        cat
+        checkout
+        checksum
+        commit
+        config
+        diff
+        export
+        fsck
+        gpg-sign
+        init
+        log
+        ls
+        prune
+        pull-local
+        pull
+        refs
+        remote
+        reset
+        rev-parse
+        show
+        static-delta
+        summary
+    "
+
+    # These are always available.
+    local main_boolean_options="
+        --help -h
+        --verbose -v
+        --version
+    "
+
+    COMPREPLY=()
+    local cur prev words cword
+
+    _get_comp_words_by_ref cur prev words cword
+
+    local command='ostree' cpos=0
+    local counter
+
+    local repo_path='/sysroot/ostree/repo'
+    local sysroot_path='/sysroot'
+
+    # These options can affect argument completion.
+    # FIXME Only recognizes the form --foo BAR, not --foo=BAR.
+    counter=1
+    while [ $counter -lt $cword ]; do
+        if test "${words[$counter - 1]}" = "--repo"; then
+            repo_path=${words[$counter]}
+        elif test "${words[$counter - 1]}" = "--sysroot"; then
+            sysroot_path=${words[$counter]}
+            repo_path="$sysroot_path/ostree/repo"
+        fi
+        (( counter++ ))
+    done
+
+    counter=1
+    while [ $counter -lt $cword ]; do
+        case "${words[$counter]}" in
+            $main_options_with_args_glob )
+                (( counter++ ))
+                ;;
+            -*)
+                ;;
+            *)
+                command="${words[$counter]}"
+                cpos=$counter
+                (( cpos++ ))
+                break
+                ;;
+        esac
+        (( counter++ ))
+    done
+
+    local completions_func=_ostree_${command//-/_}
+    declare -F $completions_func >/dev/null && $completions_func
+
+    return 0
+}
+
+complete -F _ostree ostree
