@@ -33,6 +33,11 @@ static gboolean opt_no_xattrs;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-diff.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "stats", 0, 0, G_OPTION_ARG_NONE, &opt_stats, "Print various statistics", NULL },
   { "fs-diff", 0, 0, G_OPTION_ARG_NONE, &opt_fs_diff, "Print filesystem diff", NULL },

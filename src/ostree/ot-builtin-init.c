@@ -31,6 +31,11 @@ static char *opt_mode = "bare";
 static char *opt_collection_id = NULL;
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-init.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive-z2)", NULL },
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API

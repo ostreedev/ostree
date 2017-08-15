@@ -56,6 +56,11 @@ typedef struct {
   GOutputStream *log;
 } OtTrivialHttpd;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-trivial-httpd.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "daemonize", 'd', 0, G_OPTION_ARG_NONE, &opt_daemonize, "Fork into background when ready", NULL },
   { "autoexit", 0, 0, G_OPTION_ARG_NONE, &opt_autoexit, "Automatically exit when directory is deleted", NULL },
