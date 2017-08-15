@@ -17,5 +17,5 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-bashcompdir = @bashcompdir@
-dist_bashcomp_DATA = bash/ostree
+completionsdir = @BASH_COMPLETIONSDIR@
+dist_completions_DATA = bash/ostree
