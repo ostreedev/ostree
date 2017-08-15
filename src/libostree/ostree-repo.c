@@ -1865,9 +1865,9 @@ ostree_repo_create (OstreeRepo     *self,
  * ostree_repo_open_at() on the result, preparing it for use.
  *
  * If a repository already exists at @dfd + @path (defined by an `objects/`
- * subdirectory existing), then this function will return successfully and do
- * nothing. For example, this function cannot be used to change the
- * `repo/config` of an existing repo.
+ * subdirectory existing), then this function will simply call
+ * ostree_repo_open_at().  In other words, this function cannot be used to change
+ * the mode or configuration (`repo/config`) of an existing repo.
  *
  * The @options dict may contain:
  *
