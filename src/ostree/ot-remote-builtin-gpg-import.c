@@ -34,6 +34,11 @@
 static gboolean opt_stdin;
 static char **opt_keyrings;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-remote.xml) when changing the option list.
+ */
+
 static GOptionEntry option_entries[] = {
   { "keyring", 'k', 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_keyrings, "Import keys from a keyring file (repeatable)", "FILE" },
   { "stdin", 0, 0, G_OPTION_ARG_NONE, &opt_stdin, "Import keys from standard input", NULL },

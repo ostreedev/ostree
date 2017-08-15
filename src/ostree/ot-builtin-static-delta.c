@@ -59,6 +59,10 @@ static OstreeCommand static_delta_subcommands[] = {
   { NULL, NULL }
 };
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-static-delta.xml) when changing the option list(s).
+ */
 
 static GOptionEntry generate_options[] = {
   { "from", 0, 0, G_OPTION_ARG_STRING, &opt_from_rev, "Create delta from revision REV", "REV" },

@@ -34,6 +34,11 @@ static gboolean opt_checksum;
 static gboolean opt_xattrs;
 static gboolean opt_nul_filenames_only;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-ls.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "dironly", 'd', 0, G_OPTION_ARG_NONE, &opt_dironly, "Do not recurse into directory arguments", NULL },
   { "recursive", 'R', 0, G_OPTION_ARG_NONE, &opt_recursive, "Print directories recursively", NULL },

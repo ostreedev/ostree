@@ -61,6 +61,11 @@ parse_fsync_cb (const char  *option_name,
   return TRUE;
 }
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-checkout.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
   { "disable-cache", 0, 0, G_OPTION_ARG_NONE, &opt_disable_cache, "Do not update or use the internal repository uncompressed object cache", NULL },

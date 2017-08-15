@@ -36,6 +36,11 @@ static char *opt_delete_commit;
 static char *opt_keep_younger_than;
 static char **opt_retain_branch_depth;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-prune.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Only display unreachable objects; don't delete", NULL },
   { "refs-only", 0, 0, G_OPTION_ARG_NONE, &opt_refs_only, "Only compute reachability via refs", NULL },

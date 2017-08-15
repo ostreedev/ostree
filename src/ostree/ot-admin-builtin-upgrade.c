@@ -39,6 +39,11 @@ static gboolean opt_deploy_only;
 static char *opt_osname;
 static char *opt_override_commit;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-admin-upgrade.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },

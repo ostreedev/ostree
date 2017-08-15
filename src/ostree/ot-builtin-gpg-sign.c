@@ -31,6 +31,11 @@
 static gboolean opt_delete;
 static char *opt_gpg_homedir;
 
+/* ATTENTION:
+ * Please remember to update the bash-completion script (bash/ostree) and
+ * man page (man/ostree-gpg-sign.xml) when changing the option list.
+ */
+
 static GOptionEntry options[] = {
   { "delete", 'd', 0, G_OPTION_ARG_NONE, &opt_delete, "Delete signatures having any of the GPG KEY-IDs" },
   { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR" },
