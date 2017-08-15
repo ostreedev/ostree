@@ -467,7 +467,7 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
   if (G_IS_FILE_DESCRIPTOR_BASED (input))
     {
       int infd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*) input);
-      if (glnx_regfile_copy_bytes (infd, tmpf.fd, (off_t)length, TRUE) < 0)
+      if (glnx_regfile_copy_bytes (infd, tmpf.fd, (off_t)length) < 0)
         return glnx_throw_errno_prefix (error, "regfile copy");
     }
   else
