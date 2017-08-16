@@ -5662,7 +5662,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                GError                **error)
 {
   g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
+                       "This version of ostree was built without libsoup or libcurl, and cannot fetch over HTTP");
   return FALSE;
 }
 
@@ -5676,7 +5676,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                                GError       **error)
 {
   g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
+                       "This version of ostree was built without libsoup or libcurl, and cannot fetch over HTTP");
   return FALSE;
 }
 
