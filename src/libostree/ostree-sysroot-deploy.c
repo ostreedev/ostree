@@ -1056,13 +1056,14 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
       /* Do a thaw if we hit an error, or if the poll timed out */
       if (r <= 0)
         {
-          if (TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0)) != 0)
-            {
-              if (errno == EPERM)
-                ; /* Ignore this for the test suite */
-              else
-                err (1, "FITHAW");
-            }
+          /* Ignore errors:
+           * EINVAL: Not frozen
+           * EPERM: For running the test suite as non-root
+           * EOPNOTSUPP: If the filesystem doesn't support it
+           */
+          int saved_errno = errno;
+          (void) TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0));
+          errno = saved_errno;
           /* But if we got an error from poll, let's log it */
           if (r < 0)
             err (1, "poll");
