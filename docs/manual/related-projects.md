@@ -20,6 +20,11 @@ a tool to snapshot systems on the client side (dpkg/rpm + BTRFS/LVM),
 or a tool to compose on a server and replicate (ChromiumOS, Clear
 Linux).  OSTree is flexible enough to do both.
 
+Note that this section of the documentation is almost entirely
+focused on the "ostree for host" model; the [flatpak](https://github.com/flatpak/flatpak/)
+project uses libostree to store application data, distinct from the
+host system management model.
+
 ## Combining dpkg/rpm + (BTRFS/LVM)
 
 In this approach, one uses a block/filesystem snapshot tool underneath
@@ -58,25 +63,26 @@ well.
 
 In general, if one really tries to flesh out the BTRFS approach, a
 nontrivial middle layer of code between dpkg/rpm and BTRFS (or deep
-awareness of BTRFS in dpkg/rpm itself) will be required.
+awareness of BTRFS in dpkg/rpm itself) will be required.  A good
+example of this is the [snapper.io](http://snapper.io/) project.
 
 The OSTree author believes that having total freedom at the block
-storage layer is better for general purpose operating systems. For
-example, with OSTree, one is free to use BTRFS in any way you like -
-you may decide to use a subvolume for `/home`, or not.
+storage layer is better for general purpose operating systems.  For
+example, the ability to choose dm-crypt per deployment is quite useful;
+not every site wants to pay the performance penalty.  One can choose
+LVM or not, etc.
 
-Furthermore, in its most basic incarnation, the rpm/dpkg + BTRFS
-doesn't solve the race conditions that happen when unpacking packages
-into the live system, such as deleting the files underneath Firefox
-while it's running. One could unpack packages into a separate root,
-and switch to that, which gets closer to the OSTree architecture.
+Where applicable, OSTree does take advantage of copy-on-write/reflink
+features offered by the kernel for `/etc`.  It uses the now generic
+`ioctl(FICLONE)` and `copy_file_range()`.
 
-Note though OSTree does take advantage of BTRFS if installed on top of
-it!  In particular, it will use reflink for the copies of `/etc` if
-available.
-
-All of the above also applies if one replaces "BTRFS" with "LVM
-snapshots" except for the reflinks.
+Another major distinction between the default OSTree usage and package managers
+is whether updates are "online" or "offline" by default. The default OSTree
+design writes updates into a new root, leaving the running system unchanged.
+This means preparing updates is completely non-disruptive and safe - if the
+system runs out of disk space in the middle, it's easy to recover. However,
+there is work in the [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
+project to support online updates as well.
 
 OSTree supports using "bare-user" repositories, which do not require
 root to use. Using a filesystem-level layer without root is more
@@ -133,6 +139,29 @@ More information will be filled in here over time.  The OSTree author
 believes that at the moment, the "CL updater" is not truly atomic in
 the sense that because it applies updates live, there is a window
 where the OS root may be inconsistent.
+
+## casync
+
+The [systemd casync](https://github.com/systemd/casync) project is
+relatively new.  Currently, it is more of a storage library, and doesn't
+support higher level logic for things like GPG signatures, versioning
+information, etc.  This is mostly the `OstreeRepo` layer.  Moving up to
+the `OstreeSysroot` level - things like managing the bootloader
+configuration, and most importantly implementing correct merging for `/etc`
+are missing.  casync also is unaware of SELinux.
+
+OSTree is really today a shared library, and has been for quite some time.
+This has made it easy to build higher level projects such as
+[rpm-ostree](https://github.com/projectatomic/rpm-ostree/) which has quite
+a bit more, such as a DBus API and other projects consume that, such as
+[Cockpit](http://cockpit-project.org/).
+
+A major issue with casync today is that it doesn't support garbage collection
+on the server side.  OSTree's GC works symmetrically on the server and client
+side.
+
+Broadly speaking, casync is a twist on the dual partition approach, and
+shares the general purpose disadvantages of those.
 
 ## Mender.io
 
