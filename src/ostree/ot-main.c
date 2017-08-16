@@ -360,7 +360,8 @@ ostree_option_context_parse (GOptionContext *context,
 
 static void
 on_sysroot_journal_msg (OstreeSysroot *sysroot,
-                        const char    *msg)
+                        const char    *msg,
+                        void          *dummy)
 {
   g_print ("%s\n", msg);
 }
