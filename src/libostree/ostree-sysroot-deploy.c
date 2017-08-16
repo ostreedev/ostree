@@ -1020,10 +1020,14 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
       (void) close (glnx_steal_fd (&sock_parent));
       /* Daemonize, and mask SIGINT/SIGTERM, so we're likely to survive e.g.
        * someone doing a `systemctl restart rpm-ostreed` or a Ctrl-C of
-       * `ostree admin upgrade`.
+       * `ostree admin upgrade`.  We don't daemonize though if testing so
+       * that we can waitpid().
        */
-      if (daemon (0, debug_fifreeze ? 1 : 0) < 0)
-        err (1, "daemon");
+      if (!debug_fifreeze)
+        {
+          if (daemon (0, 0) < 0)
+            err (1, "daemon");
+        }
       int sigs[] = { SIGINT, SIGTERM };
       for (guint i = 0; i < G_N_ELEMENTS (sigs); i++)
         {
@@ -1086,7 +1090,10 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
         {
           int wstatus;
           /* Ensure the child has written its data */
-          (void) TEMP_FAILURE_RETRY (waitpid (pid, &wstatus, 0));
+          if (TEMP_FAILURE_RETRY (waitpid (pid, &wstatus, 0)) < 0)
+            return glnx_throw_errno_prefix (error, "waitpid(test-fifreeze)");
+          if (!g_spawn_check_exit_status (wstatus, error))
+            return glnx_prefix_error (error, "test-fifreeze: ");
           return glnx_throw (error, "aborting due to test-fifreeze");
         }
       /* Do a freeze/thaw cycle; TODO add a FIFREEZETHAW ioctl */
