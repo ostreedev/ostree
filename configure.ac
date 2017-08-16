@@ -96,7 +96,7 @@ m4_define_default(
      AS_IF([test -n "$$1"], [$4], [$5])])
 
 PKG_CHECK_VAR(BASH_COMPLETIONSDIR, [bash-completion], [completionsdir], ,
-  BASH_COMPLETIONSDIR="${sysconfdir}/bash_completion.d")
+  BASH_COMPLETIONSDIR="${datadir}/bash-completion/completions")
 AC_SUBST(BASH_COMPLETIONSDIR)
 
 AM_PATH_GLIB_2_0(,,AC_MSG_ERROR([GLib not found]))
