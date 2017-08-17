@@ -20,7 +20,7 @@ a tool to snapshot systems on the client side (dpkg/rpm + BTRFS/LVM),
 or a tool to compose on a server and replicate (ChromiumOS, Clear
 Linux).  OSTree is flexible enough to do both.
 
-Note that this section of the docuementation is almost entirely
+Note that this section of the documentation is almost entirely
 focused on the "ostree for host" model; the [flatpak](https://github.com/flatpak/flatpak/)
 project uses libostree to store application data, distinct from the
 host system management model.
