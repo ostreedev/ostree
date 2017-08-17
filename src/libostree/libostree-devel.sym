@@ -18,16 +18,6 @@
 ***/
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
-LIBOSTREE_2017.10 {
-  ostree_gpg_error_quark;
-  ostree_repo_set_alias_ref_immediate;
-  ostree_repo_open_at;
-  ostree_repo_create_at;
-/* Inherit from .8 since .9 is empty and is also broken
- * in that it doesn't have a parent currently;
- * <https://github.com/ostreedev/ostree/issues/1087>
- */
-} LIBOSTREE_2017.8;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
