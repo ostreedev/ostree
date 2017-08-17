@@ -78,15 +78,11 @@ int
 ostree_usage (OstreeCommand *commands,
               gboolean is_error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autofree char *help;
-
-  context = ostree_option_context_new_with_commands (commands);
-
+  g_autoptr(GOptionContext) context =
+    ostree_option_context_new_with_commands (commands);
   g_option_context_add_main_entries (context, global_entries, NULL);
 
-  help = g_option_context_get_help (context, FALSE, NULL);
-
+  g_autofree char *help = g_option_context_get_help (context, FALSE, NULL);
   if (is_error)
     g_printerr ("%s", help);
   else
