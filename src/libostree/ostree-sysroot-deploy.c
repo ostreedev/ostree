@@ -882,46 +882,173 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                      cancellable, error);
 }
 
-/* Originally OSTree defined kernels to be found underneath /boot
- * in the tree.  But that means when mounting /boot at runtime
- * we end up masking the content underneath, triggering a warning.
- *
- * For that reason, and also consistency with the "/usr defines the OS" model we
- * later switched to defining the in-tree kernels to be found under
- * /usr/lib/ostree-boot.
- */
-static gboolean
-get_kernel_from_tree (int             deployment_dfd,
-                      int            *out_boot_dfd,
-                      char          **out_kernel_srcpath,
-                      char          **out_kernel_namever,
-                      char          **out_initramfs_srcpath,
-                      char          **out_initramfs_namever,
-                      char          **out_bootcsum,
-                      GCancellable   *cancellable,
-                      GError        **error)
+typedef struct {
+  int   boot_dfd;
+  char *kernel_srcpath;
+  char *kernel_namever;
+  char *initramfs_srcpath;
+  char *initramfs_namever;
+  char *bootcsum;
+} OstreeKernelLayout;
+static void
+_ostree_kernel_layout_free (OstreeKernelLayout *layout)
 {
-  g_autofree char *ret_kernel_srcpath = NULL;
-  g_autofree char *ret_kernel_namever = NULL;
-  g_autofree char *ret_initramfs_srcpath = NULL;
-  g_autofree char *ret_initramfs_namever = NULL;
-  g_autofree char *kernel_checksum = NULL;
-  g_autofree char *initramfs_checksum = NULL;
+  if (layout->boot_dfd != -1)
+    (void) close (layout->boot_dfd);
+  g_free (layout->kernel_srcpath);
+  g_free (layout->kernel_namever);
+  g_free (layout->initramfs_srcpath);
+  g_free (layout->initramfs_namever);
+  g_free (layout->bootcsum);
+  g_free (layout);
+}
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeKernelLayout, _ostree_kernel_layout_free);
 
-  glnx_fd_close int ret_boot_dfd = glnx_opendirat_with_errno (deployment_dfd, "usr/lib/ostree-boot", TRUE);
-  if (ret_boot_dfd == -1)
+static OstreeKernelLayout*
+_ostree_kernel_layout_new (void)
+{
+  OstreeKernelLayout *ret = g_new0 (OstreeKernelLayout, 1);
+  ret->boot_dfd = -1;
+  return ret;
+}
+
+/* See get_kernel_from_tree() below */
+static gboolean
+get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
+                                     OstreeKernelLayout **out_layout,
+                                     GCancellable        *cancellable,
+                                     GError             **error)
+{
+  g_autofree char *kver = NULL;
+  /* Look in usr/lib/modules */
+  g_auto(GLnxDirFdIterator) mod_dfditer = { 0, };
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (deployment_dfd, "usr/lib/modules", &mod_dfditer,
+                                     &exists, error))
+    return FALSE;
+  if (!exists)
     {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "%s", "openat(usr/lib/ostree-boot)");
-      else
-        {
-          if (!glnx_opendirat (deployment_dfd, "boot", TRUE, &ret_boot_dfd, error))
-            return FALSE;
-        }
+      /* No usr/lib/modules?  We're done */
+      *out_layout = NULL;
+      return TRUE;
     }
 
+  g_autoptr(OstreeKernelLayout) ret_layout = _ostree_kernel_layout_new ();
+
+  /* Reusable buffer for path string */
+  g_autoptr(GString) pathbuf = g_string_new ("");
+  /* Loop until we find something that looks like a valid /usr/lib/modules/$kver */
+  while (ret_layout->boot_dfd == -1)
+    {
+      struct dirent *dent;
+      struct stat stbuf;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&mod_dfditer, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+      if (dent->d_type != DT_DIR)
+        continue;
+
+      /* It's a directory, look for /vmlinuz as a regular file */
+      g_string_truncate (pathbuf, 0);
+      g_string_append_printf (pathbuf, "%s/vmlinuz", dent->d_name);
+      if (fstatat (mod_dfditer.fd, pathbuf->str, &stbuf, 0) < 0)
+        {
+          if (errno != ENOENT)
+            return glnx_throw_errno_prefix (error, "fstatat(%s)", pathbuf->str);
+          else
+            continue;
+        }
+      else
+        {
+          /* Not a regular file? Loop again */
+          if (!S_ISREG (stbuf.st_mode))
+            continue;
+        }
+
+      /* Looks valid, this should exit the loop */
+      if (!glnx_opendirat (mod_dfditer.fd, dent->d_name, FALSE, &ret_layout->boot_dfd, error))
+        return FALSE;
+      kver = g_strdup (dent->d_name);
+      ret_layout->kernel_srcpath = g_strdup ("vmlinuz");
+      ret_layout->kernel_namever = g_strdup_printf ("vmlinuz-%s", kver);
+    }
+
+  if (ret_layout->boot_dfd == -1)
+    {
+      *out_layout = NULL;
+      /* No kernel found?  We're done. */
+      return TRUE;
+    }
+
+  /* We found a module directory, compute the checksum */
+  g_autoptr(GChecksum) checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  glnx_fd_close int fd = -1;
+  /* Checksum the kernel */
+  if (!glnx_openat_rdonly (ret_layout->boot_dfd, "vmlinuz", TRUE, &fd, error))
+    return FALSE;
+  g_autoptr(GInputStream) in = g_unix_input_stream_new (fd, FALSE);
+  if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+    return FALSE;
+  g_clear_object (&in);
+  (void) close (fd); fd = -1;
+
+  /* Look for an initramfs, but it's optional */
+  if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "initramfs", &fd, error))
+    return FALSE;
+  if (fd != -1)
+    {
+      ret_layout->initramfs_srcpath = g_strdup ("initramfs");
+      ret_layout->initramfs_namever = g_strdup_printf ("initramfs-%s", kver);
+      in = g_unix_input_stream_new (fd, FALSE);
+      if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+        return FALSE;
+    }
+
+  ret_layout->bootcsum = g_strdup (g_checksum_get_string (checksum));
+
+  *out_layout = g_steal_pointer (&ret_layout);
+  return TRUE;
+}
+
+/* See get_kernel_from_tree() below */
+static gboolean
+get_kernel_from_tree_legacy_layouts (int                  deployment_dfd,
+                                     OstreeKernelLayout **out_layout,
+                                     GCancellable        *cancellable,
+                                     GError             **error)
+{
+  const char *legacy_paths[] = {"usr/lib/ostree-boot", "boot"};
+  g_autofree char *kernel_checksum = NULL;
+  g_autofree char *initramfs_checksum = NULL;
+  g_autoptr(OstreeKernelLayout) ret_layout = _ostree_kernel_layout_new ();
+
+  for (guint i = 0; i < G_N_ELEMENTS (legacy_paths); i++)
+    {
+      const char *path = legacy_paths[i];
+      ret_layout->boot_dfd = glnx_opendirat_with_errno (deployment_dfd, path, TRUE);
+      if (ret_layout->boot_dfd == -1)
+        {
+          if (errno != ENOENT)
+            return glnx_throw_errno_prefix (error, "openat(%s)", path);
+        }
+      else
+        break;
+    }
+
+  if (ret_layout->boot_dfd == -1)
+    {
+      /* No legacy found?  We're done */
+      *out_layout = NULL;
+      return TRUE;
+    }
+
+  /* ret_layout->boot_dfd will point to either /usr/lib/ostree-boot or /boot, let's
+   * inspect it.
+   */
   g_auto(GLnxDirFdIterator) dfditer = { 0, };
-  if (!glnx_dirfd_iterator_init_at (ret_boot_dfd, ".", FALSE, &dfditer, error))
+  if (!glnx_dirfd_iterator_init_at (ret_layout->boot_dfd, ".", FALSE, &dfditer, error))
     return FALSE;
 
   while (TRUE)
@@ -930,62 +1057,143 @@ get_kernel_from_tree (int             deployment_dfd,
 
       if (!glnx_dirfd_iterator_next_dent (&dfditer, &dent, cancellable, error))
         return FALSE;
-
       if (dent == NULL)
         break;
 
       const char *name = dent->d_name;
-      if (ret_kernel_srcpath == NULL && g_str_has_prefix (name, "vmlinuz-"))
+      /* See if this is the kernel */
+      if (ret_layout->kernel_srcpath == NULL && g_str_has_prefix (name, "vmlinuz-"))
         {
           const char *dash = strrchr (name, '-');
           g_assert (dash);
+          /* In this version, we require that the tree builder generated a
+           * sha256 of the kernel+initramfs and appended it to the file names.
+           */
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               kernel_checksum = g_strdup (dash + 1);
-              ret_kernel_srcpath = g_strdup (name);
-              ret_kernel_namever = g_strndup (name, dash - name);
+              ret_layout->kernel_srcpath = g_strdup (name);
+              ret_layout->kernel_namever = g_strndup (name, dash - name);
             }
         }
-      else if (ret_initramfs_srcpath == NULL && g_str_has_prefix (name, "initramfs-"))
+      /* See if this is the initramfs  */
+      else if (ret_layout->initramfs_srcpath == NULL && g_str_has_prefix (name, "initramfs-"))
         {
           const char *dash = strrchr (name, '-');
           g_assert (dash);
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               initramfs_checksum = g_strdup (dash + 1);
-              ret_initramfs_srcpath = g_strdup (name);
-              ret_initramfs_namever = g_strndup (name, dash - name);
+              ret_layout->initramfs_srcpath = g_strdup (name);
+              ret_layout->initramfs_namever = g_strndup (name, dash - name);
             }
         }
 
-      if (ret_kernel_srcpath != NULL && ret_initramfs_srcpath != NULL)
+      /* If we found both a kernel and initramfs, break out of the loop */
+      if (ret_layout->kernel_srcpath != NULL && ret_layout->initramfs_srcpath != NULL)
         break;
     }
 
-  if (ret_kernel_srcpath == NULL)
+  /* No kernel found?  We're done */
+  if (ret_layout->kernel_srcpath == NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Failed to find kernel in /usr/lib/ostree-boot or /boot");
-      return FALSE;
+      *out_layout = NULL;
+      return TRUE;
     }
 
-  if (ret_initramfs_srcpath != NULL)
+  /* The kernel/initramfs checksums must be the same */
+  if (ret_layout->initramfs_srcpath != NULL)
     {
+      g_assert (kernel_checksum != NULL);
+      g_assert (initramfs_checksum != NULL);
       if (strcmp (kernel_checksum, initramfs_checksum) != 0)
+        return glnx_throw (error, "Mismatched kernel checksum vs initrd");
+      ret_layout->bootcsum = g_steal_pointer (&kernel_checksum);
+    }
+
+  *out_layout = g_steal_pointer (&ret_layout);
+  return TRUE;
+}
+
+/* Locate kernel/initramfs in the tree; the current standard is to look in
+ * /usr/lib/modules/$kver/vmlinuz first.
+ *
+ * Originally OSTree defined kernels to be found underneath /boot
+ * in the tree.  But that means when mounting /boot at runtime
+ * we end up masking the content underneath, triggering a warning.
+ *
+ * For that reason, and also consistency with the "/usr defines the OS" model we
+ * later switched to defining the in-tree kernels to be found under
+ * /usr/lib/ostree-boot. But since then, Fedora at least switched to storing the
+ * kernel in /usr/lib/modules, which makes sense and isn't ostree-specific, so
+ * we prefer that now. However, the default Fedora layout doesn't put the
+ * initramfs there, so we need to look in /usr/lib/ostree-boot first.
+ */
+static gboolean
+get_kernel_from_tree (int                  deployment_dfd,
+                      OstreeKernelLayout **out_layout,
+                      GCancellable        *cancellable,
+                      GError             **error)
+{
+  g_autoptr(OstreeKernelLayout) usrlib_modules_layout = NULL;
+  g_autoptr(OstreeKernelLayout) legacy_layout = NULL;
+
+  /* First, gather from usr/lib/modules/$kver if it exists */
+  if (!get_kernel_from_tree_usrlib_modules (deployment_dfd, &usrlib_modules_layout, cancellable, error))
+    return FALSE;
+
+  /* Gather the legacy layout */
+  if (!get_kernel_from_tree_legacy_layouts (deployment_dfd, &legacy_layout, cancellable, error))
+    return FALSE;
+
+  /* Evaluate the state of both layouts.  If there's no legacy layout
+   * If a legacy layout exists, and it has
+   * an initramfs but the module layout doesn't, the legacy layout wins. This is
+   * what happens with rpm-ostree with Fedora today, until rpm-ostree learns the
+   * new layout.
+   */
+  if (legacy_layout == NULL)
+    {
+      /* No legacy layout, let's see if we have a module layout...*/
+      if (usrlib_modules_layout == NULL)
         {
+          /* Both layouts are not found?  Throw. */
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Mismatched kernel checksum vs initrd");
+                       "Failed to find kernel in /usr/lib/modules, /usr/lib/ostree-boot or /boot");
           return FALSE;
         }
+      else
+        {
+          /* No legacy, just usr/lib/modules?  We're done */
+          *out_layout = g_steal_pointer (&usrlib_modules_layout);
+          return TRUE;
+        }
     }
-
-  *out_boot_dfd = glnx_steal_fd (&ret_boot_dfd);
-  *out_kernel_srcpath = g_steal_pointer (&ret_kernel_srcpath);
-  *out_kernel_namever = g_steal_pointer (&ret_kernel_namever);
-  *out_initramfs_srcpath = g_steal_pointer (&ret_initramfs_srcpath);
-  *out_initramfs_namever = g_steal_pointer (&ret_initramfs_namever);
-  *out_bootcsum = g_steal_pointer (&kernel_checksum);
-  return TRUE;
+  else if (usrlib_modules_layout != NULL &&
+           usrlib_modules_layout->initramfs_srcpath == NULL &&
+           legacy_layout->initramfs_srcpath != NULL)
+    {
+      /* Does the module path not have an initramfs, but the legacy does?  Prefer
+       * the latter then, to make rpm-ostree work as is today.
+       */
+      *out_layout = g_steal_pointer (&legacy_layout);
+      return TRUE;
+    }
+  /* Prefer module layout */
+  else if (usrlib_modules_layout != NULL)
+    {
+      *out_layout = g_steal_pointer (&usrlib_modules_layout);
+      return TRUE;
+    }
+  else
+    {
+      /* And finally fall back to legacy; we know one exists since we
+       * checked first above.
+       */
+      g_assert (legacy_layout->kernel_srcpath);
+      *out_layout = g_steal_pointer (&legacy_layout);
+      return TRUE;
+    }
 }
 
 /* We used to syncfs(), but that doesn't flush the journal on XFS,
@@ -1315,18 +1523,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     return FALSE;
 
   /* Find the kernel/initramfs in the tree */
-  glnx_fd_close int tree_boot_dfd = -1;
-  g_autofree char *tree_kernel_srcpath = NULL;
-  g_autofree char *tree_kernel_namever = NULL;
-  g_autofree char *tree_initramfs_srcpath = NULL;
-  g_autofree char *tree_initramfs_namever = NULL;
-  g_autofree char *tree_bootcsum = NULL;
-  if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
-                             &tree_kernel_srcpath,
-                             &tree_kernel_namever,
-                             &tree_initramfs_srcpath,
-                             &tree_initramfs_namever,
-                             &tree_bootcsum,
+  g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
+  if (!get_kernel_from_tree (deployment_dfd, &kernel_layout,
                              cancellable, error))
     return FALSE;
 
@@ -1336,7 +1534,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-  g_assert_cmpstr (bootcsum, ==, tree_bootcsum);
+  g_assert_cmpstr (kernel_layout->bootcsum, ==, bootcsum);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
   g_autofree char *bootconf_name = g_strdup_printf ("ostree-%s-%d.conf", osname,
@@ -1355,12 +1553,13 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
    * it doesn't exist already.
    */
   struct stat stbuf;
-  if (fstatat (bootcsum_dfd, tree_kernel_namever, &stbuf, 0) != 0)
+  if (fstatat (bootcsum_dfd, kernel_layout->kernel_namever, &stbuf, 0) != 0)
     {
       if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "fstat %s", tree_kernel_namever);
-      if (!hardlink_or_copy_at (tree_boot_dfd, tree_kernel_srcpath,
-                                bootcsum_dfd, tree_kernel_namever,
+        return glnx_throw_errno_prefix (error, "fstat %s", kernel_layout->kernel_namever);
+      if (!hardlink_or_copy_at (kernel_layout->boot_dfd,
+                                kernel_layout->kernel_srcpath,
+                                bootcsum_dfd, kernel_layout->kernel_namever,
                                 sysroot->debug_flags,
                                 cancellable, error))
         return FALSE;
@@ -1369,15 +1568,15 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   /* If we have an initramfs, then install it into
    * /boot/ostree/osname-${bootcsum} if it doesn't exist already.
    */
-  if (tree_initramfs_srcpath)
+  if (kernel_layout->initramfs_srcpath)
     {
-      g_assert (tree_initramfs_namever);
-      if (fstatat (bootcsum_dfd, tree_initramfs_namever, &stbuf, 0) != 0)
+      g_assert (kernel_layout->initramfs_namever);
+      if (fstatat (bootcsum_dfd, kernel_layout->initramfs_namever, &stbuf, 0) != 0)
         {
           if (errno != ENOENT)
-            return glnx_throw_errno_prefix (error, "fstat %s", tree_initramfs_namever);
-          if (!hardlink_or_copy_at (tree_boot_dfd, tree_initramfs_srcpath,
-                                    bootcsum_dfd, tree_initramfs_namever,
+            return glnx_throw_errno_prefix (error, "fstat %s", kernel_layout->initramfs_namever);
+          if (!hardlink_or_copy_at (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
+                                    bootcsum_dfd, kernel_layout->initramfs_namever,
                                     sysroot->debug_flags,
                                     cancellable, error))
             return FALSE;
@@ -1458,12 +1657,12 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   g_autofree char *version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
   ostree_bootconfig_parser_set (bootconfig, OSTREE_COMMIT_META_KEY_VERSION, version_key);
-  g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", tree_kernel_namever, NULL);
+  g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->kernel_namever, NULL);
   ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
 
-  if (tree_initramfs_namever)
+  if (kernel_layout->initramfs_namever)
     {
-      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", tree_initramfs_namever, NULL);
+      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
       ostree_bootconfig_parser_set (bootconfig, "initrd", boot_relpath);
     }
 
@@ -2084,22 +2283,12 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       return FALSE;
     }
 
-  glnx_fd_close int tree_boot_dfd = -1;
-  g_autofree char *tree_kernel_srcpath = NULL;
-  g_autofree char *tree_kernel_namever = NULL;
-  g_autofree char *tree_initramfs_srcpath = NULL;
-  g_autofree char *tree_initramfs_namever = NULL;
-  g_autofree char *tree_bootcsum = NULL;
-  if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
-                             &tree_kernel_srcpath,
-                             &tree_kernel_namever,
-                             &tree_initramfs_srcpath,
-                             &tree_initramfs_namever,
-                             &new_bootcsum,
+  g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
+  if (!get_kernel_from_tree (deployment_dfd, &kernel_layout,
                              cancellable, error))
     return FALSE;
 
-  _ostree_deployment_set_bootcsum (new_deployment, new_bootcsum);
+  _ostree_deployment_set_bootcsum (new_deployment, kernel_layout->bootcsum);
 
   /* Create an empty boot configuration; we will merge things into
    * it as we go.

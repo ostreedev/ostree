@@ -366,7 +366,7 @@ setup_os_repository () {
     shift
     bootmode=$1
     shift
-    bootdir=${1:-usr/lib/ostree-boot}
+    bootdir=${1:-usr/lib/modules/3.6.0}
 
     oldpwd=`pwd`
 
@@ -381,17 +381,24 @@ setup_os_repository () {
     cd ${test_tmpdir}
     mkdir osdata
     cd osdata
-    mkdir -p usr/bin usr/lib/modules/3.6.0 usr/share usr/etc
-    mkdir -p ${bootdir}
-    echo "a kernel" > ${bootdir}/vmlinuz-3.6.0
-    echo "an initramfs" > ${bootdir}/initramfs-3.6.0
-    bootcsum=$(cat ${bootdir}/vmlinuz-3.6.0 ${bootdir}/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
+    mkdir -p usr/bin ${bootdir} usr/lib/modules/3.6.0 usr/share usr/etc
+    kernel_path=${bootdir}/vmlinuz
+    initramfs_path=${bootdir}/initramfs
+    # /usr/lib/modules just uses "vmlinuz", since the version is in the module
+    # directory name.
+    if [[ $bootdir != usr/lib/modules/* ]]; then
+        kernel_path=${kernel_path}-3.6.0
+        initramfs_path=${initramfs_path}-3.6.0
+    fi
+    echo "a kernel" > ${kernel_path}
+    echo "an initramfs" > ${initramfs_path}
+    bootcsum=$(cat ${kernel_path} ${initramfs_path} | sha256sum | cut -f 1 -d ' ')
     export bootcsum
     # Add the checksum for legacy dirs (/boot, /usr/lib/ostree-boot), but not
     # /usr/lib/modules.
-    if [[ $bootdir != usr/lib/modules ]]; then
-        mv ${bootdir}/vmlinuz-3.6.0{,-${bootcsum}}
-        mv ${bootdir}/initramfs-3.6.0{,-${bootcsum}}
+    if [[ $bootdir != usr/lib/modules/* ]]; then
+        mv ${kernel_path}{,-${bootcsum}}
+        mv ${initramfs_path}{,-${bootcsum}}
     fi
 
     echo "an executable" > usr/bin/sh
@@ -412,7 +419,7 @@ EOF
     echo "a default daemon file" > usr/etc/testdirectory/test
 
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-runtime -s "Build"
-    
+
     # Ensure these commits have distinct second timestamps
     sleep 2
     echo "a new executable" > usr/bin/sh
@@ -447,7 +454,7 @@ EOF
         setup_os_boot_grub2 "${bootmode}"
             ;;
     esac
-    
+
     cd ${test_tmpdir}
     mkdir ${test_tmpdir}/httpd
     cd httpd
@@ -465,17 +472,30 @@ os_repository_new_commit ()
     branch=${3:-testos/buildmaster/x86_64-runtime}
     echo "BOOT ITERATION: $boot_checksum_iteration"
     cd ${test_tmpdir}/osdata
-    bootdir=usr/lib/ostree-boot
-    if ! test -d ${bootdir}; then
-        bootdir=boot
+    if test -f usr/lib/modules/3.6.0/vmlinuz; then
+        bootdir=usr/lib/modules/3.6.0
+    else
+        if test -d usr/lib/ostree-boot; then
+            bootdir=usr/lib/ostree-boot
+        else
+            bootdir=boot
+        fi
     fi
     rm ${bootdir}/*
-    echo "new: a kernel ${boot_checksum_iteration}" > ${bootdir}/vmlinuz-3.6.0
-    echo "new: an initramfs ${boot_checksum_iteration}" > ${bootdir}/initramfs-3.6.0
-    bootcsum=$(cat ${bootdir}/vmlinuz-3.6.0 ${bootdir}/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
+    kernel_path=${bootdir}/vmlinuz
+    initramfs_path=${bootdir}/initramfs
+    if [[ $bootdir != usr/lib/modules/* ]]; then
+        kernel_path=${kernel_path}-3.6.0
+        initramfs_path=${initramfs_path}-3.6.0
+    fi
+    echo "new: a kernel ${boot_checksum_iteration}" > ${kernel_path}
+    echo "new: an initramfs ${boot_checksum_iteration}" > ${initramfs_path}
+    bootcsum=$(cat ${kernel_path} ${initramfs_path} | sha256sum | cut -f 1 -d ' ')
     export bootcsum
-    mv ${bootdir}/vmlinuz-3.6.0 ${bootdir}/vmlinuz-3.6.0-${bootcsum}
-    mv ${bootdir}/initramfs-3.6.0 ${bootdir}/initramfs-3.6.0-${bootcsum}
+    if [[ $bootdir != usr/lib/modules/* ]]; then
+        mv ${kernel_path}{,-${bootcsum}}
+        mv ${initramfs_path}{,-${bootcsum}}
+    fi
 
     echo "a new default config file" > usr/etc/a-new-default-config-file
     mkdir -p usr/etc/new-default-dir
