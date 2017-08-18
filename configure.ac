@@ -525,7 +525,7 @@ src/libostree/ostree-version.h
 AC_OUTPUT
 
 echo "
-    libOSTree $VERSION ($release_build_type)
+    libostree $VERSION ($release_build_type)
     ===============
 
 
