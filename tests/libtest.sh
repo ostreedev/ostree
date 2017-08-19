@@ -381,14 +381,15 @@ setup_os_repository () {
     cd ${test_tmpdir}
     mkdir osdata
     cd osdata
-    mkdir -p usr/bin ${bootdir} usr/lib/modules/3.6.0 usr/share usr/etc
+    kver=3.6.0
+    mkdir -p usr/bin ${bootdir} usr/lib/modules/${kver} usr/share usr/etc
     kernel_path=${bootdir}/vmlinuz
-    initramfs_path=${bootdir}/initramfs
+    initramfs_path=${bootdir}/initramfs.img
     # /usr/lib/modules just uses "vmlinuz", since the version is in the module
     # directory name.
     if [[ $bootdir != usr/lib/modules/* ]]; then
-        kernel_path=${kernel_path}-3.6.0
-        initramfs_path=${initramfs_path}-3.6.0
+        kernel_path=${kernel_path}-${kver}
+        initramfs_path=${bootdir}/initramfs-${kver}.img
     fi
     echo "a kernel" > ${kernel_path}
     echo "an initramfs" > ${initramfs_path}
@@ -472,8 +473,9 @@ os_repository_new_commit ()
     branch=${3:-testos/buildmaster/x86_64-runtime}
     echo "BOOT ITERATION: $boot_checksum_iteration"
     cd ${test_tmpdir}/osdata
-    if test -f usr/lib/modules/3.6.0/vmlinuz; then
-        bootdir=usr/lib/modules/3.6.0
+    kver=3.6.0
+    if test -f usr/lib/modules/${kver}/vmlinuz; then
+        bootdir=usr/lib/modules/${kver}
     else
         if test -d usr/lib/ostree-boot; then
             bootdir=usr/lib/ostree-boot
@@ -483,10 +485,10 @@ os_repository_new_commit ()
     fi
     rm ${bootdir}/*
     kernel_path=${bootdir}/vmlinuz
-    initramfs_path=${bootdir}/initramfs
+    initramfs_path=${bootdir}/initramfs.img
     if [[ $bootdir != usr/lib/modules/* ]]; then
-        kernel_path=${kernel_path}-3.6.0
-        initramfs_path=${initramfs_path}-3.6.0
+        kernel_path=${kernel_path}-${kver}
+        initramfs_path=${bootdir}/initramfs-${kver}.img
     fi
     echo "new: a kernel ${boot_checksum_iteration}" > ${kernel_path}
     echo "new: an initramfs ${boot_checksum_iteration}" > ${initramfs_path}
