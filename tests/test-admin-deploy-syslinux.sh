@@ -39,10 +39,10 @@ for test_bootdir in "boot" "usr/lib/ostree-boot"; do
     assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
     assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* quiet'
     assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
-    assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0 'an initramfs'
+    assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0.img 'an initramfs'
     # kernel/initrams should also be in the tree's /boot with the checksum
     assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/$test_bootdir/vmlinuz-3.6.0-${bootcsum} 'a kernel'
-    assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/$test_bootdir/initramfs-3.6.0-${bootcsum} 'an initramfs'
+    assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/$test_bootdir/initramfs-3.6.0.img-${bootcsum} 'an initramfs'
     assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
     assert_file_has_content sysroot/ostree/boot.1/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
     ${CMD_PREFIX} ostree admin status
@@ -64,7 +64,7 @@ rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmast
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
-assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0 'an initramfs'
+assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0.img 'an initramfs'
 # Note this bootcsum shouldn't be the modules one
 assert_not_streq "${bootcsum}" "${usrlib_modules_bootcsum}"
 echo "ok kernel in /usr/lib/modules and /usr/lib/ostree-boot"
