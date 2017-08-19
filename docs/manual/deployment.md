@@ -45,7 +45,7 @@ distinguish it from the concept of a deployment.
 
 First, the tree must include a kernel (and optionally an initramfs).  The
 current standard locations for these are `/usr/lib/modules/$kver/vmlinuz` and
-`/usr/lib/modules/$kver/initramfs`.  The "boot checksum" will be computed
+`/usr/lib/modules/$kver/initramfs.img`.  The "boot checksum" will be computed
 automatically.  This follows the current Fedora kernel layout, and is
 the current recommended path.  However, older versions of libostree don't
 support this; you may need to also put kernels in the previous (legacy)

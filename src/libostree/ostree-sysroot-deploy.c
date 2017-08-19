@@ -994,13 +994,27 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
   g_clear_object (&in);
   (void) close (fd); fd = -1;
 
-  /* Look for an initramfs, but it's optional */
-  if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "initramfs", &fd, error))
-    return FALSE;
+  /* Look for an initramfs, but it's optional; since there wasn't any precedent
+   * for this, let's be a bit conservative and support both `initramfs.img` and
+   * `initramfs`.
+   */
+  const char *initramfs_paths[] = {"initramfs.img", "initramfs"};
+  const char *initramfs_path = NULL;
+  for (guint i = 0; i < G_N_ELEMENTS(initramfs_paths); i++)
+    {
+      initramfs_path = initramfs_paths[i];
+      if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, initramfs_path, &fd, error))
+        return FALSE;
+      if (fd != -1)
+        break;
+      else
+        initramfs_path = NULL;
+    }
   if (fd != -1)
     {
-      ret_layout->initramfs_srcpath = g_strdup ("initramfs");
-      ret_layout->initramfs_namever = g_strdup_printf ("initramfs-%s", kver);
+      g_assert (initramfs_path);
+      ret_layout->initramfs_srcpath = g_strdup (initramfs_path);
+      ret_layout->initramfs_namever = g_strdup_printf ("initramfs-%s.img", kver);
       in = g_unix_input_stream_new (fd, FALSE);
       if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
         return FALSE;
@@ -1108,8 +1122,9 @@ get_kernel_from_tree_legacy_layouts (int                  deployment_dfd,
       g_assert (initramfs_checksum != NULL);
       if (strcmp (kernel_checksum, initramfs_checksum) != 0)
         return glnx_throw (error, "Mismatched kernel checksum vs initrd");
-      ret_layout->bootcsum = g_steal_pointer (&kernel_checksum);
     }
+
+  ret_layout->bootcsum = g_steal_pointer (&kernel_checksum);
 
   *out_layout = g_steal_pointer (&ret_layout);
   return TRUE;
