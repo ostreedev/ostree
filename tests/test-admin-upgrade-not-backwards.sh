@@ -61,7 +61,7 @@ assert_file_has_content upgrade-err.txt 'chronologically older'
 currev=$(ostree --repo=sysroot/ostree/repo rev-parse testos:${ref})
 assert_not_streq ${newrev} ${currev}
 assert_streq ${origrev} ${currev}
-assert_not_has_file sysroot/ostree/repo/$(ostree_checksum_to_relative_object_path sysroot/ostree/repo ${tscheck_checksum})
+assert_not_has_file sysroot/ostree/repo/$tscheck_fileobjpath
 
 echo 'ok upgrade will not go backwards'
 
