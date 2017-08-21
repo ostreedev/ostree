@@ -53,7 +53,7 @@ assert_not_streq ${origrev} ${newrev}
 cd ${test_tmpdir}
 tscheck_checksum=$(ostree_file_path_to_checksum testos-repo ${ref} /usr/share/test-pull-ts-check.txt)
 tscheck_filez_objpath=$(ostree_checksum_to_relative_object_path testos-repo ${tscheck_checksum})
-assert_has_file testos-repo/${tscheck_fileobjpath}
+assert_has_file testos-repo/${tscheck_filez_objpath}
 if ${CMD_PREFIX} ostree admin upgrade --os=testos 2>upgrade-err.txt; then
     assert_not_reached 'upgrade unexpectedly succeeded'
 fi
