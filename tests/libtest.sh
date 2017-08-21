@@ -550,6 +550,14 @@ ostree_file_path_to_checksum() {
     $CMD_PREFIX ostree --repo=$repo ls -C $ref $path | awk '{ print $5 }'
 }
 
+# Given an object checksum, print its relative file path
+ostree_checksum_to_relative_object_path() {
+    repo=$1
+    checksum=$2
+    if grep -Eq -e '^mode=archive' ${repo}/config; then suffix=z; else suffix=''; fi
+    echo objects/${checksum:0:2}/${checksum:2}.file${suffix}
+}
+
 # Given a path to a file in a repo for a ref, print the (relative) path to its
 # object
 ostree_file_path_to_relative_object_path() {
@@ -558,7 +566,7 @@ ostree_file_path_to_relative_object_path() {
     path=$3
     checksum=$(ostree_file_path_to_checksum $repo $ref $path)
     test -n "${checksum}"
-    echo objects/${checksum:0:2}/${checksum:2}.file
+    ostree_checksum_to_relative_object_path ${repo} ${checksum}
 }
 
 # Given a path to a file in a repo for a ref, print the path to its object

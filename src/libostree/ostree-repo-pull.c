@@ -104,6 +104,7 @@ typedef struct {
   GBytes           *summary_data_sig;
   GVariant         *summary;
   GHashTable       *summary_deltas_checksums;
+  GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
@@ -136,6 +137,7 @@ typedef struct {
   guint             n_fetched_localcache_metadata;
   guint             n_fetched_localcache_content;
 
+  gboolean          timestamp_check; /* Verify commit timestamps */
   int               maxdepth;
   guint64           start_time;
 
@@ -1645,6 +1647,33 @@ scan_commit_object (OtPullData                 *pull_data,
     {
       g_prefix_error (error, "Commit %s: ", checksum);
       goto out;
+    }
+
+  if (pull_data->timestamp_check)
+    {
+      /* We don't support timestamp checking while recursing right now */
+      g_assert (ref);
+      g_assert_cmpint (recursion_depth, ==, 0);
+      const char *orig_rev = NULL;
+      if (!g_hash_table_lookup_extended (pull_data->ref_original_commits,
+                                         ref, NULL, (void**)&orig_rev))
+        g_assert_not_reached ();
+
+      g_autoptr(GVariant) orig_commit = NULL;
+      if (orig_rev)
+        {
+          if (!ostree_repo_load_commit (pull_data->repo, orig_rev,
+                                        &orig_commit, NULL, error))
+            {
+              g_prefix_error (error, "Reading %s for timestamp-check: ", ref->ref_name);
+              goto out;
+            }
+
+          guint64 orig_ts = ostree_commit_get_timestamp (orig_commit);
+          guint64 new_ts = ostree_commit_get_timestamp (commit);
+          if (!_ostree_compare_timestamps (orig_rev, orig_ts, checksum, new_ts, error))
+            goto out;
+        }
     }
 
   /* If we found a legacy transaction flag, assume all commits are partial */
@@ -3199,6 +3228,7 @@ initiate_request (OtPullData                 *pull_data,
  *   * disable-static-deltas (b): Do not use static deltas
  *   * require-static-deltas (b): Require static deltas
  *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
+ *   * timestamp-check (b): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
  *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
  *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
  *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
@@ -3275,10 +3305,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "http-headers", "@a(ss)", &pull_data->extra_headers);
       (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
       (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
+      (void) g_variant_lookup (options, "timestamp-check", "b", &pull_data->timestamp_check);
     }
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
+  g_return_val_if_fail (!pull_data->timestamp_check || pull_data->maxdepth == 0, FALSE);
   g_return_val_if_fail (!opt_collection_refs_set ||
                         (refs_to_fetch == NULL && override_commit_ids == NULL), FALSE);
   if (refs_to_fetch && override_commit_ids)
@@ -3322,6 +3354,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->summary_deltas_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                                (GDestroyNotify)g_free,
                                                                (GDestroyNotify)g_free);
+  pull_data->ref_original_commits = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
+                                                           (GDestroyNotify)NULL,
+                                                           (GDestroyNotify)g_variant_unref);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->fetched_detached_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -3923,6 +3958,24 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               ref_with_collection = ostree_collection_ref_dup (ref);
             }
 
+          /* If we have timestamp checking enabled, find the current value of
+           * the ref, and store its timestamp in the hash map, to check later.
+           */
+          if (pull_data->timestamp_check)
+            {
+              g_autofree char *from_rev = NULL;
+              if (!ostree_repo_resolve_rev (pull_data->repo, ref_with_collection->ref_name, TRUE,
+                                            &from_rev, error))
+                goto out;
+              /* Explicitly store NULL if there's no previous revision. We do
+               * this so we can assert() if we somehow didn't find a ref in the
+               * hash at all.  Note we don't copy the collection-ref, so the
+               * lifetime of this hash must be equal to `requested_refs_to_fetch`.
+               */
+              g_hash_table_insert (pull_data->ref_original_commits, ref_with_collection,
+                                   g_steal_pointer (&from_rev));
+            }
+
           g_hash_table_replace (updated_requested_refs_to_fetch,
                                 g_steal_pointer (&ref_with_collection),
                                 g_steal_pointer (&contents));
@@ -4223,6 +4276,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->fetched_detached_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->ref_original_commits, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
