@@ -1081,7 +1081,7 @@ gboolean ostree_repo_prune_from_reachable (OstreeRepo             *self,
 /**
  * OstreeRepoPullFlags:
  * @OSTREE_REPO_PULL_FLAGS_NONE: No special options for pull
- * @OSTREE_REPO_PULL_FLAGS_MIRROR: Write out refs suitable for mirrors
+ * @OSTREE_REPO_PULL_FLAGS_MIRROR: Write out refs suitable for mirrors and fetch all refs if none requested
  * @OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY: Fetch only the commit metadata
  * @OSTREE_REPO_PULL_FLAGS_UNTRUSTED: Don't trust local remote
  * @OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES: Since 2017.7.  Reject writes of content objects with modes outside of 0775.

@@ -103,7 +103,12 @@ Boston, MA 02111-1307, USA.
                 <term><option>--mirror</option></term>
 
                 <listitem><para>
-                    Write refs suitable for a mirror.
+                    Write refs suitable for a mirror, i.e. refs are stored in the
+                    <literal>heads/</literal> directory rather than the
+                    <literal>remotes/</literal> directory. This makes the target repo
+                    suitable to be exported for other clients to pull from as an ostree
+                    remote. If no specific refs are specified, all refs will be fetched (the
+                    remote must have a summary file present).
                 </para></listitem>
             </varlistentry>
 
