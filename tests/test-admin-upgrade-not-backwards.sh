@@ -52,8 +52,8 @@ newrev=$(ostree --repo=${test_tmpdir}/testos-repo rev-parse ${ref})
 assert_not_streq ${origrev} ${newrev}
 cd ${test_tmpdir}
 tscheck_checksum=$(ostree_file_path_to_checksum testos-repo ${ref} /usr/share/test-pull-ts-check.txt)
-tscheck_fileobjpath=$(ostree_checksum_to_relative_object_path testos-repo ${tscheck_checksum})
-assert_has_file testos-repo/${tscheck_fileobjpath}
+tscheck_filez_objpath=$(ostree_checksum_to_relative_object_path testos-repo ${tscheck_checksum})
+assert_has_file testos-repo/${tscheck_filez_objpath}
 if ${CMD_PREFIX} ostree admin upgrade --os=testos 2>upgrade-err.txt; then
     assert_not_reached 'upgrade unexpectedly succeeded'
 fi
@@ -61,7 +61,8 @@ assert_file_has_content upgrade-err.txt 'chronologically older'
 currev=$(ostree --repo=sysroot/ostree/repo rev-parse testos:${ref})
 assert_not_streq ${newrev} ${currev}
 assert_streq ${origrev} ${currev}
-assert_not_has_file sysroot/ostree/repo/$tscheck_fileobjpath
+tscheck_file_objpath=$(ostree_checksum_to_relative_object_path sysroot/ostree/repo ${tscheck_checksum})
+assert_not_has_file sysroot/ostree/repo/${tscheck_file_objpath}
 
 echo 'ok upgrade will not go backwards'
 
