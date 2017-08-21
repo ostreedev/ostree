@@ -1545,7 +1545,7 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
           g_ptr_array_add (new_deployments, g_object_ref (deployment));
         }
 
-      if (!added_new)
+      if ((!added_new) && is_merge_or_booted)
         {
           g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
           added_new = TRUE;
