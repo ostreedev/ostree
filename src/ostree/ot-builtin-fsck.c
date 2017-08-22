@@ -252,6 +252,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
 
   g_autoptr(GHashTable) all_collection_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
   if (!ostree_repo_list_collection_refs (repo, NULL, &all_collection_refs,
+                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
                                          cancellable, error))
     return FALSE;
 

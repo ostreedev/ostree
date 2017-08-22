@@ -560,7 +560,7 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
       if (!ostree_parse_refspec (refspec_prefix, &remote, &ref_prefix, error))
         return FALSE;
 
-      if (remote)
+      if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES) && remote)
         {
           prefix_path = glnx_strjoina ("refs/remotes/", remote, "/");
           path = glnx_strjoina (prefix_path, ref_prefix);
@@ -620,32 +620,35 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
                                    ret_all_refs, cancellable, error))
         return FALSE;
 
-      g_string_truncate (base_path, 0);
-
-      if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter, error))
-        return FALSE;
-
-      while (TRUE)
+      if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES))
         {
-          struct dirent *dent;
-          glnx_fd_close int remote_dfd = -1;
+          g_string_truncate (base_path, 0);
 
-          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
-            return FALSE;
-          if (!dent)
-            break;
-
-          if (dent->d_type != DT_DIR)
-            continue;
-
-          if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &remote_dfd, error))
+          if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter, error))
             return FALSE;
 
-          if (!enumerate_refs_recurse (self, dent->d_name, flags, NULL, remote_dfd, base_path,
-                                       remote_dfd, ".",
-                                       ret_all_refs,
-                                       cancellable, error))
-            return FALSE;
+          while (TRUE)
+            {
+              struct dirent *dent;
+              glnx_fd_close int remote_dfd = -1;
+
+              if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+                return FALSE;
+              if (!dent)
+                break;
+
+              if (dent->d_type != DT_DIR)
+                continue;
+
+              if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &remote_dfd, error))
+                return FALSE;
+
+              if (!enumerate_refs_recurse (self, dent->d_name, flags, NULL, remote_dfd, base_path,
+                                           remote_dfd, ".",
+                                           ret_all_refs,
+                                           cancellable, error))
+                return FALSE;
+            }
         }
     }
 
@@ -1101,27 +1104,33 @@ _ostree_repo_update_collection_refs (OstreeRepo        *self,
  * @self: Repo
  * @match_collection_id: (nullable): If non-%NULL, only list refs from this collection
  * @out_all_refs: (out) (element-type OstreeCollectionRef utf8): Mapping from collection–ref to checksum
+ * @flags: Options controlling listing behavior
  * @cancellable: Cancellable
  * @error: Error
  *
- * List all local and mirrored refs, mapping them to the commit checksums they
- * currently point to in @out_all_refs. If @match_collection_id is specified,
- * the results will be limited to those with an equal collection ID.
+ * List all local, mirrored, and remote refs, mapping them to the commit
+ * checksums they currently point to in @out_all_refs. If @match_collection_id
+ * is specified, the results will be limited to those with an equal collection
+ * ID.
  *
  * #OstreeCollectionRefs are guaranteed to be returned with their collection ID
  * set to a non-%NULL value; so no refs from `refs/heads` will be listed if no
  * collection ID is configured for the repository
  * (ostree_repo_get_collection_id()).
  *
+ * If you want to exclude refs from `refs/remotes`, use
+ * %OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES in @flags.
+ *
  * Returns: %TRUE on success, %FALSE otherwise
  * Since: 2017.8
  */
 gboolean
-ostree_repo_list_collection_refs (OstreeRepo    *self,
-                                  const char    *match_collection_id,
-                                  GHashTable   **out_all_refs,
-                                  GCancellable  *cancellable,
-                                  GError       **error)
+ostree_repo_list_collection_refs (OstreeRepo                 *self,
+                                  const char                 *match_collection_id,
+                                  GHashTable                 **out_all_refs,
+                                  OstreeRepoListRefsExtFlags flags,
+                                  GCancellable               *cancellable,
+                                  GError                     **error)
 {
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
   g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), FALSE);
@@ -1129,6 +1138,10 @@ ostree_repo_list_collection_refs (OstreeRepo    *self,
 
   if (match_collection_id != NULL && !ostree_validate_collection_id (match_collection_id, error))
     return FALSE;
+
+  const gchar *refs_dirs[] = { "refs/mirrors", "refs/remotes", NULL };
+  if (flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES)
+    refs_dirs[1] = NULL;
 
   g_autoptr(GHashTable) ret_all_refs = NULL;
 
@@ -1150,7 +1163,7 @@ ostree_repo_list_collection_refs (OstreeRepo    *self,
       if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE, &refs_heads_dfd, error))
         return FALSE;
 
-      if (!enumerate_refs_recurse (self, NULL, OSTREE_REPO_LIST_REFS_EXT_NONE,
+      if (!enumerate_refs_recurse (self, NULL, flags,
                                    main_collection_id, refs_heads_dfd, base_path,
                                    refs_heads_dfd, ".",
                                    ret_all_refs, cancellable, error))
@@ -1159,36 +1172,65 @@ ostree_repo_list_collection_refs (OstreeRepo    *self,
 
   g_string_truncate (base_path, 0);
 
-  gboolean refs_mirrors_exists = FALSE;
-  if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, "refs/mirrors",
-                                     &dfd_iter, &refs_mirrors_exists, error))
-    return FALSE;
-
-  while (refs_mirrors_exists)
+  for (const char **iter = refs_dirs; iter && *iter; iter++)
     {
-      struct dirent *dent;
-      glnx_fd_close int collection_dfd = -1;
-
-      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
-        return FALSE;
-      if (!dent)
-        break;
-
-      if (dent->d_type != DT_DIR)
-        continue;
-
-      if (match_collection_id != NULL && g_strcmp0 (match_collection_id, dent->d_name) != 0)
-        continue;
-
-      if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &collection_dfd, error))
+      const char *refs_dir = *iter;
+      gboolean refs_dir_exists = FALSE;
+      if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, refs_dir,
+                                         &dfd_iter, &refs_dir_exists, error))
         return FALSE;
 
-      if (!enumerate_refs_recurse (self, NULL, OSTREE_REPO_LIST_REFS_EXT_NONE,
-                                   dent->d_name, collection_dfd, base_path,
-                                   collection_dfd, ".",
-                                   ret_all_refs,
-                                   cancellable, error))
-        return FALSE;
+      while (refs_dir_exists)
+        {
+          struct dirent *dent;
+          glnx_fd_close int subdir_fd = -1;
+          const gchar *current_collection_id;
+          g_autofree gchar *remote_collection_id = NULL;
+
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+            return FALSE;
+          if (!dent)
+            break;
+
+          if (dent->d_type != DT_DIR)
+            continue;
+
+          if (g_strcmp0 (refs_dir, "refs/mirrors") == 0)
+            {
+              if (match_collection_id != NULL && g_strcmp0 (match_collection_id, dent->d_name) != 0)
+                continue;
+              else
+                current_collection_id = dent->d_name;
+            }
+          else /* refs_dir = "refs/remotes" */
+            {
+              g_autoptr(GError) local_error = NULL;
+              if (!ostree_repo_get_remote_option (self, dent->d_name, "collection-id",
+                                                  NULL, &remote_collection_id, &local_error) ||
+                  !ostree_validate_collection_id (remote_collection_id, &local_error))
+                {
+                  g_debug ("Ignoring remote ‘%s’ due to no valid collection ID being configured for it: %s",
+                           dent->d_name, local_error->message);
+                  g_clear_error (&local_error);
+                  continue;
+                }
+
+              if (match_collection_id != NULL && g_strcmp0 (match_collection_id, current_collection_id) != 0)
+                continue;
+              else
+                  current_collection_id = remote_collection_id;
+            }
+
+          if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &subdir_fd, error))
+            return FALSE;
+
+          if (!enumerate_refs_recurse (self, NULL, flags,
+                                       current_collection_id, subdir_fd, base_path,
+                                       subdir_fd, ".",
+                                       ret_all_refs,
+                                       cancellable, error))
+            return FALSE;
+        }
     }
 
   ot_transfer_out_value (out_all_refs, &ret_all_refs);
