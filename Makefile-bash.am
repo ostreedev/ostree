@@ -19,3 +19,6 @@
 
 completionsdir = @BASH_COMPLETIONSDIR@
 dist_completions_DATA = bash/ostree
+
+# Allow the distcheck install under $prefix test to pass
+AM_DISTCHECK_CONFIGURE_FLAGS += BASH_COMPLETIONSDIR='$${datadir}/bash-completion/completions'
