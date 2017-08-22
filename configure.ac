@@ -88,16 +88,13 @@ AS_IF([test "$YACC" != "bison -y"], [AC_MSG_ERROR([bison not found but required]
 
 PKG_PROG_PKG_CONFIG
 
-# PKG_CHECK_VAR added to pkg-config 0.28
-m4_define_default(
-    [PKG_CHECK_VAR],
-    [AC_ARG_VAR([$1], [value of $3 for $2, overriding pkg-config])
-     AS_IF([test -z "$$1"], [$1=`$PKG_CONFIG --variable="$3" "$2"`])
-     AS_IF([test -n "$$1"], [$4], [$5])])
-
-PKG_CHECK_VAR(BASH_COMPLETIONSDIR, [bash-completion], [completionsdir], ,
-  BASH_COMPLETIONSDIR="${datadir}/bash-completion/completions")
-AC_SUBST(BASH_COMPLETIONSDIR)
+AC_ARG_WITH([bashcompletionsdir],
+  AS_HELP_STRING([--with-bashcompletionsdir=DIR], [Directory for bash-completion scripts]),
+  [],
+  [with_bashcompletionsdir=$($PKG_CONFIG --variable=completionsdir bash-completion)])
+AS_IF([test "x$with_systemdsystemunitdir" != "xno"], [
+  AC_SUBST([bashcompletionsdir], [$with_bashcompletionsdir])
+])
 
 AM_PATH_GLIB_2_0(,,AC_MSG_ERROR([GLib not found]))
 
