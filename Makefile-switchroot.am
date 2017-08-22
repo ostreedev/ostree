@@ -68,4 +68,7 @@ ostree_system_generator_SOURCES = src/switchroot/ostree-mount-util.h \
 ostree_system_generator_CPPFLAGS = $(AM_CPPFLAGS) -I$(srcdir)/libglnx -I$(srcdir)/src/libostree
 ostree_system_generator_CFLAGS = $(AM_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 ostree_system_generator_LDADD = $(AM_LDFLAGS) libglnx.la libostree-1.la $(OT_INTERNAL_GIO_UNIX_LIBS)
+
+# Allow the distcheck install under $prefix test to pass
+AM_DISTCHECK_CONFIGURE_FLAGS += --with-systemdsystemgeneratordir='$${libdir}/systemd/system-generators'
 endif
