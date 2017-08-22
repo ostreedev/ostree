@@ -475,10 +475,12 @@ gboolean      ostree_repo_list_refs (OstreeRepo       *self,
  * OstreeRepoListRefsExtFlags:
  * @OSTREE_REPO_LIST_REFS_EXT_NONE: No flags.
  * @OSTREE_REPO_LIST_REFS_EXT_ALIASES: Only list aliases.  Since: 2017.10
+ * @OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES: Exclude remote refs.  Since: 2017.11
  */
 typedef enum {
   OSTREE_REPO_LIST_REFS_EXT_NONE = 0,
-  OSTREE_REPO_LIST_REFS_EXT_ALIASES = 1,
+  OSTREE_REPO_LIST_REFS_EXT_ALIASES = (1 << 0),
+  OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES = (1 << 1),
 } OstreeRepoListRefsExtFlags;
 
 _OSTREE_PUBLIC
@@ -1185,11 +1187,12 @@ gchar *ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
                                                    GError       **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_repo_list_collection_refs (OstreeRepo    *self,
-                                           const char    *match_collection_id,
-                                           GHashTable   **out_all_refs,
-                                           GCancellable  *cancellable,
-                                           GError       **error);
+gboolean ostree_repo_list_collection_refs (OstreeRepo                 *self,
+                                           const char                 *match_collection_id,
+                                           GHashTable                 **out_all_refs,
+                                           OstreeRepoListRefsExtFlags flags,
+                                           GCancellable               *cancellable,
+                                           GError                     **error);
 
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 

@@ -82,7 +82,9 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   /* And check refs which *are* in a collection. */
-  if (!ostree_repo_list_collection_refs (repo, NULL, &collection_refs, cancellable, error))
+  if (!ostree_repo_list_collection_refs (repo, NULL, &collection_refs,
+                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
+                                         cancellable, error))
     goto out;
 
   g_hash_table_iter_init (&hashiter, collection_refs);

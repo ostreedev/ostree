@@ -57,7 +57,7 @@ assert_file_has_content refs "^apps-remote:app1$"
 assert_file_has_content refs "^os-remote:os/amd64/master$"
 
 ${CMD_PREFIX} ostree --repo=local refs --collections | wc -l > refscount
-assert_file_has_content refscount "^0$"
+assert_file_has_content refscount "^2$"
 
 # Create a local mirror repository where we pull the branches *in mirror mode* from the two remotes.
 # This should pull them into refs/mirrors, since the remotes advertise a collection ID.

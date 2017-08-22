@@ -4914,7 +4914,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
    * backwards compatibility). */
   {
     g_autoptr(GHashTable) collection_refs = NULL;
-    if (!ostree_repo_list_collection_refs (self, NULL, &collection_refs, cancellable, error))
+    if (!ostree_repo_list_collection_refs (self, NULL, &collection_refs,
+                                           OSTREE_REPO_LIST_REFS_EXT_NONE, cancellable, error))
       return FALSE;
 
     gsize collection_map_size = 0;
