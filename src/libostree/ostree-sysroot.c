@@ -256,7 +256,7 @@ ensure_sysroot_fd (OstreeSysroot          *self,
  * Access a file descriptor that refers to the root directory of this
  * sysroot.  ostree_sysroot_load() must have been invoked prior to
  * calling this function.
- * 
+ *
  * Returns: A file descriptor valid for the lifetime of @self
  */
 int
@@ -276,7 +276,7 @@ _ostree_sysroot_bump_mtime (OstreeSysroot *self,
       glnx_set_prefix_error_from_errno (error, "%s", "futimens");
       return FALSE;
     }
-  return TRUE; 
+  return TRUE;
 }
 
 /**
@@ -894,7 +894,7 @@ ostree_sysroot_get_subbootversion (OstreeSysroot   *self)
 /**
  * ostree_sysroot_get_booted_deployment:
  * @self: Sysroot
- * 
+ *
  * Returns: (transfer none): The currently booted deployment, or %NULL if none
  */
 OstreeDeployment *
@@ -1377,7 +1377,7 @@ lock_in_thread (GTask            *task,
  * @cancellable: Cancellable
  * @callback: Callback
  * @user_data: User data
- * 
+ *
  * An asynchronous version of ostree_sysroot_lock().
  */
 void
@@ -1395,7 +1395,7 @@ ostree_sysroot_lock_async (OstreeSysroot         *self,
  * @self: Self
  * @result: Result
  * @error: Error
- * 
+ *
  * Call when ostree_sysroot_lock_async() is ready.
  */
 gboolean
@@ -1413,7 +1413,7 @@ ostree_sysroot_lock_finish (OstreeSysroot         *self,
  * @osname: Name group of operating system checkouts
  * @cancellable: Cancellable
  * @error: Error
- * 
+ *
  * Initialize the directory structure for an "osname", which is a
  * group of operating system deployments, with a shared `/var`.  One
  * is required for generating a deployment.
@@ -1505,36 +1505,34 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
                                         GCancellable       *cancellable,
                                         GError            **error)
 {
-  gboolean ret = FALSE;
-  guint i;
-  OstreeDeployment *booted_deployment = NULL;
-  g_autoptr(GPtrArray) deployments = NULL;
-  g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
-  const gboolean postclean = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN) == 0;
-  OstreeSysrootWriteDeploymentsOpts write_opts = { .do_postclean = postclean };
-  gboolean retain = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
-  const gboolean make_default = !((flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT) > 0);
-  gboolean added_new = FALSE;
+  const gboolean postclean =
+    (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN) == 0;
+  const gboolean retain =
+    (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
+  const gboolean make_default =
+    !((flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT) > 0);
 
-  deployments = ostree_sysroot_get_deployments (sysroot);
-  booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
+  g_autoptr(GPtrArray) deployments = ostree_sysroot_get_deployments (sysroot);
+  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
 
   if (osname == NULL && booted_deployment)
     osname = ostree_deployment_get_osname (booted_deployment);
 
+  gboolean added_new = FALSE;
+  g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
   if (make_default)
     {
       g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
       added_new = TRUE;
     }
 
-  for (i = 0; i < deployments->len; i++)
+  for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
-      const gboolean is_merge_or_booted = 
+      const gboolean is_merge_or_booted =
         ostree_deployment_equal (deployment, booted_deployment) ||
         ostree_deployment_equal (deployment, merge_deployment);
-      
+
       /* Keep deployments with different osnames, as well as the
        * booted and merge deployments
        */
@@ -1562,13 +1560,12 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
       added_new = TRUE;
     }
 
+  OstreeSysrootWriteDeploymentsOpts write_opts = { .do_postclean = postclean };
   if (!ostree_sysroot_write_deployments_with_options (sysroot, new_deployments, &write_opts,
                                                       cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /* Deploy a copy of @target_deployment */
