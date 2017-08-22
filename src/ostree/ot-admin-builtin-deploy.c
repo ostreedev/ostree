@@ -57,64 +57,55 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  const char *refspec;
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeSysroot) sysroot = NULL;
-  g_autoptr(GKeyFile) origin = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
-  g_autoptr(OstreeDeployment) new_deployment = NULL;
-  g_autoptr(OstreeDeployment) merge_deployment = NULL;
-  g_autofree char *revision = NULL;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 
-  context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
+  g_autoptr(GOptionContext) context =
+    g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
 
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 2)
     {
       ot_util_usage_error (context, "REF/REV must be specified", error);
-      goto out;
+      return FALSE;
     }
 
-  refspec = argv[1];
+  const char *refspec = argv[1];
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
-  if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
-    goto out;
+    return FALSE;
+  OstreeRepo *repo = ostree_sysroot_repo (sysroot);
 
   /* Find the currently booted deployment, if any; we will ensure it
    * is present in the new deployment list.
    */
   if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
                                                      cancellable, error))
-    {
-      g_prefix_error (error, "Looking for booted deployment: ");
-      goto out;
-    }
+    return glnx_prefix_error (error, "Looking for booted deployment");
 
+  g_autoptr(GKeyFile) origin = NULL;
   if (opt_origin_path)
     {
       origin = g_key_file_new ();
-      
+
       if (!g_key_file_load_from_file (origin, opt_origin_path, 0, error))
-        goto out;
+        return FALSE;
     }
   else
     {
       origin = ostree_sysroot_origin_new_from_refspec (sysroot, refspec);
     }
 
+  g_autofree char *revision = NULL;
   if (!ostree_repo_resolve_rev (repo, refspec, FALSE, &revision, error))
-    goto out;
+    return FALSE;
 
-  merge_deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
+  g_autoptr(OstreeDeployment) merge_deployment =
+    ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
 
   /* Here we perform cleanup of any leftover data from previous
    * partial failures.  This avoids having to call
@@ -124,10 +115,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
    * we find it.
    */
   if (!ostree_sysroot_prepare_cleanup (sysroot, cancellable, error))
-    {
-      g_prefix_error (error, "Performing initial cleanup: ");
-      goto out;
-    }
+    return glnx_prefix_error (error, "Performing initial cleanup");
 
   kargs = _ostree_kernel_args_new ();
 
@@ -137,7 +125,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   if (opt_kernel_proc_cmdline)
     {
       if (!_ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
-        goto out;
+        return FALSE;
     }
   else if (merge_deployment)
     {
@@ -160,21 +148,20 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   {
     g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
 
+  g_autoptr(OstreeDeployment) new_deployment = NULL;
     if (!ostree_sysroot_deploy_tree (sysroot,
                                      opt_osname, revision, origin,
                                      merge_deployment, kargs_strv,
                                      &new_deployment,
                                      cancellable, error))
-      goto out;
+      return FALSE;
   }
 
   if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname,
                                                new_deployment, merge_deployment,
                                                opt_retain ? OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN : 0,
                                                cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
