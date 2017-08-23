@@ -33,6 +33,9 @@
 #include <glib/gi18n.h>
 
 static gboolean opt_retain;
+static gboolean opt_retain_pending;
+static gboolean opt_retain_rollback;
+static gboolean opt_not_as_default;
 static char **opt_kernel_argv;
 static char **opt_kernel_argv_append;
 static gboolean opt_kernel_proc_cmdline;
@@ -47,7 +50,10 @@ static char *opt_origin_path;
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
   { "origin-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_origin_path, "Specify origin file", "FILENAME" },
-  { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployment", NULL },
+  { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployments", NULL },
+  { "retain-pending", 0, 0, G_OPTION_ARG_NONE, &opt_retain_pending, "Do not delete pending deployments", NULL },
+  { "retain-rollback", 0, 0, G_OPTION_ARG_NONE, &opt_retain_rollback, "Do not delete rollback deployments", NULL },
+  { "not-as-default", 0, 0, G_OPTION_ARG_NONE, &opt_not_as_default, "Append rather than prepend new deployment", NULL },
   { "karg-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_proc_cmdline, "Import current /proc/cmdline", NULL },
   { "karg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "NAME=VALUE" },
   { "karg-append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "NAME=VALUE" },
@@ -145,22 +151,28 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
       _ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
     }
 
-  {
-    g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
-
   g_autoptr(OstreeDeployment) new_deployment = NULL;
-    if (!ostree_sysroot_deploy_tree (sysroot,
-                                     opt_osname, revision, origin,
-                                     merge_deployment, kargs_strv,
-                                     &new_deployment,
-                                     cancellable, error))
-      return FALSE;
-  }
+  g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
+  if (!ostree_sysroot_deploy_tree (sysroot, opt_osname, revision, origin, merge_deployment,
+                                   kargs_strv, &new_deployment, cancellable, error))
+    return FALSE;
 
-  if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname,
-                                               new_deployment, merge_deployment,
-                                               opt_retain ? OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN : 0,
-                                               cancellable, error))
+  OstreeSysrootSimpleWriteDeploymentFlags flags = 0;
+  if (opt_retain)
+    flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN;
+  else
+    {
+      if (opt_retain_pending)
+        flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING;
+      if (opt_retain_rollback)
+        flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK;
+    }
+
+  if (opt_not_as_default)
+    flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT;
+
+  if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname, new_deployment,
+                                               merge_deployment, flags, cancellable, error))
     return FALSE;
 
   return TRUE;
