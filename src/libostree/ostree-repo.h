@@ -724,6 +724,7 @@ typedef struct {
   guint disable_xattrs : 1;
   guint reserved : 31;
 
+  /* 4 byte hole on 64 bit arches */
   guint64 timestamp_secs;
 
   guint unused_uint[8];
@@ -838,6 +839,7 @@ typedef struct {
   gboolean force_copy; /* Since: 2017.6 */
   gboolean bareuseronly_dirs; /* Since: 2017.7 */
   gboolean unused_bools[5];
+  /* 4 byte hole on 64 bit */
 
   const char *subpath;
 
@@ -972,6 +974,7 @@ gboolean ostree_repo_traverse_commit_union (OstreeRepo         *repo,
 
 struct _OstreeRepoCommitTraverseIter {
   gboolean initialized;
+  /* 4 byte hole on 64 bit */
   gpointer dummy[10];
   char dummy_checksum_data[(OSTREE_SHA256_STRING_LEN+1)*2];
 };
@@ -1059,6 +1062,8 @@ gboolean ostree_repo_prune (OstreeRepo        *self,
 
 struct _OstreeRepoPruneOptions {
   OstreeRepoPruneFlags flags;
+
+  /* 4 byte hole on 64 bit */
 
   GHashTable *reachable; /* Set<GVariant> (object names) */
 

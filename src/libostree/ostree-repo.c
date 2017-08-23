@@ -47,6 +47,33 @@
 #include <sys/file.h>
 #include <sys/statvfs.h>
 
+/* ABI Size checks for ostree-repo.h, only for LP64 systems;
+ * https://en.wikipedia.org/wiki/64-bit_computing#64-bit_data_models
+ */
+#if __SIZEOF_POINTER__ == 8 && __SIZEOF_LONG__ == 8 && __SIZEOF_INT__ == 4
+G_STATIC_ASSERT(sizeof(OstreeRepoTransactionStats) == sizeof(int) * 4 + 8 * 5);
+G_STATIC_ASSERT(sizeof(OstreeRepoImportArchiveOptions) == sizeof(int) * 9 + 4 + sizeof(void*) * 8);
+G_STATIC_ASSERT(sizeof(OstreeRepoExportArchiveOptions) == sizeof(int) * 9 + 4 + 8 + sizeof(void*) * 8);
+G_STATIC_ASSERT(sizeof(OstreeRepoCheckoutAtOptions) ==
+                sizeof(OstreeRepoCheckoutMode) + sizeof(OstreeRepoCheckoutOverwriteMode) +
+                sizeof(int)*6 +
+                sizeof(int)*5 +
+                sizeof(int) +
+                sizeof(void*)*2 +
+                sizeof(int)*6 +
+                sizeof(void*)*7);
+G_STATIC_ASSERT(sizeof(OstreeRepoCommitTraverseIter) ==
+                sizeof(int) + sizeof(int) +
+                sizeof(void*) * 10 +
+                130 + 6);  /* 6 byte hole */
+G_STATIC_ASSERT(sizeof(OstreeRepoPruneOptions) ==
+                sizeof(OstreeRepoPruneFlags) +
+                4 +
+                sizeof(void*) +
+                sizeof(int) * 12 +
+                sizeof(void*) * 7);
+#endif
+
 /**
  * SECTION:ostree-repo
  * @title: Content-addressed object store
