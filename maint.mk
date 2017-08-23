@@ -105,7 +105,8 @@ my_distdir = $(PACKAGE)-$(VERSION)
 
 # Prevent programs like 'sort' from considering distinct strings to be equal.
 # Doing it here saves us from having to set LC_ALL elsewhere in this file.
-export LC_ALL = C
+# NOTE: commented out for https://github.com/ostreedev/ostree/issues/1101
+# export LC_ALL = C
 
 ## --------------- ##
 ## Sanity checks.  ##
