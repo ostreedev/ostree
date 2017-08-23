@@ -26,7 +26,7 @@ fi
 
 . $(dirname $0)/libtest.sh
 
-echo "1..20"
+echo "1..21"
 
 setup_test_repository "bare"
 
@@ -154,3 +154,13 @@ $OSTREE checkout partial partial-checkout
 cd partial-checkout
 assert_file_has_content subdir/original "original"
 echo "ok tar partial commit contents"
+
+cd ${test_tmpdir}
+tar -cf empty.tar.gz -T /dev/null
+uid=$(id -u)
+gid=$(id -g)
+$OSTREE commit -b tar-empty --tar-autocreate-parents \
+        --owner-uid=${uid} --owner-gid=${gid} --tree=tar=empty.tar.gz
+$OSTREE ls tar-empty > ls.txt
+assert_file_has_content ls.txt "d00755 ${uid} ${gid}      0 /"
+echo "ok tar autocreate with owner uid/gid"

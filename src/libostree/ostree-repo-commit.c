@@ -2335,6 +2335,10 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   return serialized_tree;
 }
 
+/* If any filtering is set up, perform it, and return modified file info in
+ * @out_modified_info. Note that if no filtering is applied, @out_modified_info
+ * will simply be another reference (with incremented refcount) to @file_info.
+ */
 OstreeRepoCommitFilterResult
 _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     OstreeRepoCommitModifier *modifier,
@@ -2408,24 +2412,6 @@ ptrarray_path_join (GPtrArray  *path)
     }
 
   return g_string_free (path_buf, FALSE);
-}
-
-static gboolean
-apply_commit_filter (OstreeRepo               *self,
-                     OstreeRepoCommitModifier *modifier,
-                     const char               *relpath,
-                     GFileInfo                *file_info,
-                     GFileInfo               **out_modified_info)
-{
-  if (modifier == NULL ||
-      (modifier->filter == NULL &&
-       (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) == 0))
-    {
-      *out_modified_info = g_object_ref (file_info);
-      return OSTREE_REPO_COMMIT_FILTER_ALLOW;
-    }
-
-  return _ostree_repo_commit_modifier_apply (self, modifier, relpath, file_info, out_modified_info);
 }
 
 static gboolean
@@ -2564,7 +2550,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   if (modifier != NULL)
     child_relpath = ptrarray_path_join (path);
 
-  filter_result = apply_commit_filter (self, modifier, child_relpath, child_info, &modified_info);
+  filter_result = _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
 
   if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
@@ -2733,7 +2719,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
         relpath = ptrarray_path_join (path);
 
       g_autoptr(GFileInfo) modified_info = NULL;
-      filter_result = apply_commit_filter (self, modifier, relpath, child_info, &modified_info);
+      filter_result = _ostree_repo_commit_modifier_apply (self, modifier, relpath, child_info, &modified_info);
 
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
@@ -2812,7 +2798,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
     {
       relpath = ptrarray_path_join (path);
 
-      filter_result = apply_commit_filter (self, modifier, relpath, child_info, &modified_info);
+      filter_result = _ostree_repo_commit_modifier_apply (self, modifier, relpath, child_info, &modified_info);
     }
   else
     {
