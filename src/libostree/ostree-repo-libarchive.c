@@ -861,7 +861,11 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
       g_file_info_set_attribute_uint32 (fi, "unix::gid", 0);
       g_file_info_set_attribute_uint32 (fi, "unix::mode", DEFAULT_DIRMODE);
 
-      if (!aic_ensure_parent_dir_with_file_info (&aictx, mtree, "/", fi, NULL,
+      g_autoptr(GFileInfo) mfi = NULL;
+      (void)_ostree_repo_commit_modifier_apply (self, modifier, "/",
+                                                fi, &mfi);
+
+      if (!aic_ensure_parent_dir_with_file_info (&aictx, mtree, "/", mfi, NULL,
                                                  cancellable, error))
         goto out;
     }
