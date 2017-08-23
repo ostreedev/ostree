@@ -185,9 +185,6 @@ ostree_run (int    argc,
             }
         }
 
-      help = g_option_context_get_help (context, FALSE, NULL);
-      g_printerr ("%s", help);
-
       goto out;
     }
 
