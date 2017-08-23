@@ -20,12 +20,12 @@
 
 set -euo pipefail
 
-echo "1..20"
-
 . $(dirname $0)/libtest.sh
 
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "uboot"
+
+extra_admin_tests=1
 
 . $(dirname $0)/admin-test.sh
 

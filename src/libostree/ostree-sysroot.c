@@ -1487,6 +1487,12 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
  * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN is
  * specified, then all current deployments will be kept.
  *
+ * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING is
+ * specified, then pending deployments will be kept.
+ *
+ * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK is
+ * specified, then rollback deployments will be kept.
+ *
  * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT is
  * specified, then instead of prepending, the new deployment will be
  * added right after the booted or merge deployment, instead of first.
@@ -1507,10 +1513,14 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
 {
   const gboolean postclean =
     (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN) == 0;
-  const gboolean retain =
-    (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
   const gboolean make_default =
     !((flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT) > 0);
+  const gboolean retain_pending =
+    (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING) > 0;
+  const gboolean retain_rollback =
+    (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK) > 0;
+  gboolean retain =
+    (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
 
   g_autoptr(GPtrArray) deployments = ostree_sysroot_get_deployments (sysroot);
   OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
@@ -1526,34 +1536,54 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
       added_new = TRUE;
     }
 
+  /* without a booted and a merge deployment, retain_pending/rollback become meaningless;
+   * let's just retain all deployments in that case */
+  if (!booted_deployment && !merge_deployment && (retain_pending || retain_rollback))
+    retain = TRUE;
+
+  /* tracks when we come across the booted deployment */
+  gboolean before_booted = TRUE;
+  gboolean before_merge = TRUE;
   for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
-      const gboolean is_merge_or_booted =
-        ostree_deployment_equal (deployment, booted_deployment) ||
-        ostree_deployment_equal (deployment, merge_deployment);
+      const gboolean osname_matches =
+        (osname == NULL || g_str_equal (ostree_deployment_get_osname (deployment), osname));
+      const gboolean is_booted = ostree_deployment_equal (deployment, booted_deployment);
+      const gboolean is_merge = ostree_deployment_equal (deployment, merge_deployment);
 
-      /* Keep deployments with different osnames, as well as the
-       * booted and merge deployments
+      if (is_booted)
+        before_booted = FALSE;
+      if (is_merge)
+        before_merge = FALSE;
+
+      /* use the booted deployment as the "crossover" point between pending and rollback
+       * deployments, fall back on merge deployment */
+      const gboolean passed_crossover = booted_deployment ? !before_booted : !before_merge;
+
+      /* Retain deployment if:
+       *   - we're explicitly asked to, or
+       *   - the deployment is for another osname, or
+       *   - we're keeping pending deployments and this is a pending deployment, or
+       *   - this is the merge or boot deployment, or
+       *   - we're keeping rollback deployments and this is a rollback deployment
        */
-      if (retain ||
-          (osname != NULL && strcmp (ostree_deployment_get_osname (deployment), osname) != 0) ||
-          is_merge_or_booted)
-        {
-          g_ptr_array_add (new_deployments, g_object_ref (deployment));
-        }
+      if (retain
+          || !osname_matches
+          || (retain_pending && !passed_crossover)
+          || (is_booted || is_merge)
+          || (retain_rollback && passed_crossover))
+        g_ptr_array_add (new_deployments, g_object_ref (deployment));
 
-      if ((!added_new) && is_merge_or_booted)
+      /* add right after booted/merge deployment */
+      if (!added_new && passed_crossover)
         {
           g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
           added_new = TRUE;
         }
     }
 
-  /* In this non-default case , an improvement in the future would be
-   * to put the new deployment right after the current default in the
-   * order.
-   */
+  /* add it last if no crossover defined (or it's the first deployment in the sysroot) */
   if (!added_new)
     {
       g_ptr_array_add (new_deployments, g_object_ref (new_deployment));

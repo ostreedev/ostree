@@ -253,6 +253,9 @@ _ostree_admin_deploy() {
     local boolean_options="
         $main_boolean_options
         --retain
+        --retain-pending
+        --retain-rollback
+        --not-as-default
         --karg-proc-cmdline
     "
 

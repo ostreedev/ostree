@@ -19,6 +19,8 @@
 
 set -euo pipefail
 
+echo "1..$((21 + ${extra_admin_tests:-0}))"
+
 function validate_bootloader() {
     cd ${test_tmpdir};
     bootloader=""
@@ -130,6 +132,8 @@ rm -r  sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/testdirectory
 rm sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
 ln -s /ENOENT sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/a-new-broken-symlink
 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
+assert_not_has_dir sysroot/boot/loader.0
+assert_has_dir sysroot/boot/loader.1
 linktarget=$(readlink sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-broken-symlink)
 test "${linktarget}" = /ENOENT
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-release 'NAME=TestOS'
@@ -138,8 +142,35 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-c
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/aconfigfile
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
-
 echo "ok deploy with modified /etc"
+
+# we now have 5 deployments, let's bring that back down to 1
+for i in $(seq 4); do
+  ${CMD_PREFIX} ostree admin undeploy 0
+done
+assert_has_file sysroot/boot/loader/entries/ostree-testos-0.conf
+assert_not_has_file sysroot/boot/loader/entries/ostree-testos-1.conf
+assert_not_has_file sysroot/boot/loader/entries/ostree-otheros-1.conf
+${CMD_PREFIX} ostree admin deploy --not-as-default --os=otheros testos:testos/buildmaster/x86_64-runtime
+assert_has_dir sysroot/boot/loader.0
+assert_not_has_dir sysroot/boot/loader.1
+assert_has_file sysroot/boot/loader/entries/ostree-testos-0.conf
+assert_has_file sysroot/boot/loader/entries/ostree-otheros-1.conf
+${CMD_PREFIX} ostree admin status
+validate_bootloader
+
+echo "ok deploy --not-as-default"
+
+${CMD_PREFIX} ostree admin deploy --retain-rollback --os=otheros testos:testos/buildmaster/x86_64-runtime
+assert_not_has_dir sysroot/boot/loader.0
+assert_has_dir sysroot/boot/loader.1
+assert_has_file sysroot/boot/loader/entries/ostree-otheros-0.conf
+assert_has_file sysroot/boot/loader/entries/ostree-testos-1.conf
+assert_has_file sysroot/boot/loader/entries/ostree-otheros-2.conf
+${CMD_PREFIX} ostree admin status
+validate_bootloader
+
+echo "ok deploy --retain-rollback"
 
 os_repository_new_commit
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
@@ -153,7 +184,7 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-r
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/a-new-default-config-file "a new default config file"
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/new-default-dir/moo "a new default dir and file"
 # And persist /etc changes from before
-assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
+assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/aconfigfile
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
