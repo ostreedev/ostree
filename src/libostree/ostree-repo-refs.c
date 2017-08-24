@@ -1215,10 +1215,10 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
                   continue;
                 }
 
-              if (match_collection_id != NULL && g_strcmp0 (match_collection_id, current_collection_id) != 0)
+              if (match_collection_id != NULL && g_strcmp0 (match_collection_id, remote_collection_id) != 0)
                 continue;
               else
-                  current_collection_id = remote_collection_id;
+                current_collection_id = remote_collection_id;
             }
 
           if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &subdir_fd, error))
