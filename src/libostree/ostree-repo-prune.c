@@ -335,7 +335,7 @@ ostree_repo_prune (OstreeRepo        *self,
       g_autoptr(GHashTable) all_collection_refs = NULL;  /* (element-type OstreeChecksumRef utf8) */
 
       if (!ostree_repo_list_collection_refs (self, NULL, &all_collection_refs,
-                                             cancellable, error))
+                                             OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES, cancellable, error))
         return FALSE;
 
       GLNX_HASH_TABLE_FOREACH_V (all_collection_refs, const char*, checksum)

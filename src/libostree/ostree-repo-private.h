@@ -396,11 +396,12 @@ gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
                                              const gchar  *collection_id,
                                              GError      **error);
 
-gboolean      ostree_repo_list_collection_refs (OstreeRepo    *self,
-                                                const char    *match_collection_id,
-                                                GHashTable   **out_all_refs,
-                                                GCancellable  *cancellable,
-                                                GError       **error);
+gboolean      ostree_repo_list_collection_refs (OstreeRepo                  *self,
+                                                const char                  *match_collection_id,
+                                                GHashTable                 **out_all_refs,
+                                                OstreeRepoListRefsExtFlags   flags,
+                                                GCancellable                *cancellable,
+                                                GError                     **error);
 
 void          ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
                                                           const OstreeCollectionRef *ref,

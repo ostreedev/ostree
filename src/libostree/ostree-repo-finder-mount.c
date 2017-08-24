@@ -314,7 +314,9 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
 
           g_autoptr(GHashTable) repo_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
 
-          if (!ostree_repo_list_collection_refs (repo, refs[i]->collection_id, &repo_refs, cancellable, &local_error))
+          if (!ostree_repo_list_collection_refs (repo, refs[i]->collection_id, &repo_refs,
+                                                 OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
+                                                 cancellable, &local_error))
             {
               g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as its refs could not be listed: %s",
                        refs[i]->collection_id, refs[i]->ref_name, mount_name, local_error->message);

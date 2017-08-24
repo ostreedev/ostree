@@ -64,7 +64,8 @@ do_ref_with_collections (OstreeRepo    *repo,
 
   if (!ostree_repo_list_collection_refs (repo,
                                          (!opt_create) ? refspec_prefix : NULL,
-                                         &refs, cancellable, error))
+                                         &refs, OSTREE_REPO_LIST_REFS_EXT_NONE,
+                                         cancellable, error))
     goto out;
 
   if (!opt_delete && !opt_create)
