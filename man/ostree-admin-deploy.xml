@@ -90,6 +90,30 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--retain-pending</option></term>
+
+                <listitem><para>
+                    Do not delete pending deployments.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--retain-rollback</option></term>
+
+                <listitem><para>
+                    Do not delete rollback deployments.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--not-as-default</option></term>
+
+                <listitem><para>
+                    Append rather than prepend new deployment.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--karg-proc-cmdline</option></term>
 
                 <listitem><para>
