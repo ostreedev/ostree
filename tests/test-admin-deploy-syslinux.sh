@@ -24,7 +24,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
-extra_admin_tests=2
+extra_admin_tests=3
 
 . $(dirname $0)/admin-test.sh
 

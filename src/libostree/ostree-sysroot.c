@@ -1551,7 +1551,6 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
         (osname == NULL || g_str_equal (ostree_deployment_get_osname (deployment), osname));
       const gboolean is_booted = ostree_deployment_equal (deployment, booted_deployment);
       const gboolean is_merge = ostree_deployment_equal (deployment, merge_deployment);
-      const gboolean is_last = (i == (deployments->len - 1));
 
       if (is_booted)
         before_booted = FALSE;
@@ -1576,15 +1575,20 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
           || (retain_rollback && passed_crossover))
         g_ptr_array_add (new_deployments, g_object_ref (deployment));
 
-      /* add right after booted/merge deployment (or last if neither) */
-      if (!added_new && (passed_crossover || is_last))
+      /* add right after booted/merge deployment */
+      if (!added_new && passed_crossover)
         {
           g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
           added_new = TRUE;
         }
     }
 
-  g_assert (added_new);
+  /* add it last if no crossover defined (or it's the first deployment in the sysroot) */
+  if (!added_new)
+    {
+      g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+      added_new = TRUE;
+    }
 
   OstreeSysrootWriteDeploymentsOpts write_opts = { .do_postclean = postclean };
   if (!ostree_sysroot_write_deployments_with_options (sysroot, new_deployments, &write_opts,
