@@ -47,6 +47,7 @@ static gboolean opt_link_checkout_speedup;
 static gboolean opt_skip_if_unchanged;
 static gboolean opt_tar_autocreate_parents;
 static gboolean opt_no_xattrs;
+static char *opt_selinux_policy;
 static gboolean opt_canonical_permissions;
 static char **opt_trees;
 static gint opt_owner_uid = -1;
@@ -93,6 +94,7 @@ static GOptionEntry options[] = {
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
   { "canonical-permissions", 0, 0, G_OPTION_ARG_NONE, &opt_canonical_permissions, "Canonicalize permissions in the same way bare-user does for hardlinked files", NULL },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
+  { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
@@ -395,6 +397,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   g_autoptr(GHashTable) mode_overrides = NULL;
   g_autoptr(GHashTable) skip_list = NULL;
   OstreeRepoCommitModifierFlags flags = 0;
+  g_autoptr(OstreeSePolicy) policy = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;
   struct CommitFilterData filter_data = { 0, };
@@ -459,12 +462,26 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
       || opt_owner_gid >= 0
       || opt_statoverride_file != NULL
       || opt_skiplist_file != NULL
-      || opt_no_xattrs)
+      || opt_no_xattrs
+      || opt_selinux_policy)
     {
       filter_data.mode_adds = mode_adds;
       filter_data.skip_list = skip_list;
       modifier = ostree_repo_commit_modifier_new (flags, commit_filter,
                                                   &filter_data, NULL);
+      if (opt_selinux_policy)
+        {
+          glnx_fd_close int rootfs_dfd = -1;
+          if (!glnx_opendirat (AT_FDCWD, opt_selinux_policy, TRUE, &rootfs_dfd, error))
+            {
+              glnx_prefix_error (error, "selinux-policy: ");
+              goto out;
+            }
+          policy = ostree_sepolicy_new_at (rootfs_dfd, cancellable, error);
+          if (!policy)
+            goto out;
+          ostree_repo_commit_modifier_set_sepolicy (modifier, policy);
+        }
     }
 
   if (opt_parent)
