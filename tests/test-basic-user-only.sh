@@ -72,21 +72,23 @@ $CMD_PREFIX ostree --repo=repo checkout -U -H content-with-dir-world-writable di
 assert_file_has_mode dir-co/worldwritable-dir 775
 echo "ok didn't make world-writable dir"
 
-cd ${test_tmpdir}
-rm repo-input -rf
-rm repo -rf
-ostree_repo_init repo init --mode=bare-user-only
-ostree_repo_init repo-input init --mode=bare-user
-rm files -rf && mkdir files
-echo afile > files/afile
-ln -s afile files/afile-link
-$CMD_PREFIX ostree --repo=repo-input commit --canonical-permissions -b testtree --tree=dir=files
-afile_relobjpath=$(ostree_file_path_to_relative_object_path repo-input testtree /afile)
-afile_link_relobjpath=$(ostree_file_path_to_relative_object_path repo-input testtree /afile-link)
-$CMD_PREFIX ostree pull-local --repo=repo repo-input
-assert_files_hardlinked repo/${afile_relobjpath} repo-input/${afile_relobjpath}
-if files_are_hardlinked repo/${afile_link_relobjpath} repo-input/${afile_link_relobjpath}; then
-    assert_not_reached "symlinks hardlinked across bare-user?"
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
+    rm repo-input -rf
+    rm repo -rf
+    ostree_repo_init repo init --mode=bare-user-only
+    ostree_repo_init repo-input init --mode=bare-user
+    rm files -rf && mkdir files
+    echo afile > files/afile
+    ln -s afile files/afile-link
+    $CMD_PREFIX ostree --repo=repo-input commit --canonical-permissions -b testtree --tree=dir=files
+    afile_relobjpath=$(ostree_file_path_to_relative_object_path repo-input testtree /afile)
+    afile_link_relobjpath=$(ostree_file_path_to_relative_object_path repo-input testtree /afile-link)
+    $CMD_PREFIX ostree pull-local --repo=repo repo-input
+    assert_files_hardlinked repo/${afile_relobjpath} repo-input/${afile_relobjpath}
+    if files_are_hardlinked repo/${afile_link_relobjpath} repo-input/${afile_link_relobjpath}; then
+        assert_not_reached "symlinks hardlinked across bare-user?"
+    fi
+    $OSTREE fsck -q
+    echo "ok hardlink pull from bare-user"
 fi
-$OSTREE fsck -q
-echo "ok hardlink pull from bare-user"

@@ -106,19 +106,23 @@ echo "ok shortened checksum"
 (cd repo && ${CMD_PREFIX} ostree rev-parse test2)
 echo "ok repo-in-cwd"
 
-rm test-repo -rf
-ostree_repo_init test-repo --mode=bare-user
-ostree_repo_init test-repo --mode=bare-user
-rm test-repo -rf
-echo "ok repo-init on existing repo"
+if ! skip_one_without_user_xattrs; then
+    rm test-repo -rf
+    ostree_repo_init test-repo --mode=bare-user
+    ostree_repo_init test-repo --mode=bare-user
+    rm test-repo -rf
+    echo "ok repo-init on existing repo"
+fi
 
-rm test-repo -rf
-ostree_repo_init test-repo --mode=bare-user
-${CMD_PREFIX} ostree --repo=test-repo refs
-rm -rf test-repo/tmp
-${CMD_PREFIX} ostree --repo=test-repo refs
-assert_has_dir test-repo/tmp
-echo "ok autocreate tmp"
+if ! skip_one_without_user_xattrs; then
+    rm test-repo -rf
+    ostree_repo_init test-repo --mode=bare-user
+    ${CMD_PREFIX} ostree --repo=test-repo refs
+    rm -rf test-repo/tmp
+    ${CMD_PREFIX} ostree --repo=test-repo refs
+    assert_has_dir test-repo/tmp
+    echo "ok autocreate tmp"
+fi
 
 rm checkout-test2 -rf
 $OSTREE checkout test2 checkout-test2
@@ -262,27 +266,31 @@ cd ${test_tmpdir}
 assert_file_has_content diff-test2-2 'M */four$'
 echo "ok diff file changing type"
 
-cd ${test_tmpdir}
-mkdir repo2
-# Use a different mode to test hardlinking metadata only
-if grep -q 'mode=archive' repo/config || is_bare_user_only_repo repo; then
-    opposite_mode=bare-user
-else
-    opposite_mode=archive
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
+    mkdir repo2
+    # Use a different mode to test hardlinking metadata only
+    if grep -q 'mode=archive' repo/config || is_bare_user_only_repo repo; then
+        opposite_mode=bare-user
+    else
+        opposite_mode=archive
+    fi
+    ostree_repo_init repo2 --mode=$opposite_mode
+    ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
+    test2_commitid=$(${CMD_PREFIX} ostree --repo=repo rev-parse test2)
+    test2_commit_relpath=/objects/${test2_commitid:0:2}/${test2_commitid:2}.commit
+    assert_files_hardlinked repo/${test2_commit_relpath} repo2/${test2_commit_relpath}
+    echo "ok pull-local (hardlinking metadata)"
 fi
-ostree_repo_init repo2 --mode=$opposite_mode
-${CMD_PREFIX} ostree --repo=repo2 pull-local repo
-test2_commitid=$(${CMD_PREFIX} ostree --repo=repo rev-parse test2)
-test2_commit_relpath=/objects/${test2_commitid:0:2}/${test2_commitid:2}.commit
-assert_files_hardlinked repo/${test2_commit_relpath} repo2/${test2_commit_relpath}
-echo "ok pull-local (hardlinking metadata)"
 
-cd ${test_tmpdir}
-rm repo2 -rf && mkdir repo2
-ostree_repo_init repo2 --mode=$opposite_mode
-${CMD_PREFIX} ostree --repo=repo2 pull-local --bareuseronly-files repo test2
-${CMD_PREFIX} ostree --repo=repo2 fsck -q
-echo "ok pull-local --bareuseronly-files"
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
+    rm repo2 -rf && mkdir repo2
+    ostree_repo_init repo2 --mode=$opposite_mode
+    ${CMD_PREFIX} ostree --repo=repo2 pull-local --bareuseronly-files repo test2
+    ${CMD_PREFIX} ostree --repo=repo2 fsck -q
+    echo "ok pull-local --bareuseronly-files"
+fi
 
 # This is mostly a copy of the suid test in test-basic-user-only.sh,
 # but for the `pull --bareuseronly-files` case.
@@ -303,11 +311,13 @@ fi
 assert_file_has_content err.txt 'object.*\.file: invalid mode.*with bits 040.*'
 echo "ok pull-local (bareuseronly files)"
 
-cd ${test_tmpdir}
-${CMD_PREFIX} ostree --repo=repo2 checkout ${CHECKOUT_U_ARG} test2 test2-checkout-from-local-clone
-cd test2-checkout-from-local-clone
-assert_file_has_content yet/another/tree/green 'leaf'
-echo "ok local clone checkout"
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
+    ${CMD_PREFIX} ostree --repo=repo2 checkout ${CHECKOUT_U_ARG} test2 test2-checkout-from-local-clone
+    cd test2-checkout-from-local-clone
+    assert_file_has_content yet/another/tree/green 'leaf'
+    echo "ok local clone checkout"
+fi
 
 $OSTREE checkout -U test2 checkout-user-test2
 echo "ok user checkout"
@@ -496,24 +506,28 @@ cd ${test_tmpdir}
 $OSTREE checkout test2 --allow-noent --subpath /enoent 2>/dev/null
 echo "ok subdir noent"
 
-cd ${test_tmpdir}
-mkdir repo3
-ostree_repo_init repo3 --mode=bare-user
-${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
-${CMD_PREFIX} ostree --repo=repo3 rev-parse aremote/test2
-echo "ok pull-local with --remote arg"
-
-cd ${test_tmpdir}
-${CMD_PREFIX} ostree --repo=repo3 prune
-find repo3/objects -name '*.commit' > objlist-before-prune
-rm repo3/refs/heads/* repo3/refs/mirrors/* repo3/refs/remotes/* -rf
-${CMD_PREFIX} ostree --repo=repo3 prune --refs-only
-find repo3/objects -name '*.commit' > objlist-after-prune
-if cmp -s objlist-before-prune objlist-after-prune; then
-    fatal "Prune didn't delete anything!"
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
+    mkdir repo3
+    ostree_repo_init repo3 --mode=bare-user
+    ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
+    ${CMD_PREFIX} ostree --repo=repo3 rev-parse aremote/test2
+    echo "ok pull-local with --remote arg"
 fi
-rm repo3 objlist-before-prune objlist-after-prune -rf
-echo "ok prune"
+
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
+    ${CMD_PREFIX} ostree --repo=repo3 prune
+    find repo3/objects -name '*.commit' > objlist-before-prune
+    rm repo3/refs/heads/* repo3/refs/mirrors/* repo3/refs/remotes/* -rf
+    ${CMD_PREFIX} ostree --repo=repo3 prune --refs-only
+    find repo3/objects -name '*.commit' > objlist-after-prune
+    if cmp -s objlist-before-prune objlist-after-prune; then
+        fatal "Prune didn't delete anything!"
+    fi
+    rm repo3 objlist-before-prune objlist-after-prune -rf
+    echo "ok prune"
+fi
 
 cd ${test_tmpdir}
 rm repo3 -rf
@@ -597,14 +611,16 @@ $OSTREE show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
 assert_file_has_content test2-meta "HANCOCK"
 echo "ok metadata commit with strings"
 
-cd ${test_tmpdir}
-rm repo2 -rf
-mkdir repo2
-ostree_repo_init repo2 --mode=bare-user
-${CMD_PREFIX} ostree --repo=repo2 pull-local repo
-${CMD_PREFIX} ostree --repo=repo2 show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
-assert_file_has_content test2-meta "HANCOCK"
-echo "ok pull-local after commit metadata"
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
+    rm repo2 -rf
+    mkdir repo2
+    ostree_repo_init repo2 --mode=bare-user
+    ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
+    ${CMD_PREFIX} ostree --repo=repo2 show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
+    assert_file_has_content test2-meta "HANCOCK"
+    echo "ok pull-local after commit metadata"
+fi
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo remote --set=tls-permissive=true add aremote http://remote.example.com/repo testos/buildmaster/x86_64-runtime

@@ -511,6 +511,17 @@ os_repository_new_commit ()
     cd ${test_tmpdir}
 }
 
+# Usage: if ! skip_one_without_user_xattrs; then ... more tests ...; fi
+skip_one_without_user_xattrs () {
+    touch test-xattrs
+    if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+        echo "ok # SKIP - this test requires xattr support"
+        return 0
+    else
+        return 1
+    fi
+}
+
 skip_without_user_xattrs () {
     touch test-xattrs
     setfattr -n user.testvalue -v somevalue test-xattrs || \

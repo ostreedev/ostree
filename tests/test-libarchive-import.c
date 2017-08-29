@@ -35,6 +35,7 @@ typedef struct {
   int fd;
   int fd_empty;
   char *tmpd;
+  GError *skip_all;
 } TestData;
 
 static void
@@ -136,7 +137,13 @@ test_data_init (TestData *td)
     g_assert_cmpint (0, ==, mkdir ("repo", 0755));
 
     ostree_repo_create (td->repo, OSTREE_REPO_MODE_BARE_USER, NULL, &error);
-    g_assert_no_error (error);
+
+    /* G_IO_ERROR_NOT_SUPPORTED probably means no extended attribute support */
+    if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
+      g_propagate_prefixed_error (&td->skip_all, g_steal_pointer (&error),
+                                  "Unable to set up repository: ");
+    else
+      g_assert_no_error (error);
   }
 }
 
@@ -169,6 +176,12 @@ test_libarchive_noautocreate_empty (gconstpointer data)
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
 
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      return;
+    }
+
   test_archive_setup (td->fd_empty, a);
 
   (void)ostree_repo_import_archive_to_mtree (td->repo, &opts, a, mtree, NULL, NULL, &error);
@@ -184,6 +197,12 @@ test_libarchive_autocreate_empty (gconstpointer data)
   g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
+
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      return;
+    }
 
   opts.autocreate_parents = 1;
 
@@ -202,6 +221,12 @@ test_libarchive_error_device_file (gconstpointer data)
   g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
+
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      return;
+    }
 
   test_archive_setup (td->fd, a);
 
@@ -276,6 +301,12 @@ test_libarchive_ignore_device_file (gconstpointer data)
   if (skip_if_no_xattr (td))
     goto out;
 
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      goto out;
+    }
+
   test_archive_setup (td->fd, a);
 
   opts.ignore_unsupported_content = TRUE;
@@ -338,6 +369,12 @@ test_libarchive_ostree_convention (gconstpointer data)
   if (skip_if_no_xattr (td))
     goto out;
 
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      goto out;
+    }
+
   test_archive_setup (td->fd, a);
 
   opts.autocreate_parents = TRUE;
@@ -381,6 +418,12 @@ test_libarchive_xattr_callback (gconstpointer data)
 
   if (skip_if_no_xattr (td))
     goto out;
+
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      goto out;
+    }
 
   modifier = ostree_repo_commit_modifier_new (0, NULL, NULL, NULL);
   ostree_repo_commit_modifier_set_xattr_callback (modifier, xattr_cb,
@@ -436,6 +479,12 @@ entry_pathname_test_helper (gconstpointer data, gboolean on)
 
   if (skip_if_no_xattr (td))
     goto out;
+
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      goto out;
+    }
 
   modifier = ostree_repo_commit_modifier_new (0, NULL, NULL, NULL);
   ostree_repo_commit_modifier_set_xattr_callback (modifier, path_cb,
@@ -499,6 +548,12 @@ test_libarchive_selinux (gconstpointer data)
 
   if (skip_if_no_xattr (td))
     goto out;
+
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      goto out;
+    }
 
   {
     glnx_unref_object GFile *root = g_file_new_for_path ("/");
