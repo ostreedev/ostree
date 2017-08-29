@@ -1,5 +1,3 @@
-#!/bin/bash
-#
 # bash completion file for ostree commands
 #
 # This script provides completion of:
