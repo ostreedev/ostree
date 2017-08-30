@@ -123,24 +123,30 @@ squash_trailing_slashes (char *path)
     *endp = '\0';
 }
 
+/* Like archive_entry_stat(), but since some archives only store the permission
+ * mode bits in hardlink entries, so let's just make it into a regular file.
+ * Yes, this hack will work even if it's a hardlink to a symlink.
+ */
+static void
+read_archive_entry_stat (struct archive_entry *entry,
+                         struct stat          *stbuf)
+{
+  const struct stat *st = archive_entry_stat (entry);
+
+  *stbuf = *st;
+  if (archive_entry_hardlink (entry))
+    stbuf->st_mode |= S_IFREG;
+}
+
+/* Create a GFileInfo from archive_entry_stat() */
 static GFileInfo *
 file_info_from_archive_entry (struct archive_entry *entry)
 {
-  const struct stat *st = archive_entry_stat (entry);
-  struct stat st_copy;
+  struct stat stbuf;
+  read_archive_entry_stat (entry, &stbuf);
 
-  /* Some archives only store the permission mode bits in hardlink entries, so
-   * let's just make it into a regular file. Yes, this hack will work even if
-   * it's a hardlink to a symlink. */
-  if (archive_entry_hardlink (entry))
-    {
-      st_copy = *st;
-      st_copy.st_mode |= S_IFREG;
-      st = &st_copy;
-    }
-
-  g_autoptr(GFileInfo) info = _ostree_stbuf_to_gfileinfo (st);
-  if (S_ISLNK (st->st_mode))
+  g_autoptr(GFileInfo) info = _ostree_stbuf_to_gfileinfo (&stbuf);
+  if (S_ISLNK (stbuf.st_mode))
     g_file_info_set_attribute_byte_string (info, "standard::symlink-target",
                                            archive_entry_symlink (entry));
 
@@ -247,7 +253,18 @@ aic_get_final_path (OstreeRepoArchiveImportContext *ctx,
                     const char  *path,
                     GError     **error)
 {
-  if (ctx->opts->use_ostree_convention)
+  if (ctx->opts->translate_pathname)
+    {
+      struct stat stbuf;
+      path = path_relative (path, error);
+      read_archive_entry_stat (ctx->entry, &stbuf);
+      char *ret = ctx->opts->translate_pathname (ctx->repo, &stbuf, path,
+                                                 ctx->opts->translate_pathname_user_data);
+      if (ret)
+        return ret;
+      /* Fall through */
+    }
+  else if (ctx->opts->use_ostree_convention)
     return path_relative_ostree (path, error);
   return g_strdup (path_relative (path, error));
 }
@@ -258,7 +275,6 @@ aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx,
 {
   const char *pathname = archive_entry_pathname (ctx->entry);
   g_autofree char *final = aic_get_final_path (ctx, pathname, error);
-
   if (final == NULL)
     return NULL;
 
@@ -642,17 +658,17 @@ aic_import_entry (OstreeRepoArchiveImportContext *ctx,
                   GCancellable  *cancellable,
                   GError       **error)
 {
-  g_autoptr(GFileInfo) fi = NULL;
-  g_autoptr(OstreeMutableTree) parent = NULL;
   g_autofree char *path = aic_get_final_entry_pathname (ctx, error);
 
   if (path == NULL)
     return FALSE;
 
+  g_autoptr(GFileInfo) fi = NULL;
   if (aic_apply_modifier_filter (ctx, path, &fi)
         == OSTREE_REPO_COMMIT_FILTER_SKIP)
     return TRUE;
 
+  g_autoptr(OstreeMutableTree) parent = NULL;
   if (!aic_get_parent_dir (ctx, path, &parent, cancellable, error))
     return FALSE;
 
@@ -907,18 +923,9 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0, };
 
-#ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL
-  archive_read_support_filter_all (a);
-#else
-  archive_read_support_compression_all (a);
-#endif
-  archive_read_support_format_all (a);
-  if (archive_read_open_filename (a, gs_file_get_path_cached (archive), 8192) != ARCHIVE_OK)
-    {
-      propagate_libarchive_error (error, a);
-      goto out;
-    }
-
+  a = ot_open_archive_read (gs_file_get_path_cached (archive), error);
+  if (!a)
+    goto out;
   opts.autocreate_parents = !!autocreate_parents;
 
   if (!ostree_repo_import_archive_to_mtree (self, &opts, a, mtree, modifier, cancellable, error))

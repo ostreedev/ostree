@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <sys/stat.h>
+
 #include "ostree-core.h"
 #include "ostree-types.h"
 #include "ostree-async-progress.h"
@@ -689,6 +691,31 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
                                                   GError                      **error);
 
 /**
+ * OstreeRepoImportArchiveTranslatePathname:
+ * @repo: Repo
+ * @stbuf: Stat buffer
+ * @src_path: Path in the archive
+ * @user_data: User data
+ *
+ * Possibly change a pathname while importing an archive. If %NULL is returned,
+ * then @src_path will be used unchanged.  Otherwise, return a new pathname which
+ * will be freed via `g_free()`.
+ *
+ * This pathname translation will be performed *before* any processing from an
+ * active `OstreeRepoCommitModifier`. Will be invoked for all directory and file
+ * types, first with outer directories, then their sub-files and directories.
+ *
+ * Note that enabling pathname translation will always override the setting for
+ * `use_ostree_convention`.
+ *
+ * Since: 2017.11
+ */
+typedef char *(*OstreeRepoImportArchiveTranslatePathname) (OstreeRepo     *repo,
+                                                           const struct stat *stbuf,
+                                                           const char     *src_path,
+                                                           gpointer        user_data);
+
+/**
  * OstreeRepoImportArchiveOptions: (skip)
  *
  * An extensible options structure controlling archive import.  Ensure that
@@ -703,7 +730,9 @@ typedef struct {
   guint reserved : 28;
 
   guint unused_uint[8];
-  gpointer unused_ptrs[8];
+  OstreeRepoImportArchiveTranslatePathname translate_pathname;
+  gpointer translate_pathname_user_data;
+  gpointer unused_ptrs[6];
 } OstreeRepoImportArchiveOptions;
 
 _OSTREE_PUBLIC
