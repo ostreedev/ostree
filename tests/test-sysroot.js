@@ -42,6 +42,8 @@ print('1..1')
 
 libtestExec('setup_os_repository archive-z2 syslinux');
 
+GLib.setenv("OSTREE_SYSROOT_DEBUG", "mutable-deployments", true);
+
 let upstreamRepo = OSTree.Repo.new(Gio.File.new_for_path('testos-repo'));
 upstreamRepo.open(null);
 
