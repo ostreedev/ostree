@@ -34,6 +34,7 @@
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree-sepolicy-private.h"
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-checksum-input-stream.h"
 #include "ostree-varint.h"
@@ -2483,6 +2484,16 @@ get_modified_xattrs (OstreeRepo                       *self,
       else if (label)
         {
           g_autoptr(GVariantBuilder) builder = NULL;
+
+          if (ret_xattrs)
+            {
+              /* drop out any existing SELinux policy from the set, so we don't end up
+               * counting it twice in the checksum */
+              g_autoptr(GVariant) new_ret_xattrs = NULL;
+              new_ret_xattrs = _ostree_filter_selinux_xattr (ret_xattrs);
+              g_variant_unref (ret_xattrs);
+              ret_xattrs = g_steal_pointer (&new_ret_xattrs);
+            }
 
           /* ret_xattrs may be NULL */
           builder = ot_util_variant_builder_from_variant (ret_xattrs,

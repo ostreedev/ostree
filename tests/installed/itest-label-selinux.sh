@@ -24,6 +24,7 @@ ostree --repo=/ostree/repo commit -b testbranch --link-checkout-speedup \
        --selinux-policy co --tree=dir=co
 ostree --repo=/ostree/repo ls -X testbranch /usr/bin/foo-a-generic-binary > ls.txt
 assert_file_has_content ls.txt ${oldcon}
+ostree --repo=/ostree/repo fsck
 
 ostree --repo=/ostree/repo refs --delete testbranch
 rm co -rf
