@@ -98,6 +98,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--disjoint-union</option></term>
+
+                <listitem><para>
+                    When layering checkouts, error out if a file would be replaced, but add new files and directories
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--allow-noent</option></term>
 
                 <listitem><para>
