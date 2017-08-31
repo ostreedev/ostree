@@ -37,6 +37,7 @@ static gboolean opt_disable_cache;
 static char *opt_subpath;
 static gboolean opt_union;
 static gboolean opt_union_add;
+static gboolean opt_disjoint_union;
 static gboolean opt_whiteouts;
 static gboolean opt_from_stdin;
 static char *opt_from_file;
@@ -72,6 +73,7 @@ static GOptionEntry options[] = {
   { "subpath", 0, 0, G_OPTION_ARG_FILENAME, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
   { "union-add", 0, 0, G_OPTION_ARG_NONE, &opt_union_add, "Keep existing files/directories, only add new", NULL },
+  { "disjoint-union", 0, 0, G_OPTION_ARG_NONE, &opt_disjoint_union, "When layering checkouts, error out if a file would be replaced, but add new files and directories", NULL },
   { "whiteouts", 0, 0, G_OPTION_ARG_NONE, &opt_whiteouts, "Process 'whiteout' (Docker style) entries", NULL },
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
@@ -99,7 +101,7 @@ process_one_checkout (OstreeRepo           *repo,
    * convenient infrastructure for testing C APIs with data.
    */
   if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks ||
-      opt_union_add || opt_force_copy || opt_bareuseronly_dirs)
+      opt_union_add || opt_force_copy || opt_bareuseronly_dirs || opt_disjoint_union)
     {
       OstreeRepoCheckoutAtOptions options = { 0, };
 
@@ -112,6 +114,18 @@ process_one_checkout (OstreeRepo           *repo,
                        "Cannot specify both --union and --union-add");
           goto out;
         }
+      if (opt_union && opt_disjoint_union)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Cannot specify both --union and --disjoint-union");
+          goto out;
+        }
+      if (opt_union_add && opt_disjoint_union)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Cannot specify both --union-add and --disjoint-union ");
+          goto out;
+        }
       if (opt_require_hardlinks && opt_force_copy)
         {
           glnx_throw (error, "Cannot specify both --require-hardlinks and --force-copy");
@@ -121,6 +135,8 @@ process_one_checkout (OstreeRepo           *repo,
         options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
       else if (opt_union_add)
         options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
+      else if (opt_disjoint_union)
+        options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_DISJOINT_UNION_FILES;
       if (opt_whiteouts)
         options.process_whiteouts = TRUE;
       if (subpath)
