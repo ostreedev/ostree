@@ -654,7 +654,8 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
       {
         if (errno == EEXIST &&
             (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
-             || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES))
+             || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES
+             || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_DISJOINT_UNION_FILES))
           did_exist = TRUE;
         else
           return glnx_throw_errno (error);
