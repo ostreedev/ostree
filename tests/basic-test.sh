@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((70 + ${extra_basic_tests:-0}))"
+echo "1..$((72 + ${extra_basic_tests:-0}))"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -468,6 +468,32 @@ $OSTREE checkout --union-add test-union-add checkout-test-union-add
 assert_file_has_content checkout-test-union-add/union-add-test 'existing file for union add'
 assert_file_has_content checkout-test-union-add/union-add-test2 'another file for union add testing'
 echo "ok checkout union add"
+
+# Create some new files for testing
+cd ${test_tmpdir}
+mkdir disjoint-union-test
+mkdir disjoint-union-test/test_one
+chmod a+w disjoint-union-test/test_one
+echo 'file for add dirs testing' > disjoint-union-test/test_one/test_file
+$OSTREE commit ${COMMIT_ARGS} -b test-disjoint-union --tree=dir=disjoint-union-test
+$OSTREE checkout --disjoint-union test-disjoint-union checkout-test-disjoint-union
+echo "ok adding new directories and new file"
+# Make a new file, and try the checkout again
+echo 'second test file' >  disjoint-union-test/test_one/test_second_file
+$OSTREE commit ${COMMIT_ARGS} -b test-disjoint-union --tree=dir=disjoint-union-test
+# Check out the latest commit, should fail due to presence of existing files
+if $OSTREE checkout --disjoint-union test-disjoint-union checkout-test-disjoint-union 2> err.txt; then
+    assert_not_reached "checking out files unexpectedly succeeded!"
+fi
+assert_file_has_content err.txt 'File exists'
+# Verify that Union mode still functions properly
+rm checkout-test-disjoint-union/test_one/test_file
+echo 'file for testing union mode alongwith disjoint-union mode' > checkout-test-disjoint-union/test_one/test_file
+$OSTREE checkout --union test-disjoint-union checkout-test-disjoint-union
+assert_has_file checkout-test-disjoint-union/test_one/test_second_file
+# This shows the file with same name has been successfully overwriten
+assert_file_has_content checkout-test-disjoint-union/test_one/test_file 'file for add dirs testing'
+echo "ok checkout disjoint union"
 
 cd ${test_tmpdir}
 rm files -rf && mkdir files
