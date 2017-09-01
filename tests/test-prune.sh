@@ -23,7 +23,7 @@ set -euo pipefail
 
 skip_without_user_xattrs
 
-setup_fake_remote_repo1 "archive-z2"
+setup_fake_remote_repo1 "archive"
 
 echo '1..5'
 

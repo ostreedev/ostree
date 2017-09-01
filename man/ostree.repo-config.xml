@@ -76,7 +76,7 @@ Boston, MA 02111-1307, USA.
     <variablelist>
       <varlistentry>
         <term><varname>mode</varname></term>
-        <listitem><para>One of <literal>bare</literal>, <literal>bare-user</literal> or <literal>archive-z2</literal>.  </para></listitem>
+        <listitem><para>One of <literal>bare</literal>, <literal>bare-user</literal> or <literal>archive-z2</literal> (note that <literal>archive</literal> is used everywhere else.)</para></listitem>
       </varlistentry>
 
       <varlistentry>

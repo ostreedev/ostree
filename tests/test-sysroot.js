@@ -40,7 +40,7 @@ function libtestExec(shellCode) {
 
 print('1..1')
 
-libtestExec('setup_os_repository archive-z2 syslinux');
+libtestExec('setup_os_repository archive syslinux');
 
 GLib.setenv("OSTREE_SYSROOT_DEBUG", "mutable-deployments", true);
 

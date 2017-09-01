@@ -37,7 +37,7 @@ static char *opt_collection_id = NULL;
  */
 
 static GOptionEntry options[] = {
-  { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive-z2)", NULL },
+  { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive)", NULL },
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id,
     "Globally unique ID for this repository as an collection of refs for redistribution to other repositories", "COLLECTION-ID" },

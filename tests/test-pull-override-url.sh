@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-setup_fake_remote_repo1 "archive-z2"
+setup_fake_remote_repo1 "archive"
 
 echo '1..1'
 
@@ -34,7 +34,7 @@ gnomerepo_url="$(cat httpd-address)/ostree/gnomerepo"
 mkdir mirror-srv
 cd mirror-srv
 mkdir gnomerepo
-ostree_repo_init gnomerepo --mode "archive-z2"
+ostree_repo_init gnomerepo --mode "archive"
 ${CMD_PREFIX} ostree --repo=gnomerepo remote add --set=gpg-verify=false origin ${gnomerepo_url}
 ${CMD_PREFIX} ostree --repo=gnomerepo pull --mirror --depth=-1 origin main
 
