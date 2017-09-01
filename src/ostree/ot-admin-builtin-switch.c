@@ -63,9 +63,6 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
 
   const char *new_provided_refspec = argv[1];
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    return FALSE;
-
   g_autoptr(OstreeSysrootUpgrader) upgrader =
     ostree_sysroot_upgrader_new_for_os_with_flags (sysroot, opt_osname,
                                                    OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED,

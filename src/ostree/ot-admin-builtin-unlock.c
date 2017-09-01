@@ -65,9 +65,6 @@ ot_admin_builtin_unlock (int argc, char **argv, GCancellable *cancellable, GErro
       goto out;
     }
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
   booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
   if (!booted_deployment)
     {

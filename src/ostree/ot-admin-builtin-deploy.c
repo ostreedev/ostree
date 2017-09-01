@@ -82,8 +82,6 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
 
   const char *refspec = argv[1];
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    return FALSE;
   OstreeRepo *repo = ostree_sysroot_repo (sysroot);
 
   /* Find the currently booted deployment, if any; we will ensure it
