@@ -60,8 +60,6 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
       return FALSE;
     }
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    return FALSE;
   current_deployments = ostree_sysroot_get_deployments (sysroot);
 
   deploy_index_str = argv[1];

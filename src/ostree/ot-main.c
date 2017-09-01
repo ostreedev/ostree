@@ -391,6 +391,9 @@ ostree_admin_option_context_parse (GOptionContext *context,
   g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
   g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
 
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
+    return FALSE;
+
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {
       GFile *path = ostree_sysroot_get_path (sysroot);
@@ -410,9 +413,6 @@ ostree_admin_option_context_parse (GOptionContext *context,
       OstreeDeployment *first_deployment;
       g_autoptr(GFile) deployment_file = NULL;
       g_autofree char *deployment_path = NULL;
-
-      if (!ostree_sysroot_load (sysroot, cancellable, error))
-        return FALSE;
 
       deployments = ostree_sysroot_get_deployments (sysroot);
       if (deployments->len == 0)

@@ -75,9 +75,6 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
   if (argc > 3)
     branch = argv[3];
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
   if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
     goto out;
 

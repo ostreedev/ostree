@@ -63,9 +63,6 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           &sysroot, cancellable, error))
     goto out;
-  
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
 
   if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
                                                      cancellable, error))

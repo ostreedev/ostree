@@ -78,9 +78,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
       return FALSE;
     }
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    return FALSE;
-
   g_autoptr(OstreeSysrootUpgrader) upgrader =
     ostree_sysroot_upgrader_new_for_os (sysroot, opt_osname,
                                         cancellable, error);
