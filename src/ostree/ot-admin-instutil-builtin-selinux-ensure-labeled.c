@@ -204,9 +204,6 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancel
                                           &sysroot, cancellable, error))
     goto out;
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
   deployments = ostree_sysroot_get_deployments (sysroot);
   if (deployments->len == 0)
     {

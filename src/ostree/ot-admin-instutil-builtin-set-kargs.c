@@ -66,9 +66,6 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancel
                                           &sysroot, cancellable, error))
     goto out;
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
   deployments = ostree_sysroot_get_deployments (sysroot);
   if (deployments->len == 0)
     {

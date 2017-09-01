@@ -57,44 +57,34 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("Construct new tree from current origin and deploy it, if it changed");
+
   g_autoptr(OstreeSysroot) sysroot = NULL;
-  g_autoptr(OstreeSysrootUpgrader) upgrader = NULL;
-  g_autoptr(GKeyFile) origin = NULL;
-  g_autoptr(OstreeAsyncProgress) progress = NULL;
-  gboolean changed;
-  OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;
-
-  context = g_option_context_new ("Construct new tree from current origin and deploy it, if it changed");
-
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (opt_pull_only && opt_deploy_only)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Cannot simultaneously specify --pull-only and --deploy-only");
-      goto out;
+      return FALSE;
     }
   else if (opt_pull_only && opt_reboot)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Cannot simultaneously specify --pull-only and --reboot");
-      goto out;
+      return FALSE;
     }
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
-  upgrader = ostree_sysroot_upgrader_new_for_os (sysroot, opt_osname,
-                                                 cancellable, error);
+  g_autoptr(OstreeSysrootUpgrader) upgrader =
+    ostree_sysroot_upgrader_new_for_os (sysroot, opt_osname,
+                                        cancellable, error);
   if (!upgrader)
-    goto out;
+    return FALSE;
 
-  origin = ostree_sysroot_upgrader_dup_origin (upgrader);
+  g_autoptr(GKeyFile) origin = ostree_sysroot_upgrader_dup_origin (upgrader);
   if (origin != NULL)
     {
       gboolean origin_changed = FALSE;
@@ -122,16 +112,19 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
         {
           /* XXX GCancellable parameter is not used. */
           if (!ostree_sysroot_upgrader_set_origin (upgrader, origin, NULL, error))
-            goto out;
+            return FALSE;
         }
     }
 
+  gboolean changed;
+  OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;
   if (opt_deploy_only)
     upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC;
 
   { g_auto(GLnxConsoleRef) console = { 0, };
     glnx_console_lock (&console);
 
+    g_autoptr(OstreeAsyncProgress) progress = NULL;
     if (console.is_tty)
       progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
 
@@ -152,7 +145,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
          */
         if (opt_pull_only)
           (void) ostree_sysroot_cleanup (sysroot, NULL, NULL);
-        goto out;
+        return FALSE;
       }
 
     if (progress)
@@ -168,17 +161,15 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
       if (!opt_pull_only)
         {
           if (!ostree_sysroot_upgrader_deploy (upgrader, cancellable, error))
-            goto out;
+            return FALSE;
         }
 
       if (opt_reboot)
         {
           if (!ot_admin_execve_reboot (sysroot, error))
-            goto out;
+            return FALSE;
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }

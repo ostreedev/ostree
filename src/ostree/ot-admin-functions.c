@@ -151,13 +151,15 @@ ot_admin_sysroot_lock (OstreeSysroot  *sysroot,
 gboolean
 ot_admin_execve_reboot (OstreeSysroot *sysroot, GError **error)
 {
-  g_autoptr(GFile) real_sysroot = g_file_new_for_path ("/");
+  OstreeDeployment *booted = ostree_sysroot_get_booted_deployment (sysroot);
 
-  if (g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
-    {
-      if (execlp ("systemctl", "systemctl", "reboot", NULL) < 0)
-        return glnx_throw_errno (error);
-    }
+  /* If the sysroot isn't booted, we shouldn't reboot, even if somehow the user
+   * asked for it; might accidentally be specified in a build script, etc.
+   */
+  if (!booted)
+    return TRUE;
 
+  if (execlp ("systemctl", "systemctl", "reboot", NULL) < 0)
+    return glnx_throw_errno_prefix (error, "execve(systemctl reboot)");
   return TRUE;
 }

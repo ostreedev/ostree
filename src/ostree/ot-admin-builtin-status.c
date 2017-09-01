@@ -108,9 +108,6 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
                                           &sysroot, cancellable, error))
     goto out;
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
   if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
     goto out;
 

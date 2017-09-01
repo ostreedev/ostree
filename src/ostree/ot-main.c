@@ -377,6 +377,13 @@ ostree_admin_option_context_parse (GOptionContext *context,
   if (!ostree_option_context_parse (context, main_entries, argc, argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     return FALSE;
 
+  if (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT)
+    {
+      g_assert_null (out_sysroot);
+      /* Early return if no sysroot is requested */
+      return TRUE;
+    }
+
   g_autoptr(GFile) sysroot_path = NULL;
   if (opt_sysroot != NULL)
     sysroot_path = g_file_new_for_path (opt_sysroot);
@@ -384,12 +391,24 @@ ostree_admin_option_context_parse (GOptionContext *context,
   g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
   g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
 
+  if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
+    {
+      /* Released when sysroot is finalized, or on process exit */
+      if (!ot_admin_sysroot_lock (sysroot, error))
+        return FALSE;
+    }
+
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
+    return FALSE;
+
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {
-      GFile *path = ostree_sysroot_get_path (sysroot);
+      OstreeDeployment *booted = ostree_sysroot_get_booted_deployment (sysroot);
 
-      /* If sysroot path is "/" then user must be root. */
-      if (!g_file_has_parent (path, NULL) && getuid () != 0)
+      /* Only require root if we're manipulating a booted sysroot. (Mostly
+       * useful for the test suite)
+       */
+      if (booted && getuid () != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
                        "You must be root to perform this command");
@@ -403,9 +422,6 @@ ostree_admin_option_context_parse (GOptionContext *context,
       OstreeDeployment *first_deployment;
       g_autoptr(GFile) deployment_file = NULL;
       g_autofree char *deployment_path = NULL;
-
-      if (!ostree_sysroot_load (sysroot, cancellable, error))
-        return FALSE;
 
       deployments = ostree_sysroot_get_deployments (sysroot);
       if (deployments->len == 0)
@@ -424,13 +440,6 @@ ostree_admin_option_context_parse (GOptionContext *context,
       g_clear_pointer (&deployments, g_ptr_array_unref);
       g_clear_pointer (&deployment_path, g_free);
       exit (EXIT_SUCCESS);
-    }
-
-  if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
-    {
-      /* Released when sysroot is finalized, or on process exit */
-      if (!ot_admin_sysroot_lock (sysroot, error))
-        return FALSE;
     }
 
   if (out_sysroot)

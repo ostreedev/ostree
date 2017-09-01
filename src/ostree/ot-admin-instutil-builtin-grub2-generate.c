@@ -53,9 +53,6 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
                                           &sysroot, cancellable, error))
     goto out;
 
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
-
   if (argc >= 2)
     {
       bootversion = (guint) g_ascii_strtoull (argv[1], NULL, 10);
