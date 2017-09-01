@@ -35,6 +35,7 @@ static gboolean opt_refs_only;
 static char *opt_delete_commit;
 static char *opt_keep_younger_than;
 static char **opt_retain_branch_depth;
+static char **opt_only_branches;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
@@ -49,6 +50,7 @@ static GOptionEntry options[] = {
   { "keep-younger-than", 0, 0, G_OPTION_ARG_STRING, &opt_keep_younger_than, "Prune all commits older than the specified date", "DATE" },
   { "static-deltas-only", 0, 0, G_OPTION_ARG_NONE, &opt_static_deltas_only, "Change the behavior of delete-commit and keep-younger-than to prune only static deltas" },
   { "retain-branch-depth", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_retain_branch_depth, "Additionally retain BRANCH=DEPTH commits", "BRANCH=DEPTH" },
+  { "only-branch", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_only_branches, "Only prune BRANCH (may be specified multiple times)", "BRANCH" },
   { NULL }
 };
 
@@ -185,7 +187,7 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
   gint n_objects_total;
   gint n_objects_pruned;
   guint64 objsize_total;
-  if (!(opt_retain_branch_depth || opt_keep_younger_than))
+  if (!(opt_retain_branch_depth || opt_keep_younger_than || opt_only_branches))
     {
       if (!ostree_repo_prune (repo, pruneflags, opt_depth,
                               &n_objects_total, &n_objects_pruned, &objsize_total,
@@ -210,6 +212,7 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
             return glnx_throw (error, "Could not parse '%s'", opt_keep_younger_than);
         }
 
+      /* Process --retain-branch-depth */
       for (char **iter = opt_retain_branch_depth; iter && *iter; iter++)
         {
           /* bd should look like BRANCH=DEPTH where DEPTH is an int */
@@ -239,6 +242,41 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
                                   cancellable, error))
         return FALSE;
 
+      /* Process --only-branch. Note this combines with --retain-branch-depth; one
+       * could do e.g.:
+       *  * --only-branch exampleos/x86_64/foo
+       *  * --retain-branch-depth exampleos/x86_64/foo=0
+       * to prune exampleos/x86_64/foo to just the latest commit.
+       */
+      if (opt_only_branches)
+        {
+          /* Turn --only-branch into a set */
+          g_autoptr(GHashTable) only_branches_set = g_hash_table_new (g_str_hash, g_str_equal);
+          for (char **iter = opt_only_branches; iter && *iter; iter++)
+            {
+              const char *ref = *iter;
+              g_autofree char *commit = NULL;
+              /* Ensure the specified branch exists */
+              if (!ostree_repo_resolve_rev (repo, ref, FALSE, &commit, error))
+                return FALSE;
+              g_hash_table_add (only_branches_set, *iter);
+            }
+
+          /* Iterate over all refs, add equivalent of --retain-branch-depth=$ref=-1
+           * if the ref isn't in --only-branch set.
+           */
+          g_hash_table_iter_init (&hash_iter, all_refs);
+          while (g_hash_table_iter_next (&hash_iter, &key, &value))
+            {
+              const char *ref = key;
+              if (!g_hash_table_contains (only_branches_set, ref))
+                g_hash_table_insert (retain_branch_depth, g_strdup (ref), GINT_TO_POINTER ((int)-1));
+            }
+        }
+
+      /* Traverse each ref, and gather all objects pointed to by it up to a
+       * specific depth (if configured).
+       */
       g_hash_table_iter_init (&hash_iter, all_refs);
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
@@ -275,6 +313,7 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
             return FALSE;
         }
 
+      /* We've gathered the reachable set; start the prune ✀ */
       { OstreeRepoPruneOptions opts = { pruneflags, reachable };
         if (!ostree_repo_prune_from_reachable (repo, &opts,
                                                &n_objects_total,

@@ -25,7 +25,7 @@ skip_without_user_xattrs
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..5'
+echo '1..10'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -238,3 +238,41 @@ assert_repo_has_n_commits repo 9
 $OSTREE fsck
 
 echo "ok retain branch depth (alone)"
+
+# Test --only-branch with --depth=0; this should be exactly identical to the
+# above with a result of 9.
+reinitialize_datesnap_repo
+${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --depth=0
+assert_repo_has_n_commits repo 9
+$OSTREE fsck
+echo "ok --only-branch --depth=0"
+
+# Test --only-branch with --depth=1; should just add 1 to the above, for 10.
+reinitialize_datesnap_repo
+${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --depth=1
+assert_repo_has_n_commits repo 10
+echo "ok --only-branch --depth=1"
+
+# Test --only-branch with all branches
+reinitialize_datesnap_repo
+${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --only-branch=stable --depth=0
+assert_repo_has_n_commits repo 2
+reinitialize_datesnap_repo
+${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --only-branch=stable --depth=1
+assert_repo_has_n_commits repo 4
+echo "ok --only-branch (all) --depth=1"
+
+# Test --only-branch with --keep-younger-than; this should be identical to the test
+# above for --retain-branch-depth=stable=-1
+reinitialize_datesnap_repo
+${CMD_PREFIX} ostree --repo=repo prune --only-branch=stable --keep-younger-than="1 week ago"
+assert_repo_has_n_commits repo 11
+echo "ok --only-branch --keep-younger-than"
+
+# Test --only-branch with a nonexistent ref
+reinitialize_datesnap_repo
+if ${CMD_PREFIX} ostree --repo=repo prune --only-branch=BACON 2>err.txt; then
+    fatal "we pruned BACON?"
+fi
+assert_file_has_content err.txt "Refspec.*BACON.*not found"
+echo "ok --only-branch=BACON"
