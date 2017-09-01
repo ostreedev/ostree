@@ -396,10 +396,12 @@ ostree_admin_option_context_parse (GOptionContext *context,
 
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {
-      GFile *path = ostree_sysroot_get_path (sysroot);
+      OstreeDeployment *booted = ostree_sysroot_get_booted_deployment (sysroot);
 
-      /* If sysroot path is "/" then user must be root. */
-      if (!g_file_has_parent (path, NULL) && getuid () != 0)
+      /* Only require root if we're manipulating a booted sysroot. (Mostly
+       * useful for the test suite)
+       */
+      if (booted)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
                        "You must be root to perform this command");
