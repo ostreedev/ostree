@@ -391,6 +391,13 @@ ostree_admin_option_context_parse (GOptionContext *context,
   g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
   g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
 
+  if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
+    {
+      /* Released when sysroot is finalized, or on process exit */
+      if (!ot_admin_sysroot_lock (sysroot, error))
+        return FALSE;
+    }
+
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     return FALSE;
 
@@ -433,13 +440,6 @@ ostree_admin_option_context_parse (GOptionContext *context,
       g_clear_pointer (&deployments, g_ptr_array_unref);
       g_clear_pointer (&deployment_path, g_free);
       exit (EXIT_SUCCESS);
-    }
-
-  if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
-    {
-      /* Released when sysroot is finalized, or on process exit */
-      if (!ot_admin_sysroot_lock (sysroot, error))
-        return FALSE;
     }
 
   if (out_sysroot)
