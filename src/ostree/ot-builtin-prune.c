@@ -64,13 +64,8 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
   if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))
     return FALSE;
 
-  GHashTableIter hashiter;
-  gpointer hashkey, hashvalue;
-  g_hash_table_iter_init (&hashiter, refs);
-  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+  GLNX_HASH_TABLE_FOREACH_KV(refs, const char *, ref, const char *, commit)
     {
-      const char *ref = hashkey;
-      const char *commit = hashvalue;
       if (g_strcmp0 (commit_to_delete, commit) == 0)
         return glnx_throw (error, "Commit '%s' is referenced by '%s'", commit_to_delete, ref);
     }
@@ -82,11 +77,9 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
                                          cancellable, error))
     return FALSE;
 
-  g_hash_table_iter_init (&hashiter, collection_refs);
-  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+  GLNX_HASH_TABLE_FOREACH_KV (collection_refs, const OstreeCollectionRef*, ref,
+                              const char *, commit)
     {
-      const OstreeCollectionRef *ref = hashkey;
-      const char *commit = hashvalue;
       if (g_strcmp0 (commit_to_delete, commit) == 0)
         return glnx_throw (error, "Commit '%s' is referenced by (%s, %s)",
                            commit_to_delete, ref->collection_id, ref->ref_name);
