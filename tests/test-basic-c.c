@@ -55,7 +55,7 @@ input_stream_to_bytes (GInputStream *input)
 }
 
 static void
-test_raw_file_to_archive_z2_stream (gconstpointer data)
+test_raw_file_to_archive_stream (gconstpointer data)
 {
   OstreeRepo *repo = OSTREE_REPO (data);
   g_autofree gchar *commit_checksum = NULL;
@@ -249,7 +249,7 @@ int main (int argc, char **argv)
     goto out;
 
   g_test_add_data_func ("/repo-not-system", repo, test_repo_is_not_system);
-  g_test_add_data_func ("/raw-file-to-archive-z2-stream", repo, test_raw_file_to_archive_z2_stream);
+  g_test_add_data_func ("/raw-file-to-archive-stream", repo, test_raw_file_to_archive_stream);
   g_test_add_data_func ("/objectwrites", repo, test_object_writes);
   g_test_add_func ("/remotename", test_validate_remotename);
 

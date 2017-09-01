@@ -23,7 +23,7 @@ set -euo pipefail
 
 echo "1..3"
 
-setup_fake_remote_repo1 "archive-z2"
+setup_fake_remote_repo1 "archive"
 
 setup_mirror () {
   name=$1; shift

@@ -24,7 +24,7 @@ set -euo pipefail
 # We don't want OSTREE_GPG_HOME used for these tests.
 unset OSTREE_GPG_HOME
 
-setup_fake_remote_repo1 "archive-z2"
+setup_fake_remote_repo1 "archive"
 
 echo "1..4"
 

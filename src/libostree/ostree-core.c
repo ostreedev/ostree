@@ -312,7 +312,7 @@ _ostree_file_header_new (GFileInfo         *file_info,
  * @file_info: a #GFileInfo
  * @xattrs: (allow-none): Optional extended attribute array
  *
- * Returns: (transfer full): A new #GVariant containing file header for an archive-z2 repository
+ * Returns: (transfer full): A new #GVariant containing file header for an archive repository
  */
 GVariant *
 _ostree_zlib_file_header_new (GFileInfo         *file_info,

@@ -29,7 +29,7 @@ fi
 
 echo "1..1"
 
-setup_test_repository "archive-z2"
+setup_test_repository "archive"
 
 export OSTREE_GPG_SIGN="${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME}"
 

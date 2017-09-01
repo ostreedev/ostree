@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-setup_test_repository "archive-z2"
+setup_test_repository "archive"
 
 echo '1..5'
 

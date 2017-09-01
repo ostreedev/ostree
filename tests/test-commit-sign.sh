@@ -33,7 +33,7 @@ oldpwd=`pwd`
 mkdir ostree-srv
 cd ostree-srv
 mkdir gnomerepo
-ostree_repo_init gnomerepo --mode="archive-z2"
+ostree_repo_init gnomerepo --mode="archive"
 mkdir gnomerepo-files
 cd gnomerepo-files 
 echo first > firstfile

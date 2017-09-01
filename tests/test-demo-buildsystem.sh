@@ -68,7 +68,7 @@ packages="bash systemd"
 mkdir build-repo
 ostree_repo_init build-repo --mode=bare-user
 mkdir repo
-ostree_repo_init repo --mode=archive-z2
+ostree_repo_init repo --mode=archive
 # Our FUSE mount point
 mkdir mnt
 

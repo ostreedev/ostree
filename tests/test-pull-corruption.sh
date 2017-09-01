@@ -27,7 +27,7 @@ fi
 
 . $(dirname $0)/libtest.sh
 
-setup_fake_remote_repo1 "archive-z2"
+setup_fake_remote_repo1 "archive"
 
 echo '1..2'
 

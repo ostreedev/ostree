@@ -28,7 +28,7 @@ skip_without_user_xattrs
 
 echo "1..2"
 
-setup_test_repository "archive-z2"
+setup_test_repository "archive"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo checkout test2 test2-checkout1

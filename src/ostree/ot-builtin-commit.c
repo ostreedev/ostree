@@ -780,7 +780,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
         goto out;
 
-      /* The default for this option is FALSE, even for archive-z2 repos,
+      /* The default for this option is FALSE, even for archive repos,
        * because ostree supports multiple processes committing to the same
        * repo (but different refs) concurrently, and in fact gnome-continuous
        * actually does this.  In that context it's best to update the summary

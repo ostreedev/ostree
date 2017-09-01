@@ -21,11 +21,14 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..11'
+echo '1..12'
 
-setup_test_repository "archive-z2"
+setup_test_repository "archive"
 
 . ${test_srcdir}/archive-test.sh
+
+${CMD_PREFIX} ostree --repo=repo-archive-z2 init --mode=archive-z2
+echo "ok did an init with archive-z2 alias"
 
 cd ${test_tmpdir}
 mkdir repo2
