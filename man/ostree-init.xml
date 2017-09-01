@@ -67,9 +67,13 @@ Boston, MA 02111-1307, USA.
         <variablelist>
             <varlistentry>
                 <term><option>--mode</option>="MODE"</term>
-                <listitem><para>
-                    Initialize repository in given mode (bare, bare-user, archive-z2).  Default is "bare".
-                </para></listitem>
+                <listitem><para> Initialize repository in given mode
+                (<literal>bare</literal>, <literal>bare-user</literal>,
+                <literal>archive</literal>). The default is
+                <literal>bare</literal>. Note that for
+                <literal>archive</literal> the repository configuration file
+                will actually have <literal>archive-z2</literal>, as that's the
+                historical name.</para></listitem>
             </varlistentry>
 
             <varlistentry>
