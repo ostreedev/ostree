@@ -608,7 +608,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
         }
       else
         {
-          /* Slower path, for symlinks and unpacking deltas into archive-z2 */
+          /* Slower path, for symlinks and unpacking deltas into archive */
           g_autoptr(GFileInfo) finfo =
             _ostree_mode_uidgid_to_gfileinfo (state->mode, state->uid, state->gid);
 

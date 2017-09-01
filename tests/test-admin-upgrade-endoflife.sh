@@ -22,7 +22,7 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 # Exports OSTREE_SYSROOT so --sysroot not needed.
-setup_os_repository "archive-z2" "syslinux"
+setup_os_repository "archive" "syslinux"
 # This does:
 # - init ostree repo in testos-repo
 # - create system files in osdata and commit twice those contents into testos-repo

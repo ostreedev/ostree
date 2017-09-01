@@ -27,7 +27,7 @@ set -euo pipefail
 echo "1..2"
 
 COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
-setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}"
+setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}"
 
 # Set up a second branch.
 mkdir ${test_tmpdir}/ostree-srv/other-files
@@ -41,7 +41,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
 # Check out the repository.
 prev_dir=`pwd`
 cd ${test_tmpdir}
-ostree_repo_init repo --mode=archive-z2
+ostree_repo_init repo --mode=archive
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull --mirror origin
 

@@ -29,7 +29,7 @@ morebindatafiles="false ls"
 echo '1..12'
 
 mkdir repo
-ostree_repo_init repo --mode=archive-z2
+ostree_repo_init repo --mode=archive
 
 mkdir files
 for bin in ${bindatafiles}; do

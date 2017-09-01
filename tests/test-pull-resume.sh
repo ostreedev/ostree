@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-setup_fake_remote_repo1 "archive-z2" "" "--force-range-requests"
+setup_fake_remote_repo1 "archive" "" "--force-range-requests"
 
 echo '1..1'
 

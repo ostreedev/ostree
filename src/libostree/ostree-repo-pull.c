@@ -3631,7 +3631,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     }
 
-  /* We can't use static deltas if pulling into an archive-z2 repo. */
+  /* We can't use static deltas if pulling into an archive repo. */
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
       if (pull_data->require_static_deltas)

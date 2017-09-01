@@ -28,7 +28,7 @@ if has_gpgme; then
   COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 fi
 
-setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}"
+setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}"
 
 # create a summary
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo \

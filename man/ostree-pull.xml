@@ -157,7 +157,7 @@ Boston, MA 02111-1307, USA.
 
 	<para>Perform a complete mirror of the remote.  (This is
 	likely most useful if your repository is also
-	<literal>archive-z2</literal> mode)</para>
+	<literal>archive</literal> mode)</para>
 
         <para><command>$ ostree --repo=repo pull remote_name exampleos/x86_64/standard</command></para>
 

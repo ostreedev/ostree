@@ -22,7 +22,7 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 # Exports OSTREE_SYSROOT so --sysroot not needed.
-setup_os_repository "archive-z2" "syslinux"
+setup_os_repository "archive" "syslinux"
 
 extra_admin_tests=3
 
