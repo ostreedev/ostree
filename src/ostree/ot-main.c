@@ -408,7 +408,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
       /* Only require root if we're manipulating a booted sysroot. (Mostly
        * useful for the test suite)
        */
-      if (booted)
+      if (booted && getuid () != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
                        "You must be root to perform this command");
