@@ -377,6 +377,13 @@ ostree_admin_option_context_parse (GOptionContext *context,
   if (!ostree_option_context_parse (context, main_entries, argc, argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     return FALSE;
 
+  if (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT)
+    {
+      g_assert_null (out_sysroot);
+      /* Early return if no sysroot is requested */
+      return TRUE;
+    }
+
   g_autoptr(GFile) sysroot_path = NULL;
   if (opt_sysroot != NULL)
     sysroot_path = g_file_new_for_path (opt_sysroot);
