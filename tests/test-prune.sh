@@ -44,16 +44,20 @@ done
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin test
 
+assert_repo_has_n_commits() {
+    repo=$1
+    count=$2
+    assert_streq "$(find ${repo}/objects -name '*.commit' | wc -l)" "${count}"
+}
+
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=2 -v
-find repo | grep \.commit$ | wc -l > commitcount
-assert_file_has_content commitcount "^3$"
+assert_repo_has_n_commits repo 3
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_file_has_content tombstonecommitcount "^0$"
 $OSTREE fsck
 
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=1 -v
-find repo | grep \.commit$ | wc -l > commitcount
-assert_file_has_content commitcount "^2$"
+assert_repo_has_n_commits repo 2
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_file_has_content tombstonecommitcount "^0$"
 
@@ -70,8 +74,7 @@ find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_file_has_content tombstonecommitcount "^0$"
 
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=0 -v
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^1$"
+assert_repo_has_n_commits repo 1
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_not_file_has_content tombstonecommitcount "^0$"
 $OSTREE fsck
@@ -88,28 +91,22 @@ assert_file_has_content tombstonecommitcount "^1$"
 $OSTREE fsck
 
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=0 -v
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^1$"
+assert_repo_has_n_commits repo 1
 ${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="2005-10-29 12:43:29 +0000"
 ${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="2010-10-29 12:43:29 +0000"
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^3$"
+assert_repo_has_n_commits repo 3
 ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="2015-10-29 12:43:29 +0000"
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^2$"
+assert_repo_has_n_commits repo 2
 $OSTREE fsck
 
 
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=0 -v
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^2$"
+assert_repo_has_n_commits repo 2
 ${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="October 25 1985"
 ${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="October 21 2015"
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^4$"
+assert_repo_has_n_commits repo 4
 ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago"
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^2$"
+assert_repo_has_n_commits repo 2
 
 ${CMD_PREFIX} ostree --repo=repo commit --branch=oldcommit tree --timestamp="2005-10-29 12:43:29 +0000"
 oldcommit_rev=$($OSTREE --repo=repo rev-parse oldcommit)
@@ -200,8 +197,7 @@ for x in $(seq 3); do
     ${CMD_PREFIX} ostree --repo=datetest-snapshot-repo commit --branch=stable -m test -s "new stable build $x" tree
     ${CMD_PREFIX} ostree --repo=datetest-snapshot-repo commit --branch=dev -m test -s "new dev build $x" tree
 done
-find datetest-snapshot-repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^16$"
+assert_repo_has_n_commits datetest-snapshot-repo 16
 
 # Snapshot the above
 reinitialize_datesnap_repo() {
@@ -219,18 +215,15 @@ if ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago" --ret
 fi
 assert_file_has_content err.txt 'Invalid depth BACON'
 ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago" --retain-branch-depth=stable=-1
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^11$"
+assert_repo_has_n_commits repo 11
 # Double check our backup is unchanged
-find datetest-snapshot-repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^16$"
+assert_repo_has_n_commits datetest-snapshot-repo 16
 $OSTREE fsck
 
 # Again but this time only retain 6 (5+1) commits on stable.  This should drop
 # out 8 - 6 = 2 commits (so the 11 above minus 2 = 9)
 ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago" --retain-branch-depth=stable=5
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^9$"
+assert_repo_has_n_commits repo 9
 $OSTREE fsck
 echo "ok retain branch depth and keep-younger-than"
 
@@ -238,8 +231,7 @@ echo "ok retain branch depth and keep-younger-than"
 # so 8 stable + 1 dev = 9
 reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --depth=0 --retain-branch-depth=stable=-1
-find repo/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^9$"
+assert_repo_has_n_commits repo 9
 $OSTREE fsck
 
 echo "ok retain branch depth (alone)"
