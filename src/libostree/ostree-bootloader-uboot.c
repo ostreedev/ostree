@@ -115,28 +115,36 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
                                                  cancellable, error))
     return FALSE;
 
-  /* U-Boot doesn't support a menu so just pick the first one since the list is ordered */
-  config = boot_loader_configs->pdata[0];
-
-  val = ostree_bootconfig_parser_get (config, "linux");
-  if (!val)
+  for (int i = 0; i < boot_loader_configs->len; i++)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No \"linux\" key in bootloader config");
-      return FALSE;
-    }
-  g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image=%s", val));
+      g_autofree char *index_suffix = NULL;
+      if (i == 0)
+        index_suffix = g_strdup ("");
+      else
+        index_suffix = g_strdup_printf ("%d", i+1);
+      config = boot_loader_configs->pdata[i];
 
-  val = ostree_bootconfig_parser_get (config, "initrd");
-  if (val)
-    g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image=%s", val));
+      val = ostree_bootconfig_parser_get (config, "linux");
+      if (!val)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "No \"linux\" key in bootloader config");
+          return FALSE;
+        }
+      g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image%s=%s", index_suffix, val));
 
-  val = ostree_bootconfig_parser_get (config, "options");
-  if (val)
-    {
-      g_ptr_array_add (new_lines, g_strdup_printf ("bootargs=%s", val));
-      if (!append_system_uenv (self, val, new_lines, cancellable, error))
-        return FALSE;
+      val = ostree_bootconfig_parser_get (config, "initrd");
+      if (val)
+        g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image%s=%s", index_suffix, val));
+
+      val = ostree_bootconfig_parser_get (config, "options");
+      if (val)
+        {
+          g_ptr_array_add (new_lines, g_strdup_printf ("bootargs%s=%s", index_suffix, val));
+          if (i == 0)
+            if (!append_system_uenv (self, val, new_lines, cancellable, error))
+              return FALSE;
+        }
     }
 
   return TRUE;
