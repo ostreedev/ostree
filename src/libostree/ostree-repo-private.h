@@ -158,6 +158,27 @@ struct OstreeRepo {
   OstreeRepo *parent_repo;
 };
 
+/* Taken from flatpak; may be made into public API later */
+typedef OstreeRepo _OstreeRepoAutoTransaction;
+static inline void
+_ostree_repo_auto_transaction_cleanup (void *p)
+{
+  OstreeRepo *repo = p;
+  if (repo)
+    (void) ostree_repo_abort_transaction (repo, NULL, NULL);
+}
+
+static inline _OstreeRepoAutoTransaction *
+_ostree_repo_auto_transaction_start (OstreeRepo     *repo,
+                                     GCancellable   *cancellable,
+                                     GError        **error)
+{
+  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+    return NULL;
+  return (_OstreeRepoAutoTransaction *)repo;
+}
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (_OstreeRepoAutoTransaction, _ostree_repo_auto_transaction_cleanup)
+
 typedef struct {
   dev_t dev;
   ino_t ino;
