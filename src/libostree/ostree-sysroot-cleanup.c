@@ -201,73 +201,70 @@ list_all_boot_directories (OstreeSysroot       *self,
   return ret;
 }
 
+/* A sysroot has at most one active "boot version" (pair of version,subversion)
+ * out of a total of 4 possible. This function deletes from the filesystem the 3
+ * other versions that aren't active.
+ */
 static gboolean
 cleanup_other_bootversions (OstreeSysroot       *self,
                             GCancellable        *cancellable,
                             GError             **error)
 {
-  gboolean ret = FALSE;
-  int cleanup_bootversion;
-  int cleanup_subbootversion;
+  int cleanup_bootversion = self->bootversion == 0 ? 1 : 0;
+  int cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;
+
   g_autoptr(GFile) cleanup_boot_dir = NULL;
-
-  cleanup_bootversion = self->bootversion == 0 ? 1 : 0;
-  cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;
-
   cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    goto out;
+    return FALSE;
   g_clear_object (&cleanup_boot_dir);
 
   cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    goto out;
+    return FALSE;
   g_clear_object (&cleanup_boot_dir);
 
   cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.0", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    goto out;
+    return FALSE;
   g_clear_object (&cleanup_boot_dir);
 
   cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.1", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    goto out;
+    return FALSE;
   g_clear_object (&cleanup_boot_dir);
 
   cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.%d", self->bootversion,
                                                    cleanup_subbootversion);
   if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    goto out;
+    return FALSE;
   g_clear_object (&cleanup_boot_dir);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
+/* As the bootloader configuration changes, we will have leftover deployments
+ * on disk.  This function deletes all deployments which aren't actively
+ * referenced.
+ */
 static gboolean
 cleanup_old_deployments (OstreeSysroot       *self,
                          GCancellable        *cancellable,
                          GError             **error)
 {
-  gboolean ret = FALSE;
+  /* Gather the device/inode of the rootfs, so we can double
+   * check we won't delete it.
+   */
   struct stat root_stbuf;
-  guint i;
-  g_autoptr(GHashTable) active_deployment_dirs = NULL;
-  g_autoptr(GHashTable) active_boot_checksums = NULL;
-  g_autoptr(GPtrArray) all_deployment_dirs = NULL;
-  g_autoptr(GPtrArray) all_boot_dirs = NULL;
+  if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
+    return FALSE;
 
-  if (stat ("/", &root_stbuf) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
-
-  active_deployment_dirs = g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
-  active_boot_checksums = g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
-
-  for (i = 0; i < self->deployments->len; i++)
+  /* Load all active deployments referenced by bootloader configuration. */
+  g_autoptr(GHashTable) active_deployment_dirs =
+    g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+  g_autoptr(GHashTable) active_boot_checksums =
+    g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+  for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
       char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
@@ -277,11 +274,12 @@ cleanup_old_deployments (OstreeSysroot       *self,
       g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
     }
 
+  /* Find all deployment directories, both active and inactive */
+  g_autoptr(GPtrArray) all_deployment_dirs = NULL;
   if (!list_all_deployment_directories (self, &all_deployment_dirs,
                                         cancellable, error))
-    goto out;
-  
-  for (i = 0; i < all_deployment_dirs->len; i++)
+    return FALSE;
+  for (guint i = 0; i < all_deployment_dirs->len; i++)
     {
       OstreeDeployment *deployment = all_deployment_dirs->pdata[i];
       g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
@@ -294,13 +292,10 @@ cleanup_old_deployments (OstreeSysroot       *self,
 
           if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE,
                                &deployment_fd, error))
-            goto out;
+            return FALSE;
 
-          if (fstat (deployment_fd, &stbuf) != 0)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+          if (!glnx_fstat (deployment_fd, &stbuf, error))
+            return FALSE;
 
           /* This shouldn't happen, because higher levels should
            * disallow having the booted deployment not in the active
@@ -309,22 +304,24 @@ cleanup_old_deployments (OstreeSysroot       *self,
               stbuf.st_ino == root_stbuf.st_ino)
             continue;
 
+          /* This deployment wasn't referenced, so delete it */
           if (!_ostree_linuxfs_fd_alter_immutable_flag (deployment_fd, FALSE,
                                                         cancellable, error))
-            goto out;
-          
-          if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deployment_path, cancellable, error))
-            goto out;
+            return FALSE;
           if (!glnx_shutil_rm_rf_at (self->sysroot_fd, origin_relpath, cancellable, error))
-            goto out;
+            return FALSE;
+          if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deployment_path, cancellable, error))
+            return FALSE;
         }
     }
 
+  /* Clean up boot directories */
+  g_autoptr(GPtrArray) all_boot_dirs = NULL;
   if (!list_all_boot_directories (self, &all_boot_dirs,
                                   cancellable, error))
-    goto out;
-  
-  for (i = 0; i < all_boot_dirs->len; i++)
+    return FALSE;
+
+  for (guint i = 0; i < all_boot_dirs->len; i++)
     {
       GFile *bootdir = all_boot_dirs->pdata[i];
       g_autofree char *osname = NULL;
@@ -338,14 +335,16 @@ cleanup_old_deployments (OstreeSysroot       *self,
         continue;
 
       if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (bootdir), cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
+/* libostree holds a ref for each deployment's exact checksum to avoid it being
+ * GC'd even if the origin ref changes.  This function resets those refs
+ * to match active deployments.
+ */
 static gboolean
 cleanup_ref_prefix (OstreeRepo         *repo,
                     int                 bootversion,
@@ -354,23 +353,17 @@ cleanup_ref_prefix (OstreeRepo         *repo,
                     GError            **error)
 {
   gboolean ret = FALSE;
-  g_autofree char *prefix = NULL;
+  g_autofree char *prefix = g_strdup_printf ("ostree/%d/%d", bootversion, subbootversion);
+
   g_autoptr(GHashTable) refs = NULL;
-  GHashTableIter hashiter;
-  gpointer hashkey, hashvalue;
-
-  prefix = g_strdup_printf ("ostree/%d/%d", bootversion, subbootversion);
-
   if (!ostree_repo_list_refs_ext (repo, prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE, cancellable, error))
     goto out;
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     goto out;
 
-  g_hash_table_iter_init (&hashiter, refs);
-  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+  GLNX_HASH_TABLE_FOREACH (refs, const char *, ref)
     {
-      const char *ref = hashkey;
       ostree_repo_transaction_set_refspec (repo, ref, NULL);
     }
 
@@ -442,12 +435,10 @@ prune_repo (OstreeRepo    *repo,
   gint n_objects_total;
   gint n_objects_pruned;
   guint64 freed_space;
-  gboolean ret = FALSE;
-
   if (!ostree_repo_prune (repo, OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, 0,
                           &n_objects_total, &n_objects_pruned, &freed_space,
                           cancellable, error))
-    goto out;
+    return FALSE;
 
   if (freed_space > 0)
     {
@@ -455,10 +446,7 @@ prune_repo (OstreeRepo    *repo,
       g_print ("Freed objects: %s\n", freed_space_str);
     }
 
-  ret = TRUE;
-
-out:
-  return ret;
+  return TRUE;
 }
 
 /**
