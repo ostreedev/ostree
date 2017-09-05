@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "otutil.h"
+#include "ostree-repo-private.h"
 #include "ostree-linuxfsutil.h"
 
 #include "ostree-sysroot-private.h"
@@ -341,10 +342,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
   return TRUE;
 }
 
-/* libostree holds a ref for each deployment's exact checksum to avoid it being
- * GC'd even if the origin ref changes.  This function resets those refs
- * to match active deployments.
- */
+/* Delete the ref bindings for a non-active boot version */
 static gboolean
 cleanup_ref_prefix (OstreeRepo         *repo,
                     int                 bootversion,
@@ -352,30 +350,24 @@ cleanup_ref_prefix (OstreeRepo         *repo,
                     GCancellable       *cancellable,
                     GError            **error)
 {
-  gboolean ret = FALSE;
   g_autofree char *prefix = g_strdup_printf ("ostree/%d/%d", bootversion, subbootversion);
-
   g_autoptr(GHashTable) refs = NULL;
   if (!ostree_repo_list_refs_ext (repo, prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE, cancellable, error))
-    goto out;
-
-  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
-    goto out;
+    return FALSE;
 
   GLNX_HASH_TABLE_FOREACH (refs, const char *, ref)
     {
-      ostree_repo_transaction_set_refspec (repo, ref, NULL);
+      if (!ostree_repo_set_ref_immediate (repo, NULL, ref, NULL, cancellable, error))
+        return FALSE;
     }
 
-  if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  ostree_repo_abort_transaction (repo, cancellable, NULL);
-  return ret;
+  return TRUE;
 }
 
+/* libostree holds a ref for each deployment's exact checksum to avoid it being
+ * GC'd even if the origin ref changes.  This function resets those refs
+ * to match active deployments.
+ */
 static gboolean
 generate_deployment_refs (OstreeSysroot       *self,
                           OstreeRepo          *repo,
@@ -385,46 +377,38 @@ generate_deployment_refs (OstreeSysroot       *self,
                           GCancellable        *cancellable,
                           GError             **error)
 {
-  gboolean ret = FALSE;
-  int cleanup_bootversion;
-  int cleanup_subbootversion;
-  guint i;
-
-  cleanup_bootversion = (bootversion == 0) ? 1 : 0;
-  cleanup_subbootversion = (subbootversion == 0) ? 1 : 0;
+  int cleanup_bootversion = (bootversion == 0) ? 1 : 0;
+  int cleanup_subbootversion = (subbootversion == 0) ? 1 : 0;
 
   if (!cleanup_ref_prefix (repo, cleanup_bootversion, 0,
                            cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!cleanup_ref_prefix (repo, cleanup_bootversion, 1,
                            cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!cleanup_ref_prefix (repo, bootversion, cleanup_subbootversion,
                            cancellable, error))
-    goto out;
+    return FALSE;
 
-  for (i = 0; i < deployments->len; i++)
+  g_autoptr(_OstreeRepoAutoTransaction) txn =
+    _ostree_repo_auto_transaction_start (repo, cancellable, error);
+  if (!txn)
+    return FALSE;
+  for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       g_autofree char *refname = g_strdup_printf ("ostree/%d/%d/%u",
                                                bootversion, subbootversion,
                                                i);
 
-      if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
-        goto out;
-
       ostree_repo_transaction_set_refspec (repo, refname, ostree_deployment_get_csum (deployment));
-
-      if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
-        goto out;
     }
+  if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
+    return FALSE;
 
-  ret = TRUE;
- out:
-  ostree_repo_abort_transaction (repo, cancellable, NULL);
-  return ret;
+  return TRUE;
 }
 
 static gboolean
