@@ -1439,8 +1439,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
       gpg_error = gpgme_op_import (source_context, data_buffer);
       if (gpg_error != GPG_ERR_NO_ERROR)
         {
-          ot_gpgme_error_to_gio_error (gpg_error, error);
-          g_prefix_error (error, "Unable to import keys: ");
+          ot_gpgme_throw (gpg_error, error, "Unable to import keys");
           goto out;
         }
 
@@ -1465,8 +1464,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
           gpg_error = gpgme_get_key (source_context, key_ids[ii], &key, 0);
           if (gpg_error != GPG_ERR_NO_ERROR)
             {
-              ot_gpgme_error_to_gio_error (gpg_error, error);
-              g_prefix_error (error, "Unable to find key \"%s\": ", key_ids[ii]);
+              ot_gpgme_throw (gpg_error, error, "Unable to find key \"%s\"", key_ids[ii]);
               goto out;
             }
 
@@ -1493,8 +1491,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
 
       if (gpgme_err_code (gpg_error) != GPG_ERR_EOF)
         {
-          ot_gpgme_error_to_gio_error (gpg_error, error);
-          g_prefix_error (error, "Unable to list keys: ");
+          ot_gpgme_throw (gpg_error, error, "Unable to list keys");
           goto out;
         }
     }
@@ -1566,8 +1563,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
   gpg_error = gpgme_data_new (&data_buffer);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (gpg_error, error);
-      g_prefix_error (error, "Unable to create data buffer: ");
+      ot_gpgme_throw (gpg_error, error, "Unable to create data buffer");
       goto out;
     }
 
@@ -1576,8 +1572,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                     data_buffer);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (gpg_error, error);
-      g_prefix_error (error, "Unable to export keys: ");
+      ot_gpgme_throw (gpg_error, error, "Unable to export keys");
       goto out;
     }
 
@@ -1586,8 +1581,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
   gpg_error = gpgme_op_import (target_context, data_buffer);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (gpg_error, error);
-      g_prefix_error (error, "Unable to import keys: ");
+      ot_gpgme_throw (gpg_error, error, "Unable to import keys");
       goto out;
     }
 
@@ -1602,8 +1596,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
     {
       if (import_status->result != GPG_ERR_NO_ERROR)
         {
-          ot_gpgme_error_to_gio_error (gpg_error, error);
-          g_prefix_error (error, "Unable to import key \"%s\": ",
+          ot_gpgme_throw (gpg_error, error, "Unable to import key \"%s\"",
                           import_status->fpr);
           goto out;
         }
@@ -4150,26 +4143,23 @@ sign_data (OstreeRepo     *self,
     }
   else if (err != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (err, error);
-      g_prefix_error (error, "Unable to lookup key ID %s: ", key_id);
+      ot_gpgme_throw (err, error, "Unable to lookup key ID %s", key_id);
       goto out;
     }
 
   /* Add the key to the context as a signer */
   if ((err = gpgme_signers_add (context, key)) != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (err, error);
-      g_prefix_error (error, "Error signing commit: ");
+      ot_gpgme_throw (err, error, "Error signing commit");
       goto out;
     }
-  
+
   {
     gsize len;
     const char *buf = g_bytes_get_data (input_data, &len);
     if ((err = gpgme_data_new_from_mem (&commit_buffer, buf, len, FALSE)) != GPG_ERR_NO_ERROR)
       {
-        ot_gpgme_error_to_gio_error (err, error);
-        g_prefix_error (error, "Failed to create buffer from commit file: ");
+        ot_gpgme_throw (err, error, "Failed to create buffer from commit file");
         goto out;
       }
   }
@@ -4179,8 +4169,7 @@ sign_data (OstreeRepo     *self,
   if ((err = gpgme_op_sign (context, commit_buffer, signature_buffer, GPGME_SIG_MODE_DETACH))
       != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (err, error);
-      g_prefix_error (error, "Failure signing commit file: ");
+      ot_gpgme_throw (err, error, "Failure signing commit file");
       goto out;
     }
   

@@ -30,7 +30,8 @@ G_DEFINE_AUTO_CLEANUP_FREE_FUNC(gpgme_data_t, gpgme_data_release, NULL)
 G_DEFINE_AUTO_CLEANUP_FREE_FUNC(gpgme_ctx_t, gpgme_release, NULL)
 G_DEFINE_AUTO_CLEANUP_FREE_FUNC(gpgme_key_t, gpgme_key_unref, NULL)
 
-void ot_gpgme_error_to_gio_error (gpgme_error_t gpg_error, GError **error);
+gboolean ot_gpgme_throw (gpgme_error_t gpg_error, GError **error,
+                         const char *fmt, ...) G_GNUC_PRINTF (3, 4);
 
 gboolean ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
                                     char          **out_tmp_home_dir,
