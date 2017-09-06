@@ -6,6 +6,18 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libbuild.sh
 
+# https://bugzilla.redhat.com/show_bug.cgi?id=1483553
+if ! yum -y upgrade 2>err.txt; then
+    ecode=$?
+    if grep -q -F -e "BDB1539 Build signature doesn't match environment" err.txt; then
+        rpm --rebuilddb
+        yum -y upgrade
+    else
+        cat err.txt
+        exit ${ecode}
+    fi
+fi
+
 pkg_install_builddeps ostree
 # Until this propagates farther
 pkg_install 'pkgconfig(libcurl)' 'pkgconfig(openssl)'
