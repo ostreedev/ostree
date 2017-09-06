@@ -8,8 +8,6 @@ context: f26-primary
 
 container:
     image: registry.fedoraproject.org/fedora:26
-packages:
-  - git
 
 env:
     # Enable all the sanitizers for this primary build.
@@ -36,8 +34,6 @@ context: c7-primary
 inherit: true
 required: true
 
-packages:
-
 host:
   distro: centos/7/atomic
 
@@ -55,10 +51,9 @@ context: f26-rust
 inherit: true
 container:
     image: registry.fedoraproject.org/fedora:26
-packages:
-  - cargo
 env:
   CONFIGOPTS: '--enable-rust'
+  CI_PKGS: cargo
 
 tests:
     - ci/build.sh
