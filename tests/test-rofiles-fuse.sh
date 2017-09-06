@@ -24,13 +24,16 @@ set -euo pipefail
 skip_without_fuse
 skip_without_user_xattrs
 
-setup_test_repository "bare-user"
+setup_test_repository "bare"
 
 echo "1..7"
 
+cd ${test_tmpdir}
 mkdir mnt
-
-$OSTREE checkout -H -U test2 checkout-test2
+# The default content set amazingly doesn't have a non-broken link
+ln -s firstfile files/firstfile-link
+$OSTREE commit -b test2 --tree=dir=files
+$OSTREE checkout -H test2 checkout-test2
 
 rofiles-fuse checkout-test2 mnt
 cleanup_fuse() {
@@ -40,22 +43,32 @@ trap cleanup_fuse EXIT
 assert_file_has_content mnt/firstfile first
 echo "ok mount"
 
-if cp /dev/null mnt/firstfile 2>err.txt; then
-    assert_not_reached "inplace mutation"
-fi
-assert_file_has_content err.txt "Read-only file system"
-assert_file_has_content mnt/firstfile first
-assert_file_has_content checkout-test2/firstfile first
-
+# Test open(O_TRUNC) directly and via symlink
+for path in firstfile{,-link}; do
+    if cp /dev/null mnt/${path} 2>err.txt; then
+        assert_not_reached "inplace mutation ${path}"
+    fi
+    assert_file_has_content err.txt "Read-only file system"
+    assert_file_has_content mnt/firstfile first
+    assert_file_has_content checkout-test2/firstfile first
+done
 echo "ok failed inplace mutation (open O_TRUNCATE)"
 
-# Test chmod + chown
+# Test chmod
 if chmod 0600 mnt/firstfile 2>err.txt; then
     assert_not_reached "chmod inplace"
 fi
 assert_file_has_content err.txt "chmod:.*Read-only file system"
-if chown $(id -u) mnt/firstfile 2>err.txt; then
-    assert_not_reached "chown inplace"
+# Test chown with regfiles and symlinks
+for path in firstfile baz/alink; do
+    if chown -h $(id -u) mnt/${path} 2>err.txt; then
+        assert_not_reached "chown inplace ${path}"
+    fi
+    assert_file_has_content err.txt "chown:.*Read-only file system"
+done
+# And test via dereferencing a symlink
+if chown $(id -u) mnt/firstfile-link 2>err.txt; then
+    assert_not_reached "chown inplace firstfile-link"
 fi
 assert_file_has_content err.txt "chown:.*Read-only file system"
 echo "ok failed mutation chmod + chown"
@@ -64,6 +77,13 @@ echo "ok failed mutation chmod + chown"
 echo anewfile-for-fuse > mnt/anewfile-for-fuse
 assert_file_has_content mnt/anewfile-for-fuse anewfile-for-fuse
 assert_file_has_content checkout-test2/anewfile-for-fuse anewfile-for-fuse
+ln -s anewfile-for-fuse mnt/anewfile-for-fuse-link
+# And also test modifications through a symlink
+echo writevialink > mnt/anewfile-for-fuse-link
+for path in anewfile-for-fuse{,-link}; do
+    assert_file_has_content mnt/${path} writevialink
+done
+chown $(id -u) mnt/anewfile-for-fuse-link
 
 mkdir mnt/newfusedir
 for i in $(seq 5); do
@@ -86,7 +106,7 @@ ${CMD_PREFIX} ostree --repo=repo commit -b test2 -s fromfuse --link-checkout-spe
 echo "ok commit"
 
 ${CMD_PREFIX} ostree --repo=repo checkout -U test2 mnt/test2-checkout-copy-fallback
-assert_file_has_content mnt/test2-checkout-copy-fallback/anewfile-for-fuse anewfile-for-fuse
+assert_file_has_content mnt/test2-checkout-copy-fallback/anewfile-for-fuse writevialink
 
 if ${CMD_PREFIX} ostree --repo=repo checkout -UH test2 mnt/test2-checkout-copy-hardlinked 2>err.txt; then
     assert_not_reached "Checking out via hardlinks across mountpoint unexpectedly succeeded!"

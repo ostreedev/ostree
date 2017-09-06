@@ -198,26 +198,42 @@ callback_link (const char *from, const char *to)
   return 0;
 }
 
-static gboolean
-stbuf_is_regfile_hardlinked (struct stat *stbuf)
+/* Check whether @stbuf refers to a hardlinked regfile or symlink, and if so
+ * return -EROFS. Otherwise return 0.
+ */
+static int
+can_write_stbuf (struct stat *stbuf)
 {
-  return S_ISREG (stbuf->st_mode) && stbuf->st_nlink > 1;
+  /* If it's not a regular file or symlink, ostree won't hardlink it, so allow
+   * writes - it might be a FIFO or device that somehow
+   * ended up underneath our mount.
+   */
+  if (!(S_ISREG (stbuf->st_mode) || S_ISLNK (stbuf->st_mode)))
+    return 0;
+  /* If the object isn't hardlinked, it's OK to write */
+  if (stbuf->st_nlink <= 1)
+    return 0;
+  /* Otherwise, it's a hardlinked file or symlink; it must be
+   * immutable.
+   */
+  return -EROFS;
 }
 
+/* Check whether @path refers to a hardlinked regfile or symlink, and if so
+ * return -EROFS. Otherwise return 0.
+ */
 static int
 can_write (const char *path)
 {
   struct stat stbuf;
-  if (fstatat (basefd, path, &stbuf, 0) == -1)
+  if (fstatat (basefd, path, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
     {
       if (errno == ENOENT)
         return 0;
       else
         return -errno;
     }
-  if (stbuf_is_regfile_hardlinked (&stbuf))
-    return -EROFS;
-  return 0;
+  return can_write_stbuf (&stbuf);
 }
 
 #define VERIFY_WRITE(path) do {                 \
@@ -231,6 +247,10 @@ callback_chmod (const char *path, mode_t mode)
 {
   path = ENSURE_RELPATH (path);
   VERIFY_WRITE(path);
+  /* Note we can't use AT_SYMLINK_NOFOLLOW yet;
+   * https://marc.info/?l=linux-kernel&m=148830147803162&w=2
+   * https://marc.info/?l=linux-fsdevel&m=149193779929561&w=2
+   */
   if (fchmodat (basefd, path, mode, 0) != 0)
     return -errno;
   return 0;
@@ -241,7 +261,7 @@ callback_chown (const char *path, uid_t uid, gid_t gid)
 {
   path = ENSURE_RELPATH (path);
   VERIFY_WRITE(path);
-  if (fchownat (basefd, path, uid, gid, 0) != 0)
+  if (fchownat (basefd, path, uid, gid, AT_SYMLINK_NOFOLLOW) != 0)
     return -errno;
   return 0;
 }
@@ -254,7 +274,7 @@ callback_truncate (const char *path, off_t size)
   path = ENSURE_RELPATH (path);
   VERIFY_WRITE(path);
 
-  fd = openat (basefd, path, O_WRONLY);
+  fd = openat (basefd, path, O_NOFOLLOW|O_WRONLY);
   if (fd == -1)
     return -errno;
 
@@ -312,10 +332,11 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
           return -errno;
         }
 
-      if (stbuf_is_regfile_hardlinked (&stbuf))
+      int r = can_write_stbuf (&stbuf);
+      if (r != 0)
         {
           (void) close (fd);
-          return -EROFS;
+          return r;
         }
 
       /* Handle O_TRUNC here only after verifying hardlink state */
@@ -433,7 +454,7 @@ callback_access (const char *path, int mode)
    * before trying to do an unlink.  So...we'll just lie about
    * writable access here.
    */
-  if (faccessat (basefd, path, mode, 0) == -1)
+  if (faccessat (basefd, path, mode, AT_SYMLINK_NOFOLLOW) == -1)
     return -errno;
   return 0;
 }
