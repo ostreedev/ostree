@@ -4579,32 +4579,23 @@ _ostree_repo_verify_commit_internal (OstreeRepo    *self,
                                      GCancellable  *cancellable,
                                      GError       **error)
 {
-  OstreeGpgVerifyResult *result = NULL;
   g_autoptr(GVariant) commit_variant = NULL;
-  g_autoptr(GVariant) metadata = NULL;
-  g_autoptr(GBytes) signed_data = NULL;
-
   /* Load the commit */
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit_checksum, &commit_variant,
                                  error))
-    {
-      g_prefix_error (error, "Failed to read commit: ");
-      goto out;
-    }
+    return glnx_prefix_error_null (error, "Failed to read commit");
 
   /* Load the metadata */
+  g_autoptr(GVariant) metadata = NULL;
   if (!ostree_repo_read_commit_detached_metadata (self,
                                                   commit_checksum,
                                                   &metadata,
                                                   cancellable,
                                                   error))
-    {
-      g_prefix_error (error, "Failed to read detached metadata: ");
-      goto out;
-    }
+    return glnx_prefix_error_null (error, "Failed to read detached metadata");
 
-  signed_data = g_variant_get_data_as_bytes (commit_variant);
+  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit_variant);
 
   /* XXX This is a hackish way to indicate to use ALL remote-specific
    *     keyrings in the signature verification.  We want this when
@@ -4612,17 +4603,10 @@ _ostree_repo_verify_commit_internal (OstreeRepo    *self,
   if (remote_name == NULL)
     remote_name = OSTREE_ALL_REMOTES;
 
-  result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                  signed_data,
-                                                  metadata,
-                                                  remote_name,
-                                                  keyringdir,
-                                                  extra_keyring,
-                                                  cancellable,
-                                                  error);
-
-out:
-  return result;
+  return _ostree_repo_gpg_verify_with_metadata (self, signed_data,
+                                                metadata, remote_name,
+                                                keyringdir, extra_keyring,
+                                                cancellable, error);
 }
 
 /**
@@ -4654,10 +4638,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                                           cancellable, error);
 
   if (!ostree_gpg_verify_result_require_valid_signature (result, error))
-    {
-      g_prefix_error (error, "Commit %s: ", commit_checksum);
-      return FALSE;
-    }
+    return glnx_prefix_error (error, "Commit %s", commit_checksum);
   return TRUE;
 }
 
