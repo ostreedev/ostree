@@ -76,7 +76,7 @@ G_STATIC_ASSERT(sizeof(OstreeRepoPruneOptions) ==
 
 /**
  * SECTION:ostree-repo
- * @title: Content-addressed object store
+ * @title: OstreeRepo: Content-addressed object store
  * @short_description: A git-like storage system for operating system binaries
  *
  * The #OstreeRepo is like git, a content-addressed object store.
@@ -583,14 +583,32 @@ ostree_repo_class_init (OstreeRepoClass *klass)
   object_class->set_property = ostree_repo_set_property;
   object_class->finalize = ostree_repo_finalize;
 
+  /**
+   * OstreeRepo:path:
+   *
+   * Path to repository.  Note that if this repository was created
+   * via `ostree_repo_new_at()`, this value will refer to a value in
+   * the Linux kernel's `/proc/self/fd` directory.  Generally, you
+   * should avoid using this property at all; you can gain a reference
+   * to the repository's directory fd via `ostree_repo_get_dfd()` and
+   * use file-descriptor relative operations.
+   */
   g_object_class_install_property (object_class,
                                    PROP_PATH,
-                                   g_param_spec_object ("path",
-                                                        "",
-                                                        "",
+                                   g_param_spec_object ("path", "Path", "Path",
                                                         G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
+  /**
+   * OstreeRepo:sysroot-path:
+   *
+   * A system using libostree for the host has a "system" repository; this
+   * property will be set for repositories referenced via
+   * `ostree_sysroot_repo()` for example.
+   *
+   * You should avoid using this property; if your code is operating
+   * on a system repository, use `OstreeSysroot` and access the repository
+   * object via `ostree_sysroot_repo()`.
+   */
   g_object_class_install_property (object_class,
                                    PROP_SYSROOT_PATH,
                                    g_param_spec_object ("sysroot-path",
@@ -598,7 +616,15 @@ ostree_repo_class_init (OstreeRepoClass *klass)
                                                         "",
                                                         G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
+  /**
+   * OstreeRepo:remotes-config-dir:
+   *
+   * Path to directory containing remote definitions.  The default is `NULL`.
+   * If a `sysroot-path` property is defined, this value will default to
+   * `${sysroot_path}/etc/ostree/remotes.d`.
+   *
+   * This value will only be used for system repositories.
+   */
   g_object_class_install_property (object_class,
                                    PROP_REMOTES_CONFIG_DIR,
                                    g_param_spec_string ("remotes-config-dir",
