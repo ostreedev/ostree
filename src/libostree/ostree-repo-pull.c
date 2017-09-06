@@ -1357,11 +1357,8 @@ static_deltapart_fetch_on_complete (GObject           *object,
     goto out;
 
   /* From here on, if we fail to apply the delta, we'll re-fetch it */
-  if (unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+  if (!glnx_unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0, error))
+    goto out;
 
   in = g_unix_input_stream_new (fd, FALSE);
 

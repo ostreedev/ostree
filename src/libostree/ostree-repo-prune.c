@@ -43,13 +43,7 @@ prune_commitpartial_file (OstreeRepo    *repo,
                           GError       **error)
 {
   g_autofree char *path = _ostree_get_commitpartial_path (checksum);
-  if (unlinkat (repo->repo_dir_fd, path, 0) != 0)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "unlinkat");
-    }
-
-  return TRUE;
+  return ot_ensure_unlinked_at (repo->repo_dir_fd, path, error);
 }
 
 static gboolean
@@ -147,8 +141,8 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
           if (has_sig_suffix)
             dent->d_name[len - 4] = '.';
 
-          if (unlinkat (dfd_iter.fd, dent->d_name, 0) < 0)
-            return glnx_throw_errno_prefix (error, "unlinkat");
+          if (!glnx_unlinkat (dfd_iter.fd, dent->d_name, 0, error))
+            return FALSE;
         }
     }
 

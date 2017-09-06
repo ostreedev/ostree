@@ -3237,15 +3237,12 @@ ostree_repo_delete_object (OstreeRepo           *self,
 
       _ostree_loose_path (meta_loose, sha256, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
-      if (TEMP_FAILURE_RETRY (unlinkat (self->objects_dir_fd, meta_loose, 0)) < 0)
-        {
-          if (G_UNLIKELY (errno != ENOENT))
-            return glnx_throw_errno_prefix (error, "unlinkat(%s)", meta_loose);
-        }
+      if (!ot_ensure_unlinked_at (self->objects_dir_fd, meta_loose, error))
+        return FALSE;
     }
 
-  if (TEMP_FAILURE_RETRY (unlinkat (self->objects_dir_fd, loose_path, 0)) < 0)
-    return glnx_throw_errno_prefix (error, "Deleting object %s.%s", sha256, ostree_object_type_to_string (objtype));
+  if (!glnx_unlinkat (self->objects_dir_fd, loose_path, 0, error))
+    return glnx_prefix_error (error, "Deleting object %s.%s", sha256, ostree_object_type_to_string (objtype));
 
   /* If the repository is configured to use tombstone commits, create one when deleting a commit.  */
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -5037,11 +5034,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                            error))
     return FALSE;
 
-  if (unlinkat (self->repo_dir_fd, "summary.sig", 0) < 0)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "unlinkat");
-    }
+  if (!ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", error))
+    return FALSE;
 
   return TRUE;
 }
