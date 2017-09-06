@@ -1,5 +1,19 @@
 #!/usr/bin/bash
 
+pkg_upgrade() {
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1483553
+    if ! yum -y upgrade 2>err.txt; then
+        ecode=$?
+        if grep -q -F -e "BDB1539 Build signature doesn't match environment" err.txt; then
+            rpm --rebuilddb
+            yum -y upgrade
+        else
+            cat err.txt
+            exit ${ecode}
+        fi
+    fi
+}
+
 make() {
     /usr/bin/make -j $(getconf _NPROCESSORS_ONLN) "$@"
 }

@@ -6,12 +6,16 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libbuild.sh
 
+pkg_upgrade
 pkg_install_builddeps ostree
 # Until this propagates farther
 pkg_install 'pkgconfig(libcurl)' 'pkgconfig(openssl)'
 pkg_install sudo which attr fuse \
     libubsan libasan libtsan PyYAML redhat-rpm-config \
     elfutils
+if test -n "${CI_PKGS:-}"; then
+    pkg_install ${CI_PKGS}
+fi
 pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang
 
 # always fail on warnings; https://github.com/ostreedev/ostree/pull/971

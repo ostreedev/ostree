@@ -3,6 +3,9 @@
 
 set -xeuo pipefail
 
+dn=$(dirname $0)
+. ${dn}/libbuild.sh
+
 build() {
     env NOCONFIGURE=1 ./autogen.sh
     ./configure --prefix=/usr --libdir=/usr/lib64 "$@"
@@ -11,6 +14,7 @@ build() {
 
 codedir=$(pwd)
 
+pkg_upgrade
 # Core prep
 yum -y install dnf-plugins-core @buildsys-build 'dnf-command(builddep)'
 # build+install ostree, and build deps for both, so that our
