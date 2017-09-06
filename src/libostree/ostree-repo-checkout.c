@@ -1121,11 +1121,8 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
 
           if (stbuf.st_nlink == 1)
             {
-              if (unlinkat (dfd_iter.fd, dent->d_name, 0) != 0)
-                {
-                  glnx_set_error_from_errno (error);
-                  return FALSE;
-                }
+              if (!glnx_unlinkat (dfd_iter.fd, dent->d_name, 0, error))
+                return FALSE;
             }
         }
     }
