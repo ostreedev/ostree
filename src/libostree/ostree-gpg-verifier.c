@@ -194,7 +194,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
           gpg_error = gpgme_op_import (result->context, kdata);
           if (gpg_error != GPG_ERR_NO_ERROR)
             {
-              ot_gpgme_throw (gpg_error, error, "import");
+              ot_gpgme_throw (gpg_error, error, "Failed to import key");
               goto out;
             }
         }
