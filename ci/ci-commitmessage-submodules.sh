@@ -16,6 +16,8 @@ set -euo pipefail
 # if running under PAPR, use the branch/PR HEAD actually
 # being tested rather than the merge sha
 HEAD=${PAPR_COMMIT:-HEAD}
+dn=$(dirname $0)
+. ${dn}/libbuild.sh
 
 tmpd=$(mktemp -d)
 touch ${tmpd}/.tmpdir
@@ -26,6 +28,9 @@ cleanup_tmp() {
     fi
 }
 trap cleanup_tmp EXIT
+
+pkg_upgrade
+pkg_install git
 
 gitdir=$(realpath $(pwd))
 # Create a temporary copy of this (using cp not git clone) so git doesn't
