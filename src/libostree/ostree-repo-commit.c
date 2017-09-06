@@ -1029,35 +1029,33 @@ devino_cache_lookup (OstreeRepo           *self,
  * @cancellable: Cancellable
  * @error: Error
  *
- * When ostree builds a mutable tree from directory like in
- * ostree_repo_write_directory_to_mtree(), it has to scan all files that you
- * pass in and compute their checksums. If your commit contains hardlinks from
- * ostree's existing repo, ostree can build a mapping of device numbers and
- * inodes to their checksum.
+ * This function is deprecated in favor of using ostree_repo_devino_cache_new(),
+ * which allows a precise mapping to be built up between hardlink checkout files
+ * and their checksums between `ostree_repo_checkout_at()` and
+ * `ostree_repo_write_directory_to_mtree()`.
+ *
+ * When invoking ostree_repo_write_directory_to_mtree(), it has to compute the
+ * checksum of all files. If your commit contains hardlinks from a checkout,
+ * this functions builds a mapping of device numbers and inodes to their
+ * checksum.
  *
  * There is an upfront cost to creating this mapping, as this will scan the
  * entire objects directory. If your commit is composed of mostly hardlinks to
  * existing ostree objects, then this will speed up considerably, so call it
- * before you call ostree_write_directory_to_mtree() or similar.
+ * before you call ostree_write_directory_to_mtree() or similar.  However,
+ * ostree_repo_devino_cache_new() is better as it avoids scanning all objects.
  */
 gboolean
 ostree_repo_scan_hardlinks (OstreeRepo    *self,
                             GCancellable  *cancellable,
                             GError       **error)
 {
-  gboolean ret = FALSE;
-
   g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
 
   if (!self->loose_object_devino_hash)
     self->loose_object_devino_hash = (GHashTable*)ostree_repo_devino_cache_new ();
   g_hash_table_remove_all (self->loose_object_devino_hash);
-  if (!scan_loose_devino (self, self->loose_object_devino_hash, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
+  return scan_loose_devino (self, self->loose_object_devino_hash, cancellable, error);
 }
 
 /**
