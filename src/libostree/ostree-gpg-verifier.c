@@ -368,31 +368,22 @@ _ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *self,
                                              GCancellable       *cancellable,
                                              GError            **error)
 {
-  const char *global_keyring_path = g_getenv ("OSTREE_GPG_HOME");
-  g_autoptr(GFile) global_keyring_dir = NULL;
-  gboolean ret = FALSE;
-
   g_return_val_if_fail (OSTREE_IS_GPG_VERIFIER (self), FALSE);
 
+  const char *global_keyring_path = g_getenv ("OSTREE_GPG_HOME");
   if (global_keyring_path == NULL)
     global_keyring_path = DATADIR "/ostree/trusted.gpg.d/";
 
   if (g_file_test (global_keyring_path, G_FILE_TEST_IS_DIR))
     {
-      global_keyring_dir = g_file_new_for_path (global_keyring_path);
+      g_autoptr(GFile) global_keyring_dir = g_file_new_for_path (global_keyring_path);
       if (!_ostree_gpg_verifier_add_keyring_dir (self, global_keyring_dir,
                                                  cancellable, error))
-        {
-          g_prefix_error (error, "Reading keyring directory '%s'",
-                          gs_file_get_path_cached (global_keyring_dir));
-          goto out;
-        }
+        return glnx_prefix_error (error, "Reading keyring directory '%s'",
+                                  gs_file_get_path_cached (global_keyring_dir));
     }
 
-  ret = TRUE;
-
-out:
-  return ret;
+  return TRUE;
 }
 
 OstreeGpgVerifier*
