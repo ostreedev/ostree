@@ -26,11 +26,11 @@ skip_without_user_xattrs
 
 setup_test_repository "bare-user"
 
-echo "1..6"
+echo "1..7"
 
 mkdir mnt
 
-$OSTREE checkout -U test2 checkout-test2
+$OSTREE checkout -H -U test2 checkout-test2
 
 rofiles-fuse checkout-test2 mnt
 cleanup_fuse() {
@@ -47,8 +47,20 @@ assert_file_has_content err.txt "Read-only file system"
 assert_file_has_content mnt/firstfile first
 assert_file_has_content checkout-test2/firstfile first
 
-echo "ok failed inplace mutation"
+echo "ok failed inplace mutation (open O_TRUNCATE)"
 
+# Test chmod + chown
+if chmod 0600 mnt/firstfile 2>err.txt; then
+    assert_not_reached "chmod inplace"
+fi
+assert_file_has_content err.txt "chmod:.*Read-only file system"
+if chown $(id -u) mnt/firstfile 2>err.txt; then
+    assert_not_reached "chown inplace"
+fi
+assert_file_has_content err.txt "chown:.*Read-only file system"
+echo "ok failed mutation chmod + chown"
+
+# Test creating new files, using chown + chmod on them as well
 echo anewfile-for-fuse > mnt/anewfile-for-fuse
 assert_file_has_content mnt/anewfile-for-fuse anewfile-for-fuse
 assert_file_has_content checkout-test2/anewfile-for-fuse anewfile-for-fuse
@@ -56,9 +68,10 @@ assert_file_has_content checkout-test2/anewfile-for-fuse anewfile-for-fuse
 mkdir mnt/newfusedir
 for i in $(seq 5); do
     echo ${i}-morenewfuse-${i} > mnt/newfusedir/test-morenewfuse.${i}
+    chmod 0600 mnt/newfusedir/test-morenewfuse.${i}
+    chown $(id -u) mnt/newfusedir/test-morenewfuse.${i}
 done
 assert_file_has_content checkout-test2/newfusedir/test-morenewfuse.3 3-morenewfuse-3
-
 echo "ok new content"
 
 rm mnt/baz/cow
