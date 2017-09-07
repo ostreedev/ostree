@@ -26,20 +26,23 @@
 
 #include "libglnx.h"
 
-void
-ot_gpgme_error_to_gio_error (gpgme_error_t   gpg_error,
-                             GError        **error)
+/* Like glnx_throw_errno_prefix, but takes @gpg_error */
+gboolean
+ot_gpgme_throw (gpgme_error_t gpg_error, GError **error,
+                const char *fmt, ...)
 {
+  if (error == NULL)
+    return FALSE;
+
   GIOErrorEnum errcode;
   char errbuf[1024];
 
   /* XXX This list is incomplete.  Add cases as needed. */
-
   switch (gpgme_err_code (gpg_error))
     {
       /* special case - shouldn't be here */
       case GPG_ERR_NO_ERROR:
-        g_return_if_reached ();
+        g_assert_not_reached ();
 
       /* special case - abort on out-of-memory */
       case GPG_ERR_ENOMEM:
@@ -63,6 +66,12 @@ ot_gpgme_error_to_gio_error (gpgme_error_t   gpg_error,
   g_set_error (error, G_IO_ERROR, errcode, "%s: %s",
                gpgme_strsource (gpg_error),
                errbuf);
+  va_list args;
+  va_start (args, fmt);
+  glnx_real_set_prefix_error_va (*error, fmt, args);
+  va_end (args);
+
+  return FALSE;
 }
 
 gboolean
@@ -99,7 +108,7 @@ ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
                                          NULL, tmp_home_dir);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (gpg_error, error);
+      ot_gpgme_throw (gpg_error, error, "gpgme_ctx_set_engine_info");
       goto out;
     }
 
@@ -376,7 +385,6 @@ ot_gpgme_data_input (GInputStream *input_stream)
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
       g_assert (gpgme_err_code (gpg_error) == GPG_ERR_ENOMEM);
-      ot_gpgme_error_to_gio_error (gpg_error, NULL);
       g_assert_not_reached ();
     }
 
@@ -399,7 +407,6 @@ ot_gpgme_data_output (GOutputStream *output_stream)
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
       g_assert (gpgme_err_code (gpg_error) == GPG_ERR_ENOMEM);
-      ot_gpgme_error_to_gio_error (gpg_error, NULL);
       g_assert_not_reached ();
     }
 
@@ -416,11 +423,7 @@ ot_gpgme_new_ctx (const char *homedir,
   g_auto(gpgme_ctx_t) context = NULL;
 
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_error_to_gio_error (err, error);
-      g_prefix_error (error, "Unable to create gpg context: ");
-      return NULL;
-    }
+    return ot_gpgme_throw (err, error,  "Unable to create gpg context"), NULL;
 
   if (homedir != NULL)
     {
@@ -430,12 +433,7 @@ ot_gpgme_new_ctx (const char *homedir,
 
       if ((err = gpgme_ctx_set_engine_info (context, info->protocol, NULL, homedir))
           != GPG_ERR_NO_ERROR)
-        {
-          ot_gpgme_error_to_gio_error (err, error);
-          g_prefix_error (error, "Unable to set gpg homedir to '%s': ",
-                          homedir);
-          return NULL;
-        }
+        return ot_gpgme_throw (err, error, "Unable to set gpg homedir to '%s'", homedir), NULL;
     }
 
   return g_steal_pointer (&context);

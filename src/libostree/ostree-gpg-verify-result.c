@@ -133,8 +133,7 @@ ostree_gpg_verify_result_initable_init (GInitable     *initable,
   gpg_error = gpgme_new (&result->context);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      ot_gpgme_error_to_gio_error (gpg_error, error);
-      g_prefix_error (error, "Unable to create context: ");
+      ot_gpgme_throw (gpg_error, error, "Unable to create context");
       goto out;
     }
 
