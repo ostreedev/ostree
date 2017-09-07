@@ -112,8 +112,15 @@ mkdir -p adir
 ${CMD_PREFIX} ostree --repo=collection-repo commit --branch=rcommit -m rcommit -s rcommit adir
 ${CMD_PREFIX} ostree --repo=repo remote add --no-gpg-verify --collection-id org.example.RemoteCollection collection-repo-remote "file://${test_tmpdir}/collection-repo"
 ${CMD_PREFIX} ostree --repo=repo pull collection-repo-remote rcommit
+
 ${CMD_PREFIX} ostree --repo=repo refs --collections > refs
 assert_file_has_content refs "^(org.example.RemoteCollection, rcommit)$"
+
+${CMD_PREFIX} ostree --repo=repo refs --collections org.example.RemoteCollection > refs
+assert_file_has_content refs "^(org.example.RemoteCollection, rcommit)$"
+
+${CMD_PREFIX} ostree --repo=repo refs --collections org.example.NonexistentID > refs
+assert_not_file_has_content refs "^(org.example.RemoteCollection, rcommit)$"
 
 cd ${test_tmpdir}
 mkdir no-collection-repo
