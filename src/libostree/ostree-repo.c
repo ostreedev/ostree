@@ -3350,6 +3350,9 @@ import_one_object_link (OstreeRepo    *self,
                         GCancellable  *cancellable,
                         GError        **error)
 {
+  const char *errprefix = glnx_strjoina ("Importing ", checksum, ".",
+                                         ostree_object_type_to_string (objtype));
+  GLNX_AUTO_PREFIX_ERROR (errprefix, error);
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
 
@@ -3396,7 +3399,7 @@ import_one_object_link (OstreeRepo    *self,
           return TRUE;
         }
       else
-        return glnx_throw_errno (error);
+        return glnx_throw_errno_prefix (error, "linkat");
     }
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
