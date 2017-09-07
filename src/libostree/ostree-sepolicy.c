@@ -521,7 +521,7 @@ ostree_sepolicy_get_label (OstreeSePolicy    *self,
       if (errno == ENOENT)
         *out_label = NULL;
       else
-        return glnx_throw_errno (error);
+        return glnx_throw_errno_prefix (error, "selabel_lookup");
     }
   else
     {
