@@ -1007,11 +1007,8 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
     {
       if (dfd >= 0)
         {
-          if (unlinkat (dfd, ref->ref_name, 0) != 0)
-            {
-              if (errno != ENOENT)
-                return glnx_throw_errno (error);
-            }
+          if (!ot_ensure_unlinked_at (dfd, ref->ref_name, error))
+            return FALSE;
         }
     }
   else if (rev != NULL)

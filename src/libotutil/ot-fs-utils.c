@@ -90,6 +90,7 @@ ot_openat_read_stream (int             dfd,
   return TRUE;
 }
 
+/* Like unlinkat() but ignore ENOENT */
 gboolean
 ot_ensure_unlinked_at (int dfd,
                        const char *path,
