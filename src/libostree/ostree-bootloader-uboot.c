@@ -62,6 +62,44 @@ _ostree_bootloader_uboot_get_name (OstreeBootloader *bootloader)
   return "U-Boot";
 }
 
+/* Append system's uEnv.txt, if it exists in $deployment/usr/lib/ostree-boot/ */
+static gboolean
+append_system_uenv (OstreeBootloaderUboot   *self,
+                    const char              *bootargs,
+                    GPtrArray               *new_lines,
+                    GCancellable            *cancellable,
+                    GError                 **error)
+{
+  glnx_fd_close int uenv_fd = -1;
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
+  const char *uenv_path = NULL;
+  const char *ostree_arg = NULL;
+
+  kargs = _ostree_kernel_args_from_string (bootargs);
+  ostree_arg = _ostree_kernel_args_get_last_value (kargs, "ostree");
+  if (!ostree_arg)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "No ostree= kernel argument found in boot loader configuration file");
+      return FALSE;
+    }
+  ostree_arg += 1;
+  uenv_path = glnx_strjoina (ostree_arg, "/usr/lib/ostree-boot/uEnv.txt");
+  if (!ot_openat_ignore_enoent (self->sysroot->sysroot_fd, uenv_path, &uenv_fd, error))
+    return FALSE;
+  if (uenv_fd != -1)
+    {
+      char *uenv = glnx_fd_readall_utf8 (uenv_fd, NULL, cancellable, error);
+      if (!uenv)
+        {
+          g_prefix_error (error, "Reading %s: ", uenv_path);
+          return FALSE;
+        }
+      g_ptr_array_add (new_lines, uenv);
+    }
+  return TRUE;
+}
+
 static gboolean
 create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
                                         int                    bootversion,
@@ -77,61 +115,35 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
                                                  cancellable, error))
     return FALSE;
 
-  /* U-Boot doesn't support a menu so just pick the first one since the list is ordered */
-  config = boot_loader_configs->pdata[0];
-
-  val = ostree_bootconfig_parser_get (config, "linux");
-  if (!val)
+  for (int i = 0; i < boot_loader_configs->len; i++)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No \"linux\" key in bootloader config");
-      return FALSE;
-    }
-  g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image=%s", val));
-
-  val = ostree_bootconfig_parser_get (config, "initrd");
-  if (val)
-    g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image=%s", val));
-
-  val = ostree_bootconfig_parser_get (config, "options");
-  if (val)
-    {
-      glnx_fd_close int uenv_fd = -1;
-      __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
-      const char *uenv_path = NULL;
-      const char *ostree_arg = NULL;
-
-      g_ptr_array_add (new_lines, g_strdup_printf ("bootargs=%s", val));
-
-      /* Append system's uEnv.txt, if it exists in $deployment/usr/lib/ostree-boot/ */
-      kargs = _ostree_kernel_args_from_string (val);
-      ostree_arg = _ostree_kernel_args_get_last_value (kargs, "ostree");
-      if (!ostree_arg)
-      {
-        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                             "No ostree= kernel argument found in boot loader configuration file");
-        return FALSE;
-      }
-      ostree_arg += 1;
-      uenv_path = glnx_strjoina (ostree_arg, "/usr/lib/ostree-boot/uEnv.txt");
-      uenv_fd = openat (self->sysroot->sysroot_fd, uenv_path, O_CLOEXEC | O_RDONLY);
-      if (uenv_fd != -1)
-        {
-          char *uenv = glnx_fd_readall_utf8 (uenv_fd, NULL, cancellable, error);
-          if (!uenv)
-            {
-              g_prefix_error (error, "Reading %s: ", uenv_path);
-              return FALSE;
-            }
-          g_ptr_array_add (new_lines, uenv);
-        }
+      g_autofree char *index_suffix = NULL;
+      if (i == 0)
+        index_suffix = g_strdup ("");
       else
+        index_suffix = g_strdup_printf ("%d", i+1);
+      config = boot_loader_configs->pdata[i];
+
+      val = ostree_bootconfig_parser_get (config, "linux");
+      if (!val)
         {
-          if (errno != ENOENT)
-            {
-              g_prefix_error (error, "openat %s: ", uenv_path);
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "No \"linux\" key in bootloader config");
+          return FALSE;
+        }
+      g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image%s=%s", index_suffix, val));
+
+      val = ostree_bootconfig_parser_get (config, "initrd");
+      if (val)
+        g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image%s=%s", index_suffix, val));
+
+      val = ostree_bootconfig_parser_get (config, "options");
+      if (val)
+        {
+          g_ptr_array_add (new_lines, g_strdup_printf ("bootargs%s=%s", index_suffix, val));
+          if (i == 0)
+            if (!append_system_uenv (self, val, new_lines, cancellable, error))
               return FALSE;
-            }
         }
     }
 

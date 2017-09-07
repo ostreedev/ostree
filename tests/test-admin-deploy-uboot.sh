@@ -42,5 +42,7 @@ ${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buil
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 assert_file_has_content sysroot/boot/uEnv.txt "loadfdt="
 assert_file_has_content sysroot/boot/uEnv.txt "kernel_image="
+assert_file_has_content sysroot/boot/uEnv.txt "kernel_image2="
+assert_file_has_content sysroot/boot/uEnv.txt "kernel_image3="
 
 echo "ok merging uEnv.txt files"
