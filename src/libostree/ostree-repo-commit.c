@@ -1534,7 +1534,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if (g_getenv ("OSTREE_SUPPRESS_SYNCFS") == NULL)
     {
       if (syncfs (self->tmp_dir_fd) < 0)
-        return glnx_throw_errno (error);
+        return glnx_throw_errno_prefix (error, "syncfs");
     }
 
   if (!rename_pending_loose_objects (self, cancellable, error))
@@ -2798,8 +2798,8 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   OstreeRepoCommitFilterResult filter_result;
   struct stat dir_stbuf;
 
-  if (fstat (src_dfd_iter->fd, &dir_stbuf) != 0)
-    return glnx_throw_errno (error);
+  if (!glnx_fstat (src_dfd_iter->fd, &dir_stbuf, error))
+    return FALSE;
 
   child_info = _ostree_stbuf_to_gfileinfo (&dir_stbuf);
 

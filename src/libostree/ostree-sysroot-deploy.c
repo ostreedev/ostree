@@ -171,8 +171,8 @@ copy_dir_recurse (int              src_parent_dfd,
     return FALSE;
 
   /* Create with mode 0700, we'll fchmod/fchown later */
-  if (mkdirat (dest_parent_dfd, name, 0700) != 0)
-    return glnx_throw_errno (error);
+  if (!glnx_ensure_dir (dest_parent_dfd, name, 0700, error))
+    return FALSE;
 
   if (!glnx_opendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
     return FALSE;

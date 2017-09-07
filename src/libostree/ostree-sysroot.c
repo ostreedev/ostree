@@ -471,8 +471,8 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
       if (dent == NULL)
         break;
 
-      if (fstatat (dfd_iter.fd, dent->d_name, &stbuf, 0) != 0)
-        return glnx_throw_errno (error);
+      if (!glnx_fstatat (dfd_iter.fd, dent->d_name, &stbuf, 0, error))
+        return FALSE;
 
       if (g_str_has_prefix (dent->d_name, "ostree-") &&
           g_str_has_suffix (dent->d_name, ".conf") &&
