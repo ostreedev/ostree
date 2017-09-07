@@ -1131,6 +1131,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
                               GCancellable      *cancellable,
                               GError           **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("rename pending", error);
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
   if (!glnx_dirfd_iterator_init_at (self->commit_stagedir_fd, ".", FALSE, &dfd_iter, error))
@@ -1223,11 +1224,10 @@ cleanup_tmpdir (OstreeRepo        *self,
                 GCancellable      *cancellable,
                 GError           **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("tmpdir cleanup", error);
+  const guint64 curtime_secs = g_get_real_time () / 1000000;
+
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  guint64 curtime_secs;
-
-  curtime_secs = g_get_real_time () / 1000000;
-
   if (!glnx_dirfd_iterator_init_at (self->tmp_dir_fd, ".", TRUE, &dfd_iter, error))
     return FALSE;
 
@@ -1255,7 +1255,7 @@ cleanup_tmpdir (OstreeRepo        *self,
         {
           if (errno == ENOENT) /* Did another cleanup win? */
             continue;
-          return glnx_throw_errno (error);
+          return glnx_throw_errno_prefix (error, "fstatat(%s)", dent->d_name);
         }
 
       /* First, if it's a directory which needs locking, but it's
@@ -1282,7 +1282,7 @@ cleanup_tmpdir (OstreeRepo        *self,
            * from *other* boots
            */
           if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
-            return FALSE;
+            return glnx_prefix_error (error, "Removing %s", dent->d_name);
         }
       /* FIXME - move OSTREE_REPO_TMPDIR_FETCHER underneath the
        * staging/boot-id scheme as well, since all of the "did it get
@@ -1307,7 +1307,7 @@ cleanup_tmpdir (OstreeRepo        *self,
           if (delta > self->tmp_expiry_seconds)
             {
               if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
-                return FALSE;
+                return glnx_prefix_error (error, "Removing %s", dent->d_name);
             }
         }
     }
