@@ -210,35 +210,29 @@ cleanup_other_bootversions (OstreeSysroot       *self,
                             GCancellable        *cancellable,
                             GError             **error)
 {
-  int cleanup_bootversion = self->bootversion == 0 ? 1 : 0;
-  int cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;
+  const int cleanup_bootversion = self->bootversion == 0 ? 1 : 0;
+  const int cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;
+  /* Reusable buffer for path */
+  g_autoptr(GString) buf = g_string_new ("");
 
-  g_autoptr(GFile) cleanup_boot_dir = NULL;
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d", cleanup_bootversion);
-  if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
+  /* These directories are for the other major version */
+  g_string_truncate (buf, 0); g_string_append_printf (buf, "boot/loader.%d", cleanup_bootversion);
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
     return FALSE;
-  g_clear_object (&cleanup_boot_dir);
+  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d", cleanup_bootversion);
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
+    return FALSE;
+  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d.0", cleanup_bootversion);
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
+    return FALSE;
+  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d.1", cleanup_bootversion);
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
+    return FALSE;
 
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d", cleanup_bootversion);
-  if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
+  /* And finally the other subbootversion */
+  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d.%d", self->bootversion, cleanup_subbootversion);
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
     return FALSE;
-  g_clear_object (&cleanup_boot_dir);
-
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.0", cleanup_bootversion);
-  if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    return FALSE;
-  g_clear_object (&cleanup_boot_dir);
-
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.1", cleanup_bootversion);
-  if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    return FALSE;
-  g_clear_object (&cleanup_boot_dir);
-
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.%d", self->bootversion,
-                                                   cleanup_subbootversion);
-  if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (cleanup_boot_dir), cancellable, error))
-    return FALSE;
-  g_clear_object (&cleanup_boot_dir);
 
   return TRUE;
 }
