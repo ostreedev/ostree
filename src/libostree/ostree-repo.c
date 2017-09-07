@@ -1129,8 +1129,8 @@ impl_repo_remote_delete (OstreeRepo     *self,
 
   if (remote->file != NULL)
     {
-      if (unlink (gs_file_get_path_cached (remote->file)) != 0)
-        return glnx_throw_errno (error);
+      if (!glnx_unlinkat (AT_FDCWD, gs_file_get_path_cached (remote->file), 0, error))
+        return FALSE;
     }
   else
     {
@@ -2362,8 +2362,8 @@ ostree_repo_open (OstreeRepo    *self,
       /* Note - we don't return this error yet! */
     }
 
-  if (fstat (self->objects_dir_fd, &stbuf) != 0)
-    return glnx_throw_errno (error);
+  if (!glnx_fstat (self->objects_dir_fd, &stbuf, error))
+    return FALSE;
   self->owner_uid = stbuf.st_uid;
 
   if (stbuf.st_uid != getuid () || stbuf.st_gid != getgid ())
@@ -2749,8 +2749,8 @@ load_metadata_internal (OstreeRepo       *self,
 
   if (fd != -1)
     {
-      if (fstat (fd, &stbuf) < 0)
-        return glnx_throw_errno (error);
+      if (!glnx_fstat (fd, &stbuf, error))
+        return FALSE;
 
       if (out_variant)
         {
@@ -3173,7 +3173,7 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
           if (errno == ENOENT)
             ; /* Next dfd */
           else
-            return glnx_throw_errno (error);
+            return glnx_throw_errno_prefix (error, "fstatat(%s)", loose_path_buf);
         }
       else
         {
@@ -3696,7 +3696,7 @@ ostree_repo_load_commit (OstreeRepo            *self,
         }
       else if (errno != ENOENT)
         {
-          return glnx_throw_errno (error);
+          return glnx_throw_errno_prefix (error, "fstatat(%s)", commitpartial_path);
         }
     }
 
