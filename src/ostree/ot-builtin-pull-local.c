@@ -47,7 +47,7 @@ static int opt_depth = 0;
 static GOptionEntry options[] = {
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
-  { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust source", NULL },
+  { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not verify checksums of local sources (always enabled for HTTP pulls)", NULL },
   { "bareuseronly-files", 0, 0, G_OPTION_ARG_NONE, &opt_bareuseronly_files, "Reject regular files with mode outside of 0775 (world writable, suid, etc.)", NULL },
   { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
   { "gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify, "GPG verify commits (must specify --remote)", NULL },

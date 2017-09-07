@@ -29,7 +29,7 @@ fi
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..2'
+echo '1..3'
 
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 cp -a ${repopath} ${repopath}.orig
@@ -59,3 +59,44 @@ gjs $(dirname $0)/corrupt-repo-ref.js ${repopath} main || true
 assert_file_has_content corrupted-status.txt 'Changed byte'
 do_corrupt_pull_test
 echo "ok corruption"
+
+if ! skip_one_without_user_xattrs; then
+    # Set up a corrupted commit object
+    rm ostree-srv httpd repo -rf
+    setup_fake_remote_repo1 "archive"
+    rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main)
+    corruptrev=$(echo ${rev} hello | sha256sum | cut -f 1 -d ' ')
+    assert_not_streq ${rev} ${corruptrev}
+    rev_path=ostree-srv/gnomerepo/objects/${rev:0:2}/${rev:2}.commit
+    corruptrev_path=ostree-srv/gnomerepo/objects/${corruptrev:0:2}/${corruptrev:2}.commit
+    mkdir -p $(dirname ${corruptrev_path})
+    mv ${rev_path} ${corruptrev_path}
+    echo ${corruptrev} > ostree-srv/gnomerepo/refs/heads/main
+    ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+    if ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo fsck 2>err.txt; then
+        assert_not_reached "fsck with corrupted commit worked?"
+    fi
+    assert_file_has_content err.txt "corrupted object ${corruptrev}\.commit"
+
+    # Do a pull-local; this should succeed since we don't verify checksums
+    # for local repos by default.
+    rm repo err.txt -rf
+    ostree_repo_init repo --mode=bare-user
+    ${CMD_PREFIX} ostree --repo=repo pull-local ostree-srv/gnomerepo main
+
+    rm repo err.txt -rf
+    ostree_repo_init repo --mode=bare-user
+    if ${CMD_PREFIX} ostree --repo=repo pull-local --untrusted ostree-srv/gnomerepo main 2>err.txt; then
+        assert_not_reached "pull-local --untrusted worked?"
+    fi
+    assert_file_has_content err.txt "Corrupted commit object ${corruptrev}.*actual checksum is ${rev}"
+
+    rm repo err.txt -rf
+    ostree_repo_init repo --mode=bare-user
+    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+    if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
+        assert_not_reached "pull unexpectedly succeeded!"
+    fi
+    assert_file_has_content err.txt "Corrupted commit object ${corruptrev}.*actual checksum is ${rev}"
+    echo "ok pull commit corruption"
+fi
