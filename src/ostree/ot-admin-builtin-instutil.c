@@ -106,7 +106,7 @@ ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GEr
 
       /* This will not return for some options (e.g. --version). */
       if (ostree_admin_option_context_parse (context, NULL, &argc, &argv,
-                                             OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
+                                             OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT,
                                              NULL, cancellable, error))
         {
           if (subcommand_name == NULL)
