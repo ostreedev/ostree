@@ -35,6 +35,13 @@ function validate_bootloader() {
     cd -
 }
 
+# Test generate_deployment_refs()
+assert_ostree_deployment_refs() {
+    ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo refs ostree | sort > ostree-refs.txt
+    (for v in "$@"; do echo $v; done) | sort > ostree-refs-expected.txt
+    diff -u ostree-refs{-expected,}.txt
+}
+
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -55,6 +62,7 @@ assert_file_has_content curdir ^`pwd`/sysroot/ostree/deploy/testos/deploy/${rev}
 
 echo "ok --print-current-dir"
 
+# Test layout of bootloader config and refs
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
 assert_has_dir sysroot/ostree/boot.1.1
@@ -64,9 +72,8 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'option
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.1/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
+assert_ostree_deployment_refs 1/1/0
 ${CMD_PREFIX} ostree admin status
-
-
 echo "ok layout"
 
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
@@ -84,6 +91,7 @@ assert_not_has_dir sysroot/ostree/boot.1.1
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.0/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
+assert_ostree_deployment_refs 0/1/{0,1}
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
@@ -96,6 +104,7 @@ assert_not_has_dir sysroot/boot/loader.1
 # But swap subbootversion
 assert_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.0.1
+assert_ostree_deployment_refs 0/0/{0,1}
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
@@ -110,6 +119,7 @@ assert_has_file sysroot/boot/loader/entries/ostree-testos-1.conf
 assert_has_file sysroot/boot/loader/entries/ostree-otheros-0.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/otheros/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
+assert_ostree_deployment_refs 1/1/{0,1,2}
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
@@ -123,6 +133,7 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.2/etc/os-rele
 assert_has_file sysroot/boot/loader/entries/ostree-testos-2.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin status
+assert_ostree_deployment_refs 0/1/{0,1,2,3}
 validate_bootloader
 
 echo "ok fourth deploy (retain)"
