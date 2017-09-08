@@ -28,7 +28,9 @@ test_usage_output() {
     cmd=$1; shift
     assert_file_has_content $file '^Usage'
     # check that it didn't print twice somehow
-    [ "$(grep --count '^Usage' $file)" = 1 ]
+    if [ "$(grep --count '^Usage' $file)" != 1 ]; then
+      _fatal_print_file "$file" "File '$file' has '^Usage' more than once."
+    fi
     assert_file_has_content $file "$cmd"
 }
 
