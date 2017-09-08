@@ -832,13 +832,13 @@ typedef enum {
  * @OSTREE_REPO_CHECKOUT_OVERWRITE_NONE: No special options
  * @OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES: When layering checkouts, unlink() and replace existing files, but do not modify existing directories
  * @OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES: Only add new files/directories
- * @OSTREE_REPO_CHECKOUT_OVERWRITE_DISJOINT_UNION_FILES: When layering checkouts, error out if a file would be replaced, but add new files and directories
+ * @OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL: Like UNION_FILES, but error if files are not identical (requires hardlink checkouts)
  */
 typedef enum {
   OSTREE_REPO_CHECKOUT_OVERWRITE_NONE = 0,
   OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES = 1,
   OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES = 2, /* Since: 2017.3 */
-  OSTREE_REPO_CHECKOUT_OVERWRITE_DISJOINT_UNION_FILES = 3 /* Since: 2017.11 */
+  OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL = 3, /* Since: 2017.11 */
 } OstreeRepoCheckoutOverwriteMode;
 
 _OSTREE_PUBLIC
