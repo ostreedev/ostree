@@ -26,6 +26,7 @@ python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
 echo "ok yaml version"
 
 CHECKOUT_U_ARG=""
+CHECKOUT_H_ARGS="-H"
 COMMIT_ARGS=""
 DIFF_ARGS=""
 if is_bare_user_only_repo repo; then
@@ -36,6 +37,11 @@ if is_bare_user_only_repo repo; then
     DIFF_ARGS="--owner-uid=0 --owner-gid=0 --no-xattrs"
     # Also, since we can't check out uid=0 files we need to check out in user mode
     CHECKOUT_U_ARG="-U"
+    CHECKOUT_H_ARGS="-U -H"
+else
+    if grep -E -q '^mode=bare-user' repo/config; then
+        CHECKOUT_H_ARGS="-U -H"
+    fi
 fi
 
 validate_checkout_basic() {
@@ -469,31 +475,56 @@ assert_file_has_content checkout-test-union-add/union-add-test 'existing file fo
 assert_file_has_content checkout-test-union-add/union-add-test2 'another file for union add testing'
 echo "ok checkout union add"
 
-# Create some new files for testing
+# Test --union-identical <https://github.com/projectatomic/rpm-ostree/issues/982>
+# Prepare data:
 cd ${test_tmpdir}
-mkdir disjoint-union-test
-mkdir disjoint-union-test/test_one
-chmod a+w disjoint-union-test/test_one
-echo 'file for add dirs testing' > disjoint-union-test/test_one/test_file
-$OSTREE commit ${COMMIT_ARGS} -b test-disjoint-union --tree=dir=disjoint-union-test
-$OSTREE checkout --disjoint-union test-disjoint-union checkout-test-disjoint-union
-echo "ok adding new directories and new file"
-# Make a new file, and try the checkout again
-echo 'second test file' >  disjoint-union-test/test_one/test_second_file
-$OSTREE commit ${COMMIT_ARGS} -b test-disjoint-union --tree=dir=disjoint-union-test
-# Check out the latest commit, should fail due to presence of existing files
-if $OSTREE checkout --disjoint-union test-disjoint-union checkout-test-disjoint-union 2> err.txt; then
-    assert_not_reached "checking out files unexpectedly succeeded!"
+for x in $(seq 3); do
+    mkdir -p pkg${x}/usr/{bin,share/licenses}
+    # Separate binaries and symlinks
+    echo 'binary for pkg'${x} > pkg${x}/usr/bin/pkg${x}
+    ln -s pkg${x} pkg${x}/usr/bin/link${x}
+    # But they share the GPL
+    echo 'this is the GPL' > pkg${x}/usr/share/licenses/COPYING
+    ln -s COPYING pkg${x}/usr/share/licenses/LICENSE
+    $OSTREE commit -b union-identical-pkg${x} --tree=dir=pkg${x}
+done
+rm union-identical-test -rf
+for x in $(seq 3); do
+    $OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical union-identical-pkg${x} union-identical-test
+done
+if $OSTREE checkout ${CHECKOUT_H_ARGS/-H/} --union-identical union-identical-pkg${x} union-identical-test-tmp 2>err.txt; then
+    fatal "--union-identical without -H"
 fi
-assert_file_has_content err.txt 'File exists'
-# Verify that Union mode still functions properly
-rm checkout-test-disjoint-union/test_one/test_file
-echo 'file for testing union mode alongwith disjoint-union mode' > checkout-test-disjoint-union/test_one/test_file
-$OSTREE checkout --union test-disjoint-union checkout-test-disjoint-union
-assert_has_file checkout-test-disjoint-union/test_one/test_second_file
-# This shows the file with same name has been successfully overwriten
-assert_file_has_content checkout-test-disjoint-union/test_one/test_file 'file for add dirs testing'
-echo "ok checkout disjoint union"
+assert_file_has_content err.txt "error:.*--union-identical requires --require-hardlinks"
+for x in $(seq 3); do
+    for v in pkg link; do
+        assert_file_has_content union-identical-test/usr/bin/${v}${x} "binary for pkg"${x}
+    done
+    for v in COPYING LICENSE; do
+        assert_file_has_content union-identical-test/usr/share/licenses/${v} GPL
+    done
+done
+echo "ok checkout union identical merges"
+
+# Make conflicting packages, one with regfile, one with symlink
+mkdir -p pkg-conflict1bin/usr/{bin,share/licenses}
+echo 'binary for pkg-conflict1bin' > pkg-conflict1bin/usr/bin/pkg1
+echo 'this is the GPL' > pkg-conflict1bin/usr/share/licenses/COPYING
+$OSTREE commit -b union-identical-conflictpkg1bin --tree=dir=pkg-conflict1bin
+mkdir -p pkg-conflict1link/usr/{bin,share/licenses}
+ln -s somewhere-else > pkg-conflict1link/usr/bin/pkg1
+echo 'this is the GPL' > pkg-conflict1link/usr/share/licenses/COPYING
+$OSTREE commit -b union-identical-conflictpkg1link --tree=dir=pkg-conflict1link
+
+for v in bin link; do
+    rm union-identical-test -rf
+    $OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical union-identical-pkg1 union-identical-test
+    if $OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical union-identical-conflictpkg1${v} union-identical-test 2>err.txt; then
+        fatal "union identical $v succeeded?"
+    fi
+    assert_file_has_content err.txt 'error:.*File exists'
+done
+echo "ok checkout union identical conflicts"
 
 cd ${test_tmpdir}
 rm files -rf && mkdir files

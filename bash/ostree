@@ -696,7 +696,7 @@ _ostree_checkout() {
         --require-hardlinks -H
         --union
         --union-add
-        --disjoint-union
+        --union-identical
         --user-mode -U
         --whiteouts
     "
