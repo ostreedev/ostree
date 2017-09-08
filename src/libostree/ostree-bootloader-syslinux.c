@@ -102,9 +102,9 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
 
 static gboolean
 _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
-                                     int                    bootversion,
-                                     GCancellable          *cancellable,
-                                     GError               **error)
+                                          int                    bootversion,
+                                          GCancellable          *cancellable,
+                                          GError               **error)
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
@@ -132,8 +132,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
    */
   for (char **iter = lines; iter; iter++)
     {
-      /* Take ownership of the string element */
-      g_autofree char *line = g_steal_pointer (iter);
+      const char *line = *iter;
       gboolean skip = FALSE;
 
       if (parsing_label &&
@@ -193,9 +192,9 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
       if (!skip)
         {
           if (parsing_label)
-            g_ptr_array_add (tmp_lines, g_steal_pointer (&line));
+            g_ptr_array_add (tmp_lines, g_strdup (line));
           else
-            g_ptr_array_add (new_lines, g_steal_pointer (&line));
+            g_ptr_array_add (new_lines, g_strdup (line));
         }
     }
 
@@ -208,15 +207,13 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
     return FALSE;
 
   g_autofree char *new_config_contents = _ostree_sysroot_join_lines (new_lines);
-  {
-    g_autoptr(GBytes) new_config_contents_bytes =
-      g_bytes_new_static (new_config_contents,
-                          strlen (new_config_contents));
+  g_autoptr(GBytes) new_config_contents_bytes =
+    g_bytes_new_static (new_config_contents,
+                        strlen (new_config_contents));
 
-    if (!ot_gfile_replace_contents_fsync (new_config_path, new_config_contents_bytes,
-                                          cancellable, error))
-      return FALSE;
-  }
+  if (!ot_gfile_replace_contents_fsync (new_config_path, new_config_contents_bytes,
+                                        cancellable, error))
+    return FALSE;
 
   return TRUE;
 }
