@@ -32,7 +32,7 @@ function assertNotEquals(a, b) {
 	throw new Error("assertion failed " + JSON.stringify(a) + " != " + JSON.stringify(b));
 }
 
-print('1..3')
+print('1..4')
 
 let remotesDir = Gio.File.new_for_path('remotes.d');
 remotesDir.make_directory(null);
@@ -56,7 +56,8 @@ assertNotEquals(remotes.indexOf('foo'), -1);
 
 print("ok read-remotes-config-dir");
 
-// Adding a remote should not go in the remotes.d dir
+// Adding a remote should not go in the remotes.d dir unless this is a
+// system repo or add-remotes-config-dir is set to true
 repo.remote_add('bar', 'http://bar', null, null);
 remotes = repo.remote_list()
 assertNotEquals(remotes.indexOf('bar'), -1);
@@ -71,3 +72,16 @@ assertEquals(remotes.indexOf('foo'), -1);
 assertEquals(remotesDir.get_child('foo.conf').query_exists(null), false);
 
 print("ok delete-in-remotes-config-dir");
+
+// Set add-remotes-config-dir to true and check that a remote gets added
+// in the config dir
+let repoConfig = repo.copy_config();
+repoConfig.set_boolean('core', 'add-remotes-config-dir', true);
+repo.write_config(repoConfig);
+repo.reload_config(null);
+repo.remote_add('baz', 'http://baz', null, null);
+remotes = repo.remote_list()
+assertNotEquals(remotes.indexOf('baz'), -1);
+assertEquals(remotesDir.get_child('baz.conf').query_exists(null), true);
+
+print("ok add-in-remotes-config-dir");

@@ -122,6 +122,27 @@ Boston, MA 02111-1307, USA.
         keep free. The default value is 3.</para></listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><varname>add-remotes-config-dir</varname></term>
+        <listitem>
+          <para>
+            Boolean value controlling whether new remotes will be added
+            in the remotes configuration directory. Defaults to
+            <literal>true</literal> for system ostree repositories. When
+            this is <literal>false</literal>, remotes will be added in
+            the repository's <filename>config</filename> file.
+          </para>
+          <para>
+            This only applies to repositories that use a remotes
+            configuration directory such as system ostree repositories,
+            which use <filename>/etc/ostree/remotes.d</filename>.
+            Non-system repositories do not use a remotes configuration
+            directory unless one is specified when the repository is
+            opened.
+          </para>
+        </listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 

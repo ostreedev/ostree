@@ -154,6 +154,7 @@ struct OstreeRepo {
   gboolean generate_sizes;
   guint64 tmp_expiry_seconds;
   gchar *collection_id;
+  gboolean add_remotes_config_dir; /* Add new remotes in remotes.d dir */
 
   OstreeRepo *parent_repo;
 };
