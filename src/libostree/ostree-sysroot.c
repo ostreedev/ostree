@@ -772,6 +772,13 @@ ensure_repo (OstreeSysroot  *self,
    */
   g_weak_ref_init (&self->repo->sysroot, self);
   self->repo->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_VIA_SYSROOT;
+
+  /* Reload the repo config in case any defaults depend on knowing if this is
+   * a system repo.
+   */
+  if (!ostree_repo_reload_config (self->repo, NULL, error))
+    return FALSE;
+
   return TRUE;
 }
 
