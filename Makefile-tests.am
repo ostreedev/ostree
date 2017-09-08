@@ -186,6 +186,7 @@ endif
 
 js_installed_tests = \
 	tests/test-core.js \
+	tests/test-remotes-config-dir.js \
 	tests/test-sizes.js \
 	tests/test-sysroot.js \
 	$(NULL)
