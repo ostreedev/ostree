@@ -4940,11 +4940,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                  g_variant_new_uint64 (GUINT64_TO_BE (g_get_real_time () / G_USEC_PER_SEC)));
   }
 
-  /* Add refs which have a collection specified. ostree_repo_list_collection_refs()
-   * is guaranteed to only return refs which are in refs/mirrors, or those which
-   * are in refs/heads if the repository configuration specifies a collection ID
-   * (which we put in the main refs map, rather than the collection map, for
-   * backwards compatibility). */
+  /* Add refs which have a collection specified, which could be in refs/mirrors,
+   * refs/heads, and/or refs/remotes. */
   {
     g_autoptr(GHashTable) collection_refs = NULL;
     if (!ostree_repo_list_collection_refs (self, NULL, &collection_refs,
@@ -4983,6 +4980,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         const char *collection_id = collection_iter->data;
         GHashTable *ref_map = g_hash_table_lookup (collection_map, collection_id);
 
+        /* We put the local repo's collection ID in the main refs map, rather
+         * than the collection map, for backwards compatibility. */
         gboolean is_main_collection_id = (main_collection_id != NULL && g_str_equal (collection_id, main_collection_id));
 
         if (!is_main_collection_id)
