@@ -115,7 +115,8 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
 
       /* This will not return for some options (e.g. --version). */
       if (ostree_option_context_parse (context, NULL, &argc, &argv,
-                                       OSTREE_BUILTIN_FLAG_NONE, NULL, cancellable, error))
+                                       OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable,
+                                       error))
         {
           if (subcommand_name == NULL)
             {
