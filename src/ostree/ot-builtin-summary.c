@@ -83,7 +83,6 @@ build_additional_metadata (const char * const  *args,
 gboolean
 ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
@@ -91,24 +90,24 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
   context = g_option_context_new ("Manage summary metadata");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (opt_update)
     {
       g_autoptr(GVariant) additional_metadata = NULL;
 
       if (!ostree_ensure_repo_writable (repo, error))
-        goto out;
+        return FALSE;
 
       if (opt_metadata != NULL)
         {
           additional_metadata = build_additional_metadata ((const char * const *) opt_metadata, error);
           if (additional_metadata == NULL)
-            goto out;
+            return FALSE;
         }
 
       if (!ostree_repo_regenerate_summary (repo, additional_metadata, cancellable, error))
-        goto out;
+        return FALSE;
 
       if (opt_key_ids)
         {
@@ -117,7 +116,7 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
                                                       opt_gpg_homedir,
                                                       cancellable,
                                                       error))
-            goto out;
+            return FALSE;
         }
     }
   else if (opt_view)
@@ -129,7 +128,7 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
 
       summary_data = ot_file_mapat_bytes (repo->repo_dir_fd, "summary", error);
       if (!summary_data)
-        goto out;
+        return FALSE;
 
       ot_dump_summary_bytes (summary_data, flags);
     }
@@ -137,10 +136,8 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "No option specified; use -u to update summary");
-      goto out;
+      return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
