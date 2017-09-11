@@ -90,7 +90,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--gpg-sign</option>=KEYID</term>
 
                 <listitem><para>
-                    GPG Key ID to sign the delta with.
+                    GPG Key ID to sign the summary with.
                 </para></listitem>
             </varlistentry>
 
