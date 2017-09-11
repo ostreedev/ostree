@@ -106,6 +106,97 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
             return FALSE;
         }
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+      const char *collection_id = ostree_repo_get_collection_id (repo);
+#else  /* if !OSTREE_ENABLE_EXPERIMENTAL_API */
+      const char *collection_id = NULL;
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
+      /* Write out a new metadata commit for the repository. */
+      if (collection_id != NULL)
+        {
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+          OstreeCollectionRef collection_ref = { (gchar *) collection_id, (gchar *) OSTREE_REPO_METADATA_REF };
+          g_autofree char *old_ostree_metadata_checksum = NULL;
+          g_autofree gchar *new_ostree_metadata_checksum = NULL;
+          g_autoptr(OstreeMutableTree) mtree = NULL;
+          g_autoptr(OstreeRepoFile) repo_file = NULL;
+          g_autoptr(GVariantDict) new_summary_commit_dict = NULL;
+          g_autoptr(GVariant) new_summary_commit = NULL;
+
+          if (!ostree_repo_resolve_rev (repo, OSTREE_REPO_METADATA_REF,
+                                        TRUE, &old_ostree_metadata_checksum, error))
+            return FALSE;
+
+          /* Add bindings to the metadata. */
+          new_summary_commit_dict = g_variant_dict_new (additional_metadata);
+          g_variant_dict_insert (new_summary_commit_dict, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
+                                 "s", collection_ref.collection_id);
+          g_variant_dict_insert_value (new_summary_commit_dict, OSTREE_COMMIT_META_KEY_REF_BINDING,
+                                       g_variant_new_strv ((const gchar * const *) &collection_ref.ref_name, 1));
+          new_summary_commit = g_variant_dict_end (new_summary_commit_dict);
+
+          if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+            return FALSE;
+
+          /* Set up an empty mtree. */
+          mtree = ostree_mutable_tree_new ();
+
+          glnx_unref_object GFileInfo *fi = g_file_info_new ();
+          g_file_info_set_attribute_uint32 (fi, "unix::uid", 0);
+          g_file_info_set_attribute_uint32 (fi, "unix::gid", 0);
+          g_file_info_set_attribute_uint32 (fi, "unix::mode", (0755 | S_IFDIR));
+
+          g_autofree guchar *csum_raw = NULL;
+          g_autofree char *csum = NULL;
+
+          g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (fi, NULL /* xattrs */);
+
+          if (!ostree_repo_write_metadata (repo, OSTREE_OBJECT_TYPE_DIR_META, NULL,
+                                           dirmeta, &csum_raw, cancellable, error))
+            return FALSE;
+
+          csum = ostree_checksum_from_bytes (csum_raw);
+          ostree_mutable_tree_set_metadata_checksum (mtree, csum);
+
+          if (!ostree_repo_write_mtree (repo, mtree, (GFile **) &repo_file, NULL, error))
+            return FALSE;
+
+          if (!ostree_repo_write_commit (repo, old_ostree_metadata_checksum,
+                                         NULL  /* subject */, NULL  /* body */,
+                                         new_summary_commit, repo_file, &new_ostree_metadata_checksum,
+                                         NULL, error))
+            return FALSE;
+
+          if (opt_key_ids != NULL)
+            {
+              for (const char * const *iter = (const char * const *) opt_key_ids;
+                   iter != NULL && *iter != NULL; iter++)
+                {
+                  const char *key_id = *iter;
+
+                  if (!ostree_repo_sign_commit (repo,
+                                                new_ostree_metadata_checksum,
+                                                key_id,
+                                                opt_gpg_homedir,
+                                                cancellable,
+                                                error))
+                    return FALSE;
+                }
+            }
+
+          ostree_repo_transaction_set_collection_ref (repo, &collection_ref,
+                                                      new_ostree_metadata_checksum);
+
+          if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
+            return FALSE;
+#else  /* if !OSTREE_ENABLE_EXPERIMENTAL_API */
+          g_assert_not_reached ();
+          return FALSE;
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+        }
+
+      /* Regenerate and sign the conventional summary file. */
       if (!ostree_repo_regenerate_summary (repo, additional_metadata, cancellable, error))
         return FALSE;
 

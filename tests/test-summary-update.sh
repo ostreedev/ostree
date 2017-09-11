@@ -91,4 +91,23 @@ ${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata=map='@a{sv} {}'
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
 assert_file_has_content summary "^map: {}$"
 
+# Check the ostree-metadata ref has also been created with the same content and appropriate bindings.
+${CMD_PREFIX} ostree --repo=repo refs --collections > refs
+assert_file_has_content refs "^(org.example.Collection1, ostree-metadata)$"
+
+${CMD_PREFIX} ostree --repo=repo show ostree-metadata --raw > metadata
+assert_file_has_content metadata "'map': <@a{sv} {}>"
+assert_file_has_content metadata "'ostree.ref-binding': <\['ostree-metadata'\]>"
+assert_file_has_content metadata "'ostree.collection-binding': <'org.example.Collection1'>"
+
+# There should be 5 commits in the ostree-metadata branch, since we’ve updated the summary 5 times.
+${CMD_PREFIX} ostree --repo=repo log ostree-metadata | grep 'commit ' | wc -l > commit-count
+assert_file_has_content commit-count "^5$"
+
+# The ostree-metadata commits should not contain any files
+${CMD_PREFIX} ostree --repo=repo ls ostree-metadata > files
+assert_file_has_content files " /$"
+cat files | wc -l > files-count
+assert_file_has_content files-count "^1$"
+
 echo "ok 2 update summary with collections"
