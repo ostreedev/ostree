@@ -933,6 +933,40 @@ ostree_repo_write_config (OstreeRepo *self,
 {
   g_return_val_if_fail (self->inited, FALSE);
 
+  /* Ensure that any remotes in the new config aren't defined in a
+   * separate config file.
+   */
+  gsize num_groups;
+  g_auto(GStrv) groups = g_key_file_get_groups (new_config, &num_groups);
+  for (gsize i = 0; i < num_groups; i++)
+    {
+      g_autoptr(OstreeRemote) new_remote = ostree_remote_new_from_keyfile (new_config, groups[i]);
+      if (new_remote != NULL)
+        {
+          g_autoptr(GError) local_error = NULL;
+
+          g_autoptr(OstreeRemote) cur_remote =
+            _ostree_repo_get_remote (self, new_remote->name, &local_error);
+          if (cur_remote == NULL)
+            {
+              if (!g_error_matches (local_error, G_IO_ERROR,
+                                    G_IO_ERROR_NOT_FOUND))
+                {
+                  g_propagate_error (error, g_steal_pointer (&local_error));
+                  return FALSE;
+                }
+            }
+          else if (cur_remote->file != NULL)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                           "Remote \"%s\" already defined in %s",
+                           new_remote->name,
+                           gs_file_get_path_cached (cur_remote->file));
+              return FALSE;
+            }
+        }
+    }
+
   gsize len;
   g_autofree char *data = g_key_file_to_data (new_config, &len, error);
   if (!glnx_file_replace_contents_at (self->repo_dir_fd, "config",
