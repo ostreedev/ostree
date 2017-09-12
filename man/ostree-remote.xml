@@ -129,6 +129,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--if-not-exists</option></term>
+
+                <listitem><para>
+                    Do nothing if the provided remote exists.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--no-gpg-verify</option></term>
 
                 <listitem><para>
