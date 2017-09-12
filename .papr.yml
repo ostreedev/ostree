@@ -42,7 +42,9 @@ env:
 
 tests:
   - docker run --privileged -v $PWD:$PWD --workdir $PWD
-    registry.centos.org/centos/centos:7 sh -c
+    # FIXME revert this when repos sync
+    # https://github.com/projectatomic/rpm-ostree/pull/985
+    registry.centos.org/centos/centos:7.3.1611 sh -c
     'yum install -y git && ci/build-check.sh'
 
 ---
