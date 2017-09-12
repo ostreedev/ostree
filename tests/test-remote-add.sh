@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..14'
+echo '1..16'
 
 setup_test_repository "bare"
 $OSTREE remote add origin http://example.com/ostree/gnome
@@ -106,3 +106,15 @@ assert_not_file_has_content list.txt "origin"
 # Can't grep for 'another' because of 'another-noexist'
 assert_file_has_content list.txt "another-noexist"
 echo "ok remote list remaining"
+
+# Both --if-not-exists and --force cannot be used
+if $OSTREE remote add --if-not-exists --force yetanother http://yetanother.com/repo 2>/dev/null; then
+    assert_not_reached "Adding remote with --if-not-exists and --force unexpectedly succeeded"
+fi
+echo "ok remote add fail --if-not-exists and --force"
+
+# Overwrite with --force
+$OSTREE remote add --force another http://another.example.com/anotherrepo
+$OSTREE remote list --show-urls > list.txt
+assert_file_has_content list.txt "^another \+http://another.example.com/anotherrepo$"
+echo "ok remote add --force"
