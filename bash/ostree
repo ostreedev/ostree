@@ -985,6 +985,7 @@ _ostree_remote_add() {
     local boolean_options="
         $main_boolean_options
         --if-not-exists
+        --force
         --no-gpg-verify
     "
 

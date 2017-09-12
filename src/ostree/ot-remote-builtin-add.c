@@ -30,6 +30,7 @@
 static char **opt_set;
 static gboolean opt_no_gpg_verify;
 static gboolean opt_if_not_exists;
+static gboolean opt_force;
 static char *opt_gpg_import;
 static char *opt_contenturl;
 static char *opt_collection_id;
@@ -45,6 +46,7 @@ static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
+  { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Replace the provided remote if it exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
   { "contenturl", 0, 0, G_OPTION_ARG_STRING, &opt_contenturl, "Use URL when fetching content", "URL" },
   { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id,
@@ -81,6 +83,14 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
   if (argc < 3)
     {
       ot_util_usage_error (context, "NAME and URL must be specified", error);
+      goto out;
+    }
+
+  if (opt_if_not_exists && opt_force)
+    {
+      ot_util_usage_error (context,
+                           "Can only specify one of --if-not-exists and --force",
+                           error);
       goto out;
     }
 
@@ -135,9 +145,14 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   options = g_variant_ref_sink (g_variant_builder_end (optbuilder));
 
-  if (!ostree_repo_remote_change (repo, NULL,
-                                  opt_if_not_exists ? OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS : 
-                                  OSTREE_REPO_REMOTE_CHANGE_ADD,
+  OstreeRepoRemoteChange changeop;
+  if (opt_if_not_exists)
+    changeop = OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS;
+  else if (opt_force)
+    changeop = OSTREE_REPO_REMOTE_CHANGE_REPLACE;
+  else
+    changeop = OSTREE_REPO_REMOTE_CHANGE_ADD;
+  if (!ostree_repo_remote_change (repo, NULL, changeop,
                                   remote_name, remote_url,
                                   options,
                                   cancellable, error))
