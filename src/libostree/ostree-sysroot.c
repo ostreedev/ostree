@@ -1738,8 +1738,8 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
                                                     "/usr", 0755, error))
             return FALSE;
 
-          if (!glnx_mkdtempat (AT_FDCWD, development_ovldir, 0755, error))
-            return FALSE;
+          if (g_mkdtemp_full (development_ovldir, 0755) == NULL)
+            return glnx_throw_errno_prefix (error, "mkdtemp");
         }
 
         development_ovl_upper = glnx_strjoina (development_ovldir, "/upper");
