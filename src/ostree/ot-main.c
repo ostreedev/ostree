@@ -181,10 +181,10 @@ ostree_run (int    argc,
             {
               g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "Unknown command '%s'", command_name);
-              ostree_usage (commands, TRUE);
             }
         }
 
+      ostree_usage (commands, TRUE);
       goto out;
     }
 
@@ -374,10 +374,11 @@ ostree_admin_option_context_parse (GOptionContext *context,
 
   g_option_context_add_main_entries (context, global_admin_entries, NULL);
 
-  if (!ostree_option_context_parse (context, main_entries, argc, argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
+  if (!ostree_option_context_parse (context, main_entries, argc, argv,
+                                    OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     return FALSE;
 
-  if (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT)
+  if (!opt_print_current_dir && (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT))
     {
       g_assert_null (out_sysroot);
       /* Early return if no sysroot is requested */

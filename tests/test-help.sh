@@ -23,41 +23,66 @@ set -euo pipefail
 
 echo "1..1"
 
-echo "Testing:" 1>&2
+test_usage_output() {
+    file=$1; shift
+    cmd=$1; shift
+    assert_file_has_content $file '^Usage'
+    # check that it didn't print twice somehow
+    if [ "$(grep --count '^Usage' $file)" != 1 ]; then
+      _fatal_print_file "$file" "File '$file' has '^Usage' more than once."
+    fi
+    assert_file_has_content $file "$cmd"
+}
+
+# check that we found at least one command with subcommands
+found_subcommands=0
+
 test_recursive() {
     local cmd=$1
-    local root=$2
 
     echo "$cmd" 1>&2
     $cmd --help 1>out 2>err
     # --help message goes to standard output
-    if [ "$root" = "1" ] ; then
-        assert_file_has_content out "[Uu]sage"
-        assert_file_has_content out "$cmd"
-    fi
+    test_usage_output out "$cmd"
     assert_file_empty err
-    builtins=`sed -n '/^Builtin commands/,/^[^ ]/p' <out | tail -n +2`
+
+    builtins=`sed -n '/^Builtin \("[^"]*" \)\?Commands:$/,/^$/p' <out | tail -n +2`
     if [ "$builtins" != "" ] ; then
+
+        found_subcommands=1
+
         # A command with subcommands
         # Running the command without a subcommand should produce the help output, but fail
-        set +e
-        $cmd 1>out 2>err
-        if [ $? = 0 ] ; then
-	    echo 1>&2 "missing subcommand but 0 exit status"; exit 1
+        rc=0
+        $cmd 1>out 2>err || rc=$?
+        if [ $rc = 0 ] ; then
+            assert_not_reached "missing subcommand but 0 exit status"
         fi
-        set -euo pipefail
+
         # error message and usage goes to standard error
-        assert_file_has_content err "[Uu]sage"
-        assert_file_has_content err "$cmd"
-        assert_file_has_content err "Builtin commands"
+        test_usage_output err "$cmd"
+        assert_file_has_content err 'No \("[^"]*" sub\)\?command specified'
         assert_file_empty out
 
-        for subcmd in $builtins ; do
-            test_recursive "$cmd $subcmd" 0
+        rc=0
+        $cmd non-existent-subcommand 1>out 2>err || rc=$?
+        if [ $rc = 0 ] ; then
+            assert_not_reached "non-existent subcommand but 0 exit status"
+        fi
+
+        test_usage_output err "$cmd"
+        assert_file_has_content err 'Unknown \("[^"]*" sub\)\?command'
+        assert_file_empty out
+
+        for subcmd in $builtins; do
+            test_recursive "$cmd $subcmd"
         done
     fi
 }
 
-test_recursive ostree 1
+test_recursive ostree
+if [ $found_subcommands != 1 ]; then
+  assert_not_reached "no ostree commands with subcommands found!"
+fi
 
 echo "ok help option is properly supported"

@@ -69,7 +69,7 @@ ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError 
   g_autofree char *key = NULL;
   GKeyFile *config = NULL;
 
-  context = g_option_context_new ("- Change configuration settings");
+  context = g_option_context_new ("(get KEY|set KEY VALUE) - Change repo configuration settings");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
