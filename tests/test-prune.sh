@@ -47,10 +47,7 @@ ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin test
 assert_repo_has_n_commits() {
     repo=$1
     count=$2
-
-    find ${repo}/objects -name '*.commit' | wc -l > commitcount
-    assert_file_has_content commitcount '^'${count}'$'
-    rm -f commitcount
+    assert_streq "$(find ${repo}/objects -name '*.commit' | wc -l)" "${count}"
 }
 
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=2 -v
