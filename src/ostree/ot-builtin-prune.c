@@ -255,20 +255,19 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
           for (char **iter = opt_only_branches; iter && *iter; iter++)
             {
               const char *ref = *iter;
-              g_autofree char *commit = NULL;
               /* Ensure the specified branch exists */
-              if (!ostree_repo_resolve_rev (repo, ref, FALSE, &commit, error))
+              if (!ostree_repo_resolve_rev (repo, ref, FALSE, NULL, error))
                 return FALSE;
-              g_hash_table_add (only_branches_set, *iter);
+              if (g_hash_table_contains (retain_branch_depth, ref))
+                return glnx_throw (error, "--retain-branch-depth conflicts with --only-branch");
+              g_hash_table_add (only_branches_set, (char*)ref);
             }
 
           /* Iterate over all refs, add equivalent of --retain-branch-depth=$ref=-1
            * if the ref isn't in --only-branch set.
            */
-          g_hash_table_iter_init (&hash_iter, all_refs);
-          while (g_hash_table_iter_next (&hash_iter, &key, &value))
+          GLNX_HASH_TABLE_FOREACH (all_refs, const char *, ref)
             {
-              const char *ref = key;
               if (!g_hash_table_contains (only_branches_set, ref))
                 g_hash_table_insert (retain_branch_depth, g_strdup (ref), GINT_TO_POINTER ((int)-1));
             }
