@@ -40,30 +40,27 @@
 typedef struct
 {
   OstreeRepo *parent_repo;
-  int working_dfd;  /* owned */
-  GFile *working_dir;  /* owned */
+  GLnxTmpDir tmpdir; /* owned */
+  GFile *working_dir; /* Points at tmpdir */
 } Fixture;
 
 static void
 setup (Fixture       *fixture,
        gconstpointer  test_data)
 {
-  g_autofree gchar *tmp_name = NULL;
   g_autoptr(GError) error = NULL;
 
-  tmp_name = g_strdup ("test-repo-finder-mount-XXXXXX");
-  glnx_mkdtempat_open_in_system (tmp_name, 0700, &fixture->working_dfd, &error);
+  (void)glnx_mkdtemp ("test-repo-finder-mount-XXXXXX", 0700, &fixture->tmpdir, &error);
   g_assert_no_error (error);
 
-  g_test_message ("Using temporary directory: %s", tmp_name);
+  g_test_message ("Using temporary directory: %s", fixture->tmpdir.path);
 
-  glnx_shutil_mkdir_p_at (fixture->working_dfd, "repo", 0700, NULL, &error);
+  glnx_shutil_mkdir_p_at (fixture->tmpdir.fd, "repo", 0700, NULL, &error);
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))
     g_clear_error (&error);
   g_assert_no_error (error);
 
-  g_autoptr(GFile) tmp_dir = g_file_new_for_path (g_get_tmp_dir ());
-  fixture->working_dir = g_file_get_child (tmp_dir, tmp_name);
+  fixture->working_dir = g_file_new_for_path (fixture->tmpdir.path);
 
   fixture->parent_repo = ot_test_setup_repo (NULL, &error);
   g_assert_no_error (error);
@@ -76,10 +73,7 @@ teardown (Fixture       *fixture,
   g_autoptr(GError) error = NULL;
 
   /* Recursively remove the temporary directory. */
-  glnx_shutil_rm_rf_at (fixture->working_dfd, ".", NULL, NULL);
-
-  close (fixture->working_dfd);
-  fixture->working_dfd = -1;
+  (void)glnx_tmpdir_delete (&fixture->tmpdir, NULL, NULL);
 
   /* The repo also needs its source files to be removed. This is the inverse
    * of setup_test_repository() in libtest.sh. */
@@ -167,7 +161,7 @@ assert_create_repos_dir (Fixture      *fixture,
   g_autoptr(GError) error = NULL;
 
   g_autofree gchar *path = g_build_filename (mount_root_name, ".ostree", "repos", NULL);
-  glnx_shutil_mkdir_p_at_open (fixture->working_dfd, path, 0700, &repos_dfd, NULL, &error);
+  glnx_shutil_mkdir_p_at_open (fixture->tmpdir.fd, path, 0700, &repos_dfd, NULL, &error);
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS))
     g_clear_error (&error);
   g_assert_no_error (error);

@@ -92,8 +92,7 @@ struct OstreeRepo {
   GObject parent;
 
   char *stagedir_prefix;
-  int commit_stagedir_fd;
-  char *commit_stagedir_name;
+  GLnxTmpDir commit_stagedir;
   GLnxLockFile commit_stagedir_lock;
 
   /* A cached fd-relative version, distinct from the case where we may have a
@@ -209,8 +208,7 @@ G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OstreeRepoMemoryCacheRef, _ostree_repo_memory_c
 gboolean
 _ostree_repo_allocate_tmpdir (int           tmpdir_dfd,
                               const char   *tmpdir_prefix,
-                              char        **tmpdir_name_out,
-                              int          *tmpdir_fd_out,
+                              GLnxTmpDir   *tmpdir_out,
                               GLnxLockFile *file_lock_out,
                               gboolean *    reusing_dir_out,
                               GCancellable *cancellable,
