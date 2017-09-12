@@ -41,8 +41,10 @@ env:
     CFLAGS: ''
 
 tests:
+    # FIXME revert setting to 7/3/1611 when repos sync
+    # https://github.com/projectatomic/rpm-ostree/pull/985
   - docker run --privileged -v $PWD:$PWD --workdir $PWD
-    registry.centos.org/centos/centos:7 sh -c
+    registry.centos.org/centos/centos:7.3.1611 sh -c
     'yum install -y git && ci/build-check.sh'
 
 ---
