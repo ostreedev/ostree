@@ -4191,88 +4191,52 @@ sign_data (OstreeRepo     *self,
            GCancellable   *cancellable,
            GError        **error)
 {
-  gboolean ret = FALSE;
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  g_autoptr(GOutputStream) tmp_signature_output = NULL;
-  gpgme_ctx_t context = NULL;
-  g_autoptr(GBytes) ret_signature = NULL;
-  gpgme_error_t err;
-  gpgme_key_t key = NULL;
-  gpgme_data_t commit_buffer = NULL;
-  gpgme_data_t signature_buffer = NULL;
-  g_autoptr(GMappedFile) signature_file = NULL;
-  
   if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_RDWR | O_CLOEXEC,
                                       &tmpf, error))
-    goto out;
-  tmp_signature_output = g_unix_output_stream_new (tmpf.fd, FALSE);
+    return FALSE;
+  g_autoptr(GOutputStream) tmp_signature_output = g_unix_output_stream_new (tmpf.fd, FALSE);
 
-  context = ot_gpgme_new_ctx (homedir, error);
+  g_auto(gpgme_ctx_t) context = ot_gpgme_new_ctx (homedir, error);
   if (!context)
-    goto out;
+    return FALSE;
 
   /* Get the secret keys with the given key id */
-  err = gpgme_get_key (context, key_id, &key, 1);
+  g_auto(gpgme_key_t) key = NULL;
+  gpgme_error_t err = gpgme_get_key (context, key_id, &key, 1);
   if (gpgme_err_code (err) == GPG_ERR_EOF)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No gpg key found with ID %s (homedir: %s)", key_id,
-                   homedir ? homedir : "<default>");
-      goto out;
-    }
+    return glnx_throw (error, "No gpg key found with ID %s (homedir: %s)", key_id,
+                       homedir ? homedir : "<default>");
   else if (err != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_throw (err, error, "Unable to lookup key ID %s", key_id);
-      goto out;
-    }
+    return ot_gpgme_throw (err, error, "Unable to lookup key ID %s", key_id);
 
   /* Add the key to the context as a signer */
   if ((err = gpgme_signers_add (context, key)) != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_throw (err, error, "Error signing commit");
-      goto out;
-    }
+    return ot_gpgme_throw (err, error, "Error signing commit");
 
-  {
-    gsize len;
-    const char *buf = g_bytes_get_data (input_data, &len);
-    if ((err = gpgme_data_new_from_mem (&commit_buffer, buf, len, FALSE)) != GPG_ERR_NO_ERROR)
-      {
-        ot_gpgme_throw (err, error, "Failed to create buffer from commit file");
-        goto out;
-      }
-  }
+  /* Get a gpg buffer from the commit */
+  g_auto(gpgme_data_t) commit_buffer = NULL;
+  gsize len;
+  const char *buf = g_bytes_get_data (input_data, &len);
+  if ((err = gpgme_data_new_from_mem (&commit_buffer, buf, len, FALSE)) != GPG_ERR_NO_ERROR)
+    return ot_gpgme_throw (err, error, "Failed to create buffer from commit file");
 
-  signature_buffer = ot_gpgme_data_output (tmp_signature_output);
-
+  /* Sign it */
+  g_auto(gpgme_data_t) signature_buffer = ot_gpgme_data_output (tmp_signature_output);
   if ((err = gpgme_op_sign (context, commit_buffer, signature_buffer, GPGME_SIG_MODE_DETACH))
       != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_throw (err, error, "Failure signing commit file");
-      goto out;
-    }
-  
+    return ot_gpgme_throw (err, error, "Failure signing commit file");
   if (!g_output_stream_close (tmp_signature_output, cancellable, error))
-    goto out;
-  
-  signature_file = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
+    return FALSE;
+
+  /* Return a mmap() reference */
+  g_autoptr(GMappedFile) signature_file = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
   if (!signature_file)
-    goto out;
-  ret_signature = g_mapped_file_get_bytes (signature_file);
-  
-  ret = TRUE;
+    return FALSE;
+
   if (out_signature)
-    *out_signature = g_steal_pointer (&ret_signature);
-out:
-  if (commit_buffer)
-    gpgme_data_release (commit_buffer);
-  if (signature_buffer)
-    gpgme_data_release (signature_buffer);
-  if (key)
-    gpgme_key_release (key);
-  if (context)
-    gpgme_release (context);
-  return ret;
+    *out_signature = g_mapped_file_get_bytes (signature_file);
+  return TRUE;
 }
 
 /**
