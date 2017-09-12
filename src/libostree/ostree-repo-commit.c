@@ -140,7 +140,7 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
 
   int dest_dfd;
   if (self->in_transaction)
-    dest_dfd = self->commit_stagedir_fd;
+    dest_dfd = self->commit_stagedir.fd;
   else
     dest_dfd = self->objects_dir_fd;
 
@@ -173,7 +173,7 @@ _ostree_repo_commit_path_final (OstreeRepo        *self,
 
   int dest_dfd;
   if (self->in_transaction)
-    dest_dfd = self->commit_stagedir_fd;
+    dest_dfd = self->commit_stagedir.fd;
   else
     dest_dfd = self->objects_dir_fd;
 
@@ -1114,8 +1114,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   gboolean ret_transaction_resume = FALSE;
   if (!_ostree_repo_allocate_tmpdir (self->tmp_dir_fd,
                                      self->stagedir_prefix,
-                                     &self->commit_stagedir_name,
-                                     &self->commit_stagedir_fd,
+                                     &self->commit_stagedir,
                                      &self->commit_stagedir_lock,
                                      &ret_transaction_resume,
                                      cancellable, error))
@@ -1134,7 +1133,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
   GLNX_AUTO_PREFIX_ERROR ("rename pending", error);
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-  if (!glnx_dirfd_iterator_init_at (self->commit_stagedir_fd, ".", FALSE, &dfd_iter, error))
+  if (!glnx_dirfd_iterator_init_at (self->commit_stagedir.fd, ".", FALSE, &dfd_iter, error))
     return FALSE;
 
   /* Iterate over the outer checksum dir */
@@ -1212,8 +1211,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
   if (fsync (self->objects_dir_fd) == -1)
     return glnx_throw_errno_prefix (error, "fsync");
 
-  if (!glnx_shutil_rm_rf_at (self->tmp_dir_fd, self->commit_stagedir_name,
-                             cancellable, error))
+  if (!glnx_tmpdir_delete (&self->commit_stagedir, cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -1549,15 +1547,8 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
       return FALSE;
   g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
 
-  if (self->commit_stagedir_fd != -1)
-    {
-      (void) close (self->commit_stagedir_fd);
-      self->commit_stagedir_fd = -1;
-
-      glnx_release_lock_file (&self->commit_stagedir_lock);
-    }
-
-  g_clear_pointer (&self->commit_stagedir_name, g_free);
+  glnx_tmpdir_unset (&self->commit_stagedir);
+  glnx_release_lock_file (&self->commit_stagedir_lock);
 
   self->in_transaction = FALSE;
 
@@ -1588,14 +1579,8 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
   g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
 
-  if (self->commit_stagedir_fd != -1)
-    {
-      (void) close (self->commit_stagedir_fd);
-      self->commit_stagedir_fd = -1;
-
-      glnx_release_lock_file (&self->commit_stagedir_lock);
-    }
-  g_clear_pointer (&self->commit_stagedir_name, g_free);
+  glnx_tmpdir_unset (&self->commit_stagedir);
+  glnx_release_lock_file (&self->commit_stagedir_lock);
 
   self->in_transaction = FALSE;
 
@@ -2181,8 +2166,8 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
   _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
   g_autoptr(GVariant) ret_metadata = NULL;
-  if (self->commit_stagedir_fd != -1 &&
-      !ot_util_variant_map_at (self->commit_stagedir_fd, buf,
+  if (self->commit_stagedir.initialized &&
+      !ot_util_variant_map_at (self->commit_stagedir.fd, buf,
                                G_VARIANT_TYPE ("a{sv}"),
                                OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
     return glnx_prefix_error (error, "Unable to read existing detached metadata");
@@ -2229,7 +2214,7 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   int dest_dfd;
 
   if (self->in_transaction)
-    dest_dfd = self->commit_stagedir_fd;
+    dest_dfd = self->commit_stagedir.fd;
   else
     dest_dfd = self->objects_dir_fd;
 

@@ -487,9 +487,7 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->repodir);
   if (self->repo_dir_fd != -1)
     (void) close (self->repo_dir_fd);
-  if (self->commit_stagedir_fd != -1)
-    (void) close (self->commit_stagedir_fd);
-  g_free (self->commit_stagedir_name);
+  glnx_tmpdir_unset (&self->commit_stagedir);
   glnx_release_lock_file (&self->commit_stagedir_lock);
   if (self->tmp_dir_fd != -1)
     (void) close (self->tmp_dir_fd);
@@ -687,7 +685,6 @@ ostree_repo_init (OstreeRepo *self)
   self->repo_dir_fd = -1;
   self->cache_dir_fd = -1;
   self->tmp_dir_fd = -1;
-  self->commit_stagedir_fd = -1;
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
   self->commit_stagedir_lock = empty_lockfile;
@@ -2793,9 +2790,9 @@ load_metadata_internal (OstreeRepo       *self,
                                error))
     return FALSE;
 
-  if (fd < 0 && self->commit_stagedir_fd != -1)
+  if (fd < 0 && self->commit_stagedir.initialized)
     {
-      if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, &fd,
+      if (!ot_openat_ignore_enoent (self->commit_stagedir.fd, loose_path_buf, &fd,
                                     error))
         return FALSE;
     }
@@ -2906,9 +2903,9 @@ repo_load_file_archive (OstreeRepo *self,
                                 error))
     return FALSE;
 
-  if (fd < 0 && self->commit_stagedir_fd != -1)
+  if (fd < 0 && self->commit_stagedir.initialized)
     {
-      if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, &fd,
+      if (!ot_openat_ignore_enoent (self->commit_stagedir.fd, loose_path_buf, &fd,
                                     error))
         return FALSE;
     }
@@ -2967,9 +2964,9 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
   int objdir_fd = self->objects_dir_fd;
   int res;
   if ((res = TEMP_FAILURE_RETRY (fstatat (objdir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW))) < 0
-      && errno == ENOENT && self->commit_stagedir_fd != -1)
+      && errno == ENOENT && self->commit_stagedir.initialized)
     {
-      objdir_fd = self->commit_stagedir_fd;
+      objdir_fd = self->commit_stagedir.fd;
       res = TEMP_FAILURE_RETRY (fstatat (objdir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW));
     }
   if (res < 0 && errno != ENOENT)
@@ -3214,7 +3211,9 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
 
   gboolean found = FALSE;
   /* It's easier to share code if we make this an array */
-  const int dfd_searches[] = { self->commit_stagedir_fd, self->objects_dir_fd };
+  int dfd_searches[] = { -1, self->objects_dir_fd };
+  if (self->commit_stagedir.initialized)
+    dfd_searches[0] = self->commit_stagedir.fd;
   for (guint i = 0; i < G_N_ELEMENTS (dfd_searches); i++)
     {
       int dfd = dfd_searches[i];
@@ -3654,8 +3653,8 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
 
   struct stat stbuf;
   res = TEMP_FAILURE_RETRY (fstatat (self->objects_dir_fd, loose_path, &stbuf, AT_SYMLINK_NOFOLLOW));
-  if (res < 0 && errno == ENOENT && self->commit_stagedir_fd != -1)
-    res = TEMP_FAILURE_RETRY (fstatat (self->commit_stagedir_fd, loose_path, &stbuf, AT_SYMLINK_NOFOLLOW));
+  if (res < 0 && errno == ENOENT && self->commit_stagedir.initialized)
+    res = TEMP_FAILURE_RETRY (fstatat (self->commit_stagedir.fd, loose_path, &stbuf, AT_SYMLINK_NOFOLLOW));
 
   if (res < 0)
     return glnx_throw_errno_prefix (error, "Querying object %s.%s", sha256, ostree_object_type_to_string (objtype));
@@ -5104,8 +5103,7 @@ _ostree_repo_try_lock_tmpdir (int            tmpdir_dfd,
 gboolean
 _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
                               const char *tmpdir_prefix,
-                              char **tmpdir_name_out,
-                              int *tmpdir_fd_out,
+                              GLnxTmpDir *tmpdir_out,
                               GLnxLockFile *file_lock_out,
                               gboolean *reusing_dir_out,
                               GCancellable *cancellable,
@@ -5120,9 +5118,8 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
 
   gboolean reusing_dir = FALSE;
   gboolean did_lock = FALSE;
-  g_autofree char *tmpdir_name = NULL;
-  glnx_fd_close int tmpdir_fd = -1;
-  while (tmpdir_name == NULL)
+  g_auto(GLnxTmpDir) ret_tmpdir = { 0, };
+  while (!ret_tmpdir.initialized)
     {
       struct dirent *dent;
       glnx_fd_close int existing_tmpdir_fd = -1;
@@ -5142,8 +5139,9 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
           dent->d_type != DT_DIR)
         continue;
 
+      glnx_fd_close int target_dfd = -1;
       if (!glnx_opendirat (dfd_iter.fd, dent->d_name, FALSE,
-                           &existing_tmpdir_fd, &local_error))
+                           &target_dfd, &local_error))
         {
           if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY))
             continue;
@@ -5166,24 +5164,22 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       /* Touch the reused directory so that we don't accidentally
        * remove it due to being old when cleaning up the tmpdir.
        */
-      (void)futimens (existing_tmpdir_fd, NULL);
+      (void)futimens (target_dfd, NULL);
 
       /* We found an existing tmpdir which we managed to lock */
-      tmpdir_name = g_strdup (dent->d_name);
-      tmpdir_fd = glnx_steal_fd (&existing_tmpdir_fd);
-      reusing_dir = TRUE;
+      ret_tmpdir.src_dfd = tmpdir_dfd;
+      ret_tmpdir.fd = glnx_steal_fd (&target_dfd);
+      ret_tmpdir.path = g_strdup (dent->d_name);
+      ret_tmpdir.initialized = TRUE;
     }
 
-  while (tmpdir_name == NULL)
+  while (!ret_tmpdir.initialized)
     {
+      g_auto(GLnxTmpDir) new_tmpdir = { 0, };
       /* No existing tmpdir found, create a new */
-      g_autofree char *tmpdir_name_template = g_strconcat (tmpdir_prefix, "XXXXXX", NULL);
-      if (!glnx_mkdtempat (tmpdir_dfd, tmpdir_name_template, 0777, error))
-        return FALSE;
-
-      glnx_fd_close int new_tmpdir_fd = -1;
-      if (!glnx_opendirat (tmpdir_dfd, tmpdir_name_template, FALSE,
-                           &new_tmpdir_fd, error))
+      const char *tmpdir_name_template = glnx_strjoina (tmpdir_prefix, "XXXXXX");
+      if (!glnx_mkdtempat (tmpdir_dfd, tmpdir_name_template, 0755,
+                           &new_tmpdir, error))
         return FALSE;
 
       /* Note, at this point we can race with another process that picks up this
@@ -5195,16 +5191,13 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       if (!did_lock)
         continue;
 
-      tmpdir_name = g_steal_pointer (&tmpdir_name_template);
-      tmpdir_fd = glnx_steal_fd (&new_tmpdir_fd);
+      ret_tmpdir = new_tmpdir; /* Transfer ownership */
+      new_tmpdir.initialized = FALSE;
     }
 
-  if (tmpdir_name_out)
-    *tmpdir_name_out = g_steal_pointer (&tmpdir_name);
-  if (tmpdir_fd_out)
-    *tmpdir_fd_out = glnx_steal_fd (&tmpdir_fd);
-  if (reusing_dir_out)
-    *reusing_dir_out = reusing_dir;
+  *tmpdir_out = ret_tmpdir; /* Transfer ownership */
+  ret_tmpdir.initialized = FALSE;
+  *reusing_dir_out = reusing_dir;
   return TRUE;
 }
 
