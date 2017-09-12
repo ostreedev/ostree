@@ -34,7 +34,7 @@ function assertNotEquals(a, b) {
 	throw new Error("assertion failed " + JSON.stringify(a) + " != " + JSON.stringify(b));
 }
 
-print('1..6')
+print('1..9')
 
 let remotesDir = Gio.File.new_for_path('remotes.d');
 remotesDir.make_directory(null);
@@ -44,6 +44,10 @@ remoteConfig.set_value('remote "foo"', 'url', 'http://foo')
 
 let remoteConfigFile = remotesDir.get_child('foo.conf')
 remoteConfig.save_to_file(remoteConfigFile.get_path())
+
+let remoteOptions = GLib.Variant.new('a{sv}', {
+    'branches': GLib.Variant.new('as', ['test']),
+});
 
 // Use the full Repo constructor to set remotes-config-dir
 let repoFile = Gio.File.new_for_path('repo');
@@ -60,7 +64,7 @@ print("ok read-remotes-config-dir");
 
 // Adding a remote should not go in the remotes.d dir unless this is a
 // system repo or add-remotes-config-dir is set to true
-repo.remote_add('bar', 'http://bar', null, null);
+repo.remote_add('bar', 'http://bar', remoteOptions, null);
 remotes = repo.remote_list()
 assertNotEquals(remotes.indexOf('bar'), -1);
 assertEquals(remotesDir.get_child('bar.conf').query_exists(null), false);
@@ -81,7 +85,7 @@ let repoConfig = repo.copy_config();
 repoConfig.set_boolean('core', 'add-remotes-config-dir', true);
 repo.write_config(repoConfig);
 repo.reload_config(null);
-repo.remote_add('baz', 'http://baz', null, null);
+repo.remote_add('baz', 'http://baz', remoteOptions, null);
 remotes = repo.remote_list()
 assertNotEquals(remotes.indexOf('baz'), -1);
 assertEquals(remotesDir.get_child('baz.conf').query_exists(null), true);
@@ -114,3 +118,49 @@ try {
 }
 
 print("ok config-remote-in-config-dir-fails");
+
+// Replacing a non-existent remote should succeed. This should go in the
+// config dir since add-remote-config-dir is set to true above
+repo.remote_change(null, OSTree.RepoRemoteChange.REPLACE,
+                   'nonexistent', 'http://nonexistent',
+                   null, null);
+remotes = repo.remote_list();
+assertNotEquals(remotes.indexOf('nonexistent'), -1);
+assertEquals(remotesDir.get_child('nonexistent.conf').query_exists(null), true);
+
+print("ok replace-missing-remote-succeeds");
+
+// Test replacing remote options in config dir. This should remove the
+// branches setting above
+repo.remote_change(null, OSTree.RepoRemoteChange.REPLACE, 'baz',
+                   'http://baz2', null, null);
+remoteConfigFile = remotesDir.get_child('baz.conf');
+remoteConfig = GLib.KeyFile.new();
+remoteConfig.load_from_file(remoteConfigFile.get_path(),
+                            GLib.KeyFileFlags.NONE);
+assertEquals(remoteConfig.get_value('remote "baz"', 'url'), 'http://baz2');
+try {
+    remoteConfig.get_string_list('remote "baz"', 'branches');
+    throw new Error('baz remote should not have branches option');
+} catch (e) {
+    if (!(e.matches(GLib.KeyFileError, GLib.KeyFileError.KEY_NOT_FOUND)))
+        throw e;
+}
+
+print("ok replace-remote-in-config-dir");
+
+// Test replacing remote options in config file. This should remove the
+// branches setting above
+repo.remote_change(null, OSTree.RepoRemoteChange.REPLACE, 'bar',
+                   'http://bar2', null, null);
+repoConfig = repo.get_config();
+assertEquals(repoConfig.get_value('remote "bar"', 'url'), 'http://bar2');
+try {
+    repoConfig.get_string_list('remote "bar"', 'branches');
+    throw new Error('bar remote should not have branches option');
+} catch (e) {
+    if (!(e.matches(GLib.KeyFileError, GLib.KeyFileError.KEY_NOT_FOUND)))
+        throw e;
+}
+
+print("ok replace-remote-in-config-file");
