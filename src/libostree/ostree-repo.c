@@ -936,21 +936,17 @@ ostree_repo_write_config (OstreeRepo *self,
   /* Ensure that any remotes in the new config aren't defined in a
    * separate config file.
    */
-  g_auto(GStrv) groups = NULL;
-  gsize num_groups, i;
-  groups = g_key_file_get_groups (new_config, &num_groups);
-  for (i = 0; i < num_groups; i++)
+  gsize num_groups;
+  g_auto(GStrv) groups = g_key_file_get_groups (new_config, &num_groups);
+  for (gsize i = 0; i < num_groups; i++)
     {
-      g_autoptr(OstreeRemote) new_remote = NULL;
-      g_autoptr(OstreeRemote) cur_remote = NULL;
-
-      new_remote = ostree_remote_new_from_keyfile (new_config, groups[i]);
+      g_autoptr(OstreeRemote) new_remote = ostree_remote_new_from_keyfile (new_config, groups[i]);
       if (new_remote != NULL)
         {
           g_autoptr(GError) local_error = NULL;
 
-          cur_remote = _ostree_repo_get_remote (self, new_remote->name,
-                                                &local_error);
+          g_autoptr(OstreeRemote) cur_remote =
+            _ostree_repo_get_remote (self, new_remote->name, &local_error);
           if (cur_remote == NULL)
             {
               if (!g_error_matches (local_error, G_IO_ERROR,
