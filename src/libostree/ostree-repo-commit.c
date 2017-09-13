@@ -2496,23 +2496,16 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                                            GCancellable                *cancellable,
                                            GError                     **error)
 {
-  g_autoptr(GFile) child = NULL;
-  g_autoptr(GFileInfo) modified_info = NULL;
-  g_autoptr(OstreeMutableTree) child_mtree = NULL;
-  g_autofree char *child_relpath = NULL;
-  const char *name;
-  GFileType file_type;
-  OstreeRepoCommitFilterResult filter_result;
-
   g_assert (dir_enum != NULL || dfd_iter != NULL);
 
-  name = g_file_info_get_name (child_info);
+  const char *name = g_file_info_get_name (child_info);
   g_ptr_array_add (path, (char*)name);
 
-  if (modifier != NULL)
-    child_relpath = ptrarray_path_join (path);
+  g_autofree char *child_relpath = ptrarray_path_join (path);
 
-  filter_result = _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
+  g_autoptr(GFileInfo) modified_info = NULL;
+  OstreeRepoCommitFilterResult filter_result =
+    _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
 
   if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
@@ -2521,7 +2514,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       return TRUE;
     }
 
-  file_type = g_file_info_get_file_type (child_info);
+  GFileType file_type = g_file_info_get_file_type (child_info);
   switch (file_type)
     {
     case G_FILE_TYPE_DIRECTORY:
@@ -2529,15 +2522,16 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
     case G_FILE_TYPE_REGULAR:
       break;
     default:
-      return glnx_throw (error, "Unsupported file type: '%s'",
-                         gs_file_get_path_cached (child));
+      return glnx_throw (error, "Unsupported file type for file: '%s'", child_relpath);
     }
 
+  g_autoptr(GFile) child = NULL;
   if (dir_enum != NULL)
     child = g_file_enumerator_get_child (dir_enum, child_info);
 
   if (file_type == G_FILE_TYPE_DIRECTORY)
     {
+      g_autoptr(OstreeMutableTree) child_mtree = NULL;
       if (!ostree_mutable_tree_ensure_dir (mtree, name, &child_mtree, error))
         return FALSE;
 
