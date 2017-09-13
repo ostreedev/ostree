@@ -32,7 +32,7 @@ function assertNotEquals(a, b) {
 	throw new Error("assertion failed " + JSON.stringify(a) + " != " + JSON.stringify(b));
 }
 
-print('1..4')
+print('1..6')
 
 let remotesDir = Gio.File.new_for_path('remotes.d');
 remotesDir.make_directory(null);
@@ -85,3 +85,30 @@ assertNotEquals(remotes.indexOf('baz'), -1);
 assertEquals(remotesDir.get_child('baz.conf').query_exists(null), true);
 
 print("ok add-in-remotes-config-dir");
+
+// Trying to set a remote config option via write_config() for a remote
+// defined in the config file should succeed
+let [, gpg_verify] = repo.remote_get_gpg_verify('bar');
+assertEquals(gpg_verify, true);
+repoConfig = repo.copy_config();
+repoConfig.set_boolean('remote "bar"', 'gpg-verify', false);
+repo.write_config(repoConfig);
+repo.reload_config(null);
+[, gpg_verify] = repo.remote_get_gpg_verify('bar');
+assertEquals(gpg_verify, false);
+
+print("ok config-remote-in-config-file-succeeds");
+
+// Trying to set a remote config option via write_config() for a remote
+// defined in the config dir should fail with G_IO_ERROR_EXISTS
+repoConfig = repo.copy_config();
+repoConfig.set_boolean('remote "baz"', 'gpg-verify', false);
+try {
+    if (repo.write_config(repoConfig))
+        throw new Error("config of remote in config dir should fail");
+} catch (e) {
+    if (!(e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.EXISTS)))
+        throw e;
+}
+
+print("ok config-remote-in-config-dir-fails");
