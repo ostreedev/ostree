@@ -40,6 +40,7 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
 	-Werror=pointer-arith -Werror=init-self \
         -Werror=missing-declarations \
         -Werror=return-type \
+        -Werror=switch \
         -Werror=overflow \
         -Werror=int-conversion \
         -Werror=parenthesis \
