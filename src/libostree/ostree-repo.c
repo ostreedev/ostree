@@ -5148,19 +5148,17 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
                               GCancellable *cancellable,
                               GError **error)
 {
-  gboolean ret = FALSE;
-  gboolean reusing_dir = FALSE;
-  gboolean did_lock;
-  g_autofree char *tmpdir_name = NULL;
-  glnx_fd_close int tmpdir_fd = -1;
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-
   g_return_val_if_fail (_ostree_repo_is_locked_tmpdir (tmpdir_prefix), FALSE);
 
   /* Look for existing tmpdir (with same prefix) to reuse */
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   if (!glnx_dirfd_iterator_init_at (tmpdir_dfd, ".", FALSE, &dfd_iter, error))
-    goto out;
+    return FALSE;
 
+  gboolean reusing_dir = FALSE;
+  gboolean did_lock = FALSE;
+  g_autofree char *tmpdir_name = NULL;
+  glnx_fd_close int tmpdir_fd = -1;
   while (tmpdir_name == NULL)
     {
       struct dirent *dent;
@@ -5168,7 +5166,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       g_autoptr(GError) local_error = NULL;
 
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
-        goto out;
+        return FALSE;
 
       if (dent == NULL)
         break;
@@ -5189,7 +5187,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
           else
             {
               g_propagate_error (error, g_steal_pointer (&local_error));
-              goto out;
+              return FALSE;
             }
         }
 
@@ -5198,12 +5196,12 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       if (!_ostree_repo_try_lock_tmpdir (tmpdir_dfd, dent->d_name,
                                          file_lock_out, &did_lock,
                                          error))
-        goto out;
+        return FALSE;
       if (!did_lock)
         continue;
 
       /* Touch the reused directory so that we don't accidentally
-       *   remove it due to being old when cleaning up the tmpdir
+       * remove it due to being old when cleaning up the tmpdir.
        */
       (void)futimens (existing_tmpdir_fd, NULL);
 
@@ -5215,24 +5213,22 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
 
   while (tmpdir_name == NULL)
     {
-      g_autofree char *tmpdir_name_template = g_strconcat (tmpdir_prefix, "XXXXXX", NULL);
-      glnx_fd_close int new_tmpdir_fd = -1;
-
       /* No existing tmpdir found, create a new */
-
+      g_autofree char *tmpdir_name_template = g_strconcat (tmpdir_prefix, "XXXXXX", NULL);
       if (!glnx_mkdtempat (tmpdir_dfd, tmpdir_name_template, 0777, error))
-        goto out;
+        return FALSE;
 
+      glnx_fd_close int new_tmpdir_fd = -1;
       if (!glnx_opendirat (tmpdir_dfd, tmpdir_name_template, FALSE,
                            &new_tmpdir_fd, error))
-        goto out;
+        return FALSE;
 
       /* Note, at this point we can race with another process that picks up this
        * new directory. If that happens we need to retry, making a new directory. */
       if (!_ostree_repo_try_lock_tmpdir (tmpdir_dfd, tmpdir_name_template,
                                          file_lock_out, &did_lock,
                                          error))
-        goto out;
+        return FALSE;
       if (!did_lock)
         continue;
 
@@ -5242,16 +5238,11 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
 
   if (tmpdir_name_out)
     *tmpdir_name_out = g_steal_pointer (&tmpdir_name);
-
   if (tmpdir_fd_out)
     *tmpdir_fd_out = glnx_steal_fd (&tmpdir_fd);
-
   if (reusing_dir_out)
     *reusing_dir_out = reusing_dir;
-
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /* See ostree-repo-private.h for more information about this */
