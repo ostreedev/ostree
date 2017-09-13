@@ -260,34 +260,31 @@ import_write_and_ref (OstreeRepo      *repo,
                       OstreeRepoCommitModifier *modifier,
                       GError         **error)
 {
-  gboolean ret = FALSE;
-  glnx_unref_object GFile *root = NULL;
-  g_autofree char *commit_checksum = NULL;
-  glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
+  g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new ();
 
   if (!ostree_repo_prepare_transaction (repo, NULL, NULL, error))
-    goto out;
+    return FALSE;
 
   if (!ostree_repo_import_archive_to_mtree (repo, opts, a, mtree, modifier,
                                             NULL, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(GFile) root = NULL;
   if (!ostree_repo_write_mtree (repo, mtree, &root, NULL, error))
-    goto out;
+    return FALSE;
 
+  g_autofree char *commit_checksum = NULL;
   if (!ostree_repo_write_commit (repo, NULL, "", "", NULL,
                                  OSTREE_REPO_FILE (root),
                                  &commit_checksum, NULL, error))
-    goto out;
+    return FALSE;
 
   ostree_repo_transaction_set_ref (repo, NULL, ref, commit_checksum);
 
   if (!ostree_repo_commit_transaction (repo, NULL, NULL, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
 
 static void
@@ -413,7 +410,7 @@ test_libarchive_xattr_callback (gconstpointer data)
   GError *error = NULL;
   g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0 };
-  OstreeRepoCommitModifier *modifier = NULL;
+  g_autoptr(OstreeRepoCommitModifier) modifier = NULL;
   char buf[7] = { 0 };
 
   if (skip_if_no_xattr (td))
@@ -452,8 +449,6 @@ test_libarchive_xattr_callback (gconstpointer data)
   g_assert_cmpstr (buf, ==, "mydata");
 
  out:
-  if (modifier)
-    ostree_repo_commit_modifier_unref (modifier);
   g_assert_no_error (error);
 }
 
@@ -543,7 +538,7 @@ test_libarchive_selinux (gconstpointer data)
   g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0 };
   glnx_unref_object OstreeSePolicy *sepol = NULL;
-  OstreeRepoCommitModifier *modifier = NULL;
+  g_autoptr(OstreeRepoCommitModifier) modifier = NULL;
   char buf[64] = { 0 };
 
   if (skip_if_no_xattr (td))
@@ -591,8 +586,6 @@ test_libarchive_selinux (gconstpointer data)
   g_assert_cmpstr (buf, ==, "system_u:object_r:etc_t:s0");
 
  out:
-  if (modifier)
-    ostree_repo_commit_modifier_unref (modifier);
   g_assert_no_error (error);
 }
 
