@@ -2480,6 +2480,10 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
                                   GCancellable                *cancellable,
                                   GError                     **error);
 
+/* Given either a dir_enum or a dfd_iter, writes the directory entry to the mtree. For
+ * subdirs, we go back through either write_dfd_iter_to_mtree_internal (dfd_iter case) or
+ * write_directory_to_mtree_internal (dir_enum case) which will do the actual dirmeta +
+ * dirent iteration. */
 static gboolean
 write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                                            OstreeRepoFile              *repo_dir,
@@ -2632,6 +2636,8 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   return TRUE;
 }
 
+/* Handles the dirmeta for the given GFile dir and then calls
+ * write_directory_content_to_mtree_internal() for each directory entry. */
 static gboolean
 write_directory_to_mtree_internal (OstreeRepo                  *self,
                                    GFile                       *dir,
@@ -2729,6 +2735,8 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
   return TRUE;
 }
 
+/* Handles the dirmeta for the dir described by src_dfd_iter and then calls
+ * write_directory_content_to_mtree_internal() for each directory entry. */
 static gboolean
 write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
                                   GLnxDirFdIterator           *src_dfd_iter,
