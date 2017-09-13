@@ -98,11 +98,12 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--disjoint-union</option></term>
+                <term><option>--union-identical</option></term>
 
-                <listitem><para>
-                    When layering checkouts, error out if a file would be replaced, but add new files and directories
-                </para></listitem>
+                <listitem><para>Like <literal>--union</literal>, but error out
+                if a file would be replaced with a different file. Add new files
+                and directories, ignore identical files, and keep existing
+                directories. Requires <literal>-H</literal>.</para></listitem>
             </varlistentry>
 
             <varlistentry>

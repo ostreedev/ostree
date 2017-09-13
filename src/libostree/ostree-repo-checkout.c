@@ -188,8 +188,6 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  const gboolean union_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
-  const gboolean add_mode = options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
   const gboolean sepolicy_enabled = options->sepolicy && !repo->disable_xattrs;
   g_autoptr(GVariant) modified_xattrs = NULL;
 
@@ -218,23 +216,51 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
             return FALSE;
         }
 
-      if (symlinkat (g_file_info_get_symlink_target (file_info),
-                     destination_dfd, destination_name) < 0)
+      const char *target = g_file_info_get_symlink_target (file_info);
+      if (symlinkat (target, destination_dfd, destination_name) < 0)
         {
+          if (errno != EEXIST)
+            return glnx_throw_errno_prefix (error, "symlinkat");
+
           /* Handle union/add behaviors if we get EEXIST */
-          if (errno == EEXIST && union_mode)
+          switch (options->overwrite_mode)
             {
-              /* Unioning?  Let's unlink and try again */
-              (void) unlinkat (destination_dfd, destination_name, 0);
-              if (symlinkat (g_file_info_get_symlink_target (file_info),
-                             destination_dfd, destination_name) < 0)
-                return glnx_throw_errno (error);
+            case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
+              return glnx_throw_errno_prefix (error, "symlinkat");
+            case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
+              {
+                /* Unioning?  Let's unlink and try again */
+                (void) unlinkat (destination_dfd, destination_name, 0);
+                if (symlinkat (target, destination_dfd, destination_name) < 0)
+                  return glnx_throw_errno_prefix (error, "symlinkat");
+              }
+            case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
+              /* Note early return - we don't want to set the xattrs below */
+              return TRUE;
+            case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
+              {
+                /* See the comments for the hardlink version of this
+                 * for why we do this.
+                 */
+                struct stat dest_stbuf;
+                if (!glnx_fstatat (destination_dfd, destination_name, &dest_stbuf,
+                                   AT_SYMLINK_NOFOLLOW, error))
+                  return FALSE;
+                if (S_ISLNK (dest_stbuf.st_mode))
+                  {
+                    g_autofree char *dest_target =
+                      glnx_readlinkat_malloc (destination_dfd, destination_name,
+                                              cancellable, error);
+                    if (!dest_target)
+                      return FALSE;
+                    /* In theory we could also compare xattrs...but eh */
+                    if (g_str_equal (dest_target, target))
+                      return TRUE;
+                  }
+                errno = EEXIST;
+                return glnx_throw_errno_prefix (error, "symlinkat");
+              }
             }
-          else if (errno == EEXIST && add_mode)
-            /* Note early return - we don't want to set the xattrs below */
-            return TRUE;
-          else
-            return glnx_throw_errno (error);
         }
 
       /* Process ownership and xattrs now that we made the link */
@@ -255,7 +281,6 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
       g_auto(GLnxTmpfile) tmpf = { 0, };
-      GLnxLinkTmpfileReplaceMode replace_mode;
 
       if (!glnx_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
                                           &tmpf, error))
@@ -278,12 +303,23 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
         return FALSE;
 
       /* The add/union/none behaviors map directly to GLnxLinkTmpfileReplaceMode */
-      if (add_mode)
-        replace_mode = GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST;
-      else if (union_mode)
-        replace_mode = GLNX_LINK_TMPFILE_REPLACE;
-      else
-        replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
+      GLnxLinkTmpfileReplaceMode replace_mode;
+      switch (options->overwrite_mode)
+        {
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
+          replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
+          break;
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
+          replace_mode = GLNX_LINK_TMPFILE_REPLACE;
+          break;
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
+          replace_mode = GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST;
+          break;
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
+          /* We don't support copying in union identical */
+          g_assert_not_reached ();
+          break;
+        }
 
       if (!glnx_link_tmpfile_at (&tmpf, replace_mode,
                                  destination_dfd, destination_name,
@@ -329,25 +365,61 @@ checkout_file_hardlink (OstreeRepo                          *self,
   else if (allow_noent && errno == ENOENT)
     {
     }
-  else if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES)
+  else if (errno == EEXIST)
     {
-      /* In this mode, we keep existing content.  Distinguish this case though to
-       * avoid inserting into the devino cache.
-       */
-      ret_result = HARDLINK_RESULT_SKIP_EXISTED;
-    }
-  else if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
-    {
-      /* Idiocy, from man rename(2)
-       *
-       * "If oldpath and newpath are existing hard links referring to
-       * the same file, then rename() does nothing, and returns a
-       * success status."
-       *
-       * So we can't make this atomic.
-       */
-      (void) unlinkat (destination_dfd, destination_name, 0);
-      goto again;
+      /* When we get EEXIST, we need to handle the different overwrite modes. */
+      switch (options->overwrite_mode)
+        {
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
+          /* Just throw */
+          return glnx_throw_errno_prefix (error, "Hardlinking %s to %s", loose_path, destination_name);
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
+          /* In this mode, we keep existing content.  Distinguish this case though to
+           * avoid inserting into the devino cache.
+           */
+          ret_result = HARDLINK_RESULT_SKIP_EXISTED;
+          break;
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
+          {
+            /* Idiocy, from man rename(2)
+             *
+             * "If oldpath and newpath are existing hard links referring to
+             * the same file, then rename() does nothing, and returns a
+             * success status."
+             *
+             * So we can't make this atomic.
+             */
+            (void) unlinkat (destination_dfd, destination_name, 0);
+            goto again;
+          }
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
+          {
+            /* In this mode, we error out on EEXIST *unless* the files are already
+             * hardlinked, which is what rpm-ostree wants for package layering.
+             * https://github.com/projectatomic/rpm-ostree/issues/982
+             *
+             * This should be similar to the librpm version:
+             * https://github.com/rpm-software-management/rpm/blob/e3cd2bc85e0578f158d14e6f9624eb955c32543b/lib/rpmfi.c#L921
+             * in rpmfilesCompare().
+             */
+            struct stat src_stbuf;
+            if (!glnx_fstatat (srcfd, loose_path, &src_stbuf,
+                               AT_SYMLINK_NOFOLLOW, error))
+              return FALSE;
+            struct stat dest_stbuf;
+            if (!glnx_fstatat (destination_dfd, destination_name, &dest_stbuf,
+                               AT_SYMLINK_NOFOLLOW, error))
+              return FALSE;
+            const gboolean is_identical =
+              (src_stbuf.st_dev == dest_stbuf.st_dev &&
+               src_stbuf.st_ino == dest_stbuf.st_ino);
+            if (is_identical)
+              ret_result = HARDLINK_RESULT_SKIP_EXISTED;
+            else
+              return glnx_throw_errno_prefix (error, "Hardlinking %s to %s", loose_path, destination_name);
+            break;
+          }
+        }
     }
   else
     {
@@ -652,13 +724,20 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
      */
     if (TEMP_FAILURE_RETRY (mkdirat (destination_parent_fd, destination_name, 0700)) < 0)
       {
-        if (errno == EEXIST &&
-            (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
-             || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES
-             || options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_DISJOINT_UNION_FILES))
-          did_exist = TRUE;
-        else
-          return glnx_throw_errno (error);
+        if (errno != EEXIST)
+          return glnx_throw_errno_prefix (error, "mkdirat");
+
+        switch (options->overwrite_mode)
+          {
+          case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
+            return glnx_throw_errno_prefix (error, "mkdirat");
+          /* All of these cases are the same for directories */
+          case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
+          case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
+          case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
+            did_exist = TRUE;
+            break;
+          }
       }
   }
 
@@ -1002,6 +1081,9 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
 
   g_return_val_if_fail (!(options->force_copy && options->no_copy_fallback), FALSE);
   g_return_val_if_fail (!options->sepolicy || options->force_copy, FALSE);
+  /* union identical requires hardlink mode */
+  g_return_val_if_fail (!(options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL &&
+                          !options->no_copy_fallback), FALSE);
 
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
