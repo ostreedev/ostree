@@ -33,9 +33,7 @@
 gboolean
 ot_test_run_libtest (const char *cmd, GError **error)
 {
-  gboolean ret = FALSE;
   const char *srcdir = g_getenv ("G_TEST_SRCDIR");
-  int estatus;
   g_autoptr(GPtrArray) argv = g_ptr_array_new ();
   g_autoptr(GString) cmdstr = g_string_new ("");
 
@@ -50,53 +48,39 @@ ot_test_run_libtest (const char *cmd, GError **error)
   g_ptr_array_add (argv, cmdstr->str);
   g_ptr_array_add (argv, NULL);
 
+  int estatus;
   if (!g_spawn_sync (NULL, (char**)argv->pdata, NULL, G_SPAWN_SEARCH_PATH,
                      NULL, NULL, NULL, NULL, &estatus, error))
-    goto out;
-
+    return FALSE;
   if (!g_spawn_check_exit_status (estatus, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 OstreeRepo *
 ot_test_setup_repo (GCancellable *cancellable,
                     GError **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
-  glnx_unref_object OstreeRepo* ret_repo = NULL;
-
   if (!ot_test_run_libtest ("setup_test_repository archive", error))
-    goto out;
+    return NULL;
 
-  ret_repo = ostree_repo_new (repo_path);
-
+  g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
+  g_autoptr(OstreeRepo) ret_repo = ostree_repo_new (repo_path);
   if (!ostree_repo_open (ret_repo, cancellable, error))
-    goto out;
+    return NULL;
 
-  ret = TRUE;
- out:
-  if (ret)
-    return g_steal_pointer (&ret_repo);
-  return NULL;
+  return g_steal_pointer (&ret_repo);
 }
 
 OstreeSysroot *
 ot_test_setup_sysroot (GCancellable *cancellable,
                        GError **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
-  glnx_unref_object OstreeSysroot *ret_sysroot = NULL;
-  struct statfs stbuf;
-
   if (!ot_test_run_libtest ("setup_os_repository \"archive\" \"syslinux\"", error))
-    goto out;
+    return FALSE;
 
+  struct statfs stbuf;
   { g_autoptr(GString) buf = g_string_new ("mutable-deployments");
     if (statfs ("/", &stbuf) < 0)
       return glnx_null_throw_errno (error);
@@ -113,11 +97,6 @@ ot_test_setup_sysroot (GCancellable *cancellable,
     g_setenv ("OSTREE_SYSROOT_DEBUG", buf->str, TRUE);
   }
 
-  ret_sysroot = ostree_sysroot_new (sysroot_path);
-
-  ret = TRUE;
- out:
-  if (ret)
-    return g_steal_pointer (&ret_sysroot);
-  return NULL;
+  g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
+  return ostree_sysroot_new (sysroot_path);
 }
