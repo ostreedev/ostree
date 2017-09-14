@@ -427,6 +427,9 @@ LIBOSTREE_2017.10 {
  */
 } LIBOSTREE_2017.8;
 
+LIBOSTREE_2017.11 {
+} LIBOSTREE_2017.10;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
