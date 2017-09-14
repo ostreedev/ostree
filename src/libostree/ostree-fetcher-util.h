@@ -26,6 +26,16 @@
 
 G_BEGIN_DECLS
 
+/* FIXME - delete this and replace by having fetchers simply
+ * return O_TMPFILE fds, not file paths.
+ */
+static inline char *
+ostree_fetcher_generate_url_tmpname (const char *url)
+{
+  return g_compute_checksum_for_string (G_CHECKSUM_SHA256,
+                                        url, strlen (url));
+}
+
 gboolean _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher,
                                                      GPtrArray     *mirrorlist,
                                                      const char    *filename,
