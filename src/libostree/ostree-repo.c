@@ -1806,7 +1806,9 @@ repo_create_at_internal (int             dfd,
   /* Early return if we have an existing repo */
   { g_autofree char *objects_path = g_build_filename (path, "objects", NULL);
 
-    if (fstatat (dfd, objects_path, &stbuf, 0) == 0)
+    if (!glnx_fstatat_allow_noent (dfd, objects_path, &stbuf, 0, error))
+      return FALSE;
+    if (errno == 0)
       {
         glnx_fd_close int repo_dfd = -1;
         if (!glnx_opendirat (dfd, path, TRUE, &repo_dfd, error))
@@ -1816,8 +1818,6 @@ repo_create_at_internal (int             dfd,
         *out_dfd = glnx_steal_fd (&repo_dfd);
         return TRUE;
       }
-    else if (errno != ENOENT)
-      return glnx_throw_errno_prefix (error, "fstatat");
   }
 
   if (mkdirat (dfd, path, 0755) != 0)
@@ -1830,32 +1830,29 @@ repo_create_at_internal (int             dfd,
   if (!glnx_opendirat (dfd, path, TRUE, &repo_dfd, error))
     return FALSE;
 
-  if (fstatat (repo_dfd, "config", &stbuf, 0) < 0)
+  if (!glnx_fstatat_allow_noent (repo_dfd, "config", &stbuf, 0, error))
+    return FALSE;
+  if (errno == ENOENT)
     {
-      if (errno == ENOENT)
-        {
-          const char *mode_str = NULL;
-          g_autoptr(GString) config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
+      const char *mode_str = NULL;
+      g_autoptr(GString) config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
 
-          if (!ostree_repo_mode_to_string (mode, &mode_str, error))
-            return FALSE;
-          g_assert (mode_str);
+      if (!ostree_repo_mode_to_string (mode, &mode_str, error))
+        return FALSE;
+      g_assert (mode_str);
 
-          g_string_append_printf (config_data, "mode=%s\n", mode_str);
+      g_string_append_printf (config_data, "mode=%s\n", mode_str);
 
-          const char *collection_id = NULL;
-          if (options)
-            g_variant_lookup (options, "collection-id", "&s", &collection_id);
-          if (collection_id != NULL)
-            g_string_append_printf (config_data, "collection-id=%s\n", collection_id);
+      const char *collection_id = NULL;
+      if (options)
+        g_variant_lookup (options, "collection-id", "&s", &collection_id);
+      if (collection_id != NULL)
+        g_string_append_printf (config_data, "collection-id=%s\n", collection_id);
 
-          if (!glnx_file_replace_contents_at (repo_dfd, "config",
-                                              (guint8*)config_data->str, config_data->len,
-                                              0, cancellable, error))
-            return FALSE;
-        }
-      else
-        return glnx_throw_errno_prefix (error, "fstatat");
+      if (!glnx_file_replace_contents_at (repo_dfd, "config",
+                                          (guint8*)config_data->str, config_data->len,
+                                          0, cancellable, error))
+        return FALSE;
     }
 
   for (guint i = 0; i < G_N_ELEMENTS (state_dirs); i++)

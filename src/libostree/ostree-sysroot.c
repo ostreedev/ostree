@@ -541,12 +541,9 @@ parse_origin (OstreeSysroot   *self,
   g_autoptr(GKeyFile) ret_origin = g_key_file_new ();
 
   struct stat stbuf;
-  if (fstatat (deployment_dfd, origin_path, &stbuf, 0) != 0)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno (error);
-    }
-  else
+  if (!glnx_fstatat_allow_noent (deployment_dfd, origin_path, &stbuf, 0, error))
+    return FALSE;
+  if (errno == 0)
     {
       g_autofree char *origin_contents =
         glnx_file_get_contents_utf8_at (deployment_dfd, origin_path,
@@ -808,8 +805,8 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
     return FALSE;
 
   struct stat stbuf;
-  if (fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0) < 0)
-    return glnx_throw_errno_prefix (error, "fstatat");
+  if (!glnx_fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0, error))
+    return FALSE;
 
   if (out_changed)
     {

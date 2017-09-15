@@ -105,27 +105,6 @@ ot_ensure_unlinked_at (int dfd,
 }
 
 gboolean
-ot_query_exists_at (int dfd, const char *path,
-                    gboolean *out_exists,
-                    GError **error)
-{
-  struct stat stbuf;
-  gboolean ret_exists;
-
-  if (fstatat (dfd, path, &stbuf, AT_SYMLINK_NOFOLLOW) < 0)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "fstatat(%s)", path);
-      ret_exists = FALSE;
-    }
-  else
-    ret_exists = TRUE;
-
-  *out_exists = ret_exists;
-  return TRUE;
-}
-
-gboolean
 ot_openat_ignore_enoent (int dfd,
                          const char *path,
                          int *out_fd,
