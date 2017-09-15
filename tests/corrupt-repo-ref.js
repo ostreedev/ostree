@@ -47,7 +47,6 @@ function listObjectChecksumsRecurse(dir, allObjects) {
     e.close(null);
 } 
 
-let [,commit] = repo.resolve_rev(refToCorrupt, false);
 let [,root,commit] = repo.read_commit(refToCorrupt, null);
 let allObjects = {};
 allObjects[commit + '.commit'] = true;
