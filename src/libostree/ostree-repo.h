@@ -124,6 +124,10 @@ _OSTREE_PUBLIC
 int           ostree_repo_get_dfd (OstreeRepo  *self);
 
 _OSTREE_PUBLIC
+gboolean      ostree_repo_equal (OstreeRepo *a,
+                                 OstreeRepo *b);
+
+_OSTREE_PUBLIC
 OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 
 _OSTREE_PUBLIC
