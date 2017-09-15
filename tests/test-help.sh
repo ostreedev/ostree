@@ -75,7 +75,16 @@ test_recursive() {
         assert_file_empty out
 
         for subcmd in $builtins; do
-            test_recursive "$cmd $subcmd"
+            case "$subcmd" in
+                (trivial-httpd)
+                    # Skip trivial-httpd if enabled, it doesn't work
+                    # uninstalled (and also doesn't produce the output
+                    # we expect).
+                    ;;
+                (*)
+                    test_recursive "$cmd $subcmd"
+                    ;;
+            esac
         done
     fi
 }
