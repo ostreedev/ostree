@@ -603,6 +603,12 @@ skip_without_fuse () {
     [ -e /etc/mtab ] || skip "no /etc/mtab"
 }
 
+skip_without_experimental () {
+    if ! ostree --version | grep -q -e '- experimental'; then
+        skip "No experimental API is compiled in"
+    fi
+}
+
 has_gpgme () {
     ${CMD_PREFIX} ostree --version > version.txt
     assert_file_has_content version.txt '- gpgme'

@@ -39,6 +39,7 @@ BUILTINPROTO(diff);
 BUILTINPROTO(export);
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 BUILTINPROTO(find_remotes);
+BUILTINPROTO(create_usb);
 #endif
 BUILTINPROTO(gpg_sign);
 BUILTINPROTO(init);
