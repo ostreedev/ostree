@@ -97,9 +97,9 @@ assertEquals(deploymentPath.query_exists(null), false);
 
 //// Ok, redeploy, then add a new revision upstream and pull it
 
-let [,deployment] = sysroot.deploy_tree('testos', rev, origin,
-					mergeDeployment, null,
-					null);
+[,deployment] = sysroot.deploy_tree('testos', rev, origin,
+				 mergeDeployment, null,
+				 null);
 newDeployments = deployments;
 deployments = null;
 newDeployments.unshift(deployment);
