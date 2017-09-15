@@ -46,19 +46,20 @@
  * #OstreeRepoFinderMount is an implementation of #OstreeRepoFinder which looks
  * refs up in well-known locations on any mounted removable volumes.
  *
- * For an #OstreeCollectionRef, (`C`, `R`), it checks whether `.ostree/repos/C/R`
- * exists and is an OSTree repository on each mounted removable volume. Collection
- * IDs and ref names are not escaped when building the path, so if either
- * contains `/` in its name, the repository will be checked for in a
- * subdirectory of `.ostree/repos`. Non-removable volumes are ignored.
+ * For each mounted removable volume, the directory `.ostree/repos.d` will be
+ * enumerated, and all OSTree repositories below it will be searched, in lexical
+ * order, for the requested #OstreeCollectionRefs. The names of the directories
+ * below `.ostree/repos.d` are irrelevant, apart from their lexical ordering.
+ * The directory `ostree/repo` will be searched after the others, if it exists.
+ * Non-removable volumes are ignored.
  *
  * For each repository which is found, a result will be returned for the
  * intersection of the refs being searched for, and the refs in `refs/heads` and
  * `refs/mirrors` in the repository on the removable volume.
  *
- * Symlinks are followed when resolving the refs, so a volume might contain a
- * single OSTree at some arbitrary path, with a number of refs linking to it
- * from `.ostree/repos`. Any symlink which points outside the volume’s file
+ * Symlinks are followed when listing the repositories, so a volume might
+ * contain a single OSTree at some arbitrary path, with a symlink from
+ * `.ostree/repos.d`. Any symlink which points outside the volume’s file
  * system will be ignored. Repositories are deduplicated in the results.
  *
  * The volume monitor used to find mounted volumes can be overridden by setting
@@ -166,6 +167,137 @@ results_compare_cb (gconstpointer a,
   return ostree_repo_finder_result_compare (result_a, result_b);
 }
 
+typedef struct
+{
+  char *ordering_name;  /* (owned) */
+  OstreeRepo *repo;  /* (owned) */
+  GHashTable *refs;  /* (owned) (element-type OstreeCollectionRef utf8) */
+} RepoAndRefs;
+
+static void
+repo_and_refs_clear (RepoAndRefs *data)
+{
+  g_hash_table_unref (data->refs);
+  g_object_unref (data->repo);
+  g_free (data->ordering_name);
+}
+
+static gint
+repo_and_refs_compare (gconstpointer a,
+                       gconstpointer b)
+{
+  const RepoAndRefs *_a = a;
+  const RepoAndRefs *_b = b;
+
+  return strcmp (_a->ordering_name, _b->ordering_name);
+}
+
+/* Check whether the repo at @dfd/@path is within the given mount, is not equal
+ * to the @parent_repo, and can be opened. If so, return it as @out_repo and
+ * all its collection–refs as @out_refs, to be added into the results. */
+static gboolean
+scan_repo (int                 dfd,
+           const char         *path,
+           const char         *mount_name,
+           const struct stat  *mount_root_stbuf,
+           OstreeRepo         *parent_repo,
+           OstreeRepo        **out_repo,
+           GHashTable        **out_refs,
+           GCancellable       *cancellable,
+           GError            **error)
+{
+  g_autoptr(GError) local_error = NULL;
+
+  g_autoptr(OstreeRepo) repo = ostree_repo_open_at (dfd, path, cancellable, &local_error);
+  if (repo == NULL)
+    {
+      g_debug ("Ignoring repository ‘%s’ on mount ‘%s’ as it could not be opened: %s",
+               path, mount_name, local_error->message);
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  int repo_dfd = ostree_repo_get_dfd (repo);
+  struct stat stbuf;
+
+  if (!glnx_fstat (repo_dfd, &stbuf, &local_error))
+    {
+      g_debug ("Ignoring repository ‘%s’ on mount ‘%s’ as querying its info failed: %s",
+               path, mount_name, local_error->message);
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  /* Check the resolved repository path is below the mount point. Do not
+   * allow ref symlinks to point somewhere outside of the mounted volume. */
+  if (stbuf.st_dev != mount_root_stbuf->st_dev)
+    {
+      g_debug ("Ignoring repository ‘%s’ on mount ‘%s’ as it’s on a different file system from the mount",
+               path, mount_name);
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  /* Exclude repositories which resolve to @parent_repo. */
+  if (stbuf.st_dev == parent_repo->device &&
+      stbuf.st_ino == parent_repo->inode)
+    {
+      g_debug ("Ignoring repository ‘%s’ on mount ‘%s’ as it is the same as the one we are resolving",
+               path, mount_name);
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  /* List the repo’s refs and return them. */
+  g_autoptr(GHashTable) repo_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+
+  if (!ostree_repo_list_collection_refs (repo, NULL, &repo_refs,
+                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
+                                         cancellable, &local_error))
+    {
+      g_debug ("Ignoring repository ‘%s’ on mount ‘%s’ as its refs could not be listed: %s",
+               path, mount_name, local_error->message);
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  if (out_repo != NULL)
+    *out_repo = g_steal_pointer (&repo);
+  if (out_refs != NULL)
+    *out_refs = g_steal_pointer (&repo_refs);
+
+  return TRUE;
+}
+
+static void
+scan_and_add_repo (int                 dfd,
+                   const char         *path,
+                   gboolean            sortable,
+                   const char         *mount_name,
+                   const struct stat  *mount_root_stbuf,
+                   OstreeRepo         *parent_repo,
+                   GArray             *inout_repos_refs,
+                   GCancellable       *cancellable)
+{
+  g_autoptr(GHashTable) repo_refs = NULL;
+  g_autoptr(OstreeRepo) repo = NULL;
+
+  if (scan_repo (dfd, path,
+                 mount_name, mount_root_stbuf,
+                 parent_repo, &repo, &repo_refs, cancellable, NULL))
+    {
+      RepoAndRefs val = {
+        sortable ? g_strdup (path) : NULL,
+        g_steal_pointer (&repo),
+        g_steal_pointer (&repo_refs)
+      };
+      g_array_append_val (inout_repos_refs, val);
+
+      g_debug ("%s: Adding repo ‘%s’ (%ssortable)",
+               G_STRFUNC, path, sortable ? "" : "not ");
+    }
+}
+
 static void
 ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finder,
                                         const OstreeCollectionRef * const *refs,
@@ -214,7 +346,6 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
           continue;
         }
 
-      /* Check if it contains a .ostree/repos directory. */
       mount_root = g_mount_get_root (mount);
       mount_root_path = g_file_get_path (mount_root);
 
@@ -222,18 +353,6 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
         {
           g_debug ("Ignoring mount ‘%s’ as ‘%s’ directory can’t be opened: %s",
                    mount_name, mount_root_path, local_error->message);
-          continue;
-        }
-
-      if (!glnx_opendirat (mount_root_dfd, ".ostree/repos", TRUE, &repos_dfd, &local_error))
-        {
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-            g_debug ("Ignoring mount ‘%s’ as ‘%s/.ostree/repos’ directory doesn’t exist.",
-                     mount_name, mount_root_path);
-          else
-            g_debug ("Ignoring mount ‘%s’ as ‘%s/.ostree/repos’ directory can’t be opened: %s",
-                     mount_name, mount_root_path, local_error->message);
-
           continue;
         }
 
@@ -247,6 +366,64 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
           continue;
         }
 
+      /* Check if it contains a .ostree/repos.d directory. If not, move on and
+       * try the other well-known subdirectories. */
+      if (!glnx_opendirat (mount_root_dfd, ".ostree/repos.d", TRUE, &repos_dfd, NULL))
+        repos_dfd = -1;
+
+      /* List all the repositories in the repos.d directory. */
+      /* (element-type GHashTable (element-type OstreeCollectionRef utf8)) */
+      g_autoptr(GArray) repos_refs = g_array_new (FALSE, TRUE, sizeof (RepoAndRefs));
+      g_array_set_clear_func (repos_refs, (GDestroyNotify) repo_and_refs_clear);
+
+      GLnxDirFdIterator repos_iter;
+
+      if (repos_dfd >= 0 &&
+          !glnx_dirfd_iterator_init_at (repos_dfd, ".", TRUE, &repos_iter, &local_error))
+        {
+          g_debug ("Error iterating over ‘%s/.ostree/repos.d’ directory in mount ‘%s’: %s",
+                   mount_root_path, mount_name, local_error->message);
+          g_clear_error (&local_error);
+          /* don’t skip this mount as there’s still the ostree/repo directory to try */
+        }
+      else if (repos_dfd >= 0)
+        {
+          while (TRUE)
+            {
+              struct dirent *repo_dent;
+
+              if (!glnx_dirfd_iterator_next_dent (&repos_iter, &repo_dent, cancellable, &local_error))
+                {
+                  g_debug ("Error iterating over ‘%s/.ostree/repos.d’ directory in mount ‘%s’: %s",
+                           mount_root_path, mount_name, local_error->message);
+                  g_clear_error (&local_error);
+                  /* don’t skip this mount as there’s still the ostree/repo directory to try */
+                  break;
+                }
+
+              if (repo_dent == NULL)
+                break;
+
+              /* Grab the set of collection–refs from the repo if we can open it. */
+              scan_and_add_repo (repos_dfd, repo_dent->d_name, TRUE,
+                                 mount_name, &mount_root_stbuf,
+                                 parent_repo, repos_refs, cancellable);
+            }
+        }
+
+      /* Sort the repos lexically. */
+      g_array_sort (repos_refs, repo_and_refs_compare);
+
+      /* Also check the .ostree/repo and ostree/repo directories in the mount,
+       * as well-known special cases. Add them after sorting, so they’re always
+       * last. */
+      scan_and_add_repo (mount_root_dfd, ".ostree/repo", FALSE,
+                         mount_name, &mount_root_stbuf,
+                         parent_repo, repos_refs, cancellable);
+      scan_and_add_repo (mount_root_dfd, "ostree/repo", FALSE,
+                         mount_name, &mount_root_stbuf,
+                         parent_repo, repos_refs, cancellable);
+
       /* Check whether a subdirectory exists for any of the @refs we’re looking
        * for. If so, and it’s a symbolic link, dereference it so multiple links
        * to the same repository (containing multiple refs) are coalesced.
@@ -256,122 +433,66 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
 
       for (i = 0; refs[i] != NULL; i++)
         {
-          struct stat stbuf;
-          g_autofree gchar *collection_and_ref = NULL;
           g_autofree gchar *resolved_repo_uri = NULL;
           g_autofree gchar *keyring = NULL;
           g_autoptr(UriAndKeyring) resolved_repo = NULL;
 
-          collection_and_ref = g_build_filename (refs[i]->collection_id, refs[i]->ref_name, NULL);
-
-          if (!glnx_fstatat (repos_dfd, collection_and_ref, &stbuf, AT_NO_AUTOMOUNT, &local_error))
+          for (gsize j = 0; j < repos_refs->len; j++)
             {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as querying info of ‘%s’ failed: %s",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, collection_and_ref, local_error->message);
-              g_clear_error (&local_error);
-              continue;
+              const RepoAndRefs *repo_and_refs = &g_array_index (repos_refs, RepoAndRefs, j);
+              OstreeRepo *repo = repo_and_refs->repo;
+              GHashTable *repo_refs = repo_and_refs->refs;
+              g_autofree char *repo_path = g_file_get_path (ostree_repo_get_path (repo));
+
+              const gchar *checksum = g_hash_table_lookup (repo_refs, refs[i]);
+
+              if (checksum == NULL)
+                {
+                  g_debug ("Ignoring repository ‘%s’ when looking for ref (%s, %s) on mount ‘%s’ as it doesn’t contain the ref.",
+                           repo_path, refs[i]->collection_id, refs[i]->ref_name, mount_name);
+                  g_clear_error (&local_error);
+                  continue;
+                }
+
+              /* Finally, look up the GPG keyring for this ref. */
+              keyring = ostree_repo_resolve_keyring_for_collection (parent_repo, refs[i]->collection_id,
+                                                                    cancellable, &local_error);
+
+              if (keyring == NULL)
+                {
+                  g_debug ("Ignoring repository ‘%s’ when looking for ref (%s, %s) on mount ‘%s’ due to missing keyring: %s",
+                           repo_path, refs[i]->collection_id, refs[i]->ref_name, mount_name, local_error->message);
+                  g_clear_error (&local_error);
+                  continue;
+                }
+
+              /* There is a valid repo at (or pointed to by)
+               * $mount_root/.ostree/repos.d/$something.
+               * Add it to the results, keyed by the canonicalised repository URI
+               * to deduplicate the results. */
+              g_autofree char *canonical_repo_path = realpath (repo_path, NULL);
+              resolved_repo_uri = g_strconcat ("file://", canonical_repo_path, NULL);
+              g_debug ("Resolved ref (%s, %s) on mount ‘%s’ to repo URI ‘%s’ with keyring ‘%s’.",
+                       refs[i]->collection_id, refs[i]->ref_name, mount_name, resolved_repo_uri, keyring);
+
+              resolved_repo = uri_and_keyring_new (resolved_repo_uri, keyring);
+
+              supported_ref_to_checksum = g_hash_table_lookup (repo_to_refs, resolved_repo);
+
+              if (supported_ref_to_checksum == NULL)
+                {
+                  supported_ref_to_checksum = g_hash_table_new_full (ostree_collection_ref_hash,
+                                                                     ostree_collection_ref_equal,
+                                                                     NULL, g_free);
+                  g_hash_table_insert (repo_to_refs, g_steal_pointer (&resolved_repo), supported_ref_to_checksum  /* transfer */);
+                }
+
+              g_hash_table_insert (supported_ref_to_checksum, (gpointer) refs[i], g_strdup (checksum));
+
+              /* We’ve found a result for this collection–ref. No point in checking
+               * the other repos on the mount, since pulling in parallel from them won’t help. */
+              break;
             }
-
-          if ((stbuf.st_mode & S_IFMT) != S_IFDIR)
-            {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as ‘%s’ is of type %u, not a directory.",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, collection_and_ref, (stbuf.st_mode & S_IFMT));
-              g_clear_error (&local_error);
-              continue;
-            }
-
-          /* Check the resolved repository path is below the mount point. Do not
-           * allow ref symlinks to point somewhere outside of the mounted
-           * volume. */
-          if (stbuf.st_dev != mount_root_stbuf.st_dev)
-            {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as it’s on a different file system from the mount.",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name);
-              g_clear_error (&local_error);
-              continue;
-            }
-
-          /* Exclude repositories which resolve to @parent_repo. */
-          if (stbuf.st_dev == parent_repo->device &&
-              stbuf.st_ino == parent_repo->inode)
-            {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as it is the same as the one we are resolving",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name);
-              g_clear_error (&local_error);
-              continue;
-            }
-
-          /* Grab the given ref and a checksum for it from the repo, if it appears to be a valid repo */
-          g_autoptr(OstreeRepo) repo = ostree_repo_open_at (repos_dfd, collection_and_ref,
-                                                            cancellable, &local_error);
-          if (!repo)
-            {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as its repository could not be opened: %s",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, local_error->message);
-              g_clear_error (&local_error);
-              continue;
-            }
-
-          g_autoptr(GHashTable) repo_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
-
-          if (!ostree_repo_list_collection_refs (repo, refs[i]->collection_id, &repo_refs,
-                                                 OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
-                                                 cancellable, &local_error))
-            {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as its refs could not be listed: %s",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, local_error->message);
-              g_clear_error (&local_error);
-              continue;
-            }
-
-          const gchar *checksum = g_hash_table_lookup (repo_refs, refs[i]);
-
-          if (checksum == NULL)
-            {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ as its repository doesn’t contain the ref.",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name);
-              g_clear_error (&local_error);
-              continue;
-            }
-
-          /* Finally, look up the GPG keyring for this ref. */
-          keyring = ostree_repo_resolve_keyring_for_collection (parent_repo, refs[i]->collection_id,
-                                                                cancellable, &local_error);
-
-          if (keyring == NULL)
-            {
-              g_debug ("Ignoring ref (%s, %s) on mount ‘%s’ due to missing keyring: %s",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, local_error->message);
-              g_clear_error (&local_error);
-              continue;
-            }
-
-          /* There is a valid repo at (or pointed to by)
-           * $mount_root/.ostree/repos/$refs[i]->collection_id/$refs[i]->ref_name.
-           * Add it to the results, keyed by the canonicalised repository URI
-           * to deduplicate the results. */
-
-          g_autofree char *repo_abspath = g_build_filename (mount_root_path, ".ostree/repos",
-                                                            collection_and_ref, NULL);
-          /* FIXME - why are we using realpath here? */
-          g_autofree char *canonical_repo_dir_path = realpath (repo_abspath, NULL);
-          resolved_repo_uri = g_strconcat ("file://", canonical_repo_dir_path, NULL);
-          g_debug ("Resolved ref (%s, %s) on mount ‘%s’ to repo URI ‘%s’ with keyring ‘%s’.",
-                   refs[i]->collection_id, refs[i]->ref_name, mount_name, resolved_repo_uri, keyring);
-
-          resolved_repo = uri_and_keyring_new (resolved_repo_uri, keyring);
-
-          supported_ref_to_checksum = g_hash_table_lookup (repo_to_refs, resolved_repo);
-
-          if (supported_ref_to_checksum == NULL)
-            {
-              supported_ref_to_checksum = g_hash_table_new_full (ostree_collection_ref_hash,
-                                                                 ostree_collection_ref_equal,
-                                                                 NULL, g_free);
-              g_hash_table_insert (repo_to_refs, g_steal_pointer (&resolved_repo), supported_ref_to_checksum  /* transfer */);
-            }
-
-          g_hash_table_insert (supported_ref_to_checksum, (gpointer) refs[i], g_strdup (checksum));
         }
 
       /* Aggregate the results. */
