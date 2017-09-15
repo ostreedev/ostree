@@ -19,6 +19,8 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2017.12 {
+global:
+  ostree_repo_equal;
 } LIBOSTREE_2017.11;
 
 

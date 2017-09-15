@@ -2612,6 +2612,31 @@ ostree_repo_get_dfd (OstreeRepo  *self)
   return self->repo_dir_fd;
 }
 
+/**
+ * ostree_repo_equal:
+ * @a: an #OstreeRepo
+ * @b: an #OstreeRepo
+ *
+ * Check whether two opened repositories are the same on disk: if their root
+ * directories are the same inode. If @a or @b are not open yet (due to
+ * ostree_repo_open() not being called on them yet), %FALSE will be returned.
+ *
+ * Returns: %TRUE if @a and @b are the same repository on disk, %FALSE otherwise
+ * Since: 2017.11
+ */
+gboolean
+ostree_repo_equal (OstreeRepo *a,
+                   OstreeRepo *b)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (a), FALSE);
+  g_return_val_if_fail (OSTREE_IS_REPO (b), FALSE);
+
+  if (a->repo_dir_fd < 0 || b->repo_dir_fd < 0)
+    return FALSE;
+
+  return (a->device == b->device && a->inode == b->inode);
+}
+
 OstreeRepoMode
 ostree_repo_get_mode (OstreeRepo  *self)
 {
