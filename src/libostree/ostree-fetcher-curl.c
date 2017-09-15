@@ -379,14 +379,13 @@ check_multi_info (OstreeFetcher *fetcher)
               g_autoptr(GError) local_error = NULL;
               GError **error = &local_error;
 
-              /* TODO - share file naming with soup, and fix it */
               g_autofree char *tmpfile_path =
-                g_compute_checksum_for_string (G_CHECKSUM_SHA256,
-                                               eff_url, strlen (eff_url));
+                ostree_fetcher_generate_url_tmpname (eff_url);
               if (!ensure_tmpfile (req, error))
                 {
                   g_task_return_error (task, g_steal_pointer (&local_error));
                 }
+              /* This should match the libsoup chmod */
               else if (fchmod (req->tmpf.fd, 0644) < 0)
                 {
                   glnx_set_error_from_errno (error);

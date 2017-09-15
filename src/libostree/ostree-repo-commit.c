@@ -1284,13 +1284,6 @@ cleanup_tmpdir (OstreeRepo        *self,
           if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
             return glnx_prefix_error (error, "Removing %s", dent->d_name);
         }
-      /* FIXME - move OSTREE_REPO_TMPDIR_FETCHER underneath the
-       * staging/boot-id scheme as well, since all of the "did it get
-       * fsync'd" concerns apply to that as well.  Then we can skip
-       * this special case.
-       */
-      else if (g_str_has_prefix (dent->d_name, OSTREE_REPO_TMPDIR_FETCHER))
-        continue;
       else
         {
           /* Now we do time-based cleanup.  Ignore it if it's somehow

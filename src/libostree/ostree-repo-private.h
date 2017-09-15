@@ -205,7 +205,6 @@ _ostree_repo_memory_cache_ref_destroy (OstreeRepoMemoryCacheRef *state);
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OstreeRepoMemoryCacheRef, _ostree_repo_memory_cache_ref_destroy)
 
 #define OSTREE_REPO_TMPDIR_STAGING "staging-"
-#define OSTREE_REPO_TMPDIR_FETCHER "fetcher-"
 
 gboolean
 _ostree_repo_allocate_tmpdir (int           tmpdir_dfd,

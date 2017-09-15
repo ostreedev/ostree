@@ -5061,8 +5061,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
 gboolean
 _ostree_repo_is_locked_tmpdir (const char *filename)
 {
-  return g_str_has_prefix (filename, OSTREE_REPO_TMPDIR_STAGING) ||
-    g_str_has_prefix (filename, OSTREE_REPO_TMPDIR_FETCHER);
+  return g_str_has_prefix (filename, OSTREE_REPO_TMPDIR_STAGING);
 }
 
 gboolean
