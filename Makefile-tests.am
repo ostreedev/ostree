@@ -115,6 +115,7 @@ _installed_or_uninstalled_test_scripts = \
 	$(NULL)
 
 experimental_test_scripts = \
+	tests/test-create-usb.sh \
 	tests/test-find-remotes.sh \
 	tests/test-fsck-collections.sh \
 	tests/test-init-collections.sh \
@@ -124,9 +125,15 @@ experimental_test_scripts = \
 	tests/test-summary-collections.sh \
 	tests/test-pull-collections.sh \
 	$(NULL)
+uninstalled_test_extra_programs =
+
+tests_repo_finder_mount_SOURCES = tests/repo-finder-mount.c
+tests_repo_finder_mount_CFLAGS = $(common_tests_cflags)
+tests_repo_finder_mount_LDADD = $(common_tests_ldadd) libostreetest.la
 
 if ENABLE_EXPERIMENTAL_API
 _installed_or_uninstalled_test_scripts += $(experimental_test_scripts)
+uninstalled_test_extra_programs += tests/repo-finder-mount
 else
 EXTRA_DIST += $(experimental_test_scripts)
 endif

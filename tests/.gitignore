@@ -3,6 +3,7 @@
 *.test
 *.trs
 ostree-http-server
+repo-finder-mount
 run-apache
 tmpdir-lifecycle
 test-rollsum
