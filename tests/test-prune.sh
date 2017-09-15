@@ -25,7 +25,7 @@ skip_without_user_xattrs
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..10'
+echo '1..12'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -258,6 +258,19 @@ reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --only-branch=stable --depth=1
 assert_repo_has_n_commits repo 4
 echo "ok --only-branch (all) --depth=1"
+
+# Test --only-branch and --retain-branch-depth overlap
+reinitialize_datesnap_repo
+${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --only-branch=stable --depth=0 \
+                     --retain-branch-depth=stable=2
+assert_repo_has_n_commits repo 4
+echo "ok --only-branch and --retain-branch-depth overlap"
+
+# Test --only-branch and --retain-branch-depth together
+reinitialize_datesnap_repo
+${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --depth=0 --retain-branch-depth=stable=2
+assert_repo_has_n_commits repo 4
+echo "ok --only-branch and --retain-branch-depth together"
 
 # Test --only-branch with --keep-younger-than; this should be identical to the test
 # above for --retain-branch-depth=stable=-1

@@ -245,8 +245,11 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
       /* Process --only-branch. Note this combines with --retain-branch-depth; one
        * could do e.g.:
        *  * --only-branch exampleos/x86_64/foo
+       *  * --only-branch exampleos/x86_64/bar
        *  * --retain-branch-depth exampleos/x86_64/foo=0
-       * to prune exampleos/x86_64/foo to just the latest commit.
+       *  * --depth 5
+       * to prune exampleos/x86_64/foo to just the latest commit, and
+       * exampleos/x86_64/bar to a depth of 5.
        */
       if (opt_only_branches)
         {
@@ -258,18 +261,20 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
               /* Ensure the specified branch exists */
               if (!ostree_repo_resolve_rev (repo, ref, FALSE, NULL, error))
                 return FALSE;
-              if (g_hash_table_contains (retain_branch_depth, ref))
-                return glnx_throw (error, "--retain-branch-depth conflicts with --only-branch");
               g_hash_table_add (only_branches_set, (char*)ref);
             }
 
           /* Iterate over all refs, add equivalent of --retain-branch-depth=$ref=-1
-           * if the ref isn't in --only-branch set.
+           * if the ref isn't in --only-branch set and there wasn't already a
+           * --retain-branch-depth specified for it.
            */
           GLNX_HASH_TABLE_FOREACH (all_refs, const char *, ref)
             {
-              if (!g_hash_table_contains (only_branches_set, ref))
-                g_hash_table_insert (retain_branch_depth, g_strdup (ref), GINT_TO_POINTER ((int)-1));
+              if (!g_hash_table_contains (only_branches_set, ref) &&
+                  !g_hash_table_contains (retain_branch_depth, ref))
+                {
+                  g_hash_table_insert (retain_branch_depth, g_strdup (ref), GINT_TO_POINTER ((int)-1));
+                }
             }
         }
 
