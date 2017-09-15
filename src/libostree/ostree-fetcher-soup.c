@@ -909,6 +909,9 @@ on_stream_read (GObject        *object,
           if (!glnx_open_tmpfile_linkable_at (pending->thread_closure->base_tmpdir_dfd, ".",
                                               O_WRONLY | O_CLOEXEC, &pending->tmpf, &local_error))
             goto out;
+          /* This should match the libcurl chmod */
+          if (!glnx_fchmod (pending->tmpf.fd, 0644, &local_error))
+            goto out;
           pending->out_stream = g_unix_output_stream_new (pending->tmpf.fd, FALSE);
         }
       else
@@ -941,8 +944,8 @@ on_stream_read (GObject        *object,
         }
       else
         {
-          g_autofree char *uristring
-            = soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
+          g_autofree char *uristring =
+            soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
           g_autofree char *tmpfile_path =
             ostree_fetcher_generate_url_tmpname (uristring);
           if (!glnx_link_tmpfile_at (&pending->tmpf, GLNX_LINK_TMPFILE_REPLACE,
@@ -1040,8 +1043,8 @@ on_request_sent (GObject        *object,
             }
           else
             {
-              g_autofree char *uristring
-                = soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
+              g_autofree char *uristring =
+                soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
 
               GIOErrorEnum code;
               switch (msg->status_code)

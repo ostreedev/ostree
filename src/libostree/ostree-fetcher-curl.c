@@ -385,6 +385,7 @@ check_multi_info (OstreeFetcher *fetcher)
                 {
                   g_task_return_error (task, g_steal_pointer (&local_error));
                 }
+              /* This should match the libsoup chmod */
               else if (fchmod (req->tmpf.fd, 0644) < 0)
                 {
                   glnx_set_error_from_errno (error);
