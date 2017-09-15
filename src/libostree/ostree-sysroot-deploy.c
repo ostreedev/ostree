@@ -689,12 +689,10 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
    * when doing a deployment.
    */
   const char selabeled[] = "var/.ostree-selabeled";
-  gboolean deployment_var_labeled;
-
-  if (!ot_query_exists_at (os_deploy_dfd, selabeled, &deployment_var_labeled, error))
+  struct stat stbuf;
+  if (!glnx_fstatat_allow_noent (os_deploy_dfd, selabeled, &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
-
-  if (!deployment_var_labeled)
+  if (errno == ENOENT)
     {
       { g_autofree char *msg =
           g_strdup_printf ("Relabeling /var (no stamp file '%s' found)", selabeled);
@@ -764,12 +762,13 @@ merge_configuration (OstreeSysroot         *sysroot,
         }
     }
 
-  gboolean etc_exists = FALSE;
-  if (!ot_query_exists_at (deployment_dfd, "etc", &etc_exists, error))
+  struct stat stbuf;
+  if (!glnx_fstatat_allow_noent (deployment_dfd, "etc", &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
-  gboolean usretc_exists = FALSE;
-  if (!ot_query_exists_at (deployment_dfd, "usr/etc", &usretc_exists, error))
+  gboolean etc_exists = (errno == 0);
+  if (!glnx_fstatat_allow_noent (deployment_dfd, "usr/etc", &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
+  gboolean usretc_exists = (errno == 0);
 
   if (etc_exists && usretc_exists)
     return glnx_throw (error, "Tree contains both /etc and /usr/etc");
@@ -1568,10 +1567,10 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
    * it doesn't exist already.
    */
   struct stat stbuf;
-  if (fstatat (bootcsum_dfd, kernel_layout->kernel_namever, &stbuf, 0) != 0)
+  if (!glnx_fstatat_allow_noent (bootcsum_dfd, kernel_layout->kernel_namever, &stbuf, 0, error))
+    return FALSE;
+  if (errno == ENOENT)
     {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "fstat %s", kernel_layout->kernel_namever);
       if (!hardlink_or_copy_at (kernel_layout->boot_dfd,
                                 kernel_layout->kernel_srcpath,
                                 bootcsum_dfd, kernel_layout->kernel_namever,
@@ -1586,10 +1585,10 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   if (kernel_layout->initramfs_srcpath)
     {
       g_assert (kernel_layout->initramfs_namever);
-      if (fstatat (bootcsum_dfd, kernel_layout->initramfs_namever, &stbuf, 0) != 0)
+      if (!glnx_fstatat_allow_noent (bootcsum_dfd, kernel_layout->initramfs_namever, &stbuf, 0, error))
+        return FALSE;
+      if (errno == ENOENT)
         {
-          if (errno != ENOENT)
-            return glnx_throw_errno_prefix (error, "fstat %s", kernel_layout->initramfs_namever);
           if (!hardlink_or_copy_at (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
                                     bootcsum_dfd, kernel_layout->initramfs_namever,
                                     sysroot->debug_flags,
@@ -1599,19 +1598,14 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     }
 
   g_autofree char *contents = NULL;
-  if (fstatat (deployment_dfd, "usr/lib/os-release", &stbuf, 0) != 0)
+  if (!glnx_fstatat_allow_noent (deployment_dfd, "usr/lib/os-release", &stbuf, 0, error))
+    return FALSE;
+  if (errno == ENOENT)
     {
-      if (errno != ENOENT)
-        {
-          return glnx_throw_errno (error);
-        }
-      else
-        {
-          contents = glnx_file_get_contents_utf8_at (deployment_dfd, "etc/os-release", NULL,
-                                                     cancellable, error);
-          if (!contents)
-            return glnx_prefix_error (error, "Reading /etc/os-release");
-        }
+      contents = glnx_file_get_contents_utf8_at (deployment_dfd, "etc/os-release", NULL,
+                                                 cancellable, error);
+      if (!contents)
+        return glnx_prefix_error (error, "Reading /etc/os-release");
     }
   else
     {

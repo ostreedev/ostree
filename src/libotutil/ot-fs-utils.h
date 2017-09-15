@@ -66,11 +66,6 @@ gboolean ot_openat_read_stream (int             dfd,
                                 GCancellable   *cancellable,
                                 GError        **error);
 
-
-gboolean ot_query_exists_at (int dfd, const char *path,
-                             gboolean *out_exists,
-                             GError **error);
-
 gboolean ot_ensure_unlinked_at (int dfd,
                                 const char *path,
                                 GError **error);

@@ -545,12 +545,10 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
                                  GCancellable     *cancellable,
                                  GError          **error)
 {
-  g_autoptr(GHashTable) ret_all_refs = NULL;
   g_autofree char *remote = NULL;
   g_autofree char *ref_prefix = NULL;
 
-  ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-
+  g_autoptr(GHashTable) ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   if (refspec_prefix)
     {
       struct stat stbuf;
@@ -571,12 +569,9 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
           path = glnx_strjoina (prefix_path, ref_prefix);
         }
 
-      if (fstatat (self->repo_dir_fd, path, &stbuf, 0) < 0)
-        {
-          if (errno != ENOENT)
-            return glnx_throw_errno (error);
-        }
-      else
+      if (!glnx_fstatat_allow_noent (self->repo_dir_fd, path, &stbuf, 0, error))
+        return FALSE;
+      if (errno == 0)
         {
           if (S_ISDIR (stbuf.st_mode))
             {
