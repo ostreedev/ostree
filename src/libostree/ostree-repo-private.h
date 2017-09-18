@@ -343,6 +343,21 @@ _ostree_repo_verify_commit_internal (OstreeRepo    *self,
                                      GCancellable  *cancellable,
                                      GError       **error);
 
+typedef enum {
+  _OSTREE_REPO_IMPORT_FLAGS_NONE,
+  _OSTREE_REPO_IMPORT_FLAGS_VERIFY_CHECKSUM,
+  _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY,
+} OstreeRepoImportFlags;
+
+gboolean
+_ostree_repo_import_object (OstreeRepo           *self,
+                            OstreeRepo           *source,
+                            OstreeObjectType      objtype,
+                            const char           *checksum,
+                            OstreeRepoImportFlags flags,
+                            GCancellable         *cancellable,
+                            GError              **error);
+
 gboolean
 _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
                                 const char        *checksum,

@@ -262,10 +262,8 @@ commit_loose_regfile_object (OstreeRepo        *self,
     }
   else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
     {
-      guint32 invalid_modebits = (mode & ~S_IFMT) & ~0775;
-      if (invalid_modebits > 0)
-        return glnx_throw (error, "Invalid mode 0%04o with bits 0%04o in bare-user-only repository",
-                           mode, invalid_modebits);
+      if (!_ostree_validate_bareuseronly_mode (mode, checksum, error))
+        return FALSE;
 
       if (!glnx_fchmod (tmpf->fd, mode, error))
         return FALSE;
@@ -3166,6 +3164,249 @@ G_DEFINE_BOXED_TYPE(OstreeRepoDevInoCache, ostree_repo_devino_cache,
 G_DEFINE_BOXED_TYPE(OstreeRepoCommitModifier, ostree_repo_commit_modifier,
                     ostree_repo_commit_modifier_ref,
                     ostree_repo_commit_modifier_unref);
+
+/* Special case between bare-user and bare-user-only,
+ * mostly for https://github.com/flatpak/flatpak/issues/845
+ * see below for any more comments.
+ */
+static gboolean
+import_is_bareuser_only_conversion (OstreeRepo *src_repo,
+                                    OstreeRepo *dest_repo,
+                                    OstreeObjectType objtype)
+{
+  return src_repo->mode == OSTREE_REPO_MODE_BARE_USER
+    && dest_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+    && objtype == OSTREE_OBJECT_TYPE_FILE;
+}
+
+/* Returns TRUE if we can potentially just call link() to copy an object. */
+static gboolean
+import_via_hardlink_is_possible (OstreeRepo *src_repo,
+                                 OstreeRepo *dest_repo,
+                                 OstreeObjectType objtype)
+{
+  /* We need the ability to make hardlinks */
+  if (src_repo->owner_uid != dest_repo->owner_uid)
+    return FALSE;
+  /* Equal modes are always compatible */
+  if (src_repo->mode == dest_repo->mode)
+    return TRUE;
+  /* Metadata is identical between all modes */
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    return TRUE;
+  /* And now a special case between bare-user and bare-user-only,
+   * mostly for https://github.com/flatpak/flatpak/issues/845
+   */
+  if (import_is_bareuser_only_conversion (src_repo, dest_repo, objtype))
+    return TRUE;
+  return FALSE;
+}
+
+/* Copy the detached metadata for commit @checksum from @source repo
+ * to @self.
+ */
+static gboolean
+copy_detached_metadata (OstreeRepo    *self,
+                        OstreeRepo    *source,
+                        const char   *checksum,
+                        GCancellable  *cancellable,
+                        GError        **error)
+{
+  g_autoptr(GVariant) detached_meta = NULL;
+  if (!ostree_repo_read_commit_detached_metadata (source,
+                                                  checksum, &detached_meta,
+                                                  cancellable, error))
+    return FALSE;
+
+  if (detached_meta)
+    {
+      if (!ostree_repo_write_commit_detached_metadata (self,
+                                                       checksum, detached_meta,
+                                                       cancellable, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+/* Try to import an object by just calling linkat(); returns
+ * a value in @out_was_supported if we were able to do it or not.
+ */
+static gboolean
+import_one_object_link (OstreeRepo    *self,
+                        OstreeRepo    *source,
+                        const char   *checksum,
+                        OstreeObjectType objtype,
+                        gboolean       *out_was_supported,
+                        GCancellable  *cancellable,
+                        GError        **error)
+{
+  const char *errprefix = glnx_strjoina ("Importing ", checksum, ".",
+                                         ostree_object_type_to_string (objtype));
+  GLNX_AUTO_PREFIX_ERROR (errprefix, error);
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+
+  /* Hardlinking between bare-user → bare-user-only is only possible for regular
+   * files, *not* symlinks, which in bare-user are stored as regular files.  At
+   * this point we need to parse the file to see the difference.
+   */
+  if (import_is_bareuser_only_conversion (source, self, objtype))
+    {
+      struct stat stbuf;
+
+      if (!_ostree_repo_load_file_bare (source, checksum, NULL, &stbuf,
+                                        NULL, NULL, cancellable, error))
+        return FALSE;
+
+      if (S_ISREG (stbuf.st_mode))
+        {
+          /* This is OK, we'll drop through and try a hardlink */
+        }
+      else if (S_ISLNK (stbuf.st_mode))
+        {
+          /* NOTE early return */
+          *out_was_supported = FALSE;
+          return TRUE;
+        }
+      else
+        g_assert_not_reached ();
+    }
+
+  if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path_buf, cancellable, error))
+    return FALSE;
+
+  *out_was_supported = TRUE;
+  if (linkat (source->objects_dir_fd, loose_path_buf, self->objects_dir_fd, loose_path_buf, 0) != 0)
+    {
+      if (errno == EEXIST)
+        return TRUE;
+      else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
+        {
+          /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
+           * optimization of hardlinking instead of copying.
+           */
+          *out_was_supported = FALSE;
+          return TRUE;
+        }
+      else
+        return glnx_throw_errno_prefix (error, "linkat");
+    }
+
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+    {
+      if (!copy_detached_metadata (self, source, checksum, cancellable, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+/* A version of ostree_repo_import_object_from_with_trust()
+ * with flags; may make this public API later.
+ */
+gboolean
+_ostree_repo_import_object (OstreeRepo           *self,
+                            OstreeRepo           *source,
+                            OstreeObjectType      objtype,
+                            const char           *checksum,
+                            OstreeRepoImportFlags flags,
+                            GCancellable         *cancellable,
+                            GError              **error)
+{
+  const gboolean trusted = (flags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_CHECKSUM) == 0;
+  /* Implements OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES which was designed for flatpak */
+  const gboolean verify_bareuseronly = (flags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY) > 0;
+
+  /* If we need to do bareuseronly verification, let's dispense with that
+   * first so we don't complicate the rest of the code below.
+   */
+  if (verify_bareuseronly && !OSTREE_OBJECT_TYPE_IS_META (objtype))
+    {
+      g_autoptr(GFileInfo) src_finfo = NULL;
+      if (!ostree_repo_load_file (source, checksum,
+                                  NULL, &src_finfo, NULL,
+                                  cancellable, error))
+        return FALSE;
+
+      if (!_ostree_validate_bareuseronly_mode_finfo (src_finfo, checksum, error))
+        return FALSE;
+    }
+
+   /* We try to import via hardlink. If the remote is explicitly not trusted
+   * (i.e.) their checksums may be incorrect, we skip that. Also, we require the
+   * repository modes to match, as well as the owner uid (since we need to be
+   * able to make hardlinks).
+   */
+  if (trusted && import_via_hardlink_is_possible (source, self, objtype))
+    {
+      gboolean hardlink_was_supported = FALSE;
+
+      if (!import_one_object_link (self, source, checksum, objtype,
+                                   &hardlink_was_supported,
+                                   cancellable, error))
+        return FALSE;
+
+      /* If we hardlinked, we're done! */
+      if (hardlink_was_supported)
+        return TRUE;
+    }
+
+  /* The copy path */
+
+  /* First, do we have the object already? */
+  gboolean has_object;
+  if (!ostree_repo_has_object (self, objtype, checksum, &has_object,
+                               cancellable, error))
+    return FALSE;
+  /* If we have it, we're done */
+  if (has_object)
+    return TRUE;
+
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    {
+      /* Metadata object */
+      g_autoptr(GVariant) variant = NULL;
+
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        {
+          /* FIXME - cleanup detached metadata if copy below fails */
+          if (!copy_detached_metadata (self, source, checksum, cancellable, error))
+            return FALSE;
+        }
+
+      if (!ostree_repo_load_variant (source, objtype, checksum,
+                                     &variant, error))
+        return FALSE;
+
+      g_autofree guchar *real_csum = NULL;
+      if (!ostree_repo_write_metadata (self, objtype,
+                                       checksum, variant,
+                                       trusted ? NULL : &real_csum,
+                                       cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      /* Content object */
+      guint64 length;
+      g_autoptr(GInputStream) object_stream = NULL;
+
+      if (!ostree_repo_load_object_stream (source, objtype, checksum,
+                                           &object_stream, &length,
+                                           cancellable, error))
+        return FALSE;
+
+      g_autofree guchar *real_csum = NULL;
+      if (!ostree_repo_write_content (self, checksum,
+                                      object_stream, length,
+                                      trusted ? NULL : &real_csum,
+                                      cancellable, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
 
 static OstreeRepoTransactionStats *
 ostree_repo_transaction_stats_copy (OstreeRepoTransactionStats *stats)
