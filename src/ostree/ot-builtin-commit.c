@@ -631,12 +631,12 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
                   if (!ostree_repo_import_archive_to_mtree (repo, &opts, archive, mtree,
                                                             modifier, cancellable, error))
                     goto out;
-                }
 #else
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                           "This version of ostree is not compiled with libarchive support");
-              return FALSE;
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                               "This version of ostree is not compiled with libarchive support");
+                  goto out;
 #endif
+                }
             }
           else if (strcmp (tree_type, "ref") == 0)
             {
