@@ -4023,7 +4023,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
                                                    gpointer             user_data)
 {
   g_autofree char *status = NULL;
-  gboolean scanning;
+  gboolean caught_error, scanning;
   guint outstanding_fetches;
   guint outstanding_metadata_fetches;
   guint outstanding_writes;
@@ -4039,6 +4039,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
                              "outstanding-fetches", "u", &outstanding_fetches,
                              "outstanding-metadata-fetches", "u", &outstanding_metadata_fetches,
                              "outstanding-writes", "u", &outstanding_writes,
+                             "caught-error", "b", &caught_error,
                              "scanning", "u", &scanning,
                              "scanned-metadata", "u", &n_scanned_metadata,
                              "fetched-delta-parts", "u", &fetched_delta_parts,
@@ -4051,6 +4052,10 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   if (*status != '\0')
     {
       g_string_append (buf, status);
+    }
+  else if (caught_error)
+    {
+      g_string_append_printf (buf, "Caught error, waiting for outstanding tasks");
     }
   else if (outstanding_fetches)
     {
