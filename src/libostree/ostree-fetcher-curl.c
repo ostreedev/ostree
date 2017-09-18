@@ -747,6 +747,16 @@ initiate_next_curl_request (FetcherRequest *req,
 
   if (self->tls_client_cert_path)
     {
+      if (g_str_has_prefix (self->tls_client_key_path, "pkcs11:"))
+        {
+          curl_easy_setopt (req->easy, CURLOPT_SSLENGINE, "pkcs11");
+          curl_easy_setopt (req->easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
+          curl_easy_setopt (req->easy, CURLOPT_SSLKEYTYPE, "ENG");
+        }
+
+      if (g_str_has_prefix (self->tls_client_cert_path, "pkcs11:"))
+        curl_easy_setopt (req->easy, CURLOPT_SSLCERTTYPE, "ENG");
+
       curl_easy_setopt (req->easy, CURLOPT_SSLCERT, self->tls_client_cert_path);
       curl_easy_setopt (req->easy, CURLOPT_SSLKEY, self->tls_client_key_path);
     }
