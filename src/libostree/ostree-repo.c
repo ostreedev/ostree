@@ -2622,7 +2622,7 @@ ostree_repo_get_dfd (OstreeRepo  *self)
  * ostree_repo_open() not being called on them yet), %FALSE will be returned.
  *
  * Returns: %TRUE if @a and @b are the same repository on disk, %FALSE otherwise
- * Since: 2017.11
+ * Since: 2017.12
  */
 gboolean
 ostree_repo_equal (OstreeRepo *a,
