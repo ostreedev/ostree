@@ -515,9 +515,21 @@ os_repository_new_commit ()
 }
 
 # Usage: if ! skip_one_without_user_xattrs; then ... more tests ...; fi
+_have_user_xattrs=''
+have_user_xattrs() {
+    if test "${_have_user_xattrs}" = ''; then
+        touch test-xattrs
+        if setfattr -n user.testvalue -v somevalue test-xattrs 2>/dev/null; then
+            _have_user_xattrs=yes
+        else
+            _have_user_xattrs=no
+        fi
+        rm -f test-xattrs
+    fi
+    test ${_have_user_xattrs} = yes
+}
 skip_one_without_user_xattrs () {
-    touch test-xattrs
-    if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+    if ! have_user_xattrs; then
         echo "ok # SKIP - this test requires xattr support"
         return 0
     else
@@ -526,9 +538,9 @@ skip_one_without_user_xattrs () {
 }
 
 skip_without_user_xattrs () {
-    touch test-xattrs
-    setfattr -n user.testvalue -v somevalue test-xattrs || \
+    if ! have_user_xattrs; then
         skip "this test requires xattr support"
+    fi
 }
 
 skip_without_fuse () {
