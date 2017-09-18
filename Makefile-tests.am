@@ -122,6 +122,7 @@ experimental_test_scripts = \
 	tests/test-prune-collections.sh \
 	tests/test-refs-collections.sh \
 	tests/test-remote-add-collections.sh \
+	tests/test-repo-finder-mount-integration.sh \
 	tests/test-summary-collections.sh \
 	tests/test-pull-collections.sh \
 	$(NULL)
