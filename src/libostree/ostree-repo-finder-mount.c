@@ -433,6 +433,7 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
 
       for (i = 0; refs[i] != NULL; i++)
         {
+          const OstreeCollectionRef *ref = refs[i];
           g_autofree gchar *resolved_repo_uri = NULL;
           g_autofree gchar *keyring = NULL;
           g_autoptr(UriAndKeyring) resolved_repo = NULL;
@@ -444,24 +445,24 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
               GHashTable *repo_refs = repo_and_refs->refs;
               g_autofree char *repo_path = g_file_get_path (ostree_repo_get_path (repo));
 
-              const gchar *checksum = g_hash_table_lookup (repo_refs, refs[i]);
+              const gchar *checksum = g_hash_table_lookup (repo_refs, ref);
 
               if (checksum == NULL)
                 {
                   g_debug ("Ignoring repository ‘%s’ when looking for ref (%s, %s) on mount ‘%s’ as it doesn’t contain the ref.",
-                           repo_path, refs[i]->collection_id, refs[i]->ref_name, mount_name);
+                           repo_path, ref->collection_id, ref->ref_name, mount_name);
                   g_clear_error (&local_error);
                   continue;
                 }
 
               /* Finally, look up the GPG keyring for this ref. */
-              keyring = ostree_repo_resolve_keyring_for_collection (parent_repo, refs[i]->collection_id,
+              keyring = ostree_repo_resolve_keyring_for_collection (parent_repo, ref->collection_id,
                                                                     cancellable, &local_error);
 
               if (keyring == NULL)
                 {
                   g_debug ("Ignoring repository ‘%s’ when looking for ref (%s, %s) on mount ‘%s’ due to missing keyring: %s",
-                           repo_path, refs[i]->collection_id, refs[i]->ref_name, mount_name, local_error->message);
+                           repo_path, ref->collection_id, ref->ref_name, mount_name, local_error->message);
                   g_clear_error (&local_error);
                   continue;
                 }
@@ -473,7 +474,7 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
               g_autofree char *canonical_repo_path = realpath (repo_path, NULL);
               resolved_repo_uri = g_strconcat ("file://", canonical_repo_path, NULL);
               g_debug ("Resolved ref (%s, %s) on mount ‘%s’ to repo URI ‘%s’ with keyring ‘%s’.",
-                       refs[i]->collection_id, refs[i]->ref_name, mount_name, resolved_repo_uri, keyring);
+                       ref->collection_id, ref->ref_name, mount_name, resolved_repo_uri, keyring);
 
               resolved_repo = uri_and_keyring_new (resolved_repo_uri, keyring);
 
@@ -487,7 +488,7 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
                   g_hash_table_insert (repo_to_refs, g_steal_pointer (&resolved_repo), supported_ref_to_checksum  /* transfer */);
                 }
 
-              g_hash_table_insert (supported_ref_to_checksum, (gpointer) refs[i], g_strdup (checksum));
+              g_hash_table_insert (supported_ref_to_checksum, (gpointer) ref, g_strdup (checksum));
 
               /* We’ve found a result for this collection–ref. No point in checking
                * the other repos on the mount, since pulling in parallel from them won’t help. */
