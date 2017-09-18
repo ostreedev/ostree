@@ -314,7 +314,7 @@ $CMD_PREFIX ostree --repo=repo-input commit -b content-with-suid --statoverride=
 if $CMD_PREFIX ostree pull-local --repo=repo --bareuseronly-files repo-input content-with-suid 2>err.txt; then
     assert_not_reached "copying suid file with --bareuseronly-files worked?"
 fi
-assert_file_has_content err.txt 'object.*\.file: invalid mode.*with bits 040.*'
+assert_file_has_content err.txt 'Content object.*: invalid mode.*with bits 040.*'
 echo "ok pull-local (bareuseronly files)"
 
 if ! skip_one_without_user_xattrs; then

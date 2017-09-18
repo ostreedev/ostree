@@ -45,7 +45,7 @@ $CMD_PREFIX ostree --repo=repo-input commit -b content-with-suid --statoverride=
 if $CMD_PREFIX ostree pull-local --repo=repo repo-input 2>err.txt; then
     assert_not_reached "copying suid file into bare-user worked?"
 fi
-assert_file_has_content err.txt "Invalid mode.*with bits 040.*in bare-user-only"
+assert_file_has_content err.txt "Content object.*invalid mode.*with bits 040.*"
 echo "ok failed to commit suid"
 
 cd ${test_tmpdir}

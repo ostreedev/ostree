@@ -1998,6 +1998,29 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
   return TRUE;
 }
 
+/* This bit mirrors similar code in commit_loose_regfile_object() for the
+ * bare-user-only mode. It's opt-in though for all pulls.
+ */
+gboolean
+_ostree_validate_bareuseronly_mode (guint32     content_mode,
+                                    const char *checksum,
+                                    GError    **error)
+{
+  if (S_ISREG (content_mode))
+    {
+      const guint32 invalid_modebits = ((content_mode & ~S_IFMT) & ~0775);
+      if (invalid_modebits > 0)
+        return glnx_throw (error, "Content object %s: invalid mode 0%04o with bits 0%04o",
+                           checksum, content_mode, invalid_modebits);
+    }
+  else if (S_ISLNK (content_mode))
+    ; /* Nothing */
+  else
+    g_assert_not_reached ();
+
+  return TRUE;
+}
+
 static gboolean
 validate_stat_mode_perms (guint32        mode,
                           GError       **error)
