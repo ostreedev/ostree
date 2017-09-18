@@ -543,6 +543,29 @@ skip_without_user_xattrs () {
     fi
 }
 
+# https://brokenpi.pe/tools/strace-fault-injection
+_have_strace_fault_injection=''
+have_strace_fault_injection() {
+    if test "${_have_strace_fault_injection}" = ''; then
+        if strace -P ${test_srcdir}/libtest-core.sh -e inject=read:retval=0 cat ${test_srcdir}/libtest-core.sh >out.txt &&
+           test '!' -s out.txt; then
+            _have_strace_fault_injection=yes
+        else
+            _have_strace_fault_injection=no
+        fi
+        rm -f out.txt
+    fi
+    test ${_have_strace_fault_injection} = yes
+}
+
+skip_one_without_strace_fault_injection() {
+    if ! have_strace_fault_injection; then
+        echo "ok # SKIP this test requires strace fault injection"
+        return 0
+    fi
+    return 1
+}
+
 skip_without_fuse () {
     fusermount --version >/dev/null 2>&1 || skip "no fusermount"
 

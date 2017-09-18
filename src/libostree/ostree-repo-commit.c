@@ -1187,7 +1187,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
           renamed_some_object = TRUE;
         }
 
-      if (renamed_some_object)
+      if (renamed_some_object && !self->disable_fsync)
         {
           /* Ensure that in the case of a power cut all the directory metadata that
              we want has reached the disk. In particular, we want this before we
@@ -1208,8 +1208,11 @@ rename_pending_loose_objects (OstreeRepo        *self,
     }
 
   /* In case we created any loose object subdirs, make sure they are on disk */
-  if (fsync (self->objects_dir_fd) == -1)
-    return glnx_throw_errno_prefix (error, "fsync");
+  if (!self->disable_fsync)
+    {
+      if (fsync (self->objects_dir_fd) == -1)
+        return glnx_throw_errno_prefix (error, "fsync");
+    }
 
   if (!glnx_tmpdir_delete (&self->commit_stagedir, cancellable, error))
     return FALSE;
@@ -1517,10 +1520,11 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_PRE_COMMIT) > 0)
     return glnx_throw (error, "OSTREE_REPO_TEST_ERROR_PRE_COMMIT specified");
 
-  /* FIXME: Added since valgrind in el7 doesn't know about
-   * `syncfs`...we should delete this later.
+  /* FIXME: Added OSTREE_SUPPRESS_SYNCFS since valgrind in el7 doesn't know
+   * about `syncfs`...we should delete this later.
    */
-  if (g_getenv ("OSTREE_SUPPRESS_SYNCFS") == NULL)
+  if (!self->disable_fsync &&
+      g_getenv ("OSTREE_SUPPRESS_SYNCFS") == NULL)
     {
       if (syncfs (self->tmp_dir_fd) < 0)
         return glnx_throw_errno_prefix (error, "syncfs");
