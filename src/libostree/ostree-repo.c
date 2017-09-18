@@ -3576,23 +3576,12 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
                                      &variant, error))
         return FALSE;
 
-      if (trusted)
-        {
-          if (!ostree_repo_write_metadata_trusted (self, objtype,
-                                                   checksum, variant,
-                                                   cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          g_autofree guchar *real_csum = NULL;
-
-          if (!ostree_repo_write_metadata (self, objtype,
-                                           checksum, variant,
-                                           &real_csum,
-                                           cancellable, error))
-            return FALSE;
-        }
+      g_autofree guchar *real_csum = NULL;
+      if (!ostree_repo_write_metadata (self, objtype,
+                                       checksum, variant,
+                                       trusted ? NULL : &real_csum,
+                                       cancellable, error))
+        return FALSE;
     }
   else
     {
@@ -3605,22 +3594,12 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
                                            cancellable, error))
         return FALSE;
 
-      if (trusted)
-        {
-          if (!ostree_repo_write_content_trusted (self, checksum,
-                                                  object_stream, length,
-                                                  cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          g_autofree guchar *real_csum = NULL;
-          if (!ostree_repo_write_content (self, checksum,
-                                          object_stream, length,
-                                          &real_csum,
-                                          cancellable, error))
-            return FALSE;
-        }
+      g_autofree guchar *real_csum = NULL;
+      if (!ostree_repo_write_content (self, checksum,
+                                      object_stream, length,
+                                      trusted ? NULL : &real_csum,
+                                      cancellable, error))
+        return FALSE;
     }
 
   return TRUE;
