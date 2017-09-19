@@ -353,7 +353,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
       g_queue_clear (&pull_data->scan_object_queue);
       g_hash_table_remove_all (pull_data->pending_fetch_metadata);
       g_hash_table_remove_all (pull_data->pending_fetch_deltaparts);
-      g_hash_table_remove_all (pull_data->pending_fetch_deltaparts);
+      g_hash_table_remove_all (pull_data->pending_fetch_content);
     }
   else
     {
