@@ -747,13 +747,21 @@ initiate_next_curl_request (FetcherRequest *req,
 
   if (self->tls_client_cert_path)
     {
+      /* Support for pkcs11:
+       * https://github.com/ostreedev/ostree/pull/1183
+       * This will be used by https://github.com/advancedtelematic/aktualizr
+       * at least to fetch certificates.  No test coverage at the moment
+       * though. See https://gitlab.com/gnutls/gnutls/tree/master/tests/pkcs11
+       * and https://github.com/opendnssec/SoftHSMv2 and
+       * https://github.com/p11-glue/p11-kit/tree/master/p11-kit for
+       * possible ideas there.
+       */
       if (g_str_has_prefix (self->tls_client_key_path, "pkcs11:"))
         {
           curl_easy_setopt (req->easy, CURLOPT_SSLENGINE, "pkcs11");
           curl_easy_setopt (req->easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
           curl_easy_setopt (req->easy, CURLOPT_SSLKEYTYPE, "ENG");
         }
-
       if (g_str_has_prefix (self->tls_client_cert_path, "pkcs11:"))
         curl_easy_setopt (req->easy, CURLOPT_SSLCERTTYPE, "ENG");
 
