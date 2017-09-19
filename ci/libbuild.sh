@@ -2,12 +2,13 @@
 
 pkg_upgrade() {
     # https://bugzilla.redhat.com/show_bug.cgi?id=1483553
-    if ! yum -y upgrade 2>err.txt; then
-        ecode=$?
-        if grep -q -F -e "BDB1539 Build signature doesn't match environment" err.txt; then
-            rpm --rebuilddb
-            yum -y upgrade
-        else
+    ecode=0
+    yum -y distro-sync 2>err.txt || ecode=$?
+    if test ${ecode} '!=' 0 && grep -q -F -e "BDB1539 Build signature doesn't match environment" err.txt; then
+        rpm --rebuilddb
+        yum -y distro-sync
+    else
+        if test ${ecode} '!=' 0; then
             cat err.txt
             exit ${ecode}
         fi
