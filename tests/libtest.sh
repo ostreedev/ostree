@@ -150,6 +150,8 @@ setup_test_repository () {
     export OSTREE="${CMD_PREFIX} ostree ${ot_repo}"
 
     cd ${test_tmpdir}
+    local oldumask="$(umask)"
+    umask 022
     mkdir files
     cd files
     ot_files=`pwd`
@@ -172,6 +174,7 @@ setup_test_repository () {
     ln -s nonexistent baz/alink
     mkdir baz/another/
     echo x > baz/another/y
+    umask "${oldumask}"
 
     cd ${test_tmpdir}/files
     $OSTREE commit ${COMMIT_ARGS}  -b test2 -s "Test Commit 2" -m "Commit body second"
