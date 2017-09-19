@@ -517,13 +517,13 @@ have_user_xattrs() {
     if test "${_have_user_xattrs}" = ''; then
         touch test-xattrs
         if setfattr -n user.testvalue -v somevalue test-xattrs 2>/dev/null; then
-            _have_user_xattrs=0
+            _have_user_xattrs=yes
         else
-            _have_user_xattrs=1
+            _have_user_xattrs=no
         fi
         rm -f test-xattrs
     fi
-    return ${_have_user_xattrs}
+    test ${_have_user_xattrs} = yes
 }
 skip_one_without_user_xattrs () {
     if ! have_user_xattrs; then
