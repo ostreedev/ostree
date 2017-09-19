@@ -218,6 +218,7 @@ static gboolean scan_one_metadata_object_c (OtPullData                 *pull_dat
                                             const OstreeCollectionRef  *ref,
                                             GCancellable               *cancellable,
                                             GError                    **error);
+static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
 
 static gboolean
 update_progress (gpointer user_data)
@@ -258,6 +259,7 @@ update_progress (gpointer user_data)
                              "fetched", "u", fetched,
                              "requested", "u", requested,
                              "scanning", "u", g_queue_is_empty (&pull_data->scan_object_queue) ? 0 : 1,
+                             "caught-error", "b", pull_data->caught_error,
                              "scanned-metadata", "u", n_scanned_metadata,
                              "bytes-transferred", "t", bytes_transferred,
                              "start-time", "t", start_time,
@@ -309,9 +311,6 @@ pull_termination_condition (OtPullData          *pull_data)
   /* we only enter the main loop when we're fetching objects */
   g_assert (pull_data->phase == OSTREE_PULL_PHASE_FETCHING_OBJECTS);
 
-  if (pull_data->caught_error)
-    return TRUE;
-
   if (pull_data->dry_run)
     return pull_data->dry_run_emitted_progress;
 
@@ -321,6 +320,10 @@ pull_termination_condition (OtPullData          *pull_data)
   return current_idle;
 }
 
+/* Most async operations finish by calling this function; it will consume
+ * @errorp if set, update statistics, and initiate processing of any further
+ * requests as appropriate.
+ */
 static void
 check_outstanding_requests_handle_error (OtPullData          *pull_data,
                                          GError             **errorp)
@@ -339,6 +342,18 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
         {
           g_clear_error (errorp);
         }
+    }
+
+  /* If we're in error state, we wait for any pending operations to complete,
+   * but ensure that all no further operations are queued.
+   */
+  if (pull_data->caught_error)
+    {
+      g_queue_foreach (&pull_data->scan_object_queue, (GFunc) scan_object_queue_data_free, NULL);
+      g_queue_clear (&pull_data->scan_object_queue);
+      g_hash_table_remove_all (pull_data->pending_fetch_metadata);
+      g_hash_table_remove_all (pull_data->pending_fetch_deltaparts);
+      g_hash_table_remove_all (pull_data->pending_fetch_content);
     }
   else
     {
@@ -424,6 +439,15 @@ fetcher_queue_is_full (OtPullData *pull_data)
   return fetch_full || deltas_full || writes_full;
 }
 
+static void
+scan_object_queue_data_free (ScanObjectQueueData *scan_data)
+{
+  g_free (scan_data->path);
+  if (scan_data->requested_ref != NULL)
+    ostree_collection_ref_free (scan_data->requested_ref);
+  g_free (scan_data);
+}
+
 static gboolean
 idle_worker (gpointer user_data)
 {
@@ -447,11 +471,8 @@ idle_worker (gpointer user_data)
                               pull_data->cancellable,
                               &error);
   check_outstanding_requests_handle_error (pull_data, &error);
+  scan_object_queue_data_free (scan_data);
 
-  g_free (scan_data->path);
-  if (scan_data->requested_ref != NULL)
-    ostree_collection_ref_free (scan_data->requested_ref);
-  g_free (scan_data);
   return G_SOURCE_CONTINUE;
 }
 
@@ -4245,6 +4266,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->pending_fetch_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_deltaparts, (GDestroyNotify) g_hash_table_unref);
+  g_queue_foreach (&pull_data->scan_object_queue, (GFunc) scan_object_queue_data_free, NULL);
+  g_queue_clear (&pull_data->scan_object_queue);
   g_clear_pointer (&pull_data->idle_src, (GDestroyNotify) g_source_destroy);
   g_clear_pointer (&pull_data->dirs, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
