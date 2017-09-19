@@ -546,13 +546,13 @@ have_strace_fault_injection() {
     if test "${_have_strace_fault_injection}" = ''; then
         if strace -P ${test_srcdir}/libtest-core.sh -e inject=read:retval=0 cat ${test_srcdir}/libtest-core.sh >out.txt &&
            test '!' -s out.txt; then
-            _have_strace_fault_injection=0
+            _have_strace_fault_injection=yes
         else
-            _have_strace_fault_injection=1
+            _have_strace_fault_injection=no
         fi
         rm -f out.txt
     fi
-    return ${_have_strace_fault_injection}
+    test ${_have_strace_fault_injection} = yes
 }
 
 skip_one_without_strace_fault_injection() {

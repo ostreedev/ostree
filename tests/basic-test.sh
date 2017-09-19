@@ -811,7 +811,14 @@ mkdir -p test2-checkout
 cd test2-checkout
 echo 'should not be fsynced' > should-not-be-fsynced
 if ! skip_one_without_strace_fault_injection; then
-    ${CMD_PREFIX} strace -o /dev/null -f -e inject=syncfs,fsync,sync:error=EPERM ostree --repo=${test_tmpdir}/repo commit ${COMMIT_ARGS} -b test2 -s "Unfsynced commit" --fsync=false
+    # Test that --fsync=false doesn't fsync
+    fsync_inject_error_ostree="strace -o /dev/null -f -e inject=syncfs,fsync,sync:error=EPERM ostree"
+    ${fsync_inject_error_ostree} --repo=${test_tmpdir}/repo commit ${COMMIT_ARGS} -b test2-no-fsync --fsync=false
+    # And test that we get EPERM if we inject an error
+    if ${fsync_inject_error_ostree} --repo=${test_tmpdir}/repo commit ${COMMIT_ARGS} -b test2-no-fsync 2>err.txt; then
+        fatal "fsync error injection failed"
+    fi
+    assert_file_has_content err.txt 'sync.*Operation not permitted'
     echo "ok fsync disabled"
 fi
 
