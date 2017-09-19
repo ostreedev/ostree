@@ -3189,8 +3189,9 @@ import_via_hardlink_is_possible (OstreeRepo *src_repo,
                                  OstreeRepo *dest_repo,
                                  OstreeObjectType objtype)
 {
-  /* We need the ability to make hardlinks */
-  if (src_repo->owner_uid != dest_repo->owner_uid)
+  /* hardlinks require the owner to match and to be on the same device */
+  if (!(src_repo->owner_uid == dest_repo->owner_uid &&
+        src_repo->device == dest_repo->device))
     return FALSE;
   /* Equal modes are always compatible */
   if (src_repo->mode == dest_repo->mode)
