@@ -40,6 +40,8 @@ if locale -a | grep C.UTF-8 >/dev/null; then
 else
     export LC_ALL=C
 fi
+# A GNU extension, used whenever LC_ALL is not C
+unset LANGUAGE
 
 # This should really be the default IMO
 export G_DEBUG=fatal-warnings
