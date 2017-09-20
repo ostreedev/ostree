@@ -4544,7 +4544,7 @@ static void find_remotes_cb (GObject      *obj,
  * will typically be all available finders using their default options (but
  * this is not guaranteed).
  *
- * GPG verification of the summary and all commits will be used unconditionally.
+ * GPG verification of commits will be used unconditionally.
  *
  * This will use the thread-default #GMainContext, but will not iterate it.
  *
@@ -4843,7 +4843,7 @@ find_remotes_cb (GObject      *obj,
   for (i = 0; i < results->len; i++)
     {
       OstreeRepoFinderResult *result = g_ptr_array_index (results, i);
-      g_autoptr(GBytes) summary_bytes = NULL, summary_sig_bytes = NULL;
+      g_autoptr(GBytes) summary_bytes = NULL;
       g_autoptr(GVariant) summary_v = NULL;
       guint64 summary_last_modified;
       g_autoptr(GVariant) summary_refs = NULL;
@@ -4860,13 +4860,12 @@ find_remotes_cb (GObject      *obj,
       g_debug ("%s: Fetching summary for remote ‘%s’ with keyring ‘%s’.",
                G_STRFUNC, result->remote->name, result->remote->keyring);
 
-      /* Download the summary and signature, and validate the signature. This
-       * will load from the cache if possible. */
+      /* Download the summary. This will load from the cache if possible. */
       ostree_repo_remote_fetch_summary_with_options (self,
                                                      result->remote->name,
                                                      NULL,  /* no options */
                                                      &summary_bytes,
-                                                     &summary_sig_bytes,
+                                                     NULL,
                                                      cancellable,
                                                      &error);
 
@@ -5274,7 +5273,7 @@ copy_option (GVariantDict       *master_options,
  * immediately. The results of any successfully completed downloads at that
  * point will remain cached in the local repository.
  *
- * GPG verification of the summary and all commits will be used unconditionally.
+ * GPG verification of commits will be used unconditionally.
  *
  * The following @options are currently defined:
  *
