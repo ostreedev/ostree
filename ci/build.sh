@@ -21,15 +21,19 @@ pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang
 # always fail on warnings; https://github.com/ostreedev/ostree/pull/971
 export CFLAGS="-Werror ${CFLAGS:-}"
 
-DETECTED_CONFIGOPTS=
-if test -x /usr/bin/gnome-desktop-testing-runner; then
-    DETECTED_CONFIGOPTS="${DETECTED_CONFIGOPTS} --enable-installed-tests=exclusive"
-fi
 # Default libcurl on by default in fedora unless libsoup is enabled
 if sh -c '. /etc/os-release; test "${ID}" = fedora'; then
     case "${CONFIGOPTS:-}" in
-        *--with-soup*) ;;
+        *--with-soup*|*--without-curl*) ;;
         *) CONFIGOPTS="${CONFIGOPTS:-} --with-curl"
     esac
 fi
-build --enable-gtk-doc ${DETECTED_CONFIGOPTS} ${CONFIGOPTS:-}
+case "${CONFIGOPTS:-}" in
+    *--with-curl*|--with-soup*)
+        if test -x /usr/bin/gnome-desktop-testing-runner; then
+            CONFIGOPTS="${CONFIGOPTS} --enable-installed-tests=exclusive"
+        fi
+        ;;
+esac
+
+build --enable-gtk-doc ${CONFIGOPTS:-}
