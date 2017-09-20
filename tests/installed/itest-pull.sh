@@ -25,3 +25,17 @@ run_tmp_webserver $(pwd)/repo
 ostree --repo=bare-repo init --mode=bare-user
 ostree --repo=bare-repo remote add origin --set=gpg-verify=false $(cat ${test_tmpdir}/httpd-address)
 ostree --repo=bare-repo pull --disable-static-deltas origin ${host_nonremoteref}
+
+rm bare-repo repo -rf
+
+# Try copying the host's repo across a mountpoint for direct
+# imports.
+cd ${test_tmpdir}
+mkdir tmpfs mnt
+mount --bind tmpfs mnt
+cd mnt
+ostree --repo=repo init --mode=bare
+ostree --repo=repo pull-local /ostree/repo ${host_commit}
+ostree --repo=repo fsck
+cd ..
+umount mnt

@@ -3184,19 +3184,15 @@ import_is_bareuser_only_conversion (OstreeRepo *src_repo,
 
 /* Returns TRUE if we can potentially just call link() to copy an object. */
 static gboolean
-import_via_hardlink_is_possible (OstreeRepo *src_repo,
-                                 OstreeRepo *dest_repo,
-                                 OstreeObjectType objtype)
+import_via_reflink_is_possible (OstreeRepo *src_repo,
+                                OstreeRepo *dest_repo,
+                                OstreeObjectType objtype)
 {
-  /* hardlinks require the owner to match and to be on the same device */
-  if (!(src_repo->owner_uid == dest_repo->owner_uid &&
-        src_repo->device == dest_repo->device))
-    return FALSE;
-  /* Equal modes are always compatible */
-  if (src_repo->mode == dest_repo->mode)
-    return TRUE;
-  /* Metadata is identical between all modes */
-  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+  /* Equal modes are always compatible, and metadata
+   * is identical between all modes.
+   */
+  if (src_repo->mode == dest_repo->mode ||
+      OSTREE_OBJECT_TYPE_IS_META (objtype))
     return TRUE;
   /* And now a special case between bare-user and bare-user-only,
    * mostly for https://github.com/flatpak/flatpak/issues/845
@@ -3233,76 +3229,142 @@ copy_detached_metadata (OstreeRepo    *self,
   return TRUE;
 }
 
-/* Try to import an object by just calling linkat(); returns
- * a value in @out_was_supported if we were able to do it or not.
+/* Try to import an object via reflink or just linkat(); returns a value in
+ * @out_was_supported if we were able to do it or not.  In this path
+ * we're not verifying the checksum.
  */
 static gboolean
-import_one_object_link (OstreeRepo    *self,
-                        OstreeRepo    *source,
-                        const char   *checksum,
-                        OstreeObjectType objtype,
-                        gboolean       *out_was_supported,
-                        GCancellable  *cancellable,
-                        GError        **error)
+import_one_object_direct (OstreeRepo    *dest_repo,
+                          OstreeRepo    *src_repo,
+                          const char   *checksum,
+                          OstreeObjectType objtype,
+                          gboolean      *out_was_supported,
+                          GCancellable  *cancellable,
+                          GError        **error)
 {
   const char *errprefix = glnx_strjoina ("Importing ", checksum, ".",
                                          ostree_object_type_to_string (objtype));
   GLNX_AUTO_PREFIX_ERROR (errprefix, error);
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+  _ostree_loose_path (loose_path_buf, checksum, objtype, dest_repo->mode);
 
-  /* Hardlinking between bare-user → bare-user-only is only possible for regular
-   * files, *not* symlinks, which in bare-user are stored as regular files.  At
-   * this point we need to parse the file to see the difference.
+  if (!import_via_reflink_is_possible (src_repo, dest_repo, objtype))
+    {
+      /* If we can't reflink, nothing to do here */
+      *out_was_supported = FALSE;
+      return TRUE;
+    }
+
+  /* hardlinks require the owner to match and to be on the same device */
+  const gboolean can_hardlink =
+    src_repo->owner_uid == dest_repo->owner_uid &&
+    src_repo->device == dest_repo->device;
+
+  /* Find our target dfd */
+  int dest_dfd;
+  if (dest_repo->commit_stagedir.initialized)
+    dest_dfd = dest_repo->commit_stagedir.fd;
+  else
+    dest_dfd = dest_repo->objects_dir_fd;
+
+  if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, loose_path_buf, cancellable, error))
+    return FALSE;
+
+  gboolean did_hardlink = FALSE;
+  if (can_hardlink)
+    {
+      if (linkat (src_repo->objects_dir_fd, loose_path_buf, dest_dfd, loose_path_buf, 0) != 0)
+        {
+          if (errno == EEXIST)
+            return TRUE;
+          else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
+            {
+              /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do
+               * the optimization of hardlinking instead of copying. Fall
+               * through below.
+               */
+            }
+          else
+            return glnx_throw_errno_prefix (error, "linkat");
+        }
+      else
+        did_hardlink = TRUE;
+    }
+
+  /* If we weren't able to hardlink, fall back to a copy (which might be
+   * reflinked).
    */
-  if (import_is_bareuser_only_conversion (source, self, objtype))
+  if (!did_hardlink)
     {
       struct stat stbuf;
 
-      if (!_ostree_repo_load_file_bare (source, checksum, NULL, &stbuf,
-                                        NULL, NULL, cancellable, error))
+      if (!glnx_fstatat (src_repo->objects_dir_fd, loose_path_buf,
+                         &stbuf, AT_SYMLINK_NOFOLLOW, error))
         return FALSE;
 
-      if (S_ISREG (stbuf.st_mode))
+      /* Let's punt for symlinks right now, it's more complicated */
+      if (!S_ISREG (stbuf.st_mode))
         {
-          /* This is OK, we'll drop through and try a hardlink */
-        }
-      else if (S_ISLNK (stbuf.st_mode))
-        {
-          /* NOTE early return */
           *out_was_supported = FALSE;
           return TRUE;
         }
-      else
-        g_assert_not_reached ();
-    }
 
-  if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path_buf, cancellable, error))
-    return FALSE;
+      /* This is yet another variation of glnx_file_copy_at()
+       * that doesn't do the chown() for example.  Perhaps
+       * in the future we should add flags for those things?
+       */
+      glnx_fd_close int src_fd = -1;
+      if (!glnx_openat_rdonly (src_repo->objects_dir_fd, loose_path_buf,
+                               FALSE, &src_fd, error))
+        return FALSE;
 
-  *out_was_supported = TRUE;
-  if (linkat (source->objects_dir_fd, loose_path_buf, self->objects_dir_fd, loose_path_buf, 0) != 0)
-    {
-      if (errno == EEXIST)
-        return TRUE;
-      else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
+      /* Open a tmpfile for dest */
+      g_auto(GLnxTmpfile) tmp_dest = { 0, };
+      if (!glnx_open_tmpfile_linkable_at (dest_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                          &tmp_dest, error))
+        return FALSE;
+
+      if (glnx_regfile_copy_bytes (src_fd, tmp_dest.fd, (off_t) -1) < 0)
+        return glnx_throw_errno_prefix (error, "regfile copy");
+
+      /* Don't want to copy xattrs for archive repos, nor for
+       * bare-user-only.
+       */
+      const gboolean src_is_bare_or_bare_user =
+        G_IN_SET (src_repo->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER);
+      if (src_is_bare_or_bare_user)
         {
-          /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
-           * optimization of hardlinking instead of copying.
-           */
-          *out_was_supported = FALSE;
-          return TRUE;
+          g_autoptr(GVariant) xattrs = NULL;
+
+          if (!glnx_fd_get_all_xattrs (src_fd, &xattrs,
+                                       cancellable, error))
+            return FALSE;
+
+          if (!glnx_fd_set_all_xattrs (tmp_dest.fd, xattrs,
+                                       cancellable, error))
+            return FALSE;
         }
-      else
-        return glnx_throw_errno_prefix (error, "linkat");
+
+      if (fchmod (tmp_dest.fd, stbuf.st_mode & 07777) != 0)
+        return glnx_throw_errno_prefix (error, "fchmod");
+
+      struct timespec ts[2];
+      ts[0] = stbuf.st_atim;
+      ts[1] = stbuf.st_mtim;
+      (void) futimens (tmp_dest.fd, ts);
+
+      if (!_ostree_repo_commit_tmpf_final (dest_repo, checksum, objtype,
+                                           &tmp_dest, cancellable, error))
+        return FALSE;
     }
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      if (!copy_detached_metadata (self, source, checksum, cancellable, error))
+      if (!copy_detached_metadata (dest_repo, src_repo, checksum, cancellable, error))
         return FALSE;
     }
 
+  *out_was_supported = TRUE;
   return TRUE;
 }
 
@@ -3321,11 +3383,18 @@ _ostree_repo_import_object (OstreeRepo           *self,
   const gboolean trusted = (flags & _OSTREE_REPO_IMPORT_FLAGS_TRUSTED) > 0;
   /* Implements OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES which was designed for flatpak */
   const gboolean verify_bareuseronly = (flags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY) > 0;
-
-  /* If we need to do bareuseronly verification, let's dispense with that
-   * first so we don't complicate the rest of the code below.
+  /* A special case between bare-user and bare-user-only,
+   * mostly for https://github.com/flatpak/flatpak/issues/845
    */
-  if (verify_bareuseronly && !OSTREE_OBJECT_TYPE_IS_META (objtype))
+  const gboolean is_bareuseronly_conversion =
+    import_is_bareuser_only_conversion (source, self, objtype);
+  gboolean try_direct = trusted;
+
+  /* If we need to do bareuseronly verification, or we're potentially doing a
+   * bareuseronly conversion, let's verify those first so we don't complicate
+   * the rest of the code below.
+   */
+  if ((verify_bareuseronly || is_bareuseronly_conversion) && !OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
       g_autoptr(GFileInfo) src_finfo = NULL;
       if (!ostree_repo_load_file (source, checksum,
@@ -3333,30 +3402,52 @@ _ostree_repo_import_object (OstreeRepo           *self,
                                   cancellable, error))
         return FALSE;
 
-      if (!_ostree_validate_bareuseronly_mode_finfo (src_finfo, checksum, error))
-        return FALSE;
+      if (verify_bareuseronly)
+        {
+          if (!_ostree_validate_bareuseronly_mode_finfo (src_finfo, checksum, error))
+            return FALSE;
+        }
+
+      if (is_bareuseronly_conversion)
+        {
+          switch (g_file_info_get_file_type (src_finfo))
+            {
+            case G_FILE_TYPE_REGULAR:
+              /* This is OK, we'll try a hardlink */
+              break;
+            case G_FILE_TYPE_SYMBOLIC_LINK:
+              /* Symlinks in bare-user are regular files, we can't
+               * hardlink them to another repo mode.
+               */
+              try_direct = FALSE;
+              break;
+            default:
+              g_assert_not_reached ();
+              break;
+            }
+        }
     }
 
-   /* We try to import via hardlink. If the remote is explicitly not trusted
-   * (i.e.) their checksums may be incorrect, we skip that. Also, we require the
-   * repository modes to match, as well as the owner uid (since we need to be
-   * able to make hardlinks).
+   /* We try to import via reflink/hardlink. If the remote is explicitly not trusted
+   * (i.e.) their checksums may be incorrect, we skip that.
    */
-  if (trusted && import_via_hardlink_is_possible (source, self, objtype))
+  if (try_direct)
     {
-      gboolean hardlink_was_supported = FALSE;
-
-      if (!import_one_object_link (self, source, checksum, objtype,
-                                   &hardlink_was_supported,
-                                   cancellable, error))
+      gboolean direct_was_supported = FALSE;
+      if (!import_one_object_direct (self, source, checksum, objtype,
+                                     &direct_was_supported,
+                                     cancellable, error))
         return FALSE;
 
-      /* If we hardlinked, we're done! */
-      if (hardlink_was_supported)
+      /* If direct import succeeded, we're done! */
+      if (direct_was_supported)
         return TRUE;
     }
 
-  /* The copy path */
+  /* The more expensive copy path; involves parsing the object.  For
+   * example the input might be an archive repo and the destination bare,
+   * or vice versa.  Or we may simply need to verify the checksum.
+   */
 
   /* First, do we have the object already? */
   gboolean has_object;
