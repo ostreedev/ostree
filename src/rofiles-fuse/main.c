@@ -313,7 +313,7 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
   if ((finfo->flags & O_ACCMODE) == O_RDONLY)
     {
       /* Read */
-      fd = openat (basefd, path, finfo->flags);
+      fd = openat (basefd, path, finfo->flags, mode);
       if (fd == -1)
         return -errno;
     }

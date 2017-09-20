@@ -26,7 +26,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare"
 
-echo "1..7"
+echo "1..8"
 
 cd ${test_tmpdir}
 mkdir mnt
@@ -114,3 +114,6 @@ fi
 assert_file_has_content err.txt "Unable to do hardlink checkout across devices"
 
 echo "ok checkout copy fallback"
+
+# check that O_RDONLY|O_CREAT is handled correctly; used by flock(1) at least
+flock mnt/nonexistent-file echo "ok create file in ro mode"
