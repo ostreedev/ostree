@@ -517,6 +517,9 @@ os_repository_new_commit ()
 # Usage: if ! skip_one_without_user_xattrs; then ... more tests ...; fi
 _have_user_xattrs=''
 have_user_xattrs() {
+    if ! which setfattr 2>/dev/null; then
+        fatal "no setfattr available to determine xattr support"
+    fi
     if test "${_have_user_xattrs}" = ''; then
         touch test-xattrs
         if setfattr -n user.testvalue -v somevalue test-xattrs 2>/dev/null; then
