@@ -536,7 +536,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
             (repo_is_usermode && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER);
           gboolean current_can_cache = (options->enable_uncompressed_cache
                                         && current_repo->enable_uncompressed_cache);
-          gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+          gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE
                                                && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER
                                                && current_can_cache);
 
@@ -608,7 +608,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       && !is_whiteout
       && !is_symlink
       && need_copy
-      && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+      && repo->mode == OSTREE_REPO_MODE_ARCHIVE
       && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
       HardlinkResult hardlink_res = HARDLINK_RESULT_NOT_SUPPORTED;
