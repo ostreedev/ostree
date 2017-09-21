@@ -93,28 +93,28 @@ G_DEFINE_TYPE_WITH_CODE (OstreeRepoFinderMount, ostree_repo_finder_mount, G_TYPE
 typedef struct
 {
   gchar *uri;
-  gchar *keyring;
+  OstreeRemote *keyring_remote;  /* (owned) */
 } UriAndKeyring;
 
 static void
 uri_and_keyring_free (UriAndKeyring *data)
 {
   g_free (data->uri);
-  g_free (data->keyring);
+  ostree_remote_unref (data->keyring_remote);
   g_free (data);
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (UriAndKeyring, uri_and_keyring_free)
 
 static UriAndKeyring *
-uri_and_keyring_new (const gchar *uri,
-                     const gchar *keyring)
+uri_and_keyring_new (const gchar  *uri,
+                     OstreeRemote *keyring_remote)
 {
   g_autoptr(UriAndKeyring) data = NULL;
 
   data = g_new0 (UriAndKeyring, 1);
   data->uri = g_strdup (uri);
-  data->keyring = g_strdup (keyring);
+  data->keyring_remote = ostree_remote_ref (keyring_remote);
 
   return g_steal_pointer (&data);
 }
@@ -124,7 +124,7 @@ uri_and_keyring_hash (gconstpointer key)
 {
   const UriAndKeyring *_key = key;
 
-  return g_str_hash (_key->uri) ^ g_str_hash (_key->keyring);
+  return g_str_hash (_key->uri) ^ g_str_hash (_key->keyring_remote->keyring);
 }
 
 static gboolean
@@ -133,7 +133,8 @@ uri_and_keyring_equal (gconstpointer a,
 {
   const UriAndKeyring *_a = a, *_b = b;
 
-  return g_str_equal (_a->uri, _b->uri) && g_str_equal (_a->keyring, _b->keyring);
+  return (g_str_equal (_a->uri, _b->uri) &&
+          g_str_equal (_a->keyring_remote->keyring, _b->keyring_remote->keyring));
 }
 
 /* This must return a valid remote name (suitable for use in a refspec). */
@@ -141,7 +142,7 @@ static gchar *
 uri_and_keyring_to_name (UriAndKeyring *data)
 {
   g_autofree gchar *escaped_uri = g_uri_escape_string (data->uri, NULL, FALSE);
-  g_autofree gchar *escaped_keyring = g_uri_escape_string (data->keyring, NULL, FALSE);
+  g_autofree gchar *escaped_keyring = g_uri_escape_string (data->keyring_remote->keyring, NULL, FALSE);
 
   /* FIXME: Need a better separator than `_`, since it’s not escaped in the input. */
   g_autofree gchar *out = g_strdup_printf ("%s_%s", escaped_uri, escaped_keyring);
@@ -439,7 +440,6 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
         {
           const OstreeCollectionRef *ref = refs[i];
           g_autofree gchar *resolved_repo_uri = NULL;
-          g_autofree gchar *keyring = NULL;
           g_autoptr(UriAndKeyring) resolved_repo = NULL;
 
           for (gsize j = 0; j < repos_refs->len; j++)
@@ -448,6 +448,7 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
               OstreeRepo *repo = repo_and_refs->repo;
               GHashTable *repo_refs = repo_and_refs->refs;
               g_autofree char *repo_path = g_file_get_path (ostree_repo_get_path (repo));
+              g_autoptr(OstreeRemote) keyring_remote = NULL;
 
               const gchar *checksum = g_hash_table_lookup (repo_refs, ref);
 
@@ -460,10 +461,11 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
                 }
 
               /* Finally, look up the GPG keyring for this ref. */
-              keyring = ostree_repo_resolve_keyring_for_collection (parent_repo, ref->collection_id,
-                                                                    cancellable, &local_error);
+              keyring_remote = ostree_repo_resolve_keyring_for_collection (parent_repo,
+                                                                           ref->collection_id,
+                                                                           cancellable, &local_error);
 
-              if (keyring == NULL)
+              if (keyring_remote == NULL)
                 {
                   g_debug ("Ignoring repository ‘%s’ when looking for ref (%s, %s) on mount ‘%s’ due to missing keyring: %s",
                            repo_path, ref->collection_id, ref->ref_name, mount_name, local_error->message);
@@ -477,10 +479,11 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
                * to deduplicate the results. */
               g_autofree char *canonical_repo_path = realpath (repo_path, NULL);
               resolved_repo_uri = g_strconcat ("file://", canonical_repo_path, NULL);
-              g_debug ("Resolved ref (%s, %s) on mount ‘%s’ to repo URI ‘%s’ with keyring ‘%s’.",
-                       ref->collection_id, ref->ref_name, mount_name, resolved_repo_uri, keyring);
+              g_debug ("Resolved ref (%s, %s) on mount ‘%s’ to repo URI ‘%s’ with keyring ‘%s’ from remote ‘%s’.",
+                       ref->collection_id, ref->ref_name, mount_name, resolved_repo_uri,
+                       keyring_remote->keyring, keyring_remote->name);
 
-              resolved_repo = uri_and_keyring_new (resolved_repo_uri, keyring);
+              resolved_repo = uri_and_keyring_new (resolved_repo_uri, keyring_remote);
 
               supported_ref_to_checksum = g_hash_table_lookup (repo_to_refs, resolved_repo);
 
@@ -513,7 +516,7 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
           remote = ostree_remote_new (name);
 
           g_clear_pointer (&remote->keyring, g_free);
-          remote->keyring = g_strdup (repo->keyring);
+          remote->keyring = g_strdup (repo->keyring_remote->keyring);
 
           /* gpg-verify-summary is false since we use the unsigned summary file support. */
           g_key_file_set_string (remote->options, remote->group, "url", repo->uri);
