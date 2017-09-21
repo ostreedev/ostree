@@ -1,5 +1,4 @@
-/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
- *
+/*
  * Copyright (C) 2013 Collabora Ltd
  *
  * Based on ot-bootloader-syslinux.h by Colin Walters <walters@verbum.org>
