@@ -623,33 +623,6 @@ pull_matches_subdir (OtPullData *pull_data,
   return FALSE;
 }
 
-/* This bit mirrors similar code in commit_loose_content_object() for the
- * bare-user-only mode. It's opt-in though for all pulls.
- */
-static gboolean
-validate_bareuseronly_mode (OtPullData *pull_data,
-                            const char *checksum,
-                            guint32     content_mode,
-                            GError    **error)
-{
-  if (!pull_data->is_bareuseronly_files)
-    return TRUE;
-
-  if (S_ISREG (content_mode))
-    {
-      const guint32 invalid_modebits = ((content_mode & ~S_IFMT) & ~0775);
-      if (invalid_modebits > 0)
-        return glnx_throw (error, "object %s.file: invalid mode 0%04o with bits 0%04o",
-                           checksum, content_mode, invalid_modebits);
-    }
-  else if (S_ISLNK (content_mode))
-    ; /* Nothing */
-  else
-    g_assert_not_reached ();
-
-  return TRUE;
-}
-
 /* Synchronously import a single content object; this is used async for content,
  * or synchronously for metadata. @src_repo is either
  * pull_data->remote_repo_local or one of pull_data->localcache_repos.
@@ -664,51 +637,14 @@ import_one_local_content_object_sync (OtPullData *pull_data,
                                       GCancellable *cancellable,
                                       GError    **error)
 {
-  const gboolean trusted = !pull_data->is_untrusted;
-  if (trusted && !pull_data->is_bareuseronly_files)
-    {
-      if (!ostree_repo_import_object_from_with_trust (pull_data->repo, src_repo,
-                                                      OSTREE_OBJECT_TYPE_FILE, checksum,
-                                                      trusted,
-                                                      cancellable, error))
-        return FALSE;
-    }
-  else
-    {
-      /* In this case we either need to validate the checksum
-       * or the file mode.
-       */
-      g_autoptr(GInputStream) content_input = NULL;
-      g_autoptr(GFileInfo) content_finfo = NULL;
-      g_autoptr(GVariant) content_xattrs = NULL;
-
-      if (!ostree_repo_load_file (src_repo, checksum,
-                                  &content_input, &content_finfo, &content_xattrs,
-                                  cancellable, error))
-        return FALSE;
-
-      if (!validate_bareuseronly_mode (pull_data, checksum,
-                                       g_file_info_get_attribute_uint32 (content_finfo, "unix::mode"),
-                                       error))
-        return FALSE;
-
-      /* Now that we've potentially validated it, convert to object stream */
-      guint64 length;
-      g_autoptr(GInputStream) object_stream = NULL;
-      if (!ostree_raw_file_to_content_stream (content_input, content_finfo,
-                                              content_xattrs, &object_stream,
-                                              &length, cancellable, error))
-        return FALSE;
-
-      g_autofree guchar *real_csum = NULL;
-      if (!ostree_repo_write_content (pull_data->repo, checksum,
-                                      object_stream, length,
-                                      &real_csum,
-                                      cancellable, error))
-        return FALSE;
-    }
-
-  return TRUE;
+  OstreeRepoImportFlags flags = _OSTREE_REPO_IMPORT_FLAGS_NONE;
+  if (!pull_data->is_untrusted)
+    flags |= _OSTREE_REPO_IMPORT_FLAGS_TRUSTED;
+  if (pull_data->is_bareuseronly_files)
+    flags |= _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY;
+  return _ostree_repo_import_object (pull_data->repo, src_repo,
+                                     OSTREE_OBJECT_TYPE_FILE, checksum,
+                                     flags, cancellable, error);
 }
 
 typedef struct {
@@ -1129,11 +1065,11 @@ content_fetch_on_complete (GObject        *object,
        */
       ot_cleanup_unlinkat (&tmp_unlinker);
 
-      if (!validate_bareuseronly_mode (pull_data,
-                                       checksum,
-                                       g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
-                                       error))
-        goto out;
+      if (pull_data->is_bareuseronly_files)
+        {
+          if (!_ostree_validate_bareuseronly_mode_finfo (file_info, checksum, error))
+            goto out;
+        }
 
       if (!ostree_raw_file_to_content_stream (file_in, file_info, xattrs,
                                               &object_input, &length,

@@ -127,7 +127,7 @@ for flag in "" "--mirror"; do
     if ${CMD_PREFIX} ostree --repo=mirrorrepo pull ${flag} --bareuseronly-files origin content-with-suid 2>err.txt; then
         assert_not_reached "pulled unsafe bareuseronly"
     fi
-    assert_file_has_content err.txt 'object.*\.file: invalid mode.*with bits 040.*'
+    assert_file_has_content err.txt 'Content object.*: invalid mode.*with bits 040.*'
 done
 echo "ok pull (bareuseronly, unsafe)"
 
