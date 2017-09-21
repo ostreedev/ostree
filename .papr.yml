@@ -21,7 +21,7 @@ env:
 
 tests:
   - docker run -e TEST_TMPDIR -e CFLAGS -e GI_SCANNERFLAGS -e ASAN_OPTIONS
-    --privileged -v $PWD:$PWD --workdir $PWD -v /srv:/srv
+    -v $PWD:$PWD:z --workdir $PWD -v /srv:/srv:z
     registry.fedoraproject.org/fedora:26 sh -c
     'ci/ci-commitmessage-submodules.sh &&
      ci/build-check.sh &&
@@ -47,8 +47,8 @@ env:
 tests:
     # FIXME revert setting to 7/3/1611 when repos sync
     # https://github.com/projectatomic/rpm-ostree/pull/985
-  - docker run -e TEST_TMPDIR --privileged -v $PWD:$PWD --workdir $PWD
-    -v /srv:/srv registry.centos.org/centos/centos:7.3.1611 sh -c
+  - docker run -e TEST_TMPDIR -v $PWD:$PWD:z --workdir $PWD
+    -v /srv:/srv:z registry.centos.org/centos/centos:7.3.1611 sh -c
     'yum install -y git && ci/build-check.sh'
 
 ---
