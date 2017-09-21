@@ -2610,6 +2610,36 @@ ostree_repo_get_dfd (OstreeRepo  *self)
 }
 
 /**
+ * ostree_repo_hash:
+ * @self: an #OstreeRepo
+ *
+ * Calculate a hash value for the given open repository, suitable for use when
+ * putting it into a hash table. It is an error to call this on an #OstreeRepo
+ * which is not yet open, as a persistent hash value cannot be calculated until
+ * the repository is open and the inode of its root directory has been loaded.
+ *
+ * This function does no I/O.
+ *
+ * Returns: hash value for the #OstreeRepo
+ * Since: 2017.12
+ */
+guint
+ostree_repo_hash (OstreeRepo *self)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (self), 0);
+
+  /* We cannot hash non-open repositories, since their hash value would change
+   * once they’re opened, resulting in false lookup misses and the inability to
+   * remove them from a hash table. */
+  g_assert (self->repo_dir_fd >= 0);
+
+  /* device and inode numbers are distributed fairly uniformly, so we can’t
+   * do much better than just combining them. No need to rehash to even out
+   * the distribution. */
+  return (self->device ^ self->inode);
+}
+
+/**
  * ostree_repo_equal:
  * @a: an #OstreeRepo
  * @b: an #OstreeRepo

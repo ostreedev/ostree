@@ -124,6 +124,8 @@ _OSTREE_PUBLIC
 int           ostree_repo_get_dfd (OstreeRepo  *self);
 
 _OSTREE_PUBLIC
+guint         ostree_repo_hash (OstreeRepo *self);
+_OSTREE_PUBLIC
 gboolean      ostree_repo_equal (OstreeRepo *a,
                                  OstreeRepo *b);
 

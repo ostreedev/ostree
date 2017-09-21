@@ -287,6 +287,7 @@ ostree_repo_get_path
 ostree_repo_get_mode
 ostree_repo_get_config
 ostree_repo_get_dfd
+ostree_repo_hash
 ostree_repo_equal
 ostree_repo_copy_config
 ostree_repo_remote_add
