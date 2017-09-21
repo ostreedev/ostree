@@ -21,6 +21,7 @@
 LIBOSTREE_2017.12 {
 global:
   ostree_repo_equal;
+  ostree_repo_hash;
 } LIBOSTREE_2017.11;
 
 

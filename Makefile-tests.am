@@ -212,7 +212,7 @@ endif
 _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
-	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c
+	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo
 
 if ENABLE_EXPERIMENTAL_API
 test_programs += \
@@ -281,6 +281,9 @@ tests_test_sysroot_c_LDADD = $(TESTS_LDADD)
 
 tests_test_pull_c_CFLAGS = $(TESTS_CFLAGS)
 tests_test_pull_c_LDADD = $(TESTS_LDADD)
+
+tests_test_repo_CFLAGS = $(TESTS_CFLAGS)
+tests_test_repo_LDADD = $(TESTS_LDADD)
 
 tests_test_ot_unix_utils_CFLAGS = $(TESTS_CFLAGS)
 tests_test_ot_unix_utils_LDADD = $(TESTS_LDADD)
