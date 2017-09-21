@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((72 + ${extra_basic_tests:-0}))"
+echo "1..$((73 + ${extra_basic_tests:-0}))"
 
 $CMD_PREFIX ostree --version > version.yaml
 python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
@@ -809,8 +809,18 @@ cd ${test_tmpdir}
 rm -rf test2-checkout
 mkdir -p test2-checkout
 cd test2-checkout
-touch should-not-be-fsynced
-$OSTREE commit ${COMMIT_ARGS} -b test2 -s "Unfsynced commit" --fsync=false
+echo 'should not be fsynced' > should-not-be-fsynced
+if ! skip_one_without_strace_fault_injection; then
+    # Test that --fsync=false doesn't fsync
+    fsync_inject_error_ostree="strace -o /dev/null -f -e inject=syncfs,fsync,sync:error=EPERM ostree"
+    ${fsync_inject_error_ostree} --repo=${test_tmpdir}/repo commit ${COMMIT_ARGS} -b test2-no-fsync --fsync=false
+    # And test that we get EPERM if we inject an error
+    if ${fsync_inject_error_ostree} --repo=${test_tmpdir}/repo commit ${COMMIT_ARGS} -b test2-no-fsync 2>err.txt; then
+        fatal "fsync error injection failed"
+    fi
+    assert_file_has_content err.txt 'sync.*Operation not permitted'
+    echo "ok fsync disabled"
+fi
 
 # Run this test only as non-root user.  When run as root, the chmod
 # won't have any effect.
