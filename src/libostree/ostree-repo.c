@@ -5190,7 +5190,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
 
       /* Note, at this point we can race with another process that picks up this
        * new directory. If that happens we need to retry, making a new directory. */
-      if (!_ostree_repo_try_lock_tmpdir (tmpdir_dfd, tmpdir_name_template,
+      if (!_ostree_repo_try_lock_tmpdir (new_tmpdir.src_dfd, new_tmpdir.path,
                                          file_lock_out, &did_lock,
                                          error))
         return FALSE;
