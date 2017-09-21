@@ -513,7 +513,7 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
           /* Build an #OstreeRemote. Use the escaped URI, since remote->name
            * is used in file paths, so needs to not contain special characters. */
           g_autofree gchar *name = uri_and_keyring_to_name (repo);
-          remote = ostree_remote_new (name);
+          remote = ostree_remote_new_dynamic (name, repo->keyring_remote->name);
 
           g_clear_pointer (&remote->keyring, g_free);
           remote->keyring = g_strdup (repo->keyring_remote->keyring);
