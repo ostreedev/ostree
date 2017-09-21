@@ -32,6 +32,13 @@
 #include "ostree-chain-input-stream.h"
 #include "otutil.h"
 
+/* Generic ABI checks */
+G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE == 0);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE_Z2 == 1);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE == OSTREE_REPO_MODE_ARCHIVE_Z2);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER == 2);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
+
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
 
@@ -1524,7 +1531,7 @@ _ostree_loose_path (char              *buf,
   buf++;
   snprintf (buf, _OSTREE_LOOSE_PATH_MAX - 2, "/%s.%s%s",
             checksum + 2, ostree_object_type_to_string (objtype),
-            (!OSTREE_OBJECT_TYPE_IS_META (objtype) && mode == OSTREE_REPO_MODE_ARCHIVE_Z2) ? "z" : "");
+            (!OSTREE_OBJECT_TYPE_IS_META (objtype) && mode == OSTREE_REPO_MODE_ARCHIVE) ? "z" : "");
 }
 
 /**
