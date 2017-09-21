@@ -68,7 +68,8 @@ typedef struct {
   OstreeRepo   *repo;
   int           tmpdir_dfd;
   OstreeRepoPullFlags flags;
-  char         *remote_name;
+  char          *remote_name;
+  char          *remote_refspec_name;
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
   OstreeFetcherSecurityState fetcher_security_state;
@@ -3226,7 +3227,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       flags = flags_i;
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
       (void) g_variant_lookup (options, "subdirs", "^a&s", &dirs_to_pull);
-      (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
+      (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_refspec_name);
       opt_gpg_verify_set =
         g_variant_lookup (options, "gpg-verify", "b", &pull_data->gpg_verify);
       opt_gpg_verify_summary_set =
@@ -3242,6 +3243,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
       (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
       (void) g_variant_lookup (options, "timestamp-check", "b", &pull_data->timestamp_check);
+
+      if (pull_data->remote_refspec_name != NULL)
+        pull_data->remote_name = g_strdup (pull_data->remote_refspec_name);
     }
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
@@ -4049,7 +4053,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             ostree_repo_transaction_set_collection_ref (pull_data->repo,
                                                     ref, checksum);
           else
-            ostree_repo_transaction_set_ref (pull_data->repo, pull_data->remote_name,
+            ostree_repo_transaction_set_ref (pull_data->repo,
+                                             (pull_data->remote_refspec_name != NULL) ? pull_data->remote_refspec_name : pull_data->remote_name,
                                              ref->ref_name, checksum);
         }
     }
@@ -5370,6 +5375,8 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
       g_variant_dict_insert (&local_options_dict, "gpg-verify", "b", TRUE);
       g_variant_dict_insert (&local_options_dict, "gpg-verify-summary", "b", FALSE);
       g_variant_dict_insert (&local_options_dict, "inherit-transaction", "b", TRUE);
+      if (result->remote->refspec_name != NULL)
+        g_variant_dict_insert (&local_options_dict, "override-remote-name", "s", result->remote->refspec_name);
       copy_option (&options_dict, &local_options_dict, "depth", G_VARIANT_TYPE ("i"));
       copy_option (&options_dict, &local_options_dict, "disable-static-deltas", G_VARIANT_TYPE ("b"));
       copy_option (&options_dict, &local_options_dict, "http-headers", G_VARIANT_TYPE ("a(ss)"));
