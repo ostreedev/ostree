@@ -1,5 +1,4 @@
-/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
- *
+/*
  * Copyright (C) 2013 Stef Walter <stefw@redhat.com>
  *
  * This library is free software; you can redistribute it and/or
