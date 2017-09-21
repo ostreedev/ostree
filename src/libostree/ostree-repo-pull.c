@@ -1030,7 +1030,7 @@ content_fetch_on_complete (GObject        *object,
    * the content rather than paying the cost of exploding it, checksumming, and
    * re-gzip.
    */
-  if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+  if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE
       && !pull_data->is_bareuseronly_files)
     {
       gboolean have_object;
@@ -3530,7 +3530,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                 &pull_data->has_tombstone_commits, error))
         goto out;
 
-      if (pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE_Z2)
+      if (pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Can't pull from archives with mode \"%s\"",
@@ -3551,7 +3551,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
 
   /* We can't use static deltas if pulling into an archive repo. */
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE)
     {
       if (pull_data->require_static_deltas)
         {
@@ -4895,7 +4895,7 @@ find_remotes_cb (GObject      *obj,
       if (commit_metadata->timestamp != 0)
         continue;
 
-      _ostree_loose_path (buf, commit_metadata->checksum, OSTREE_OBJECT_TYPE_COMMIT, OSTREE_REPO_MODE_ARCHIVE_Z2);
+      _ostree_loose_path (buf, commit_metadata->checksum, OSTREE_OBJECT_TYPE_COMMIT, OSTREE_REPO_MODE_ARCHIVE);
       commit_filename = g_build_filename ("objects", buf, NULL);
 
       /* For each of the remotes whose summary files contain this ref, try

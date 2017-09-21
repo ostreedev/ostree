@@ -1750,7 +1750,8 @@ ostree_repo_mode_to_string (OstreeRepoMode   mode,
     case OSTREE_REPO_MODE_BARE_USER_ONLY:
       ret_mode = "bare-user-only";
       break;
-    case OSTREE_REPO_MODE_ARCHIVE_Z2:
+    case OSTREE_REPO_MODE_ARCHIVE:
+      /* Legacy alias */
       ret_mode ="archive-z2";
       break;
     default:
@@ -1776,7 +1777,7 @@ ostree_repo_mode_from_string (const char      *mode,
     ret_mode = OSTREE_REPO_MODE_BARE_USER_ONLY;
   else if (strcmp (mode, "archive-z2") == 0 ||
            strcmp (mode, "archive") == 0)
-    ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z2;
+    ret_mode = OSTREE_REPO_MODE_ARCHIVE;
   else
     return glnx_throw (error, "Invalid mode '%s' in repository configuration", mode);
 
@@ -2474,7 +2475,7 @@ ostree_repo_open (OstreeRepo    *self,
     return FALSE;
 
   /* TODO - delete this */
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && self->enable_uncompressed_cache)
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE && self->enable_uncompressed_cache)
     {
       if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, "uncompressed-objects-cache", 0755,
                                    cancellable, error))
@@ -2695,7 +2696,7 @@ list_loose_objects_at (OstreeRepo             *self,
         continue;
 
       OstreeObjectType objtype;
-      if ((self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+      if ((self->mode == OSTREE_REPO_MODE_ARCHIVE
            && strcmp (dot, ".filez") == 0) ||
           ((_ostree_repo_mode_is_bare (self->mode))
            && strcmp (dot, ".file") == 0))
@@ -3121,7 +3122,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                        GCancellable       *cancellable,
                        GError            **error)
 {
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE)
     return repo_load_file_archive (self, checksum, out_input, out_file_info, out_xattrs,
                                    cancellable, error);
   else

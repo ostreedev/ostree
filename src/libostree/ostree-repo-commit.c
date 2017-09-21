@@ -216,7 +216,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
   /* We may be writing as root to a non-root-owned repository; if so,
    * automatically inherit the non-root ownership.
    */
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE
       && self->target_owner_uid != -1)
     {
       if (fchown (tmpf->fd, self->target_owner_uid, self->target_owner_gid) < 0)
@@ -604,7 +604,7 @@ write_content_object (OstreeRepo         *self,
                                               cancellable, error))
         return FALSE;
     }
-  else if (repo_mode != OSTREE_REPO_MODE_ARCHIVE_Z2)
+  else if (repo_mode != OSTREE_REPO_MODE_ARCHIVE)
     {
       if (!create_regular_tmpfile_linkable_with_content (self, size, file_input,
                                                          &tmpf, cancellable, error))
@@ -617,7 +617,7 @@ write_content_object (OstreeRepo         *self,
       g_autoptr(GOutputStream) compressed_out_stream = NULL;
       g_autoptr(GOutputStream) temp_out = NULL;
 
-      g_assert (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2);
+      g_assert (repo_mode == OSTREE_REPO_MODE_ARCHIVE);
 
       if (self->generate_sizes)
         indexable = TRUE;
@@ -933,7 +933,7 @@ scan_one_loose_devino (OstreeRepo                     *self,
           gboolean skip;
           switch (self->mode)
             {
-            case OSTREE_REPO_MODE_ARCHIVE_Z2:
+            case OSTREE_REPO_MODE_ARCHIVE:
             case OSTREE_REPO_MODE_BARE:
             case OSTREE_REPO_MODE_BARE_USER:
             case OSTREE_REPO_MODE_BARE_USER_ONLY:
@@ -982,7 +982,7 @@ scan_loose_devino (OstreeRepo                     *self,
         return FALSE;
     }
 
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE)
     {
       if (!scan_one_loose_devino (self, self->uncompressed_objects_dir_fd, devino_cache,
                                   cancellable, error))
