@@ -68,15 +68,15 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   gboolean ret = FALSE;
-  const char *rev;
   g_autoptr(GFile) root = NULL;
   g_autoptr(GFile) subtree = NULL;
   g_autofree char *commit = NULL;
   g_autoptr(GVariant) commit_data = NULL;
 #ifdef HAVE_LIBARCHIVE
+  const char *rev;
   g_autoptr(OtAutoArchiveWrite) a = NULL;
-#endif
   OstreeRepoExportArchiveOptions opts = { 0, };
+#endif
 
   context = g_option_context_new ("COMMIT - Stream COMMIT to stdout in tar format");
 
