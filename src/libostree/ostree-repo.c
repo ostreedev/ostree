@@ -5179,11 +5179,11 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       ret_tmpdir.initialized = TRUE;
     }
 
+  const char *tmpdir_name_template = glnx_strjoina (tmpdir_prefix, "XXXXXX");
   while (!ret_tmpdir.initialized)
     {
       g_auto(GLnxTmpDir) new_tmpdir = { 0, };
       /* No existing tmpdir found, create a new */
-      const char *tmpdir_name_template = glnx_strjoina (tmpdir_prefix, "XXXXXX");
       if (!glnx_mkdtempat (tmpdir_dfd, tmpdir_name_template, 0755,
                            &new_tmpdir, error))
         return FALSE;
