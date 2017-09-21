@@ -32,6 +32,12 @@
 #include "ostree-chain-input-stream.h"
 #include "otutil.h"
 
+/* Generic ABI checks */
+G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE == 0);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE_Z2 == 1);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER == 2);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
+
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
 
