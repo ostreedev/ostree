@@ -638,8 +638,8 @@ import_one_local_content_object_sync (OtPullData *pull_data,
                                       GError    **error)
 {
   OstreeRepoImportFlags flags = _OSTREE_REPO_IMPORT_FLAGS_NONE;
-  if (pull_data->is_untrusted)
-    flags |= _OSTREE_REPO_IMPORT_FLAGS_VERIFY_CHECKSUM;
+  if (!pull_data->is_untrusted)
+    flags |= _OSTREE_REPO_IMPORT_FLAGS_TRUSTED;
   if (pull_data->is_bareuseronly_files)
     flags |= _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY;
   return _ostree_repo_import_object (pull_data->repo, src_repo,

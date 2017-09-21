@@ -3315,7 +3315,7 @@ _ostree_repo_import_object (OstreeRepo           *self,
                             GCancellable         *cancellable,
                             GError              **error)
 {
-  const gboolean trusted = (flags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_CHECKSUM) == 0;
+  const gboolean trusted = (flags & _OSTREE_REPO_IMPORT_FLAGS_TRUSTED) > 0;
   /* Implements OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES which was designed for flatpak */
   const gboolean verify_bareuseronly = (flags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY) > 0;
 

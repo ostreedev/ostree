@@ -345,7 +345,7 @@ _ostree_repo_verify_commit_internal (OstreeRepo    *self,
 
 typedef enum {
   _OSTREE_REPO_IMPORT_FLAGS_NONE,
-  _OSTREE_REPO_IMPORT_FLAGS_VERIFY_CHECKSUM,
+  _OSTREE_REPO_IMPORT_FLAGS_TRUSTED,
   _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY,
 } OstreeRepoImportFlags;
 

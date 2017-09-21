@@ -3423,8 +3423,7 @@ ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
                                            GError              **error)
 {
   /* This just wraps a currently internal API, may make it public later */
-  OstreeRepoImportFlags flags = trusted ? _OSTREE_REPO_IMPORT_FLAGS_NONE :
-    _OSTREE_REPO_IMPORT_FLAGS_VERIFY_CHECKSUM;
+  OstreeRepoImportFlags flags = trusted ? _OSTREE_REPO_IMPORT_FLAGS_TRUSTED : 0;
   return _ostree_repo_import_object (self, source, objtype, checksum,
                                      flags, cancellable, error);
 }
