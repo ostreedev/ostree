@@ -3356,6 +3356,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       g_autofree char *unconfigured_state = NULL;
 
+      g_free (pull_data->remote_name);
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
       /* Fetch GPG verification settings from remote if it wasn't already
