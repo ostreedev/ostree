@@ -1,5 +1,4 @@
-/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
- *
+/*
  * Copyright (C) 2011,2012,2013 Colin Walters <walters@verbum.org>
  * Copyright © 2017 Endless Mobile, Inc.
  *

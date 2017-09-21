@@ -1,5 +1,4 @@
-/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
- *
+/*
  * Copyright © 2016 Kinvolk GmbH
  * Copyright © 2017 Endless Mobile, Inc.
  *
