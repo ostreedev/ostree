@@ -224,6 +224,7 @@ commit_filter (OstreeRepo         *self,
   return OSTREE_REPO_COMMIT_FILTER_ALLOW;
 }
 
+#ifdef HAVE_LIBARCHIVE
 typedef struct {
   GRegex *regex;
   const char *replacement;
@@ -245,6 +246,7 @@ handle_translate_pathname (OstreeRepo *repo,
   g_assert (ret);
   return ret;
 }
+#endif
 
 static gboolean
 commit_editor (OstreeRepo     *repo,

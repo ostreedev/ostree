@@ -303,11 +303,11 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
         return FALSE;
 
       /* The add/union/none behaviors map directly to GLnxLinkTmpfileReplaceMode */
-      GLnxLinkTmpfileReplaceMode replace_mode;
+      GLnxLinkTmpfileReplaceMode replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
       switch (options->overwrite_mode)
         {
         case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
-          replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
+          /* Handled above */
           break;
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
           replace_mode = GLNX_LINK_TMPFILE_REPLACE;
