@@ -1208,10 +1208,10 @@ gboolean ostree_repo_pull_from_remotes_finish (OstreeRepo    *self,
                                                GError       **error);
 
 _OSTREE_PUBLIC
-gchar *ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
-                                                   const gchar   *collection_id,
-                                                   GCancellable  *cancellable,
-                                                   GError       **error);
+OstreeRemote *ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
+                                                          const gchar   *collection_id,
+                                                          GCancellable  *cancellable,
+                                                          GError       **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_repo_list_collection_refs (OstreeRepo                 *self,

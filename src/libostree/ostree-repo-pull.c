@@ -5488,7 +5488,7 @@ check_remote_matches_collection_id (OstreeRepo  *repo,
  * Find the GPG keyring for the given @collection_id, using the local
  * configuration from the given #OstreeRepo. This will search the configured
  * remotes for ones whose `collection-id` key matches @collection_id, and will
- * return the GPG keyring from the first matching remote.
+ * return the first matching remote.
  *
  * If multiple remotes match and have different keyrings, a debug message will
  * be emitted, and the first result will be returned. It is expected that the
@@ -5496,10 +5496,11 @@ check_remote_matches_collection_id (OstreeRepo  *repo,
  *
  * If no match can be found, a %G_IO_ERROR_NOT_FOUND error will be returned.
  *
- * Returns: (transfer full): filename of the GPG keyring for @collection_id
+ * Returns: (transfer full): #OstreeRemote containing the GPG keyring for
+ *    @collection_id
  * Since: 2017.8
  */
-gchar *
+OstreeRemote *
 ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
                                             const gchar   *collection_id,
                                             GCancellable  *cancellable,
@@ -5507,7 +5508,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
 {
   gsize i;
   g_auto(GStrv) remotes = NULL;
-  const OstreeRemote *keyring_remote = NULL;
+  OstreeRemote *keyring_remote = NULL;
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
   g_return_val_if_fail (ostree_validate_collection_id (collection_id, NULL), NULL);
@@ -5557,7 +5558,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
     }
 
   if (keyring_remote != NULL)
-    return g_strdup (keyring_remote->keyring);
+    return ostree_remote_ref (keyring_remote);
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
