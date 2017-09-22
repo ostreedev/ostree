@@ -67,7 +67,7 @@ test_repo_hash (Fixture       *fixture,
 {
   g_autoptr(GError) error = NULL;
   g_autoptr(OstreeRepo) repo1 = ostree_repo_create_at (fixture->tmpdir.fd, ".",
-                                                       OSTREE_REPO_MODE_ARCHIVE_Z2,
+                                                       OSTREE_REPO_MODE_ARCHIVE,
                                                        NULL,
                                                        NULL, &error);
   g_assert_no_error (error);
@@ -113,7 +113,7 @@ test_repo_equal (Fixture       *fixture,
   g_assert_no_error (error);
 
   g_autoptr(OstreeRepo) repo1 = ostree_repo_create_at (fixture->tmpdir.fd, "repo1",
-                                                       OSTREE_REPO_MODE_ARCHIVE_Z2,
+                                                       OSTREE_REPO_MODE_ARCHIVE,
                                                        NULL,
                                                        NULL, &error);
   g_assert_no_error (error);
@@ -123,7 +123,7 @@ test_repo_equal (Fixture       *fixture,
   g_assert_no_error (error);
 
   g_autoptr(OstreeRepo) repo2 = ostree_repo_create_at (fixture->tmpdir.fd, "repo2",
-                                                       OSTREE_REPO_MODE_ARCHIVE_Z2,
+                                                       OSTREE_REPO_MODE_ARCHIVE,
                                                        NULL,
                                                        NULL, &error);
   g_assert_no_error (error);
