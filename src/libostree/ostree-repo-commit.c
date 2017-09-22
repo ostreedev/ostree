@@ -3310,7 +3310,7 @@ import_one_object_direct (OstreeRepo    *dest_repo,
         }
 
       /* This is yet another variation of glnx_file_copy_at()
-       * that doesn't do the chown() for example.  Perhaps
+       * that basically just optionally does chown().  Perhaps
        * in the future we should add flags for those things?
        */
       glnx_fd_close int src_fd = -1;
@@ -3326,6 +3326,13 @@ import_one_object_direct (OstreeRepo    *dest_repo,
 
       if (glnx_regfile_copy_bytes (src_fd, tmp_dest.fd, (off_t) -1) < 0)
         return glnx_throw_errno_prefix (error, "regfile copy");
+
+      /* Only chown for true bare repos */
+      if (dest_repo->mode == OSTREE_REPO_MODE_BARE)
+        {
+          if (fchown (tmp_dest.fd, stbuf.st_uid, stbuf.st_gid) != 0)
+            return glnx_throw_errno_prefix (error, "fchown");
+        }
 
       /* Don't want to copy xattrs for archive repos, nor for
        * bare-user-only.
@@ -3345,13 +3352,19 @@ import_one_object_direct (OstreeRepo    *dest_repo,
             return FALSE;
         }
 
-      if (fchmod (tmp_dest.fd, stbuf.st_mode & 07777) != 0)
+      if (fchmod (tmp_dest.fd, stbuf.st_mode & ~S_IFMT) != 0)
         return glnx_throw_errno_prefix (error, "fchmod");
 
-      struct timespec ts[2];
-      ts[0] = stbuf.st_atim;
-      ts[1] = stbuf.st_mtim;
-      (void) futimens (tmp_dest.fd, ts);
+      /* For archive repos, we just let the timestamps be object creation.
+       * Otherwise, copy the ostree timestamp value.
+       */
+      if (_ostree_repo_mode_is_bare (dest_repo->mode))
+        {
+          struct timespec ts[2];
+          ts[0] = stbuf.st_atim;
+          ts[1] = stbuf.st_mtim;
+          (void) futimens (tmp_dest.fd, ts);
+        }
 
       if (!_ostree_repo_commit_tmpf_final (dest_repo, checksum, objtype,
                                            &tmp_dest, cancellable, error))
