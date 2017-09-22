@@ -22,15 +22,21 @@
 #include "ot-checksum-instream.h"
 #include "ot-checksum-utils.h"
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
 #include <openssl/evp.h>
+#elif defined(HAVE_GNUTLS)
+#include <gnutls/gnutls.h>
+#include <gnutls/crypto.h>
 #endif
 
 G_DEFINE_TYPE (OtChecksumInstream, ot_checksum_instream, G_TYPE_FILTER_INPUT_STREAM)
 
 struct _OtChecksumInstreamPrivate {
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   EVP_MD_CTX *checksum;
+#elif defined(HAVE_GNUTLS)
+  gnutls_digest_algorithm_t checksum_type;
+  gnutls_hash_hd_t checksum;
 #else
   GChecksumType checksum_type;
   GChecksum *checksum;
@@ -48,8 +54,10 @@ ot_checksum_instream_finalize (GObject *object)
 {
   OtChecksumInstream *self = (OtChecksumInstream*)object;
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   EVP_MD_CTX_destroy (self->priv->checksum);
+#elif defined(HAVE_GNUTLS)
+  gnutls_hash_deinit (self->priv->checksum, NULL);
 #else
   g_checksum_free (self->priv->checksum);
 #endif
@@ -75,7 +83,7 @@ ot_checksum_instream_init (OtChecksumInstream *self)
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, OT_TYPE_CHECKSUM_INSTREAM, OtChecksumInstreamPrivate);
 }
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
 static const EVP_MD *
 gchecksum_type_to_openssl (GChecksumType checksum_type)
 {
@@ -85,6 +93,18 @@ gchecksum_type_to_openssl (GChecksumType checksum_type)
       return EVP_sha256 ();
     default:
       /* If there's something else, fill in here */
+      g_assert_not_reached ();
+    }
+}
+#elif defined(HAVE_GNUTLS)
+static gnutls_digest_algorithm_t
+gchecksum_type_to_gnutls (GChecksumType checksum_type)
+{
+  switch (checksum_type)
+    {
+    case G_CHECKSUM_SHA256:
+      return GNUTLS_DIG_SHA256;
+    default:
       g_assert_not_reached ();
     }
 }
@@ -105,10 +125,13 @@ ot_checksum_instream_new (GInputStream    *base,
   /* For now */
   g_assert (checksum_type == G_CHECKSUM_SHA256);
 
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   stream->priv->checksum = EVP_MD_CTX_create ();
   g_assert (stream->priv->checksum);
   g_assert (EVP_DigestInit_ex (stream->priv->checksum, gchecksum_type_to_openssl (checksum_type), NULL));
+#elif defined(HAVE_GNUTLS)
+  stream->priv->checksum_type = gchecksum_type_to_gnutls (checksum_type);
+  g_assert (!gnutls_hash_init (&stream->priv->checksum, stream->priv->checksum_type));
 #else
   stream->priv->checksum = g_checksum_new (checksum_type);
   stream->priv->checksum_type = checksum_type;
@@ -135,8 +158,10 @@ ot_checksum_instream_read (GInputStream  *stream,
                              error);
   if (res > 0)
     {
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
       g_assert (EVP_DigestUpdate (self->priv->checksum, buffer, res));
+#elif defined(HAVE_GNUTLS)
+      g_assert (!gnutls_hash (self->priv->checksum, buffer, res));
 #else
       g_checksum_update (self->priv->checksum, buffer, res);
 #endif
@@ -150,11 +175,15 @@ ot_checksum_instream_get_digest (OtChecksumInstream *stream,
                                  guint8          *buffer,
                                  gsize           *digest_len)
 {
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   unsigned len;
   EVP_DigestFinal_ex (stream->priv->checksum, buffer, &len);
   if (digest_len)
     *digest_len = len;
+#elif defined(HAVE_GNUTLS)
+  gnutls_hash_output (stream->priv->checksum, buffer);
+  if (digest_len)
+    *digest_len = gnutls_hash_get_len (stream->priv->checksum_type);
 #else
   g_checksum_get_digest (stream->priv->checksum, buffer, digest_len);
 #endif
@@ -164,10 +193,14 @@ guint8*
 ot_checksum_instream_dup_digest (OtChecksumInstream *stream,
                                  gsize              *ret_len)
 {
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   guint len;
   guchar *ret = g_malloc0 (EVP_MAX_MD_SIZE);
   g_assert (EVP_DigestFinal_ex (stream->priv->checksum, ret, &len));
+#elif defined(HAVE_GNUTLS)
+  guint len = gnutls_hash_get_len (stream->priv->checksum_type);
+  guchar *ret = g_malloc0 (len);
+  gnutls_hash_output (stream->priv->checksum, ret);
 #else
   gsize len = g_checksum_type_get_length (stream->priv->checksum_type);
   guchar *ret = g_malloc (len);
@@ -181,12 +214,19 @@ ot_checksum_instream_dup_digest (OtChecksumInstream *stream,
 char *
 ot_checksum_instream_get_string (OtChecksumInstream *stream)
 {
-#ifdef HAVE_OPENSSL
+#if defined(HAVE_OPENSSL)
   unsigned len;
   guint8 csum[EVP_MAX_MD_SIZE];
   g_assert (EVP_DigestFinal_ex (stream->priv->checksum, csum, &len));
   char *buf = g_malloc (len * 2 + 1);
   ot_bin2hex (buf, (guint8*)csum, len);
+  return buf;
+#elif defined(HAVE_GNUTLS)
+  gsize len;
+  guint8 *csum = ot_checksum_instream_dup_digest(stream, &len);
+  char *buf = g_malloc0 (len * 2 + 1);
+  ot_bin2hex (buf, csum, len);
+  g_free (csum);
   return buf;
 #else
   return g_strdup (g_checksum_get_string (stream->priv->checksum));

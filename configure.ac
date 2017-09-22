@@ -329,15 +329,29 @@ AS_IF([ test x$with_smack = xyes], [
 ])
 AM_CONDITIONAL(USE_SMACK, test $with_smack != no)
 
+dnl crypto
+AC_ARG_WITH(crypto,
+AS_HELP_STRING([--with-crypto], [Choose library for checksums, one of glib, openssl, gnutls (default: glib)]),
+:, with_crypto=glib)
+
+AS_IF([test $with_crypto = glib],
+      [],
+      [test $with_crypto = openssl],
+      [with_openssl=yes],
+      [test $with_crypto = gnutls],
+      [],
+      [AC_MSG_ERROR([Invalid --with-crypto $with_crypto])]
+      )
+
 dnl begin openssl (really just libcrypto right now)
+dnl Note this option is now deprecated in favor of --with-crypto=openssl
 OPENSSL_DEPENDENCY="libcrypto >= 1.0.1"
 AC_ARG_WITH(openssl,
-AS_HELP_STRING([--with-openssl], [Enable use of OpenSSL libcrypto (checksums)]),
-:, with_openssl=no)
-
+AS_HELP_STRING([--with-openssl], [Enable use of OpenSSL libcrypto (checksums)]),with_openssl=$withval,with_openssl=no)
 AS_IF([ test x$with_openssl != xno ], [
-      PKG_CHECK_MODULES(OT_DEP_OPENSSL, $OPENSSL_DEPENDENCY)
+      PKG_CHECK_MODULES(OT_DEP_CRYPTO, $OPENSSL_DEPENDENCY)
       AC_DEFINE([HAVE_OPENSSL], 1, [Define if we have openssl])
+      with_crypto=openssl
       with_openssl=yes
 ], [
       with_openssl=no
@@ -345,6 +359,17 @@ AS_IF([ test x$with_openssl != xno ], [
 if test x$with_openssl != xno; then OSTREE_FEATURES="$OSTREE_FEATURES openssl"; fi
 AM_CONDITIONAL(USE_OPENSSL, test $with_openssl != no)
 dnl end openssl
+
+dnl begin gnutls; in contrast to openssl this one only
+dnl supports --with-crypto=gnutls
+GNUTLS_DEPENDENCY="gnutls >= 3.5.0"
+AS_IF([ test $with_crypto = gnutls ], [
+      PKG_CHECK_MODULES(OT_DEP_CRYPTO, $GNUTLS_DEPENDENCY)
+      AC_DEFINE([HAVE_GNUTLS], 1, [Define if we have gnutls])
+      OSTREE_FEATURES="$OSTREE_FEATURES gnutls"
+])
+AM_CONDITIONAL(USE_GNUTLS, test $with_crypto = gnutls)
+dnl end gnutls
 
 dnl Avahi dependency for finding repos
 AVAHI_DEPENDENCY="avahi-client >= 0.6.31 avahi-glib >= 0.6.31"
@@ -536,7 +561,7 @@ echo "
     HTTP backend:                                 $fetcher_backend
     \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
     SELinux:                                      $with_selinux
-    OpenSSL libcrypto (checksums):                $with_openssl
+    cryptographic checksums:                      $with_crypto
     systemd:                                      $have_libsystemd
     libmount:                                     $with_libmount
     libarchive (parse tar files directly):        $with_libarchive
