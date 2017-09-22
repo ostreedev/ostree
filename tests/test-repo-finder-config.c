@@ -177,7 +177,7 @@ assert_create_remote (Fixture     *fixture,
   g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_path);
   ostree_repo_set_collection_id (repo, collection_id, &error);
   g_assert_no_error (error);
-  ostree_repo_create (repo, OSTREE_REPO_MODE_ARCHIVE_Z2, NULL, &error);
+  ostree_repo_create (repo, OSTREE_REPO_MODE_ARCHIVE, NULL, &error);
   g_assert_no_error (error);
 
   /* Set up the refs from @.... */

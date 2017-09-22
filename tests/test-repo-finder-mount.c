@@ -182,7 +182,7 @@ assert_create_remote_va (Fixture *fixture,
   g_autoptr(GError) error = NULL;
 
   g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_dir);
-  ostree_repo_create (repo, OSTREE_REPO_MODE_ARCHIVE_Z2, NULL, &error);
+  ostree_repo_create (repo, OSTREE_REPO_MODE_ARCHIVE, NULL, &error);
   g_assert_no_error (error);
 
   /* Set up the refs from @.... */
