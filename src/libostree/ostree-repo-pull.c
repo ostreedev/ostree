@@ -1006,12 +1006,15 @@ content_fetch_on_complete (GObject        *object,
   const gboolean verifying_bareuseronly =
     (pull_data->importflags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY) > 0;
 
-  /* If we're mirroring and writing into an archive repo, we can directly copy
-   * the content rather than paying the cost of exploding it, checksumming, and
-   * re-gzip.
+  /* If we're mirroring and writing into an archive repo, and both checksum and
+   * bareuseronly are turned off, we can directly copy the content rather than
+   * paying the cost of exploding it, checksumming, and re-gzip.
    */
-  if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE
-      && !verifying_bareuseronly)
+  const gboolean mirroring_into_archive =
+    pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE;
+  const gboolean import_trusted = !verifying_bareuseronly &&
+    (pull_data->importflags & _OSTREE_REPO_IMPORT_FLAGS_TRUSTED) > 0;
+  if (mirroring_into_archive && import_trusted)
     {
       gboolean have_object;
       if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
@@ -3541,9 +3544,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
-      /* We don't add _IMPORT_FLAGS_TRUSTED for http repos;
-       * OSTREE_REPO_PULL_FLAGS_UNTRUSTED only matters for local repos.
+      /* For non-local repos, we require the TRUSTED_HTTP pull flag to map to
+       * the TRUSTED object import flag. In practice we don't do object imports
+       * for HTTP, but it's easiest to use one set of flags between HTTP and
+       * local imports.
        */
+      if (flags & OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP)
+        pull_data->importflags |= _OSTREE_REPO_IMPORT_FLAGS_TRUSTED;
     }
 
   /* We can't use static deltas if pulling into an archive repo. */

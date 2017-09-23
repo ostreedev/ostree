@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..29"
+echo "1..30"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -137,6 +137,63 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror --bareuseronly-files origin main
 echo "ok pull (bareuseronly mirror)"
 
+# Corruption tests <https://github.com/ostreedev/ostree/issues/1211>
+cd ${test_tmpdir}
+repo_init --no-gpg-verify
+if ! is_bare_user_only_repo repo && ! skip_one_without_user_xattrs; then
+    if is_bare_user_only_repo repo; then
+        cacherepomode=bare-user-only
+    else
+        cacherepomode=bare-user
+    fi
+    rm cacherepo -rf
+    ostree_repo_init cacherepo --mode=${cacherepomode}
+    ${CMD_PREFIX} ostree --repo=cacherepo pull-local ostree-srv/gnomerepo main
+    rev=$(ostree --repo=cacherepo rev-parse main)
+    ${CMD_PREFIX} ostree --repo=cacherepo ls -R -C main > ls.txt
+    regfile_hash=$(grep -E -e '^-0' ls.txt | head -1 | awk '{ print $5 }')
+    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false corruptrepo $(cat httpd-address)/ostree/corruptrepo
+    # Make this a loop so in the future we can add more object types like commit etc.
+    for object in ${regfile_hash}.file; do
+        checksum=$(echo ${object} | sed -e 's,\(.*\)\.[a-z]*$,\1,')
+        path=cacherepo/objects/${object:0:2}/${object:2}
+        # Preserve user.ostreemeta xattr
+        cp -a ${path}{,.new}
+        (dd if=${path} conv=swab) > ${path}.new
+        mv ${path}{.new,}
+        if ${CMD_PREFIX} ostree --repo=cacherepo fsck 2>err.txt; then
+            fatal "corrupt repo fsck?"
+        fi
+        assert_file_has_content err.txt "corrupted.*${checksum}"
+        rm ostree-srv/corruptrepo -rf
+        ostree_repo_init ostree-srv/corruptrepo --mode=archive
+        ${CMD_PREFIX} ostree --repo=ostree-srv/corruptrepo pull-local cacherepo main
+        # Pulling via HTTP into a non-archive should fail, even with
+        # --http-trusted.
+        if ${CMD_PREFIX} ostree --repo=repo pull --http-trusted corruptrepo main 2>err.txt; then
+            fatal "Pulled from corrupt repo?"
+        fi
+        assert_file_has_content err.txt "Corrupted.*${checksum}"
+        if ${CMD_PREFIX} ostree --repo=repo show corruptrepo:main >/dev/null; then
+            fatal "Pulled from corrupt repo?"
+        fi
+        ${CMD_PREFIX} ostree --repo=repo prune --refs-only
+        rm repo/tmp/* -rf
+        ostree_repo_init corruptmirrorrepo --mode=archive
+        # Pulling via http-trusted should not verify the checksum
+        ${CMD_PREFIX} ostree --repo=corruptmirrorrepo remote add --set=gpg-verify=false corruptrepo $(cat httpd-address)/ostree/corruptrepo
+        ${CMD_PREFIX} ostree --repo=corruptmirrorrepo pull --mirror --http-trusted corruptrepo main
+        # But it should fail to fsck
+        if ${CMD_PREFIX} ostree --repo=corruptmirrorrepo fsck 2>err.txt; then
+            fatal "corrupt mirror repo fsck?"
+        fi
+    done
+
+    # And ensure the repo is reinitialized
+    repo_init --no-gpg-verify
+    echo "ok corruption"
+fi
+
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf
 ${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
@@ -158,7 +215,7 @@ ostree_repo_init mirrorrepo-local --mode=archive
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local fsck
-$OSTREE show main >/dev/null
+${CMD_PREFIX} ostree --repo=mirrorrepo show main >/dev/null
 echo "ok pull local mirror"
 
 cd ${test_tmpdir}
