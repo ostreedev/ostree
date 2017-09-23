@@ -142,8 +142,7 @@ typedef struct {
 
   gboolean          is_mirror;
   gboolean          is_commit_only;
-  gboolean          is_untrusted;
-  gboolean          is_bareuseronly_files;
+  OstreeRepoImportFlags importflags;
 
   GPtrArray        *dirs;
 
@@ -622,36 +621,15 @@ pull_matches_subdir (OtPullData *pull_data,
   return FALSE;
 }
 
-/* Synchronously import a single content object; this is used async for content,
- * or synchronously for metadata. @src_repo is either
- * pull_data->remote_repo_local or one of pull_data->localcache_repos.
- *
- * One important special case here is handling the
- * OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES flag.
- */
-static gboolean
-import_one_local_content_object_sync (OtPullData *pull_data,
-                                      OstreeRepo *src_repo,
-                                      const char *checksum,
-                                      GCancellable *cancellable,
-                                      GError    **error)
-{
-  OstreeRepoImportFlags flags = _OSTREE_REPO_IMPORT_FLAGS_NONE;
-  if (!pull_data->is_untrusted)
-    flags |= _OSTREE_REPO_IMPORT_FLAGS_TRUSTED;
-  if (pull_data->is_bareuseronly_files)
-    flags |= _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY;
-  return _ostree_repo_import_object (pull_data->repo, src_repo,
-                                     OSTREE_OBJECT_TYPE_FILE, checksum,
-                                     flags, cancellable, error);
-}
-
 typedef struct {
   OtPullData *pull_data;
   OstreeRepo *src_repo;
   char checksum[OSTREE_SHA256_STRING_LEN+1];
 } ImportLocalAsyncData;
 
+/* Asynchronously import a single content object. @src_repo is either
+ * pull_data->remote_repo_local or one of pull_data->localcache_repos.
+ */
 static void
 async_import_in_thread (GTask *task,
                         gpointer source,
@@ -659,12 +637,12 @@ async_import_in_thread (GTask *task,
                         GCancellable *cancellable)
 {
   ImportLocalAsyncData *iataskdata = task_data;
+  OtPullData *pull_data = iataskdata->pull_data;
   g_autoptr(GError) local_error = NULL;
-  if (!import_one_local_content_object_sync (iataskdata->pull_data,
-                                             iataskdata->src_repo,
-                                             iataskdata->checksum,
-                                             cancellable,
-                                             &local_error))
+  /* pull_data->importflags was set up in the pull option processing */
+  if (!_ostree_repo_import_object (pull_data->repo, iataskdata->src_repo,
+                                   OSTREE_OBJECT_TYPE_FILE, iataskdata->checksum,
+                                   pull_data->importflags, cancellable, &local_error))
     g_task_return_error (task, g_steal_pointer (&local_error));
   else
     g_task_return_boolean (task, TRUE);
@@ -1025,12 +1003,15 @@ content_fetch_on_complete (GObject        *object,
   checksum_obj = ostree_object_to_string (checksum, objtype);
   g_debug ("fetch of %s complete", checksum_obj);
 
+  const gboolean verifying_bareuseronly =
+    (pull_data->importflags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY) > 0;
+
   /* If we're mirroring and writing into an archive repo, we can directly copy
    * the content rather than paying the cost of exploding it, checksumming, and
    * re-gzip.
    */
   if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE
-      && !pull_data->is_bareuseronly_files)
+      && !verifying_bareuseronly)
     {
       gboolean have_object;
       if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
@@ -1064,7 +1045,7 @@ content_fetch_on_complete (GObject        *object,
        */
       ot_cleanup_unlinkat (&tmp_unlinker);
 
-      if (pull_data->is_bareuseronly_files)
+      if (verifying_bareuseronly)
         {
           if (!_ostree_validate_bareuseronly_mode_finfo (file_info, checksum, error))
             goto out;
@@ -1770,9 +1751,10 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
           if (!write_commitpartial_for (pull_data, tmp_checksum, error))
             return FALSE;
         }
-      if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
-                                                      objtype, tmp_checksum, !pull_data->is_untrusted,
-                                                      cancellable, error))
+
+      if (!_ostree_repo_import_object (pull_data->repo, pull_data->remote_repo_local,
+                                       objtype, tmp_checksum, pull_data->importflags,
+                                       cancellable, error))
         return FALSE;
       /* The import API will fetch both the commit and detached metadata, so
        * add it to the hash to avoid re-fetching it below.
@@ -1801,10 +1783,9 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
               if (!write_commitpartial_for (pull_data, tmp_checksum, error))
                 return FALSE;
             }
-          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, refd_repo,
-                                                          objtype, tmp_checksum,
-                                                          !pull_data->is_untrusted,
-                                                          cancellable, error))
+          if (!_ostree_repo_import_object (pull_data->repo, refd_repo,
+                                           objtype, tmp_checksum, pull_data->importflags,
+                                           cancellable, error))
             return FALSE;
           /* See comment above */
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -3250,8 +3231,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
-  pull_data->is_untrusted = (flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) > 0;
-  pull_data->is_bareuseronly_files = (flags & OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES) > 0;
+  /* See our processing of OSTREE_REPO_PULL_FLAGS_UNTRUSTED below */
+  if ((flags & OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES) > 0)
+    pull_data->importflags |= _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY;
   pull_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
   if (error)
@@ -3540,6 +3522,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   }
 
+  /* Change some option defaults if we're actually pulling from a local
+   * (filesystem accessible) repo.
+   */
   if (pull_data->remote_repo_local)
     {
       /* For local pulls, default to disabling static deltas so that the
@@ -3548,6 +3533,17 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (!pull_data->require_static_deltas)
         pull_data->disable_static_deltas = TRUE;
 
+      /* Note the inversion here; PULL_FLAGS_UNTRUSTED is converted to
+       * IMPORT_FLAGS_TRUSTED only if it's unset (and just for local repos).
+       */
+      if ((flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) == 0)
+        pull_data->importflags |= _OSTREE_REPO_IMPORT_FLAGS_TRUSTED;
+    }
+  else
+    {
+      /* We don't add _IMPORT_FLAGS_TRUSTED for http repos;
+       * OSTREE_REPO_PULL_FLAGS_UNTRUSTED only matters for local repos.
+       */
     }
 
   /* We can't use static deltas if pulling into an archive repo. */
