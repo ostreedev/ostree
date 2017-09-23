@@ -1749,35 +1749,36 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
   g_autofree char *tmp_checksum = ostree_checksum_from_bytes (csum);
   g_autoptr(GVariant) object = ostree_object_name_serialize (tmp_checksum, objtype);
 
+  /* It may happen that we've already looked at this object (think shared
+   * dirtree subtrees), if that's the case, we're done */
   if (g_hash_table_lookup (pull_data->scanned_metadata, object))
     return TRUE;
 
   gboolean is_requested = g_hash_table_lookup (pull_data->requested_metadata, object) != NULL;
+  /* Determine if we already have the object */
   gboolean is_stored;
   if (!ostree_repo_has_object (pull_data->repo, objtype, tmp_checksum, &is_stored,
                                cancellable, error))
     return FALSE;
 
-  if (pull_data->remote_repo_local)
+  /* Are we pulling an object we don't have from a local repo? */
+  if (!is_stored && pull_data->remote_repo_local)
     {
-      if (!is_stored)
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-            {
-              /* mark as partial to ensure we scan the commit below */
-              if (!write_commitpartial_for (pull_data, tmp_checksum, error))
-                return FALSE;
-            }
-          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
-                                                          objtype, tmp_checksum, !pull_data->is_untrusted,
-                                                          cancellable, error))
+          /* mark as partial to ensure we scan the commit below */
+          if (!write_commitpartial_for (pull_data, tmp_checksum, error))
             return FALSE;
-          /* The import API will fetch both the commit and detached metadata, so
-           * add it to the hash to avoid re-fetching it below.
-           */
-          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-            g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
         }
+      if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
+                                                      objtype, tmp_checksum, !pull_data->is_untrusted,
+                                                      cancellable, error))
+        return FALSE;
+      /* The import API will fetch both the commit and detached metadata, so
+       * add it to the hash to avoid re-fetching it below.
+       */
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
       is_stored = TRUE;
       is_requested = TRUE;
     }
