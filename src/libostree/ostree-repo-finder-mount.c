@@ -49,7 +49,8 @@
  * enumerated, and all OSTree repositories below it will be searched, in lexical
  * order, for the requested #OstreeCollectionRefs. The names of the directories
  * below `.ostree/repos.d` are irrelevant, apart from their lexical ordering.
- * The directory `ostree/repo` will be searched after the others, if it exists.
+ * The directories `.ostree/repo`, `ostree/repo` and `var/lib/flatpak`
+ * will be searched after the others, if they exist.
  * Non-removable volumes are ignored.
  *
  * For each repository which is found, a result will be returned for the
@@ -413,15 +414,19 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
       /* Sort the repos lexically. */
       g_array_sort (repos_refs, repo_and_refs_compare);
 
-      /* Also check the .ostree/repo and ostree/repo directories in the mount,
-       * as well-known special cases. Add them after sorting, so they’re always
-       * last. */
-      scan_and_add_repo (mount_root_dfd, ".ostree/repo", FALSE,
-                         mount_name, &mount_root_stbuf,
-                         parent_repo, repos_refs, cancellable);
-      scan_and_add_repo (mount_root_dfd, "ostree/repo", FALSE,
-                         mount_name, &mount_root_stbuf,
-                         parent_repo, repos_refs, cancellable);
+      /* Also check the well-known special-case directories in the mount.
+       * Add them after sorting, so they’re always last. */
+      const gchar * const well_known_repos[] =
+        {
+          ".ostree/repo",
+          "ostree/repo",
+          "var/lib/flatpak",
+        };
+
+      for (i = 0; i < G_N_ELEMENTS (well_known_repos); i++)
+        scan_and_add_repo (mount_root_dfd, well_known_repos[i], FALSE,
+                           mount_name, &mount_root_stbuf,
+                           parent_repo, repos_refs, cancellable);
 
       /* Check whether a subdirectory exists for any of the @refs we’re looking
        * for. If so, and it’s a symbolic link, dereference it so multiple links
