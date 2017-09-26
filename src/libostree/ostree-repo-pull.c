@@ -861,26 +861,22 @@ fetch_ref_contents (OtPullData                 *pull_data,
   if (pull_data->remote_repo_local != NULL && ref->collection_id != NULL)
     {
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-      g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
-      if (!ostree_repo_list_collection_refs (pull_data->remote_repo_local,
-                                             ref->collection_id, &refs,
-                                             OSTREE_REPO_LIST_REFS_EXT_NONE,
-                                             cancellable, error))
+      if (!ostree_repo_resolve_collection_ref (pull_data->remote_repo_local,
+                                               ref, TRUE  /* ignore enoent */,
+                                               OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                               &ret_contents, cancellable, error))
         return FALSE;
-
-      ret_contents = g_strdup (g_hash_table_lookup (refs, ref));
 #else  /* if !OSTREE_ENABLE_EXPERIMENTAL_API */
       g_assert_not_reached ();
 #endif  /* !OSTREE_ENABLE_EXPERIMENTAL_API */
     }
   else if (pull_data->remote_repo_local != NULL)
     {
-      g_autoptr(GHashTable) refs = NULL;  /* (element-type utf8 utf8) */
-      if (!ostree_repo_list_refs (pull_data->remote_repo_local, NULL,
-                                  &refs, cancellable, error))
+      if (!ostree_repo_resolve_rev_ext (pull_data->remote_repo_local,
+                                        ref->ref_name, TRUE  /* ignore enoent */,
+                                        OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                        &ret_contents, error))
         return FALSE;
-
-      ret_contents = g_strdup (g_hash_table_lookup (refs, ref->ref_name));
     }
   else
     {
@@ -899,9 +895,11 @@ fetch_ref_contents (OtPullData                 *pull_data,
     }
 
   /* Validate and return. */
-  g_strchomp (ret_contents);
+  if (ret_contents != NULL)
+    g_strchomp (ret_contents);
 
-  if (!ostree_validate_checksum_string (ret_contents, error))
+  if (ret_contents == NULL ||
+      !ostree_validate_checksum_string (ret_contents, error))
     return glnx_prefix_error (error, "Fetching checksum for ref (%s, %s)",
                               ref->collection_id ? ref->collection_id : "(empty)",
                               ref->ref_name);
