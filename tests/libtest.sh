@@ -546,6 +546,29 @@ skip_without_user_xattrs () {
     fi
 }
 
+# Skip unless SELinux is disabled, or we can relabel.
+# Default Docker has security.selinux xattrs, but returns
+# EOPNOTSUPP when trying to set them, even to the existing value.
+# https://github.com/ostreedev/ostree/pull/1182
+skip_without_no_selinux_or_relabel () {
+    cd ${test_tmpdir}
+    echo testlabel > testlabel.txt
+    selinux_xattr=security.selinux
+    if getfattr --encoding=base64 -n ${selinux_xattr} testlabel.txt >label.txt 2>err.txt; then
+        label=$(grep -E -e "^${selinux_xattr}=" < label.txt |sed -e "s,${selinux_xattr}=,,")
+        if setfattr -n ${selinux_xattr} -v ${label} testlabel.txt 2>err.txt; then
+            echo "SELinux enabled in $(pwd), and have privileges to relabel"
+            return 0
+        else
+            sed -e 's/^/# /' < err.txt >&2
+            skip "Found SELinux label, but unable to set (Unprivileged Docker?)"
+        fi
+    else
+        sed -e 's/^/# /' < err.txt >&2
+        skip "Unable to retrieve SELinux label, assuming disabled"
+    fi
+}
+
 # https://brokenpi.pe/tools/strace-fault-injection
 _have_strace_fault_injection=''
 have_strace_fault_injection() {
