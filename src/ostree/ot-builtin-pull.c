@@ -33,6 +33,7 @@ static gboolean opt_dry_run;
 static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
+static gboolean opt_http_trusted;
 static gboolean opt_timestamp_check;
 static gboolean opt_bareuseronly_files;
 static char** opt_subpaths;
@@ -56,7 +57,8 @@ static GOptionEntry options[] = {
    { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror and fetches all refs if none provided", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_subpaths, "Only pull the provided subpath(s)", NULL },
-   { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not verify checksums of local sources (always enabled for HTTP pulls)", NULL },
+   { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Verify checksums of local sources (always enabled for HTTP pulls)", NULL },
+   { "http-trusted", 0, 0, G_OPTION_ARG_NONE, &opt_http_trusted, "Do not verify checksums of HTTP sources (mostly useful when mirroring)", NULL },
    { "bareuseronly-files", 0, 0, G_OPTION_ARG_NONE, &opt_bareuseronly_files, "Reject regular files with mode outside of 0775 (world writable, suid, etc.)", NULL },
    { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
@@ -182,8 +184,14 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   if (opt_commit_only)
     pullflags |= OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY;
 
+  if (opt_http_trusted)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP;
   if (opt_untrusted)
-    pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
+    {
+      pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
+      /* If the user specifies both, assume they really mean untrusted */
+      pullflags &= ~OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP;
+    }
   if (opt_bareuseronly_files)
     pullflags |= OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES;
 
