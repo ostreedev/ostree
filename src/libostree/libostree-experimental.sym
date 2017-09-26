@@ -77,3 +77,8 @@ global:
   ostree_repo_transaction_set_collection_ref;
   ostree_validate_collection_id;
 } LIBOSTREE_2017.7_EXPERIMENTAL;
+
+LIBOSTREE_2017.12_EXPERIMENTAL {
+global:
+  ostree_repo_resolve_collection_ref;
+} LIBOSTREE_2017.8_EXPERIMENTAL;

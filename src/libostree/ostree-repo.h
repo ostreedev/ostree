@@ -471,6 +471,17 @@ gboolean      ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
                                            char                         **out_rev,
                                            GError                       **error);
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+_OSTREE_PUBLIC
+gboolean      ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
+                                                  const OstreeCollectionRef     *ref,
+                                                  gboolean                       allow_noent,
+                                                  OstreeRepoResolveRevExtFlags   flags,
+                                                  char                         **out_rev,
+                                                  GCancellable                  *cancellable,
+                                                  GError                       **error);
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 _OSTREE_PUBLIC
 gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      const char       *refspec_prefix,
