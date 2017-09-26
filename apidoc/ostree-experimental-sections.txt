@@ -85,4 +85,5 @@ ostree_repo_list_collection_refs
 ostree_repo_remote_list_collection_refs
 ostree_repo_set_collection_ref_immediate
 ostree_repo_transaction_set_collection_ref
+ostree_repo_resolve_collection_ref
 </SECTION>
