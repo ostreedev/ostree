@@ -248,8 +248,9 @@ ostree_builtin_create_usb (int            argc,
           /* Relative to .ostree/repos.d. */
           g_autofree char *relative_dest_repo_path = g_build_filename ("..", "..", dest_repo_path, NULL);
           guint i;
+          const guint max_attempts = 100;
 
-          for (i = 0; i < 100; i++)
+          for (i = 0; i < max_attempts; i++)
             {
               g_autofree char *symlink_path = g_strdup_printf (".ostree/repos.d/%02u-generated", i);
 
@@ -260,7 +261,7 @@ ostree_builtin_create_usb (int            argc,
                 break;
             }
 
-          if (i == 100)
+          if (i == max_attempts)
             return glnx_throw (error, "Could not find an unused symlink name for the repository");
         }
     }
