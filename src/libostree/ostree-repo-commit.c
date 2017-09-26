@@ -2070,22 +2070,10 @@ ostree_repo_write_commit (OstreeRepo      *self,
                           GCancellable    *cancellable,
                           GError         **error)
 {
-  gboolean ret = FALSE;
-  GDateTime *now = NULL;
-
-  now = g_date_time_new_now_utc ();
-  ret = ostree_repo_write_commit_with_time (self,
-                                          parent,
-                                          subject,
-                                          body,
-                                          metadata,
-                                          root,
-                                          g_date_time_to_unix (now),
-                                          out_commit,
-                                          cancellable,
-                                          error);
-  g_date_time_unref (now);
-  return ret;
+  g_autoptr(GDateTime) now = g_date_time_new_now_utc ();
+  return ostree_repo_write_commit_with_time (self, parent, subject, body,
+                                             metadata, root, g_date_time_to_unix (now),
+                                             out_commit, cancellable, error);
 }
 
 /**
@@ -2206,23 +2194,19 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
                                             GCancellable    *cancellable,
                                             GError         **error)
 {
-  char pathbuf[_OSTREE_LOOSE_PATH_MAX];
-  g_autoptr(GVariant) normalized = NULL;
-  gsize normalized_size = 0;
-  const guint8 *data = NULL;
   int dest_dfd;
-
   if (self->in_transaction)
     dest_dfd = self->commit_stagedir.fd;
   else
     dest_dfd = self->objects_dir_fd;
 
-  _ostree_loose_path (pathbuf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
-
   if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, checksum,
                                             cancellable, error))
     return FALSE;
 
+  g_autoptr(GVariant) normalized = NULL;
+  gsize normalized_size = 0;
+  const guint8 *data = NULL;
   if (metadata != NULL)
     {
       normalized = g_variant_get_normal_form (metadata);
@@ -2233,6 +2217,8 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   if (data == NULL)
     data = (guint8*)"";
 
+  char pathbuf[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path (pathbuf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
   if (!glnx_file_replace_contents_at (dest_dfd, pathbuf,
                                       data, normalized_size,
                                       0, cancellable, error))
@@ -2250,14 +2236,11 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
                                  GHashTable            *dir_metadata_checksums)
 {
   GVariantBuilder files_builder;
-  GVariantBuilder dirs_builder;
-  GSList *sorted_filenames = NULL;
-  GSList *iter;
-  GVariant *serialized_tree;
-
   g_variant_builder_init (&files_builder, G_VARIANT_TYPE ("a(say)"));
+  GVariantBuilder dirs_builder;
   g_variant_builder_init (&dirs_builder, G_VARIANT_TYPE ("a(sayay)"));
 
+  GSList *sorted_filenames = NULL;
   GLNX_HASH_TABLE_FOREACH (file_checksums, const char*, name)
     {
       /* Should have been validated earlier, but be paranoid */
@@ -2265,10 +2248,8 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
 
       sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
     }
-
   sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
-
-  for (iter = sorted_filenames; iter; iter = iter->next)
+  for (GSList *iter = sorted_filenames; iter; iter = iter->next)
     {
       const char *name = iter->data;
       const char *value;
@@ -2277,25 +2258,20 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
       g_variant_builder_add (&files_builder, "(s@ay)", name,
                              ostree_checksum_to_bytes_v (value));
     }
-
   g_slist_free (sorted_filenames);
   sorted_filenames = NULL;
+
   GLNX_HASH_TABLE_FOREACH (dir_metadata_checksums, const char*, name)
     sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
-
   sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
 
-  for (iter = sorted_filenames; iter; iter = iter->next)
+  for (GSList *iter = sorted_filenames; iter; iter = iter->next)
     {
       const char *name = iter->data;
-      const char *content_checksum;
-      const char *meta_checksum;
+      const char *content_checksum = g_hash_table_lookup (dir_contents_checksums, name);
+      const char *meta_checksum = g_hash_table_lookup (dir_metadata_checksums, name);
 
-      content_checksum = g_hash_table_lookup (dir_contents_checksums, name);
-      meta_checksum = g_hash_table_lookup (dir_metadata_checksums, name);
-
-      g_variant_builder_add (&dirs_builder, "(s@ay@ay)",
-                             name,
+      g_variant_builder_add (&dirs_builder, "(s@ay@ay)", name,
                              ostree_checksum_to_bytes_v (content_checksum),
                              ostree_checksum_to_bytes_v (meta_checksum));
     }
@@ -2303,12 +2279,11 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   g_slist_free (sorted_filenames);
   sorted_filenames = NULL;
 
-  serialized_tree = g_variant_new ("(@a(say)@a(sayay))",
-                                   g_variant_builder_end (&files_builder),
-                                   g_variant_builder_end (&dirs_builder));
-  g_variant_ref_sink (serialized_tree);
-
-  return serialized_tree;
+  GVariant *serialized_tree =
+    g_variant_new ("(@a(say)@a(sayay))",
+                   g_variant_builder_end (&files_builder),
+                   g_variant_builder_end (&dirs_builder));
+  return g_variant_ref_sink (serialized_tree);
 }
 
 /* If any filtering is set up, perform it, and return modified file info in
@@ -2369,16 +2344,13 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
 static char *
 ptrarray_path_join (GPtrArray  *path)
 {
-  GString *path_buf;
-
-  path_buf = g_string_new ("");
+  GString *path_buf = g_string_new ("");
 
   if (path->len == 0)
     g_string_append_c (path_buf, '/');
   else
     {
-      guint i;
-      for (i = 0; i < path->len; i++)
+      for (guint i = 0; i < path->len; i++)
         {
           const char *elt = path->pdata[i];
 
