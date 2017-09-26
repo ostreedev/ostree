@@ -6,8 +6,8 @@ branches:
 required: true
 context: f26-primary
 
-container:
-    image: registry.fedoraproject.org/fedora:26
+host:
+    distro: fedora/26/atomic
 
 env:
     # Enable all the sanitizers for this primary build.
@@ -17,11 +17,16 @@ env:
     GI_SCANNERFLAGS: '--warn-error'
     ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
     # TODO when we're doing leak checks: G_SLICE: "always-malloc"
+    TEST_TMPDIR: /srv/tmpdir
 
 tests:
-  - ci/ci-commitmessage-submodules.sh
-  - ci/build-check.sh
-  - ci/ci-release-build.sh
+  - mkdir -m 0777 /srv/tmpdir
+  - docker run -e TEST_TMPDIR -e CFLAGS -e GI_SCANNERFLAGS -e ASAN_OPTIONS
+    -v $PWD:$PWD:z --workdir $PWD -v /srv/tmpdir:/srv/tmpdir:z
+    registry.fedoraproject.org/fedora:26 sh -c
+    'ci/ci-commitmessage-submodules.sh &&
+     ci/build-check.sh &&
+     ci/ci-release-build.sh'
 
 timeout: 30m
 
@@ -38,14 +43,15 @@ host:
   distro: centos/7/atomic
 
 env:
-    CFLAGS: ''
+    TEST_TMPDIR: /srv/tmpdir
 
 tests:
+  - mkdir -m 0777 /srv/tmpdir
     # FIXME revert setting to 7/3/1611 when repos sync
     # https://github.com/projectatomic/rpm-ostree/pull/985
-  - docker run --privileged -v $PWD:$PWD --workdir $PWD
-    registry.centos.org/centos/centos:7.3.1611 sh -c
-    'yum install -y git && ci/build-check.sh'
+  - docker run -e TEST_TMPDIR -v $PWD:$PWD:z --workdir $PWD
+    -v /srv/tmpdir:/srv/tmpdir:z registry.centos.org/centos/centos:7.3.1611
+    sh -c 'yum install -y git && ci/build-check.sh'
 
 ---
 

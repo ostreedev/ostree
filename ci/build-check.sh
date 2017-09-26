@@ -11,6 +11,10 @@ make syntax-check  # TODO: do syntax-check under check
 # And now run the installed tests
 make install
 if test -x /usr/bin/gnome-desktop-testing-runner; then
+    # if a TEST_TMPDIR was given, use it also for installed tests
+    if [ -n "${TEST_TMPDIR:-}" ]; then
+      export TMPDIR=$TEST_TMPDIR
+    fi
     gnome-desktop-testing-runner -p 0 ${INSTALLED_TESTS_PATTERN:-libostree/}
 fi
 

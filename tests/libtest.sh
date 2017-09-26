@@ -73,7 +73,7 @@ export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 # See comment in ot-builtin-commit.c and https://github.com/ostreedev/ostree/issues/758
 # Also keep this in sync with the bits in libostreetest.c
 echo evaluating for overlayfs...
-case $(stat -f --printf '%T' /) in
+case $(stat -f --printf '%T' $PWD) in
     overlayfs)
         echo "overlayfs found; enabling OSTREE_NO_XATTRS"
         export OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},no-xattrs"

@@ -79,11 +79,13 @@ ot_test_setup_sysroot (GCancellable *cancellable,
   if (!ot_test_run_libtest ("setup_os_repository \"archive\" \"syslinux\"", error))
     return FALSE;
 
+  /* Keep this in sync with the overlayfs bits in libtest.sh */
   struct statfs stbuf;
   { g_autoptr(GString) buf = g_string_new ("mutable-deployments");
-    if (statfs ("/", &stbuf) < 0)
+    const char *pwd = g_getenv ("PWD");
+    g_assert (pwd);
+    if (statfs (pwd, &stbuf) < 0)
       return glnx_null_throw_errno (error);
-    /* Keep this in sync with the overlayfs bits in libtest.sh */
 #ifndef OVERLAYFS_SUPER_MAGIC
 #define OVERLAYFS_SUPER_MAGIC 0x794c7630
 #endif
