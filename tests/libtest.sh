@@ -549,7 +549,8 @@ skip_without_user_xattrs () {
 # Skip unless SELinux is disabled, or we can relabel.
 # Default Docker has security.selinux xattrs, but returns
 # EOPNOTSUPP when trying to set them, even to the existing value.
-# https://github.com/ostreedev/ostree/pull/1182
+# https://github.com/ostreedev/ostree/pull/759
+# https://github.com/ostreedev/ostree/pull/1217
 skip_without_no_selinux_or_relabel () {
     cd ${test_tmpdir}
     echo testlabel > testlabel.txt
