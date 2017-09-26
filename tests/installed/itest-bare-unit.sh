@@ -9,7 +9,7 @@ dn=$(dirname $0)
 . ${dn}/libinsttest.sh
 
 # Use /var/tmp to hopefully use XFS + O_TMPFILE etc.
-tempdir=$(mktemp -d $/var/tmp/tap-test.XXXXXX)
+tempdir=$(mktemp -d /var/tmp/tap-test.XXXXXX)
 touch ${tempdir}/.testtmp
 function cleanup () {
     if test -f ${tempdir}/.testtmp; then
