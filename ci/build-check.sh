@@ -6,12 +6,26 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libbuild.sh
 ${dn}/build.sh
+topdir=$(git rev-parse --show-toplevel)
+resultsdir=$(mktemp -d)
 make check
 make syntax-check  # TODO: do syntax-check under check
+# See comment below
+for x in test-suite.log config.log; do
+    mv ${x} ${resultsdir}
+done
 # And now run the installed tests
 make install
 if test -x /usr/bin/gnome-desktop-testing-runner; then
-    gnome-desktop-testing-runner -p 0 ${INSTALLED_TESTS_PATTERN:-libostree/}
+    mkdir ${resultsdir}/gdtr-results
+    # Temporary hack
+    (git clone --depth=1 https://git.gnome.org/browse/gnome-desktop-testing
+     cd gnome-desktop-testing
+     env NOCONFIGURE=1 ./autogen.sh
+     ./configure --prefix=/usr --libdir=/usr/lib64
+     make && rm -f /usr/bin/ginsttest-runner && make install)
+    # Use the new -L option
+    gnome-desktop-testing-runner -L ${resultsdir}/gdtr-results -p 0 ${INSTALLED_TESTS_PATTERN:-libostree/}
 fi
 
 if test -x /usr/bin/clang; then
@@ -25,3 +39,11 @@ if test -x /usr/bin/clang; then
     export CC=clang
     build
 fi
+
+# Keep this in sync with papr.yml
+# TODO; Split the main/clang builds into separate build dirs
+for x in test-suite.log config.log gdtr-results; do
+    if test -e ${resultsdir}/${x}; then
+        mv ${resultsdir}/${x} ${topdir}
+    fi
+done

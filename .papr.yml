@@ -25,9 +25,11 @@ tests:
 
 timeout: 30m
 
+# Keep this in sync with build-check.sh
 artifacts:
   - test-suite.log
   - config.log
+  - gdtr-results
 ---
 
 context: c7-primary
