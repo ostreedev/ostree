@@ -21,6 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-setup_test_repository "bare"
+skip_without_no_selinux_or_relabel
 
+setup_test_repository "bare"
 . $(dirname $0)/basic-test.sh

@@ -22,8 +22,12 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 setup_test_repository "bare-user-only"
-extra_basic_tests=4
+extra_basic_tests=5
 . $(dirname $0)/basic-test.sh
+
+$CMD_PREFIX ostree --version > version.yaml
+python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
+echo "ok yaml version"
 
 # Reset things so we don't inherit a lot of state from earlier tests
 cd ${test_tmpdir}
