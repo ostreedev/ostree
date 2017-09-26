@@ -55,6 +55,14 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+/* See canonical version of this in ot-builtin-pull.c */
+static void
+noninteractive_console_progress_changed (OstreeAsyncProgress *progress,
+                                         gpointer             user_data)
+{
+  /* We do nothing here - we just want the final status */
+}
+
 gboolean
 ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
@@ -170,6 +178,8 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
 
     if (console.is_tty)
       progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
+    else
+      progress = ostree_async_progress_new_and_connect (noninteractive_console_progress_changed, &console);
 
     opts = g_variant_ref_sink (g_variant_builder_end (&builder));
     if (!ostree_repo_pull_with_options (repo, src_repo_uri, 
@@ -178,8 +188,14 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
                                         cancellable, error))
       goto out;
 
-    if (progress)
-      ostree_async_progress_finish (progress);
+    if (!console.is_tty)
+      {
+        g_assert (progress);
+        const char *status = ostree_async_progress_get_status (progress);
+        if (status)
+          g_print ("%s\n", status);
+      }
+    ostree_async_progress_finish (progress);
   }
 
   ret = TRUE;
