@@ -80,11 +80,8 @@ cd ${test_tmpdir}
 mkdir repo
 ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
-${CMD_PREFIX} ostree --repo=repo pull origin main
-${CMD_PREFIX} ostree --repo=repo show --gpg-verify-remote=origin main > show.txt
-cat show.txt
-grep -o 'Found [[:digit:]] signature' show.txt > verify.txt
-assert_file_has_content verify.txt 'Found 1 signature'
+${CMD_PREFIX} ostree --repo=repo pull origin main > show.txt
+assert_file_has_content_literal show.txt 'Found 1 signature'
 rm repo -rf
 echo "ok pull verify"
 
@@ -124,11 +121,11 @@ ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo show main > show.txt
-assert_not_file_has_content show.txt 'Found [[:digit:]] signature'
+assert_not_file_has_content show.txt 'Found.*signature'
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${test_tmpdir}/gpghome main $keyid
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo show main > show.txt
-assert_file_has_content show.txt 'Found 1 signature'
+assert_file_has_content_literal show.txt 'Found 1 signature'
 echo "ok pull unsigned, then sign"
 
 # Delete the signature from the commit so the detached metadata is empty,
@@ -136,7 +133,7 @@ echo "ok pull unsigned, then sign"
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${test_tmpdir}/gpghome --delete main $keyid
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo show main >show.txt
-assert_not_file_has_content show.txt 'Found [[:digit:]] signature'
+assert_not_file_has_content show.txt 'Found.*signature'
 echo "ok pull sig deleted"
 
 rm -rf repo gnomerepo-files
