@@ -80,7 +80,8 @@ cd ${test_tmpdir}
 mkdir repo
 ostree_repo_init repo
 ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
-${CMD_PREFIX} ostree --repo=repo pull origin main > show.txt
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo show --gpg-verify-remote=origin main > show.txt
 assert_file_has_content_literal show.txt 'Found 1 signature'
 rm repo -rf
 echo "ok pull verify"
