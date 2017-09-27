@@ -508,5 +508,5 @@ rm ostree-srv/gnomerepo/summary
 if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
     fatal "pull of invalid ref succeeded"
 fi
-assert_file_has_content_literal err.txt 'error: Fetching refs/heads/main: Invalid rev lots of html here  lots of html here  lots of html here  lots of'
+assert_file_has_content_literal err.txt 'error: Fetching checksum for ref ((empty), main): Invalid rev lots of html here  lots of html here  lots of html here  lots of'
 echo "ok pull got HTML for a ref"

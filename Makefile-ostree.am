@@ -54,7 +54,10 @@ ostree_SOURCES = src/ostree/main.c \
 	$(NULL)
 
 if ENABLE_EXPERIMENTAL_API
-ostree_SOURCES += src/ostree/ot-builtin-find-remotes.c
+ostree_SOURCES += \
+	src/ostree/ot-builtin-create-usb.c \
+	src/ostree/ot-builtin-find-remotes.c \
+	$(NULL)
 endif
 
 # Admin subcommand

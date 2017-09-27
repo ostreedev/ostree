@@ -42,6 +42,7 @@ static OstreeCommand commands[] = {
   { "export", ostree_builtin_export },
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   { "find-remotes", ostree_builtin_find_remotes },
+  { "create-usb", ostree_builtin_create_usb },
 #endif
   { "fsck", ostree_builtin_fsck },
   { "gpg-sign", ostree_builtin_gpg_sign },

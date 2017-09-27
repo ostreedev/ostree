@@ -834,24 +834,53 @@ fetch_ref_contents (OtPullData                 *pull_data,
                     GCancellable               *cancellable,
                     GError                    **error)
 {
-  g_autofree char *filename = NULL;
-
-  if (ref->collection_id == NULL || g_strcmp0 (ref->collection_id, main_collection_id) == 0)
-    filename = g_build_filename ("refs", "heads", ref->ref_name, NULL);
-  else
-    filename = g_build_filename ("refs", "mirrors", ref->collection_id, ref->ref_name, NULL);
-
   g_autofree char *ret_contents = NULL;
-  if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
-                                              pull_data->meta_mirrorlist,
-                                              filename, &ret_contents,
-                                              cancellable, error))
-    return FALSE;
 
-  g_strchomp (ret_contents);
+  if (pull_data->remote_repo_local != NULL && ref->collection_id != NULL)
+    {
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+      if (!ostree_repo_resolve_collection_ref (pull_data->remote_repo_local,
+                                               ref, TRUE  /* ignore enoent */,
+                                               OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                               &ret_contents, cancellable, error))
+        return FALSE;
+#else  /* if !OSTREE_ENABLE_EXPERIMENTAL_API */
+      g_assert_not_reached ();
+#endif  /* !OSTREE_ENABLE_EXPERIMENTAL_API */
+    }
+  else if (pull_data->remote_repo_local != NULL)
+    {
+      if (!ostree_repo_resolve_rev_ext (pull_data->remote_repo_local,
+                                        ref->ref_name, TRUE  /* ignore enoent */,
+                                        OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                        &ret_contents, error))
+        return FALSE;
+    }
+  else
+    {
+      g_autofree char *filename = NULL;
 
-  if (!ostree_validate_checksum_string (ret_contents, error))
-    return glnx_prefix_error (error, "Fetching %s", filename);
+      if (ref->collection_id == NULL || g_strcmp0 (ref->collection_id, main_collection_id) == 0)
+        filename = g_build_filename ("refs", "heads", ref->ref_name, NULL);
+      else
+        filename = g_build_filename ("refs", "mirrors", ref->collection_id, ref->ref_name, NULL);
+
+      if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
+                                                  pull_data->meta_mirrorlist,
+                                                  filename, &ret_contents,
+                                                  cancellable, error))
+        return FALSE;
+    }
+
+  /* Validate and return. */
+  if (ret_contents != NULL)
+    g_strchomp (ret_contents);
+
+  if (ret_contents == NULL ||
+      !ostree_validate_checksum_string (ret_contents, error))
+    return glnx_prefix_error (error, "Fetching checksum for ref (%s, %s)",
+                              ref->collection_id ? ref->collection_id : "(empty)",
+                              ref->ref_name);
 
   ot_transfer_out_value (out_contents, &ret_contents);
   return TRUE;

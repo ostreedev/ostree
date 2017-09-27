@@ -468,6 +468,69 @@ ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
   return _ostree_repo_resolve_rev_internal (self, refspec, allow_noent, FALSE, out_rev, error);
 }
 
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+/**
+ * ostree_repo_resolve_collection_ref:
+ * @self: an #OstreeRepo
+ * @ref: a collection–ref to resolve
+ * @allow_noent: %TRUE to not throw an error if @ref doesn’t exist
+ * @flags: options controlling behaviour
+ * @out_rev: (out) (transfer full) (optional) (nullable): return location for
+ *    the checksum corresponding to @ref, or %NULL if @allow_noent is %TRUE and
+ *    the @ref could not be found
+ * @cancellable: (nullable): a #GCancellable, or %NULL
+ * @error: return location for a #GError, or %NULL
+ *
+ * Look up the checksum for the given collection–ref, returning it in @out_rev.
+ * This will search through the mirrors and remote refs.
+ *
+ * If @allow_noent is %TRUE and the given @ref cannot be found, %TRUE will be
+ * returned and @out_rev will be set to %NULL. If @allow_noent is %FALSE and
+ * the given @ref cannot be found, a %G_IO_ERROR_NOT_FOUND error will be
+ * returned.
+ *
+ * There are currently no @flags which affect the behaviour of this function.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ * Since: 2017.12
+ */
+gboolean
+ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
+                                    const OstreeCollectionRef     *ref,
+                                    gboolean                       allow_noent,
+                                    OstreeRepoResolveRevExtFlags   flags,
+                                    char                         **out_rev,
+                                    GCancellable                  *cancellable,
+                                    GError                       **error)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (ref != NULL, FALSE);
+  g_return_val_if_fail (ref->collection_id != NULL && ref->ref_name != NULL, FALSE);
+  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+  if (!ostree_repo_list_collection_refs (self, ref->collection_id, &refs,
+                                         OSTREE_REPO_LIST_REFS_EXT_NONE,
+                                         cancellable, error))
+    return FALSE;
+
+  const char *ret_contents = g_hash_table_lookup (refs, ref);
+
+  if (ret_contents == NULL && !allow_noent)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "Collection–ref (%s, %s) not found",
+                   ref->collection_id, ref->ref_name);
+      return FALSE;
+    }
+
+  if (out_rev != NULL)
+    *out_rev = g_strdup (ret_contents);
+  return TRUE;
+}
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
 static gboolean
 enumerate_refs_recurse (OstreeRepo    *repo,
                         const char    *remote,
