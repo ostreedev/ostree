@@ -68,7 +68,8 @@ typedef struct {
   OstreeRepo   *repo;
   int           tmpdir_dfd;
   OstreeRepoPullFlags flags;
-  char         *remote_name;
+  char          *remote_name;
+  char          *remote_refspec_name;
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
   OstreeFetcherSecurityState fetcher_security_state;
@@ -3226,7 +3227,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       flags = flags_i;
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
       (void) g_variant_lookup (options, "subdirs", "^a&s", &dirs_to_pull);
-      (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
+      (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_refspec_name);
       opt_gpg_verify_set =
         g_variant_lookup (options, "gpg-verify", "b", &pull_data->gpg_verify);
       opt_gpg_verify_summary_set =
@@ -3242,6 +3243,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
       (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
       (void) g_variant_lookup (options, "timestamp-check", "b", &pull_data->timestamp_check);
+
+      if (pull_data->remote_refspec_name != NULL)
+        pull_data->remote_name = g_strdup (pull_data->remote_refspec_name);
     }
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
@@ -3360,6 +3364,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       g_autofree char *unconfigured_state = NULL;
 
+      g_free (pull_data->remote_name);
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
       /* Fetch GPG verification settings from remote if it wasn't already
@@ -4048,7 +4053,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             ostree_repo_transaction_set_collection_ref (pull_data->repo,
                                                     ref, checksum);
           else
-            ostree_repo_transaction_set_ref (pull_data->repo, pull_data->remote_name,
+            ostree_repo_transaction_set_ref (pull_data->repo,
+                                             (pull_data->remote_refspec_name != NULL) ? pull_data->remote_refspec_name : pull_data->remote_name,
                                              ref->ref_name, checksum);
         }
     }
@@ -5369,6 +5375,8 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
       g_variant_dict_insert (&local_options_dict, "gpg-verify", "b", TRUE);
       g_variant_dict_insert (&local_options_dict, "gpg-verify-summary", "b", FALSE);
       g_variant_dict_insert (&local_options_dict, "inherit-transaction", "b", TRUE);
+      if (result->remote->refspec_name != NULL)
+        g_variant_dict_insert (&local_options_dict, "override-remote-name", "s", result->remote->refspec_name);
       copy_option (&options_dict, &local_options_dict, "depth", G_VARIANT_TYPE ("i"));
       copy_option (&options_dict, &local_options_dict, "disable-static-deltas", G_VARIANT_TYPE ("b"));
       copy_option (&options_dict, &local_options_dict, "http-headers", G_VARIANT_TYPE ("a(ss)"));
@@ -5497,7 +5505,7 @@ check_remote_matches_collection_id (OstreeRepo  *repo,
  * Find the GPG keyring for the given @collection_id, using the local
  * configuration from the given #OstreeRepo. This will search the configured
  * remotes for ones whose `collection-id` key matches @collection_id, and will
- * return the GPG keyring from the first matching remote.
+ * return the first matching remote.
  *
  * If multiple remotes match and have different keyrings, a debug message will
  * be emitted, and the first result will be returned. It is expected that the
@@ -5505,10 +5513,11 @@ check_remote_matches_collection_id (OstreeRepo  *repo,
  *
  * If no match can be found, a %G_IO_ERROR_NOT_FOUND error will be returned.
  *
- * Returns: (transfer full): filename of the GPG keyring for @collection_id
+ * Returns: (transfer full): #OstreeRemote containing the GPG keyring for
+ *    @collection_id
  * Since: 2017.8
  */
-gchar *
+OstreeRemote *
 ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
                                             const gchar   *collection_id,
                                             GCancellable  *cancellable,
@@ -5516,7 +5525,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
 {
   gsize i;
   g_auto(GStrv) remotes = NULL;
-  const OstreeRemote *keyring_remote = NULL;
+  OstreeRemote *keyring_remote = NULL;
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
   g_return_val_if_fail (ostree_validate_collection_id (collection_id, NULL), NULL);
@@ -5566,7 +5575,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
     }
 
   if (keyring_remote != NULL)
-    return g_strdup (keyring_remote->keyring);
+    return ostree_remote_ref (keyring_remote);
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,

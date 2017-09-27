@@ -54,15 +54,24 @@
 OstreeRemote *
 ostree_remote_new (const gchar *name)
 {
+  return ostree_remote_new_dynamic (name, NULL);
+}
+
+OstreeRemote *
+ostree_remote_new_dynamic (const gchar *name,
+                           const gchar *refspec_name)
+{
   OstreeRemote *remote;
 
   g_return_val_if_fail (name != NULL && *name != '\0', NULL);
+  g_return_val_if_fail (refspec_name == NULL || *refspec_name != '\0', NULL);
 
   remote = g_slice_new0 (OstreeRemote);
   remote->ref_count = 1;
   remote->name = g_strdup (name);
-  remote->group = g_strdup_printf ("remote \"%s\"", name);
-  remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", name);
+  remote->refspec_name = g_strdup (refspec_name);
+  remote->group = g_strdup_printf ("remote \"%s\"", (refspec_name != NULL) ? refspec_name : name);
+  remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", (refspec_name != NULL) ? refspec_name : name);
   remote->options = g_key_file_new ();
 
   return remote;

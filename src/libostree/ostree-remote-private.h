@@ -35,17 +35,24 @@
 
 G_BEGIN_DECLS
 
+/* @refspec_name is set if this is a dynamic remote. It’s the name of the static
+ * remote which this one inherits from, and is what should be used in refspecs
+ * for pulls from this remote. If it’s %NULL, @name should be used instead. */
 struct OstreeRemote {
   volatile int ref_count;
   char *name;  /* (not nullable) */
+  char *refspec_name;  /* (nullable) */
   char *group;   /* group name in options (not nullable) */
-  char *keyring; /* keyring name (NAME.trustedkeys.gpg) (not nullable) */
+  char *keyring; /* keyring name ($refspec_name.trustedkeys.gpg) (not nullable) */
   GFile *file;   /* NULL if remote defined in repo/config */
   GKeyFile *options;
 };
 
 G_GNUC_INTERNAL
 OstreeRemote *ostree_remote_new (const gchar *name);
+G_GNUC_INTERNAL
+OstreeRemote *ostree_remote_new_dynamic (const gchar *name,
+                                         const gchar *refspec_name);
 
 G_GNUC_INTERNAL
 OstreeRemote *ostree_remote_new_from_keyfile (GKeyFile    *keyfile,
