@@ -50,6 +50,7 @@ static int opt_random_408s_max = 100;
 static gint opt_port = 0;
 static gchar **opt_expected_cookies;
 static gchar **opt_expected_headers;
+static gboolean opt_require_basic_auth;
 
 static guint emitted_random_500s_count = 0;
 static guint emitted_random_408s_count = 0;
@@ -71,6 +72,7 @@ static GOptionEntry options[] = {
   { "port", 'P', 0, G_OPTION_ARG_INT, &opt_port, "Use the specified TCP port", "PORT" },
   { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH (- for standard output)", "PATH" },
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
+  { "require-basic-auth", 0, 0, G_OPTION_ARG_NONE, &opt_require_basic_auth, "Require username foouser, password barpw", NULL },
   { "random-500s", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_percentage, "Generate random HTTP 500 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
   { "random-500s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_max, "Limit HTTP 500 errors to MAX (default 100)", "MAX" },
   { "random-408s", 0, 0, G_OPTION_ARG_INT, &opt_random_408s_percentage, "Generate random HTTP 408 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
@@ -474,6 +476,13 @@ httpd_callback (SoupServer *server, SoupMessage *msg,
     soup_message_set_status (msg, SOUP_STATUS_NOT_IMPLEMENTED);
 }
 
+static gboolean
+basic_auth_callback (SoupAuthDomain *auth_domain, SoupMessage *msg,
+                     const char *username, const char *password, gpointer data)
+{
+	return g_str_equal (username, "foouser") && g_str_equal (password, "barpw");
+}
+
 static void
 on_dir_changed (GFileMonitor  *mon,
                 GFile *file,
@@ -571,6 +580,15 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
                             SOUP_SERVER_SERVER_HEADER, "ostree-httpd ",
                             NULL);
 #endif
+  if (opt_require_basic_auth)
+    {
+      glnx_unref_object SoupAuthDomain *auth_domain =
+        soup_auth_domain_basic_new (SOUP_AUTH_DOMAIN_REALM, "auth-test",
+                                    SOUP_AUTH_DOMAIN_ADD_PATH, "/",
+                                    SOUP_AUTH_DOMAIN_BASIC_AUTH_CALLBACK, basic_auth_callback,
+                                    NULL);
+      soup_server_add_auth_domain (server, auth_domain);
+    }
 
   soup_server_add_handler (server, NULL, httpd_callback, app, NULL);
   if (opt_port_file)
