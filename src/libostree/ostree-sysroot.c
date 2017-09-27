@@ -197,7 +197,6 @@ ostree_sysroot_init (OstreeSysroot *self)
                                             keys, G_N_ELEMENTS (keys));
 
   self->sysroot_fd = -1;
-  self->lock = (GLnxLockFile)GLNX_LOCK_FILE_INIT;
 }
 
 /**
