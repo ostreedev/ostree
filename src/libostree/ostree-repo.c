@@ -662,7 +662,6 @@ static void
 ostree_repo_init (OstreeRepo *self)
 {
   static gsize gpgme_initialized;
-  GLnxLockFile empty_lockfile = GLNX_LOCK_FILE_INIT;
   const GDebugKey test_error_keys[] = {
     { "pre-commit", OSTREE_REPO_TEST_ERROR_PRE_COMMIT },
   };
@@ -690,7 +689,6 @@ ostree_repo_init (OstreeRepo *self)
   self->tmp_dir_fd = -1;
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
-  self->commit_stagedir_lock = empty_lockfile;
   self->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_UNKNOWN;
 }
 

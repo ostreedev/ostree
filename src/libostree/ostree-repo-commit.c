@@ -1234,7 +1234,7 @@ cleanup_tmpdir (OstreeRepo        *self,
       guint64 delta;
       struct dirent *dent;
       struct stat stbuf;
-      g_auto(GLnxLockFile) lockfile = GLNX_LOCK_FILE_INIT;
+      g_auto(GLnxLockFile) lockfile = { 0, };
       gboolean did_lock;
 
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
