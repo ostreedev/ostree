@@ -85,6 +85,7 @@ typedef struct {
 
   gboolean unused_bools[7];
   int unused_ints[6];
+  /* 4 byte hole on 64 bit */
   gpointer unused_ptrs[7];
 } OstreeDiffDirsOptions;
 

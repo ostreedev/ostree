@@ -26,6 +26,16 @@
 #include "ostree-repo-private.h"
 #include "otutil.h"
 
+/* See ostree-repo.c for a bit more info about these ABI checks */
+#if __SIZEOF_POINTER__ == 8 && __SIZEOF_LONG__ == 8 && __SIZEOF_INT__ == 4
+G_STATIC_ASSERT(sizeof(OstreeDiffDirsOptions) ==
+                sizeof(int) * 2 +
+                sizeof(gpointer) +
+                sizeof(int) * (7+6) +
+                sizeof(int) +  /* hole */
+                sizeof(gpointer) * 7);
+#endif
+
 static gboolean
 get_file_checksum (OstreeDiffFlags  flags,
                    GFile *f,
