@@ -3083,14 +3083,14 @@ initiate_request (OtPullData                 *pull_data,
             g_clear_pointer (&delta_from_revision, g_free);
         }
 
-      /* If the current ref is different from the target, then this is similar
-       * to the below, except we *might* use the previous commit, or we might do
-       * a scratch delta first.
+      /* If the current ref is the same, we don't do a delta request, just a
+       * scan. Otherise, use the previous commit if available, or a scratch
+       * delta.
        */
-      if (!(delta_from_revision && g_str_equal (delta_from_revision, to_revision)))
-        initiate_delta_request (pull_data, delta_from_revision ?: NULL, to_revision, ref);
-      else
+      if (delta_from_revision && g_str_equal (delta_from_revision, to_revision))
         queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
+      else
+        initiate_delta_request (pull_data, delta_from_revision ?: NULL, to_revision, ref);
     }
   else
     {
