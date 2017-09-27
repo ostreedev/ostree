@@ -48,6 +48,10 @@
 
 /* ABI Size checks for ostree-repo.h, only for LP64 systems;
  * https://en.wikipedia.org/wiki/64-bit_computing#64-bit_data_models
+ *
+ * To generate this data, I used `pahole` from gdb. More concretely, `gdb --args
+ * /usr/bin/ostree`, then `start`, (to ensure debuginfo was loaded), then e.g.
+ * `$ pahole OstreeRepoTransactionStats`.
  */
 #if __SIZEOF_POINTER__ == 8 && __SIZEOF_LONG__ == 8 && __SIZEOF_INT__ == 4
 G_STATIC_ASSERT(sizeof(OstreeRepoTransactionStats) == sizeof(int) * 4 + 8 * 5);
