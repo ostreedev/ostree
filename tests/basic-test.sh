@@ -278,7 +278,8 @@ if ! skip_one_without_user_xattrs; then
         opposite_mode=archive
     fi
     ostree_repo_init repo2 --mode=$opposite_mode
-    ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
+    ${CMD_PREFIX} ostree --repo=repo2 pull-local repo >out.txt
+    assert_file_has_content out.txt "[1-9][0-9]* metadata, [1-9][0-9]* content objects imported"
     test2_commitid=$(${CMD_PREFIX} ostree --repo=repo rev-parse test2)
     test2_commit_relpath=/objects/${test2_commitid:0:2}/${test2_commitid:2}.commit
     assert_files_hardlinked repo/${test2_commit_relpath} repo2/${test2_commit_relpath}

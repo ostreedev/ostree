@@ -132,9 +132,9 @@ typedef struct {
   guint             n_fetched_deltapart_fallbacks;
   guint             n_fetched_metadata;
   guint             n_fetched_content;
-  /* Objects from pull --localcache-repo */
-  guint             n_fetched_localcache_metadata;
-  guint             n_fetched_localcache_content;
+  /* Objects imported via hardlink/reflink/copying or  --localcache-repo*/
+  guint             n_imported_metadata;
+  guint             n_imported_content;
 
   gboolean          timestamp_check; /* Verify commit timestamps */
   int               maxdepth;
@@ -261,8 +261,11 @@ update_progress (gpointer user_data)
                              "scanned-metadata", "u", n_scanned_metadata,
                              "bytes-transferred", "t", bytes_transferred,
                              "start-time", "t", start_time,
-                             "metadata-fetched-localcache", "u", pull_data->n_fetched_localcache_metadata,
-                             "content-fetched-localcache", "u", pull_data->n_fetched_localcache_content,
+                             /* We use these status keys even though we now also
+                              * use these values for filesystem-local pulls.
+                              */
+                             "metadata-fetched-localcache", "u", pull_data->n_imported_metadata,
+                             "content-fetched-localcache", "u", pull_data->n_imported_content,
                              /* Deltas */
                              "fetched-delta-parts",
                                   "u", pull_data->n_fetched_deltaparts,
@@ -696,6 +699,7 @@ on_local_object_imported (GObject        *object,
     goto out;
 
  out:
+  pull_data->n_imported_content++;
   g_assert_cmpint (pull_data->n_outstanding_content_write_requests, >, 0);
   pull_data->n_outstanding_content_write_requests--;
   check_outstanding_requests_handle_error (pull_data, &local_error);
@@ -778,7 +782,6 @@ scan_dirtree_object (OtPullData   *pull_data,
                                                      on_local_object_imported, pull_data);
               g_hash_table_add (pull_data->requested_content, g_steal_pointer (&file_checksum));
               did_import_from_cache_repo = TRUE;
-              pull_data->n_fetched_localcache_content++;
               break;
             }
         }
@@ -1793,6 +1796,7 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
        */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
+      pull_data->n_imported_metadata++;
       is_stored = TRUE;
       is_requested = TRUE;
     }
@@ -1824,7 +1828,7 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
             g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
           is_stored = TRUE;
           is_requested = TRUE;
-          pull_data->n_fetched_localcache_metadata++;
+          pull_data->n_imported_metadata++;
           break;
         }
     }
@@ -4078,36 +4082,42 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   end_time = g_get_monotonic_time ();
 
   bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
-  if (bytes_transferred > 0 && pull_data->progress)
+  if (pull_data->progress)
     {
-      guint shift;
       g_autoptr(GString) buf = g_string_new ("");
 
       /* Ensure the rest of the progress keys are set appropriately. */
       update_progress (pull_data);
 
-      if (bytes_transferred < 1024)
-        shift = 1;
-      else
-        shift = 1024;
-
-      if (pull_data->n_fetched_deltaparts > 0)
+      /* See if we did a local-only import */
+      if (pull_data->remote_repo_local)
+        g_string_append_printf (buf, "%u metadata, %u content objects imported",
+                                pull_data->n_imported_metadata, pull_data->n_imported_content);
+      else if (pull_data->n_fetched_deltaparts > 0)
         g_string_append_printf (buf, "%u delta parts, %u loose fetched",
                                 pull_data->n_fetched_deltaparts,
                                 pull_data->n_fetched_metadata + pull_data->n_fetched_content);
       else
         g_string_append_printf (buf, "%u metadata, %u content objects fetched",
                                 pull_data->n_fetched_metadata, pull_data->n_fetched_content);
-      if (pull_data->n_fetched_localcache_metadata ||
-          pull_data->n_fetched_localcache_content)
+      if (!pull_data->remote_repo_local &&
+          (pull_data->n_imported_metadata || pull_data->n_imported_content))
         g_string_append_printf (buf, " (%u meta, %u content local)",
-                                pull_data->n_fetched_localcache_metadata,
-                                pull_data->n_fetched_localcache_content);
+                                pull_data->n_imported_metadata,
+                                pull_data->n_imported_content);
 
-      g_string_append_printf (buf, "; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
-                              (guint64)(bytes_transferred / shift),
-                              shift == 1 ? "B" : "KiB",
-                              (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
+      if (bytes_transferred > 0)
+        {
+          guint shift;
+          if (bytes_transferred < 1024)
+            shift = 1;
+          else
+            shift = 1024;
+          g_string_append_printf (buf, "; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
+                                  (guint64)(bytes_transferred / shift),
+                                  shift == 1 ? "B" : "KiB",
+                                  (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
+        }
 
       ostree_async_progress_set_status (pull_data->progress, buf->str);
     }
