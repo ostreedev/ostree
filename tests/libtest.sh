@@ -141,6 +141,7 @@ setup_test_repository () {
     fi
 
     cd ${test_tmpdir}
+    rm -rf repo
     if test -n "${mode}"; then
         ostree_repo_init repo --mode=${mode}
     else
@@ -152,6 +153,7 @@ setup_test_repository () {
     cd ${test_tmpdir}
     local oldumask="$(umask)"
     umask 022
+    rm -rf files
     mkdir files
     cd files
     ot_files=`pwd`
