@@ -2363,57 +2363,67 @@ ptrarray_path_join (GPtrArray  *path)
 }
 
 static gboolean
-get_modified_xattrs (OstreeRepo                       *self,
-                     OstreeRepoCommitModifier         *modifier,
-                     const char                       *relpath,
-                     GFileInfo                        *file_info,
-                     GFile                            *path,
-                     int                               dfd,
-                     const char                       *dfd_subpath,
-                     GVariant                        **out_xattrs,
-                     GCancellable                     *cancellable,
-                     GError                          **error)
+get_final_xattrs (OstreeRepo                       *self,
+                  OstreeRepoCommitModifier         *modifier,
+                  const char                       *relpath,
+                  GFileInfo                        *file_info,
+                  GFile                            *path,
+                  int                               dfd,
+                  const char                       *dfd_subpath,
+                  GVariant                        **out_xattrs,
+                  gboolean                         *out_modified,
+                  GCancellable                     *cancellable,
+                  GError                          **error)
 {
-  g_autoptr(GVariant) ret_xattrs = NULL;
+  /* track whether the returned xattrs differ from the file on disk */
+  gboolean modified = TRUE;
+  const gboolean skip_xattrs = (modifier &&
+      modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
+                         OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0;
 
-  if (modifier && modifier->xattr_callback)
-    {
-      ret_xattrs = modifier->xattr_callback (self, relpath, file_info,
-                                             modifier->xattr_user_data);
-    }
-  else if (!(modifier && (modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
-                                             OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0)
-           && !self->disable_xattrs)
+  /* fetch on-disk xattrs if needed & not disabled */
+  g_autoptr(GVariant) original_xattrs = NULL;
+  if (!skip_xattrs && !self->disable_xattrs)
     {
       if (path && OSTREE_IS_REPO_FILE (path))
         {
-          if (!ostree_repo_file_get_xattrs (OSTREE_REPO_FILE (path),
-                                            &ret_xattrs,
-                                            cancellable,
-                                            error))
+          if (!ostree_repo_file_get_xattrs (OSTREE_REPO_FILE (path), &original_xattrs,
+                                            cancellable, error))
             return FALSE;
         }
       else if (path)
         {
           if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (path),
-                                             &ret_xattrs, cancellable, error))
+                                             &original_xattrs, cancellable, error))
             return FALSE;
         }
       else if (dfd_subpath == NULL)
         {
           g_assert (dfd != -1);
-          if (!glnx_fd_get_all_xattrs (dfd, &ret_xattrs,
-                                     cancellable, error))
+          if (!glnx_fd_get_all_xattrs (dfd, &original_xattrs, cancellable, error))
             return FALSE;
         }
       else
         {
           g_assert (dfd != -1);
-          if (!glnx_dfd_name_get_all_xattrs (dfd, dfd_subpath, &ret_xattrs,
-                                               cancellable, error))
+          if (!glnx_dfd_name_get_all_xattrs (dfd, dfd_subpath, &original_xattrs,
+                                             cancellable, error))
             return FALSE;
         }
+
+      g_assert (original_xattrs);
     }
+
+  g_autoptr(GVariant) ret_xattrs = NULL;
+  if (modifier && modifier->xattr_callback)
+    {
+      ret_xattrs = modifier->xattr_callback (self, relpath, file_info,
+                                             modifier->xattr_user_data);
+    }
+
+  /* if callback returned NULL or didn't exist, default to on-disk state */
+  if (!ret_xattrs && original_xattrs)
+    ret_xattrs = g_variant_ref (original_xattrs);
 
   if (modifier && modifier->sepolicy)
     {
@@ -2436,10 +2446,9 @@ get_modified_xattrs (OstreeRepo                       *self,
             {
               /* drop out any existing SELinux policy from the set, so we don't end up
                * counting it twice in the checksum */
-              g_autoptr(GVariant) new_ret_xattrs = NULL;
-              new_ret_xattrs = _ostree_filter_selinux_xattr (ret_xattrs);
+              GVariant* new_ret_xattrs = _ostree_filter_selinux_xattr (ret_xattrs);
               g_variant_unref (ret_xattrs);
-              ret_xattrs = g_steal_pointer (&new_ret_xattrs);
+              ret_xattrs = new_ret_xattrs;
             }
 
           /* ret_xattrs may be NULL */
@@ -2458,8 +2467,13 @@ get_modified_xattrs (OstreeRepo                       *self,
         }
     }
 
+  if (original_xattrs && ret_xattrs && g_variant_equal (original_xattrs, ret_xattrs))
+    modified = FALSE;
+
   if (out_xattrs)
     *out_xattrs = g_steal_pointer (&ret_xattrs);
+  if (out_modified)
+    *out_modified = modified;
   return TRUE;
 }
 
@@ -2506,6 +2520,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   g_autoptr(GFileInfo) modified_info = NULL;
   OstreeRepoCommitFilterResult filter_result =
     _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
+  const gboolean child_info_was_modified = !_ostree_gfileinfo_equal (child_info, modified_info);
 
   if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
@@ -2567,16 +2582,26 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   else
     {
       guint64 file_obj_length;
-      const char *loose_checksum;
       g_autoptr(GInputStream) file_input = NULL;
-      g_autoptr(GVariant) xattrs = NULL;
       g_autoptr(GInputStream) file_object_input = NULL;
       g_autofree guchar *child_file_csum = NULL;
       g_autofree char *tmp_checksum = NULL;
 
-      loose_checksum = devino_cache_lookup (self, modifier,
-                                            g_file_info_get_attribute_uint32 (child_info, "unix::device"),
-                                            g_file_info_get_attribute_uint64 (child_info, "unix::inode"));
+      g_autoptr(GVariant) xattrs = NULL;
+      gboolean xattrs_were_modified;
+      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
+                             dfd_iter != NULL ? dfd_iter->fd : -1, name, &xattrs,
+                             &xattrs_were_modified, cancellable, error))
+        return FALSE;
+
+      /* only check the devino cache if the file info & xattrs were not modified */
+      const char *loose_checksum = NULL;
+      if (!child_info_was_modified && !xattrs_were_modified)
+        {
+          guint32 dev = g_file_info_get_attribute_uint32 (child_info, "unix::device");
+          guint64 inode = g_file_info_get_attribute_uint64 (child_info, "unix::inode");
+          loose_checksum = devino_cache_lookup (self, modifier, dev, inode);
+        }
 
       if (loose_checksum)
         {
@@ -2601,12 +2626,6 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                     return FALSE;
                 }
             }
-
-          if (!get_modified_xattrs (self, modifier,
-                                    child_relpath, child_info, child, dfd_iter != NULL ? dfd_iter->fd : -1, name,
-                                    &xattrs,
-                                    cancellable, error))
-            return FALSE;
 
           if (!ostree_raw_file_to_content_stream (file_input,
                                                   modified_info, xattrs,
@@ -2681,10 +2700,8 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
-          if (!get_modified_xattrs (self, modifier, relpath, child_info,
-                                    dir, -1, NULL,
-                                    &xattrs,
-                                    cancellable, error))
+          if (!get_final_xattrs (self, modifier, relpath, child_info, dir, -1, NULL,
+                                 &xattrs, NULL, cancellable, error))
             return FALSE;
 
           g_autofree guchar *child_file_csum = NULL;
@@ -2768,10 +2785,8 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
 
   if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
-      if (!get_modified_xattrs (self, modifier, relpath, modified_info,
-                                NULL, src_dfd_iter->fd, NULL,
-                                &xattrs,
-                                cancellable, error))
+      if (!get_final_xattrs (self, modifier, relpath, modified_info, NULL, src_dfd_iter->fd,
+                             NULL, &xattrs, NULL, cancellable, error))
         return FALSE;
 
       if (!_ostree_repo_write_directory_meta (self, modified_info, xattrs, &child_file_csum,
@@ -2800,16 +2815,6 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
       struct stat stbuf;
       if (!glnx_fstatat (src_dfd_iter->fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
         return FALSE;
-
-      const char *loose_checksum = devino_cache_lookup (self, modifier, stbuf.st_dev, stbuf.st_ino);
-      if (loose_checksum)
-        {
-          if (!ostree_mutable_tree_replace_file (mtree, dent->d_name, loose_checksum,
-                                                 error))
-            return FALSE;
-
-          continue;
-        }
 
       g_autoptr(GFileInfo) child_info = _ostree_stbuf_to_gfileinfo (&stbuf);
       g_file_info_set_name (child_info, dent->d_name);
