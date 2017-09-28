@@ -262,14 +262,14 @@ test_devino_cache_xattrs (void)
   g_assert_no_error (error);
   g_assert (ret);
 
-  gboolean on_overlay;
-  ret = ot_check_for_overlay (&on_overlay, &error);
+  gboolean can_relabel;
+  ret = ot_check_relabeling (&can_relabel, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
-  if (on_overlay)
+  if (!can_relabel)
     {
-      g_test_skip ("overlayfs detected");
+      g_test_skip ("this test requires full xattr support");
       return;
     }
 

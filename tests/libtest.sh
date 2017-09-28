@@ -70,16 +70,44 @@ chmod -R u+w "${test_tmpdir}"
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
-# See comment in ot-builtin-commit.c and https://github.com/ostreedev/ostree/issues/758
-# Also keep this in sync with the bits in libostreetest.c
-echo evaluating for overlayfs...
-case $(stat -f --printf '%T' /) in
-    overlayfs)
-        echo "overlayfs found; enabling OSTREE_NO_XATTRS"
-        export OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},no-xattrs"
-        export OSTREE_NO_XATTRS=1 ;;
-    *) ;;
-esac
+_have_selinux_relabel=''
+have_selinux_relabel() {
+    assert_has_setfattr
+    if test "${_have_selinux_relabel}" = ''; then
+        pushd ${test_tmpdir}
+        echo testlabel > testlabel.txt
+        selinux_xattr=security.selinux
+        if getfattr --encoding=base64 -n ${selinux_xattr} testlabel.txt >label.txt 2>err.txt; then
+            label=$(grep -E -e "^${selinux_xattr}=" < label.txt |sed -e "s,${selinux_xattr}=,,")
+            if setfattr -n ${selinux_xattr} -v ${label} testlabel.txt 2>err.txt; then
+                echo "SELinux enabled in $(pwd), and have privileges to relabel"
+                _have_selinux_relabel=yes
+            else
+                sed -e 's/^/# /' < err.txt >&2
+                echo "Found SELinux label, but unable to set (Unprivileged Docker?)"
+                _have_selinux_relabel=no
+            fi
+        else
+            sed -e 's/^/# /' < err.txt >&2
+            echo "Unable to retrieve SELinux label, assuming disabled"
+            _have_selinux_relabel=no
+        fi
+        popd
+    fi
+    test ${_have_selinux_relabel} = yes
+}
+
+# just globally turn off xattrs if we can't manipulate security xattrs; this is
+# the case for overlayfs -- really, we should only enforce this for tests that
+# use bare repos; separate from other tests that should check for user xattrs
+# support
+# see https://github.com/ostreedev/ostree/issues/758
+# and https://github.com/ostreedev/ostree/pull/1217
+echo -n checking for xattrs...
+if ! have_selinux_relabel; then
+    export OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},no-xattrs"
+    export OSTREE_NO_XATTRS=1
+fi
 echo done
 
 if test -n "${OT_TESTS_DEBUG:-}"; then
@@ -516,12 +544,15 @@ os_repository_new_commit ()
     cd ${test_tmpdir}
 }
 
-# Usage: if ! skip_one_without_user_xattrs; then ... more tests ...; fi
-_have_user_xattrs=''
-have_user_xattrs() {
+assert_has_setfattr() {
     if ! which setfattr 2>/dev/null; then
         fatal "no setfattr available to determine xattr support"
     fi
+}
+
+_have_user_xattrs=''
+have_user_xattrs() {
+    assert_has_setfattr
     if test "${_have_user_xattrs}" = ''; then
         touch test-xattrs
         if setfattr -n user.testvalue -v somevalue test-xattrs 2>/dev/null; then
@@ -533,6 +564,8 @@ have_user_xattrs() {
     fi
     test ${_have_user_xattrs} = yes
 }
+
+# Usage: if ! skip_one_without_user_xattrs; then ... more tests ...; fi
 skip_one_without_user_xattrs () {
     if ! have_user_xattrs; then
         echo "ok # SKIP - this test requires xattr support"
@@ -554,21 +587,8 @@ skip_without_user_xattrs () {
 # https://github.com/ostreedev/ostree/pull/759
 # https://github.com/ostreedev/ostree/pull/1217
 skip_without_no_selinux_or_relabel () {
-    cd ${test_tmpdir}
-    echo testlabel > testlabel.txt
-    selinux_xattr=security.selinux
-    if getfattr --encoding=base64 -n ${selinux_xattr} testlabel.txt >label.txt 2>err.txt; then
-        label=$(grep -E -e "^${selinux_xattr}=" < label.txt |sed -e "s,${selinux_xattr}=,,")
-        if setfattr -n ${selinux_xattr} -v ${label} testlabel.txt 2>err.txt; then
-            echo "SELinux enabled in $(pwd), and have privileges to relabel"
-            return 0
-        else
-            sed -e 's/^/# /' < err.txt >&2
-            skip "Found SELinux label, but unable to set (Unprivileged Docker?)"
-        fi
-    else
-        sed -e 's/^/# /' < err.txt >&2
-        skip "Unable to retrieve SELinux label, assuming disabled"
+    if ! have_selinux_relabel; then
+        skip "this test requires xattr support"
     fi
 }
 
