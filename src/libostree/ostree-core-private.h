@@ -89,6 +89,7 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
                                    GError        **error);
 
 GFileInfo * _ostree_stbuf_to_gfileinfo (const struct stat *stbuf);
+gboolean _ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b);
 GFileInfo * _ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid);
 
 static inline void

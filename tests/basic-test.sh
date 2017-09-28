@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((72 + ${extra_basic_tests:-0}))"
+echo "1..$((73 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -601,6 +601,24 @@ rm -rf test2-checkout
 $OSTREE checkout test2 test2-checkout
 (cd test2-checkout && $OSTREE commit ${COMMIT_ARGS} --link-checkout-speedup -b test2 -s "tmp")
 echo "ok commit with link speedup"
+
+cd ${test_tmpdir}
+rm -rf test2-checkout
+$OSTREE checkout test2 test2-checkout
+# set cow to different perms, but re-set cowro to the same perms
+cat > statoverride.txt <<EOF
+=$((0600)) /baz/cow
+=$((0600)) /baz/cowro
+EOF
+$OSTREE commit ${COMMIT_ARGS} --statoverride=statoverride.txt \
+  --table-output --link-checkout-speedup -b test2-tmp test2-checkout > stats.txt
+$OSTREE diff test2 test2-tmp > diff-test2
+assert_file_has_content diff-test2 'M */baz/cow$'
+assert_not_file_has_content diff-test2 'M */baz/cowro$'
+assert_not_file_has_content diff-test2 'baz/saucer'
+# only /baz/cow is a cache miss
+assert_file_has_content stats.txt '^Content Written: 1$'
+echo "ok commit with link speedup and modifier"
 
 cd ${test_tmpdir}
 $OSTREE ls test2

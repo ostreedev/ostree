@@ -1568,10 +1568,50 @@ _ostree_stbuf_to_gfileinfo (const struct stat *stbuf)
   g_file_info_set_attribute_uint32 (ret, "unix::uid", stbuf->st_uid);
   g_file_info_set_attribute_uint32 (ret, "unix::gid", stbuf->st_gid);
   g_file_info_set_attribute_uint32 (ret, "unix::mode", mode);
+
+  /* those aren't stored by ostree, but used by the devino cache */
+  g_file_info_set_attribute_uint32 (ret, "unix::device", stbuf->st_dev);
+  g_file_info_set_attribute_uint64 (ret, "unix::inode", stbuf->st_ino);
+
   if (S_ISREG (mode))
     g_file_info_set_attribute_uint64 (ret, "standard::size", stbuf->st_size);
 
   return ret;
+}
+
+/**
+ * _ostree_gfileinfo_equal:
+ * @a: First file info
+ * @b: Second file info
+ *
+ * OSTree only cares about a subset of file attributes. This function
+ * checks whether two #GFileInfo objects are equal as far as OSTree is
+ * concerned.
+ *
+ * Returns: TRUE if the #GFileInfo objects are OSTree-equivalent.
+ */
+gboolean
+_ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b)
+{
+  /* trivial case */
+  if (a == b)
+    return TRUE;
+
+#define CHECK_ONE_ATTR(type, attr, a, b) \
+    do { if (g_file_info_get_attribute_##type(a, attr) != \
+             g_file_info_get_attribute_##type(b, attr)) \
+           return FALSE; \
+    } while (0)
+
+  CHECK_ONE_ATTR (uint32, "unix::uid", a, b);
+  CHECK_ONE_ATTR (uint32, "unix::gid", a, b);
+  CHECK_ONE_ATTR (uint32, "unix::mode", a, b);
+  CHECK_ONE_ATTR (uint32, "standard::type", a, b);
+  CHECK_ONE_ATTR (uint64, "standard::size", a, b);
+
+#undef CHECK_ONE_ATTR
+
+  return TRUE;
 }
 
 GFileInfo *
