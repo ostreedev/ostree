@@ -871,10 +871,14 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
   if (opts->autocreate_parents &&
       ostree_mutable_tree_get_metadata_checksum (mtree) == NULL)
     {
-      glnx_unref_object GFileInfo *fi = g_file_info_new ();
-      g_file_info_set_attribute_uint32 (fi, "unix::uid", 0);
-      g_file_info_set_attribute_uint32 (fi, "unix::gid", 0);
-      g_file_info_set_attribute_uint32 (fi, "unix::mode", DEFAULT_DIRMODE);
+      /* _ostree_stbuf_to_gfileinfo() only looks at these fields,
+       * but we use it to ensure it sets all of the relevant GFileInfo
+       * properties.
+       */
+      struct stat stbuf = { .st_mode = DEFAULT_DIRMODE,
+                            .st_uid = 0,
+                            .st_gid = 0 };
+      g_autoptr(GFileInfo) fi = _ostree_stbuf_to_gfileinfo (&stbuf);
 
       g_autoptr(GFileInfo) mfi = NULL;
       (void)_ostree_repo_commit_modifier_apply (self, modifier, "/",
