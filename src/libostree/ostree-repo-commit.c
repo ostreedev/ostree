@@ -2377,12 +2377,13 @@ get_final_xattrs (OstreeRepo                       *self,
 {
   /* track whether the returned xattrs differ from the file on disk */
   gboolean modified = TRUE;
+  const gboolean skip_xattrs = (modifier &&
+      modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
+                         OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0;
 
   /* fetch on-disk xattrs if needed & not disabled */
   g_autoptr(GVariant) original_xattrs = NULL;
-  if (!(modifier && (modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
-                                        OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0)
-      && !self->disable_xattrs)
+  if (!skip_xattrs && !self->disable_xattrs)
     {
       if (path && OSTREE_IS_REPO_FILE (path))
         {
