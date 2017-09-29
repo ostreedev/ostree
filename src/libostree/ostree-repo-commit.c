@@ -38,6 +38,10 @@
 #include "ostree-checksum-input-stream.h"
 #include "ostree-varint.h"
 
+/* The objects/ directory has a two-character directory prefix for checksums
+ * to avoid putting lots of files in a single directory.   This technique
+ * is quite old, but Git also uses it for example.
+ */
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      const char     *loose_path,
@@ -60,6 +64,7 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
   return TRUE;
 }
 
+/* This GVariant is the header for content objects (regfiles and symlinks) */
 static GVariant *
 create_file_metadata (guint32       uid,
                       guint32       gid,
@@ -82,6 +87,7 @@ create_file_metadata (guint32       uid,
   return ret_metadata;
 }
 
+/* bare-user repositories store file metadata as a user xattr */
 gboolean
 _ostree_write_bareuser_metadata (int fd,
                                  guint32       uid,
@@ -295,6 +301,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
   return TRUE;
 }
 
+/* This is used by OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES */
 typedef struct
 {
   goffset unpacked;
@@ -424,6 +431,10 @@ _ostree_repo_open_content_bare (OstreeRepo          *self,
                                         out_tmpf, error);
 }
 
+/* Used by static deltas, which have a separate "push" flow for
+ * regfile objects distinct from the "pull" model used by
+ * write_content_object().
+ */
 gboolean
 _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           const char          *checksum,
@@ -446,6 +457,10 @@ _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                       cancellable, error);
 }
 
+/* Allocate an O_TMPFILE, write everything from @input to it, but
+ * not exceeding @length.  Used for every object in archive repos,
+ * and content objects in all bare-type repos.
+ */
 static gboolean
 create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
                                               guint64 length,
@@ -498,7 +513,12 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
   return TRUE;
 }
 
-/* Write a content object. */
+/* The main driver for writing a content (regfile or symlink) object.
+ * There are a variety of tricky cases here; for example, bare-user
+ * repos store symlinks as regular files.  Computing checksums
+ * is optional; if @out_csum is `NULL`, we assume the caller already
+ * knows the checksum.
+ */
 static gboolean
 write_content_object (OstreeRepo         *self,
                       const char         *expected_checksum,
@@ -766,6 +786,7 @@ write_content_object (OstreeRepo         *self,
   return TRUE;
 }
 
+/* Main driver for writing a metadata (non-content) object. */
 static gboolean
 write_metadata_object (OstreeRepo         *self,
                        OstreeObjectType    objtype,
@@ -888,6 +909,9 @@ write_metadata_object (OstreeRepo         *self,
   return TRUE;
 }
 
+/* Look in a single subdirectory of objects/, building up the
+ * (device,inode) → checksum map.
+ */
 static gboolean
 scan_one_loose_devino (OstreeRepo                     *self,
                        int                             object_dir_fd,
@@ -969,6 +993,7 @@ scan_one_loose_devino (OstreeRepo                     *self,
   return TRUE;
 }
 
+/* Used by ostree_repo_scan_hardlinks(); see that function for more information. */
 static gboolean
 scan_loose_devino (OstreeRepo                     *self,
                    GHashTable                     *devino_cache,
@@ -995,6 +1020,8 @@ scan_loose_devino (OstreeRepo                     *self,
   return TRUE;
 }
 
+/* Loook up a (device,inode) pair in our cache, and see if it maps to a known
+ * checksum. */
 static const char *
 devino_cache_lookup (OstreeRepo           *self,
                      OstreeRepoCommitModifier *modifier,
@@ -1122,6 +1149,12 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   return TRUE;
 }
 
+/* Called for commit, to iterate over the "staging" directory and rename all the
+ * objects into the primary objects/ location. Notably this is called only after
+ * syncfs() has potentially been invoked to ensure that all objects have been
+ * written to disk.  In the future we may enhance this; see
+ * https://github.com/ostreedev/ostree/issues/1184
+ */
 static gboolean
 rename_pending_loose_objects (OstreeRepo        *self,
                               GCancellable      *cancellable,
@@ -1217,6 +1250,12 @@ rename_pending_loose_objects (OstreeRepo        *self,
   return TRUE;
 }
 
+/* Look in repo/tmp and delete files that are older than a day (by default).
+ * This used to be primarily used by the libsoup fetcher which stored partially
+ * written objects.  In practice now that that isn't done anymore, we should
+ * use different logic here.  Some more information in
+ * https://github.com/ostreedev/ostree/issues/713
+ */
 static gboolean
 cleanup_tmpdir (OstreeRepo        *self,
                 GCancellable      *cancellable,
@@ -1560,6 +1599,17 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   return TRUE;
 }
 
+/**
+ * ostree_repo_abort_transaction:
+ * @self: An #OstreeRepo
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Abort the active transaction; any staged objects and ref changes will be
+ * discarded. You *must* invoke this if you have chosen not to invoke
+ * ostree_repo_commit_transaction(). Calling this function when not in a
+ * transaction will do nothing and return successfully.
+ */
 gboolean
 ostree_repo_abort_transaction (OstreeRepo     *self,
                                GCancellable   *cancellable,
@@ -1814,6 +1864,15 @@ ostree_repo_write_metadata_async (OstreeRepo               *self,
   g_object_unref (asyncdata->result);
 }
 
+/**
+ * ostree_repo_write_metadata_finish:
+ * @self: Repo
+ * @result: Result
+ * @out_csum: (out) (array fixed-size=32) (element-type guint8): Binary checksum value
+ * @error: Error
+ *
+ * Complete a call to ostree_repo_write_metadata_async().
+ */
 gboolean
 ostree_repo_write_metadata_finish (OstreeRepo        *self,
                                    GAsyncResult      *result,
@@ -1835,6 +1894,9 @@ ostree_repo_write_metadata_finish (OstreeRepo        *self,
   return TRUE;
 }
 
+/* Write an object of type OSTREE_OBJECT_TYPE_DIR_META, using @file_info and @xattrs.
+ * Return its (binary) checksum in @out_csum.
+ */
 gboolean
 _ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    GFileInfo    *file_info,
@@ -1843,13 +1905,11 @@ _ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    GCancellable *cancellable,
                                    GError      **error)
 {
-  g_autoptr(GVariant) dirmeta = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  dirmeta = ostree_create_directory_metadata (file_info, xattrs);
-
+  g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (file_info, xattrs);
   return ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_DIR_META, NULL,
                                      dirmeta, out_csum, cancellable, error);
 }
@@ -2230,6 +2290,9 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   return TRUE;
 }
 
+/* This generates an in-memory OSTREE_OBJECT_TYPE_DIR_TREE variant, using the
+ * content objects and subdirectories. The input hashes will be sorted
+ */
 static GVariant *
 create_tree_variant_from_hashes (GHashTable            *file_checksums,
                                  GHashTable            *dir_contents_checksums,
@@ -2341,6 +2404,7 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
   return result;
 }
 
+/* Convert @path into a string */
 static char *
 ptrarray_path_join (GPtrArray  *path)
 {
