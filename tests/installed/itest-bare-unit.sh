@@ -22,4 +22,6 @@ cd ${tempdir}
 # fixing that would require installing g-d-t-r, though
 # more ideally we architect things with a "control" container
 # distinct from the host.
+export G_TEST_SRCDIR=$(realpath $dn/../..)
 /usr/libexec/installed-tests/libostree/test-basic.sh
+/usr/libexec/installed-tests/libostree/test-basic-c
