@@ -70,6 +70,12 @@ chmod -R u+w "${test_tmpdir}"
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
+assert_has_setfattr() {
+    if ! which setfattr 2>/dev/null; then
+        fatal "no setfattr available to determine xattr support"
+    fi
+}
+
 _have_selinux_relabel=''
 have_selinux_relabel() {
     assert_has_setfattr
@@ -542,12 +548,6 @@ os_repository_new_commit ()
 
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b $branch -s "Build"
     cd ${test_tmpdir}
-}
-
-assert_has_setfattr() {
-    if ! which setfattr 2>/dev/null; then
-        fatal "no setfattr available to determine xattr support"
-    fi
 }
 
 _have_user_xattrs=''
