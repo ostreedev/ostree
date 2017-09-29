@@ -267,7 +267,13 @@ test_devino_cache_xattrs (void)
   g_assert_no_error (error);
   g_assert (ret);
 
-  if (!can_relabel)
+  gboolean has_user_xattrs;
+  ret = ot_check_user_xattrs (&has_user_xattrs, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  /* we need both because we're bare and our tests target user xattrs */
+  if (!can_relabel || !has_user_xattrs)
     {
       g_test_skip ("this test requires full xattr support");
       return;
