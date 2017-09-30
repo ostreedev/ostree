@@ -246,7 +246,7 @@ ostree_bloom_set_bit (OstreeBloom *bloom,
 {
   g_assert (bloom->is_mutable);
   g_assert (idx / 8 < bloom->n_bytes);
-  bloom->mutable_bytes[idx / 8] |= (1 << (idx % 8));
+  bloom->mutable_bytes[idx / 8] |= (guint8) (1 << (idx % 8));
 }
 
 /**
