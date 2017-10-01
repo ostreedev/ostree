@@ -83,14 +83,23 @@ Boston, MA 02111-1307, USA.
                   your organisation or repository using a dot prefix. The values
                   must be in GVariant text format. For example,
                   <command>exampleos.end-of-life "@t 1445385600"</command>.
-                </para></listitem>
+                </para>
+
+                <!-- FIXME: Uncomment this when collection ID support becomes non-experimental.
+                <para>If the repository has a collection ID configured, the
+                  <filename>ostree-metadata</filename> branch for that collection ID
+                  will also be updated with a new commit containing the given metadata,
+                  which will be signed if the summary file is signed.</para>
+                -->
+
+                </listitem>
             </varlistentry>
 
             <varlistentry>
                 <term><option>--gpg-sign</option>=KEYID</term>
 
                 <listitem><para>
-                    GPG Key ID to sign the delta with.
+                    GPG Key ID to sign the summary with.
                 </para></listitem>
             </varlistentry>
 
