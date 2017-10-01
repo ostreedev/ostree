@@ -25,12 +25,13 @@
 
 #include <string.h>
 
+static const char syslinux_config_path[] = "boot/syslinux/syslinux.cfg";
+
 struct _OstreeBootloaderSyslinux
 {
   GObject       parent_instance;
 
   OstreeSysroot  *sysroot;
-  GFile          *config_path;
 };
 
 typedef GObjectClass OstreeBootloaderSyslinuxClass;
@@ -46,8 +47,11 @@ _ostree_bootloader_syslinux_query (OstreeBootloader *bootloader,
                                    GError          **error)
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
+  struct stat stbuf;
 
-  *out_is_active = g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
+  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, syslinux_config_path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  *out_is_active = (errno == 0);
   return TRUE;
 }
 
@@ -107,12 +111,12 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
-  g_autoptr(GFile) new_config_path =
-    ot_gfile_resolve_path_printf (self->sysroot->path, "boot/loader.%d/syslinux.cfg", bootversion);
+  g_autofree char *new_config_path =
+    g_strdup_printf ("boot/loader.%d/syslinux.cfg", bootversion);
 
   /* This should follow the symbolic link to the current bootversion. */
   g_autofree char *config_contents =
-    glnx_file_get_contents_utf8_at (AT_FDCWD, gs_file_get_path_cached (self->config_path), NULL,
+    glnx_file_get_contents_utf8_at (self->sysroot->sysroot_fd, syslinux_config_path, NULL,
                                     cancellable, error);
   if (!config_contents)
     return FALSE;
@@ -206,12 +210,10 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
     return FALSE;
 
   g_autofree char *new_config_contents = _ostree_sysroot_join_lines (new_lines);
-  g_autoptr(GBytes) new_config_contents_bytes =
-    g_bytes_new_static (new_config_contents,
-                        strlen (new_config_contents));
-
-  if (!ot_gfile_replace_contents_fsync (new_config_path, new_config_contents_bytes,
-                                        cancellable, error))
+  if (!glnx_file_replace_contents_at (self->sysroot->sysroot_fd, new_config_path,
+                                      (guint8*)new_config_contents, strlen (new_config_contents),
+                                      GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                      cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -223,7 +225,6 @@ _ostree_bootloader_syslinux_finalize (GObject *object)
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (object);
 
   g_clear_object (&self->sysroot);
-  g_clear_object (&self->config_path);
 
   G_OBJECT_CLASS (_ostree_bootloader_syslinux_parent_class)->finalize (object);
 }
@@ -254,6 +255,5 @@ _ostree_bootloader_syslinux_new (OstreeSysroot *sysroot)
 {
   OstreeBootloaderSyslinux *self = g_object_new (OSTREE_TYPE_BOOTLOADER_SYSLINUX, NULL);
   self->sysroot = g_object_ref (sysroot);
-  self->config_path = g_file_resolve_relative_path (self->sysroot->path, "boot/syslinux/syslinux.cfg");
   return self;
 }
