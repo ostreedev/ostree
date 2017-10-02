@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..31"
+echo "1..32"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -237,6 +237,14 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo-local pull-local otherrepo localbranch
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local rev-parse localbranch
 ${CMD_PREFIX} ostree --repo=mirrorrepo-local fsck
 echo "ok pull-local mirror errors with mixed refs"
+
+rm -f otherrepo/summary
+if ${CMD_PREFIX} ostree --repo=mirrorrepo-local pull-local otherrepo nosuchbranch 2>err.txt; then
+    fatal "pulled nonexistent branch"
+fi
+# So true
+assert_file_has_content_literal err.txt "error: Refspec 'nosuchbranch' not found"
+echo "ok pull-local nonexistent branch"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main

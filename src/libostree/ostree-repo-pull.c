@@ -844,7 +844,7 @@ fetch_ref_contents (OtPullData                 *pull_data,
     {
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
       if (!ostree_repo_resolve_collection_ref (pull_data->remote_repo_local,
-                                               ref, TRUE  /* ignore enoent */,
+                                               ref, FALSE,
                                                OSTREE_REPO_RESOLVE_REV_EXT_NONE,
                                                &ret_contents, cancellable, error))
         return FALSE;
@@ -855,7 +855,7 @@ fetch_ref_contents (OtPullData                 *pull_data,
   else if (pull_data->remote_repo_local != NULL)
     {
       if (!ostree_repo_resolve_rev_ext (pull_data->remote_repo_local,
-                                        ref->ref_name, TRUE  /* ignore enoent */,
+                                        ref->ref_name, FALSE,
                                         OSTREE_REPO_RESOLVE_REV_EXT_NONE,
                                         &ret_contents, error))
         return FALSE;
@@ -874,14 +874,13 @@ fetch_ref_contents (OtPullData                 *pull_data,
                                                   filename, &ret_contents,
                                                   cancellable, error))
         return FALSE;
+
+      g_strchomp (ret_contents);
     }
 
-  /* Validate and return. */
-  if (ret_contents != NULL)
-    g_strchomp (ret_contents);
+  g_assert (ret_contents);
 
-  if (ret_contents == NULL ||
-      !ostree_validate_checksum_string (ret_contents, error))
+  if (!ostree_validate_checksum_string (ret_contents, error))
     return glnx_prefix_error (error, "Fetching checksum for ref (%s, %s)",
                               ref->collection_id ? ref->collection_id : "(empty)",
                               ref->ref_name);
