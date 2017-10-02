@@ -209,14 +209,14 @@ static void queue_scan_one_metadata_object_c (OtPullData                *pull_da
                                               guint                      recursion_depth,
                                               const OstreeCollectionRef *ref);
 
-static gboolean scan_one_metadata_object_c (OtPullData                 *pull_data,
-                                            const guchar               *csum,
-                                            OstreeObjectType            objtype,
-                                            const char                 *path,
-                                            guint                       recursion_depth,
-                                            const OstreeCollectionRef  *ref,
-                                            GCancellable               *cancellable,
-                                            GError                    **error);
+static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
+                                          const char                 *checksum,
+                                          OstreeObjectType            objtype,
+                                          const char                 *path,
+                                          guint                       recursion_depth,
+                                          const OstreeCollectionRef  *ref,
+                                          GCancellable               *cancellable,
+                                          GError                    **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
 
 static gboolean
@@ -450,6 +450,11 @@ scan_object_queue_data_free (ScanObjectQueueData *scan_data)
   g_free (scan_data);
 }
 
+/* Called out of the main loop to process the "scan object queue", which is a
+ * queue of metadata objects (commits and dirtree, but not dirmeta) to parse to
+ * look for further objects. Basically wraps execution of
+ * `scan_one_metadata_object()`.
+ */
 static gboolean
 idle_worker (gpointer user_data)
 {
@@ -464,14 +469,11 @@ idle_worker (gpointer user_data)
       return G_SOURCE_REMOVE;
     }
 
-  scan_one_metadata_object_c (pull_data,
-                              scan_data->csum,
-                              scan_data->objtype,
-                              scan_data->path,
-                              scan_data->recursion_depth,
-                              scan_data->requested_ref,
-                              pull_data->cancellable,
-                              &error);
+  char checksum[OSTREE_SHA256_STRING_LEN+1];
+  ostree_checksum_inplace_from_bytes (scan_data->csum, checksum);
+  scan_one_metadata_object (pull_data, checksum, scan_data->objtype,
+                            scan_data->path, scan_data->recursion_depth,
+                            scan_data->requested_ref, pull_data->cancellable, &error);
   check_outstanding_requests_handle_error (pull_data, &error);
   scan_object_queue_data_free (scan_data);
 
@@ -1752,18 +1754,21 @@ queue_scan_one_metadata_object_c (OtPullData                *pull_data,
   ensure_idle_queued (pull_data);
 }
 
+/* Called out of the main loop to look at metadata objects which can have
+ * further references (commit, dirtree). See also idle_worker() which drives
+ * execution of this function.
+ */
 static gboolean
-scan_one_metadata_object_c (OtPullData                 *pull_data,
-                            const guchar                 *csum,
-                            OstreeObjectType            objtype,
-                            const char                 *path,
-                            guint                       recursion_depth,
-                            const OstreeCollectionRef  *ref,
-                            GCancellable               *cancellable,
-                            GError                    **error)
+scan_one_metadata_object (OtPullData                 *pull_data,
+                          const char                 *checksum,
+                          OstreeObjectType            objtype,
+                          const char                 *path,
+                          guint                       recursion_depth,
+                          const OstreeCollectionRef  *ref,
+                          GCancellable               *cancellable,
+                          GError                    **error)
 {
-  g_autofree char *tmp_checksum = ostree_checksum_from_bytes (csum);
-  g_autoptr(GVariant) object = ostree_object_name_serialize (tmp_checksum, objtype);
+  g_autoptr(GVariant) object = ostree_object_name_serialize (checksum, objtype);
 
   /* It may happen that we've already looked at this object (think shared
    * dirtree subtrees), if that's the case, we're done */
@@ -1773,7 +1778,7 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
   gboolean is_requested = g_hash_table_lookup (pull_data->requested_metadata, object) != NULL;
   /* Determine if we already have the object */
   gboolean is_stored;
-  if (!ostree_repo_has_object (pull_data->repo, objtype, tmp_checksum, &is_stored,
+  if (!ostree_repo_has_object (pull_data->repo, objtype, checksum, &is_stored,
                                cancellable, error))
     return FALSE;
 
@@ -1783,19 +1788,19 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
           /* mark as partial to ensure we scan the commit below */
-          if (!write_commitpartial_for (pull_data, tmp_checksum, error))
+          if (!write_commitpartial_for (pull_data, checksum, error))
             return FALSE;
         }
 
       if (!_ostree_repo_import_object (pull_data->repo, pull_data->remote_repo_local,
-                                       objtype, tmp_checksum, pull_data->importflags,
+                                       objtype, checksum, pull_data->importflags,
                                        cancellable, error))
         return FALSE;
       /* The import API will fetch both the commit and detached metadata, so
        * add it to the hash to avoid re-fetching it below.
        */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
+        g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
       pull_data->n_imported_metadata++;
       is_stored = TRUE;
       is_requested = TRUE;
@@ -1808,7 +1813,7 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
           OstreeRepo *refd_repo = pull_data->localcache_repos->pdata[i];
           gboolean localcache_repo_has_obj;
 
-          if (!ostree_repo_has_object (refd_repo, objtype, tmp_checksum,
+          if (!ostree_repo_has_object (refd_repo, objtype, checksum,
                                        &localcache_repo_has_obj, cancellable, error))
             return FALSE;
           if (!localcache_repo_has_obj)
@@ -1816,16 +1821,16 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               /* mark as partial to ensure we scan the commit below */
-              if (!write_commitpartial_for (pull_data, tmp_checksum, error))
+              if (!write_commitpartial_for (pull_data, checksum, error))
                 return FALSE;
             }
           if (!_ostree_repo_import_object (pull_data->repo, refd_repo,
-                                           objtype, tmp_checksum, pull_data->importflags,
+                                           objtype, checksum, pull_data->importflags,
                                            cancellable, error))
             return FALSE;
           /* See comment above */
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-            g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (tmp_checksum));
+            g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
           is_stored = TRUE;
           is_requested = TRUE;
           pull_data->n_imported_metadata++;
@@ -1840,18 +1845,18 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
       g_hash_table_add (pull_data->requested_metadata, g_variant_ref (object));
 
       do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
-      enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, do_fetch_detached, FALSE, ref);
+      enqueue_one_object_request (pull_data, checksum, objtype, path, do_fetch_detached, FALSE, ref);
     }
   else if (is_stored && objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
       /* Even though we already have the commit, we always try to (re)fetch the
        * detached metadata before scanning it, in case new signatures appear.
        * https://github.com/projectatomic/rpm-ostree/issues/630 */
-      if (!g_hash_table_contains (pull_data->fetched_detached_metadata, tmp_checksum))
-        enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, TRUE, TRUE, ref);
+      if (!g_hash_table_contains (pull_data->fetched_detached_metadata, checksum))
+        enqueue_one_object_request (pull_data, checksum, objtype, path, TRUE, TRUE, ref);
       else
         {
-          if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth, ref,
+          if (!scan_commit_object (pull_data, checksum, recursion_depth, ref,
                                    pull_data->cancellable, error))
             return FALSE;
 
@@ -1861,7 +1866,7 @@ scan_one_metadata_object_c (OtPullData                 *pull_data,
     }
   else if (is_stored && objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
     {
-      if (!scan_dirtree_object (pull_data, tmp_checksum, path, recursion_depth,
+      if (!scan_dirtree_object (pull_data, checksum, path, recursion_depth,
                                 pull_data->cancellable, error))
         return FALSE;
 
