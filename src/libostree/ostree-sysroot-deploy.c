@@ -118,6 +118,7 @@ hardlink_or_copy_at (int         src_dfd,
   return TRUE;
 }
 
+/* Copy ownership, mode, and xattrs from source directory to destination */
 static gboolean
 dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
                                   const char    *src_name,
@@ -212,6 +213,9 @@ copy_dir_recurse (int              src_parent_dfd,
   return TRUE;
 }
 
+/* If a chain of directories is added, this function will ensure
+ * they're created.
+ */
 static gboolean
 ensure_directory_from_template (int                 orig_etc_fd,
                                 int                 modified_etc_fd,
@@ -274,12 +278,9 @@ ensure_directory_from_template (int                 orig_etc_fd,
   return TRUE;
 }
 
-/**
- * copy_modified_config_file:
- *
- * Copy @file from @modified_etc to @new_etc, overwriting any existing
- * file there.  The @file may refer to a regular file, a symbolic
- * link, or a directory.  Directories will be copied recursively.
+/* Copy (relative) @path from @modified_etc_fd to @new_etc_fd, overwriting any
+ * existing file there. The @path may refer to a regular file, a symbolic link,
+ * or a directory. Directories will be copied recursively.
  */
 static gboolean
 copy_modified_config_file (int                 orig_etc_fd,
@@ -490,11 +491,9 @@ merge_configuration_from (OstreeSysroot    *sysroot,
   return TRUE;
 }
 
-/**
- * checkout_deployment_tree:
- *
- * Look up @revision in the repository, and check it out in
+/* Look up @revision in the repository, and check it out in
  * /ostree/deploy/OS/deploy/${treecsum}.${deployserial}.
+ * A dfd for the result is returned in @out_deployment_dfd.
  */
 static gboolean
 checkout_deployment_tree (OstreeSysroot     *sysroot,
@@ -676,6 +675,9 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
   return ret;
 }
 
+/* Handles SELinux labeling for /var; this is slated to be deleted.  See
+ * https://github.com/ostreedev/ostree/pull/872
+ */
 static gboolean
 selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
                                OstreeSePolicy                *sepolicy,
@@ -730,6 +732,11 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
   return TRUE;
 }
 
+/* OSTree implements a "3 way" merge model for /etc. For a bit more information
+ * on this, see the manual. This function uses the configuration for
+ * @previous_deployment, and writes the merged configuration into @deployment's
+ * /etc.  If available, we also load the SELinux policy from the new root.
+ */
 static gboolean
 merge_configuration (OstreeSysroot         *sysroot,
                      OstreeRepo            *repo,
@@ -820,6 +827,7 @@ merge_configuration (OstreeSysroot         *sysroot,
   return TRUE;
 }
 
+/* Write the origin file for a deployment. */
 static gboolean
 write_origin_file_internal (OstreeSysroot         *sysroot,
                             OstreeDeployment      *deployment,
@@ -1391,6 +1399,12 @@ full_system_sync (OstreeSysroot     *self,
   return TRUE;
 }
 
+/* Write out the "bootlinks", which are symlinks pointing to deployments.
+ * We might be generating a new bootversion (i.e. updating the bootloader config),
+ * or we might just be generating a "sub-bootversion".
+ *
+ * These new links are made active by swap_bootlinks().
+ */
 static gboolean
 create_new_bootlinks (OstreeSysroot *self,
                       int            bootversion,
@@ -1451,6 +1465,8 @@ create_new_bootlinks (OstreeSysroot *self,
   return TRUE;
 }
 
+/* Rename into place symlinks created via create_new_bootlinks().
+ */
 static gboolean
 swap_bootlinks (OstreeSysroot *self,
                 int            bootversion,
@@ -1512,10 +1528,9 @@ parse_os_release (const char *contents,
   return ret;
 }
 
-/*
- * install_deployment_kernel:
- *
- * Write out an entry in /boot/loader/entries for @deployment.
+/* Given @deployment, prepare it to be booted; basically copying its
+ * kernel/initramfs into /boot/ostree (if needed) and writing out an entry in
+ * /boot/loader/entries.
  */
 static gboolean
 install_deployment_kernel (OstreeSysroot   *sysroot,
@@ -1698,6 +1713,10 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   return TRUE;
 }
 
+/* We generate the symlink on disk, then potentially do a syncfs() to ensure
+ * that it (and everything else we wrote) has hit disk. Only after that do we
+ * rename it into place.
+ */
 static gboolean
 prepare_new_bootloader_link (OstreeSysroot  *sysroot,
                              int             current_bootversion,
@@ -1719,6 +1738,7 @@ prepare_new_bootloader_link (OstreeSysroot  *sysroot,
   return TRUE;
 }
 
+/* Update the /boot/loader symlink to point to /boot/loader.$new_bootversion */
 static gboolean
 swap_bootloader (OstreeSysroot  *sysroot,
                  int             current_bootversion,
@@ -1778,6 +1798,15 @@ assign_bootserials (GPtrArray   *deployments)
   return ret;
 }
 
+/* OSTree implements a special optimization where we want to avoid touching
+ * the bootloader configuration if the kernel layout hasn't changed.  This is
+ * handled by the ostree= kernel argument referring to a "bootlink".  But
+ * we *do* need to update the bootloader configuration if the kernel arguments
+ * change.
+ *
+ * Hence, this function determines if @a and @b are fully compatible from a
+ * bootloader perspective.
+ */
 static gboolean
 deployment_bootconfigs_equal (OstreeDeployment *a,
                               OstreeDeployment *b)
@@ -1841,6 +1870,11 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
   return TRUE;
 }
 
+/* Detect whether or not @path refers to a read-only mountpoint. This is
+ * currently just used to handle a potentially read-only /boot by transiently
+ * remounting it read-write. In the future we might also do this for e.g.
+ * /sysroot.
+ */
 static gboolean
 is_ro_mount (const char *path)
 {
@@ -2380,22 +2414,16 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
                                      GCancellable      *cancellable,
                                      GError           **error)
 {
-  guint i;
-  g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
-  g_autoptr(OstreeDeployment) new_deployment = NULL;
-  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
-  g_autofree char *new_options = NULL;
-  OstreeBootconfigParser *new_bootconfig;
+  g_autoptr(OstreeDeployment) new_deployment = ostree_deployment_clone (deployment);
+  OstreeBootconfigParser *new_bootconfig = ostree_deployment_get_bootconfig (new_deployment);
 
-  new_deployment = ostree_deployment_clone (deployment);
-  new_bootconfig = ostree_deployment_get_bootconfig (new_deployment);
-
-  kargs = _ostree_kernel_args_new ();
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = _ostree_kernel_args_new ();
   _ostree_kernel_args_append_argv (kargs, new_kargs);
-  new_options = _ostree_kernel_args_to_string (kargs);
+  g_autofree char *new_options = _ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (new_bootconfig, "options", new_options);
 
-  for (i = 0; i < self->deployments->len; i++)
+  g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
+  for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *cur = self->deployments->pdata[i];
       if (cur == deployment)
