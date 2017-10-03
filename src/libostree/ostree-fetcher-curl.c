@@ -693,7 +693,7 @@ adopt_steal_mainctx (OstreeFetcher *self,
       guint64 readytime = g_source_get_ready_time (self->timer_event);
       guint64 curtime = g_source_get_time (self->timer_event);
       guint64 timeout_micros = curtime - readytime;
-      if (timeout_micros < 0)
+      if (curtime < readytime)
         timeout_micros = 0;
       update_timeout_cb (self->multi, timeout_micros / 1000, self);
     }
@@ -706,7 +706,7 @@ static void
 initiate_next_curl_request (FetcherRequest *req,
                             GTask *task)
 {
-  CURLMcode rc;
+  CURLcode rc;
   OstreeFetcher *self = req->fetcher;
 
   if (req->easy)
@@ -802,8 +802,8 @@ initiate_next_curl_request (FetcherRequest *req,
   curl_easy_setopt (req->easy, CURLOPT_WRITEDATA, task);
   curl_easy_setopt (req->easy, CURLOPT_PROGRESSDATA, task);
 
-  rc = curl_multi_add_handle (self->multi, req->easy);
-  g_assert (rc == CURLM_OK);
+  CURLMcode multi_rc = curl_multi_add_handle (self->multi, req->easy);
+  g_assert (multi_rc == CURLM_OK);
 }
 
 static void

@@ -163,10 +163,8 @@ ostree_run (int    argc,
 
   if (!command->fn)
     {
-      g_autoptr(GOptionContext) context = NULL;
-      g_autofree char *help = NULL;
-
-      context = ostree_option_context_new_with_commands (commands);
+      g_autoptr(GOptionContext) context =
+        ostree_option_context_new_with_commands (commands);
 
       /* This will not return for some options (e.g. --version). */
       if (ostree_option_context_parse (context, NULL, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, &error))
