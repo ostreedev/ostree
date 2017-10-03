@@ -4328,7 +4328,7 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
 
       if (keyring_data != NULL)
         {
-          _ostree_gpg_verifier_add_keyring_data (verifier, keyring_data);
+          _ostree_gpg_verifier_add_keyring_data (verifier, keyring_data, remote->keyring);
           add_global_keyring_dir = FALSE;
         }
 
