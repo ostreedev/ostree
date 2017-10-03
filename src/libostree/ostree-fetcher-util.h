@@ -25,14 +25,23 @@
 
 G_BEGIN_DECLS
 
-/* FIXME - delete this and replace by having fetchers simply
- * return O_TMPFILE fds, not file paths.
- */
-static inline char *
-ostree_fetcher_generate_url_tmpname (const char *url)
+static inline gboolean
+_ostree_fetcher_tmpf_from_flags (OstreeFetcherRequestFlags flags,
+                                 int                       dfd,
+                                 GLnxTmpfile              *tmpf,
+                                 GError                  **error)
 {
-  return g_compute_checksum_for_string (G_CHECKSUM_SHA256,
-                                        url, strlen (url));
+  if ((flags & OSTREE_FETCHER_REQUEST_LINKABLE) > 0)
+    {
+      if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_RDWR | O_CLOEXEC, tmpf, error))
+        return FALSE;
+    }
+  else if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, tmpf, error))
+    return FALSE;
+
+  if (!glnx_fchmod (tmpf->fd, 0644, error))
+    return FALSE;
+  return TRUE;
 }
 
 gboolean _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher,
