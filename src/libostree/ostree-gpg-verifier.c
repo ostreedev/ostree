@@ -272,6 +272,9 @@ _ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier  *self,
 {
   g_return_if_fail (G_IS_FILE (path));
 
+  g_autofree gchar *path_str = g_file_get_path (path);
+  g_debug ("Adding GPG keyring file %s to verifier", path_str);
+
   self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
 }
 
@@ -280,8 +283,11 @@ _ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier  *self,
  */
 void
 _ostree_gpg_verifier_add_keyring_data (OstreeGpgVerifier  *self,
-                                       GBytes             *keyring)
+                                       GBytes             *keyring,
+                                       const char         *data_source)
 {
+  g_debug ("Adding GPG keyring data from %s to verifier", data_source);
+
   g_ptr_array_add (self->keyring_data, g_bytes_ref (keyring));
 }
 
@@ -289,6 +295,8 @@ void
 _ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self,
                                          const char        *path)
 {
+  g_debug ("Adding GPG key ASCII file %s to verifier", path);
+
   if (!self->key_ascii_files)
     self->key_ascii_files = g_ptr_array_new_with_free_func (g_free);
   g_ptr_array_add (self->key_ascii_files, g_strdup (path));
@@ -318,6 +326,8 @@ _ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier   *self,
   if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE,
                                     &dfd_iter, error))
     return FALSE;
+
+  g_debug ("Adding GPG keyring dir %s to verifier", path);
 
   while (TRUE)
     {

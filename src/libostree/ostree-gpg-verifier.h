@@ -65,7 +65,8 @@ gboolean      _ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *s
                                                            GError            **error);
 
 void _ostree_gpg_verifier_add_keyring_data (OstreeGpgVerifier *self,
-                                            GBytes            *data);
+                                            GBytes            *data,
+                                            const char        *data_source);
 void _ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier *self,
                                             GFile             *path);
 
