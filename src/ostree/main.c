@@ -51,7 +51,7 @@ static OstreeCommand commands[] = {
   { "ls", ostree_builtin_ls },
   { "prune", ostree_builtin_prune },
   { "pull-local", ostree_builtin_pull_local },
-#ifdef HAVE_LIBSOUP 
+#ifdef HAVE_LIBCURL_OR_LIBSOUP
   { "pull", ostree_builtin_pull },
 #endif
   { "refs", ostree_builtin_refs },
