@@ -28,14 +28,13 @@ if test -x /usr/bin/gnome-desktop-testing-runner; then
     gnome-desktop-testing-runner -L ${resultsdir}/gdtr-results -p 0 ${INSTALLED_TESTS_PATTERN:-libostree/}
 fi
 
+# And now a clang build to find unused variables because it does a better
+# job than gcc for vars with cleanups; perhaps in the future these could
+# parallelize
 if test -x /usr/bin/clang; then
-    # always fail on warnings; https://github.com/ostreedev/ostree/pull/971
     # Except for clang-4.0: error: argument unused during compilation: '-specs=/usr/lib/rpm/redhat/redhat-hardened-cc1' [-Werror,-Wunused-command-line-argument]
-    export CFLAGS="-Wno-error=unused-command-line-argument -Werror ${CFLAGS:-}"
+    export CFLAGS="-Wall -Werror -Wno-error=unused-command-line-argument ${CFLAGS:-}"
     git clean -dfx && git submodule foreach git clean -dfx
-    # And now a clang build to find unused variables because it does a better
-    # job than gcc for vars with cleanups; perhaps in the future these could
-    # parallelize
     export CC=clang
     build
 fi
