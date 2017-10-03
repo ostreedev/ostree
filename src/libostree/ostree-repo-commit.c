@@ -2586,9 +2586,22 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
     _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
   const gboolean child_info_was_modified = !_ostree_gfileinfo_equal (child_info, modified_info);
 
+  /* We currently only honor the CONSUME flag in the dfd_iter case to avoid even
+   * more complexity in this function, and it'd mostly only be useful when
+   * operating on local filesystems anyways.
+   */
+  const gboolean delete_after_commit = dfd_iter && modifier &&
+    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME);
+
   if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
       g_ptr_array_remove_index (path, path->len - 1);
+      if (delete_after_commit)
+        {
+          g_assert (dfd_iter);
+          if (!glnx_shutil_rm_rf_at (dfd_iter->fd, name, cancellable, error))
+            return FALSE;
+        }
       /* Note: early return */
       return TRUE;
     }
@@ -2632,6 +2645,12 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                                                  modifier, path,
                                                  cancellable, error))
             return FALSE;
+
+          if (delete_after_commit)
+            {
+              if (!glnx_unlinkat (dfd_iter->fd, name, AT_REMOVEDIR, error))
+                return FALSE;
+            }
         }
     }
   else if (repo_dir)
@@ -2704,6 +2723,12 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
           tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
           if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
                                                  error))
+            return FALSE;
+        }
+
+      if (delete_after_commit)
+        {
+          if (!glnx_unlinkat (dfd_iter->fd, name, 0, error))
             return FALSE;
         }
     }
@@ -2985,6 +3010,17 @@ ostree_repo_write_dfd_to_mtree (OstreeRepo                *self,
   if (!write_dfd_iter_to_mtree_internal (self, &dfd_iter, mtree, modifier, pathbuilder,
                                          cancellable, error))
     return FALSE;
+
+  /* And now finally remove the toplevel; see also the handling for this flag in
+   * the write_dfd_iter_to_mtree_internal() function.
+   */
+  const gboolean delete_after_commit = modifier &&
+    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME);
+  if (delete_after_commit)
+    {
+      if (!glnx_unlinkat (dfd, path, AT_REMOVEDIR, error))
+        return FALSE;
+    }
 
   return TRUE;
 }

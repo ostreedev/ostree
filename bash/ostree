@@ -773,6 +773,7 @@ _ostree_commit() {
         --link-checkout-speedup
         --no-xattrs
         --orphan
+        --consume
         --skip-if-unchanged
         --table-output
         --tar-autocreate-parents

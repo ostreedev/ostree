@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((73 + ${extra_basic_tests:-0}))"
+echo "1..$((74 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -176,6 +176,16 @@ cd checkout-test2-4
 assert_file_has_content yet/another/tree/green 'leaf'
 assert_file_has_content four '4'
 echo "ok cwd contents"
+
+cd ${test_tmpdir}
+rm checkout-test2-l -rf
+$OSTREE checkout ${CHECKOUT_H_ARGS} test2 $test_tmpdir/checkout-test2-l
+date > $test_tmpdir/checkout-test2-l/newdatefile.txt
+$OSTREE commit --link-checkout-speedup --consume -b test2 --tree=dir=$test_tmpdir/checkout-test2-l
+assert_not_has_dir $test_tmpdir/checkout-test2-l
+# Some of the later tests are sensitive to state
+$OSTREE reset test2 test2^
+echo "ok consume (nom nom nom)"
 
 cd ${test_tmpdir}
 $OSTREE commit ${COMMIT_ARGS} -b test2-no-parent -s '' $test_tmpdir/checkout-test2-4
