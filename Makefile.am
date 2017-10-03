@@ -90,13 +90,24 @@ endif # end ENABLE_RUST
 libglnx_srcpath := $(srcdir)/libglnx
 libglnx_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(libglnx_srcpath)"
 libglnx_libs := $(OT_DEP_GIO_UNIX_LIBS)
+# See also autogen.sh and https://github.com/ostreedev/ostree/pull/1274/
+#
+# v2017.12 didn't include test-libglnx-shutil.c, but if you re-run
+# autogen.sh (as we do in Debian, to update the Autotools build system)
+# it will try to build it.
+$(srcdir)/libglnx/Makefile-libglnx.am.inc: $(srcdir)/libglnx/Makefile-libglnx.am
+	sed -e 's,$(libglnx_srcpath),libglnx,g' < $< > $@
 include libglnx/Makefile-libglnx.am.inc
 EXTRA_DIST += libglnx/Makefile-libglnx.am
 noinst_LTLIBRARIES += libglnx.la
 
 libbsdiff_srcpath := $(srcdir)/bsdiff
+
 libbsdiff_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(bsdiff_srcpath)"
 libbsdiff_libs := $(OT_DEP_GIO_UNIX_LIBS)
+# See the comment for the similar libglnx bit above
+$(srcdir)/bsdiff/Makefile-bsdiff.am.inc: $(srcdir)/bsdiff/Makefile-bsdiff.am.inc
+	sed -e 's,$(libbsdiff_srcpath),bsdiff,g' < $< > $@
 include bsdiff/Makefile-bsdiff.am.inc
 EXTRA_DIST += bsdiff/Makefile-bsdiff.am
 noinst_LTLIBRARIES += libbsdiff.la
