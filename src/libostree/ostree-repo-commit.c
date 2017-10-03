@@ -3319,7 +3319,7 @@ import_one_object_direct (OstreeRepo    *dest_repo,
       if (linkat (src_repo->objects_dir_fd, loose_path_buf, dest_dfd, loose_path_buf, 0) != 0)
         {
           if (errno == EEXIST)
-            return TRUE;
+            did_hardlink = TRUE;
           else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
             {
               /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do
