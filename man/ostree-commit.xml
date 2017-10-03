@@ -168,6 +168,17 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--consume</option></term>
+
+                <listitem><para>
+                  When committing from a local directory (i.e. not an archive or --tree=ref),
+                  assume ownership of the content.  This may simply involve deleting it,
+                  but if possible, the content may simply be <literal>rename()</literal>ed
+                  into the repository rather than creating a new copy.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--statoverride</option>="PATH"</term>
 
                 <listitem><para>
