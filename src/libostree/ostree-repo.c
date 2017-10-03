@@ -4960,7 +4960,6 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
   while (!ret_tmpdir.initialized)
     {
       struct dirent *dent;
-      glnx_fd_close int existing_tmpdir_fd = -1;
       g_autoptr(GError) local_error = NULL;
 
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
