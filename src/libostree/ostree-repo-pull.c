@@ -142,6 +142,7 @@ typedef struct {
   guint64           start_time;
 
   gboolean          is_mirror;
+  gboolean          trusted_http_direct;
   gboolean          is_commit_only;
   OstreeRepoImportFlags importflags;
 
@@ -1018,17 +1019,18 @@ content_fetch_on_complete (GObject        *object,
   GError **error = &local_error;
   GCancellable *cancellable = NULL;
   guint64 length;
+  g_auto(GLnxTmpfile) tmpf = { 0, };
+  g_autoptr(GInputStream) tmpf_input = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
   g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GInputStream) file_in = NULL;
   g_autoptr(GInputStream) object_input = NULL;
-  g_auto(OtCleanupUnlinkat) tmp_unlinker = { _ostree_fetcher_get_dfd (fetcher), NULL };
   const char *checksum;
   g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
   gboolean free_fetch_data = TRUE;
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmp_unlinker.path, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, error))
     goto out;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
@@ -1040,47 +1042,30 @@ content_fetch_on_complete (GObject        *object,
   const gboolean verifying_bareuseronly =
     (pull_data->importflags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY) > 0;
 
-  /* If we're mirroring and writing into an archive repo, and both checksum and
-   * bareuseronly are turned off, we can directly copy the content rather than
-   * paying the cost of exploding it, checksumming, and re-gzip.
+  /* See comments where we set this variable; this is implementing
+   * the --trusted-http/OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP flags.
    */
-  const gboolean mirroring_into_archive =
-    pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE;
-  const gboolean import_trusted = !verifying_bareuseronly &&
-    (pull_data->importflags & _OSTREE_REPO_IMPORT_FLAGS_TRUSTED) > 0;
-  if (mirroring_into_archive && import_trusted)
+  if (pull_data->trusted_http_direct)
     {
-      gboolean have_object;
-      if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
-                                   &have_object,
-                                   cancellable, error))
+      g_assert (!verifying_bareuseronly);
+      if (!_ostree_repo_commit_tmpf_final (pull_data->repo, checksum, objtype,
+                                           &tmpf, cancellable, error))
         goto out;
-
-      if (!have_object)
-        {
-          if (!_ostree_repo_commit_path_final (pull_data->repo, checksum, objtype,
-                                               &tmp_unlinker,
-                                               cancellable, error))
-            goto out;
-        }
       pull_data->n_fetched_content++;
     }
   else
     {
+      struct stat stbuf;
+      if (!glnx_fstat (tmpf.fd, &stbuf, error))
+        goto out;
       /* Non-mirroring path */
+      tmpf_input = g_unix_input_stream_new (glnx_steal_fd (&tmpf.fd), TRUE);
 
       /* If it appears corrupted, we'll delete it below */
-      if (!ostree_content_file_parse_at (TRUE, _ostree_fetcher_get_dfd (fetcher),
-                                         tmp_unlinker.path, FALSE,
-                                         &file_in, &file_info, &xattrs,
-                                         cancellable, error))
+      if (!ostree_content_stream_parse (TRUE, tmpf_input, stbuf.st_size, FALSE,
+                                        &file_in, &file_info, &xattrs,
+                                        cancellable, error))
         goto out;
-
-      /* Also, delete it now that we've opened it, we'll hold
-       * a reference to the fd.  If we fail to validate or write, then
-       * the temp space will be cleaned up.
-       */
-      ot_cleanup_unlinkat (&tmp_unlinker);
 
       if (verifying_bareuseronly)
         {
@@ -1161,13 +1146,12 @@ meta_fetch_on_complete (GObject           *object,
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   g_autoptr(GVariant) metadata = NULL;
-  g_auto(OtCleanupUnlinkat) tmp_unlinker = { _ostree_fetcher_get_dfd (fetcher), NULL };
+  g_auto(GLnxTmpfile) tmpf = { 0, };
   const char *checksum;
   g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
   g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
-  glnx_fd_close int fd = -1;
   gboolean free_fetch_data = TRUE;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
@@ -1175,7 +1159,7 @@ meta_fetch_on_complete (GObject           *object,
   g_debug ("fetch of %s%s complete", checksum_obj,
            fetch_data->is_detached_meta ? " (detached)" : "");
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmp_unlinker.path, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, error))
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
@@ -1218,17 +1202,9 @@ meta_fetch_on_complete (GObject           *object,
   if (objtype == OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT)
     goto out;
 
-  if (!glnx_openat_rdonly (_ostree_fetcher_get_dfd (fetcher), tmp_unlinker.path, TRUE, &fd, error))
-    goto out;
-
-  /* Now delete it, keeping the fd open as the last reference; see comment in
-   * corresponding content fetch path.
-   */
-  ot_cleanup_unlinkat (&tmp_unlinker);
-
   if (fetch_data->is_detached_meta)
     {
-      if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"),
+      if (!ot_variant_read_fd (tmpf.fd, 0, G_VARIANT_TYPE ("a{sv}"),
                                FALSE, &metadata, error))
         goto out;
 
@@ -1245,7 +1221,7 @@ meta_fetch_on_complete (GObject           *object,
     }
   else
     {
-      if (!ot_variant_read_fd (fd, 0, ostree_metadata_variant_type (objtype),
+      if (!ot_variant_read_fd (tmpf.fd, 0, ostree_metadata_variant_type (objtype),
                                FALSE, &metadata, error))
         goto out;
 
@@ -1314,27 +1290,20 @@ static_deltapart_fetch_on_complete (GObject           *object,
   OstreeFetcher *fetcher = (OstreeFetcher *)object;
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  g_autofree char *temp_path = NULL;
+  g_auto(GLnxTmpfile) tmpf = { 0, };
   g_autoptr(GInputStream) in = NULL;
   g_autoptr(GVariant) part = NULL;
   g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
-  glnx_fd_close int fd = -1;
   gboolean free_fetch_data = TRUE;
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &temp_path, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, error))
     goto out;
 
-  if (!glnx_openat_rdonly (_ostree_fetcher_get_dfd (fetcher), temp_path, TRUE, &fd, error))
-    goto out;
-
-  /* From here on, if we fail to apply the delta, we'll re-fetch it */
-  if (!glnx_unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0, error))
-    goto out;
-
-  in = g_unix_input_stream_new (fd, FALSE);
+  /* Transfer ownership of the fd */
+  in = g_unix_input_stream_new (glnx_steal_fd (&tmpf.fd), TRUE);
 
   /* TODO - make async */
   if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum,
@@ -1979,6 +1948,8 @@ start_fetch (OtPullData *pull_data,
   else
     expected_max_size = 0;
 
+  if (!is_meta && pull_data->trusted_http_direct)
+    flags |= OSTREE_FETCHER_REQUEST_LINKABLE;
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher, mirrorlist,
                                       obj_subpath, flags, expected_max_size,
                                       is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
@@ -3587,6 +3558,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
        */
       if ((flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) == 0)
         pull_data->importflags |= _OSTREE_REPO_IMPORT_FLAGS_TRUSTED;
+
+      /* Shouldn't be referenced in this path, but just in case.  See below
+       * for more information.
+       */
+      pull_data->trusted_http_direct = FALSE;
     }
   else
     {
@@ -3597,6 +3573,18 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
        */
       if (flags & OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP)
         pull_data->importflags |= _OSTREE_REPO_IMPORT_FLAGS_TRUSTED;
+
+      const gboolean verifying_bareuseronly =
+        (pull_data->importflags & _OSTREE_REPO_IMPORT_FLAGS_VERIFY_BAREUSERONLY) > 0;
+      /* If we're mirroring and writing into an archive repo, and both checksum and
+       * bareuseronly are turned off, we can directly copy the content rather than
+       * paying the cost of exploding it, checksumming, and re-gzip.
+       */
+      const gboolean mirroring_into_archive =
+        pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE;
+      const gboolean import_trusted = !verifying_bareuseronly &&
+        (pull_data->importflags & _OSTREE_REPO_IMPORT_FLAGS_TRUSTED) > 0;
+      pull_data->trusted_http_direct = mirroring_into_archive && import_trusted;
     }
 
   /* We can't use static deltas if pulling into an archive repo. */

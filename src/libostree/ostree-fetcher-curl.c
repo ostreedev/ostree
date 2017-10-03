@@ -269,13 +269,13 @@ ensure_tmpfile (FetcherRequest *req, GError **error)
 {
   if (!req->tmpf.initialized)
     {
-      if (!glnx_open_tmpfile_linkable_at (req->fetcher->tmpdir_dfd, ".",
-                                          O_WRONLY | O_CLOEXEC, &req->tmpf,
-                                          error))
+      if (!_ostree_fetcher_tmpf_from_flags (req->flags, req->fetcher->tmpdir_dfd,
+                                            &req->tmpf, error))
         return FALSE;
     }
   return TRUE;
 }
+
 /* Check for completed transfers, and remove their easy handles */
 static void
 check_multi_info (OstreeFetcher *fetcher)
@@ -378,25 +378,19 @@ check_multi_info (OstreeFetcher *fetcher)
               g_autoptr(GError) local_error = NULL;
               GError **error = &local_error;
 
-              g_autofree char *tmpfile_path =
-                ostree_fetcher_generate_url_tmpname (eff_url);
               if (!ensure_tmpfile (req, error))
                 {
                   g_task_return_error (task, g_steal_pointer (&local_error));
                 }
-              /* This should match the libsoup chmod */
-              else if (fchmod (req->tmpf.fd, 0644) < 0)
+              else if (lseek (req->tmpf.fd, 0, SEEK_SET) < 0)
                 {
                   glnx_set_error_from_errno (error);
                   g_task_return_error (task, g_steal_pointer (&local_error));
                 }
-              else if (!glnx_link_tmpfile_at (&req->tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                                              fetcher->tmpdir_dfd, tmpfile_path,
-                                              error))
-                g_task_return_error (task, g_steal_pointer (&local_error));
               else
                 {
-                  g_task_return_pointer (task, g_steal_pointer (&tmpfile_path), g_free);
+                  /* We return the tmpfile in the _finish wrapper */
+                  g_task_return_boolean (task, TRUE);
                 }
             }
         }
@@ -887,26 +881,21 @@ _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
 gboolean
 _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
                                            GAsyncResult  *result,
-                                           char         **out_filename,
+                                           GLnxTmpfile   *out_tmpf,
                                            GError       **error)
 {
-  GTask *task;
-  FetcherRequest *req;
-  gpointer ret;
-
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   g_return_val_if_fail (g_async_result_is_tagged (result, _ostree_fetcher_request_async), FALSE);
 
-  task = (GTask*)result;
-  req = g_task_get_task_data (task);
+  GTask *task = (GTask*)result;
+  FetcherRequest *req = g_task_get_task_data (task);
 
-  ret = g_task_propagate_pointer (task, error);
-  if (!ret)
+  if (!g_task_propagate_boolean (task, error))
     return FALSE;
 
   g_assert (!req->is_membuf);
-  g_assert (out_filename);
-  *out_filename = ret;
+  *out_tmpf = req->tmpf;
+  req->tmpf.initialized = FALSE; /* Transfer ownership */
 
   return TRUE;
 }

@@ -905,11 +905,8 @@ on_stream_read (GObject        *object,
     {
       if (!pending->is_membuf)
         {
-          if (!glnx_open_tmpfile_linkable_at (pending->thread_closure->base_tmpdir_dfd, ".",
-                                              O_WRONLY | O_CLOEXEC, &pending->tmpf, &local_error))
-            goto out;
-          /* This should match the libcurl chmod */
-          if (!glnx_fchmod (pending->tmpf.fd, 0644, &local_error))
+          if (!_ostree_fetcher_tmpf_from_flags (pending->flags, pending->thread_closure->base_tmpdir_dfd,
+                                                &pending->tmpf, &local_error))
             goto out;
           pending->out_stream = g_unix_output_stream_new (pending->tmpf.fd, FALSE);
         }
@@ -943,18 +940,13 @@ on_stream_read (GObject        *object,
         }
       else
         {
-          g_autofree char *uristring =
-            soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
-          g_autofree char *tmpfile_path =
-            ostree_fetcher_generate_url_tmpname (uristring);
-          if (!glnx_link_tmpfile_at (&pending->tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                                     pending->thread_closure->base_tmpdir_dfd, tmpfile_path,
-                                     &local_error))
-            g_task_return_error (task, g_steal_pointer (&local_error));
+          if (lseek (pending->tmpf.fd, 0, SEEK_SET) < 0)
+            {
+              glnx_set_error_from_errno (&local_error);
+              g_task_return_error (task, g_steal_pointer (&local_error));
+            }
           else
-            g_task_return_pointer (task,
-                                   g_steal_pointer (&tmpfile_path),
-                                   (GDestroyNotify) g_free);
+            g_task_return_boolean (task, TRUE);
         }
       remove_pending (pending);
     }
@@ -1174,7 +1166,7 @@ _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
 gboolean
 _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
                                            GAsyncResult  *result,
-                                           char         **out_filename,
+                                           GLnxTmpfile   *out_tmpf,
                                            GError       **error)
 {
   GTask *task;
@@ -1192,8 +1184,8 @@ _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
     return FALSE;
 
   g_assert (!pending->is_membuf);
-  g_assert (out_filename);
-  *out_filename = ret;
+  *out_tmpf = pending->tmpf;
+  pending->tmpf.initialized = FALSE; /* Transfer ownership */
 
   return TRUE;
 }
