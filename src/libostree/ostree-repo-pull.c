@@ -1228,8 +1228,8 @@ meta_fetch_on_complete (GObject           *object,
 
   if (fetch_data->is_detached_meta)
     {
-      if (!ot_util_variant_map_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"),
-                                   FALSE, &metadata, error))
+      if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"),
+                               FALSE, &metadata, error))
         goto out;
 
       if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
@@ -1245,8 +1245,8 @@ meta_fetch_on_complete (GObject           *object,
     }
   else
     {
-      if (!ot_util_variant_map_fd (fd, 0, ostree_metadata_variant_type (objtype),
-                                   FALSE, &metadata, error))
+      if (!ot_variant_read_fd (fd, 0, ostree_metadata_variant_type (objtype),
+                               FALSE, &metadata, error))
         goto out;
 
       /* Write the commitpartial file now while we're still fetching data */

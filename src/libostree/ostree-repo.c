@@ -2811,7 +2811,6 @@ load_metadata_internal (OstreeRepo       *self,
                         GError          **error)
 {
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  struct stat stbuf;
   glnx_fd_close int fd = -1;
   g_autoptr(GInputStream) ret_stream = NULL;
   g_autoptr(GVariant) ret_variant = NULL;
@@ -2853,36 +2852,14 @@ load_metadata_internal (OstreeRepo       *self,
 
   if (fd != -1)
     {
+      struct stat stbuf;
       if (!glnx_fstat (fd, &stbuf, error))
         return FALSE;
-
       if (out_variant)
         {
-          /* http://stackoverflow.com/questions/258091/when-should-i-use-mmap-for-file-access */
-          if (stbuf.st_size > 16*1024)
-            {
-              GMappedFile *mfile;
-
-              mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
-              if (!mfile)
-                return FALSE;
-              ret_variant = g_variant_new_from_data (ostree_metadata_variant_type (objtype),
-                                                     g_mapped_file_get_contents (mfile),
-                                                     g_mapped_file_get_length (mfile),
-                                                     TRUE,
-                                                     (GDestroyNotify) g_mapped_file_unref,
-                                                     mfile);
-              g_variant_ref_sink (ret_variant);
-            }
-          else
-            {
-              g_autoptr(GBytes) data = glnx_fd_readall_bytes (fd, cancellable, error);
-              if (!data)
-                return FALSE;
-              ret_variant = g_variant_new_from_bytes (ostree_metadata_variant_type (objtype),
-                                                      data, TRUE);
-              g_variant_ref_sink (ret_variant);
-            }
+          if (!ot_variant_read_fd (fd, 0, ostree_metadata_variant_type (objtype), TRUE,
+                                   &ret_variant, error))
+            return FALSE;
 
           /* Now, let's put it in the cache */
           if (is_dirmeta_cachable)
@@ -4202,15 +4179,24 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                        GCancellable   *cancellable,
                                        GError        **error)
 {
-  g_autoptr(GBytes) summary_data = ot_file_mapat_bytes (self->repo_dir_fd, "summary", error);
+  glnx_fd_close int fd = -1;
+  if (!glnx_openat_rdonly (self->repo_dir_fd, "summary", TRUE, &fd, error))
+    return FALSE;
+  g_autoptr(GBytes) summary_data = ot_fd_readall_or_mmap (fd, 0, error);
   if (!summary_data)
     return FALSE;
+  /* Note that fd is reused below */
+  (void) close (glnx_steal_fd (&fd));
 
   g_autoptr(GVariant) existing_signatures = NULL;
-  if (!ot_util_variant_map_at (self->repo_dir_fd, "summary.sig",
-                               G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
-                               OT_VARIANT_MAP_ALLOW_NOENT, &existing_signatures, error))
+  if (!ot_openat_ignore_enoent (self->repo_dir_fd, "summary.sig", &fd, error))
     return FALSE;
+  if (fd != -1)
+    {
+      if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
+                               FALSE, &existing_signatures, error))
+        return FALSE;
+    }
 
   g_autoptr(GVariant) new_metadata = NULL;
   for (guint i = 0; key_id[i]; i++)
