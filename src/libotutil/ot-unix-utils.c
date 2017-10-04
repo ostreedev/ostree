@@ -34,22 +34,19 @@
 #include <stdlib.h>
 #include <errno.h>
 
+/* Ensure that a pathname component @name does not contain the special Unix
+ * entries `.` or `..`, and does not contain `/`.
+ */
 gboolean
 ot_util_filename_validate (const char *name,
                            GError    **error)
 {
   if (strcmp (name, ".") == 0)
-    {
-      return glnx_throw (error, "Invalid self-referential filename '.'");
-    }
+    return glnx_throw (error, "Invalid self-referential filename '.'");
   if (strcmp (name, "..") == 0)
-    {
-      return glnx_throw (error, "Invalid path uplink filename '..'");
-    }
+    return glnx_throw (error, "Invalid path uplink filename '..'");
   if (strchr (name, '/') != NULL)
-    {
-      return glnx_throw (error, "Invalid / in filename %s", name);
-    }
+    return glnx_throw (error, "Invalid / in filename %s", name);
   return TRUE;
 }
 
@@ -58,8 +55,8 @@ ot_split_string_ptrarray (const char *str,
                           char        c)
 {
   GPtrArray *ret = g_ptr_array_new_with_free_func (g_free);
-  const char *p;
 
+  const char *p;
   do {
     p = strchr (str, '/');
     if (!p)
@@ -77,40 +74,29 @@ ot_split_string_ptrarray (const char *str,
   return ret;
 }
 
+/* Given a pathname @path, split it into individual entries in @out_components,
+ * validating that it does not have backreferences (`..`) etc.
+ */
 gboolean
 ot_util_path_split_validate (const char *path,
                              GPtrArray **out_components,
                              GError    **error)
 {
-  gboolean ret = FALSE;
-  int i;
-  g_autoptr(GPtrArray) ret_components = NULL;
-
   if (strlen (path) > PATH_MAX)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Path '%s' is too long", path);
-      goto out;
-    }
+    return glnx_throw (error, "Path '%s' is too long", path);
 
-  ret_components = ot_split_string_ptrarray (path, '/');
+  g_autoptr(GPtrArray) ret_components = ot_split_string_ptrarray (path, '/');
 
   /* Canonicalize by removing '.' and '', throw an error on .. */
-  for (i = ret_components->len-1; i >= 0; i--)
+  for (int i = ret_components->len-1; i >= 0; i--)
     {
       const char *name = ret_components->pdata[i];
       if (strcmp (name, "..") == 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid uplink '..' in path %s", path);
-          goto out;
-        }
+        return glnx_throw (error, "Invalid uplink '..' in path %s", path);
       if (strcmp (name, ".") == 0 || name[0] == '\0')
         g_ptr_array_remove_index (ret_components, i);
     }
 
-  ret = TRUE;
   ot_transfer_out_value(out_components, &ret_components);
- out:
-  return ret;
+  return TRUE;
 }
