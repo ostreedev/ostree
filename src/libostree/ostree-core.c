@@ -1614,10 +1614,13 @@ _ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b)
   return TRUE;
 }
 
+/* Many parts of libostree only care about mode,uid,gid - this creates
+ * a new GFileInfo with those fields see.
+ */
 GFileInfo *
 _ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid)
 {
-  struct stat stbuf;
+  struct stat stbuf = { 0, };
   stbuf.st_mode = mode;
   stbuf.st_uid = uid;
   stbuf.st_gid = gid;
