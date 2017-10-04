@@ -172,7 +172,7 @@ ot_fd_readall_or_mmap (int           fd,
 
   /* http://stackoverflow.com/questions/258091/when-should-i-use-mmap-for-file-access */
   if (start > stbuf.st_size)
-    start = stbuf.st_size;
+    return g_bytes_new_static (NULL, 0);
   const gsize len = stbuf.st_size - start;
   if (len > 16*1024)
     {
