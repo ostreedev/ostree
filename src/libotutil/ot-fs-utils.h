@@ -85,8 +85,7 @@ ot_map_anonymous_tmpfile_from_content (GInputStream *instream,
                                        GCancellable *cancellable,
                                        GError      **error);
 
-GBytes *ot_file_mapat_bytes (int dfd,
-                             const char *path,
-                             GError **error);
+GBytes *ot_fd_readall_or_mmap (int fd, goffset offset,
+                               GError **error);
 
 G_END_DECLS

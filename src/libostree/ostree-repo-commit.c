@@ -2212,26 +2212,29 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
   char buf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
-  g_autoptr(GVariant) ret_metadata = NULL;
-  if (self->commit_stagedir.initialized &&
-      !ot_util_variant_map_at (self->commit_stagedir.fd, buf,
-                               G_VARIANT_TYPE ("a{sv}"),
-                               OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
-    return glnx_prefix_error (error, "Unable to read existing detached metadata");
+  if (self->commit_stagedir.initialized)
+    {
+      glnx_fd_close int fd = -1;
+      if (!ot_openat_ignore_enoent (self->commit_stagedir.fd, buf, &fd, error))
+        return FALSE;
+      if (fd != -1)
+        return ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"), TRUE,
+                                   out_metadata, error);
+    }
 
-  if (ret_metadata == NULL &&
-      !ot_util_variant_map_at (self->objects_dir_fd, buf,
-                               G_VARIANT_TYPE ("a{sv}"),
-                               OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
-    return glnx_prefix_error (error, "Unable to read existing detached metadata");
+  glnx_fd_close int fd = -1;
+  if (!ot_openat_ignore_enoent (self->objects_dir_fd, buf, &fd, error))
+    return FALSE;
+  if (fd != -1)
+    return ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"), TRUE,
+                               out_metadata, error);
 
-  if (ret_metadata == NULL && self->parent_repo)
+  if (self->parent_repo)
     return ostree_repo_read_commit_detached_metadata (self->parent_repo,
-                                                      checksum,
-                                                      out_metadata,
-                                                      cancellable,
-                                                      error);
-  ot_transfer_out_value (out_metadata, &ret_metadata);
+                                                      checksum, out_metadata,
+                                                      cancellable, error);
+  /* Nothing found */
+  *out_metadata = NULL;
   return TRUE;
 }
 

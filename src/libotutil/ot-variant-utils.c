@@ -25,7 +25,6 @@
 #include <gio/gfiledescriptorbased.h>
 
 #include <string.h>
-#include <sys/mman.h>
 
 #include "otutil.h"
 
@@ -85,86 +84,25 @@ ot_util_variant_take_ref (GVariant *variant)
   return g_variant_take_ref (variant);
 }
 
+/* Create a GVariant in @out_variant that is backed by
+ * the data from @fd, starting at @start.  If the data is
+ * large enough, mmap() may be used.  @trusted is used
+ * by the GVariant core; see g_variant_new_from_data().
+ */
 gboolean
-ot_util_variant_map_at (int dfd,
-                        const char *path,
-                        const GVariantType *type,
-                        OtVariantMapFlags flags,
-                        GVariant **out_variant,
-                        GError  **error)
+ot_variant_read_fd (int                    fd,
+                    goffset                start,
+                    const GVariantType    *type,
+                    gboolean               trusted,
+                    GVariant             **out_variant,
+                    GError               **error)
 {
-  glnx_fd_close int fd = -1;
-  const gboolean trusted = (flags & OT_VARIANT_MAP_TRUSTED) > 0;
+  g_autoptr(GBytes) bytes = ot_fd_readall_or_mmap (fd, start, error);
+  if (!bytes)
+    return FALSE;
 
-  fd = openat (dfd, path, O_RDONLY | O_CLOEXEC);
-  if (fd < 0)
-    {
-      if (errno == ENOENT && (flags & OT_VARIANT_MAP_ALLOW_NOENT) > 0)
-        {
-          *out_variant = NULL;
-          return TRUE;
-        }
-      else
-        {
-          glnx_set_error_from_errno (error);
-          g_prefix_error (error, "Opening %s: ", path);
-          return FALSE;
-        }
-    }
-
-  return ot_util_variant_map_fd (fd, 0, type, trusted, out_variant, error);
-}
-
-typedef struct {
-  gpointer addr;
-  gsize len;
-} VariantMapData;
-
-static void
-variant_map_data_destroy (gpointer data)
-{
-  VariantMapData *mdata = data;
-  (void) munmap (mdata->addr, mdata->len);
-  g_free (mdata);
-}
-
-gboolean
-ot_util_variant_map_fd (int                    fd,
-                        goffset                start,
-                        const GVariantType    *type,
-                        gboolean               trusted,
-                        GVariant             **out_variant,
-                        GError               **error)
-{
-  gboolean ret = FALSE;
-  gpointer map;
-  struct stat stbuf;
-  VariantMapData *mdata = NULL;
-  gsize len;
-
-  if (fstat (fd, &stbuf) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
-
-  len = stbuf.st_size - start;
-  map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, fd, start);
-  if (!map)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
-
-  mdata = g_new (VariantMapData, 1);
-  mdata->addr = map;
-  mdata->len = len;
-
-  ret = TRUE;
-  *out_variant = g_variant_ref_sink (g_variant_new_from_data (type, map, len, trusted,
-                                                              variant_map_data_destroy, mdata));
- out:
-  return ret;
+  *out_variant = g_variant_ref_sink (g_variant_new_from_bytes (type, bytes, trusted));
+  return TRUE;
 }
 
 GInputStream *
