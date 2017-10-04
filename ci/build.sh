@@ -18,9 +18,6 @@ if test -n "${CI_PKGS:-}"; then
 fi
 pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang
 
-# always fail on warnings; https://github.com/ostreedev/ostree/pull/971
-export CFLAGS="-Werror ${CFLAGS:-}"
-
 # Default libcurl on by default in fedora unless libsoup is enabled
 if sh -c '. /etc/os-release; test "${ID}" = fedora'; then
     case "${CONFIGOPTS:-}" in
@@ -35,5 +32,9 @@ case "${CONFIGOPTS:-}" in
         fi
         ;;
 esac
+
+# always fail on warnings; https://github.com/ostreedev/ostree/pull/971
+# NB: this disables the default set of flags from configure.ac
+export CFLAGS="-Wall -Werror ${CFLAGS:-}"
 
 build --enable-gtk-doc ${CONFIGOPTS:-}
