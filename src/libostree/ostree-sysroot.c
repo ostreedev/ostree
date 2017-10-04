@@ -201,7 +201,12 @@ ostree_sysroot_init (OstreeSysroot *self)
 
 /**
  * ostree_sysroot_new:
- * @path: (allow-none): Path to a system root directory, or %NULL
+ * @path: (allow-none): Path to a system root directory, or %NULL to use the
+ *   current visible root file system
+ *
+ * Create a new #OstreeSysroot object for the sysroot at @path. If @path is %NULL,
+ * the current visible root file system is used, equivalent to
+ * ostree_sysroot_new_default().
  *
  * Returns: (transfer full): An accessor object for an system root located at @path
  */
