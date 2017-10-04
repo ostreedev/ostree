@@ -2654,7 +2654,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       g_autoptr(GVariant) xattrs = NULL;
       gboolean xattrs_were_modified;
       if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
-                             dfd_iter != NULL ? dfd_iter->fd : -1, name, &xattrs,
+                             dir_enum != NULL ? -1 : dfd_iter->fd, name, &xattrs,
                              &xattrs_were_modified, cancellable, error))
         return FALSE;
 
@@ -2677,14 +2677,16 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
         {
           if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
             {
-              if (child != NULL)
+              if (dir_enum != NULL)
                 {
+                  g_assert (child != NULL);
                   file_input = (GInputStream*)g_file_read (child, cancellable, error);
                   if (!file_input)
                     return FALSE;
                 }
               else
                 {
+                  g_assert (dfd_iter != NULL);
                   if (!ot_openat_read_stream (dfd_iter->fd, name, FALSE,
                                               &file_input, cancellable, error))
                     return FALSE;
