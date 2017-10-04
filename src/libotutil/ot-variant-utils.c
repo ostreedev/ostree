@@ -60,28 +60,6 @@ ot_gvariant_new_ay_bytes (GBytes *bytes)
                                   TRUE, (GDestroyNotify)g_bytes_unref, bytes);
 }
 
-/* Convert a GVariant of type a{sv} to a GHashTable */
-GHashTable *
-ot_util_variant_asv_to_hash_table (GVariant *variant)
-{
-
-  GHashTable *ret = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_variant_unref);
-  g_autoptr(GVariantIter) viter = g_variant_iter_new (variant);
-
-  char *key;
-  GVariant *value;
-  while (g_variant_iter_next (viter, "{s@v}", &key, &value))
-    g_hash_table_replace (ret, key, g_variant_ref_sink (value));
-
-  return ret;
-}
-
-GVariant *
-ot_util_variant_take_ref (GVariant *variant)
-{
-  return g_variant_take_ref (variant);
-}
-
 /* Create a GVariant in @out_variant that is backed by
  * the data from @fd, starting at @start.  If the data is
  * large enough, mmap() may be used.  @trusted is used
