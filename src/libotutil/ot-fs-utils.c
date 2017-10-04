@@ -36,6 +36,9 @@ ot_fdrel_to_gfile (int dfd, const char *path)
   return g_file_new_for_path (abspath);
 }
 
+/* Wraps readlinkat(), and sets the `symlink-target` property
+ * of @target_info.
+ */
 gboolean
 ot_readlinkat_gfile_info (int             dfd,
                           const char     *path,
@@ -53,7 +56,6 @@ ot_readlinkat_gfile_info (int             dfd,
 
   return TRUE;
 }
-
 
 /**
  * ot_openat_read_stream:
@@ -77,16 +79,10 @@ ot_openat_read_stream (int             dfd,
                        GCancellable   *cancellable,
                        GError        **error)
 {
-  int fd = -1;
-  int flags = O_RDONLY | O_NOCTTY | O_CLOEXEC;
-
-  if (!follow)
-    flags |= O_NOFOLLOW;
-
-  if (TEMP_FAILURE_RETRY (fd = openat (dfd, path, flags, 0)) < 0)
-    return glnx_throw_errno_prefix (error, "openat(%s)", path);
-
-  *out_istream = g_unix_input_stream_new (fd, TRUE);
+  glnx_fd_close int fd = -1;
+  if (!glnx_openat_rdonly (dfd, path, follow, &fd, error))
+    return FALSE;
+  *out_istream = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
   return TRUE;
 }
 
