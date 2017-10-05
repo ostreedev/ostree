@@ -81,19 +81,6 @@ ot_variant_read_fd (int                    fd,
   return TRUE;
 }
 
-/* Get an input stream for a GVariant */
-GInputStream *
-ot_variant_read (GVariant             *variant)
-{
-  GMemoryInputStream *ret = (GMemoryInputStream*)
-    g_memory_input_stream_new_from_data (g_variant_get_data (variant),
-                                         g_variant_get_size (variant),
-                                         NULL);
-  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
-                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
-  return (GInputStream*)ret;
-}
-
 /* GVariants are immutable; this function allows generating an open builder
  * for a new variant, inherting the data from @variant.
  */

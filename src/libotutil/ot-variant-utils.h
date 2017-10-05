@@ -41,8 +41,6 @@ gboolean ot_variant_read_fd (int                  fd,
                              GVariant           **out_variant,
                              GError             **error);
 
-GInputStream *ot_variant_read (GVariant             *variant);
-
 GVariantBuilder *ot_util_variant_builder_from_variant (GVariant            *variant,
                                                        const GVariantType  *type);
 
