@@ -37,6 +37,8 @@ G_BEGIN_DECLS
 #define _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS 8
 #define _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS 2
 
+#define _OSTREE_DEFAULT_LOCK_TIMEOUT_SECONDS 30
+
 /* In most cases, writing to disk should be much faster than
  * fetching from the network, so we shouldn't actually hit
  * this. But if using pipelining and e.g. pulling over LAN
@@ -157,6 +159,7 @@ struct OstreeRepo {
   guint64 tmp_expiry_seconds;
   gchar *collection_id;
   gboolean add_remotes_config_dir; /* Add new remotes in remotes.d dir */
+  gint lock_timeout_seconds;
 
   OstreeRepo *parent_repo;
 };
@@ -435,6 +438,23 @@ _ostree_repo_get_remote_inherited (OstreeRepo  *self,
                                    GError     **error);
 
 #ifndef OSTREE_ENABLE_EXPERIMENTAL_API
+
+/* All the locking APIs below are duplicated in ostree-repo.h. Remove the ones
+ * here once it's no longer experimental.
+ */
+
+typedef enum {
+  OSTREE_REPO_LOCK_SHARED,
+  OSTREE_REPO_LOCK_EXCLUSIVE
+} OstreeRepoLockType;
+
+gboolean      ostree_repo_lock_push (OstreeRepo          *self,
+                                     OstreeRepoLockType   lock_type,
+                                     GCancellable        *cancellable,
+                                     GError             **error);
+gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
+                                    GCancellable  *cancellable,
+                                    GError       **error);
 
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,

@@ -90,6 +90,9 @@ ostree_repo_finder_override_get_type
 
 <SECTION>
 <FILE>ostree-misc-experimental</FILE>
+OstreeRepoLockType
+ostree_repo_lock_push
+ostree_repo_lock_pop
 ostree_repo_get_collection_id
 ostree_repo_set_collection_id
 ostree_validate_collection_id
