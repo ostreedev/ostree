@@ -1141,6 +1141,19 @@ get_fallback_headers (OstreeRepo               *self,
   return TRUE;
 }
 
+/* Get an input stream for a GVariant */
+static GInputStream *
+variant_to_inputstream (GVariant             *variant)
+{
+  GMemoryInputStream *ret = (GMemoryInputStream*)
+    g_memory_input_stream_new_from_data (g_variant_get_data (variant),
+                                         g_variant_get_size (variant),
+                                         NULL);
+  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
+                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
+  return (GInputStream*)ret;
+}
+
 /**
  * ostree_repo_static_delta_generate:
  * @self: Repo
@@ -1349,7 +1362,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       /* Hardcode xz for now */
       compressor = (GConverter*)_ostree_lzma_compressor_new (NULL);
       compression_type_char = 'x';
-      part_payload_in = ot_variant_read (delta_part_content);
+      part_payload_in = variant_to_inputstream (delta_part_content);
       part_payload_out = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
       part_payload_compressor = (GConverterOutputStream*)g_converter_output_stream_new ((GOutputStream*)part_payload_out, compressor);
 
@@ -1386,7 +1399,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
           g_ptr_array_add (part_temp_paths, g_steal_pointer (&part_tmpf));
         }
 
-      part_in = ot_variant_read (delta_part);
+      part_in = variant_to_inputstream (delta_part);
       if (!ot_gio_splice_get_checksum (part_temp_outstream, part_in,
                                        &part_checksum,
                                        cancellable, error))
