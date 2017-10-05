@@ -1711,6 +1711,9 @@ out:
  * @NULL.  Likewise if the summary file is not signed, @out_signatures is
  * set to @NULL.  In either case the function still returns %TRUE.
  *
+ * This method does not verify the signature of the downloaded summary file.
+ * Use ostree_repo_verify_summary() for that.
+ *
  * Parse the summary data into a #GVariant using g_variant_new_from_bytes()
  * with #OSTREE_SUMMARY_GVARIANT_FORMAT as the format string.
  *
