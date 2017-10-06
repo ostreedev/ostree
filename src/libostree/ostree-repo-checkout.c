@@ -31,6 +31,7 @@
 #include "ostree-sepolicy-private.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree-autocleanups.h"
 
 #define WHITEOUT_PREFIX ".wh."
 
@@ -991,6 +992,16 @@ checkout_tree_at (OstreeRepo                        *self,
       g_assert (options->force_copy);
     }
 
+  /* Take a shared repo lock to try to ensure objects aren't deleted. If the
+   * repo is not writable, this will be a noop and we just hope for the
+   * best...
+   */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   /* Special case handling for subpath of a non-directory */
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
     {
@@ -1062,6 +1073,8 @@ canonicalize_options (OstreeRepo                  *self,
  * physical filesystem.  @source may be any subdirectory of a given
  * commit.  The @mode and @overwrite_mode allow control over how the
  * files are checked out.
+ *
+ * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
@@ -1104,6 +1117,8 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
  * Note in addition that unlike ostree_repo_checkout_tree(), the
  * default is not to use the repository-internal uncompressed objects
  * cache.
+ *
+ * This function takes a shared lock on the @self repository.
  *
  * This function is deprecated.  Use ostree_repo_checkout_at() instead.
  */
@@ -1150,6 +1165,8 @@ ostree_repo_checkout_tree_at (OstreeRepo                        *self,
  * Note in addition that unlike ostree_repo_checkout_tree(), the
  * default is not to use the repository-internal uncompressed objects
  * cache.
+ *
+ * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_checkout_at (OstreeRepo                        *self,
@@ -1273,12 +1290,21 @@ ostree_repo_devino_cache_new (void)
  * Call this after finishing a succession of checkout operations; it
  * will delete any currently-unused uncompressed objects from the
  * cache.
+ *
+ * This function takes an exclusive lock on the @self repository.
  */
 gboolean
 ostree_repo_checkout_gc (OstreeRepo        *self,
                          GCancellable      *cancellable,
                          GError           **error)
 {
+  /* Take an exclusive repo lock while deleting uncompressed objects */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   g_autoptr(GHashTable) to_clean_dirs = NULL;
 
   g_mutex_lock (&self->cache_lock);
