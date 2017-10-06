@@ -122,6 +122,7 @@ struct OstreeRepo {
 
   GMutex txn_lock;
   OstreeRepoTxn txn;
+  gboolean txn_locked;
 
   GMutex cache_lock;
   guint dirmeta_cache_refcount;
