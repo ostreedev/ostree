@@ -811,14 +811,19 @@ write_metadata_object (OstreeRepo         *self,
    * *original* sha256 to say what commit was being killed.
    */
   const gboolean is_tombstone = (objtype == OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT);
-  g_autofree char *actual_checksum = NULL;
+  char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
   if (is_tombstone)
     {
-      actual_checksum = g_strdup (expected_checksum);
+      memcpy (actual_checksum, expected_checksum, sizeof (actual_checksum));
     }
   else
     {
-      actual_checksum = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, buf);
+      OtChecksum checksum = { 0, };
+      ot_checksum_init (&checksum);
+      gsize len;
+      const guint8*bufdata = g_bytes_get_data (buf, &len);
+      ot_checksum_update (&checksum, bufdata, len);
+      ot_checksum_get_hexdigest (&checksum, actual_checksum, sizeof (actual_checksum));
       gboolean have_obj;
       if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype, &have_obj,
                                           cancellable, error))

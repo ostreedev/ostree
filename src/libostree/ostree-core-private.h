@@ -20,6 +20,7 @@
 #pragma once
 
 #include "ostree-core.h"
+#include "otutil.h"
 #include <sys/stat.h>
 
 G_BEGIN_DECLS
@@ -77,7 +78,7 @@ gboolean _ostree_write_variant_with_size (GOutputStream      *output,
                                           GVariant           *variant,
                                           guint64             alignment_offset,
                                           gsize              *out_bytes_written,
-                                          GChecksum          *checksum,
+                                          OtChecksum         *checksum,
                                           GCancellable       *cancellable,
                                           GError            **error);
 

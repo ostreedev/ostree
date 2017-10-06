@@ -358,7 +358,7 @@ write_padding (GOutputStream    *output,
                guint             alignment,
                gsize             offset,
                gsize            *out_bytes_written,
-               GChecksum        *checksum,
+               OtChecksum       *checksum,
                GCancellable     *cancellable,
                GError          **error)
 {
@@ -403,7 +403,7 @@ _ostree_write_variant_with_size (GOutputStream      *output,
                                  GVariant           *variant,
                                  guint64             alignment_offset,
                                  gsize              *out_bytes_written,
-                                 GChecksum          *checksum,
+                                 OtChecksum         *checksum,
                                  GCancellable       *cancellable,
                                  GError            **error)
 {
@@ -458,7 +458,7 @@ _ostree_write_variant_with_size (GOutputStream      *output,
 static gboolean
 write_file_header_update_checksum (GOutputStream         *out,
                                    GVariant              *header,
-                                   GChecksum             *checksum,
+                                   OtChecksum            *checksum,
                                    GCancellable          *cancellable,
                                    GError               **error)
 {
@@ -859,18 +859,19 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GError          **error)
 {
 
-  g_autoptr(GChecksum) checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  g_auto(OtChecksum) checksum = { 0, };
+  ot_checksum_init (&checksum);
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
-      if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+      if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
         return FALSE;
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
       g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (file_info, xattrs);
-      g_checksum_update (checksum, g_variant_get_data (dirmeta),
-                         g_variant_get_size (dirmeta));
+      ot_checksum_update (&checksum, g_variant_get_data (dirmeta),
+                          g_variant_get_size (dirmeta));
     }
   else
     {
@@ -878,18 +879,19 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
 
       file_header = _ostree_file_header_new (file_info, xattrs);
 
-      if (!write_file_header_update_checksum (NULL, file_header, checksum,
+      if (!write_file_header_update_checksum (NULL, file_header, &checksum,
                                               cancellable, error))
         return FALSE;
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
         {
-          if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+          if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
             return FALSE;
         }
     }
 
-  *out_csum = ot_csum_from_gchecksum (checksum);
+  *out_csum = g_malloc (OSTREE_SHA256_DIGEST_LEN);
+  ot_checksum_get_digest (&checksum, *out_csum, OSTREE_SHA256_DIGEST_LEN);
   return TRUE;
 }
 

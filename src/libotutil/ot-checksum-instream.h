@@ -52,12 +52,6 @@ GType          ot_checksum_instream_get_type     (void) G_GNUC_CONST;
 
 OtChecksumInstream * ot_checksum_instream_new          (GInputStream   *stream, GChecksumType   checksum);
 
-void   ot_checksum_instream_get_digest (OtChecksumInstream *stream,
-                                        guint8          *buffer,
-                                        gsize           *digest_len);
-
-guint8* ot_checksum_instream_dup_digest (OtChecksumInstream *stream,
-                                         gsize              *ret_len);
 char * ot_checksum_instream_get_string (OtChecksumInstream *stream);
 
 G_END_DECLS
