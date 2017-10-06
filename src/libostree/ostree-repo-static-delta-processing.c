@@ -58,7 +58,7 @@ typedef struct {
   GLnxTmpfile      tmpf;
   guint64          content_size;
   GOutputStream   *content_out;
-  GChecksum       *content_checksum;
+  OtChecksum       content_checksum;
   char             checksum[OSTREE_SHA256_STRING_LEN+1];
   char             *read_source_object;
   int               read_source_fd;
@@ -277,7 +277,7 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
  out:
   glnx_tmpfile_clear (&state->tmpf);
   g_clear_object (&state->content_out);
-  g_clear_pointer (&state->content_checksum, g_checksum_free);
+  ot_checksum_clear (&state->content_checksum);
   return ret;
 }
 
@@ -385,8 +385,8 @@ content_out_write (OstreeRepo                 *repo,
 {
   gsize bytes_written;
 
-  if (state->content_checksum)
-    g_checksum_update (state->content_checksum, buf, len);
+  if (state->content_checksum.initialized)
+    ot_checksum_update (&state->content_checksum, buf, len);
 
   /* Ignore bytes_written since we discard partial content */
   if (!g_output_stream_write_all (state->content_out,
@@ -503,10 +503,10 @@ handle_untrusted_content_checksum (OstreeRepo                 *repo,
   g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (state->mode, state->uid, state->gid);
   g_autoptr(GVariant) header = _ostree_file_header_new (finfo, state->xattrs);
 
-  state->content_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  ot_checksum_init (&state->content_checksum);
 
   gsize bytes_written;
-  if (!_ostree_write_variant_with_size (NULL, header, 0, &bytes_written, state->content_checksum,
+  if (!_ostree_write_variant_with_size (NULL, header, 0, &bytes_written, &state->content_checksum,
                                         cancellable, error))
     return FALSE;
 
@@ -827,9 +827,10 @@ dispatch_close (OstreeRepo                 *repo,
       if (!g_output_stream_flush (state->content_out, cancellable, error))
         return FALSE;
 
-      if (state->content_checksum)
+      if (state->content_checksum.initialized)
         {
-          const char *actual_checksum = g_checksum_get_string (state->content_checksum);
+          char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
+          ot_checksum_get_hexdigest (&state->content_checksum, actual_checksum, sizeof (actual_checksum));
 
           if (strcmp (actual_checksum, state->checksum) != 0)
             return glnx_throw (error, "Corrupted object %s (actual checksum is %s)",
@@ -848,7 +849,7 @@ dispatch_close (OstreeRepo                 *repo,
     return FALSE;
 
   g_clear_pointer (&state->xattrs, g_variant_unref);
-  g_clear_pointer (&state->content_checksum, g_checksum_free);
+  ot_checksum_clear (&state->content_checksum);
 
   state->checksum_index++;
   state->output_target = NULL;

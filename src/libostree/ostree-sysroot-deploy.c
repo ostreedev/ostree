@@ -989,13 +989,14 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
     }
 
   /* We found a module directory, compute the checksum */
-  g_autoptr(GChecksum) checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  g_auto(OtChecksum) checksum = { 0, };
+  ot_checksum_init (&checksum);
   glnx_fd_close int fd = -1;
   /* Checksum the kernel */
   if (!glnx_openat_rdonly (ret_layout->boot_dfd, "vmlinuz", TRUE, &fd, error))
     return FALSE;
   g_autoptr(GInputStream) in = g_unix_input_stream_new (fd, FALSE);
-  if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+  if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
     return FALSE;
   g_clear_object (&in);
   (void) close (fd); fd = -1;
@@ -1022,11 +1023,13 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
       ret_layout->initramfs_srcpath = g_strdup (initramfs_path);
       ret_layout->initramfs_namever = g_strdup_printf ("initramfs-%s.img", kver);
       in = g_unix_input_stream_new (fd, FALSE);
-      if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+      if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
         return FALSE;
     }
 
-  ret_layout->bootcsum = g_strdup (g_checksum_get_string (checksum));
+  char hexdigest[OSTREE_SHA256_STRING_LEN+1];
+  ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof(hexdigest));
+  ret_layout->bootcsum = g_strdup (hexdigest);
 
   *out_layout = g_steal_pointer (&ret_layout);
   return TRUE;
