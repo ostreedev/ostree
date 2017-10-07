@@ -387,7 +387,6 @@ write_padding (GOutputStream    *output,
  * _ostree_write_variant_with_size:
  * @output: Stream
  * @variant: A variant
- * @alignment_offset: Used to determine whether or not we should write padding bytes
  * @out_bytes_written: (out): Number of bytes written
  * @checksum: (allow-none): If provided, update with written data
  * @cancellable: Cancellable
@@ -401,73 +400,29 @@ write_padding (GOutputStream    *output,
 gboolean
 _ostree_write_variant_with_size (GOutputStream      *output,
                                  GVariant           *variant,
-                                 guint64             alignment_offset,
-                                 gsize              *out_bytes_written,
                                  OtChecksum         *checksum,
                                  GCancellable       *cancellable,
                                  GError            **error)
 {
-  guint64 variant_size;
-  guint32 variant_size_u32_be;
-  gsize bytes_written;
-  gsize ret_bytes_written = 0;
-
   /* Write variant size */
-  variant_size = g_variant_get_size (variant);
+  const guint64 variant_size = g_variant_get_size (variant);
   g_assert (variant_size < G_MAXUINT32);
-  variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
+  const guint32 variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
 
-  bytes_written = 0;
-  if (!ot_gio_write_update_checksum (output, &variant_size_u32_be, 4,
-                                     &bytes_written, checksum,
-                                     cancellable, error))
+  if (!ot_gio_write_update_checksum (output, &variant_size_u32_be, sizeof (variant_size_u32_be),
+                                     NULL, checksum, cancellable, error))
     return FALSE;
-  ret_bytes_written += bytes_written;
-  alignment_offset += bytes_written;
+  const gsize alignment_offset = sizeof(variant_size_u32_be);
 
-  bytes_written = 0;
   /* Pad to offset of 8, write variant */
-  if (!write_padding (output, 8, alignment_offset, &bytes_written, checksum,
+  if (!write_padding (output, 8, alignment_offset, NULL, checksum,
                       cancellable, error))
     return FALSE;
-  ret_bytes_written += bytes_written;
 
-  bytes_written = 0;
   if (!ot_gio_write_update_checksum (output, g_variant_get_data (variant),
-                                     variant_size, &bytes_written, checksum,
+                                     variant_size, NULL, checksum,
                                      cancellable, error))
     return FALSE;
-  ret_bytes_written += bytes_written;
-
-  if (out_bytes_written)
-    *out_bytes_written = ret_bytes_written;
-  return TRUE;
-}
-
-/*
- * write_file_header_update_checksum:
- * @out: Stream
- * @variant: A variant, should be a file header
- * @checksum: (allow-none): If provided, update with written data
- * @cancellable: Cancellable
- * @error: Error
- *
- * Write a file header variant to the provided @out stream, optionally
- * updating @checksum.
- */
-static gboolean
-write_file_header_update_checksum (GOutputStream         *out,
-                                   GVariant              *header,
-                                   OtChecksum            *checksum,
-                                   GCancellable          *cancellable,
-                                   GError               **error)
-{
-  gsize bytes_written;
-
-  if (!_ostree_write_variant_with_size (out, header, 0, &bytes_written, checksum,
-                                        cancellable, error))
-    return FALSE;
-
   return TRUE;
 }
 
@@ -499,7 +454,7 @@ header_and_input_to_stream (GVariant           *file_header,
 
   header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
 
-  if (!_ostree_write_variant_with_size (header_out_stream, file_header, 0, NULL, NULL,
+  if (!_ostree_write_variant_with_size (header_out_stream, file_header, NULL,
                                         cancellable, error))
     return FALSE;
 
@@ -875,12 +830,10 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
     }
   else
     {
-      g_autoptr(GVariant) file_header = NULL;
+      g_autoptr(GVariant) file_header = _ostree_file_header_new (file_info, xattrs);
 
-      file_header = _ostree_file_header_new (file_info, xattrs);
-
-      if (!write_file_header_update_checksum (NULL, file_header, &checksum,
-                                              cancellable, error))
+      if (!_ostree_write_variant_with_size (NULL, file_header, &checksum,
+                                            cancellable, error))
         return FALSE;
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
