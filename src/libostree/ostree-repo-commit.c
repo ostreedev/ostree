@@ -648,7 +648,7 @@ write_content_object (OstreeRepo         *self,
 
       file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
 
-      if (!_ostree_write_variant_with_size (temp_out, file_meta, 0, NULL, NULL,
+      if (!_ostree_write_variant_with_size (temp_out, file_meta, NULL,
                                             cancellable, error))
         return FALSE;
 

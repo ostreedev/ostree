@@ -505,8 +505,7 @@ handle_untrusted_content_checksum (OstreeRepo                 *repo,
 
   ot_checksum_init (&state->content_checksum);
 
-  gsize bytes_written;
-  if (!_ostree_write_variant_with_size (NULL, header, 0, &bytes_written, &state->content_checksum,
+  if (!_ostree_write_variant_with_size (NULL, header, &state->content_checksum,
                                         cancellable, error))
     return FALSE;
 

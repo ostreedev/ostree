@@ -76,8 +76,6 @@ GVariant *_ostree_zlib_file_header_new (GFileInfo         *file_info,
 
 gboolean _ostree_write_variant_with_size (GOutputStream      *output,
                                           GVariant           *variant,
-                                          guint64             alignment_offset,
-                                          gsize              *out_bytes_written,
                                           OtChecksum         *checksum,
                                           GCancellable       *cancellable,
                                           GError            **error);
