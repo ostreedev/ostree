@@ -287,30 +287,24 @@ GVariant *
 _ostree_file_header_new (GFileInfo         *file_info,
                          GVariant          *xattrs)
 {
-  guint32 uid;
-  guint32 gid;
-  guint32 mode;
+
+  guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
+  guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
   const char *symlink_target;
-  GVariant *ret;
-  g_autoptr(GVariant) tmp_xattrs = NULL;
-
-  uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
-  gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
-  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     symlink_target = g_file_info_get_symlink_target (file_info);
   else
     symlink_target = "";
 
+  g_autoptr(GVariant) tmp_xattrs = NULL;
   if (xattrs == NULL)
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
-  ret = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid),
-                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
-                       symlink_target, xattrs ? xattrs : tmp_xattrs);
-  g_variant_ref_sink (ret);
-  return ret;
+  return g_variant_ref_sink (g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid),
+                                            GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
+                                            symlink_target, xattrs ?: tmp_xattrs));
 }
 
 /*
@@ -324,33 +318,25 @@ GVariant *
 _ostree_zlib_file_header_new (GFileInfo         *file_info,
                               GVariant          *xattrs)
 {
-  guint64 size;
-  guint32 uid;
-  guint32 gid;
-  guint32 mode;
+  guint64 size = g_file_info_get_size (file_info);
+  guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
+  guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
   const char *symlink_target;
-  GVariant *ret;
-  g_autoptr(GVariant) tmp_xattrs = NULL;
-
-  size = g_file_info_get_size (file_info);
-  uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
-  gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
-  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     symlink_target = g_file_info_get_symlink_target (file_info);
   else
     symlink_target = "";
 
+  g_autoptr(GVariant) tmp_xattrs = NULL;
   if (xattrs == NULL)
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
-  ret = g_variant_new ("(tuuuus@a(ayay))",
-                       GUINT64_TO_BE (size), GUINT32_TO_BE (uid),
-                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
-                       symlink_target, xattrs ? xattrs : tmp_xattrs);
-  g_variant_ref_sink (ret);
-  return ret;
+  return g_variant_ref_sink (g_variant_new ("(tuuuus@a(ayay))",
+                                            GUINT64_TO_BE (size), GUINT32_TO_BE (uid),
+                                            GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
+                                            symlink_target, xattrs ?: tmp_xattrs));
 }
 
 static gboolean
@@ -445,33 +431,30 @@ header_and_input_to_stream (GVariant           *file_header,
                             GCancellable       *cancellable,
                             GError            **error)
 {
-  gpointer header_data;
-  gsize header_size;
-  g_autoptr(GInputStream) ret_input = NULL;
-  g_autoptr(GPtrArray) streams = NULL;
-  g_autoptr(GOutputStream) header_out_stream = NULL;
-  g_autoptr(GInputStream) header_in_stream = NULL;
-
-  header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-
+  /* Get a memory buffer for the header */
+  g_autoptr(GOutputStream) header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
   if (!_ostree_write_variant_with_size (header_out_stream, file_header, NULL,
                                         cancellable, error))
     return FALSE;
-
   if (!g_output_stream_close (header_out_stream, cancellable, error))
     return FALSE;
 
-  header_size = g_memory_output_stream_get_data_size ((GMemoryOutputStream*) header_out_stream);
-  header_data = g_memory_output_stream_steal_data ((GMemoryOutputStream*) header_out_stream);
-  header_in_stream = g_memory_input_stream_new_from_data (header_data, header_size, g_free);
+  /* Our result stream chain */
+  g_autoptr(GPtrArray) streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  /* Append the header to the chain */
+  const gsize header_size = g_memory_output_stream_get_data_size ((GMemoryOutputStream*) header_out_stream);
+  gpointer header_data = g_memory_output_stream_steal_data ((GMemoryOutputStream*) header_out_stream);
+  g_autoptr(GInputStream) header_in_stream = g_memory_input_stream_new_from_data (header_data, header_size, g_free);
 
   g_ptr_array_add (streams, g_object_ref (header_in_stream));
+
+  /* And if we have an input stream, append that */
   if (input)
     g_ptr_array_add (streams, g_object_ref (input));
 
-  ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
+  /* Return the result stream */
+  g_autoptr(GInputStream) ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
   ot_transfer_out_value (out_input, &ret_input);
   if (out_header_size)
     *out_header_size = header_size;
