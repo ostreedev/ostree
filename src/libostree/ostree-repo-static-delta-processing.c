@@ -501,13 +501,10 @@ handle_untrusted_content_checksum (OstreeRepo                 *repo,
                                    GError                    **error)
 {
   g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (state->mode, state->uid, state->gid);
-  g_autoptr(GVariant) header = _ostree_file_header_new (finfo, state->xattrs);
+  g_autoptr(GBytes) header = _ostree_file_header_new (finfo, state->xattrs);
 
   ot_checksum_init (&state->content_checksum);
-
-  if (!_ostree_write_variant_with_size (NULL, header, &state->content_checksum,
-                                        cancellable, error))
-    return FALSE;
+  ot_checksum_update_bytes (&state->content_checksum, header);
 
   return TRUE;
 }

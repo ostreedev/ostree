@@ -51,6 +51,14 @@ void ot_checksum_init (OtChecksum *checksum);
 void ot_checksum_update (OtChecksum *checksum,
                          const guint8   *buf,
                          size_t          len);
+static inline void
+ot_checksum_update_bytes (OtChecksum *checksum,
+                          GBytes     *buf)
+{
+  gsize len;
+  const guint8 *bufdata = g_bytes_get_data (buf, &len);
+  ot_checksum_update (checksum, bufdata, len);
+}
 void ot_checksum_get_digest (OtChecksum *checksum,
                              guint8      *buf,
                              size_t       buflen);
