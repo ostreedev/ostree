@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <gio/gio.h>
+#include "libglnx.h"
 
 G_BEGIN_DECLS
 
