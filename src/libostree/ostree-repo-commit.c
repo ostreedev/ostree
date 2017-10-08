@@ -631,7 +631,6 @@ write_content_object (OstreeRepo         *self,
     }
   else
     {
-      g_autoptr(GVariant) file_meta = NULL;
       g_autoptr(GConverter) zlib_compressor = NULL;
       g_autoptr(GOutputStream) compressed_out_stream = NULL;
       g_autoptr(GOutputStream) temp_out = NULL;
@@ -646,11 +645,15 @@ write_content_object (OstreeRepo         *self,
         return FALSE;
       temp_out = g_unix_output_stream_new (tmpf.fd, FALSE);
 
-      file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
+      g_autoptr(GBytes) file_meta_header = _ostree_zlib_file_header_new (file_info, xattrs);
+      gsize file_meta_len;
+      const guint8* file_meta_buf = g_bytes_get_data (file_meta_header, &file_meta_len);
 
-      if (!_ostree_write_variant_with_size (temp_out, file_meta, NULL,
-                                            cancellable, error))
-        return FALSE;
+      { gsize bytes_written;
+        if (!g_output_stream_write_all (temp_out, file_meta_buf, file_meta_len, &bytes_written,
+                                        cancellable, error))
+          return FALSE;
+      }
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
         {

@@ -68,17 +68,11 @@ G_BEGIN_DECLS
 #define _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(tuuuusa(ayay))")
 
 
-GVariant *_ostree_file_header_new (GFileInfo         *file_info,
-                                   GVariant          *xattrs);
+GBytes *_ostree_file_header_new (GFileInfo         *file_info,
+                                 GVariant          *xattrs);
 
-GVariant *_ostree_zlib_file_header_new (GFileInfo         *file_info,
-                                        GVariant          *xattrs);
-
-gboolean _ostree_write_variant_with_size (GOutputStream      *output,
-                                          GVariant           *variant,
-                                          OtChecksum         *checksum,
-                                          GCancellable       *cancellable,
-                                          GError            **error);
+GBytes *_ostree_zlib_file_header_new (GFileInfo         *file_info,
+                                      GVariant          *xattrs);
 
 gboolean
 _ostree_make_temporary_symlink_at (int             tmp_dirfd,
