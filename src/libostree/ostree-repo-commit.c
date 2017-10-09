@@ -164,13 +164,13 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
 /* Given a dfd+path combination (may be regular file or symlink),
  * rename it into place.
  */
-gboolean
-_ostree_repo_commit_path_final (OstreeRepo        *self,
-                                const char        *checksum,
-                                OstreeObjectType   objtype,
-                                OtCleanupUnlinkat *tmp_path,
-                                GCancellable      *cancellable,
-                                GError           **error)
+static gboolean
+commit_path_final (OstreeRepo        *self,
+                   const char        *checksum,
+                   OstreeObjectType   objtype,
+                   OtCleanupUnlinkat *tmp_path,
+                   GCancellable      *cancellable,
+                   GError           **error)
 {
   /* The final renameat() */
   char tmpbuf[_OSTREE_LOOSE_PATH_MAX];
@@ -746,9 +746,8 @@ write_content_object (OstreeRepo         *self,
           g_assert_not_reached ();
         }
 
-      if (!_ostree_repo_commit_path_final (self, actual_checksum, OSTREE_OBJECT_TYPE_FILE,
-                                           &tmp_unlinker,
-                                           cancellable, error))
+      if (!commit_path_final (self, actual_checksum, OSTREE_OBJECT_TYPE_FILE,
+                              &tmp_unlinker, cancellable, error))
         return FALSE;
     }
   else
