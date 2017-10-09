@@ -631,7 +631,6 @@ write_content_object (OstreeRepo         *self,
     }
   else
     {
-      g_autoptr(GVariant) file_meta = NULL;
       g_autoptr(GConverter) zlib_compressor = NULL;
       g_autoptr(GOutputStream) compressed_out_stream = NULL;
       g_autoptr(GOutputStream) temp_out = NULL;
