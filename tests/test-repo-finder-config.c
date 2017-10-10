@@ -66,8 +66,6 @@ static void
 teardown (Fixture       *fixture,
           gconstpointer  test_data)
 {
-  g_autoptr(GError) error = NULL;
-
   /* Recursively remove the temporary directory. */
   (void)glnx_tmpdir_delete (&fixture->tmpdir, NULL, NULL);
 
