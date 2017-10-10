@@ -538,6 +538,12 @@ for x in $(seq 3); do
         assert_file_has_content union-identical-test/usr/share/licenses/${v} GPL
     done
 done
+# now checkout the first pkg in force copy mode to make sure we can checksum
+rm union-identical-test -rf
+$OSTREE checkout --force-copy union-identical-pkg1 union-identical-test
+for x in 2 3; do
+    $OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical union-identical-pkg${x} union-identical-test
+done
 echo "ok checkout union identical merges"
 
 # Make conflicting packages, one with regfile, one with symlink
