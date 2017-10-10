@@ -38,8 +38,14 @@ typedef struct OtChecksum OtChecksum;
 
 /* Same as OSTREE_SHA256_DIGEST_LEN, but this header can't depend on that */
 #define _OSTREE_SHA256_DIGEST_LEN (32)
+#if defined(OSTREE_SHA256_DIGEST_LEN) && _OSTREE_SHA256_DIGEST_LEN != OSTREE_SHA256_DIGEST_LEN
+#error Mismatched OSTREE_SHA256_DIGEST_LEN
+#endif
 /* See above */
 #define _OSTREE_SHA256_STRING_LEN (64)
+#if defined(OSTREE_SHA256_STRING_LEN) && _OSTREE_SHA256_STRING_LEN != OSTREE_SHA256_STRING_LEN
+#error Mismatched OSTREE_SHA256_STRING_LEN
+#endif
 
 void ot_checksum_init (OtChecksum *checksum);
 void ot_checksum_update (OtChecksum *checksum,

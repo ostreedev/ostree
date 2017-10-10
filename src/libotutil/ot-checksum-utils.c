@@ -62,7 +62,7 @@ typedef struct {
   guint digest_len;
 } OtRealChecksum;
 
-G_STATIC_ASSERT (sizeof(OtChecksum) >= sizeof(OtRealChecksum));
+G_STATIC_ASSERT (sizeof (OtChecksum) >= sizeof (OtRealChecksum));
 
 void
 ot_checksum_init (OtChecksum *checksum)
@@ -210,7 +210,7 @@ ot_gio_splice_update_checksum (GOutputStream  *out,
       char buf[4096];
       do
         {
-          if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, cancellable, error))
+          if (!g_input_stream_read_all (in, buf, sizeof (buf), &bytes_read, cancellable, error))
             return FALSE;
           if (!ot_gio_write_update_checksum (out, buf, bytes_read, &bytes_written, checksum,
                                              cancellable, error))
@@ -244,7 +244,7 @@ ot_gio_splice_get_checksum (GOutputStream  *out,
     return FALSE;
 
   guint8 digest[_OSTREE_SHA256_DIGEST_LEN];
-  ot_checksum_get_digest (&checksum, digest, sizeof(digest));
+  ot_checksum_get_digest (&checksum, digest, sizeof (digest));
   g_autofree guchar *ret_csum = g_malloc (sizeof (digest));
   memcpy (ret_csum, digest, sizeof (digest));
   ot_transfer_out_value (out_csum, &ret_csum);

@@ -1028,7 +1028,7 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
     }
 
   char hexdigest[OSTREE_SHA256_STRING_LEN+1];
-  ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof(hexdigest));
+  ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof (hexdigest));
   ret_layout->bootcsum = g_strdup (hexdigest);
 
   *out_layout = g_steal_pointer (&ret_layout);

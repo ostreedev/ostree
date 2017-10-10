@@ -823,7 +823,7 @@ write_metadata_object (OstreeRepo         *self,
       gsize len;
       const guint8*bufdata = g_bytes_get_data (buf, &len);
       ot_checksum_update (&checksum, bufdata, len);
-      ot_checksum_get_hexdigest (&checksum, actual_checksum, sizeof(actual_checksum));
+      ot_checksum_get_hexdigest (&checksum, actual_checksum, sizeof (actual_checksum));
       gboolean have_obj;
       if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype, &have_obj,
                                           cancellable, error))
