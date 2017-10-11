@@ -17,6 +17,7 @@ env:
     GI_SCANNERFLAGS: '--warn-error'
     ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
     # TODO when we're doing leak checks: G_SLICE: "always-malloc"
+    CONFIGOPTS: '--with-curl --with-openssl'
 
 tests:
   - ci/ci-commitmessage-submodules.sh
@@ -41,6 +42,7 @@ host:
 
 env:
     CFLAGS: ''
+    CONFIGOPTS: '--with-curl --with-openssl'
 
 tests:
     # FIXME revert setting to 7/3/1611 when repos sync
