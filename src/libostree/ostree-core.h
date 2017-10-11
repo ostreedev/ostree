@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <sys/stat.h>
 #include <gio/gio.h>
 #include <ostree-types.h>
 
@@ -419,6 +420,24 @@ gboolean ostree_checksum_file (GFile             *f,
                                guchar           **out_csum,
                                GCancellable      *cancellable,
                                GError           **error);
+
+/**
+ * OstreeDiffFlags:
+ */
+typedef enum {
+  OSTREE_CHECKSUM_FLAGS_NONE = 0,
+  OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS = (1 << 0),
+} OstreeChecksumFlags;
+
+_OSTREE_PUBLIC
+gboolean ostree_checksum_file_at (int               dfd,
+                                  const char       *path,
+                                  struct stat      *stbuf,
+                                  OstreeObjectType  objtype,
+                                  OstreeChecksumFlags flags,
+                                  guchar          **out_csum,
+                                  GCancellable     *cancellable,
+                                  GError          **error);
 
 _OSTREE_PUBLIC
 void ostree_checksum_file_async (GFile                 *f,

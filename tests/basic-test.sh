@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((74 + ${extra_basic_tests:-0}))"
+echo "1..$((75 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -237,6 +237,33 @@ if $OSTREE ls ${orphaned_rev} 2>err.txt; then
 fi
 assert_file_has_content err.txt "No such metadata object"
 echo "ok commit orphaned"
+
+cd ${test_tmpdir}
+# in bare-user-only mode, we canonicalize ownership to 0:0, so checksums won't
+# match -- we could add a --ignore-ownership option I suppose?
+if is_bare_user_only_repo repo; then
+    echo "ok # SKIP checksums won't match up in bare-user-only"
+else
+    $OSTREE fsck
+    CHECKSUM_FLAG=
+    if [ -n "${OSTREE_NO_XATTRS:-}" ]; then
+        CHECKSUM_FLAG=--ignore-xattrs
+    fi
+    rm -rf checksum-test
+    $OSTREE checkout test2 checksum-test
+    find checksum-test/ -type f | while read fn; do
+        checksum=$($CMD_PREFIX ostree checksum $CHECKSUM_FLAG $fn)
+        objpath=repo/objects/${checksum::2}/${checksum:2}.file
+        assert_has_file $objpath
+        # running `ostree checksum` on the obj might not necessarily match, let's
+        # just check that they have the same content to confirm that it's
+        # (probably) the originating file
+        object_content_checksum=$(md5sum $objpath | cut -f1 -d' ')
+        checkout_content_checksum=$(md5sum $fn | cut -f1 -d' ')
+        assert_streq "$object_content_checksum" "$checkout_content_checksum"
+    done
+    echo "ok checksum CLI"
+fi
 
 cd ${test_tmpdir}
 $OSTREE diff test2^ test2 > diff-test2

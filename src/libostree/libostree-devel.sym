@@ -19,6 +19,7 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2017.13 {
+	ostree_checksum_file_at;
 } LIBOSTREE_2017.12;
 
 /* Stub section for the stable release *after* this development one; don't
