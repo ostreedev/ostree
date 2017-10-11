@@ -1227,7 +1227,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
           /* Ensure that in the case of a power cut all the directory metadata that
              we want has reached the disk. In particular, we want this before we
              update the refs to point to these objects. */
-          glnx_fd_close int target_dir_fd = -1;
+          glnx_autofd int target_dir_fd = -1;
 
           loose_objpath[2] = 0;
 
@@ -2219,7 +2219,7 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
 
   if (self->commit_stagedir.initialized)
     {
-      glnx_fd_close int fd = -1;
+      glnx_autofd int fd = -1;
       if (!ot_openat_ignore_enoent (self->commit_stagedir.fd, buf, &fd, error))
         return FALSE;
       if (fd != -1)
@@ -2227,7 +2227,7 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
                                    out_metadata, error);
     }
 
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!ot_openat_ignore_enoent (self->objects_dir_fd, buf, &fd, error))
     return FALSE;
   if (fd != -1)
@@ -3402,7 +3402,7 @@ import_one_object_direct (OstreeRepo    *dest_repo,
        * that basically just optionally does chown().  Perhaps
        * in the future we should add flags for those things?
        */
-      glnx_fd_close int src_fd = -1;
+      glnx_autofd int src_fd = -1;
       if (!glnx_openat_rdonly (src_repo->objects_dir_fd, loose_path_buf,
                                FALSE, &src_fd, error))
         return FALSE;

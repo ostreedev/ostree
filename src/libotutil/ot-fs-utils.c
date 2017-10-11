@@ -79,7 +79,7 @@ ot_openat_read_stream (int             dfd,
                        GCancellable   *cancellable,
                        GError        **error)
 {
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (dfd, path, follow, &fd, error))
     return FALSE;
   *out_istream = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
@@ -127,7 +127,7 @@ ot_dfd_iter_init_allow_noent (int dfd,
                               gboolean *out_exists,
                               GError **error)
 {
-  glnx_fd_close int fd = glnx_opendirat_with_errno (dfd, path, TRUE);
+  glnx_autofd int fd = glnx_opendirat_with_errno (dfd, path, TRUE);
   if (fd < 0)
     {
       if (errno != ENOENT)

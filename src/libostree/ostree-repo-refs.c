@@ -150,7 +150,7 @@ find_ref_in_remotes (OstreeRepo         *self,
                      GError            **error)
 {
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  glnx_fd_close int ret_fd = -1;
+  glnx_autofd int ret_fd = -1;
 
   if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter, error))
     return FALSE;
@@ -158,7 +158,7 @@ find_ref_in_remotes (OstreeRepo         *self,
   while (TRUE)
     {
       struct dirent *dent = NULL;
-      glnx_fd_close int remote_dfd = -1;
+      glnx_autofd int remote_dfd = -1;
 
       if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, NULL, error))
         return FALSE;
@@ -234,7 +234,7 @@ resolve_refspec (OstreeRepo     *self,
 {
   __attribute__((unused)) GCancellable *cancellable = NULL;
   g_autofree char *ret_rev = NULL;
-  glnx_fd_close int target_fd = -1;
+  glnx_autofd int target_fd = -1;
 
   g_return_val_if_fail (ref != NULL, FALSE);
 
@@ -637,7 +637,7 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
         {
           if (S_ISDIR (stbuf.st_mode))
             {
-              glnx_fd_close int base_fd = -1;
+              glnx_autofd int base_fd = -1;
               g_autoptr(GString) base_path = g_string_new ("");
               if (!cut_prefix)
                 g_string_printf (base_path, "%s/", ref_prefix);
@@ -652,7 +652,7 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
             }
           else
             {
-              glnx_fd_close int prefix_dfd = -1;
+              glnx_autofd int prefix_dfd = -1;
 
               if (!glnx_opendirat (self->repo_dir_fd, prefix_path, TRUE, &prefix_dfd, error))
                 return FALSE;
@@ -667,7 +667,7 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
     {
       g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
       g_autoptr(GString) base_path = g_string_new ("");
-      glnx_fd_close int refs_heads_dfd = -1;
+      glnx_autofd int refs_heads_dfd = -1;
 
       if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE, &refs_heads_dfd, error))
         return FALSE;
@@ -687,7 +687,7 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
           while (TRUE)
             {
               struct dirent *dent;
-              glnx_fd_close int remote_dfd = -1;
+              glnx_autofd int remote_dfd = -1;
 
               if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
                 return FALSE;
@@ -992,7 +992,7 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
                         GCancellable               *cancellable,
                         GError                    **error)
 {
-  glnx_fd_close int dfd = -1;
+  glnx_autofd int dfd = -1;
 
   g_return_val_if_fail (remote == NULL || ref->collection_id == NULL, FALSE);
   g_return_val_if_fail (!(rev != NULL && alias != NULL), FALSE);
@@ -1016,7 +1016,7 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
     }
   else if (remote == NULL && ref->collection_id != NULL)
     {
-      glnx_fd_close int refs_mirrors_dfd = -1;
+      glnx_autofd int refs_mirrors_dfd = -1;
 
       /* refs/mirrors might not exist in older repositories, so create it. */
       if (!glnx_shutil_mkdir_p_at_open (self->repo_dir_fd, "refs/mirrors", 0777,
@@ -1039,7 +1039,7 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
     }
   else
     {
-      glnx_fd_close int refs_remotes_dfd = -1;
+      glnx_autofd int refs_remotes_dfd = -1;
 
       if (!glnx_opendirat (self->repo_dir_fd, "refs/remotes", TRUE,
                            &refs_remotes_dfd, error))
@@ -1212,7 +1212,7 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
   if (main_collection_id != NULL &&
       (match_collection_id == NULL || g_strcmp0 (match_collection_id, main_collection_id) == 0))
     {
-      glnx_fd_close int refs_heads_dfd = -1;
+      glnx_autofd int refs_heads_dfd = -1;
 
       if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE, &refs_heads_dfd, error))
         return FALSE;
@@ -1237,7 +1237,7 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
       while (refs_dir_exists)
         {
           struct dirent *dent;
-          glnx_fd_close int subdir_fd = -1;
+          glnx_autofd int subdir_fd = -1;
           const gchar *current_collection_id;
           g_autofree gchar *remote_collection_id = NULL;
 

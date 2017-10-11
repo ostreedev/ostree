@@ -80,7 +80,7 @@ ostree_builtin_create_usb (int            argc,
   const char *mount_root_path = argv[1];
   struct stat mount_root_stbuf;
 
-  glnx_fd_close int mount_root_dfd = -1;
+  glnx_autofd int mount_root_dfd = -1;
   if (!glnx_opendirat (AT_FDCWD, mount_root_path, TRUE, &mount_root_dfd, error))
     return FALSE;
   if (!glnx_fstat (mount_root_dfd, &mount_root_stbuf, error))

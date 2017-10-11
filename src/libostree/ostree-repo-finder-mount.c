@@ -328,9 +328,9 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
       g_autofree gchar *mount_name = NULL;
       g_autoptr(GFile) mount_root = NULL;
       g_autofree gchar *mount_root_path = NULL;
-      glnx_fd_close int mount_root_dfd = -1;
+      glnx_autofd int mount_root_dfd = -1;
       struct stat mount_root_stbuf;
-      glnx_fd_close int repos_dfd = -1;
+      glnx_autofd int repos_dfd = -1;
       gsize i;
       g_autoptr(GHashTable) repo_to_refs = NULL;  /* (element-type UriAndKeyring GHashTable) */
       GHashTable *supported_ref_to_checksum;  /* (element-type OstreeCollectionRef utf8) */

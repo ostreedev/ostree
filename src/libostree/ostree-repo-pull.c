@@ -547,7 +547,7 @@ write_commitpartial_for (OtPullData *pull_data,
                          GError **error)
 {
   g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-  glnx_fd_close int fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
+  glnx_autofd int fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
   if (fd == -1)
     {
       if (errno != EEXIST)
@@ -2495,7 +2495,7 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
     return TRUE;
 
   const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote, ".sig");
-  glnx_fd_close int prev_fd = -1;
+  glnx_autofd int prev_fd = -1;
   if (!ot_openat_ignore_enoent (self->cache_dir_fd, summary_cache_sig_file, &prev_fd, error))
     return FALSE;
   if (prev_fd < 0)
@@ -2508,7 +2508,7 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
   if (g_bytes_compare (old_sig_contents, summary_sig) == 0)
     {
       const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote);
-      glnx_fd_close int summary_fd = -1;
+      glnx_autofd int summary_fd = -1;
       GBytes *summary_data;
 
 

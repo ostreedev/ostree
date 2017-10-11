@@ -782,7 +782,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
       }
   }
 
-  glnx_fd_close int destination_dfd = -1;
+  glnx_autofd int destination_dfd = -1;
   if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE,
                        &destination_dfd, error))
     return FALSE;
@@ -947,7 +947,7 @@ checkout_tree_at (OstreeRepo                        *self,
        * exists.
        */
       int destination_dfd = destination_parent_fd;
-      glnx_fd_close int destination_dfd_owned = -1;
+      glnx_autofd int destination_dfd_owned = -1;
       if (strcmp (destination_name, ".") != 0)
         {
           if (mkdirat (destination_parent_fd, destination_name, 0700) < 0

@@ -203,7 +203,7 @@ get_policy_checksum (char        **out_csum,
   g_autofree char *best_policy = NULL;
   int best_version = 0;
 
-  glnx_fd_close int bindir_dfd = -1;
+  glnx_autofd int bindir_dfd = -1;
   if (!glnx_opendirat (AT_FDCWD, bindir_path, TRUE, &bindir_dfd, error))
     return FALSE;
 

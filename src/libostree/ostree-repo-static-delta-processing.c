@@ -766,11 +766,7 @@ dispatch_set_read_source (OstreeRepo                 *repo,
   GLNX_AUTO_PREFIX_ERROR("opcode set-read-source", error);
   guint64 source_offset;
 
-  if (state->read_source_fd != -1)
-    {
-      (void) close (state->read_source_fd);
-      state->read_source_fd = -1;
-    }
+  glnx_close_fd (&state->read_source_fd);
 
   if (!read_varuint64 (state, &source_offset, error))
     return FALSE;
@@ -803,12 +799,7 @@ dispatch_unset_read_source (OstreeRepo                 *repo,
   if (state->stats_only)
     return TRUE; /* Early return */
 
-  if (state->read_source_fd != -1)
-    {
-      (void) close (state->read_source_fd);
-      state->read_source_fd = -1;
-    }
-
+  glnx_close_fd (&state->read_source_fd);
   g_clear_pointer (&state->read_source_object, g_free);
 
   return TRUE;

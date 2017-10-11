@@ -57,7 +57,7 @@ ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GErr
 
   const char *sysroot_path = argv[1];
 
-  glnx_fd_close int root_dfd = -1;
+  glnx_autofd int root_dfd = -1;
   if (!glnx_opendirat (AT_FDCWD, sysroot_path, TRUE, &root_dfd, error))
     return FALSE;
 
