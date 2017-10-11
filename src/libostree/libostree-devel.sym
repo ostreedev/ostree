@@ -19,6 +19,8 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2017.13 {
+global:
+  ostree_checksum_file_at;
 } LIBOSTREE_2017.12;
 
 /* Stub section for the stable release *after* this development one; don't
@@ -27,6 +29,6 @@ LIBOSTREE_2017.13 {
  * with whatever the next version with new symbols will be.
 LIBOSTREE_2017.$NEWVERSION {
 global:
-	someostree_symbol_deleteme;
+  someostree_symbol_deleteme;
 } LIBOSTREE_2017.$LASTSTABLE;
 */

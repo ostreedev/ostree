@@ -832,6 +832,81 @@ ostree_checksum_file (GFile            *f,
   return TRUE;
 }
 
+/**
+ * ostree_checksum_file_at:
+ * @dfd: Directory file descriptor
+ * @path: Subpath
+ * @stbuf (allow-none): Optional stat buffer
+ * @objtype: Object type
+ * @flags: Flags
+ * @out_checksum (out) (transfer full): Return location for hex checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Compute the OSTree checksum for a given file. This is an fd-relative version
+ * of ostree_checksum_file() which also takes flags and fills in a caller
+ * allocated buffer.
+ *
+ * Since: 2017.13
+ */
+gboolean
+ostree_checksum_file_at (int               dfd,
+                         const char       *path,
+                         struct stat      *stbuf,
+                         OstreeObjectType  objtype,
+                         OstreeChecksumFlags flags,
+                         char            **out_checksum,
+                         GCancellable     *cancellable,
+                         GError          **error)
+{
+  g_return_val_if_fail (out_checksum != NULL, FALSE);
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return FALSE;
+
+  struct stat local_stbuf;
+  if (stbuf == NULL)
+    {
+      stbuf = &local_stbuf;
+      if (!glnx_fstatat (dfd, path, stbuf, AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
+    }
+
+  g_autoptr(GFileInfo) file_info = _ostree_stbuf_to_gfileinfo (stbuf);
+
+  g_autoptr(GInputStream) in = NULL;
+  if (S_ISREG (stbuf->st_mode))
+    {
+      glnx_autofd int fd = -1;
+      if (!glnx_openat_rdonly (dfd, path, FALSE, &fd, error))
+        return FALSE;
+      in = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+    }
+  else if (S_ISLNK (stbuf->st_mode))
+    {
+      if (!ot_readlinkat_gfile_info (dfd, path, file_info, cancellable, error))
+        return FALSE;
+    }
+
+  const gboolean ignore_xattrs =
+    ((flags & OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS) > 0);
+
+  g_autoptr(GVariant) xattrs = NULL;
+  if (!ignore_xattrs && objtype == OSTREE_OBJECT_TYPE_FILE)
+    {
+      if (!glnx_dfd_name_get_all_xattrs (dfd, path, &xattrs, cancellable, error))
+        return FALSE;
+    }
+
+  g_autofree guchar *csum_bytes = NULL;
+  if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype,
+                                        &csum_bytes, cancellable, error))
+    return FALSE;
+
+  *out_checksum = ostree_checksum_from_bytes (csum_bytes);
+  return TRUE;
+}
+
 typedef struct {
   GFile  *f;
   OstreeObjectType objtype;

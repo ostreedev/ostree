@@ -62,6 +62,19 @@ Boston, MA 02111-1307, USA.
     </refsect1>
 
     <refsect1>
+        <title>Options</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>--ignore-xattrs</option></term>
+
+                <listitem><para>
+                    Ignore extended attributes when checksumming.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
         <title>Example</title>
         <para><command>$ ostree checksum file1</command></para>
 <programlisting>

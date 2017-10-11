@@ -32,12 +32,16 @@
  * man page (man/ostree-checksum.xml) when changing the option list.
  */
 
+static gboolean opt_ignore_xattrs;
+
 static GOptionEntry options[] = {
+  { "ignore-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_ignore_xattrs, "Don't include xattrs in checksum", NULL },
   { NULL }
 };
 
 typedef struct {
   GError **error;
+  gboolean success;
   GMainLoop *loop;
 } AsyncChecksumData;
 
@@ -46,50 +50,56 @@ on_checksum_received (GObject    *obj,
                       GAsyncResult  *result,
                       gpointer       user_data)
 {
-  g_autofree guchar *csum = NULL;
-  g_autofree char *checksum = NULL;
   AsyncChecksumData *data = user_data;
 
-  if (ostree_checksum_file_async_finish ((GFile*)obj, result, &csum, data->error))
+  g_autofree guchar *csum_bytes = NULL;
+  data->success =
+    ostree_checksum_file_async_finish ((GFile*)obj, result, &csum_bytes, data->error);
+  if (data->success)
     {
-      checksum = ostree_checksum_from_bytes (csum);
-      g_print ("%s\n", checksum);
+      char csum[OSTREE_SHA256_STRING_LEN+1];
+      ostree_checksum_inplace_from_bytes (csum_bytes, csum);
+      g_print ("%s\n", csum);
     }
-  
+
   g_main_loop_quit (data->loop);
 }
 
 gboolean
 ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  gboolean ret = FALSE;
-  g_autoptr(GFile) f = NULL;
-  AsyncChecksumData data = { 0, };
+  g_autoptr(GOptionContext) context =
+    g_option_context_new ("PATH - Checksum a file or directory");
+  if (!ostree_option_context_parse (context, options, &argc, &argv,
+                                    OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
+    return FALSE;
 
-  context = g_option_context_new ("PATH - Checksum a file or directory");
+  if (argc < 2)
+    return glnx_throw (error, "A filename must be given");
+  const char *path = argv[1];
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
-    goto out;
-
-  if (argc > 1)
-    f = g_file_new_for_path (argv[1]);
-  else
+  /* for test coverage, use the async API if no flags are needed */
+  if (!opt_ignore_xattrs)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "A filename must be given");
-      goto out;
+      g_autoptr(GFile) f = g_file_new_for_path (path);
+      g_autoptr(GMainLoop) loop = g_main_loop_new (NULL, FALSE);
+
+      AsyncChecksumData data = { 0, };
+
+      data.loop = loop;
+      data.error = error;
+      ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_FILE, G_PRIORITY_DEFAULT,
+                                  cancellable, on_checksum_received, &data);
+      g_main_loop_run (data.loop);
+      return data.success;
     }
 
-  data.loop = g_main_loop_new (NULL, FALSE);
-  data.error = error;
-  ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_FILE, G_PRIORITY_DEFAULT, cancellable, on_checksum_received, &data);
-  
-  g_main_loop_run (data.loop);
+  g_autofree char *checksum = NULL;
+  if (!ostree_checksum_file_at (AT_FDCWD, path, NULL, OSTREE_OBJECT_TYPE_FILE,
+                                OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS, &checksum,
+                                cancellable, error))
+    return FALSE;
 
-  ret = TRUE;
- out:
-  if (data.loop)
-    g_main_loop_unref (data.loop);
-  return ret;
+  g_print ("%s\n", checksum);
+  return TRUE;
 }
