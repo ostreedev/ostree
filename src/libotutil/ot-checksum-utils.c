@@ -109,7 +109,7 @@ ot_checksum_get_digest_internal (OtRealChecksum *real,
   g_assert_cmpint (buflen, ==, _OSTREE_SHA256_DIGEST_LEN);
 #if defined(HAVE_OPENSSL)
   guint digest_len = buflen;
-  g_assert (EVP_DigestFinal_ex (real->checksum, digest_buf, &digest_len));
+  g_assert (EVP_DigestFinal_ex (real->checksum, buf, &digest_len));
   g_assert_cmpint (digest_len, ==, buflen);
 #elif defined(HAVE_GNUTLS)
   gnutls_hash_output (real->checksum, buf);
