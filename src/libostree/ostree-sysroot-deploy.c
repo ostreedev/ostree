@@ -1301,7 +1301,12 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
         }
       if (debug_fifreeze)
         g_printerr ("fifreeze watchdog was run\n");
-      exit (EXIT_SUCCESS);
+      /* We use _exit() rather than exit() to avoid tripping over any shared
+       * libraries in process that aren't fork() safe; for example gjs/spidermonkey:
+       * https://github.com/ostreedev/ostree/issues/1262
+       * This doesn't help for the err()/errx() calls above, but eh...
+       */
+      _exit (EXIT_SUCCESS);
     }
   else /* Parent process. */
     {
