@@ -38,6 +38,7 @@ static GOptionEntry options[] = {
 
 typedef struct {
   GError **error;
+  gboolean success;
   GMainLoop *loop;
 } AsyncChecksumData;
 
@@ -46,50 +47,41 @@ on_checksum_received (GObject    *obj,
                       GAsyncResult  *result,
                       gpointer       user_data)
 {
-  g_autofree guchar *csum = NULL;
-  g_autofree char *checksum = NULL;
   AsyncChecksumData *data = user_data;
 
-  if (ostree_checksum_file_async_finish ((GFile*)obj, result, &csum, data->error))
+  g_autofree guchar *csum = NULL;
+  data->success = ostree_checksum_file_async_finish ((GFile*)obj, result, &csum, data->error);
+  if (data->success)
     {
-      checksum = ostree_checksum_from_bytes (csum);
+      g_autofree char *checksum = ostree_checksum_from_bytes (csum);
       g_print ("%s\n", checksum);
     }
-  
+
   g_main_loop_quit (data->loop);
 }
 
 gboolean
 ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  gboolean ret = FALSE;
-  g_autoptr(GFile) f = NULL;
+  g_autoptr(GOptionContext) context =
+    g_option_context_new ("PATH - Checksum a file or directory");
+  if (!ostree_option_context_parse (context, options, &argc, &argv,
+                                    OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
+    return FALSE;
+
+  if (argc < 2)
+    return glnx_throw (error, "A filename must be given");
+  const char *path = argv[1];
+
+  g_autoptr(GFile) f = g_file_new_for_path (path);
+  g_autoptr(GMainLoop) loop = g_main_loop_new (NULL, FALSE);
+
   AsyncChecksumData data = { 0, };
 
-  context = g_option_context_new ("PATH - Checksum a file or directory");
-
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
-    goto out;
-
-  if (argc > 1)
-    f = g_file_new_for_path (argv[1]);
-  else
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "A filename must be given");
-      goto out;
-    }
-
-  data.loop = g_main_loop_new (NULL, FALSE);
+  data.loop = loop;
   data.error = error;
-  ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_FILE, G_PRIORITY_DEFAULT, cancellable, on_checksum_received, &data);
-  
+  ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_FILE, G_PRIORITY_DEFAULT, cancellable,
+                              on_checksum_received, &data);
   g_main_loop_run (data.loop);
-
-  ret = TRUE;
- out:
-  if (data.loop)
-    g_main_loop_unref (data.loop);
-  return ret;
+  return data.success;
 }
