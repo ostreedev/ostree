@@ -315,7 +315,7 @@ _ostree_file_header_new (GFileInfo         *file_info,
   return variant_to_lenprefixed_buffer (g_variant_ref_sink (ret));
 }
 
-/* Like _ostree_file_header_new(), but used for the comprssed format in archive
+/* Like _ostree_file_header_new(), but used for the compressed format in archive
  * repositories. This format hence lives on disk; normally the uncompressed
  * stream format doesn't. Instead for "bare" repositories, the file data is
  * stored directly, or for the special case of bare-user repositories, as a
