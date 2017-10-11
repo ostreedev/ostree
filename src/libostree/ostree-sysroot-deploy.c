@@ -1332,11 +1332,15 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
       /* Do a freeze/thaw cycle; TODO add a FIFREEZETHAW ioctl */
       if (ioctl (rootfs_dfd, FIFREEZE, 0) != 0)
         {
-          /* Not supported, or we're running in the unit tests (as non-root)?
+          /* Not supported, we're running in the unit tests (as non-root), or
+           * the filesystem is already frozen (EBUSY).
            * OK, let's just do a syncfs.
            */
-          if (G_IN_SET (errno, EOPNOTSUPP, EPERM))
+          if (G_IN_SET (errno, EOPNOTSUPP, EPERM, EBUSY))
             {
+              /* Warn if the filesystem was already frozen */
+              if (errno == EBUSY)
+                g_debug ("Filesystem already frozen, falling back to syncfs");
               if (TEMP_FAILURE_RETRY (syncfs (rootfs_dfd)) != 0)
                 return glnx_throw_errno_prefix (error, "syncfs");
               /* Write the completion, and return */
@@ -1349,7 +1353,13 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
         }
       /* And finally thaw, then signal our completion to the watchdog */
       if (TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0)) != 0)
-        return glnx_throw_errno_prefix (error, "ioctl(FITHAW)");
+        {
+          /* Warn but don't error if the filesystem was already thawed */
+          if (errno == EINVAL)
+            g_debug ("Filesystem already thawed");
+          else
+            return glnx_throw_errno_prefix (error, "ioctl(FITHAW)");
+        }
       if (write (sock_parent, &c, sizeof (c)) != sizeof (c))
         return glnx_throw_errno_prefix (error, "write(watchdog FITHAW complete)");
     }
