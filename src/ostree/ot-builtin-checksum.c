@@ -94,12 +94,12 @@ ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GErro
       return data.success;
     }
 
-  g_autofree char *csum = NULL;
+  g_autofree char *checksum = NULL;
   if (!ostree_checksum_file_at (AT_FDCWD, path, NULL, OSTREE_OBJECT_TYPE_FILE,
-                                OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS, &csum,
+                                OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS, &checksum,
                                 cancellable, error))
     return FALSE;
 
-  g_print ("%s\n", csum);
+  g_print ("%s\n", checksum);
   return TRUE;
 }

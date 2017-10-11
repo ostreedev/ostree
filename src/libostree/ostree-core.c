@@ -839,7 +839,7 @@ ostree_checksum_file (GFile            *f,
  * @stbuf (allow-none): Optional stat buffer
  * @objtype: Object type
  * @flags: Flags
- * @out_checksum (out) (tranfer full): Return location for hex checksum
+ * @out_checksum (out) (transfer full): Return location for hex checksum
  * @cancellable: Cancellable
  * @error: Error
  *
