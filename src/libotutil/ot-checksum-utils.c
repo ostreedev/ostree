@@ -73,7 +73,7 @@ ot_checksum_init (OtChecksum *checksum)
   real->checksum = EVP_MD_CTX_create ();
   g_assert (real->checksum);
   g_assert (EVP_DigestInit_ex (real->checksum, EVP_sha256 (), NULL));
-  real->digest_len = EVP_MAX_MD_SIZE;
+  real->digest_len = EVP_MD_CTX_size (real->checksum);
 #elif defined(HAVE_GNUTLS)
   g_assert (!gnutls_hash_init (&real->checksum, GNUTLS_DIG_SHA256));
   real->digest_len = gnutls_hash_get_len (GNUTLS_DIG_SHA256);
@@ -81,6 +81,7 @@ ot_checksum_init (OtChecksum *checksum)
   real->checksum = g_checksum_new (G_CHECKSUM_SHA256);
   real->digest_len = g_checksum_type_get_length (G_CHECKSUM_SHA256);
 #endif
+  g_assert_cmpint (real->digest_len, ==, _OSTREE_SHA256_DIGEST_LEN);
   real->initialized = TRUE;
 }
 
