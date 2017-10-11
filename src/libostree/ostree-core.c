@@ -361,7 +361,7 @@ variant_to_lenprefixed_buffer (GVariant *variant)
   const guint32 variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
 
   g_string_append_len (buf, (char*)&variant_size_u32_be, sizeof (variant_size_u32_be));
-  const gsize alignment_offset = sizeof(variant_size_u32_be);
+  const gsize alignment_offset = sizeof (variant_size_u32_be);
 
   /* Write NULs for alignment. At the moment this is a constant 4 bytes (i.e.
    * align to 8, since the length is 4 bytes). For now, I decided to keep some
@@ -372,9 +372,9 @@ variant_to_lenprefixed_buffer (GVariant *variant)
   const guchar padding_nuls[8] = {0, 0, 0, 0, 0, 0, 0, 0};
   guint bits;
   if (alignment == 8)
-    bits = alignment_offset & 7;
+    bits = alignment_offset & 7; /* mod 8 */
   else
-    bits = alignment_offset & 3;
+    bits = alignment_offset & 3; /* mod 4 */
   const guint padding_len = alignment - bits;
 
   if (bits > 0)
