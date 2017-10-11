@@ -282,7 +282,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
       if (!g_hash_table_lookup (active_deployment_dirs, deployment_path))
         {
           struct stat stbuf;
-          glnx_fd_close int deployment_fd = -1;
+          glnx_autofd int deployment_fd = -1;
 
           if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE,
                                &deployment_fd, error))

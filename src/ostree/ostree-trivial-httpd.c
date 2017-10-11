@@ -353,7 +353,7 @@ do_get (OtTrivialHttpd    *self,
       
       if (msg->method == SOUP_METHOD_GET)
         {
-          glnx_fd_close int fd = -1;
+          glnx_autofd int fd = -1;
           g_autoptr(GMappedFile) mapping = NULL;
           gsize buffer_length, file_size;
           SoupRange *ranges;

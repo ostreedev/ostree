@@ -217,7 +217,7 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
       if (opt_raw)
         flags |= OSTREE_DUMP_RAW;
 
-      glnx_fd_close int fd = -1;
+      glnx_autofd int fd = -1;
       if (!glnx_openat_rdonly (repo->repo_dir_fd, "summary", TRUE, &fd, error))
         return FALSE;
       summary_data = ot_fd_readall_or_mmap (fd, 0, error);

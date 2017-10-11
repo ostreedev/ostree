@@ -58,7 +58,7 @@ do_print_variant_generic (const GVariantType *type,
 {
   g_autoptr(GVariant) variant = NULL;
 
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (AT_FDCWD, filename, TRUE, &fd, error))
     return FALSE;
   if (!ot_variant_read_fd (fd, 0, type, FALSE, &variant, error))

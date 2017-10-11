@@ -501,7 +501,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
                                                   &filter_data, NULL);
       if (opt_selinux_policy)
         {
-          glnx_fd_close int rootfs_dfd = -1;
+          glnx_autofd int rootfs_dfd = -1;
           if (!glnx_opendirat (AT_FDCWD, opt_selinux_policy, TRUE, &rootfs_dfd, error))
             {
               g_prefix_error (error, "selinux-policy: ");

@@ -488,18 +488,13 @@ ostree_repo_finalize (GObject *object)
   g_free (self->stagedir_prefix);
   g_clear_object (&self->repodir_fdrel);
   g_clear_object (&self->repodir);
-  if (self->repo_dir_fd != -1)
-    (void) close (self->repo_dir_fd);
+  glnx_close_fd (&self->repo_dir_fd);
   glnx_tmpdir_unset (&self->commit_stagedir);
   glnx_release_lock_file (&self->commit_stagedir_lock);
-  if (self->tmp_dir_fd != -1)
-    (void) close (self->tmp_dir_fd);
-  if (self->cache_dir_fd != -1)
-    (void) close (self->cache_dir_fd);
-  if (self->objects_dir_fd != -1)
-    (void) close (self->objects_dir_fd);
-  if (self->uncompressed_objects_dir_fd != -1)
-    (void) close (self->uncompressed_objects_dir_fd);
+  glnx_close_fd (&self->tmp_dir_fd);
+  glnx_close_fd (&self->cache_dir_fd);
+  glnx_close_fd (&self->objects_dir_fd);
+  glnx_close_fd (&self->uncompressed_objects_dir_fd);
   g_clear_object (&self->sysroot_dir);
   g_weak_ref_clear (&self->sysroot);
   g_free (self->remotes_config_dir);
@@ -734,7 +729,7 @@ ostree_repo_open_at (int           dfd,
                      GCancellable *cancellable,
                      GError      **error)
 {
-  glnx_fd_close int repo_dfd = -1;
+  glnx_autofd int repo_dfd = -1;
   if (!glnx_opendirat (dfd, path, TRUE, &repo_dfd, error))
     return NULL;
 
@@ -1463,7 +1458,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
   gpgme_import_status_t import_status;
   g_autofree char *source_tmp_dir = NULL;
   g_autofree char *target_tmp_dir = NULL;
-  glnx_fd_close int target_temp_fd = -1;
+  glnx_autofd int target_temp_fd = -1;
   g_autoptr(GPtrArray) keys = NULL;
   struct stat stbuf;
   gpgme_error_t gpg_error;
@@ -1596,7 +1591,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
     }
   else if (errno == ENOENT)
     {
-      glnx_fd_close int fd = -1;
+      glnx_autofd int fd = -1;
 
       /* Create an empty pubring.gpg file prior to importing keys.  This
        * prevents gpg2 from creating a pubring.kbx file in the new keybox
@@ -1815,7 +1810,7 @@ repo_create_at_internal (int             dfd,
       return FALSE;
     if (errno == 0)
       {
-        glnx_fd_close int repo_dfd = -1;
+        glnx_autofd int repo_dfd = -1;
         if (!glnx_opendirat (dfd, path, TRUE, &repo_dfd, error))
           return FALSE;
 
@@ -1831,7 +1826,7 @@ repo_create_at_internal (int             dfd,
         return glnx_throw_errno_prefix (error, "mkdirat");
     }
 
-  glnx_fd_close int repo_dfd = -1;
+  glnx_autofd int repo_dfd = -1;
   if (!glnx_opendirat (dfd, path, TRUE, &repo_dfd, error))
     return FALSE;
 
@@ -1922,7 +1917,7 @@ ostree_repo_create (OstreeRepo     *self,
     g_variant_builder_add (builder, "{s@v}", "collection-id",
                            g_variant_new_variant (g_variant_new_string (self->collection_id)));
 
-  glnx_fd_close int repo_dir_fd = -1;
+  glnx_autofd int repo_dir_fd = -1;
   if (!repo_create_at_internal (AT_FDCWD, repopath, mode,
                                 g_variant_builder_end (builder),
                                 &repo_dir_fd,
@@ -1966,7 +1961,7 @@ ostree_repo_create_at (int             dfd,
                        GCancellable   *cancellable,
                        GError        **error)
 {
-  glnx_fd_close int repo_dfd = -1;
+  glnx_autofd int repo_dfd = -1;
   if (!repo_create_at_internal (dfd, path, mode, options, &repo_dfd,
                                 cancellable, error))
     return NULL;
@@ -2531,14 +2526,12 @@ ostree_repo_set_cache_dir (OstreeRepo    *self,
                            GCancellable  *cancellable,
                            GError        **error)
 {
-  int fd;
-
+  glnx_autofd int fd = -1;
   if (!glnx_opendirat (dfd, path, TRUE, &fd, error))
     return FALSE;
 
-  if (self->cache_dir_fd != -1)
-    close (self->cache_dir_fd);
-  self->cache_dir_fd = fd;
+  glnx_close_fd (&self->cache_dir_fd);
+  self->cache_dir_fd = glnx_steal_fd (&fd);
 
   return TRUE;
 }
@@ -2814,7 +2807,7 @@ load_metadata_internal (OstreeRepo       *self,
                         GError          **error)
 {
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   g_autoptr(GInputStream) ret_stream = NULL;
   g_autoptr(GVariant) ret_variant = NULL;
 
@@ -2932,7 +2925,7 @@ repo_load_file_archive (OstreeRepo *self,
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
 
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
                                 error))
     return FALSE;
@@ -2988,7 +2981,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
     }
 
   struct stat stbuf;
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   g_autofree char *ret_symlink = NULL;
   g_autoptr(GVariant) ret_xattrs = NULL;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
@@ -3062,7 +3055,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
               ret_symlink = g_strndup (targetbuf, target_size);
             }
           /* In the symlink case, we don't want to return the bare-user fd */
-          (void) close (glnx_steal_fd (&fd));
+          glnx_close_fd (&fd);
         }
     }
   else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
@@ -3138,7 +3131,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                                    cancellable, error);
   else
     {
-      glnx_fd_close int fd = -1;
+      glnx_autofd int fd = -1;
       struct stat stbuf;
       g_autofree char *symlink_target = NULL;
       g_autoptr(GVariant) ret_xattrs = NULL;
@@ -4182,14 +4175,14 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                        GCancellable   *cancellable,
                                        GError        **error)
 {
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (self->repo_dir_fd, "summary", TRUE, &fd, error))
     return FALSE;
   g_autoptr(GBytes) summary_data = ot_fd_readall_or_mmap (fd, 0, error);
   if (!summary_data)
     return FALSE;
   /* Note that fd is reused below */
-  (void) close (glnx_steal_fd (&fd));
+  glnx_close_fd (&fd);
 
   g_autoptr(GVariant) existing_signatures = NULL;
   if (!ot_openat_ignore_enoent (self->repo_dir_fd, "summary.sig", &fd, error))
@@ -4239,7 +4232,7 @@ find_keyring (OstreeRepo          *self,
               GCancellable        *cancellable,
               GError             **error)
 {
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!ot_openat_ignore_enoent (self->repo_dir_fd, remote->keyring, &fd, error))
     return FALSE;
 
@@ -4748,7 +4741,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
           return FALSE;
 
         g_autofree char *superblock = _ostree_get_relative_static_delta_superblock_path ((from && from[0]) ? from : NULL, to);
-        glnx_fd_close int superblock_file_fd = -1;
+        glnx_autofd int superblock_file_fd = -1;
 
         if (!glnx_openat_rdonly (self->repo_dir_fd, superblock, TRUE, &superblock_file_fd, error))
           return FALSE;
@@ -4965,7 +4958,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
           dent->d_type != DT_DIR)
         continue;
 
-      glnx_fd_close int target_dfd = -1;
+      glnx_autofd int target_dfd = -1;
       if (!glnx_opendirat (dfd_iter.fd, dent->d_name, FALSE,
                            &target_dfd, &local_error))
         {
