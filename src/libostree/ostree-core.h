@@ -422,7 +422,9 @@ gboolean ostree_checksum_file (GFile             *f,
                                GError           **error);
 
 /**
- * OstreeDiffFlags:
+ * OstreeChecksumFlags:
+ *
+ * Since: 2017.13
  */
 typedef enum {
   OSTREE_CHECKSUM_FLAGS_NONE = 0,
@@ -435,7 +437,7 @@ gboolean ostree_checksum_file_at (int               dfd,
                                   struct stat      *stbuf,
                                   OstreeObjectType  objtype,
                                   OstreeChecksumFlags flags,
-                                  guchar          **out_csum,
+                                  char             *checksum_buf,
                                   GCancellable     *cancellable,
                                   GError          **error);
 

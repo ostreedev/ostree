@@ -258,8 +258,8 @@ else
         # running `ostree checksum` on the obj might not necessarily match, let's
         # just check that they have the same content to confirm that it's
         # (probably) the originating file
-        object_content_checksum=$(md5sum $objpath | cut -f1 -d' ')
-        checkout_content_checksum=$(md5sum $fn | cut -f1 -d' ')
+        object_content_checksum=$(sha256sum $objpath | cut -f1 -d' ')
+        checkout_content_checksum=$(sha256sum $fn | cut -f1 -d' ')
         assert_streq "$object_content_checksum" "$checkout_content_checksum"
     done
     echo "ok checksum CLI"

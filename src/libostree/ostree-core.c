@@ -839,12 +839,13 @@ ostree_checksum_file (GFile            *f,
  * @stbuf (allow-none): Optional stat buffer
  * @objtype: Object type
  * @flags: Flags
- * @out_csum: (out) (array fixed-size=32): Return location for binary checksum
+ * @checksum_buf (out caller-allocates): Buffer to hold SHA256 hex checksum
  * @cancellable: Cancellable
  * @error: Error
  *
  * Compute the OSTree checksum for a given file. This is an fd-relative version
- * of ostree_checksum_file(), but also takes flags.
+ * of ostree_checksum_file() which also takes flags and fills in a caller
+ * allocated buffer.
  *
  * Since: 2017.13
  */
@@ -854,10 +855,12 @@ ostree_checksum_file_at (int               dfd,
                          struct stat      *stbuf,
                          OstreeObjectType  objtype,
                          OstreeChecksumFlags flags,
-                         guchar          **out_csum,
+                         char             *checksum_buf,
                          GCancellable     *cancellable,
                          GError          **error)
 {
+  g_return_val_if_fail (checksum_buf != NULL, FALSE);
+
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
@@ -874,7 +877,7 @@ ostree_checksum_file_at (int               dfd,
   g_autoptr(GInputStream) in = NULL;
   if (S_ISREG (stbuf->st_mode))
     {
-      glnx_fd_close int fd = -1;
+      glnx_autofd int fd = -1;
       if (!glnx_openat_rdonly (dfd, path, FALSE, &fd, error))
         return FALSE;
       in = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
@@ -895,12 +898,12 @@ ostree_checksum_file_at (int               dfd,
         return FALSE;
     }
 
-  g_autofree guchar *ret_csum = NULL;
+  g_autofree guchar *csum_bytes = NULL;
   if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype,
-                                        &ret_csum, cancellable, error))
+                                        &csum_bytes, cancellable, error))
     return FALSE;
 
-  ot_transfer_out_value(out_csum, &ret_csum);
+  ostree_checksum_inplace_from_bytes (csum_bytes, checksum_buf);
   return TRUE;
 }
 
