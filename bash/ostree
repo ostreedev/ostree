@@ -745,6 +745,7 @@ _ostree_checkout() {
 _ostree_checksum() {
     local boolean_options="
         $main_boolean_options
+        --ignore-xattrs
     "
 
     case "$cur" in
