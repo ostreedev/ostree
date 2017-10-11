@@ -177,7 +177,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
       for (guint i = 0; i < self->key_ascii_files->len; i++)
         {
           const char *path = self->key_ascii_files->pdata[i];
-          glnx_fd_close int fd = -1;
+          glnx_autofd int fd = -1;
           g_auto(gpgme_data_t) kdata = NULL;
 
           if (!glnx_openat_rdonly (AT_FDCWD, path, TRUE, &fd, error))
@@ -355,7 +355,7 @@ _ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier   *self,
       if (g_str_equal (name, "secring.gpg"))
         continue;
 
-      glnx_fd_close int fd = -1;
+      glnx_autofd int fd = -1;
       if (!glnx_openat_rdonly (dfd_iter.fd, dent->d_name, TRUE, &fd, error))
         return FALSE;
 

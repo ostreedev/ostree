@@ -154,7 +154,7 @@ assert_create_repos_dir (Fixture      *fixture,
                          int          *out_repos_dfd,
                          GMount      **out_mount)
 {
-  glnx_fd_close int repos_dfd = -1;
+  glnx_autofd int repos_dfd = -1;
   g_autoptr(GError) error = NULL;
 
   g_autofree gchar *path = g_build_filename (mount_root_name, ".ostree", "repos.d", NULL);
@@ -242,7 +242,7 @@ assert_create_repo_dir (Fixture     *fixture,
                         gchar      **out_uri,
                         ...)
 {
-  glnx_fd_close int ref_dfd = -1;
+  glnx_autofd int ref_dfd = -1;
   g_autoptr(OstreeRepo) repo = NULL;
   g_autoptr(GError) error = NULL;
   va_list args;
@@ -318,9 +318,9 @@ test_repo_finder_mount_mixed_mounts (Fixture       *fixture,
   g_autoptr(GMount) repo1_mount = NULL;
   g_autoptr(GMount) repo2_mount = NULL;
   g_autoptr(GFile) non_removable_root = NULL;
-  glnx_fd_close int no_repos_repos = -1;
-  glnx_fd_close int repo1_repos = -1;
-  glnx_fd_close int repo2_repos = -1;
+  glnx_autofd int no_repos_repos = -1;
+  glnx_autofd int repo1_repos = -1;
+  glnx_autofd int repo2_repos = -1;
   g_autoptr(OstreeRepo) repo1_repo_a = NULL, repo1_repo_b = NULL;
   g_autoptr(OstreeRepo) repo2_repo_a = NULL;
   g_autofree gchar *repo1_repo_a_uri = NULL, *repo1_repo_b_uri = NULL;
@@ -464,7 +464,7 @@ test_repo_finder_mount_well_known (Fixture       *fixture,
   g_autoptr(GError) error = NULL;
   g_autoptr(GList) mounts = NULL;  /* (element-type OstreeMockMount)  */
   g_autoptr(GMount) mount = NULL;
-  glnx_fd_close int repos = -1;
+  glnx_autofd int repos = -1;
   g_autoptr(OstreeRepo) repo_a = NULL, repo_b = NULL;
   g_autofree gchar *repo_a_uri = NULL, *repo_b_uri = NULL;
   g_autofree gchar *ref_a_checksum = NULL, *ref_b_checksum = NULL;

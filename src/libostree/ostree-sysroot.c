@@ -296,11 +296,7 @@ _ostree_sysroot_bump_mtime (OstreeSysroot *self,
 void
 ostree_sysroot_unload (OstreeSysroot  *self)
 {
-  if (self->sysroot_fd != -1)
-    {
-      (void) close (self->sysroot_fd);
-      self->sysroot_fd = -1;
-    }
+  glnx_close_fd (&self->sysroot_fd);
 }
 
 /**
@@ -638,7 +634,7 @@ parse_deployment (OstreeSysroot       *self,
                                                &treecsum, &deployserial, error))
     return FALSE;
 
-  glnx_fd_close int deployment_dfd = -1;
+  glnx_autofd int deployment_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, relative_boot_link, TRUE,
                        &deployment_dfd, error))
     return FALSE;
@@ -1438,7 +1434,7 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
   if (mkdirat (self->sysroot_fd, deploydir, 0777) < 0)
     return glnx_throw_errno_prefix (error, "Creating %s", deploydir);
 
-  glnx_fd_close int dfd = -1;
+  glnx_autofd int dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, deploydir, TRUE, &dfd, error))
     return FALSE;
 
@@ -1694,7 +1690,7 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
     return FALSE;
 
   g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
-  glnx_fd_close int deployment_dfd = -1;
+  glnx_autofd int deployment_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &deployment_dfd, error))
     return FALSE;
 

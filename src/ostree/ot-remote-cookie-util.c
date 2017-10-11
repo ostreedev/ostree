@@ -79,7 +79,7 @@ ot_parse_cookies_at (int dfd, const char *path,
 {
   OtCookieParser *parser;
   g_autofree char *cookies_content = NULL;
-  glnx_fd_close int infd = -1;
+  glnx_autofd int infd = -1;
 
   infd = openat (dfd, path, O_RDONLY | O_CLOEXEC);
   if (infd < 0)
@@ -143,7 +143,7 @@ ot_add_cookie_at (int dfd, const char *jar_path,
                   const char *name, const char *value,
                   GError **error)
 {
-  glnx_fd_close int fd = openat (dfd, jar_path, O_WRONLY | O_APPEND | O_CREAT, 0644);
+  glnx_autofd int fd = openat (dfd, jar_path, O_WRONLY | O_APPEND | O_CREAT, 0644);
   if (fd < 0)
     return glnx_throw_errno_prefix (error, "open(%s)", jar_path);
 

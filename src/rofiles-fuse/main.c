@@ -268,7 +268,7 @@ callback_chown (const char *path, uid_t uid, gid_t gid)
 static int
 callback_truncate (const char *path, off_t size)
 {
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
 
   path = ENSURE_RELPATH (path);
   VERIFY_WRITE(path);

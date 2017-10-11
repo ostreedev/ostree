@@ -164,7 +164,7 @@ copy_dir_recurse (int              src_parent_dfd,
                   GError         **error)
 {
   g_auto(GLnxDirFdIterator) src_dfd_iter = { 0, };
-  glnx_fd_close int dest_dfd = -1;
+  glnx_autofd int dest_dfd = -1;
   struct dirent *dent;
 
   if (!glnx_dirfd_iterator_init_at (src_parent_dfd, name, TRUE, &src_dfd_iter, error))
@@ -226,8 +226,8 @@ ensure_directory_from_template (int                 orig_etc_fd,
                                 GCancellable       *cancellable,
                                 GError            **error)
 {
-  glnx_fd_close int src_dfd = -1;
-  glnx_fd_close int target_dfd = -1;
+  glnx_autofd int src_dfd = -1;
+  glnx_autofd int target_dfd = -1;
 
   g_assert (path != NULL);
   g_assert (*path != '/' && *path != '\0');
@@ -297,7 +297,7 @@ copy_modified_config_file (int                 orig_etc_fd,
   if (!glnx_fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW, error))
     return glnx_prefix_error (error, "Reading modified config file");
 
-  glnx_fd_close int dest_parent_dfd = -1;
+  glnx_autofd int dest_parent_dfd = -1;
   if (strchr (path, '/') != NULL)
     {
       g_autofree char *parent = g_path_get_dirname (path);
@@ -393,7 +393,7 @@ merge_configuration_from (OstreeSysroot    *sysroot,
                           GCancellable     *cancellable,
                           GError          **error)
 {
-  glnx_fd_close int owned_merge_deployment_dfd = -1;
+  glnx_autofd int owned_merge_deployment_dfd = -1;
   const OstreeSysrootDebugFlags flags = sysroot->debug_flags;
 
   g_assert (merge_deployment != NULL && new_deployment != NULL);
@@ -443,13 +443,13 @@ merge_configuration_from (OstreeSysroot    *sysroot,
     _ostree_sysroot_emit_journal_msg (sysroot, msg);
   }
 
-  glnx_fd_close int orig_etc_fd = -1;
+  glnx_autofd int orig_etc_fd = -1;
   if (!glnx_opendirat (merge_deployment_dfd, "usr/etc", TRUE, &orig_etc_fd, error))
     return FALSE;
-  glnx_fd_close int modified_etc_fd = -1;
+  glnx_autofd int modified_etc_fd = -1;
   if (!glnx_opendirat (merge_deployment_dfd, "etc", TRUE, &modified_etc_fd, error))
     return FALSE;
-  glnx_fd_close int new_etc_fd = -1;
+  glnx_autofd int new_etc_fd = -1;
   if (!glnx_opendirat (new_deployment_dfd, "etc", TRUE, &new_etc_fd, error))
     return FALSE;
 
@@ -508,7 +508,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   const char *csum = ostree_deployment_get_csum (deployment);
   g_autofree char *checkout_target_name = NULL;
   g_autofree char *osdeploy_path = NULL;
-  glnx_fd_close int osdeploy_dfd = -1;
+  glnx_autofd int osdeploy_dfd = -1;
   int ret_fd;
 
   osdeploy_path = g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
@@ -899,8 +899,7 @@ typedef struct {
 static void
 _ostree_kernel_layout_free (OstreeKernelLayout *layout)
 {
-  if (layout->boot_dfd != -1)
-    (void) close (layout->boot_dfd);
+  glnx_close_fd (&layout->boot_dfd);
   g_free (layout->kernel_srcpath);
   g_free (layout->kernel_namever);
   g_free (layout->initramfs_srcpath);
@@ -991,7 +990,7 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
   /* We found a module directory, compute the checksum */
   g_auto(OtChecksum) checksum = { 0, };
   ot_checksum_init (&checksum);
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   /* Checksum the kernel */
   if (!glnx_openat_rdonly (ret_layout->boot_dfd, "vmlinuz", TRUE, &fd, error))
     return FALSE;
@@ -999,7 +998,7 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
   if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
     return FALSE;
   g_clear_object (&in);
-  (void) close (fd); fd = -1;
+  glnx_close_fd (&fd);
 
   /* Look for an initramfs, but it's optional; since there wasn't any precedent
    * for this, let's be a bit conservative and support both `initramfs.img` and
@@ -1238,8 +1237,8 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
   int sockpair[2];
   if (socketpair (AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockpair) < 0)
     return glnx_throw_errno_prefix (error, "socketpair");
-  glnx_fd_close int sock_parent = sockpair[0];
-  glnx_fd_close int sock_watchdog = sockpair[1];
+  glnx_autofd int sock_parent = sockpair[0];
+  glnx_autofd int sock_watchdog = sockpair[1];
 
   pid_t pid = fork ();
   if (pid < 0)
@@ -1249,7 +1248,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
   char c = '!';
   if (pid == 0) /* Child watchdog/unfreezer process. */
     {
-      (void) close (glnx_steal_fd (&sock_parent));
+      glnx_close_fd (&sock_parent);
       /* Daemonize, and mask SIGINT/SIGTERM, so we're likely to survive e.g.
        * someone doing a `systemctl restart rpm-ostreed` or a Ctrl-C of
        * `ostree admin upgrade`.  We don't daemonize though if testing so
@@ -1306,7 +1305,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
     }
   else /* Parent process. */
     {
-      (void) close (glnx_steal_fd (&sock_watchdog));
+      glnx_close_fd (&sock_watchdog);
       /* Wait for the watchdog to say it's set up; mainly that it's
        * masked SIGTERM successfully.
        */
@@ -1390,7 +1389,7 @@ full_system_sync (OstreeSysroot     *self,
   out_stats->root_syncfs_msec = (end_msec - start_msec);
 
   start_msec = g_get_monotonic_time () / 1000;
-  glnx_fd_close int boot_dfd = -1;
+  glnx_autofd int boot_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &boot_dfd, error))
     return FALSE;
   if (!fsfreeze_thaw_cycle (self, boot_dfd, cancellable, error))
@@ -1425,7 +1424,7 @@ create_new_bootlinks (OstreeSysroot *self,
                        GCancellable  *cancellable,
                       GError       **error)
 {
-  glnx_fd_close int ostree_dfd = -1;
+  glnx_autofd int ostree_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
     return FALSE;
 
@@ -1450,7 +1449,7 @@ create_new_bootlinks (OstreeSysroot *self,
   if (!glnx_shutil_mkdir_p_at (ostree_dfd, ostree_subbootdir_name, 0755, cancellable, error))
     return FALSE;
 
-  glnx_fd_close int ostree_subbootdir_dfd = -1;
+  glnx_autofd int ostree_subbootdir_dfd = -1;
   if (!glnx_opendirat (ostree_dfd, ostree_subbootdir_name, FALSE, &ostree_subbootdir_dfd, error))
     return FALSE;
 
@@ -1487,7 +1486,7 @@ swap_bootlinks (OstreeSysroot *self,
                 GCancellable  *cancellable,
                 GError       **error)
 {
-  glnx_fd_close int ostree_dfd = -1;
+  glnx_autofd int ostree_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
     return FALSE;
 
@@ -1558,7 +1557,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 {
   OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
   g_autofree char *deployment_dirpath = ostree_sysroot_get_deployment_dirpath (sysroot, deployment);
-  glnx_fd_close int deployment_dfd = -1;
+  glnx_autofd int deployment_dfd = -1;
   if (!glnx_opendirat (sysroot->sysroot_fd, deployment_dirpath, FALSE,
                        &deployment_dfd, error))
     return FALSE;
@@ -1569,7 +1568,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                              cancellable, error))
     return FALSE;
 
-  glnx_fd_close int boot_dfd = -1;
+  glnx_autofd int boot_dfd = -1;
   if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
     return FALSE;
 
@@ -1583,7 +1582,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   if (!glnx_shutil_mkdir_p_at (boot_dfd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
 
-  glnx_fd_close int bootcsum_dfd = -1;
+  glnx_autofd int bootcsum_dfd = -1;
   if (!glnx_opendirat (boot_dfd, bootcsumdir, TRUE, &bootcsum_dfd, error))
     return FALSE;
 
@@ -1714,7 +1713,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   g_autofree char *options_key = _ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
 
-  glnx_fd_close int bootconf_dfd = -1;
+  glnx_autofd int bootconf_dfd = -1;
   if (!glnx_opendirat (boot_dfd, bootconfdir, TRUE, &bootconf_dfd, error))
     return FALSE;
 
@@ -1759,7 +1758,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
                  GCancellable   *cancellable,
                  GError        **error)
 {
-  glnx_fd_close int boot_dfd = -1;
+  glnx_autofd int boot_dfd = -1;
 
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
@@ -2254,7 +2253,7 @@ allocate_deployserial (OstreeSysroot           *self,
   g_autoptr(GPtrArray) tmp_current_deployments =
     g_ptr_array_new_with_free_func (g_object_unref);
 
-  glnx_fd_close int deploy_dfd = -1;
+  glnx_autofd int deploy_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, "ostree/deploy", TRUE, &deploy_dfd, error))
     return FALSE;
 
@@ -2309,7 +2308,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
     osname = ostree_deployment_get_osname (self->booted_deployment);
 
   const char *osdeploypath = glnx_strjoina ("ostree/deploy/", osname);
-  glnx_fd_close int os_deploy_dfd = -1;
+  glnx_autofd int os_deploy_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, osdeploypath, TRUE, &os_deploy_dfd, error))
     return FALSE;
 
@@ -2330,7 +2329,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   ostree_deployment_set_origin (new_deployment, origin);
 
   /* Check out the userspace tree onto the filesystem */
-  glnx_fd_close int deployment_dfd = -1;
+  glnx_autofd int deployment_dfd = -1;
   if (!checkout_deployment_tree (self, repo, new_deployment, &deployment_dfd,
                                  cancellable, error))
     {
@@ -2476,7 +2475,7 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
     return FALSE;
 
   g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &fd, error))
     return FALSE;
 

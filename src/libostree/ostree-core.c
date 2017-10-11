@@ -670,7 +670,7 @@ ostree_content_file_parse_at (gboolean                compressed,
                               GCancellable           *cancellable,
                               GError                **error)
 {
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (parent_dfd, path, TRUE, &fd, error))
     return FALSE;
 
