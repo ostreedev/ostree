@@ -39,6 +39,8 @@ G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE == OSTREE_REPO_MODE_ARCHIVE_Z2);
 G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER == 2);
 G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
 
+static GBytes *variant_to_lenprefixed_buffer (GVariant *variant);
+
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
 
@@ -283,192 +285,103 @@ ostree_validate_collection_id (const char *collection_id, GError **error)
   return TRUE;
 }
 
-GVariant *
+/* The file header is part of the "object stream" format
+ * that's not compressed.  It's comprised of uid,gid,mode,
+ * and possibly symlink targets from @file_info, as well
+ * as @xattrs (which if NULL, is taken to be the empty set).
+ */
+GBytes *
 _ostree_file_header_new (GFileInfo         *file_info,
                          GVariant          *xattrs)
 {
-  guint32 uid;
-  guint32 gid;
-  guint32 mode;
+
+  guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
+  guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
   const char *symlink_target;
-  GVariant *ret;
-  g_autoptr(GVariant) tmp_xattrs = NULL;
-
-  uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
-  gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
-  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     symlink_target = g_file_info_get_symlink_target (file_info);
   else
     symlink_target = "";
 
+  g_autoptr(GVariant) tmp_xattrs = NULL;
   if (xattrs == NULL)
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
-  ret = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid),
-                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
-                       symlink_target, xattrs ? xattrs : tmp_xattrs);
-  g_variant_ref_sink (ret);
-  return ret;
+  g_autoptr(GVariant) ret = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid),
+                                           GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
+                                           symlink_target, xattrs ?: tmp_xattrs);
+  return variant_to_lenprefixed_buffer (g_variant_ref_sink (ret));
 }
 
-/*
- * ostree_zlib_file_header_new:
- * @file_info: a #GFileInfo
- * @xattrs: (allow-none): Optional extended attribute array
- *
- * Returns: (transfer full): A new #GVariant containing file header for an archive repository
+/* Like _ostree_file_header_new(), but used for the compressed format in archive
+ * repositories. This format hence lives on disk; normally the uncompressed
+ * stream format doesn't. Instead for "bare" repositories, the file data is
+ * stored directly, or for the special case of bare-user repositories, as a
+ * user.ostreemeta xattr.
  */
-GVariant *
+GBytes *
 _ostree_zlib_file_header_new (GFileInfo         *file_info,
                               GVariant          *xattrs)
 {
-  guint64 size;
-  guint32 uid;
-  guint32 gid;
-  guint32 mode;
+  guint64 size = g_file_info_get_size (file_info);
+  guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
+  guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
   const char *symlink_target;
-  GVariant *ret;
-  g_autoptr(GVariant) tmp_xattrs = NULL;
-
-  size = g_file_info_get_size (file_info);
-  uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
-  gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
-  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     symlink_target = g_file_info_get_symlink_target (file_info);
   else
     symlink_target = "";
 
+  g_autoptr(GVariant) tmp_xattrs = NULL;
   if (xattrs == NULL)
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
-  ret = g_variant_new ("(tuuuus@a(ayay))",
-                       GUINT64_TO_BE (size), GUINT32_TO_BE (uid),
-                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
-                       symlink_target, xattrs ? xattrs : tmp_xattrs);
-  g_variant_ref_sink (ret);
-  return ret;
+  g_autoptr(GVariant) ret = g_variant_new ("(tuuuus@a(ayay))",
+                                           GUINT64_TO_BE (size), GUINT32_TO_BE (uid),
+                                           GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
+                                           symlink_target, xattrs ?: tmp_xattrs);
+  return variant_to_lenprefixed_buffer (g_variant_ref_sink (ret));
 }
 
-static gboolean
-write_padding (GOutputStream    *output,
-               guint             alignment,
-               gsize             offset,
-               gsize            *out_bytes_written,
-               OtChecksum       *checksum,
-               GCancellable     *cancellable,
-               GError          **error)
+/* Serialize a variant to a buffer prefixed with its length. The variant will
+ * have an 8-byte alignment so it can be safely used with `mmap()`.
+ */
+static GBytes *
+variant_to_lenprefixed_buffer (GVariant *variant)
 {
-  guint bits;
-  guint padding_len;
-  guchar padding_nuls[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  /* This string is really a binary memory buffer */
+  g_autoptr(GString) buf = g_string_new (NULL);
+  /* Write variant size */
+  const guint64 variant_size = g_variant_get_size (variant);
+  g_assert (variant_size < G_MAXUINT32);
+  const guint32 variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
 
+  g_string_append_len (buf, (char*)&variant_size_u32_be, sizeof (variant_size_u32_be));
+  const gsize alignment_offset = sizeof (variant_size_u32_be);
+
+  /* Write NULs for alignment. At the moment this is a constant 4 bytes (i.e.
+   * align to 8, since the length is 4 bytes). For now, I decided to keep some
+   * of the (now legacy) more generic logic here in case we want to revive it
+   * later.
+   */
+  const guint alignment = 8;
+  const guchar padding_nuls[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  guint bits;
   if (alignment == 8)
-    bits = ((offset) & 7);
+    bits = alignment_offset & 7; /* mod 8 */
   else
-    bits = ((offset) & 3);
+    bits = alignment_offset & 3; /* mod 4 */
+  const guint padding_len = alignment - bits;
 
   if (bits > 0)
-    {
-      padding_len = alignment - bits;
-      if (!ot_gio_write_update_checksum (output, (guchar*)padding_nuls, padding_len,
-                                         out_bytes_written, checksum,
-                                         cancellable, error))
-        return FALSE;
-    }
+    g_string_append_len (buf, (char*)padding_nuls, padding_len);
 
-  return TRUE;
-}
-
-/*
- * _ostree_write_variant_with_size:
- * @output: Stream
- * @variant: A variant
- * @alignment_offset: Used to determine whether or not we should write padding bytes
- * @out_bytes_written: (out): Number of bytes written
- * @checksum: (allow-none): If provided, update with written data
- * @cancellable: Cancellable
- * @error: Error
- *
- * Use this function for serializing a chain of 1 or more variants
- * into a stream; the @alignment_offset parameter is used to ensure
- * that each variant begins on an 8-byte alignment so it can be safely
- * accessed.
- */
-gboolean
-_ostree_write_variant_with_size (GOutputStream      *output,
-                                 GVariant           *variant,
-                                 guint64             alignment_offset,
-                                 gsize              *out_bytes_written,
-                                 OtChecksum         *checksum,
-                                 GCancellable       *cancellable,
-                                 GError            **error)
-{
-  guint64 variant_size;
-  guint32 variant_size_u32_be;
-  gsize bytes_written;
-  gsize ret_bytes_written = 0;
-
-  /* Write variant size */
-  variant_size = g_variant_get_size (variant);
-  g_assert (variant_size < G_MAXUINT32);
-  variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
-
-  bytes_written = 0;
-  if (!ot_gio_write_update_checksum (output, &variant_size_u32_be, 4,
-                                     &bytes_written, checksum,
-                                     cancellable, error))
-    return FALSE;
-  ret_bytes_written += bytes_written;
-  alignment_offset += bytes_written;
-
-  bytes_written = 0;
-  /* Pad to offset of 8, write variant */
-  if (!write_padding (output, 8, alignment_offset, &bytes_written, checksum,
-                      cancellable, error))
-    return FALSE;
-  ret_bytes_written += bytes_written;
-
-  bytes_written = 0;
-  if (!ot_gio_write_update_checksum (output, g_variant_get_data (variant),
-                                     variant_size, &bytes_written, checksum,
-                                     cancellable, error))
-    return FALSE;
-  ret_bytes_written += bytes_written;
-
-  if (out_bytes_written)
-    *out_bytes_written = ret_bytes_written;
-  return TRUE;
-}
-
-/*
- * write_file_header_update_checksum:
- * @out: Stream
- * @variant: A variant, should be a file header
- * @checksum: (allow-none): If provided, update with written data
- * @cancellable: Cancellable
- * @error: Error
- *
- * Write a file header variant to the provided @out stream, optionally
- * updating @checksum.
- */
-static gboolean
-write_file_header_update_checksum (GOutputStream         *out,
-                                   GVariant              *header,
-                                   OtChecksum            *checksum,
-                                   GCancellable          *cancellable,
-                                   GError               **error)
-{
-  gsize bytes_written;
-
-  if (!_ostree_write_variant_with_size (out, header, 0, &bytes_written, checksum,
-                                        cancellable, error))
-    return FALSE;
-
-  return TRUE;
+  g_string_append_len (buf, (char*)g_variant_get_data (variant), g_variant_get_size (variant));
+  return g_string_free_to_bytes (g_steal_pointer (&buf));
 }
 
 /*
@@ -476,54 +389,38 @@ write_file_header_update_checksum (GOutputStream         *out,
  * @file_header: A file header
  * @input: File raw content stream
  * @out_input: (out): Serialized object stream
- * @out_header_size: (out): Length of the header
  * @cancellable: Cancellable
  * @error: Error
  *
  * Combines @file_header and @input into a single stream.
  */
 static gboolean
-header_and_input_to_stream (GVariant           *file_header,
+header_and_input_to_stream (GBytes             *file_header,
                             GInputStream       *input,
                             GInputStream      **out_input,
-                            guint64            *out_header_size,
                             GCancellable       *cancellable,
                             GError            **error)
 {
-  gpointer header_data;
-  gsize header_size;
-  g_autoptr(GInputStream) ret_input = NULL;
-  g_autoptr(GPtrArray) streams = NULL;
-  g_autoptr(GOutputStream) header_out_stream = NULL;
-  g_autoptr(GInputStream) header_in_stream = NULL;
+  /* Our result stream chain */
+  g_autoptr(GPtrArray) streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-
-  if (!_ostree_write_variant_with_size (header_out_stream, file_header, 0, NULL, NULL,
-                                        cancellable, error))
-    return FALSE;
-
-  if (!g_output_stream_close (header_out_stream, cancellable, error))
-    return FALSE;
-
-  header_size = g_memory_output_stream_get_data_size ((GMemoryOutputStream*) header_out_stream);
-  header_data = g_memory_output_stream_steal_data ((GMemoryOutputStream*) header_out_stream);
-  header_in_stream = g_memory_input_stream_new_from_data (header_data, header_size, g_free);
-
-  streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  /* Append the header to the chain */
+  g_autoptr(GInputStream) header_in_stream = g_memory_input_stream_new_from_bytes (file_header);
 
   g_ptr_array_add (streams, g_object_ref (header_in_stream));
+
+  /* And if we have an input stream, append that */
   if (input)
     g_ptr_array_add (streams, g_object_ref (input));
 
-  ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
+  /* Return the result stream */
+  g_autoptr(GInputStream) ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
   ot_transfer_out_value (out_input, &ret_input);
-  if (out_header_size)
-    *out_header_size = header_size;
 
   return TRUE;
 }
 
+/* Convert file metadata + file content into an archive-format stream. */
 gboolean
 _ostree_raw_file_to_archive_stream (GInputStream       *input,
                                     GFileInfo          *file_info,
@@ -533,21 +430,17 @@ _ostree_raw_file_to_archive_stream (GInputStream       *input,
                                     GCancellable       *cancellable,
                                     GError            **error)
 {
-  g_autoptr(GVariant) file_header = NULL;
   g_autoptr(GInputStream) zlib_input = NULL;
-
-  file_header = _ostree_zlib_file_header_new (file_info, xattrs);
   if (input != NULL)
     {
-      g_autoptr(GConverter) zlib_compressor = NULL;
-
-      zlib_compressor = G_CONVERTER (g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, compression_level));
+      g_autoptr(GConverter) zlib_compressor =
+        G_CONVERTER (g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, compression_level));
       zlib_input = g_converter_input_stream_new (input, zlib_compressor);
     }
+  g_autoptr(GBytes) file_header = _ostree_zlib_file_header_new (file_info, xattrs);
   return header_and_input_to_stream (file_header,
                                      zlib_input,
                                      out_input,
-                                     NULL,
                                      cancellable,
                                      error);
 }
@@ -640,19 +533,15 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
                                    GCancellable       *cancellable,
                                    GError            **error)
 {
-  g_autoptr(GVariant) file_header = NULL;
-  guint64 header_size;
-
-  file_header = _ostree_file_header_new (file_info, xattrs);
+  g_autoptr(GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
   if (!header_and_input_to_stream (file_header,
                                    input,
                                    out_input,
-                                   &header_size,
                                    cancellable,
                                    error))
     return FALSE;
   if (out_length)
-    *out_length = header_size + g_file_info_get_size (file_info);
+    *out_length = g_bytes_get_size (file_header) + g_file_info_get_size (file_info);
   return TRUE;
 }
 
@@ -875,13 +764,9 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
     }
   else
     {
-      g_autoptr(GVariant) file_header = NULL;
+      g_autoptr(GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
 
-      file_header = _ostree_file_header_new (file_info, xattrs);
-
-      if (!write_file_header_update_checksum (NULL, file_header, &checksum,
-                                              cancellable, error))
-        return FALSE;
+      ot_checksum_update_bytes (&checksum, file_header);
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
         {
