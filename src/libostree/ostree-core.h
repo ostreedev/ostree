@@ -437,7 +437,7 @@ gboolean ostree_checksum_file_at (int               dfd,
                                   struct stat      *stbuf,
                                   OstreeObjectType  objtype,
                                   OstreeChecksumFlags flags,
-                                  char             *checksum_buf,
+                                  char            **out_checksum,
                                   GCancellable     *cancellable,
                                   GError          **error);
 

@@ -839,7 +839,7 @@ ostree_checksum_file (GFile            *f,
  * @stbuf (allow-none): Optional stat buffer
  * @objtype: Object type
  * @flags: Flags
- * @checksum_buf (out caller-allocates): Buffer to hold SHA256 hex checksum
+ * @out_checksum (out) (tranfer full): Return location for hex checksum
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -855,11 +855,11 @@ ostree_checksum_file_at (int               dfd,
                          struct stat      *stbuf,
                          OstreeObjectType  objtype,
                          OstreeChecksumFlags flags,
-                         char             *checksum_buf,
+                         char            **out_checksum,
                          GCancellable     *cancellable,
                          GError          **error)
 {
-  g_return_val_if_fail (checksum_buf != NULL, FALSE);
+  g_return_val_if_fail (out_checksum != NULL, FALSE);
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -903,7 +903,7 @@ ostree_checksum_file_at (int               dfd,
                                         &csum_bytes, cancellable, error))
     return FALSE;
 
-  ostree_checksum_inplace_from_bytes (csum_bytes, checksum_buf);
+  *out_checksum = ostree_checksum_from_bytes (csum_bytes);
   return TRUE;
 }
 
