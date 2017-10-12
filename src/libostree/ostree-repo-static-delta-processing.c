@@ -229,6 +229,9 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
       state->oplen--;
       state->opdata++;
 
+      if (g_cancellable_set_error_if_cancelled (cancellable, error))
+        goto out;
+
       switch (opcode)
         {
         case OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE:
