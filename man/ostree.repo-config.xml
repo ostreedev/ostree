@@ -143,6 +143,22 @@ Boston, MA 02111-1307, USA.
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><varname>lock-timeout</varname></term>
+        <listitem>
+          <para>
+            Integer value controlling the default repository locking timeout
+            in seconds. This controls how long OSTree will wait attempting to
+            acquire or remove the repository lock. If the value is
+            <literal>0</literal>, then one attempt to acquire or remove the
+            lock will be made without waiting to try again. If the value is
+            <literal>-1</literal>, then ostree will block until the lock can
+            be acquired or removed. All other negative values are an error.
+            The default is <literal>30</literal> seconds.
+          </para>
+        </listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 

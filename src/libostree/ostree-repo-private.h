@@ -37,6 +37,7 @@ G_BEGIN_DECLS
 #define _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS 8
 #define _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS 2
 
+/* Keep this in sync with the man page for the core.lock-timeout option. */
 #define _OSTREE_DEFAULT_LOCK_TIMEOUT_SECONDS 30
 
 /* In most cases, writing to disk should be much faster than

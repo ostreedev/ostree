@@ -2783,6 +2783,38 @@ reload_core_config (OstreeRepo          *self,
       return FALSE;
   }
 
+  { g_autofree char *lock_timeout_str = NULL;
+    g_autoptr(GError) local_error = NULL;
+
+    /* Default is set at repo_init() time so that the timeout can be
+     * configured by ostree programs without being overwritten when the
+     * configuration is reloaded.
+     */
+    lock_timeout_str = g_key_file_get_value (self->config, "core", "lock-timeout",
+                                             &local_error);
+    if (lock_timeout_str == NULL)
+      {
+        if (g_error_matches (local_error, G_KEY_FILE_ERROR,
+                             G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+          g_clear_error (&local_error);
+        else
+          {
+            g_propagate_error (error, g_steal_pointer (&local_error));
+            return FALSE;
+          }
+      }
+    else
+      {
+        char *endptr = NULL;
+        gint64 lock_timeout = g_ascii_strtoll (lock_timeout_str, &endptr, 0);
+        if ((lock_timeout < -1) ||
+            (lock_timeout > G_MAXINT) ||
+            (lock_timeout == 0 && endptr == lock_timeout_str))
+          return glnx_throw (error, "Invalid lock-timeout '%s'", lock_timeout_str);
+        self->lock_timeout_seconds = (gint)lock_timeout;
+      }
+  }
+
   return TRUE;
 }
 
