@@ -64,7 +64,11 @@ ostree_option_context_new_with_commands (OstreeCommand *commands)
 
   while (commands->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %s", commands->name);
+      g_string_append_printf (summary, "\n  %-18s", commands->name);
+
+      if (commands->description != NULL )
+        g_string_append_printf (summary, "%s", commands->description);
+
       commands++;
     }
 

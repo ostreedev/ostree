@@ -31,15 +31,19 @@
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
+  const char *description;
 } OstreeAdminInstUtilCommand;
 
 static OstreeAdminInstUtilCommand admin_instutil_subcommands[] = {
 #ifdef HAVE_SELINUX
-  { "selinux-ensure-labeled", ot_admin_instutil_builtin_selinux_ensure_labeled },
+  { "selinux-ensure-labeled", ot_admin_instutil_builtin_selinux_ensure_labeled,
+    "relabel all or part of a deployment" },
 #endif
-  { "set-kargs", ot_admin_instutil_builtin_set_kargs },
-  { "grub2-generate", ot_admin_instutil_builtin_grub2_generate },
-  { NULL, NULL }
+  { "set-kargs", ot_admin_instutil_builtin_set_kargs,
+    "set new kernel command line arguments(Not stable) "  },
+  { "grub2-generate", ot_admin_instutil_builtin_grub2_generate,
+    "generate GRUB2 configuration from given BLS entries" },
+  { NULL, NULL, NULL }
 };
 
 static GOptionContext *
@@ -52,7 +56,10 @@ ostree_admin_instutil_option_context_new_with_commands (void)
 
   while (command->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %s", command->name);
+      g_string_append_printf (summary, "\n  %-24s", command->name);
+        if (command->description != NULL)
+          g_string_append_printf (summary, "%s", command->description);
+
       command++;
     }
 

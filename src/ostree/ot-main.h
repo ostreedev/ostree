@@ -40,6 +40,7 @@ typedef enum {
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
+  const char *description;
 } OstreeCommand;
 
 int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);

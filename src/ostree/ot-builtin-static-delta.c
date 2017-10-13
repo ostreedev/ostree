@@ -50,12 +50,17 @@ BUILTINPROTO(apply_offline);
 #undef BUILTINPROTO
 
 static OstreeCommand static_delta_subcommands[] = {
-  { "list", ot_static_delta_builtin_list },
-  { "show", ot_static_delta_builtin_show },
-  { "delete", ot_static_delta_builtin_delete },
-  { "generate", ot_static_delta_builtin_generate },
-  { "apply-offline", ot_static_delta_builtin_apply_offline },
-  { NULL, NULL }
+  { "list", ot_static_delta_builtin_list,
+    "list static delta files" },
+  { "show", ot_static_delta_builtin_show,
+    "Dump information on a delta" },
+  { "delete", ot_static_delta_builtin_delete,
+    "Remove a delta" },
+  { "generate", ot_static_delta_builtin_generate,
+    "Generate static delta files" },
+  { "apply-offline", ot_static_delta_builtin_apply_offline,
+    "Apply static delta file" },
+  { NULL, NULL, NULL }
 };
 
 /* ATTENTION:
@@ -105,7 +110,7 @@ static_delta_usage (char    **argv,
 
   while (command->name)
     {
-      print_func ("  %s\n", command->name);
+      print_func ("  %-17s%s\n", command->name, command->description ?: "");
       command++;
     }
 
