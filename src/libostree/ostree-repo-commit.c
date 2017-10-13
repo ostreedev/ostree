@@ -404,31 +404,18 @@ add_size_index_to_metadata (OstreeRepo        *self,
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 
-/* Combines a check for whether or not we already have the object with
- * allocating a tempfile if we don't.  Used by the static delta code.
+/* Create a tmpfile for writing a bare file.  Currently just used
+ * by the static delta code, but will likely later be extended
+ * to be used also by the dfd_iter commit path.
  */
 gboolean
 _ostree_repo_open_content_bare (OstreeRepo          *self,
                                 const char          *checksum,
                                 guint64              content_len,
                                 GLnxTmpfile         *out_tmpf,
-                                gboolean            *out_have_object,
                                 GCancellable        *cancellable,
                                 GError             **error)
 {
-  gboolean have_obj;
-  if (!_ostree_repo_has_loose_object (self, checksum, OSTREE_OBJECT_TYPE_FILE, &have_obj,
-                                      cancellable, error))
-    return FALSE;
-  /* Do we already have this object? */
-  *out_have_object = have_obj;
-  if (have_obj)
-    {
-      /* Make sure the tempfile is unset */
-      out_tmpf->initialized = 0;
-      return TRUE;
-    }
-
   return glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
                                         out_tmpf, error);
 }
