@@ -1363,14 +1363,6 @@ gpg_verify_unwritten_commit (OtPullData         *pull_data,
       g_autoptr(OstreeGpgVerifyResult) result = NULL;
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
 
-      if (!detached_metadata)
-        {
-          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
-                       "Commit %s: no detached metadata found for GPG verification",
-                       checksum);
-          return FALSE;
-        }
-
       result = _ostree_repo_gpg_verify_with_metadata (pull_data->repo,
                                                       signed_data,
                                                       detached_metadata,
