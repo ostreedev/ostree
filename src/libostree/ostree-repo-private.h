@@ -431,6 +431,15 @@ gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
                                     GCancellable  *cancellable,
                                     GError       **error);
 
+typedef OstreeRepo OstreeRepoAutoLock;
+
+OstreeRepoAutoLock * ostree_repo_auto_lock_push (OstreeRepo          *self,
+                                                 OstreeRepoLockType   lock_type,
+                                                 GCancellable        *cancellable,
+                                                 GError             **error);
+void          ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, ostree_repo_auto_lock_cleanup)
+
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
                                              const gchar  *collection_id,
