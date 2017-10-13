@@ -370,7 +370,6 @@ _ostree_repo_open_content_bare (OstreeRepo          *self,
                                 const char          *checksum,
                                 guint64              content_len,
                                 GLnxTmpfile         *out_tmpf,
-                                gboolean            *out_have_object,
                                 GCancellable        *cancellable,
                                 GError             **error);
 

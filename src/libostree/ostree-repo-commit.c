@@ -412,23 +412,9 @@ _ostree_repo_open_content_bare (OstreeRepo          *self,
                                 const char          *checksum,
                                 guint64              content_len,
                                 GLnxTmpfile         *out_tmpf,
-                                gboolean            *out_have_object,
                                 GCancellable        *cancellable,
                                 GError             **error)
 {
-  gboolean have_obj;
-  if (!_ostree_repo_has_loose_object (self, checksum, OSTREE_OBJECT_TYPE_FILE, &have_obj,
-                                      cancellable, error))
-    return FALSE;
-  /* Do we already have this object? */
-  *out_have_object = have_obj;
-  if (have_obj)
-    {
-      /* Make sure the tempfile is unset */
-      out_tmpf->initialized = 0;
-      return TRUE;
-    }
-
   return glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
                                         out_tmpf, error);
 }

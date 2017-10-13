@@ -583,15 +583,18 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       if (S_ISREG (state->mode) &&
           _ostree_repo_mode_is_bare (repo->mode))
         {
-          if (!_ostree_repo_open_content_bare (repo, state->checksum,
-                                               state->content_size,
-                                               &state->tmpf,
-                                               &state->have_obj,
-                                               cancellable, error))
+          if (!ostree_repo_has_object (repo, OSTREE_OBJECT_TYPE_FILE, state->checksum,
+                                       &state->have_obj, cancellable, error))
             goto out;
 
           if (!state->have_obj)
             {
+              if (!_ostree_repo_open_content_bare (repo, state->checksum,
+                                                   state->content_size,
+                                                   &state->tmpf,
+                                                   cancellable, error))
+                goto out;
+
               state->content_out = g_unix_output_stream_new (state->tmpf.fd, FALSE);
               if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
                 goto out;
@@ -682,14 +685,19 @@ dispatch_open (OstreeRepo                 *repo,
   if (state->stats_only)
     return TRUE; /* Early return */
 
-  if (!_ostree_repo_open_content_bare (repo, state->checksum,
-                                       state->content_size,
-                                       &state->tmpf,
-                                       &state->have_obj,
-                                       cancellable, error))
+  if (!ostree_repo_has_object (repo, OSTREE_OBJECT_TYPE_FILE, state->checksum,
+                               &state->have_obj, cancellable, error))
     return FALSE;
+
   if (!state->have_obj)
-    state->content_out = g_unix_output_stream_new (state->tmpf.fd, FALSE);
+    {
+      if (!_ostree_repo_open_content_bare (repo, state->checksum,
+                                           state->content_size,
+                                           &state->tmpf,
+                                           cancellable, error))
+        return FALSE;
+      state->content_out = g_unix_output_stream_new (state->tmpf.fd, FALSE);
+    }
 
   if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
     return FALSE;
