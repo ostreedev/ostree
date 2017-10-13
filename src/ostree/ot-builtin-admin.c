@@ -33,22 +33,35 @@
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
+  const char *description;
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
-  { "cleanup", ot_admin_builtin_cleanup },
-  { "config-diff", ot_admin_builtin_diff },
-  { "deploy", ot_admin_builtin_deploy }, 
-  { "init-fs", ot_admin_builtin_init_fs },
-  { "instutil", ot_admin_builtin_instutil },
-  { "os-init", ot_admin_builtin_os_init },
-  { "set-origin", ot_admin_builtin_set_origin },
-  { "status", ot_admin_builtin_status },
-  { "switch", ot_admin_builtin_switch },
-  { "undeploy", ot_admin_builtin_undeploy },
-  { "unlock", ot_admin_builtin_unlock }, 
-  { "upgrade", ot_admin_builtin_upgrade },
-  { NULL, NULL }
+  { "cleanup", ot_admin_builtin_cleanup,
+    "Delete untagged deployments and repository objects" },
+  { "config-diff", ot_admin_builtin_diff,
+    "Diff current /etc configuration versus default" },
+  { "deploy", ot_admin_builtin_deploy,
+    "Checkout revision REFSPEC as the new default deployment" },
+  { "init-fs", ot_admin_builtin_init_fs,
+    "Initialize a root filesystem" },
+  { "instutil", ot_admin_builtin_instutil,
+    "Provide instutil commands, allow admin to change boot configuration and relabel selinux " },
+  { "os-init", ot_admin_builtin_os_init,
+    "Initialize empty state for given operating system" },
+  { "set-origin", ot_admin_builtin_set_origin,
+    "Set Origin and create a new origin file" },
+  { "status", ot_admin_builtin_status,
+    "List deployments" },
+  { "switch", ot_admin_builtin_switch,
+    "Construct new tree from REF and deploy it" },
+  { "undeploy", ot_admin_builtin_undeploy,
+    "Delete deployment INDEX" },
+  { "unlock", ot_admin_builtin_unlock,
+    "Make the current deployment mutable (as a hotfix or development)" },
+  { "upgrade", ot_admin_builtin_upgrade,
+    "Construct new tree from current origin and deploy it, if it changed" },
+  { NULL, NULL, NULL }
 };
 
 static GOptionContext *
@@ -61,7 +74,9 @@ ostree_admin_option_context_new_with_commands (void)
 
   while (command->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %s", command->name);
+      g_string_append_printf (summary, "\n  %-19s", command->name);
+        if (command->description != NULL)
+          g_string_append_printf (summary, "%s", command->description);
       command++;
     }
 

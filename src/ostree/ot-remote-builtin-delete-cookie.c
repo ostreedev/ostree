@@ -41,7 +41,7 @@ gboolean
 ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   g_autoptr(OstreeRepo) repo = NULL;
-  g_autoptr(GOptionContext) context = g_option_context_new ("NAME DOMAIN PATH COOKIE_NAME- Remote one cookie from remote");
+  g_autoptr(GOptionContext) context = g_option_context_new ("NAME DOMAIN PATH COOKIE_NAME- Remove one cookie from remote");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))

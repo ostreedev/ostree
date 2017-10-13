@@ -28,22 +28,33 @@
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
+  const char *description;
 } OstreeRemoteCommand;
 
 static OstreeRemoteCommand remote_subcommands[] = {
-  { "add", ot_remote_builtin_add },
-  { "delete", ot_remote_builtin_delete },
-  { "show-url", ot_remote_builtin_show_url },
-  { "list", ot_remote_builtin_list },
-  { "gpg-import", ot_remote_builtin_gpg_import },
+  { "add", ot_remote_builtin_add,
+    "Add a remote repository" },
+  { "delete", ot_remote_builtin_delete,
+    "Delete a remote repository" },
+  { "show-url", ot_remote_builtin_show_url,
+    "Show remote repository URL" },
+  { "list", ot_remote_builtin_list,
+    "List remote repository names" },
+  { "gpg-import", ot_remote_builtin_gpg_import,
+    "Import GPG keys" },
 #ifdef HAVE_LIBSOUP
-  { "add-cookie", ot_remote_builtin_add_cookie },
-  { "delete-cookie", ot_remote_builtin_delete_cookie },
-  { "list-cookies", ot_remote_builtin_list_cookies },
+  { "add-cookie", ot_remote_builtin_add_cookie,
+    "Add a cookie to remote" },
+  { "delete-cookie", ot_remote_builtin_delete_cookie,
+    "Remove one cookie from remote" },
+  { "list-cookies", ot_remote_builtin_list_cookies,
+    "Show remote repository cookies" },
 #endif
-  { "refs", ot_remote_builtin_refs },
-  { "summary", ot_remote_builtin_summary },
-  { NULL, NULL }
+  { "refs", ot_remote_builtin_refs,
+    "List remote refs" },
+  { "summary", ot_remote_builtin_summary,
+    "Show remote summary" },
+  { NULL, NULL, NULL }
 };
 
 static GOptionContext *
@@ -56,7 +67,10 @@ remote_option_context_new_with_commands (void)
 
   while (subcommand->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %s", subcommand->name);
+      g_string_append_printf (summary, "\n  %-18s", subcommand->name);
+      if (subcommand->description != NULL)
+        g_string_append_printf (summary, "%s", subcommand->description);
+
       subcommand++;
     }
 
