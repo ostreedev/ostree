@@ -105,11 +105,12 @@ typedef struct {
   GVariant         *summary;
   GHashTable       *summary_deltas_checksums;
   GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */
+  GHashTable       *gpg_verified_commits; /* Set<checksum> of commits that have been verified */
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
   GHashTable       *scanned_metadata; /* Maps object name to itself */
-  GHashTable       *fetched_detached_metadata; /* Set<checksum> */
+  GHashTable       *fetched_detached_metadata; /* Map<checksum,GVariant> */
   GHashTable       *requested_metadata; /* Maps object name to itself */
   GHashTable       *requested_content; /* Maps checksum to itself */
   GHashTable       *requested_fallback_content; /* Maps checksum to itself */
@@ -192,6 +193,13 @@ typedef struct {
   OstreeCollectionRef *requested_ref;  /* (nullable) */
 } ScanObjectQueueData;
 
+static void
+variant_or_null_unref (gpointer data)
+{
+  if (data)
+    g_variant_unref (data);
+}
+
 static void start_fetch (OtPullData *pull_data, FetchObjectData *fetch);
 static void start_fetch_deltapart (OtPullData *pull_data,
                                    FetchStaticDeltaData *fetch);
@@ -219,6 +227,14 @@ static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           GCancellable               *cancellable,
                                           GError                    **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
+static gboolean
+gpg_verify_unwritten_commit (OtPullData         *pull_data,
+                             const char         *checksum,
+                             GVariant           *commit,
+                             GVariant           *detached_metadata,
+                             GCancellable       *cancellable,
+                             GError            **error);
+
 
 static gboolean
 update_progress (gpointer user_data)
@@ -1170,7 +1186,7 @@ meta_fetch_on_complete (GObject           *object,
 
               /* Now that we've at least tried to fetch it, we can proceed to
                * scan/fetch the commit object */
-              g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
+              g_hash_table_insert (pull_data->fetched_detached_metadata, g_strdup (checksum), NULL);
 
               if (!fetch_data->object_is_stored)
                 enqueue_one_object_request (pull_data, checksum, objtype, fetch_data->path, FALSE, FALSE, fetch_data->requested_ref);
@@ -1212,7 +1228,7 @@ meta_fetch_on_complete (GObject           *object,
                                                        pull_data->cancellable, error))
         goto out;
 
-      g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
+      g_hash_table_insert (pull_data->fetched_detached_metadata, g_strdup (checksum), g_steal_pointer (&metadata));
 
       if (!fetch_data->object_is_stored)
         enqueue_one_object_request (pull_data, checksum, objtype, fetch_data->path, FALSE, FALSE, fetch_data->requested_ref);
@@ -1225,9 +1241,18 @@ meta_fetch_on_complete (GObject           *object,
                                FALSE, &metadata, error))
         goto out;
 
-      /* Write the commitpartial file now while we're still fetching data */
+      /* For commit objects, check the GPG signature before writing to the repo,
+       * and also write the .commitpartial to say that we're still processing
+       * this commit.
+       */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
+          GVariant *detached_data = g_hash_table_lookup (pull_data->fetched_detached_metadata, checksum);
+
+          if (!gpg_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
+                                            pull_data->cancellable, error))
+            goto out;
+
           if (!write_commitpartial_for (pull_data, checksum, error))
             goto out;
         }
@@ -1347,6 +1372,14 @@ process_verify_result (OtPullData            *pull_data,
   if (!ostree_gpg_verify_result_require_valid_signature (result, error))
     return FALSE;
 
+
+  /* We now check both *before* writing the commit, and after. Because the
+   * behavior used to be only verifiying after writing, we need to handle
+   * the case of "written but not verified". But we also don't want to check
+   * twice, as that'd result in duplicate signals.
+   */
+  g_hash_table_add (pull_data->gpg_verified_commits, g_strdup (checksum));
+
   return TRUE;
 }
 
@@ -1360,16 +1393,15 @@ gpg_verify_unwritten_commit (OtPullData         *pull_data,
 {
   if (pull_data->gpg_verify)
     {
-      g_autoptr(OstreeGpgVerifyResult) result = NULL;
-      g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
+      /* Shouldn't happen, but see comment in process_verify_result() */
+      if (g_hash_table_contains (pull_data->gpg_verified_commits, checksum))
+        return TRUE;
 
-      result = _ostree_repo_gpg_verify_with_metadata (pull_data->repo,
-                                                      signed_data,
-                                                      detached_metadata,
-                                                      pull_data->remote_name,
-                                                      NULL, NULL,
-                                                      cancellable,
-                                                      error);
+      g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
+      g_autoptr(OstreeGpgVerifyResult) result =
+        _ostree_repo_gpg_verify_with_metadata (pull_data->repo, signed_data,
+                                               detached_metadata, pull_data->remote_name,
+                                               NULL, NULL, cancellable, error);
       if (!process_verify_result (pull_data, checksum, result, error))
         return FALSE;
     }
@@ -1548,7 +1580,11 @@ scan_commit_object (OtPullData                 *pull_data,
                            GINT_TO_POINTER (depth));
     }
 
-  if (pull_data->gpg_verify)
+  /* See comment in process_verify_result() - we now gpg check before writing,
+   * but also ensure we've done it here if not already.
+   */
+  if (pull_data->gpg_verify &&
+      !g_hash_table_contains (pull_data->gpg_verified_commits, checksum))
     {
       g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
@@ -1761,7 +1797,7 @@ scan_one_metadata_object (OtPullData                 *pull_data,
        * add it to the hash to avoid re-fetching it below.
        */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
+        g_hash_table_insert (pull_data->fetched_detached_metadata, g_strdup (checksum), NULL);
       pull_data->n_imported_metadata++;
       is_stored = TRUE;
       is_requested = TRUE;
@@ -1791,7 +1827,7 @@ scan_one_metadata_object (OtPullData                 *pull_data,
             return FALSE;
           /* See comment above */
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-            g_hash_table_add (pull_data->fetched_detached_metadata, g_strdup (checksum));
+            g_hash_table_insert (pull_data->fetched_detached_metadata, g_strdup (checksum), NULL);
           is_stored = TRUE;
           is_requested = TRUE;
           pull_data->n_imported_metadata++;
@@ -3269,10 +3305,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->ref_original_commits = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
                                                            (GDestroyNotify)NULL,
                                                            (GDestroyNotify)g_variant_unref);
+  pull_data->gpg_verified_commits = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                           (GDestroyNotify)g_free, NULL);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->fetched_detached_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                       (GDestroyNotify)g_free, NULL);
+                                                                (GDestroyNotify)g_free, (GDestroyNotify)variant_or_null_unref);
   pull_data->requested_content = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                         (GDestroyNotify)g_free, NULL);
   pull_data->requested_fallback_content = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -4232,6 +4270,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->fetched_detached_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->ref_original_commits, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->gpg_verified_commits, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
