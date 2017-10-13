@@ -131,6 +131,24 @@ gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
                                     GCancellable  *cancellable,
                                     GError       **error);
 
+/**
+ * OstreeRepoAutoLock: (skip)
+ *
+ * This is simply an alias to #OstreeRepo used for automatic lock cleanup.
+ * See ostree_repo_auto_lock_push() for its intended usage.
+ *
+ * Since: 2017.14
+ */
+typedef OstreeRepo OstreeRepoAutoLock;
+
+_OSTREE_PUBLIC
+OstreeRepoAutoLock * ostree_repo_auto_lock_push (OstreeRepo          *self,
+                                                 OstreeRepoLockType   lock_type,
+                                                 GCancellable        *cancellable,
+                                                 GError             **error);
+_OSTREE_PUBLIC
+void          ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
+
 _OSTREE_PUBLIC
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 _OSTREE_PUBLIC
