@@ -51,7 +51,7 @@ BUILTINPROTO(apply_offline);
 
 static OstreeCommand static_delta_subcommands[] = {
   { "list", ot_static_delta_builtin_list,
-    "list static delta files" },
+    "List static delta files" },
   { "show", ot_static_delta_builtin_show,
     "Dump information on a delta" },
   { "delete", ot_static_delta_builtin_delete,

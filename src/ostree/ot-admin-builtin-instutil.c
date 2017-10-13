@@ -37,12 +37,12 @@ typedef struct {
 static OstreeAdminInstUtilCommand admin_instutil_subcommands[] = {
 #ifdef HAVE_SELINUX
   { "selinux-ensure-labeled", ot_admin_instutil_builtin_selinux_ensure_labeled,
-    "relabel all or part of a deployment" },
+    "Relabel all or part of a deployment" },
 #endif
   { "set-kargs", ot_admin_instutil_builtin_set_kargs,
-    "set new kernel command line arguments(Not stable) "  },
+    "Set new kernel command line arguments(Not stable)"  },
   { "grub2-generate", ot_admin_instutil_builtin_grub2_generate,
-    "generate GRUB2 configuration from given BLS entries" },
+    "Generate GRUB2 configuration from given BLS entries" },
   { NULL, NULL, NULL }
 };
 
