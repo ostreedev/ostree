@@ -27,9 +27,26 @@ function repo_init() {
     ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo "$@"
 }
 
+repo_init --no-gpg-verify
+
+# See also the copy of this in basic-test.sh
+COMMIT_ARGS=""
+CHECKOUT_U_ARG=""
+CHECKOUT_H_ARGS="-H"
+if is_bare_user_only_repo repo; then
+    COMMIT_ARGS="--canonical-permissions"
+    # Also, since we can't check out uid=0 files we need to check out in user mode
+    CHECKOUT_U_ARG="-U"
+    CHECKOUT_H_ARGS="-U -H"
+else
+    if grep -E -q '^mode=bare-user' repo/config; then
+        CHECKOUT_H_ARGS="-U -H"
+    fi
+fi
+
 function verify_initial_contents() {
     rm checkout-origin-main -rf
-    $OSTREE checkout origin/main checkout-origin-main
+    $OSTREE checkout ${CHECKOUT_H_ARGS} origin/main checkout-origin-main
     cd checkout-origin-main
     assert_file_has_content firstfile '^first$'
     assert_file_has_content baz/cow '^moo$'
@@ -61,7 +78,7 @@ echo "ok pull mirror"
 
 mkdir otherbranch
 echo someothercontent > otherbranch/someothercontent
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b otherbranch --tree=dir=otherbranch
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b otherbranch --tree=dir=otherbranch
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 rm mirrorrepo -rf
 # All refs
@@ -88,9 +105,9 @@ echo "ok pull mirror (ref subset with summary)"
 
 cd ${test_tmpdir}
 rm checkout-origin-main -rf
-$OSTREE --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
+$OSTREE --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main checkout-origin-main
 echo moomoo > checkout-origin-main/baz/cow
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "" --tree=dir=checkout-origin-main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main -s "" --tree=dir=checkout-origin-main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo fsck
@@ -115,11 +132,12 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo pull --bareuseronly-files origin main
 echo "ok pull (bareuseronly, safe)"
 
 rm checkout-origin-main -rf
-$OSTREE --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
+$OSTREE --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main checkout-origin-main
 cat > statoverride.txt <<EOF
 2048 /some-setuid
 EOF
 echo asetuid > checkout-origin-main/some-setuid
+# Don't use ${COMMIT_ARGS} as we don't want --canonical-permissions with bare-user-only
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b content-with-suid --statoverride=statoverride.txt --tree=dir=checkout-origin-main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 # Verify we reject it both when unpacking and when mirroring
@@ -140,7 +158,8 @@ echo "ok pull (bareuseronly mirror)"
 # Corruption tests <https://github.com/ostreedev/ostree/issues/1211>
 cd ${test_tmpdir}
 repo_init --no-gpg-verify
-if ! is_bare_user_only_repo repo && ! skip_one_without_user_xattrs; then
+if ! is_bare_user_only_repo repo; then
+if ! skip_one_without_user_xattrs; then
     if is_bare_user_only_repo repo; then
         cacherepomode=bare-user-only
     else
@@ -193,15 +212,19 @@ if ! is_bare_user_only_repo repo && ! skip_one_without_user_xattrs; then
     repo_init --no-gpg-verify
     echo "ok corruption"
 fi
+else
+# bareuseronly case, we don't mark it as SKIP at the moment
+echo "ok corruption (skipped)"
+fi
 
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf
 ${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull origin main
 rm checkout-origin-main -rf
-$OSTREE --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
+$OSTREE --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main checkout-origin-main
 echo yetmorecontent > checkout-origin-main/baz/cowtest
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "" --tree=dir=checkout-origin-main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main -s "" --tree=dir=checkout-origin-main
 rev=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse main)
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
@@ -223,8 +246,8 @@ cd ${test_tmpdir}
 rm otherrepo -rf
 ostree_repo_init otherrepo --mode=archive
 rm checkout-origin-main -rf
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
-${CMD_PREFIX} ostree --repo=otherrepo commit -b localbranch --tree=dir=checkout-origin-main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main checkout-origin-main
+${CMD_PREFIX} ostree --repo=otherrepo commit ${COMMIT_ARGS} -b localbranch --tree=dir=checkout-origin-main
 ${CMD_PREFIX} ostree --repo=otherrepo remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
 ${CMD_PREFIX} ostree --repo=otherrepo pull origin main
 rm mirrorrepo-local -rf
@@ -247,7 +270,7 @@ assert_file_has_content_literal err.txt "error: Refspec 'nosuchbranch' not found
 echo "ok pull-local nonexistent branch"
 
 cd ${test_tmpdir}
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
@@ -278,13 +301,13 @@ origrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse main)
 # Check we can pull the same commit with timestamp checking enabled
 ${CMD_PREFIX} ostree --repo=repo pull -T origin main
 assert_streq ${origrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
-newrev=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main --tree=ref=main)
+newrev=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main --tree=ref=main)
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 # New commit with timestamp checking
 ${CMD_PREFIX} ostree --repo=repo pull -T origin main
 assert_not_streq "${origrev}" "${newrev}"
 assert_streq ${newrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
-newrev2=$(${CMD_PREFIX} ostree --timestamp="October 25 1985" --repo=ostree-srv/gnomerepo commit -b main --tree=ref=main)
+newrev2=$(${CMD_PREFIX} ostree --timestamp="October 25 1985" --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main --tree=ref=main)
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 if ${CMD_PREFIX} ostree --repo=repo pull -T origin main 2>err.txt; then
     fatal "pulled older commit with timestamp checking enabled?"
@@ -304,12 +327,12 @@ ${CMD_PREFIX} ostree --repo=repo fsck
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
 
 rm main-files -rf
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout main main-files
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main main-files
 cd main-files
 echo "an added file for static deltas" > added-file
 echo "modified file for static deltas" > baz/cow
 rm baz/saucer
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s 'static delta test'
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main -s 'static delta test'
 cd ..
 rm main-files -rf
 # Generate delta that we'll use
@@ -353,7 +376,7 @@ ${CMD_PREFIX} ostree --repo=repo pull --disable-static-deltas origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 
 rm checkout-origin-main -rf
-$OSTREE checkout origin:main checkout-origin-main
+$OSTREE checkout ${CHECKOUT_H_ARGS} origin:main checkout-origin-main
 cd checkout-origin-main
 assert_file_has_content firstfile '^first$'
 assert_file_has_content baz/cow "modified file for static deltas"
@@ -405,10 +428,10 @@ echo "ok delta required for revision"
 
 cd ${test_tmpdir}
 rm main-files -rf
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout main main-files
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main main-files
 cd main-files
 echo "more added files for static deltas" > added-file2
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s 'inline static delta test'
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main -s 'inline static delta test'
 cd ..
 rm main-files -rf
 # Generate new delta that we'll use
@@ -420,7 +443,7 @@ ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 
 rm checkout-origin-main -rf
-$OSTREE checkout origin:main checkout-origin-main
+$OSTREE checkout ${CHECKOUT_H_ARGS} origin:main checkout-origin-main
 cd checkout-origin-main
 assert_file_has_content added-file2 "more added files for static deltas"
 
@@ -428,12 +451,12 @@ echo "ok inline static delta"
 
 cd ${test_tmpdir}
 rm main-files -rf
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout main main-files
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main main-files
 cd main-files
 # Make a file larger than 16M for testing
 dd if=/dev/zero of=test-bigfile count=1 seek=42678
 echo "further modified file for static deltas" > baz/cow
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s '2nd static delta test'
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main -s '2nd static delta test'
 cd ..
 rm main-files -rf
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
@@ -444,7 +467,7 @@ ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 
 rm checkout-origin-main -rf
-$OSTREE checkout origin:main checkout-origin-main
+$OSTREE checkout ${CHECKOUT_H_ARGS} origin:main checkout-origin-main
 cd checkout-origin-main
 assert_has_file test-bigfile
 stat --format=%s test-bigfile > bigfile-size
@@ -496,7 +519,7 @@ echo "ok pull repo 404 on dirtree object"
 
 cd ${test_tmpdir}
 repo_init --set=gpg-verify=true
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit \
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} \
   --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1} -b main \
   -s "A signed commit" --tree=ref=main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
