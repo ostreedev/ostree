@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((75 + ${extra_basic_tests:-0}))"
+echo "1..$((76 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -370,6 +370,14 @@ echo "ok commit from ref with modifier"
 
 $OSTREE commit ${COMMIT_ARGS} -b trees/test2 -s 'ref with / in it' --tree=ref=test2
 echo "ok commit ref with /"
+
+mkdir badutf8
+echo "invalid utf8 filename" > badutf8/$(printf '\x80')
+if $OSTREE commit ${COMMIT_ARGS} -b badutf8 --tree=dir=badutf8 2>err.txt; then
+    assert_not_reached "commit filename with invalid UTF-8"
+fi
+assert_file_has_content err.txt "Invalid UTF-8 in filename"
+echo "ok commit bad UTF-8"
 
 old_rev=$($OSTREE rev-parse test2)
 $OSTREE ls -R -C test2
