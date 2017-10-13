@@ -612,6 +612,66 @@ ostree_repo_lock_pop (OstreeRepo    *self,
     }
 }
 
+/**
+ * ostree_repo_auto_lock_push: (skip)
+ * @self: a #OstreeRepo
+ * @lock_type: the type of lock to acquire
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Like ostree_repo_lock_push(), but for usage with #OstreeRepoAutoLock.
+ * The intended usage is to declare the #OstreeRepoAutoLock with
+ * g_autoptr() so that ostree_repo_auto_lock_cleanup() is called when it
+ * goes out of scope. This will automatically pop the lock status off
+ * the stack if it was acquired successfully.
+ *
+ * |[<!-- language="C" -->
+ * g_autoptr(OstreeRepoAutoLock) lock = NULL;
+ * lock = ostree_repo_auto_lock_push (repo, lock_type, cancellable, error);
+ * if (!lock)
+ *   return FALSE;
+ * ]|
+ *
+ * Returns: @self on success, otherwise %NULL with @error set
+ * Since: 2017.14
+ */
+OstreeRepoAutoLock *
+ostree_repo_auto_lock_push (OstreeRepo          *self,
+                            OstreeRepoLockType   lock_type,
+                            GCancellable        *cancellable,
+                            GError             **error)
+{
+  if (!ostree_repo_lock_push (self, lock_type, cancellable, error))
+    return NULL;
+  return (OstreeRepoAutoLock *)self;
+}
+
+/**
+ * ostree_repo_auto_lock_cleanup: (skip)
+ * @lock: a #OstreeRepoAutoLock
+ *
+ * A cleanup handler for use with ostree_repo_auto_lock_push(). If @lock is
+ * not %NULL, ostree_repo_lock_pop() will be called on it. If
+ * ostree_repo_lock_pop() fails, a critical warning will be emitted.
+ *
+ * Since: 2017.14
+ */
+void
+ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock)
+{
+  OstreeRepo *repo = lock;
+  if (repo)
+    {
+      g_autoptr(GError) error = NULL;
+      int errsv = errno;
+
+      if (!ostree_repo_lock_pop (repo, NULL, &error))
+        g_critical ("Cleanup repo lock failed: %s", error->message);
+
+      errno = errsv;
+    }
+}
+
 static GFile *
 get_remotes_d_dir (OstreeRepo          *self,
                    GFile               *sysroot);

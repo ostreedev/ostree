@@ -59,6 +59,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSysrootUpgrader, g_object_unref)
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (OstreeRepoCommitTraverseIter, ostree_repo_commit_traverse_iter_clear)
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, ostree_repo_auto_lock_cleanup)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeCollectionRef, ostree_collection_ref_free)
 G_DEFINE_AUTO_CLEANUP_FREE_FUNC (OstreeCollectionRefv, ostree_collection_ref_freev, NULL)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRemote, ostree_remote_unref)
