@@ -1241,13 +1241,28 @@ meta_fetch_on_complete (GObject           *object,
                                FALSE, &metadata, error))
         goto out;
 
-      /* For commit objects, check the GPG signature before writing to the repo,
-       * and also write the .commitpartial to say that we're still processing
-       * this commit.
+      /* For commit objects, compute the hash and check the GPG signature before
+       * writing to the repo, and also write the .commitpartial to say that
+       * we're still processing this commit.
        */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
           GVariant *detached_data = g_hash_table_lookup (pull_data->fetched_detached_metadata, checksum);
+          OtChecksum hasher = { 0, };
+          ot_checksum_init (&hasher);
+          { g_autoptr(GBytes) bytes = g_variant_get_data_as_bytes (metadata);
+            ot_checksum_update_bytes (&hasher, bytes);
+          }
+          char hexdigest[OSTREE_SHA256_STRING_LEN+1];
+          ot_checksum_get_hexdigest (&hasher, hexdigest, sizeof (hexdigest));
+
+          if (strcmp (checksum, hexdigest) != 0)
+            {
+              (void) glnx_throw (error, "Corrupted %s object %s (actual checksum is %s)",
+                                 ostree_object_type_to_string (objtype),
+                                 checksum, hexdigest);
+              goto out;
+            }
 
           if (!gpg_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
                                             pull_data->cancellable, error))
