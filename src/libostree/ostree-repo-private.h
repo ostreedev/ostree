@@ -365,24 +365,41 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
                                 GCancellable      *cancellable,
                                 GError           **error);
 
+typedef struct {
+  gboolean initialized;
+  gpointer opaque0[10];
+  guint opaque1[10];
+} OstreeRepoBareContent;
+void _ostree_repo_bare_content_cleanup (OstreeRepoBareContent *regwrite);
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OstreeRepoBareContent, _ostree_repo_bare_content_cleanup)
+
 gboolean
-_ostree_repo_open_content_bare (OstreeRepo          *self,
-                                const char          *checksum,
-                                guint64              content_len,
-                                GLnxTmpfile         *out_tmpf,
+_ostree_repo_bare_content_open (OstreeRepo            *self,
+                                const char            *checksum,
+                                guint64                content_len,
+                                guint                  uid,
+                                guint                  gid,
+                                guint                  mode,
+                                GVariant              *xattrs,
+                                OstreeRepoBareContent *out_regwrite,
                                 GCancellable        *cancellable,
                                 GError             **error);
 
 gboolean
-_ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
-                                          const char          *checksum,
-                                          GLnxTmpfile         *tmpf,
-                                          guint32              uid,
-                                          guint32              gid,
-                                          guint32              mode,
-                                          GVariant            *xattrs,
-                                          GCancellable        *cancellable,
-                                          GError             **error);
+_ostree_repo_bare_content_write (OstreeRepo                 *repo,
+                                 OstreeRepoBareContent      *barewrite,
+                                 const guint8               *buf,
+                                 size_t                      len,
+                                 GCancellable               *cancellable,
+                                 GError                    **error);
+
+gboolean
+_ostree_repo_bare_content_commit (OstreeRepo                 *self,
+                                  OstreeRepoBareContent      *barewrite,
+                                  char                       *checksum_buf,
+                                  size_t                      buflen,
+                                  GCancellable               *cancellable,
+                                  GError                    **error);
 
 gboolean
 _ostree_repo_load_file_bare (OstreeRepo         *self,

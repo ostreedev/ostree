@@ -405,46 +405,116 @@ add_size_index_to_metadata (OstreeRepo        *self,
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 
+typedef struct {
+  gboolean initialized;
+  GLnxTmpfile tmpf;
+  char *expected_checksum;
+  OtChecksum checksum;
+  guint64 content_len;
+  guint64 bytes_written;
+  guint uid;
+  guint gid;
+  guint mode;
+  GVariant *xattrs;
+} OstreeRealRepoBareContent;
+G_STATIC_ASSERT (sizeof (OstreeRepoBareContent) >= sizeof (OstreeRealRepoBareContent));
+
 /* Create a tmpfile for writing a bare file.  Currently just used
  * by the static delta code, but will likely later be extended
  * to be used also by the dfd_iter commit path.
  */
 gboolean
-_ostree_repo_open_content_bare (OstreeRepo          *self,
-                                const char          *checksum,
-                                guint64              content_len,
-                                GLnxTmpfile         *out_tmpf,
-                                GCancellable        *cancellable,
-                                GError             **error)
+_ostree_repo_bare_content_open (OstreeRepo            *self,
+                                const char            *expected_checksum,
+                                guint64                content_len,
+                                guint                  uid,
+                                guint                  gid,
+                                guint                  mode,
+                                GVariant              *xattrs,
+                                OstreeRepoBareContent *out_regwrite,
+                                GCancellable          *cancellable,
+                                GError               **error)
 {
-  return glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
-                                        out_tmpf, error);
+  OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent*) out_regwrite;
+  g_assert (!real->initialized);
+  real->initialized = TRUE;
+  g_assert (S_ISREG (mode));
+  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+                                      &real->tmpf, error))
+    return FALSE;
+  ot_checksum_init (&real->checksum);
+  real->expected_checksum = g_strdup (expected_checksum);
+  real->content_len = content_len;
+  real->bytes_written = 0;
+  real->uid = uid;
+  real->gid = gid;
+  real->mode = mode;
+  real->xattrs = xattrs ? g_variant_ref (xattrs) : NULL;
+
+  /* Initialize the checksum with the header info */
+  g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
+  g_autoptr(GBytes) header = _ostree_file_header_new (finfo, xattrs);
+  ot_checksum_update_bytes (&real->checksum, header);
+
+  return TRUE;
 }
 
-/* Used by static deltas, which have a separate "push" flow for
- * regfile objects distinct from the "pull" model used by
- * write_content_object().
- */
 gboolean
-_ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
-                                          const char          *checksum,
-                                          GLnxTmpfile         *tmpf,
-                                          guint32              uid,
-                                          guint32              gid,
-                                          guint32              mode,
-                                          GVariant            *xattrs,
-                                          GCancellable        *cancellable,
-                                          GError             **error)
+_ostree_repo_bare_content_write (OstreeRepo                 *repo,
+                                 OstreeRepoBareContent      *barewrite,
+                                 const guint8               *buf,
+                                 size_t                      len,
+                                 GCancellable               *cancellable,
+                                 GError                    **error)
 {
-  /* I don't think this is necessary, but a similar check was here previously,
-   * keeping it for extra redundancy.
-   */
-  if (!tmpf->initialized || tmpf->fd == -1)
-    return TRUE;
+  OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent*) barewrite;
+  g_assert (real->initialized);
+  ot_checksum_update (&real->checksum, buf, len);
+  if (glnx_loop_write (real->tmpf.fd, buf, len) < 0)
+    return glnx_throw_errno_prefix (error, "write");
+  return TRUE;
+}
 
-  return commit_loose_regfile_object (self, checksum,
-                                      tmpf, uid, gid, mode, xattrs,
-                                      cancellable, error);
+gboolean
+_ostree_repo_bare_content_commit (OstreeRepo                 *self,
+                                  OstreeRepoBareContent      *barewrite,
+                                  char                       *checksum_buf,
+                                  size_t                      buflen,
+                                  GCancellable               *cancellable,
+                                  GError                    **error)
+{
+  OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent*) barewrite;
+  g_assert (real->initialized);
+  ot_checksum_get_hexdigest (&real->checksum, checksum_buf, buflen);
+
+  if (real->expected_checksum &&
+      !_ostree_compare_object_checksum (OSTREE_OBJECT_TYPE_FILE,
+                                        real->expected_checksum, checksum_buf,
+                                        error))
+    return FALSE;
+
+  if (!commit_loose_regfile_object (self, checksum_buf,
+                                    &real->tmpf, real->uid, real->gid,
+                                    real->mode, real->xattrs,
+                                    cancellable, error))
+    return FALSE;
+
+  /* Let's have a guarantee that after commit the object is cleaned up */
+  _ostree_repo_bare_content_cleanup (barewrite);
+  return TRUE;
+}
+
+void
+_ostree_repo_bare_content_cleanup (OstreeRepoBareContent *regwrite)
+{
+  OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent*) regwrite;
+  if (!real->initialized)
+    return;
+  glnx_tmpfile_clear (&real->tmpf);
+  ot_checksum_clear (&real->checksum);
+  g_clear_pointer (&real->expected_checksum, (GDestroyNotify)g_free);
+  g_clear_pointer (&real->xattrs, (GDestroyNotify)g_variant_unref);
+  real->initialized = FALSE;
 }
 
 /* Allocate an O_TMPFILE, write everything from @input to it, but
