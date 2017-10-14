@@ -374,7 +374,8 @@ hardlink_add_tmp_name (OstreeRepo              *self,
 
 static gboolean
 checkout_file_hardlink (OstreeRepo                          *self,
-                        OstreeRepoCheckoutAtOptions           *options,
+                        const char                          *checksum,
+                        OstreeRepoCheckoutAtOptions         *options,
                         const char                          *loose_path,
                         int                                  destination_dfd,
                         const char                          *destination_name,
@@ -436,10 +437,28 @@ checkout_file_hardlink (OstreeRepo                          *self,
             if (!glnx_fstatat (destination_dfd, destination_name, &dest_stbuf,
                                AT_SYMLINK_NOFOLLOW, error))
               return FALSE;
-            const gboolean is_identical =
+            gboolean is_identical =
               (src_stbuf.st_dev == dest_stbuf.st_dev &&
                src_stbuf.st_ino == dest_stbuf.st_ino);
+            if (!is_identical && (_ostree_stbuf_equal (&src_stbuf, &dest_stbuf)))
+              {
+                /* As a last resort, do a checksum comparison. This is the case currently
+                 * with rpm-ostree pkg layering where we overlay from the pkgcache repo onto
+                 * a tree checked out from the system repo. Once those are united, we
+                 * shouldn't hit this anymore. https://github.com/ostreedev/ostree/pull/1258
+                 * */
+                OstreeChecksumFlags flags = 0;
+                if (self->disable_xattrs)
+                    flags |= OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS;
 
+                g_autofree char *actual_checksum = NULL;
+                if (!ostree_checksum_file_at (destination_dfd, destination_name,
+                                              &dest_stbuf, OSTREE_OBJECT_TYPE_FILE,
+                                              flags, &actual_checksum, cancellable, error))
+                  return FALSE;
+
+                is_identical = g_str_equal (checksum, actual_checksum);
+              }
             if (is_identical)
               ret_result = HARDLINK_RESULT_SKIP_EXISTED;
             else if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
@@ -563,6 +582,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
                  the cache, which is in "bare" form */
               _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, OSTREE_REPO_MODE_BARE);
               if (!checkout_file_hardlink (current_repo,
+                                           checksum,
                                            options,
                                            loose_path_buf,
                                            destination_dfd, destination_name,
@@ -652,7 +672,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       }
       g_mutex_unlock (&repo->cache_lock);
 
-      if (!checkout_file_hardlink (repo, options, loose_path_buf,
+      if (!checkout_file_hardlink (repo, checksum, options, loose_path_buf,
                                    destination_dfd, destination_name,
                                    FALSE, &hardlink_res,
                                    cancellable, error))

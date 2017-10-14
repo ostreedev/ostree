@@ -1576,6 +1576,24 @@ _ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b)
   return TRUE;
 }
 
+/* Same motives as _ostree_gfileinfo_equal(), but for stat structs. */
+gboolean
+_ostree_stbuf_equal (struct stat *stbuf_a, struct stat *stbuf_b)
+{
+  /* trivial case */
+  if (stbuf_a == stbuf_b)
+    return TRUE;
+  if (stbuf_a->st_mode != stbuf_b->st_mode)
+    return FALSE;
+  if (S_ISREG (stbuf_a->st_mode) && (stbuf_a->st_size != stbuf_b->st_size))
+    return FALSE;
+  if (stbuf_a->st_uid != stbuf_b->st_uid)
+    return FALSE;
+  if (stbuf_a->st_gid != stbuf_b->st_gid)
+    return FALSE;
+  return TRUE;
+}
+
 /* Many parts of libostree only care about mode,uid,gid - this creates
  * a new GFileInfo with those fields see.
  */
