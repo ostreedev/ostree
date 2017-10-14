@@ -581,8 +581,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
 
       /* Fast path for regular files to bare repositories */
       if (S_ISREG (state->mode) &&
-          (repo->mode == OSTREE_REPO_MODE_BARE ||
-           repo->mode == OSTREE_REPO_MODE_BARE_USER))
+          _ostree_repo_mode_is_bare (repo->mode))
         {
           if (!_ostree_repo_open_content_bare (repo, state->checksum,
                                                state->content_size,
