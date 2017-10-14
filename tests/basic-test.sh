@@ -181,8 +181,9 @@ cd ${test_tmpdir}
 rm checkout-test2-l -rf
 $OSTREE checkout ${CHECKOUT_H_ARGS} test2 $test_tmpdir/checkout-test2-l
 date > $test_tmpdir/checkout-test2-l/newdatefile.txt
-$OSTREE commit --link-checkout-speedup --consume -b test2 --tree=dir=$test_tmpdir/checkout-test2-l
+$OSTREE commit ${COMMIT_ARGS} --link-checkout-speedup --consume -b test2 --tree=dir=$test_tmpdir/checkout-test2-l
 assert_not_has_dir $test_tmpdir/checkout-test2-l
+$OSTREE fsck
 # Some of the later tests are sensitive to state
 $OSTREE reset test2 test2^
 echo "ok consume (nom nom nom)"
