@@ -35,6 +35,7 @@ AM_TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 	LD_LIBRARY_PATH=$$(cd $(top_builddir)/.libs && pwd)$${LD_LIBRARY_PATH:+:$${LD_LIBRARY_PATH}} \
 	PATH=$$(cd $(top_builddir)/tests && pwd):$${PATH} \
 	OSTREE_FEATURES="$(OSTREE_FEATURES)" \
+	PYTHONUNBUFFERED=1 \
 	$(NULL)
 if BUILDOPT_ASAN
 AM_TESTS_ENVIRONMENT += OT_SKIP_READDIR_RAND=1 G_SLICE=always-malloc
