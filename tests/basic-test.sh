@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((76 + ${extra_basic_tests:-0}))"
+echo "1..$((77 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -186,7 +186,29 @@ assert_not_has_dir $test_tmpdir/checkout-test2-l
 $OSTREE fsck
 # Some of the later tests are sensitive to state
 $OSTREE reset test2 test2^
+$OSTREE prune --refs-only
 echo "ok consume (nom nom nom)"
+
+# Test adopt
+cd ${test_tmpdir}
+if grep -q '^mode=bare' repo/mode || is_bare_user_only_repo repo; then
+cd ${test_tmpdir}
+rm checkout-test2-l -rf
+$OSTREE checkout ${CHECKOUT_H_ARGS} test2 $test_tmpdir/checkout-test2-l
+echo 'a file to consume 🍔' > $test_tmpdir/checkout-test2-l/eatme.txt
+# Save a link to it for device/inode comparison
+ln $test_tmpdir/checkout-test2-l/eatme.txt $test_tmpdir/eatme-savedlink.txt
+$OSTREE commit ${COMMIT_ARGS} --link-checkout-speedup --consume -b test2 --tree=dir=$test_tmpdir/checkout-test2-l
+$OSTREE fsck
+eatme_objpath=$(ostree_file_path_to_object_path repo test2 /eatme.txt)
+assert_files_hardlinked ${test_tmpdir}/eatme-savedlink.txt ${eatme_objpath}
+assert_not_has_dir $test_tmpdir/checkout-test2-l
+# Some of the later tests are sensitive to state
+$OSTREE reset test2 test2^
+$OSTREE prune --refs-only
+rm -f ${test_tmpdir}/eatme-savedlink.txt
+fi
+echo "ok adopt"
 
 cd ${test_tmpdir}
 $OSTREE commit ${COMMIT_ARGS} -b test2-no-parent -s '' $test_tmpdir/checkout-test2-4
