@@ -38,6 +38,18 @@
 #include "ostree-checksum-input-stream.h"
 #include "ostree-varint.h"
 
+/* In most cases, we write into a staging dir for commit, but we also allow
+ * direct writes into objects/ for e.g. hardlink imports.
+ */
+static int
+commit_dest_dfd (OstreeRepo *self)
+{
+  if (self->in_transaction)
+    return self->commit_stagedir.fd;
+  else
+    return self->objects_dir_fd;
+}
+
 /* The objects/ directory has a two-character directory prefix for checksums
  * to avoid putting lots of files in a single directory.   This technique
  * is quite old, but Git also uses it for example.
@@ -143,12 +155,7 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
   char tmpbuf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (tmpbuf, checksum, objtype, self->mode);
 
-  int dest_dfd;
-  if (self->in_transaction)
-    dest_dfd = self->commit_stagedir.fd;
-  else
-    dest_dfd = self->objects_dir_fd;
-
+  int dest_dfd = commit_dest_dfd (self);
   if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, tmpbuf,
                                             cancellable, error))
     return FALSE;
@@ -176,12 +183,7 @@ commit_path_final (OstreeRepo        *self,
   char tmpbuf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (tmpbuf, checksum, objtype, self->mode);
 
-  int dest_dfd;
-  if (self->in_transaction)
-    dest_dfd = self->commit_stagedir.fd;
-  else
-    dest_dfd = self->objects_dir_fd;
-
+  int dest_dfd = commit_dest_dfd (self);
   if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, tmpbuf,
                                             cancellable, error))
     return FALSE;
@@ -783,6 +785,113 @@ write_content_object (OstreeRepo         *self,
     {
       g_assert (actual_checksum);
       *out_csum = ostree_checksum_to_bytes (actual_checksum);
+    }
+
+  return TRUE;
+}
+
+/* A fast path for local commits to `bare` or `bare-user-only`
+ * repos - we basically checksum the file and do a renameat()
+ * into place.
+ *
+ * This could be enhanced down the line to handle cases where we have a modified
+ * stat struct in place; e.g. for `bare` we could do the `chown`, or chmod etc.,
+ * and reset the xattrs.
+ *
+ * We could also do this for bare-user, would just involve adding the xattr (and
+ * potentially deleting other ones...not sure if we'd really want e.g. the
+ * security.selinux xattr on setuid binaries and the like to live on).
+ */
+static gboolean
+adopt_and_commit_regfile (OstreeRepo   *self,
+                          int           dfd,
+                          const char   *name,
+                          GFileInfo    *finfo,
+                          GVariant     *xattrs,
+                          char         *out_checksum_buf,
+                          GCancellable *cancellable,
+                          GError      **error)
+{
+  g_assert (G_IN_SET (self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER_ONLY));
+  g_autoptr(GBytes) header = _ostree_file_header_new (finfo, xattrs);
+
+  g_auto(OtChecksum) hasher = { 0, };
+  ot_checksum_init (&hasher);
+  ot_checksum_update_bytes (&hasher, header);
+
+  glnx_fd_close int fd = -1;
+  if (!glnx_openat_rdonly (dfd, name, FALSE, &fd, error))
+    return FALSE;
+
+  (void)posix_fadvise (fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+
+  /* See also https://gist.github.com/cgwalters/0df0d15199009664549618c2188581f0
+   * and https://github.com/coreutils/coreutils/blob/master/src/ioblksize.h
+   * Turns out bigger block size is better; down the line we should use their
+   * same heuristics.
+   */
+  char buf[16*1024];
+  while (TRUE)
+    {
+      ssize_t bytes_read = read (fd, buf, sizeof (buf));
+      if (bytes_read < 0)
+        return glnx_throw_errno_prefix (error, "read");
+      if (bytes_read == 0)
+        break;
+
+      ot_checksum_update (&hasher, (guint8*)buf, bytes_read);
+    }
+
+  ot_checksum_get_hexdigest (&hasher, out_checksum_buf, OSTREE_SHA256_STRING_LEN+1);
+  const char *checksum = out_checksum_buf;
+
+  /* TODO: dedup this with commit_path_final() */
+  char loose_path[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path (loose_path, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
+
+  const guint32 src_dev = g_file_info_get_attribute_uint32 (finfo, "unix::device");
+  const guint64 src_inode = g_file_info_get_attribute_uint64 (finfo, "unix::inode");
+
+  int dest_dfd = commit_dest_dfd (self);
+  if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, loose_path,
+                                            cancellable, error))
+    return FALSE;
+
+  struct stat dest_stbuf;
+  if (!glnx_fstatat_allow_noent (dest_dfd, loose_path, &dest_stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  /* Is the source actually the same device/inode? This can happen with hardlink
+   * checkouts, which is a bit overly conservative for bare-user-only right now.
+   * If so, we can't use renameat() since from `man 2 renameat`:
+   *
+   * "If oldpath and newpath are existing hard links referring to the same file,
+   * then rename() does nothing, and returns a success status."
+   */
+  if (errno != ENOENT
+      && src_dev == dest_stbuf.st_dev
+      && src_inode == dest_stbuf.st_ino)
+    {
+      if (!glnx_unlinkat (dfd, name, 0, error))
+        return FALSE;
+
+      /* Early return */
+      return TRUE;
+    }
+
+  /* For bare-user-only we need to canonicalize perms */
+  if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    {
+      const guint32 src_mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
+      if (fchmod (fd, src_mode & 0755) < 0)
+        return glnx_throw_errno_prefix (error, "fchmod");
+    }
+  if (renameat (dfd, name, dest_dfd, loose_path) == -1)
+    {
+      if (errno != EEXIST)
+        return glnx_throw_errno_prefix (error, "Storing file '%s'", name);
+      /* We took ownership here, so delete it */
+      if (!glnx_unlinkat (dfd, name, 0, error))
+        return FALSE;
     }
 
   return TRUE;
@@ -2568,6 +2677,11 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
                                   GCancellable                *cancellable,
                                   GError                     **error);
 
+typedef enum {
+  WRITE_DIR_CONTENT_FLAGS_NONE = 0,
+  WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT = 1,
+} WriteDirContentFlags;
+
 /* Given either a dir_enum or a dfd_iter, writes the directory entry to the mtree. For
  * subdirs, we go back through either write_dfd_iter_to_mtree_internal (dfd_iter case) or
  * write_directory_to_mtree_internal (dir_enum case) which will do the actual dirmeta +
@@ -2577,6 +2691,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                                            OstreeRepoFile              *repo_dir,
                                            GFileEnumerator             *dir_enum,
                                            GLnxDirFdIterator           *dfd_iter,
+                                           WriteDirContentFlags         writeflags,
                                            GFileInfo                   *child_info,
                                            OstreeMutableTree           *mtree,
                                            OstreeRepoCommitModifier    *modifier,
@@ -2602,6 +2717,8 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
    */
   const gboolean delete_after_commit = dfd_iter && modifier &&
     (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME);
+  const gboolean canonical_permissions = modifier &&
+    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS);
 
   if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
@@ -2677,8 +2794,6 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       guint64 file_obj_length;
       g_autoptr(GInputStream) file_input = NULL;
       g_autoptr(GInputStream) file_object_input = NULL;
-      g_autofree guchar *child_file_csum = NULL;
-      g_autofree char *tmp_checksum = NULL;
 
       g_autoptr(GVariant) xattrs = NULL;
       gboolean xattrs_were_modified;
@@ -2688,22 +2803,63 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
         return FALSE;
 
       /* only check the devino cache if the file info & xattrs were not modified */
+      const gboolean modified_file_meta = child_info_was_modified || xattrs_were_modified;
       const char *loose_checksum = NULL;
-      if (!child_info_was_modified && !xattrs_were_modified)
+      if (!modified_file_meta)
         {
           guint32 dev = g_file_info_get_attribute_uint32 (child_info, "unix::device");
           guint64 inode = g_file_info_get_attribute_uint64 (child_info, "unix::inode");
           loose_checksum = devino_cache_lookup (self, modifier, dev, inode);
         }
 
+      /* A big prerequisite list of conditions for whether or not we can
+       * "adopt", i.e. just checksum and rename() into place
+       */
+      const gboolean can_adopt_basic =
+        file_type == G_FILE_TYPE_REGULAR
+        && dfd_iter != NULL
+        && delete_after_commit
+        && (writeflags | WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT) > 0;
+      gboolean can_adopt = can_adopt_basic;
+      /* If basic prerquisites are met, check repo mode specific ones */
+      if (can_adopt)
+        {
+          /* For bare repos, we could actually chown/reset the xattrs, but let's
+           * do the basic optimizations here first.
+           */
+          if (self->mode == OSTREE_REPO_MODE_BARE)
+            can_adopt = !modified_file_meta;
+          else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+            can_adopt = canonical_permissions;
+          else
+            /* This covers bare-user and archive.  See comments in adopt_and_commit_regfile()
+             * for notes on adding bare-user later here.
+             */
+            can_adopt = FALSE;
+        }
+      gboolean did_adopt = FALSE;
+
+      /* The very fast path - we have a devino cache hit, nothing to write */
       if (loose_checksum)
         {
           if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum,
                                                  error))
             return FALSE;
         }
+      /* Next fast path - we can "adopt" the file */
+      else if (can_adopt)
+        {
+          char checksum[OSTREE_SHA256_STRING_LEN+1];
+          if (!adopt_and_commit_regfile (self, dfd_iter->fd, name, modified_info, xattrs,
+                                         checksum, cancellable, error))
+            return FALSE;
+          if (!ostree_mutable_tree_replace_file (mtree, name, checksum, error))
+            return FALSE;
+          did_adopt = TRUE;
+        }
       else
         {
+          /* Generic path - convert to object stream, commit that */
           if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
             {
               if (dir_enum != NULL)
@@ -2722,23 +2878,27 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                 }
             }
 
-          if (!ostree_raw_file_to_content_stream (file_input,
-                                                  modified_info, xattrs,
-                                                  &file_object_input, &file_obj_length,
-                                                  cancellable, error))
-            return FALSE;
-          if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
+            if (!ostree_raw_file_to_content_stream (file_input,
+                                                    modified_info, xattrs,
+                                                    &file_object_input, &file_obj_length,
+                                                    cancellable, error))
+              return FALSE;
+            g_autofree guchar *child_file_csum = NULL;
+            if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
                                           &child_file_csum, cancellable, error))
-            return FALSE;
+              return FALSE;
 
-          g_free (tmp_checksum);
-          tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
-          if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
-                                                 error))
-            return FALSE;
+            char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
+            ostree_checksum_inplace_from_bytes (child_file_csum, tmp_checksum);
+            if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
+                                                   error))
+              return FALSE;
         }
 
-      if (delete_after_commit)
+      /* Process delete_after_commit. In the adoption case though, we already
+       * took ownership of the file above, usually via a renameat().
+       */
+      if (delete_after_commit && !did_adopt)
         {
           if (!glnx_unlinkat (dfd_iter->fd, name, 0, error))
             return FALSE;
@@ -2837,6 +2997,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
             break;
 
           if (!write_directory_content_to_mtree_internal (self, repo_dir, dir_enum, NULL,
+                                                          WRITE_DIR_CONTENT_FLAGS_NONE,
                                                           child_info,
                                                           mtree, modifier, path,
                                                           cancellable, error))
@@ -2905,6 +3066,11 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
       return TRUE;
     }
 
+  /* See if this dir is on the same device; if so we can adopt (if enabled) */
+  WriteDirContentFlags flags = 0;
+  if (dir_stbuf.st_dev == self->device)
+    flags |= WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT;
+
   while (TRUE)
     {
       struct dirent *dent;
@@ -2937,7 +3103,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
         }
 
       if (!write_directory_content_to_mtree_internal (self, NULL, NULL, src_dfd_iter,
-                                                      child_info,
+                                                      flags, child_info,
                                                       mtree, modifier, path,
                                                       cancellable, error))
         return FALSE;
