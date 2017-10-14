@@ -108,6 +108,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-xattrs.sh \
 	tests/test-auto-summary.sh \
 	tests/test-prune.sh \
+	tests/test-concurrency.py \
 	tests/test-refs.sh \
 	tests/test-demo-buildsystem.sh \
 	tests/test-switchroot.sh \
