@@ -2837,6 +2837,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
              */
             can_adopt = FALSE;
         }
+      gboolean did_adopt = FALSE;
 
       /* The very fast path - we have a devino cache hit, nothing to write */
       if (loose_checksum)
@@ -2854,6 +2855,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
             return FALSE;
           if (!ostree_mutable_tree_replace_file (mtree, name, checksum, error))
             return FALSE;
+          did_adopt = TRUE;
         }
       else
         {
@@ -2893,7 +2895,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
               return FALSE;
         }
 
-      if (delete_after_commit && !can_adopt)
+      if (delete_after_commit && !did_adopt)
         {
           if (!glnx_unlinkat (dfd_iter->fd, name, 0, error))
             return FALSE;
