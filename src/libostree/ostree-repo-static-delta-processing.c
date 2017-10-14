@@ -719,15 +719,13 @@ dispatch_write (OstreeRepo                 *repo,
     {
       if (state->read_source_fd != -1)
         {
-          if (lseek (state->read_source_fd, content_offset, SEEK_SET) == -1)
-            return glnx_throw_errno_prefix (error, "lseek");
           while (content_size > 0)
             {
               char buf[4096];
               gssize bytes_read;
 
               do
-                bytes_read = read (state->read_source_fd, buf, MIN(sizeof(buf), content_size));
+                bytes_read = pread (state->read_source_fd, buf, MIN(sizeof(buf), content_size), content_offset);
               while (G_UNLIKELY (bytes_read == -1 && errno == EINTR));
               if (bytes_read == -1)
                 return glnx_throw_errno_prefix (error, "read");
