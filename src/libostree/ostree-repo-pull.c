@@ -1005,13 +1005,8 @@ content_fetch_on_write_complete (GObject        *object,
   checksum_obj = ostree_object_to_string (checksum, objtype);
   g_debug ("write of %s complete", checksum_obj);
 
-  if (strcmp (checksum, expected_checksum) != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted content object; checksum expected='%s' actual='%s'",
-                   expected_checksum, checksum);
-      goto out;
-    }
+  if (!_ostree_compare_object_checksum (objtype, expected_checksum, checksum, error))
+    goto out;
 
   pull_data->n_fetched_content++;
   /* Was this a delta fallback? */
@@ -1256,13 +1251,8 @@ meta_fetch_on_complete (GObject           *object,
           char hexdigest[OSTREE_SHA256_STRING_LEN+1];
           ot_checksum_get_hexdigest (&hasher, hexdigest, sizeof (hexdigest));
 
-          if (strcmp (checksum, hexdigest) != 0)
-            {
-              (void) glnx_throw (error, "Corrupted %s object %s (actual checksum is %s)",
-                                 ostree_object_type_to_string (objtype),
-                                 checksum, hexdigest);
-              goto out;
-            }
+          if (!_ostree_compare_object_checksum (objtype, checksum, hexdigest, error))
+            goto out;
 
           /* Do GPG verification. `detached_data` may be NULL if no detached
            * metadata was found during pull; that's handled by

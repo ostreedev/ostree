@@ -1004,6 +1004,22 @@ ostree_checksum_file_async_finish (GFile          *f,
   return TRUE;
 }
 
+/* Common helper to compare checksums for an object, so we have a consistent
+ * error message.
+ */
+gboolean
+_ostree_compare_object_checksum (OstreeObjectType objtype,
+                                 const char      *expected,
+                                 const char      *actual,
+                                 GError         **error)
+{
+  if (!g_str_equal (expected, actual))
+    return glnx_throw (error, "Corrupted %s object; checksum expected='%s' actual='%s'",
+                       ostree_object_type_to_string (objtype),
+                       expected, actual);
+  return TRUE;
+}
+
 /**
  * ostree_create_directory_metadata:
  * @dir_info: a #GFileInfo containing directory information
