@@ -2376,6 +2376,8 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
  * Replace any existing metadata associated with commit referred to by
  * @checksum with @metadata.  If @metadata is %NULL, then existing
  * data will be deleted.
+ *
+ * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
@@ -2384,6 +2386,13 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
                                             GCancellable    *cancellable,
                                             GError         **error)
 {
+  /* Take shared lock so associated commit doesn't get deleted */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   int dest_dfd;
   if (self->in_transaction)
     dest_dfd = self->commit_stagedir.fd;
