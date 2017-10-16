@@ -261,6 +261,10 @@ OSTree-1.0.gir: libostree-1.la Makefile
 OSTree_1_0_gir_EXPORT_PACKAGES = ostree-1
 OSTree_1_0_gir_INCLUDES = Gio-2.0
 OSTree_1_0_gir_CFLAGS = $(libostree_1_la_CFLAGS)
+if ENABLE_EXPERIMENTAL_API
+# When compiling this is set via config.h, but g-ir-scanner can't use that
+OSTree_1_0_gir_CFLAGS += -DOSTREE_ENABLE_EXPERIMENTAL_API=1
+endif
 OSTree_1_0_gir_LIBS = libostree-1.la
 OSTree_1_0_gir_SCANNERFLAGS = --warn-all --identifier-prefix=Ostree --symbol-prefix=ostree $(GI_SCANNERFLAGS)
 OSTree_1_0_gir_FILES = $(libostreeinclude_HEADERS) $(filter-out %-private.h %/ostree-soup-uri.h $(libostree_experimental_headers),$(libostree_1_la_SOURCES))
