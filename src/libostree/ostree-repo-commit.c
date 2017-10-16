@@ -2881,21 +2881,21 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                 }
             }
 
-            if (!ostree_raw_file_to_content_stream (file_input,
-                                                    modified_info, xattrs,
-                                                    &file_object_input, &file_obj_length,
-                                                    cancellable, error))
-              return FALSE;
-            g_autofree guchar *child_file_csum = NULL;
-            if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
+          if (!ostree_raw_file_to_content_stream (file_input,
+                                                  modified_info, xattrs,
+                                                  &file_object_input, &file_obj_length,
+                                                  cancellable, error))
+            return FALSE;
+          g_autofree guchar *child_file_csum = NULL;
+          if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
                                           &child_file_csum, cancellable, error))
-              return FALSE;
+            return FALSE;
 
-            char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
-            ostree_checksum_inplace_from_bytes (child_file_csum, tmp_checksum);
-            if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
-                                                   error))
-              return FALSE;
+          char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
+          ostree_checksum_inplace_from_bytes (child_file_csum, tmp_checksum);
+          if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
+                                                 error))
+            return FALSE;
         }
 
       /* Process delete_after_commit. In the adoption case though, we already
