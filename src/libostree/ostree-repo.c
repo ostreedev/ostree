@@ -4711,6 +4711,8 @@ ostree_repo_sign_delta (OstreeRepo     *self,
  * @error: a #GError
  *
  * Add a GPG signature to a summary file.
+ *
+ * This function takes an exclusive lock on the @self repository.
  */
 gboolean
 ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
@@ -4719,6 +4721,15 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                        GCancellable   *cancellable,
                                        GError        **error)
 {
+  /* Take an exclusive lock so that the summary doesn't get replaced
+   * while calculating the signatures.
+   */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (self->repo_dir_fd, "summary", TRUE, &fd, error))
     return FALSE;
@@ -5245,7 +5256,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GError        **error)
 {
   /* Take a shared lock. This makes sure the commits and deltas don't get
-   * deleted while generating the summary.
+   * deleted while generating the summary. It also makes sure the summary
+   * doesn't get replaced while it's being signed since that's done with an
+   * exclusive lock.
    */
   g_autoptr(OstreeRepoAutoLock) lock = NULL;
   lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED,
