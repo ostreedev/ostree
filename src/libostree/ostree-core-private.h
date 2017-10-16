@@ -142,6 +142,12 @@ _ostree_validate_bareuseronly_mode_finfo (GFileInfo  *finfo,
 }
 
 gboolean
+_ostree_compare_object_checksum (OstreeObjectType objtype,
+                                 const char      *expected,
+                                 const char      *actual,
+                                 GError         **error);
+
+gboolean
 _ostree_parse_delta_name (const char  *delta_name,
                           char        **out_from,
                           char        **out_to,
