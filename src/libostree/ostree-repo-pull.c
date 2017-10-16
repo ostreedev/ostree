@@ -1247,7 +1247,7 @@ meta_fetch_on_complete (GObject           *object,
        */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          GVariant *detached_data = g_hash_table_lookup (pull_data->fetched_detached_metadata, checksum);
+          /* Verify checksum */
           OtChecksum hasher = { 0, };
           ot_checksum_init (&hasher);
           { g_autoptr(GBytes) bytes = g_variant_get_data_as_bytes (metadata);
@@ -1264,6 +1264,14 @@ meta_fetch_on_complete (GObject           *object,
               goto out;
             }
 
+          /* Do GPG verification. `detached_data` may be NULL if no detached
+           * metadata was found during pull; that's handled by
+           * gpg_verify_unwritten_commit(). If we ever change the pull code to
+           * not always fetch detached metadata, this bit will have to learn how
+           * to look up from the disk state as well, or insert the on-disk
+           * metadata into this hash.
+           */
+          GVariant *detached_data = g_hash_table_lookup (pull_data->fetched_detached_metadata, checksum);
           if (!gpg_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
                                             pull_data->cancellable, error))
             goto out;
