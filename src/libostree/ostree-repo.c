@@ -5235,6 +5235,8 @@ summary_add_ref_entry (OstreeRepo       *self,
  * listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs and refs
  * in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in lexicographic
  * order.
+ *
+ * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_regenerate_summary (OstreeRepo     *self,
@@ -5242,6 +5244,15 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
+  /* Take a shared lock. This makes sure the commits and deltas don't get
+   * deleted while generating the summary.
+   */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   g_autoptr(GVariantBuilder) refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
