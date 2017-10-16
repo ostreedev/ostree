@@ -156,6 +156,7 @@ libostree_experimental_headers = \
 	src/libostree/ostree-repo-finder-avahi.h \
 	src/libostree/ostree-repo-finder-config.h \
 	src/libostree/ostree-repo-finder-mount.h \
+	src/libostree/ostree-repo-finder-override.h \
 	$(NULL)
 if !ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += $(libostree_experimental_headers)
@@ -167,6 +168,7 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-repo-finder-avahi.c \
 	src/libostree/ostree-repo-finder-config.c \
 	src/libostree/ostree-repo-finder-mount.c \
+	src/libostree/ostree-repo-finder-override.c \
 	$(NULL)
 
 if USE_AVAHI
