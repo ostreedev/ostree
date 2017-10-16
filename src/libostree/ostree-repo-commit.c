@@ -2791,16 +2791,42 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
     }
   else
     {
-      guint64 file_obj_length;
-      g_autoptr(GInputStream) file_input = NULL;
-      g_autoptr(GInputStream) file_object_input = NULL;
+      glnx_fd_close int file_input_fd = -1;
+
+      /* Open the file now, since it's better for reading xattrs
+       * rather than using the /proc/self/fd links.
+       *
+       * TODO: Do this lazily, since for e.g. bare-user-only repos
+       * we don't have xattrs and don't need to open every file
+       * for things that have devino cache hits.
+       */
+      if (file_type == G_FILE_TYPE_REGULAR && dfd_iter != NULL)
+        {
+          if (!glnx_openat_rdonly (dfd_iter->fd, name, FALSE, &file_input_fd, error))
+            return FALSE;
+        }
 
       g_autoptr(GVariant) xattrs = NULL;
       gboolean xattrs_were_modified;
-      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
-                             dir_enum != NULL ? -1 : dfd_iter->fd, name, &xattrs,
-                             &xattrs_were_modified, cancellable, error))
-        return FALSE;
+      if (dir_enum != NULL)
+        {
+          if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
+                                 -1, name, &xattrs, &xattrs_were_modified,
+                                 cancellable, error))
+            return FALSE;
+        }
+      else
+        {
+          /* These contortions are basically so we use glnx_fd_get_all_xattrs()
+           * for regfiles, and glnx_dfd_name_get_all_xattrs() for symlinks.
+           */
+          int xattr_fd_arg = (file_input_fd != -1) ? file_input_fd : dfd_iter->fd;
+          const char *xattr_path_arg = (file_input_fd != -1) ? NULL : name;
+          if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
+                                 xattr_fd_arg, xattr_path_arg, &xattrs, &xattrs_were_modified,
+                                 cancellable, error))
+            return FALSE;
+        }
 
       /* only check the devino cache if the file info & xattrs were not modified */
       const gboolean modified_file_meta = child_info_was_modified || xattrs_were_modified;
@@ -2859,8 +2885,9 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
         }
       else
         {
-          /* Generic path - convert to object stream, commit that */
-          if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
+          g_autoptr(GInputStream) file_input = NULL;
+
+          if (file_type == G_FILE_TYPE_REGULAR)
             {
               if (dir_enum != NULL)
                 {
@@ -2871,13 +2898,13 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                 }
               else
                 {
-                  g_assert (dfd_iter != NULL);
-                  if (!ot_openat_read_stream (dfd_iter->fd, name, FALSE,
-                                              &file_input, cancellable, error))
-                    return FALSE;
+                  /* We already opened the fd above */
+                  file_input = g_unix_input_stream_new (file_input_fd, FALSE);
                 }
             }
 
+          g_autoptr(GInputStream) file_object_input = NULL;
+          guint64 file_obj_length;
           if (!ostree_raw_file_to_content_stream (file_input,
                                                   modified_info, xattrs,
                                                   &file_object_input, &file_obj_length,
