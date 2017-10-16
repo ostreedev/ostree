@@ -106,7 +106,7 @@ libbsdiff_srcpath := $(srcdir)/bsdiff
 libbsdiff_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(bsdiff_srcpath)"
 libbsdiff_libs := $(OT_DEP_GIO_UNIX_LIBS)
 # See the comment for the similar libglnx bit above
-$(srcdir)/bsdiff/Makefile-bsdiff.am.inc: $(srcdir)/bsdiff/Makefile-bsdiff.am.inc
+$(srcdir)/bsdiff/Makefile-bsdiff.am.inc: $(srcdir)/bsdiff/Makefile-bsdiff.am
 	sed -e 's,$(libbsdiff_srcpath),bsdiff,g' < $< > $@
 include bsdiff/Makefile-bsdiff.am.inc
 EXTRA_DIST += bsdiff/Makefile-bsdiff.am
