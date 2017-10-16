@@ -85,8 +85,10 @@ ot_check_relabeling (gboolean *can_relabel,
   g_autoptr(GBytes) bytes = glnx_fgetxattr_bytes (tmpf.fd, "security.selinux", &local_error);
   if (!bytes)
     {
-      /* libglnx preserves errno */
-      if (G_IN_SET (errno, ENOTSUP, ENODATA))
+      /* libglnx preserves errno. The EOPNOTSUPP case can't be part of a
+       * 'case' statement because on most but not all architectures,
+       * it's numerically equal to ENOTSUP. */
+      if (G_IN_SET (errno, ENOTSUP, ENODATA) || errno == EOPNOTSUPP)
         {
           *can_relabel = FALSE;
           return TRUE;
@@ -99,7 +101,7 @@ ot_check_relabeling (gboolean *can_relabel,
   const guint8 *data = g_bytes_get_data (bytes, &data_len);
   if (fsetxattr (tmpf.fd, "security.selinux", data, data_len, 0) < 0)
     {
-      if (errno == ENOTSUP)
+      if (errno == ENOTSUP || errno == EOPNOTSUPP)
         {
           *can_relabel = FALSE;
           return TRUE;
@@ -122,7 +124,7 @@ ot_check_user_xattrs (gboolean *has_user_xattrs,
 
   if (fsetxattr (tmpf.fd, "user.test", "novalue", strlen ("novalue"), 0) < 0)
     {
-      if (errno == ENOTSUP)
+      if (errno == ENOTSUP || errno == EOPNOTSUPP)
         {
           *has_user_xattrs = FALSE;
           return TRUE;

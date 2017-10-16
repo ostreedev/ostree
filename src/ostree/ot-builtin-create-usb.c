@@ -113,7 +113,7 @@ ostree_builtin_create_usb (int            argc,
   OstreeRepoMode mode = OSTREE_REPO_MODE_BARE_USER;
 
   if (TEMP_FAILURE_RETRY (fgetxattr (mount_root_dfd, "user.test", NULL, 0)) < 0 &&
-      errno == ENOTSUP)
+      (errno == ENOTSUP || errno == EOPNOTSUPP))
     mode = OSTREE_REPO_MODE_ARCHIVE;
 
   g_debug ("%s: Creating repository in mode %u", G_STRFUNC, mode);
