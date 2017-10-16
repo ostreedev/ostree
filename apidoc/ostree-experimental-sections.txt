@@ -77,6 +77,15 @@ ostree_repo_finder_mount_get_type
 </SECTION>
 
 <SECTION>
+<FILE>ostree-repo-finder-override</FILE>
+OstreeRepoFinderOverride
+ostree_repo_finder_override_new
+ostree_repo_finder_override_add_uri
+<SUBSECTION Standard>
+ostree_repo_finder_override_get_type
+</SECTION>
+
+<SECTION>
 <FILE>ostree-misc-experimental</FILE>
 ostree_repo_get_collection_id
 ostree_repo_set_collection_id

@@ -82,3 +82,10 @@ LIBOSTREE_2017.12_EXPERIMENTAL {
 global:
   ostree_repo_resolve_collection_ref;
 } LIBOSTREE_2017.8_EXPERIMENTAL;
+
+LIBOSTREE_2017.13_EXPERIMENTAL {
+global:
+  ostree_repo_finder_override_add_uri;
+  ostree_repo_finder_override_get_type;
+  ostree_repo_finder_override_new;
+} LIBOSTREE_2017.12_EXPERIMENTAL;
