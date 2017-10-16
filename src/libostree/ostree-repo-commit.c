@@ -2895,6 +2895,9 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
               return FALSE;
         }
 
+      /* Process delete_after_commit. In the adoption case though, we already
+       * took ownership of the file above, usually via a renameat().
+       */
       if (delete_after_commit && !did_adopt)
         {
           if (!glnx_unlinkat (dfd_iter->fd, name, 0, error))

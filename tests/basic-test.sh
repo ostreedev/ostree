@@ -191,8 +191,6 @@ echo "ok consume (nom nom nom)"
 
 # Test adopt
 cd ${test_tmpdir}
-if grep -q '^mode=bare' repo/mode || is_bare_user_only_repo repo; then
-cd ${test_tmpdir}
 rm checkout-test2-l -rf
 $OSTREE checkout ${CHECKOUT_H_ARGS} test2 $test_tmpdir/checkout-test2-l
 echo 'a file to consume 🍔' > $test_tmpdir/checkout-test2-l/eatme.txt
@@ -200,14 +198,20 @@ echo 'a file to consume 🍔' > $test_tmpdir/checkout-test2-l/eatme.txt
 ln $test_tmpdir/checkout-test2-l/eatme.txt $test_tmpdir/eatme-savedlink.txt
 $OSTREE commit ${COMMIT_ARGS} --link-checkout-speedup --consume -b test2 --tree=dir=$test_tmpdir/checkout-test2-l
 $OSTREE fsck
+# Adoption isn't implemented for bare-user yet
 eatme_objpath=$(ostree_file_path_to_object_path repo test2 /eatme.txt)
-assert_files_hardlinked ${test_tmpdir}/eatme-savedlink.txt ${eatme_objpath}
+if grep -q '^mode=bare$' repo/config || is_bare_user_only_repo repo; then
+    assert_files_hardlinked ${test_tmpdir}/eatme-savedlink.txt ${eatme_objpath}
+else
+    if files_are_hardlinked ${test_tmpdir}/eatme-savedlink.txt ${eatme_objpath}; then
+        fatal "bare-user adopted?"
+    fi
+fi
 assert_not_has_dir $test_tmpdir/checkout-test2-l
 # Some of the later tests are sensitive to state
 $OSTREE reset test2 test2^
 $OSTREE prune --refs-only
 rm -f ${test_tmpdir}/eatme-savedlink.txt
-fi
 echo "ok adopt"
 
 cd ${test_tmpdir}
