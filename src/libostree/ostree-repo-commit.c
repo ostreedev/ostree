@@ -685,10 +685,12 @@ write_content_object (OstreeRepo         *self,
   else
     {
       actual_checksum = actual_checksum_owned = ot_checksum_instream_get_string (checksum_input);
-      if (expected_checksum && strcmp (actual_checksum, expected_checksum) != 0)
-        return glnx_throw (error, "Corrupted %s object %s (actual checksum is %s)",
-                           ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE),
-                           expected_checksum, actual_checksum);
+      if (expected_checksum)
+        {
+          if (!_ostree_compare_object_checksum (OSTREE_OBJECT_TYPE_FILE, expected_checksum, actual_checksum,
+                                                error))
+            return FALSE;
+        }
     }
 
   g_assert (actual_checksum != NULL); /* Pacify static analysis */
@@ -954,10 +956,11 @@ write_metadata_object (OstreeRepo         *self,
           return TRUE;
         }
 
-      if (expected_checksum && strcmp (actual_checksum, expected_checksum) != 0)
-        return glnx_throw (error, "Corrupted %s object %s (actual checksum is %s)",
-                           ostree_object_type_to_string (objtype),
-                           expected_checksum, actual_checksum);
+      if (expected_checksum)
+        {
+          if (!_ostree_compare_object_checksum (objtype, expected_checksum, actual_checksum, error))
+            return FALSE;
+        }
     }
 
   /* Ok, checksum is known, let's get the data */

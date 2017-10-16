@@ -89,7 +89,7 @@ if ! skip_one_without_user_xattrs; then
     if ${CMD_PREFIX} ostree --repo=repo pull-local --untrusted ostree-srv/gnomerepo main 2>err.txt; then
         assert_not_reached "pull-local --untrusted worked?"
     fi
-    assert_file_has_content err.txt "Corrupted commit object ${corruptrev}.*actual checksum is ${rev}"
+    assert_file_has_content_literal err.txt "Corrupted commit object; checksum expected='${corruptrev}' actual='${rev}'"
 
     rm repo err.txt -rf
     ostree_repo_init repo --mode=bare-user
@@ -97,6 +97,6 @@ if ! skip_one_without_user_xattrs; then
     if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
         assert_not_reached "pull unexpectedly succeeded!"
     fi
-    assert_file_has_content err.txt "Corrupted commit object ${corruptrev}.*actual checksum is ${rev}"
+    assert_file_has_content_literal err.txt "Corrupted commit object; checksum expected='${corruptrev}' actual='${rev}'"
     echo "ok pull commit corruption"
 fi
