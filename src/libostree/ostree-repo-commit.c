@@ -3190,11 +3190,13 @@ ostree_repo_write_dfd_to_mtree (OstreeRepo                *self,
     return FALSE;
 
   /* And now finally remove the toplevel; see also the handling for this flag in
-   * the write_dfd_iter_to_mtree_internal() function.
+   * the write_dfd_iter_to_mtree_internal() function. As a special case we don't
+   * try to remove `.` (since we'd get EINVAL); that's what's used in
+   * rpm-ostree.
    */
   const gboolean delete_after_commit = modifier &&
     (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME);
-  if (delete_after_commit)
+  if (delete_after_commit && !g_str_equal (path, "."))
     {
       if (!glnx_unlinkat (dfd, path, AT_REMOVEDIR, error))
         return FALSE;
