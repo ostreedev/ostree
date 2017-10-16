@@ -131,14 +131,14 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull --bareuseronly-files origin main
 echo "ok pull (bareuseronly, safe)"
 
-if ! is_bare_user_only_repo repo; then
 rm checkout-origin-main -rf
 $OSTREE --repo=ostree-srv/gnomerepo checkout ${CHECKOUT_U_ARG} main checkout-origin-main
 cat > statoverride.txt <<EOF
 2048 /some-setuid
 EOF
 echo asetuid > checkout-origin-main/some-setuid
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b content-with-suid --statoverride=statoverride.txt --tree=dir=checkout-origin-main
+# Don't use ${COMMIT_ARGS} as we don't want --canonical-permissions with bare-user-only
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b content-with-suid --statoverride=statoverride.txt --tree=dir=checkout-origin-main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 # Verify we reject it both when unpacking and when mirroring
 for flag in "" "--mirror"; do
@@ -147,7 +147,6 @@ for flag in "" "--mirror"; do
     fi
     assert_file_has_content err.txt 'Content object.*: invalid mode.*with bits 040.*'
 done
-fi
 echo "ok pull (bareuseronly, unsafe)"
 
 cd ${test_tmpdir}
