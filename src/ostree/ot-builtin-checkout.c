@@ -288,7 +288,7 @@ ostree_builtin_checkout (int argc, char **argv, OstreeCommandInvocation *invocat
   const char *destination;
   g_autofree char *resolved_commit = NULL;
 
-  context = g_option_context_new ("COMMIT [DESTINATION] - Check out a commit into a filesystem tree");
+  context = g_option_context_new ("COMMIT [DESTINATION]");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

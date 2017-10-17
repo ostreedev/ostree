@@ -69,7 +69,7 @@ gboolean
 ostree_builtin_checksum (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context =
-    g_option_context_new ("PATH - Checksum a file or directory");
+    g_option_context_new ("PATH");
   if (!ostree_option_context_parse (context, options, &argc, &argv,
                                     invocation, NULL, cancellable, error))
     return FALSE;

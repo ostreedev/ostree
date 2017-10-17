@@ -52,7 +52,7 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
   gboolean gpg_verify_summary;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("NAME - Show remote summary");
+  context = g_option_context_new ("NAME");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, &repo, cancellable, error))

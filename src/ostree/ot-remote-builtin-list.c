@@ -43,7 +43,7 @@ ot_remote_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocati
   guint ii, n_remotes = 0;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("- List remote repository names");
+  context = g_option_context_new ("");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, &repo, cancellable, error))

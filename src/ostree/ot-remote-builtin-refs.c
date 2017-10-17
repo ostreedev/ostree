@@ -45,7 +45,7 @@ ot_remote_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocati
   gboolean ret = FALSE;
   g_autoptr(GHashTable) refs = NULL;
 
-  context = g_option_context_new ("NAME - List remote refs");
+  context = g_option_context_new ("NAME");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, &repo, cancellable, error))

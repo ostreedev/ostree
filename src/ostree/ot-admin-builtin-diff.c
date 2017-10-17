@@ -54,7 +54,7 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autoptr(GFile) orig_etc_path = NULL;
   g_autoptr(GFile) new_etc_path = NULL;
 
-  context = g_option_context_new ("Diff current /etc configuration versus default");
+  context = g_option_context_new ("");
 
   g_option_context_add_main_entries (context, options, NULL);
 

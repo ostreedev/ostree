@@ -44,7 +44,7 @@ ot_admin_builtin_cleanup (int argc, char **argv, OstreeCommandInvocation *invoca
   g_autoptr(OstreeSysroot) sysroot = NULL;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("Delete untagged deployments and repository objects");
+  context = g_option_context_new ("");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,

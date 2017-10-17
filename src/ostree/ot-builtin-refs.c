@@ -268,7 +268,7 @@ ostree_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation,
   g_autoptr(OstreeRepo) repo = NULL;
   int i;
 
-  context = g_option_context_new ("[PREFIX] - List refs");
+  context = g_option_context_new ("[PREFIX]");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

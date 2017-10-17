@@ -431,7 +431,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   struct CommitFilterData filter_data = { 0, };
   g_autofree char *commit_body = NULL;
 
-  context = g_option_context_new ("[PATH] - Commit a new revision");
+  context = g_option_context_new ("[PATH]");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

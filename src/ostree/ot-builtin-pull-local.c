@@ -76,7 +76,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
   g_autoptr(GPtrArray) refs_to_fetch = NULL;
   OstreeRepoPullFlags pullflags = 0;
 
-  context = g_option_context_new ("SRC_REPO [REFS...] -  Copy data from SRC_REPO");
+  context = g_option_context_new ("SRC_REPO [REFS...]");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

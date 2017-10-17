@@ -42,7 +42,7 @@ ot_remote_builtin_show_url (int argc, char **argv, OstreeCommandInvocation *invo
   g_autofree char *remote_url = NULL;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("NAME - Show remote repository URL");
+  context = g_option_context_new ("NAME");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, &repo, cancellable, error))

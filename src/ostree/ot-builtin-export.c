@@ -77,7 +77,7 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
   OstreeRepoExportArchiveOptions opts = { 0, };
 #endif
 
-  context = g_option_context_new ("COMMIT - Stream COMMIT to stdout in tar format");
+  context = g_option_context_new ("COMMIT");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

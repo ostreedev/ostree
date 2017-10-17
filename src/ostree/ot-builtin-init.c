@@ -52,7 +52,7 @@ ostree_builtin_init (int argc, char **argv,OstreeCommandInvocation *invocation, 
   gboolean ret = FALSE;
   OstreeRepoMode mode;
 
-  context = g_option_context_new ("- Initialize a new empty repository");
+  context = g_option_context_new ("");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

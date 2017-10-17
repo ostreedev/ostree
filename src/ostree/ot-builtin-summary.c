@@ -87,7 +87,7 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
   g_autoptr(OstreeRepo) repo = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 
-  context = g_option_context_new ("Manage summary metadata");
+  context = g_option_context_new ("");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;

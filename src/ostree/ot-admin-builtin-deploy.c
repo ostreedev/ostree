@@ -65,7 +65,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 
   g_autoptr(GOptionContext) context =
-    g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
+    g_option_context_new ("REFSPEC");
 
   g_autoptr(OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,

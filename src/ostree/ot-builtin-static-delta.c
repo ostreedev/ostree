@@ -126,7 +126,7 @@ static gboolean
 ot_static_delta_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(OstreeRepo) repo = NULL;
-  g_autoptr(GOptionContext) context = g_option_context_new ("- list static delta files");
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
   if (!ostree_option_context_parse (context, list_options, &argc, &argv,
                                     invocation, &repo, cancellable, error))
     return FALSE;
@@ -154,7 +154,7 @@ ot_static_delta_builtin_show (int argc, char **argv, OstreeCommandInvocation *in
   g_autoptr(OstreeRepo) repo = NULL;
   const char *delta_id = NULL;
 
-  context = g_option_context_new ("- Dump information on a delta");
+  context = g_option_context_new ("");
 
   if (!ostree_option_context_parse (context, list_options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
@@ -184,7 +184,7 @@ ot_static_delta_builtin_delete (int argc, char **argv, OstreeCommandInvocation *
   g_autoptr(OstreeRepo) repo = NULL;
   const char *delta_id = NULL;
 
-  context = g_option_context_new ("- Remove a delta");
+  context = g_option_context_new ("");
 
   if (!ostree_option_context_parse (context, list_options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
@@ -214,7 +214,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
 
-  context = g_option_context_new ("[TO] - Generate static delta files");
+  context = g_option_context_new ("[TO]");
   if (!ostree_option_context_parse (context, generate_options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
@@ -365,7 +365,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
 
-  context = g_option_context_new ("- Apply static delta file");
+  context = g_option_context_new ("");
   if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 

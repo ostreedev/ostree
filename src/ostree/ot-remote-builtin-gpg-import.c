@@ -105,7 +105,7 @@ ot_remote_builtin_gpg_import (int argc, char **argv, OstreeCommandInvocation *in
   guint imported = 0;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("NAME [KEY-ID...] - Import GPG keys");
+  context = g_option_context_new ("NAME [KEY-ID...]");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, &repo, cancellable, error))

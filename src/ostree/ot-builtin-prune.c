@@ -146,7 +146,7 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
 gboolean
 ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("- Search for unreachable objects");
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
   g_autoptr(OstreeRepo) repo = NULL;
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
