@@ -30,6 +30,7 @@
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-diff.h"
 #include "ostree-rollsum.h"
+#include "ostree-autocleanups.h"
 #include "otutil.h"
 #include "libglnx.h"
 #include "ostree-varint.h"
@@ -1182,6 +1183,8 @@ variant_to_inputstream (GVariant             *variant)
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
  *   - endianness: b: Deltas use host byte order by default; this option allows choosing (G_BIG_ENDIAN or G_LITTLE_ENDIAN)
  *   - filename: ay: Save delta superblock to this filename, and parts in the same directory.  Default saves to repository.
+ *
+ * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo                   *self,
@@ -1193,6 +1196,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                    GCancellable                 *cancellable,
                                    GError                      **error)
 {
+  /* Take a shared lock while generating so neither commit gets deleted */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   gboolean ret = FALSE;
   OstreeStaticDeltaBuilder builder = { 0, };
   guint i;
