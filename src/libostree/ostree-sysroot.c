@@ -22,6 +22,7 @@
 #include "otutil.h"
 #include <sys/file.h>
 #include <sys/mount.h>
+#include <err.h>
 #include <sys/wait.h>
 
 #include "ostree.h"
@@ -1764,11 +1765,15 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
       return glnx_throw_errno_prefix (error, "fork");
     else if (mount_child == 0)
       {
-        /* Child process.  Do NOT use any GLib API here. */
+        /* Child process. Do NOT use any GLib API here; it's not generally fork() safe.
+         *
+         * TODO: report errors across a pipe (or use the journal?) rather than
+         * spewing to stderr.
+         */
         if (fchdir (deployment_dfd) < 0)
-          exit (EXIT_FAILURE);
+          err (1, "fchdir");
         if (mount ("overlay", "/usr", "overlay", 0, ovl_options) < 0)
-          exit (EXIT_FAILURE);
+          err (1, "mount");
         exit (EXIT_SUCCESS);
       }
     else
@@ -1779,7 +1784,7 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
         if (TEMP_FAILURE_RETRY (waitpid (mount_child, &estatus, 0)) < 0)
           return glnx_throw_errno_prefix (error, "waitpid() on mount helper");
         if (!g_spawn_check_exit_status (estatus, error))
-          return glnx_throw_errno_prefix (error, "overlayfs mount helper");
+          return glnx_prefix_error (error, "Failed overlayfs mount");
       }
   }
 
