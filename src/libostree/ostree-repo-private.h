@@ -418,6 +418,14 @@ _ostree_repo_get_remote_inherited (OstreeRepo  *self,
                                    const char  *name,
                                    GError     **error);
 
+gboolean
+_ostree_repo_delete_object_shared (OstreeRepo        *self,
+                                   OstreeObjectType   objtype,
+                                   const char        *sha256,
+                                   GCancellable      *cancellable,
+                                   GError           **error);
+
+
 #ifndef OSTREE_ENABLE_EXPERIMENTAL_API
 
 typedef enum {

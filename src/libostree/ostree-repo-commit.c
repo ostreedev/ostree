@@ -986,13 +986,16 @@ write_metadata_object (OstreeRepo         *self,
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
       GError *local_error = NULL;
-      /* If we are writing a commit, be sure there is no tombstone for it.
-         We may have deleted the commit and now we are trying to pull it again.  */
-      if (!ostree_repo_delete_object (self,
-                                      OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
-                                      actual_checksum,
-                                      cancellable,
-                                      &local_error))
+      /* If we are writing a commit, be sure there is no tombstone for it. We
+       * may have deleted the commit and now we are trying to pull it again.
+       * Delete with a shared lock here so concurrent commits and pulls aren't
+       * prevented.
+       */
+      if (!_ostree_repo_delete_object_shared (self,
+                                              OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
+                                              actual_checksum,
+                                              cancellable,
+                                              &local_error))
         {
           if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             g_clear_error (&local_error);

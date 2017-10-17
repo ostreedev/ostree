@@ -3851,25 +3851,19 @@ ostree_repo_has_object (OstreeRepo           *self,
   return TRUE;
 }
 
-/**
- * ostree_repo_delete_object:
- * @self: Repo
- * @objtype: Object type
- * @sha256: Checksum
- * @cancellable: Cancellable
- * @error: Error
- *
- * Remove the object of type @objtype with checksum @sha256
- * from the repository.  An error of type %G_IO_ERROR_NOT_FOUND
- * is thrown if the object does not exist.
- */
-gboolean
-ostree_repo_delete_object (OstreeRepo           *self,
-                           OstreeObjectType      objtype,
-                           const char           *sha256,
-                           GCancellable         *cancellable,
-                           GError              **error)
+static gboolean
+delete_object (OstreeRepo          *self,
+               OstreeObjectType     objtype,
+               const char          *sha256,
+               OstreeRepoLockType   lock_type,
+               GCancellable        *cancellable,
+               GError             **error)
 {
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, lock_type, cancellable, error);
+  if (!lock)
+    return FALSE;
+
   char loose_path[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (loose_path, sha256, objtype, self->mode);
 
@@ -3914,6 +3908,47 @@ ostree_repo_delete_object (OstreeRepo           *self,
     }
 
   return TRUE;
+}
+
+/* Like ostree_repo_delete_object, but with a shared repo lock instead of
+ * exclusive. Ideally, objects would always be deleted with an exclusive lock,
+ * but that would prevent concurrency when the object to delete is not
+ * critical.
+ */
+gboolean
+_ostree_repo_delete_object_shared (OstreeRepo           *self,
+                                   OstreeObjectType      objtype,
+                                   const char           *sha256,
+                                   GCancellable         *cancellable,
+                                   GError              **error)
+{
+  return delete_object (self, objtype, sha256, OSTREE_REPO_LOCK_SHARED,
+                        cancellable, error);
+}
+
+/**
+ * ostree_repo_delete_object:
+ * @self: Repo
+ * @objtype: Object type
+ * @sha256: Checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Remove the object of type @objtype with checksum @sha256
+ * from the repository.  An error of type %G_IO_ERROR_NOT_FOUND
+ * is thrown if the object does not exist.
+ *
+ * This function takes an exclusive lock on the @self repository.
+ */
+gboolean
+ostree_repo_delete_object (OstreeRepo           *self,
+                           OstreeObjectType      objtype,
+                           const char           *sha256,
+                           GCancellable         *cancellable,
+                           GError              **error)
+{
+  return delete_object (self, objtype, sha256, OSTREE_REPO_LOCK_EXCLUSIVE,
+                        cancellable, error);
 }
 
 /**
