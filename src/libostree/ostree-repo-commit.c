@@ -821,7 +821,7 @@ adopt_and_commit_regfile (OstreeRepo   *self,
   ot_checksum_init (&hasher);
   ot_checksum_update_bytes (&hasher, header);
 
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (dfd, name, FALSE, &fd, error))
     return FALSE;
 

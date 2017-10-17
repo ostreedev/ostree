@@ -31,8 +31,12 @@ sc_glnx_errno_prefix_colon:
 	@prohibit='\<glnx_throw_errno_prefix *\(.*: ",' halt="don't add trailing : for glnx_throw_errno_prefix"	\
 	  $(_sc_search_regexp)
 
+sc_glnx_no_fd_close:
+	@prohibit='\<glnx_fd_close int' halt="Use glnx_autofd, not glnx_fd_close"	\
+	  $(_sc_search_regexp)
+
 #SHELL=bash -x
 show-vc-list-except:
 	@$(VC_LIST_EXCEPT)
 
-VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|maint.mk|*.gpg|*.sig|.xz$$
+VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|cfg.mk|maint.mk|*.gpg|*.sig|.xz$$
