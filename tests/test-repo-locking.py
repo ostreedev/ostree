@@ -54,7 +54,7 @@ def repo_lock(repo, exclusive, cancellable=None):
     finally:
         repo.lock_pop(cancellable)
 
-print('1..11')
+print('1..14')
 
 subprocess.check_call(['ostree', '--repo=repo', 'init', '--mode=bare'])
 # like the bit in libtest, but let's do it unconditionally since it's simpler,
@@ -173,3 +173,18 @@ proc2.join()
 assert proc1.exitcode == 0
 assert proc2.exitcode == 0
 print('ok concurrent exclusive locks wait')
+
+# Test lock timeout accessors
+cur_timeout = repo1.get_lock_timeout()
+assert cur_timeout == 3
+print('ok get_lock_timeout()')
+
+repo1.set_lock_timeout(0)
+cur_timeout = repo1.get_lock_timeout()
+assert cur_timeout == 0
+print('ok set_lock_timeout()')
+
+repo1.reload_config()
+cur_timeout = repo1.get_lock_timeout()
+assert cur_timeout == 3
+print('ok lock_timeout reset by core.lock-timeout')

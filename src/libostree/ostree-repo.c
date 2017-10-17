@@ -5702,3 +5702,47 @@ ostree_repo_set_collection_id (OstreeRepo   *self,
 
   return TRUE;
 }
+
+/**
+ * ostree_repo_get_lock_timeout:
+ * @self: an #OstreeRepo
+ *
+ * Get the current lock timeout for the repository. A timeout of -1 indicates
+ * that the application will block until the lock is acquired. Otherwise, it
+ * represents the number of seconds the application will sleep attempting to
+ * acquire the repository lock.
+ *
+ * Returns: lock timeout for the repository
+ * Since: 2017.13
+ */
+gint
+ostree_repo_get_lock_timeout (OstreeRepo *self)
+{
+  return self->lock_timeout_seconds;
+}
+
+/**
+ * ostree_repo_set_lock_timeout:
+ * @self: an #OstreeRepo
+ * @timeout: new lock timeout in seconds
+ *
+ * Set the lock timeout for the repository. A timeout of -1 indicates that the
+ * application will block until the lock is acquired. Otherwise, it represents
+ * the number of seconds the application will sleep attempting to acquire the
+ * repository lock.
+ *
+ * Note that if the repository configuration is reloaded, then a timeout
+ * configured in the core.lock-timeout option will replace this.
+ *
+ * Returns: %TRUE on success, %FALSE otherwise
+ * Since: 2017.13
+ */
+gboolean
+ostree_repo_set_lock_timeout (OstreeRepo *self,
+                              gint        timeout)
+{
+  g_return_val_if_fail (timeout >= -1, FALSE);
+
+  self->lock_timeout_seconds = timeout;
+  return TRUE;
+}

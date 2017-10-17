@@ -450,6 +450,10 @@ OstreeRepoAutoLock * ostree_repo_auto_lock_push (OstreeRepo          *self,
 void          ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, ostree_repo_auto_lock_cleanup)
 
+gint          ostree_repo_get_lock_timeout (OstreeRepo *self);
+gboolean      ostree_repo_set_lock_timeout (OstreeRepo *self,
+                                            gint        timeout);
+
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
                                              const gchar  *collection_id,

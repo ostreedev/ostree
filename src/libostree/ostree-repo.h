@@ -147,6 +147,12 @@ _OSTREE_PUBLIC
 void          ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
 
 _OSTREE_PUBLIC
+gint          ostree_repo_get_lock_timeout (OstreeRepo *self);
+_OSTREE_PUBLIC
+gboolean      ostree_repo_set_lock_timeout (OstreeRepo *self,
+                                            gint        timeout);
+
+_OSTREE_PUBLIC
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 _OSTREE_PUBLIC
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
