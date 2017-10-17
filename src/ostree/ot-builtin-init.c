@@ -45,7 +45,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_init (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_init (int argc, char **argv,OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
@@ -54,7 +54,7 @@ ostree_builtin_init (int argc, char **argv, GCancellable *cancellable, GError **
 
   context = g_option_context_new ("- Initialize a new empty repository");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_CHECK, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
   if (!ostree_repo_mode_from_string (opt_mode, &mode, error))

@@ -171,7 +171,7 @@ ostree_run (int    argc,
         ostree_option_context_new_with_commands (commands);
 
       /* This will not return for some options (e.g. --version). */
-      if (ostree_option_context_parse (context, NULL, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, &error))
+      if (ostree_option_context_parse (context, NULL, &argc, &argv, NULL, NULL, cancellable, &error))
         {
           if (command_name == NULL)
             {
@@ -193,8 +193,8 @@ ostree_run (int    argc,
   prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
   g_set_prgname (prgname);
 #endif
-
-  if (!command->fn (argc, argv, cancellable, &error))
+  OstreeCommandInvocation invocation = { .command = command };
+  if (!command->fn (argc, argv, &invocation, cancellable, &error))
     goto out;
 
   success = TRUE;
@@ -296,13 +296,14 @@ ostree_option_context_parse (GOptionContext *context,
                              const GOptionEntry *main_entries,
                              int *argc,
                              char ***argv,
-                             OstreeBuiltinFlags flags,
+                             OstreeCommandInvocation *invocation,
                              OstreeRepo **out_repo,
                              GCancellable *cancellable,
                              GError **error)
 {
   g_autoptr(OstreeRepo) repo = NULL;
-
+  /* When invocation is NULL, it usually means an error occurs, do not fetch repo this case */
+  const OstreeBuiltinFlags flags = invocation ? invocation->command->flags : OSTREE_BUILTIN_FLAG_NO_REPO;
   /* Entries are listed in --help output in the order added.  We add the
    * main entries ourselves so that we can add the --repo entry first. */
 
@@ -366,6 +367,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
                                    int *argc,
                                    char ***argv,
                                    OstreeAdminBuiltinFlags flags,
+                                   OstreeCommandInvocation *invocation,
                                    OstreeSysroot **out_sysroot,
                                    GCancellable *cancellable,
                                    GError **error)
@@ -376,7 +378,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
   g_option_context_add_main_entries (context, global_admin_entries, NULL);
 
   if (!ostree_option_context_parse (context, main_entries, argc, argv,
-                                    OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
+                                    invocation, NULL, cancellable, error))
     return FALSE;
 
   if (!opt_print_current_dir && (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT))

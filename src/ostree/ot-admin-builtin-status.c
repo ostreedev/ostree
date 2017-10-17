@@ -85,7 +85,7 @@ out:
 }
 
 gboolean
-ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeSysroot) sysroot = NULL;
@@ -104,7 +104,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     goto out;
 
   if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))

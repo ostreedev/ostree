@@ -62,7 +62,7 @@ propagate_libarchive_error (GError      **error,
 #endif
 
 gboolean
-ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
@@ -79,7 +79,7 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
 
   context = g_option_context_new ("COMMIT - Stream COMMIT to stdout in tar format");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
 #ifdef HAVE_LIBARCHIVE  

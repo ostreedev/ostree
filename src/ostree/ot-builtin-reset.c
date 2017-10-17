@@ -38,6 +38,7 @@ static GOptionEntry options[] = {
 gboolean
 ostree_builtin_reset (int           argc,
                       char        **argv,
+                      OstreeCommandInvocation *invocation,
                       GCancellable *cancellable,
                       GError      **error)
 {
@@ -52,7 +53,7 @@ ostree_builtin_reset (int           argc,
   /* FIXME: Add support for collection–refs. */
   context = g_option_context_new ("REF COMMIT - Reset a REF to a previous COMMIT");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
   if (!ostree_ensure_repo_writable (repo, error))
