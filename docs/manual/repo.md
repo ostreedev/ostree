@@ -91,10 +91,10 @@ attributes, such as tmpfs.
 In contrast, the `archive` mode is designed for serving via plain
 HTTP.  Like tar files, it can be read/written by non-root users.
 
-On an OSTree-deployed system, the "system repository" is
-`/ostree/repo`.  It can be read by any uid, but only written by root.
-Unless the `--repo` argument is given to the <command>ostree</command>
-command, it will operate on the system repository.
+On an OSTree-deployed system, the "system repository" is `/ostree/repo`. It can
+be read by any uid, but only written by root. The `ostree` command will by
+default operate on the system repository; you may provide the `--repo` argument
+to override this, or set the `$OSTREE_REPO` environment variable.
 
 ## Refs
 
