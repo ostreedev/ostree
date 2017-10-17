@@ -2791,7 +2791,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
     }
   else
     {
-      glnx_fd_close int file_input_fd = -1;
+      glnx_autofd int file_input_fd = -1;
 
       /* Open the file now, since it's better for reading xattrs
        * rather than using the /proc/self/fd links.
