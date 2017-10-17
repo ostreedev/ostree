@@ -27,7 +27,8 @@
 typedef enum {
   OSTREE_BUILTIN_FLAG_NONE = 0,
   OSTREE_BUILTIN_FLAG_NO_REPO = 1 << 0,
-  OSTREE_BUILTIN_FLAG_NO_CHECK = 1 << 1
+  OSTREE_BUILTIN_FLAG_NO_CHECK = 1 << 1,
+  OSTREE_BUILTIN_FLAG_LOCKING = 1 << 2,
 } OstreeBuiltinFlags;
 
 typedef enum {

@@ -28,11 +28,13 @@
 
 #include "ot-main.h"
 #include "ostree.h"
+#include "ostree-cmdprivate.h"
 #include "ot-admin-functions.h"
 #include "otutil.h"
 
 static char *opt_repo;
 static char *opt_sysroot;
+static gint opt_lock_timeout = -2; /* Invalid value to detect when not set */
 static gboolean opt_verbose;
 static gboolean opt_version;
 static gboolean opt_print_current_dir;
@@ -45,6 +47,28 @@ static GOptionEntry global_entries[] = {
 
 static GOptionEntry repo_entry[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &opt_repo, "Path to OSTree repository (defaults to /sysroot/ostree/repo)", "PATH" },
+  { NULL }
+};
+
+static gboolean
+parse_lock_timeout (const char  *option_name,
+                    const char  *value,
+                    gpointer     data,
+                    GError     **error)
+{
+  char *endptr = NULL;
+  gint64 lock_timeout = g_ascii_strtoll (value, &endptr, 0);
+  if ((lock_timeout < -1) ||
+      (lock_timeout > G_MAXINT) ||
+      (lock_timeout == 0 && endptr == value))
+    return glnx_throw (error, "Invalid lock timeout '%s'", value);
+
+  opt_lock_timeout = (gint)lock_timeout;
+  return TRUE;
+}
+
+static GOptionEntry lock_timeout_entry[] = {
+  { "lock-timeout", 0, 0, G_OPTION_ARG_CALLBACK, parse_lock_timeout, "Repository locking timeout in seconds (-1=indefinitely)", "TIMEOUT" },
   { NULL }
 };
 
@@ -338,6 +362,9 @@ ostree_option_context_parse (GOptionContext *context,
   if (main_entries != NULL)
     g_option_context_add_main_entries (context, main_entries, NULL);
 
+  if (flags & OSTREE_BUILTIN_FLAG_LOCKING)
+    g_option_context_add_main_entries (context, lock_timeout_entry, NULL);
+
   g_option_context_add_main_entries (context, global_entries, NULL);
 
   if (!g_option_context_parse (context, argc, argv, error))
@@ -370,6 +397,13 @@ ostree_option_context_parse (GOptionContext *context,
                                 cancellable, error);
       if (!repo)
         return FALSE;
+
+      if ((flags & OSTREE_BUILTIN_FLAG_LOCKING) && opt_lock_timeout >= -1)
+        {
+          if (!ostree_cmd__private__ ()->ostree_repo_set_lock_timeout (repo,
+                                                                       opt_lock_timeout))
+            return FALSE;
+        }
     }
 
   if (out_repo)
