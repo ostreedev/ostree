@@ -38,7 +38,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   guint bootversion;
@@ -49,7 +49,7 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     goto out;
 
   if (argc >= 2)

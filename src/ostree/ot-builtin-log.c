@@ -82,6 +82,7 @@ out:
 gboolean
 ostree_builtin_log (int           argc,
                     char        **argv,
+                    OstreeCommandInvocation *invocation,
                     GCancellable *cancellable,
                     GError      **error)
 {
@@ -94,7 +95,7 @@ ostree_builtin_log (int           argc,
 
   context = g_option_context_new ("REF - Show log starting at commit or ref");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
   if (opt_raw)

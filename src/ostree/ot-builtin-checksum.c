@@ -66,12 +66,12 @@ on_checksum_received (GObject    *obj,
 }
 
 gboolean
-ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_checksum (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context =
     g_option_context_new ("PATH - Checksum a file or directory");
   if (!ostree_option_context_parse (context, options, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
+                                    invocation, NULL, cancellable, error))
     return FALSE;
 
   if (argc < 2)

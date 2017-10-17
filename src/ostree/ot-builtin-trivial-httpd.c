@@ -25,7 +25,7 @@
 #include "otutil.h"
 
 gboolean
-ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_trivial_httpd (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GPtrArray) new_argv = g_ptr_array_new ();
 

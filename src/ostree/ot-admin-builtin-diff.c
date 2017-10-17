@@ -41,7 +41,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeSysroot) sysroot = NULL;
@@ -60,7 +60,7 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     goto out;
 
   if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,

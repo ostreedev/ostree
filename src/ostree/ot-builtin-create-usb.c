@@ -43,6 +43,7 @@ static GOptionEntry options[] =
 gboolean
 ostree_builtin_create_usb (int            argc,
                            char         **argv,
+                           OstreeCommandInvocation *invocation,
                            GCancellable  *cancellable,
                            GError       **error)
 {
@@ -55,7 +56,7 @@ ostree_builtin_create_usb (int            argc,
   /* Parse options. */
   g_autoptr(OstreeRepo) src_repo = NULL;
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &src_repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &src_repo, cancellable, error))
     return FALSE;
 
   if (argc < 2)

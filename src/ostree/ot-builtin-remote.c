@@ -25,42 +25,46 @@
 #include "ot-builtins.h"
 #include "ot-remote-builtins.h"
 
-typedef struct {
-  const char *name;
-  gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
-  const char *description;
-} OstreeRemoteCommand;
-
-static OstreeRemoteCommand remote_subcommands[] = {
-  { "add", ot_remote_builtin_add,
+static OstreeCommand remote_subcommands[] = {
+  { "add", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_remote_builtin_add,
     "Add a remote repository" },
-  { "delete", ot_remote_builtin_delete,
+  { "delete", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_remote_builtin_delete,
     "Delete a remote repository" },
-  { "show-url", ot_remote_builtin_show_url,
+  { "show-url", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_show_url,
     "Show remote repository URL" },
-  { "list", ot_remote_builtin_list,
+  { "list", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_list,
     "List remote repository names" },
-  { "gpg-import", ot_remote_builtin_gpg_import,
+  { "gpg-import", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_gpg_import,
     "Import GPG keys" },
 #ifdef HAVE_LIBSOUP
-  { "add-cookie", ot_remote_builtin_add_cookie,
+  { "add-cookie", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_add_cookie,
     "Add a cookie to remote" },
-  { "delete-cookie", ot_remote_builtin_delete_cookie,
+  { "delete-cookie", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_delete_cookie,
     "Remove one cookie from remote" },
-  { "list-cookies", ot_remote_builtin_list_cookies,
+  { "list-cookies", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_list_cookies,
     "Show remote repository cookies" },
 #endif
-  { "refs", ot_remote_builtin_refs,
+  { "refs", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_refs,
     "List remote refs" },
-  { "summary", ot_remote_builtin_summary,
+  { "summary", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_summary,
     "Show remote summary" },
-  { NULL, NULL, NULL }
+  { NULL, 0, NULL, NULL }
 };
 
 static GOptionContext *
 remote_option_context_new_with_commands (void)
 {
-  OstreeRemoteCommand *subcommand = remote_subcommands;
+  OstreeCommand *subcommand = remote_subcommands;
   GOptionContext *context = g_option_context_new ("COMMAND");
 
   g_autoptr(GString) summary = g_string_new ("Builtin \"remote\" Commands:");
@@ -80,9 +84,9 @@ remote_option_context_new_with_commands (void)
 }
 
 gboolean
-ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_remote (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  OstreeRemoteCommand *subcommand;
+  OstreeCommand *subcommand;
   const char *subcommand_name = NULL;
   g_autofree char *prgname = NULL;
   gboolean ret = FALSE;
@@ -128,7 +132,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
 
       /* This will not return for some options (e.g. --version). */
       if (ostree_option_context_parse (context, NULL, &argc, &argv,
-                                       OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable,
+                                       invocation, NULL, cancellable,
                                        error))
         {
           if (subcommand_name == NULL)
@@ -152,7 +156,8 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
   prgname = g_strdup_printf ("%s %s", g_get_prgname (), subcommand_name);
   g_set_prgname (prgname);
 
-  if (!subcommand->fn (argc, argv, cancellable, error))
+  OstreeCommandInvocation sub_invocation = { .command = subcommand };
+  if (!subcommand->fn (argc, argv, &sub_invocation, cancellable, error))
     goto out;
 
   ret = TRUE;

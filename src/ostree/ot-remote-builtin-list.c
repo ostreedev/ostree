@@ -35,7 +35,7 @@ static GOptionEntry option_entries[] = {
 };
 
 gboolean
-ot_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_remote_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
@@ -46,7 +46,7 @@ ot_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError
   context = g_option_context_new ("- List remote repository names");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+                                    invocation, &repo, cancellable, error))
     goto out;
 
   remotes = ostree_repo_remote_list (repo, &n_remotes);
