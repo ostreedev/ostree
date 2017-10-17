@@ -51,7 +51,7 @@ ostree_builtin_create_usb (int            argc,
   g_autoptr(OstreeAsyncProgress) progress = NULL;
   g_auto(GLnxConsoleRef) console = { 0, };
 
-  context = g_option_context_new ("MOUNT-PATH COLLECTION-ID REF [COLLECTION-ID REF...] - Copy the refs to a USB stick");
+  context = g_option_context_new ("MOUNT-PATH COLLECTION-ID REF [COLLECTION-ID REF...]");
 
   /* Parse options. */
   g_autoptr(OstreeRepo) src_repo = NULL;

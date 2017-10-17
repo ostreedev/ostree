@@ -40,7 +40,7 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_init_fs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("PATH - Initialize a root filesystem");
+  g_autoptr(GOptionContext) context = g_option_context_new ("PATH");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER |

@@ -45,7 +45,7 @@ ostree_builtin_rev_parse (int argc, char **argv, OstreeCommandInvocation *invoca
   int i;
   g_autofree char *resolved_rev = NULL;
 
-  context = g_option_context_new ("REV - Output the target of a rev");
+  context = g_option_context_new ("REV");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

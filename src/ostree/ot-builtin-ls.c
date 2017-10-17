@@ -249,7 +249,7 @@ ostree_builtin_ls (int argc, char **argv, OstreeCommandInvocation *invocation, G
   int i;
   g_autoptr(GFile) root = NULL;
 
-  context = g_option_context_new ("COMMIT [PATH...] - List file paths");
+  context = g_option_context_new ("COMMIT [PATH...]");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

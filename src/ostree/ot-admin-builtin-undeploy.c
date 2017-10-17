@@ -46,7 +46,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invoc
   g_autoptr(GPtrArray) current_deployments = NULL;
   g_autoptr(OstreeDeployment) target_deployment = NULL;
 
-  context = g_option_context_new ("INDEX - Delete deployment INDEX");
+  context = g_option_context_new ("INDEX");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,

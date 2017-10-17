@@ -219,7 +219,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   g_autoptr(OstreeRepo) repo = NULL;
   gboolean found_corruption = FALSE;
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("- Check the repository for consistency");
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
 

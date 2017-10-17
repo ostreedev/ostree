@@ -155,7 +155,7 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
   g_autoptr(OstreeAsyncProgress) progress = NULL;
   gulong signal_handler_id = 0;
 
-  context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
+  context = g_option_context_new ("REMOTE [BRANCH...]");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

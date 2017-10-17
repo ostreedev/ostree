@@ -210,7 +210,7 @@ ostree_builtin_gpg_sign (int argc, char **argv,OstreeCommandInvocation *invocati
   int n_key_ids, ii;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("COMMIT KEY-ID... - Sign a commit");
+  context = g_option_context_new ("COMMIT KEY-ID...");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;

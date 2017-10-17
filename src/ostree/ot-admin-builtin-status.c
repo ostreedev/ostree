@@ -100,7 +100,7 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
   const char *red_bold_suffix = is_tty ? "\x1b[22m\x1b[0m" : "";
   guint i;
 
-  context = g_option_context_new ("List deployments");
+  context = g_option_context_new ("");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,

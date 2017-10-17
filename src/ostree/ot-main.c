@@ -302,8 +302,33 @@ ostree_option_context_parse (GOptionContext *context,
                              GError **error)
 {
   g_autoptr(OstreeRepo) repo = NULL;
-  /* When invocation is NULL, it usually means an error occurs, do not fetch repo this case */
+  /* When invocation is NULL,  do not fetch repo */
   const OstreeBuiltinFlags flags = invocation ? invocation->command->flags : OSTREE_BUILTIN_FLAG_NO_REPO;
+
+  if (invocation && invocation->command->description != NULL)
+    {
+      const char *context_summary = g_option_context_get_summary (context);
+
+      /* If the summary is originally empty, we set the description, but
+       * for root commands(command with subcommands), we want to prepend
+       * the description to the existing summary string
+       */
+      if (context_summary == NULL)
+        g_option_context_set_summary (context, invocation->command->description);
+      else
+        {
+          /* TODO: remove this part once we deduplicate the ostree_option_context_new_with_commands
+           * function from other root commands( command with subcommands). Because
+           * we can directly add the summary inside the ostree_option_context_new_with_commands function.
+           */
+          g_autoptr(GString) new_summary_string = g_string_new (context_summary);
+
+          g_string_prepend (new_summary_string, "\n\n");
+          g_string_prepend (new_summary_string, invocation->command->description);
+
+          g_option_context_set_summary (context, new_summary_string->str);
+        }
+    }
   /* Entries are listed in --help output in the order added.  We add the
    * main entries ourselves so that we can add the --repo entry first. */
 

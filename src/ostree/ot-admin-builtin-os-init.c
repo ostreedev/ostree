@@ -45,7 +45,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invoca
   gboolean ret = FALSE;
   const char *osname = NULL;
 
-  context = g_option_context_new ("OSNAME - Initialize empty state for given operating system");
+  context = g_option_context_new ("OSNAME");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,

@@ -228,7 +228,7 @@ print_if_found (OstreeRepo        *repo,
 gboolean
 ostree_builtin_show (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("OBJECT - Output a metadata object");
+  g_autoptr(GOptionContext) context = g_option_context_new ("OBJECT");
 
   g_autoptr(OstreeRepo) repo = NULL;
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))

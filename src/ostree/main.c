@@ -39,7 +39,7 @@ static OstreeCommand commands[] = {
    */
   { "admin", OSTREE_BUILTIN_FLAG_NO_REPO,
     ostree_builtin_admin,
-    "Commands that needs admin privilege" },
+    "Commands for managing a host system booted with ostree" },
   { "cat", OSTREE_BUILTIN_FLAG_NONE,
     ostree_builtin_cat,
     "Concatenate contents of files"},

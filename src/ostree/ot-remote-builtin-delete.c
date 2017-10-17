@@ -44,7 +44,7 @@ gboolean
 ot_remote_builtin_delete (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("NAME - Delete a remote repository");
+  g_autoptr(GOptionContext) context = g_option_context_new ("NAME");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, NULL, cancellable, error))

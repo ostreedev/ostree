@@ -69,7 +69,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autoptr(GVariant) options = NULL;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...] - Add a remote repository");
+  context = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...]");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, NULL, cancellable, error))
