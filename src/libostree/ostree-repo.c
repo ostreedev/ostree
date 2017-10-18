@@ -4746,18 +4746,16 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         if (!glnx_openat_rdonly (self->repo_dir_fd, superblock, TRUE, &superblock_file_fd, error))
           return FALSE;
 
-        g_autoptr(GInputStream) in_stream = g_unix_input_stream_new (superblock_file_fd, FALSE);
-        if (!in_stream)
+        g_autoptr(GBytes) superblock_content = ot_fd_readall_or_mmap (superblock_file_fd, 0, error);
+        if (!superblock_content)
           return FALSE;
+        g_auto(OtChecksum) hasher = { 0, };
+        ot_checksum_init (&hasher);
+        ot_checksum_update_bytes (&hasher, superblock_content);
+        guint8 digest[OSTREE_SHA256_DIGEST_LEN];
+        ot_checksum_get_digest (&hasher, digest, sizeof (digest));
 
-        g_autofree guchar *csum = NULL;
-        if (!ot_gio_checksum_stream (in_stream,
-                                     &csum,
-                                     cancellable,
-                                     error))
-          return FALSE;
-
-        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], ot_gvariant_new_bytearray (csum, 32));
+        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], ot_gvariant_new_bytearray (digest, sizeof (digest)));
       }
 
     if (delta_names->len > 0)

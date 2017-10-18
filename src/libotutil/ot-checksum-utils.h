@@ -88,11 +88,6 @@ gboolean ot_gio_splice_update_checksum (GOutputStream  *out,
                                         GCancellable   *cancellable,
                                         GError        **error);
 
-gboolean ot_gio_checksum_stream (GInputStream   *in,
-                                 guchar        **out_csum,
-                                 GCancellable   *cancellable,
-                                 GError        **error);
-
 char * ot_checksum_file_at (int             dfd,
                             const char     *path,
                             GChecksumType   checksum_type,
