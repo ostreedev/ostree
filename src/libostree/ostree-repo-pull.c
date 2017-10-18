@@ -2457,34 +2457,28 @@ on_superblock_fetched (GObject   *src,
     }
   else
     {
-      g_autofree gchar *delta = NULL;
-      g_autofree guchar *ret_csum = NULL;
-      guchar *summary_csum;
-      g_autoptr (GInputStream) summary_is = NULL;
       g_autoptr(GVariant) delta_superblock = NULL;
+      g_autofree gchar *delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
+      const guchar *expected_summary_digest = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
+      guint8 actual_summary_digest[OSTREE_SHA256_DIGEST_LEN];
 
-      summary_is = g_memory_input_stream_new_from_data (g_bytes_get_data (delta_superblock_data, NULL),
-                                                        g_bytes_get_size (delta_superblock_data),
-                                                        NULL);
-
-      if (!ot_gio_checksum_stream (summary_is, &ret_csum, pull_data->cancellable, error))
-        goto out;
-
-      delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
-      summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
+      g_auto(OtChecksum) hasher = { 0, };
+      ot_checksum_init (&hasher);
+      ot_checksum_update_bytes (&hasher, delta_superblock_data);
+      ot_checksum_get_digest (&hasher, actual_summary_digest, sizeof (actual_summary_digest));
 
       /* At this point we've GPG verified the data, so in theory
        * could trust that they provided the right data, but let's
        * make this a hard error.
        */
-      if (pull_data->gpg_verify_summary && !summary_csum)
+      if (pull_data->gpg_verify_summary && !expected_summary_digest)
         {
           g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
                        "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
           goto out;
         }
 
-      if (summary_csum && memcmp (summary_csum, ret_csum, 32))
+      if (expected_summary_digest && memcmp (expected_summary_digest, actual_summary_digest, sizeof (actual_summary_digest)))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid checksum for static delta %s", delta);
           goto out;
