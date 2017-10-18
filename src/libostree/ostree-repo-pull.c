@@ -3853,6 +3853,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
       while (g_variant_iter_loop (collection_refs_iter, "(&s&s&s)", &collection_id, &ref_name, &checksum))
         {
+          if (!ostree_validate_rev (ref_name, error))
+            goto out;
           g_hash_table_insert (requested_refs_to_fetch,
                                ostree_collection_ref_new (collection_id, ref_name),
                                (*checksum != '\0') ? g_strdup (checksum) : NULL);

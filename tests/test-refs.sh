@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..2'
+echo '1..5'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -87,6 +87,35 @@ fi
 if ${CMD_PREFIX} ostree --repo=repo refs foo/ctest --create=ctest; then
     assert_not_reached "refs --create unexpectedly succeeded in overwriting an existing prefix!"
 fi
+
+# https://github.com/ostreedev/ostree/issues/1285
+# One tool was creating .latest_rsync files in each dir, let's ignore stuff like
+# that.
+echo '👻' > repo/refs/heads/.spooky_and_hidden
+${CMD_PREFIX} ostree --repo=repo refs > refs.txt
+assert_not_file_has_content refs.txt 'spooky'
+${CMD_PREFIX} ostree --repo=repo refs ctest --create=exampleos/x86_64/standard
+echo '👻' > repo/refs/heads/exampleos/x86_64/.further_spooky_and_hidden
+${CMD_PREFIX} ostree --repo=repo refs > refs.txt
+assert_file_has_content refs.txt 'exampleos/x86_64/standard'
+assert_not_file_has_content refs.txt 'spooky'
+rm repo/refs/heads/exampleos -rf
+echo "ok hidden refs"
+
+for ref in '.' '-' '.foo' '-bar' '!' '!foo'; do
+    if ${CMD_PREFIX} ostree --repo=repo refs ctest --create=${ref} 2>err.txt; then
+        fatal "Created ref ${ref}"
+    fi
+    assert_file_has_content err.txt 'Invalid ref'
+done
+echo "ok invalid refs"
+
+for ref in 'org.foo.bar/x86_64/standard-blah'; do
+    ostree --repo=repo refs ctest --create=${ref}
+    ostree --repo=repo rev-parse ${ref} >/dev/null
+    ostree --repo=repo refs --delete ${ref}
+done
+echo "ok valid refs with chars '._-'"
 
 #Check to see if any uncleaned tmp files were created after failed --create
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create1
