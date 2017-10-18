@@ -28,6 +28,7 @@
 #include "ostree-cmdprivate.h"
 #include "ostree-checksum-input-stream.h"
 #include "ostree-repo-static-delta-private.h"
+#include "ostree-autocleanups.h"
 #include "otutil.h"
 
 gboolean
@@ -694,6 +695,13 @@ _ostree_repo_static_delta_delete (OstreeRepo                    *self,
   g_autofree char *from = NULL;
   g_autofree char *to = NULL;
   if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
+    return FALSE;
+
+  /* Take exclusive lock while deleting deltas */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
+                                     cancellable, error);
+  if (!lock)
     return FALSE;
 
   g_autofree char *deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
