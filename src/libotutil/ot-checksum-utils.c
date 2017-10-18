@@ -252,17 +252,6 @@ ot_gio_splice_get_checksum (GOutputStream  *out,
   return TRUE;
 }
 
-gboolean
-ot_gio_checksum_stream (GInputStream   *in,
-                        guchar        **out_csum,
-                        GCancellable   *cancellable,
-                        GError        **error)
-{
-  if (!out_csum)
-    return TRUE;
-  return ot_gio_splice_get_checksum (NULL, in, out_csum, cancellable, error);
-}
-
 char *
 ot_checksum_file_at (int             dfd,
                      const char     *path,
