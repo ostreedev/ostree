@@ -102,7 +102,7 @@ assert_not_file_has_content refs.txt 'spooky'
 rm repo/refs/heads/exampleos -rf
 echo "ok hidden refs"
 
-for ref in '.' '-' '.foo' '-bar' '!' '!foo' '🎲emoji'; do
+for ref in '.' '-' '.foo' '-bar' '!' '!foo'; do
     if ${CMD_PREFIX} ostree --repo=repo refs ctest --create=${ref} 2>err.txt; then
         fatal "Created ref ${ref}"
     fi
