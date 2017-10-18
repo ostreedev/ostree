@@ -505,6 +505,16 @@ ostree_admin_option_context_parse (GOptionContext *context,
       exit (EXIT_SUCCESS);
     }
 
+  /* Now that we have the repo from the sysroot, apply the lock timeout */
+  if ((invocation->command->flags & OSTREE_BUILTIN_FLAG_LOCKING) &&
+      opt_lock_timeout >= -1)
+    {
+      OstreeRepo *repo = ostree_sysroot_repo (sysroot);
+      if (!ostree_cmd__private__ ()->ostree_repo_set_lock_timeout (repo,
+                                                                   opt_lock_timeout))
+        return FALSE;
+    }
+
   if (out_sysroot)
     *out_sysroot = g_steal_pointer (&sysroot);
 
