@@ -129,6 +129,11 @@ static inline char * _ostree_get_commitpartial_path (const char *checksum)
 }
 
 gboolean
+_ostree_validate_ref_fragment (const char *fragment,
+                               GError    **error);
+
+
+gboolean
 _ostree_validate_bareuseronly_mode (guint32     mode,
                                     const char *checksum,
                                     GError    **error);

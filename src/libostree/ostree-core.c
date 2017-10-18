@@ -142,7 +142,10 @@ ostree_validate_checksum_string (const char *sha256,
   return ostree_validate_structureof_checksum_string (sha256, error);
 }
 
-#define OSTREE_REF_FRAGMENT_REGEXP "[-._\\w\\d]+"
+/* This used to allow leading - and ., but was changed in
+ * https://github.com/ostreedev/ostree/pull/1286
+ */
+#define OSTREE_REF_FRAGMENT_REGEXP "[\\w\\d][-._\\w\\d]*"
 #define OSTREE_REF_REGEXP "(?:" OSTREE_REF_FRAGMENT_REGEXP "/)*" OSTREE_REF_FRAGMENT_REGEXP
 #define OSTREE_REMOTE_NAME_REGEXP OSTREE_REF_FRAGMENT_REGEXP
 
@@ -193,6 +196,26 @@ ostree_parse_refspec (const char   *refspec,
     *out_remote = g_steal_pointer (&remote);
   if (out_ref != NULL)
     *out_ref = g_match_info_fetch (match, 2);
+  return TRUE;
+}
+
+gboolean
+_ostree_validate_ref_fragment (const char *fragment,
+                               GError    **error)
+{
+  static GRegex *regex;
+  static gsize regex_initialized;
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^" OSTREE_REF_FRAGMENT_REGEXP "$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  g_autoptr(GMatchInfo) match = NULL;
+  if (!g_regex_match (regex, fragment, 0, &match))
+    return glnx_throw (error, "Invalid ref fragment '%s'", fragment);
+
   return TRUE;
 }
 

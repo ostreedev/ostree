@@ -560,6 +560,14 @@ enumerate_refs_recurse (OstreeRepo    *repo,
       if (dent == NULL)
         break;
 
+      /* https://github.com/ostreedev/ostree/issues/1285
+       * Ignore any files that don't appear to be valid fragments; e.g.
+       * Red Hat has a tool that drops .rsync_info files into each
+       * directory it syncs.
+       **/
+      if (!_ostree_validate_ref_fragment (dent->d_name, NULL))
+        continue;
+
       g_string_append (base_path, dent->d_name);
 
       if (dent->d_type == DT_DIR)
