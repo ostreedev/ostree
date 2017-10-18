@@ -404,8 +404,9 @@ add_size_index_to_metadata (OstreeRepo        *self,
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 
-/* Combines a check for whether or not we already have the object with
- * allocating a tempfile if we don't.  Used by the static delta code.
+/* Create a tmpfile for writing a bare file.  Currently just used
+ * by the static delta code, but will likely later be extended
+ * to be used also by the dfd_iter commit path.
  */
 gboolean
 _ostree_repo_open_content_bare (OstreeRepo          *self,
