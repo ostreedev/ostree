@@ -2835,7 +2835,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
         file_type == G_FILE_TYPE_REGULAR
         && dfd_iter != NULL
         && delete_after_commit
-        && (writeflags | WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT) > 0;
+        && ((writeflags & WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT) > 0);
       gboolean can_adopt = can_adopt_basic;
       /* If basic prerquisites are met, check repo mode specific ones */
       if (can_adopt)
