@@ -47,6 +47,10 @@
  * which contain the refs. Duplicate remote URIs are combined into a single
  * #OstreeRepoFinderResult which lists multiple refs.
  *
+ * Each result is given an #OstreeRepoFinderResult.priority value of 20, which
+ * ranks its results above those from the other default #OstreeRepoFinder
+ * implementations.
+ *
  * This is intended to be used for user-provided overrides and testing software
  * which uses #OstreeRepoFinder. For production use, #OstreeRepoFinderConfig is
  * recommended instead.
@@ -135,7 +139,7 @@ ostree_repo_finder_override_resolve_async (OstreeRepoFinder                  *fi
   OstreeRepoFinderOverride *self = OSTREE_REPO_FINDER_OVERRIDE (finder);
   g_autoptr(GTask) task = NULL;
   g_autoptr(GPtrArray) results = NULL;
-  const gint priority = 100;  /* arbitrarily chosen; lower than the others */
+  const gint priority = 20;  /* arbitrarily chosen; higher priority than the others */
   gsize i, j;
   g_autoptr(GHashTable) repo_remote_to_refs = NULL;  /* (element-type OstreeRemote GHashTable) */
   GHashTable *supported_ref_to_checksum;  /* (element-type OstreeCollectionRef utf8) */
