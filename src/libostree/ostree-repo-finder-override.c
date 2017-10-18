@@ -51,6 +51,10 @@
  * ranks its results above those from the other default #OstreeRepoFinder
  * implementations.
  *
+ * Results can only be returned for a ref if a remote and keyring are configured
+ * locally for the collection ID of that ref, otherwise there would be no keys
+ * available to verify signatures on commits for that ref.
+ *
  * This is intended to be used for user-provided overrides and testing software
  * which uses #OstreeRepoFinder. For production use, #OstreeRepoFinderConfig is
  * recommended instead.
