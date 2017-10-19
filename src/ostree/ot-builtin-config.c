@@ -56,7 +56,7 @@ split_key_string (const char   *k,
 }
 
 gboolean
-ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
@@ -68,9 +68,9 @@ ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError 
   g_autofree char *key = NULL;
   GKeyFile *config = NULL;
 
-  context = g_option_context_new ("(get KEY|set KEY VALUE) - Change repo configuration settings");
+  context = g_option_context_new ("(get KEY|set KEY VALUE)");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
   if (argc < 2)

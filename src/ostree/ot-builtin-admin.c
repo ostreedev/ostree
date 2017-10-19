@@ -30,38 +30,59 @@
 
 #include <glib/gi18n.h>
 
-typedef struct {
-  const char *name;
-  gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
-} OstreeAdminCommand;
-
-static OstreeAdminCommand admin_subcommands[] = {
-  { "cleanup", ot_admin_builtin_cleanup },
-  { "config-diff", ot_admin_builtin_diff },
-  { "deploy", ot_admin_builtin_deploy }, 
-  { "init-fs", ot_admin_builtin_init_fs },
-  { "instutil", ot_admin_builtin_instutil },
-  { "os-init", ot_admin_builtin_os_init },
-  { "set-origin", ot_admin_builtin_set_origin },
-  { "status", ot_admin_builtin_status },
-  { "switch", ot_admin_builtin_switch },
-  { "undeploy", ot_admin_builtin_undeploy },
-  { "unlock", ot_admin_builtin_unlock }, 
-  { "upgrade", ot_admin_builtin_upgrade },
-  { NULL, NULL }
+static OstreeCommand admin_subcommands[] = {
+  { "cleanup", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_cleanup,
+    "Delete untagged deployments and repository objects" },
+  { "config-diff", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_diff,
+    "Diff current /etc configuration versus default" },
+  { "deploy", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_deploy,
+    "Checkout revision REFSPEC as the new default deployment" },
+  { "init-fs", OSTREE_BUILTIN_FLAG_NO_REPO,
+     ot_admin_builtin_init_fs,
+    "Initialize a root filesystem" },
+  { "instutil", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_instutil,
+    "Provide instutil commands, allow admin to change boot configuration and relabel selinux " },
+  { "os-init", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_os_init,
+    "Initialize empty state for given operating system" },
+  { "set-origin", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_set_origin,
+    "Set Origin and create a new origin file" },
+  { "status", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_status,
+    "List deployments" },
+  { "switch", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_switch,
+    "Construct new tree from REF and deploy it" },
+  { "undeploy", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_undeploy,
+    "Delete deployment INDEX" },
+  { "unlock", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_unlock,
+    "Make the current deployment mutable (as a hotfix or development)" },
+  { "upgrade", OSTREE_BUILTIN_FLAG_NO_REPO,
+    ot_admin_builtin_upgrade,
+    "Construct new tree from current origin and deploy it, if it changed" },
+  { NULL, 0, NULL, NULL }
 };
 
 static GOptionContext *
 ostree_admin_option_context_new_with_commands (void)
 {
-  OstreeAdminCommand *command = admin_subcommands;
+  OstreeCommand *command = admin_subcommands;
   GOptionContext *context = g_option_context_new ("--print-current-dir|COMMAND");
 
   g_autoptr(GString) summary = g_string_new ("Builtin \"admin\" Commands:");
 
   while (command->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %s", command->name);
+      g_string_append_printf (summary, "\n  %-19s", command->name);
+        if (command->description != NULL)
+          g_string_append_printf (summary, "%s", command->description);
       command++;
     }
 
@@ -71,11 +92,11 @@ ostree_admin_option_context_new_with_commands (void)
 }
 
 gboolean
-ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_admin (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   const char *subcommand_name = NULL;
-  OstreeAdminCommand *subcommand;
+  OstreeCommand *subcommand;
   g_autofree char *prgname = NULL;
   int in, out;
 
@@ -126,7 +147,7 @@ ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError *
       /* This will not return for some options (e.g. --version). */
       if (ostree_admin_option_context_parse (context, NULL, &argc, &argv,
                                              OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT,
-                                             NULL, cancellable, error))
+                                             invocation, NULL, cancellable, error))
         {
           if (subcommand_name == NULL)
             {
@@ -149,7 +170,8 @@ ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError *
   prgname = g_strdup_printf ("%s %s", g_get_prgname (), subcommand_name);
   g_set_prgname (prgname);
 
-  if (!subcommand->fn (argc, argv, cancellable, error))
+  OstreeCommandInvocation sub_invocation = { .command = subcommand };
+  if (!subcommand->fn (argc, argv, &sub_invocation, cancellable, error))
     goto out;
  
   ret = TRUE;

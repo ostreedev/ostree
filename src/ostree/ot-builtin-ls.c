@@ -240,7 +240,7 @@ print_one_argument (OstreeRepo   *repo,
 }
 
 gboolean
-ostree_builtin_ls (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_ls (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
@@ -249,9 +249,9 @@ ostree_builtin_ls (int argc, char **argv, GCancellable *cancellable, GError **er
   int i;
   g_autoptr(GFile) root = NULL;
 
-  context = g_option_context_new ("COMMIT [PATH...] - List file paths");
+  context = g_option_context_new ("COMMIT [PATH...]");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
   if (argc <= 1)

@@ -120,6 +120,7 @@ collection_ref_free0 (OstreeCollectionRef *ref)
 gboolean
 ostree_builtin_find_remotes (int            argc,
                              char         **argv,
+                             OstreeCommandInvocation *invocation,
                              GCancellable  *cancellable,
                              GError       **error)
 {
@@ -133,10 +134,10 @@ ostree_builtin_find_remotes (int            argc,
   g_auto(GLnxConsoleRef) console = { 0, };
   g_autoptr(GHashTable) refs_found = NULL;  /* set (element-type OstreeCollectionRef) */
 
-  context = g_option_context_new ("COLLECTION-ID REF [COLLECTION-ID REF...] - Find remotes to serve the given refs");
+  context = g_option_context_new ("COLLECTION-ID REF [COLLECTION-ID REF...]");
 
   /* Parse options. */
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
 
   if (!ostree_ensure_repo_writable (repo, error))

@@ -46,7 +46,8 @@ test_recursive() {
     test_usage_output out "$cmd"
     assert_file_empty err
 
-    builtins=`sed -n '/^Builtin \("[^"]*" \)\?Commands:$/,/^$/p' <out | tail -n +2`
+    # Select the list of commands, for each line, remove the leading spaces, and take the first word(command) of each line
+    builtins=`sed -n '/^Builtin \("[^"]*" \)\?Commands:$/,/^$/p' <out | tail -n +2 | sed -e 's/^[[:space:]]*//' | cut -d " " -f1`
     if [ "$builtins" != "" ] ; then
 
         found_subcommands=1

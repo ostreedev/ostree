@@ -37,7 +37,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeSysroot) sysroot = NULL;
@@ -46,11 +46,11 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
   g_autoptr(GPtrArray) current_deployments = NULL;
   g_autoptr(OstreeDeployment) target_deployment = NULL;
 
-  context = g_option_context_new ("INDEX - Delete deployment INDEX");
+  context = g_option_context_new ("INDEX");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     return FALSE;
 
   if (argc < 2)

@@ -214,13 +214,13 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 }
 
 gboolean
-ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(OstreeRepo) repo = NULL;
   gboolean found_corruption = FALSE;
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("- Check the repository for consistency");
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
 
   if (!opt_quiet)

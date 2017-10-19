@@ -48,7 +48,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   guint i;
@@ -58,11 +58,11 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancel
   g_autoptr(OstreeSysroot) sysroot = NULL;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 
-  context = g_option_context_new ("ARGS - set new kernel command line arguments");
+  context = g_option_context_new ("ARGS");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     goto out;
 
   deployments = ostree_sysroot_get_deployments (sysroot);

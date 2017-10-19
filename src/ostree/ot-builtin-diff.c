@@ -126,7 +126,7 @@ object_set_total_size (OstreeRepo    *repo,
 }
 
 gboolean
-ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error)
+ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
@@ -140,9 +140,9 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
   g_autoptr(GPtrArray) removed = NULL;
   g_autoptr(GPtrArray) added = NULL;
 
-  context = g_option_context_new ("REV TARGETDIR - Compare directory TARGETDIR against revision REV");
+  context = g_option_context_new ("REV TARGETDIR");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
   if (argc < 2)

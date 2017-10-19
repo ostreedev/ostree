@@ -27,7 +27,7 @@
 
 G_BEGIN_DECLS
 
-#define BUILTINPROTO(name) gboolean ostree_builtin_ ## name (int argc, char **argv, GCancellable *cancellable, GError **error)
+#define BUILTINPROTO(name) gboolean ostree_builtin_ ## name (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 
 BUILTINPROTO(admin);
 BUILTINPROTO(cat);

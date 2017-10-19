@@ -41,13 +41,13 @@ static GOptionEntry option_entries[] = {
 };
 
 gboolean
-ot_remote_builtin_delete (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_remote_builtin_delete (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("NAME - Delete a remote repository");
+  g_autoptr(GOptionContext) context = g_option_context_new ("NAME");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
+                                    invocation, NULL, cancellable, error))
     return FALSE;
 
   g_autoptr(OstreeSysroot) sysroot = NULL;

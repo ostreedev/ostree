@@ -37,10 +37,25 @@ typedef enum {
   OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT = (1 << 2),
 } OstreeAdminBuiltinFlags;
 
+
+typedef struct OstreeCommandInvocation OstreeCommandInvocation;
+
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
+  OstreeBuiltinFlags flags;
+  gboolean (*fn) (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error);
+  const char *description;
 } OstreeCommand;
+
+/* This is a similar implementation as
+ * https://github.com/projectatomic/rpm-ostree/commit/12c34bb2491a07079c911ef26401fee939e5573c.
+ *
+ * In the future if we want to add something new we won't need to
+ * touch every prototype
+ */
+struct OstreeCommandInvocation {
+  OstreeCommand *command;
+};
 
 int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
 
@@ -57,7 +72,7 @@ gboolean ostree_parse_sysroot_or_repo_option (GOptionContext *context,
 gboolean ostree_option_context_parse (GOptionContext *context,
                                       const GOptionEntry *main_entries,
                                       int *argc, char ***argv,
-                                      OstreeBuiltinFlags flags,
+                                      OstreeCommandInvocation *invocation,
                                       OstreeRepo **out_repo,
                                       GCancellable *cancellable, GError **error);
 
@@ -65,6 +80,7 @@ gboolean ostree_admin_option_context_parse (GOptionContext *context,
                                             const GOptionEntry *main_entries,
                                             int *argc, char ***argv,
                                             OstreeAdminBuiltinFlags flags,
+                                            OstreeCommandInvocation *invocation,
                                             OstreeSysroot **out_sysroot,
                                             GCancellable *cancellable, GError **error);
 

@@ -38,18 +38,18 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   guint bootversion;
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeSysroot) sysroot = NULL;
 
-  context = g_option_context_new ("[BOOTVERSION] - generate GRUB2 configuration from given BLS entries");
+  context = g_option_context_new ("[BOOTVERSION]");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     goto out;
 
   if (argc >= 2)

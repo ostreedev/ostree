@@ -41,7 +41,7 @@ static GOptionEntry option_entries[] = {
 };
 
 gboolean
-ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
@@ -52,10 +52,10 @@ ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GEr
   gboolean gpg_verify_summary;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("NAME - Show remote summary");
+  context = g_option_context_new ("NAME");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+                                    invocation, &repo, cancellable, error))
     goto out;
 
   if (argc < 2)

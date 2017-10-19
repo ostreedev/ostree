@@ -60,17 +60,17 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 
   g_autoptr(GOptionContext) context =
-    g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
+    g_option_context_new ("REFSPEC");
 
   g_autoptr(OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     return FALSE;
 
   if (argc < 2)

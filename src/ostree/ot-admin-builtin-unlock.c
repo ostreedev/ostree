@@ -43,7 +43,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_unlock (int argc, char **argv, GCancellable *cancellable, GError **error)
+ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GOptionContext) context = NULL;
@@ -51,11 +51,11 @@ ot_admin_builtin_unlock (int argc, char **argv, GCancellable *cancellable, GErro
   OstreeDeployment *booted_deployment = NULL;
   OstreeDeploymentUnlockedState target_state;
 
-  context = g_option_context_new ("Make the current deployment mutable (as a hotfix or development)");
+  context = g_option_context_new ("");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          &sysroot, cancellable, error))
+                                          invocation, &sysroot, cancellable, error))
     goto out;
   
   if (argc > 1)

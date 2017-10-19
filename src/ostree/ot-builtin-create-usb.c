@@ -43,6 +43,7 @@ static GOptionEntry options[] =
 gboolean
 ostree_builtin_create_usb (int            argc,
                            char         **argv,
+                           OstreeCommandInvocation *invocation,
                            GCancellable  *cancellable,
                            GError       **error)
 {
@@ -50,12 +51,12 @@ ostree_builtin_create_usb (int            argc,
   g_autoptr(OstreeAsyncProgress) progress = NULL;
   g_auto(GLnxConsoleRef) console = { 0, };
 
-  context = g_option_context_new ("MOUNT-PATH COLLECTION-ID REF [COLLECTION-ID REF...] - Copy the refs to a USB stick");
+  context = g_option_context_new ("MOUNT-PATH COLLECTION-ID REF [COLLECTION-ID REF...]");
 
   /* Parse options. */
   g_autoptr(OstreeRepo) src_repo = NULL;
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &src_repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &src_repo, cancellable, error))
     return FALSE;
 
   if (argc < 2)
