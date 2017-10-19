@@ -1176,6 +1176,24 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   return TRUE;
 }
 
+/**
+ * ostree_repo_checkout_at_options_set_devino:
+ * @opts: Checkout options
+ * @cache: (transfer none) (nullable): Devino cache
+ *
+ * This function simply assigns @cache to the `devino_to_csum_cache` member of
+ * @opts; it's only useful for introspection.
+ *
+ * Note that cache does *not* have its refcount incremented - the lifetime of
+ * @cache must be equal to or greater than that of @opts.
+ */
+void
+ostree_repo_checkout_at_options_set_devino (OstreeRepoCheckoutAtOptions *opts,
+                                            OstreeRepoDevInoCache *cache)
+{
+  opts->devino_to_csum_cache = cache;
+}
+
 static guint
 devino_hash (gconstpointer a)
 {
