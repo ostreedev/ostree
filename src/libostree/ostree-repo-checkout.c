@@ -325,7 +325,17 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
           /* Handled above */
           break;
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
-          replace_mode = GLNX_LINK_TMPFILE_REPLACE;
+          /* Special case OCI/Docker - see similar code in checkout_file_hardlink()
+           * and above for symlinks.
+           */
+          if (options->process_whiteouts)
+            {
+              if (!glnx_shutil_rm_rf_at (destination_dfd, destination_name, NULL, error))
+                return FALSE;
+              /* Inherit the NOREPLACE default...we deleted whatever's there */
+            }
+          else
+            replace_mode = GLNX_LINK_TMPFILE_REPLACE;
           break;
         case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
           replace_mode = GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST;
