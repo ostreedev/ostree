@@ -912,6 +912,9 @@ _OSTREE_PUBLIC
 void ostree_repo_devino_cache_unref (OstreeRepoDevInoCache *cache);
 
 _OSTREE_PUBLIC
+void ostree_repo_checkout_at_options_set_devino (OstreeRepoCheckoutAtOptions *opts, OstreeRepoDevInoCache *cache);
+
+_OSTREE_PUBLIC
 gboolean ostree_repo_checkout_at (OstreeRepo                         *self,
                                   OstreeRepoCheckoutAtOptions        *options,
                                   int                                 destination_dfd,

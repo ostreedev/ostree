@@ -3415,6 +3415,8 @@ ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              
  *
  * This function will add a reference to @cache without copying - you
  * should avoid further mutation of the cache.
+ *
+ * Since: 2017.13
  */
 void
 ostree_repo_commit_modifier_set_devino_cache (OstreeRepoCommitModifier              *modifier,
