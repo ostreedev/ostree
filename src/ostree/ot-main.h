@@ -23,6 +23,11 @@
 
 #include "libglnx.h"
 #include "ostree.h"
+/* Remove these once OstreeRepoLockType and OstreeRepoAutoLock are no longer
+ * experimental
+ */
+#include "ostree-repo-private.h"
+#include "ostree-cmdprivate.h"
 
 typedef enum {
   OSTREE_BUILTIN_FLAG_NONE = 0,
@@ -90,3 +95,29 @@ gboolean ostree_ensure_repo_writable (OstreeRepo *repo, GError **error);
 void ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result);
 
 gboolean ot_enable_tombstone_commits (OstreeRepo *repo, GError **error);
+
+/* Duplicate of the OstreeRepoAutoLock cleanup implementation since we can't
+ * access ostree_repo_auto_lock_cleanup directly. A separate type is needed so
+ * that the autoptr declaration doesn't conflict. Remove this once
+ * ostree_repo_auto_lock_push and ostree_repo_auto_lock_cleanup are not
+ * experimental.
+ */
+typedef OstreeRepo OtRepoAutoLock;
+
+static inline OtRepoAutoLock *
+ot_repo_auto_lock_push (OstreeRepo          *repo,
+                        OstreeRepoLockType   lock_type,
+                        GCancellable        *cancellable,
+                        GError             **error)
+{
+  return ostree_cmd__private__ ()->ostree_repo_auto_lock_push (repo, lock_type,
+                                                               cancellable, error);
+}
+
+static inline void
+ot_repo_auto_lock_cleanup (OtRepoAutoLock *lock)
+{
+  ostree_cmd__private__ ()->ostree_repo_auto_lock_cleanup (lock);
+}
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OtRepoAutoLock, ot_repo_auto_lock_cleanup)
