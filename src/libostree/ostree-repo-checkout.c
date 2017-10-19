@@ -228,8 +228,24 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
               return glnx_throw_errno_prefix (error, "symlinkat");
             case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
               {
-                /* Unioning?  Let's unlink and try again */
-                (void) unlinkat (destination_dfd, destination_name, 0);
+                /* For unioning, we further bifurcate a bit; for the "process whiteouts"
+                 * mode which is really "Docker/OCI", we need to match their semantics
+                 * and handle replacing a directory with a symlink.  See also equivalent
+                 * bits for regular files in checkout_file_hardlink().
+                 */
+                if (options->process_whiteouts)
+                  {
+                    if (!glnx_shutil_rm_rf_at (destination_dfd, destination_name, NULL, error))
+                      return FALSE;
+                  }
+                else
+                  {
+                    if (unlinkat (destination_dfd, destination_name, 0) < 0)
+                      {
+                        if (G_UNLIKELY (errno != ENOENT))
+                          return glnx_throw_errno_prefix (error, "unlinkat(%s)", destination_name);
+                      }
+                  }
                 if (symlinkat (target, destination_dfd, destination_name) < 0)
                   return glnx_throw_errno_prefix (error, "symlinkat");
               }
@@ -467,7 +483,15 @@ checkout_file_hardlink (OstreeRepo                          *self,
                 /* Make a link with a temp name */
                 if (!hardlink_add_tmp_name (self, srcfd, loose_path, tmpname, cancellable, error))
                   return FALSE;
-                /* Rename it into place */
+                /* For OCI/Docker mode, we need to handle replacing a directory with a regular
+                 * file.  See also the equivalent code for symlinks above.
+                 */
+                if (options->process_whiteouts)
+                  {
+                    if (!glnx_shutil_rm_rf_at (destination_dfd, destination_name, NULL, error))
+                      return FALSE;
+                  }
+                /* Rename it into place - for non-OCI this will overwrite files but not directories */
                 if (!glnx_renameat (self->tmp_dir_fd, tmpname, destination_dfd, destination_name, error))
                   return FALSE;
                 ret_result = HARDLINK_RESULT_LINKED;
