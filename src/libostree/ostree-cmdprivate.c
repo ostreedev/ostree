@@ -35,7 +35,7 @@ impl_ostree_generate_grub2_config (OstreeSysroot *sysroot, int bootversion, int 
 }
 
 /**
- * ostree_cmdprivate: (skip)
+ * ostree_cmd__private__: (skip)
  *
  * Do not call this function; it is used to share private API between
  * the OSTree commandline and the library.

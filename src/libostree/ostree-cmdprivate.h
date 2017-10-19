@@ -25,6 +25,12 @@ G_BEGIN_DECLS
 
 gboolean _ostree_impl_system_generator (const char *ostree_cmdline, const char *normal_dir, const char *early_dir, const char *late_dir, GError **error);
 
+/**
+ * OstreeCmdPrivateVTable: (skip)
+ *
+ * Function table to share private API between the OSTree commandline and the
+ * library. Don't use this.
+ */
 typedef struct {
   gboolean (* ostree_system_generator) (const char *ostree_cmdline, const char *normal_dir, const char *early_dir, const char *late_dir, GError **error);
   gboolean (* ostree_generate_grub2_config) (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
