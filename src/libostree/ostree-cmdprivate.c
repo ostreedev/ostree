@@ -48,7 +48,9 @@ ostree_cmd__private__ (void)
     impl_ostree_generate_grub2_config,
     _ostree_repo_static_delta_dump,
     _ostree_repo_static_delta_query_exists,
-    _ostree_repo_static_delta_delete
+    _ostree_repo_static_delta_delete,
+    /* Remove this when ostree_repo_set_lock_timeout is no longer experimental */
+    ostree_repo_set_lock_timeout,
   };
 
   return &table;

@@ -37,6 +37,8 @@ typedef struct {
   gboolean (* ostree_static_delta_dump) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_query_exists) (OstreeRepo *repo, const char *delta_id, gboolean *out_exists, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_delete) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
+  /* Remove this when ostree_repo_set_lock_timeout is no longer experimental */
+  gboolean (* ostree_repo_set_lock_timeout) (OstreeRepo *repo, gint timeout);
 } OstreeCmdPrivateVTable;
 
 /* Note this not really "public", we just export the symbol, but not the header */
