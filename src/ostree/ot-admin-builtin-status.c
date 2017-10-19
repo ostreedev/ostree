@@ -114,8 +114,12 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
             commit_metadata = g_variant_get_child_value (commit, 0);
 
           const char *version = NULL;
+          const char *source_title = NULL;
           if (commit_metadata)
-            (void) g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_VERSION, "&s", &version);
+            {
+              (void) g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_VERSION, "&s", &version);
+              (void) g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_SOURCE_TITLE, "&s", &source_title);
+            }
 
           GKeyFile *origin = ostree_deployment_get_origin (deployment);
 
@@ -152,6 +156,8 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
                 g_print ("    origin: <unknown origin type>\n");
               else
                 g_print ("    origin refspec: %s\n", origin_refspec);
+              if (source_title)
+                g_print ("    `- %s\n", source_title);
             }
 
           if (deployment_get_gpg_verify (deployment, repo))
