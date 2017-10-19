@@ -229,6 +229,23 @@ typedef enum {
  */
 #define OSTREE_COMMIT_META_KEY_ENDOFLIFE "ostree.endoflife"
 /**
+ * OSTREE_COMMIT_META_KEY_SOURCE_TITLE:
+ *
+ * GVariant type `s`. This should hold a relatively short single line value
+ * containing a human-readable "source" for a commit, intended to be displayed
+ * near the origin ref.  This is particularly useful for systems that inject
+ * content into an OSTree commit from elsewhere - for example, generating from
+ * an OCI or qcow2 image. Or if generating from packages, the enabled repository
+ * names and their versions.
+ *
+ * Try to keep this key short (e.g. < 80 characters) and human-readable; if you
+ * desire machine readable data, consider injecting separate metadata keys.
+ *
+ * Since: 2017.13
+ */
+#define OSTREE_COMMIT_META_KEY_SOURCE_TITLE "ostree.source-title"
+
+/**
  * OSTREE_COMMIT_META_KEY_REF_BINDING:
  *
  * GVariant type `as`; each element is a branch name. If this is added to a
