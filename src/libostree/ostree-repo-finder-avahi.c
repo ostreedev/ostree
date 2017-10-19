@@ -429,7 +429,7 @@ fill_refs_and_checksums_from_summary_map (GVariantIter  *summary_map,
   g_autofree gchar *ref_name = NULL;
   g_autoptr(GVariant) checksum_variant = NULL;
 
-  while (g_variant_iter_next (summary_map, "(s(t@aya{sv}))",
+  while (g_variant_iter_loop (summary_map, "(s(t@aya{sv}))",
                               (gpointer *) &ref_name, NULL,
                               (gpointer *) &checksum_variant, NULL))
     {
