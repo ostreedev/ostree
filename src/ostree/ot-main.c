@@ -322,10 +322,9 @@ ostree_option_context_parse (GOptionContext *context,
            * we can directly add the summary inside the ostree_option_context_new_with_commands function.
            */
           g_autoptr(GString) new_summary_string = g_string_new (context_summary);
-          g_autoptr(GString) description_string = g_string_new (invocation->command->description);
 
-          g_string_append (description_string, "\n\n");
-          g_string_prepend (new_summary_string, description_string->str);
+          g_string_prepend (new_summary_string, "\n\n");
+          g_string_prepend (new_summary_string, invocation->command->description);
 
           g_option_context_set_summary (context, new_summary_string->str);
         }
