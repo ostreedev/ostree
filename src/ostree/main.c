@@ -70,10 +70,10 @@ static OstreeCommand commands[] = {
     "Copy the refs to a USB stick" },
 #endif
   { "fsck", OSTREE_BUILTIN_FLAG_NONE,
-     ostree_builtin_fsck,
+    ostree_builtin_fsck,
     "Check the repository for consistency" },
   { "gpg-sign", OSTREE_BUILTIN_FLAG_NONE,
-     ostree_builtin_gpg_sign,
+    ostree_builtin_gpg_sign,
     "Sign a commit" },
   { "init", OSTREE_BUILTIN_FLAG_NO_CHECK,
     ostree_builtin_init,
