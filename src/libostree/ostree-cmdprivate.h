@@ -20,6 +20,10 @@
 #pragma once
 
 #include "ostree-types.h"
+/* This is only needed to get the OstreeRepoLockType and OstreeRepoAutoLock
+ * types. This should be removed once they're no longer experimental.
+ */
+#include "ostree-repo-private.h"
 
 G_BEGIN_DECLS
 
@@ -39,6 +43,11 @@ typedef struct {
   gboolean (* ostree_static_delta_delete) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
   /* Remove this when ostree_repo_set_lock_timeout is no longer experimental */
   gboolean (* ostree_repo_set_lock_timeout) (OstreeRepo *repo, gint timeout);
+  /* Remove these when ostree_repo_auto_lock_push and
+   * ostree_repo_auto_lock_cleanup are no longer experimental
+   */
+  OstreeRepoAutoLock * (* ostree_repo_auto_lock_push) (OstreeRepo *repo, OstreeRepoLockType lock_type, GCancellable *cancellable, GError **error);
+  void (* ostree_repo_auto_lock_cleanup) (OstreeRepoAutoLock *lock);
 } OstreeCmdPrivateVTable;
 
 /* Note this not really "public", we just export the symbol, but not the header */

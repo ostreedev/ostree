@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2014 Colin Walters <walters@verbum.org>
  *
@@ -51,6 +52,11 @@ ostree_cmd__private__ (void)
     _ostree_repo_static_delta_delete,
     /* Remove this when ostree_repo_set_lock_timeout is no longer experimental */
     ostree_repo_set_lock_timeout,
+    /* Remove these when ostree_repo_auto_lock_push and
+     * ostree_repo_auto_lock_cleanup are no longer experimental
+     */
+    ostree_repo_auto_lock_push,
+    ostree_repo_auto_lock_cleanup,
   };
 
   return &table;
