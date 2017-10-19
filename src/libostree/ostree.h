@@ -40,6 +40,7 @@
 #include <ostree-repo-finder-avahi.h>
 #include <ostree-repo-finder-config.h>
 #include <ostree-repo-finder-mount.h>
+#include <ostree-repo-finder-override.h>
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #include <ostree-autocleanups.h>

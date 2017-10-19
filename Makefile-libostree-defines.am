@@ -46,6 +46,7 @@ libostree_public_headers += \
 	src/libostree/ostree-repo-finder-avahi.h \
 	src/libostree/ostree-repo-finder-config.h \
 	src/libostree/ostree-repo-finder-mount.h \
+	src/libostree/ostree-repo-finder-override.h \
 	$(NULL)
 endif
 
