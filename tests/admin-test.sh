@@ -279,7 +279,7 @@ echo "ok upgrade with and without override-commit"
 
 
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" \
-              --add-metadata-string 'ostree.source-title=libtest os_repository_new_commit()' -b $branch \
+              --add-metadata-string 'ostree.source-title=libtest os_repository_new_commit()' -b testos/buildmaster/x86_64-runtime \
               -s "Build" --tree=dir=${test_tmpdir}/osdata
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 ${CMD_PREFIX} ostree admin status | tee status.txt
