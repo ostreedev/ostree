@@ -21,6 +21,7 @@
 LIBOSTREE_2017.13 {
 global:
   ostree_checksum_file_at;
+  ostree_repo_checkout_at_options_set_devino;
 } LIBOSTREE_2017.12;
 
 /* Stub section for the stable release *after* this development one; don't
