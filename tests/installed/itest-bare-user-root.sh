@@ -10,6 +10,7 @@ dn=$(dirname $0)
 echo "1..1"
 
 prepare_tmpdir
+ostree --repo=repo init --mode=bare-user
 mkdir -p components/{dbus,systemd}/usr/{bin,lib}
 echo dbus binary > components/dbus/usr/bin/dbus-daemon
 chmod a+x components/dbus/usr/bin/dbus-daemon
