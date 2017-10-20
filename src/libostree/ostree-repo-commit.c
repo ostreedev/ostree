@@ -2543,6 +2543,7 @@ get_final_xattrs (OstreeRepo                       *self,
                   GFile                            *path,
                   int                               dfd,
                   const char                       *dfd_subpath,
+                  GVariant                         *source_xattrs,
                   GVariant                        **out_xattrs,
                   gboolean                         *out_modified,
                   GCancellable                     *cancellable,
@@ -2558,7 +2559,9 @@ get_final_xattrs (OstreeRepo                       *self,
   g_autoptr(GVariant) original_xattrs = NULL;
   if (!skip_xattrs && !self->disable_xattrs)
     {
-      if (path && OSTREE_IS_REPO_FILE (path))
+      if (source_xattrs)
+        original_xattrs = g_variant_ref (source_xattrs);
+      else if (path && OSTREE_IS_REPO_FILE (path))
         {
           if (!ostree_repo_file_get_xattrs (OSTREE_REPO_FILE (path), &original_xattrs,
                                             cancellable, error))
@@ -2691,10 +2694,34 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
 {
   g_assert (dir_enum != NULL || dfd_iter != NULL);
 
+  GFileType file_type = g_file_info_get_file_type (child_info);
+
   const char *name = g_file_info_get_name (child_info);
   g_ptr_array_add (path, (char*)name);
 
   g_autofree char *child_relpath = ptrarray_path_join (path);
+
+  /* See if we have a devino hit; this is used below. Further, for bare-user
+   * repos we'll reload our file info from the object (specifically the
+   * ostreemeta xattr). The on-disk state is not normally what we want to
+   * commit. Basically we're making sure that we pick up "real" uid/gid and any
+   * xattrs there.
+   */
+  const char *loose_checksum = NULL;
+  g_autoptr(GVariant) source_xattrs = NULL;
+  if (dfd_iter != NULL && (file_type != G_FILE_TYPE_DIRECTORY))
+    {
+      guint32 dev = g_file_info_get_attribute_uint32 (child_info, "unix::device");
+      guint64 inode = g_file_info_get_attribute_uint64 (child_info, "unix::inode");
+      loose_checksum = devino_cache_lookup (self, modifier, dev, inode);
+      if (loose_checksum && self->mode == OSTREE_REPO_MODE_BARE_USER)
+        {
+          child_info = NULL;
+          if (!ostree_repo_load_file (self, loose_checksum, NULL, &child_info, &source_xattrs,
+                                      cancellable, error))
+            return FALSE;
+        }
+    }
 
   g_autoptr(GFileInfo) modified_info = NULL;
   OstreeRepoCommitFilterResult filter_result =
@@ -2723,7 +2750,6 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       return TRUE;
     }
 
-  GFileType file_type = g_file_info_get_file_type (child_info);
   switch (file_type)
     {
     case G_FILE_TYPE_DIRECTORY:
@@ -2801,7 +2827,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       if (dir_enum != NULL)
         {
           if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
-                                 -1, name, &xattrs, &xattrs_were_modified,
+                                 -1, name, source_xattrs, &xattrs, &xattrs_were_modified,
                                  cancellable, error))
             return FALSE;
         }
@@ -2813,20 +2839,14 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
           int xattr_fd_arg = (file_input_fd != -1) ? file_input_fd : dfd_iter->fd;
           const char *xattr_path_arg = (file_input_fd != -1) ? NULL : name;
           if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
-                                 xattr_fd_arg, xattr_path_arg, &xattrs, &xattrs_were_modified,
+                                 xattr_fd_arg, xattr_path_arg, source_xattrs,
+                                 &xattrs, &xattrs_were_modified,
                                  cancellable, error))
             return FALSE;
         }
 
-      /* only check the devino cache if the file info & xattrs were not modified */
+      /* Used below to see whether we can do a fast path commit */
       const gboolean modified_file_meta = child_info_was_modified || xattrs_were_modified;
-      const char *loose_checksum = NULL;
-      if (!modified_file_meta)
-        {
-          guint32 dev = g_file_info_get_attribute_uint32 (child_info, "unix::device");
-          guint64 inode = g_file_info_get_attribute_uint64 (child_info, "unix::inode");
-          loose_checksum = devino_cache_lookup (self, modifier, dev, inode);
-        }
 
       /* A big prerequisite list of conditions for whether or not we can
        * "adopt", i.e. just checksum and rename() into place
@@ -2856,7 +2876,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       gboolean did_adopt = FALSE;
 
       /* The very fast path - we have a devino cache hit, nothing to write */
-      if (loose_checksum)
+      if (loose_checksum && !modified_file_meta)
         {
           if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum,
                                                  error))
@@ -2979,7 +2999,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
           if (!get_final_xattrs (self, modifier, relpath, child_info, dir, -1, NULL,
-                                 &xattrs, NULL, cancellable, error))
+                                 NULL, &xattrs, NULL, cancellable, error))
             return FALSE;
 
           g_autofree guchar *child_file_csum = NULL;
@@ -3065,7 +3085,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
       if (!get_final_xattrs (self, modifier, relpath, modified_info, NULL, src_dfd_iter->fd,
-                             NULL, &xattrs, NULL, cancellable, error))
+                             NULL, NULL, &xattrs, NULL, cancellable, error))
         return FALSE;
 
       if (!_ostree_repo_write_directory_meta (self, modified_info, xattrs, &child_file_csum,
