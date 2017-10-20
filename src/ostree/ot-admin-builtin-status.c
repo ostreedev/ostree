@@ -37,18 +37,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static char *
-version_of_commit (OstreeRepo *repo, const char *checksum)
-{
-  g_autoptr(GVariant) variant = NULL;
-  /* Shouldn't fail, but if it does, we ignore it */
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
-                                 &variant, NULL))
-    return NULL;
-
-  return ot_admin_checksum_version (variant);
-}
-
 static gboolean
 deployment_get_gpg_verify (OstreeDeployment *deployment,
                            OstreeRepo *repo)
@@ -114,7 +102,20 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
         {
           OstreeDeployment *deployment = deployments->pdata[i];
           const char *ref = ostree_deployment_get_csum (deployment);
-          g_autofree char *version = version_of_commit (repo, ref);
+
+          /* Load the backing commit; shouldn't normally fail, but if it does,
+           * we stumble on.
+           */
+          g_autoptr(GVariant) commit = NULL;
+          (void)ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, ref,
+                                          &commit, NULL);
+          g_autoptr(GVariant) commit_metadata = NULL;
+          if (commit)
+            commit_metadata = g_variant_get_child_value (commit, 0);
+
+          const char *version = NULL;
+          if (commit_metadata)
+            (void) g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_VERSION, "&s", &version);
 
           GKeyFile *origin = ostree_deployment_get_origin (deployment);
 
