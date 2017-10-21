@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((22 + ${extra_admin_tests:-0}))"
+echo "1..$((23 + ${extra_admin_tests:-0}))"
 
 function validate_bootloader() {
     cd ${test_tmpdir};
@@ -276,6 +276,14 @@ curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buil
 assert_streq ${curr_rev} ${head_rev}
 
 echo "ok upgrade with and without override-commit"
+
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" \
+              --add-metadata-string 'ostree.source-title=libtest os_repository_new_commit()' -b testos/buildmaster/x86_64-runtime \
+              -s "Build" --tree=dir=${test_tmpdir}/osdata
+${CMD_PREFIX} ostree admin upgrade --os=testos
+${CMD_PREFIX} ostree admin status | tee status.txt
+assert_file_has_content_literal status.txt '`- libtest os_repository_new_commit()'
+echo "ok source title"
 
 deployment=$(${CMD_PREFIX} ostree admin --sysroot=sysroot --print-current-dir)
 ${CMD_PREFIX} ostree --sysroot=sysroot remote add --set=gpg-verify=false remote-test-physical file://$(pwd)/testos-repo

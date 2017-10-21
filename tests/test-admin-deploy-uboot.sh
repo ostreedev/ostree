@@ -30,6 +30,10 @@ extra_admin_tests=1
 . $(dirname $0)/admin-test.sh
 
 cd ${test_tmpdir}
+# Note this test actually requires a checksum change to /boot,
+# because adding the uEnv.txt isn't currently covered by the
+# "bootcsum".
+os_repository_new_commit "uboot test" "test upgrade multiple kernel args"
 mkdir -p osdata/usr/lib/ostree-boot
 cat << 'EOF' > osdata/usr/lib/ostree-boot/uEnv.txt
 loaduimage=load mmc ${bootpart} ${loadaddr} ${kernel_image}

@@ -37,82 +37,57 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static char *
-version_of_commit (OstreeRepo *repo, const char *checksum)
-{
-  g_autoptr(GVariant) variant = NULL;
-  
-  /* Shouldn't fail, but if it does, we ignore it */
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
-                                 &variant, NULL))
-    goto out;
-
-  return ot_admin_checksum_version (variant);
- out:
-  return NULL;
-}
-
 static gboolean
 deployment_get_gpg_verify (OstreeDeployment *deployment,
                            OstreeRepo *repo)
 {
   /* XXX Something like this could be added to the OstreeDeployment
    *     API in libostree if the OstreeRepo parameter is acceptable. */
-
-  GKeyFile *origin;
-  g_autofree char *refspec = NULL;
-  g_autofree char *remote = NULL;
-  gboolean gpg_verify = FALSE;
-
-  origin = ostree_deployment_get_origin (deployment);
+  GKeyFile *origin = ostree_deployment_get_origin (deployment);
 
   if (origin == NULL)
-    goto out;
+    return FALSE;
 
-  refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
+  g_autofree char *refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
 
   if (refspec == NULL)
-    goto out;
+    return FALSE;
 
+  g_autofree char *remote = NULL;
   if (!ostree_parse_refspec (refspec, &remote, NULL, NULL))
-    goto out;
+    return FALSE;
 
+  gboolean gpg_verify = FALSE;
   if (remote)
     (void) ostree_repo_remote_get_gpg_verify (repo, remote, &gpg_verify, NULL);
 
-out:
   return gpg_verify;
 }
 
 gboolean
 ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeSysroot) sysroot = NULL;
-  gboolean ret = FALSE;
-  g_autoptr(OstreeRepo) repo = NULL;
-  OstreeDeployment *booted_deployment = NULL;
-  g_autoptr(OstreeDeployment) pending_deployment = NULL;
-  g_autoptr(OstreeDeployment) rollback_deployment = NULL;
-  g_autoptr(GPtrArray) deployments = NULL;
   const int is_tty = isatty (1);
   const char *red_bold_prefix = is_tty ? "\x1b[31m\x1b[1m" : "";
   const char *red_bold_suffix = is_tty ? "\x1b[22m\x1b[0m" : "";
-  guint i;
 
-  context = g_option_context_new ("");
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
 
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           invocation, &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr(OstreeRepo) repo = NULL;
   if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
-  deployments = ostree_sysroot_get_deployments (sysroot);
-  booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
+  g_autoptr(GPtrArray) deployments = ostree_sysroot_get_deployments (sysroot);
+  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
 
+  g_autoptr(OstreeDeployment) pending_deployment = NULL;
+  g_autoptr(OstreeDeployment) rollback_deployment = NULL;
   if (booted_deployment)
     ostree_sysroot_query_deployments_for (sysroot, NULL, &pending_deployment,
                                           &rollback_deployment);
@@ -123,18 +98,30 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
     }
   else
     {
-      for (i = 0; i < deployments->len; i++)
+      for (guint i = 0; i < deployments->len; i++)
         {
           OstreeDeployment *deployment = deployments->pdata[i];
-          GKeyFile *origin;
           const char *ref = ostree_deployment_get_csum (deployment);
-          OstreeDeploymentUnlockedState unlocked = ostree_deployment_get_unlocked (deployment);
-          g_autofree char *version = version_of_commit (repo, ref);
-          g_autoptr(OstreeGpgVerifyResult) result = NULL;
-          guint jj, n_signatures;
-          GError *local_error = NULL;
 
-          origin = ostree_deployment_get_origin (deployment);
+          /* Load the backing commit; shouldn't normally fail, but if it does,
+           * we stumble on.
+           */
+          g_autoptr(GVariant) commit = NULL;
+          (void)ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, ref,
+                                          &commit, NULL);
+          g_autoptr(GVariant) commit_metadata = NULL;
+          if (commit)
+            commit_metadata = g_variant_get_child_value (commit, 0);
+
+          const char *version = NULL;
+          const char *source_title = NULL;
+          if (commit_metadata)
+            {
+              (void) g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_VERSION, "&s", &version);
+              (void) g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_SOURCE_TITLE, "&s", &source_title);
+            }
+
+          GKeyFile *origin = ostree_deployment_get_origin (deployment);
 
           const char *deployment_status = "";
           if (deployment == pending_deployment)
@@ -149,6 +136,8 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
                    deployment_status);
           if (version)
             g_print ("    Version: %s\n", version);
+
+          OstreeDeploymentUnlockedState unlocked = ostree_deployment_get_unlocked (deployment);
           switch (unlocked)
             {
             case OSTREE_DEPLOYMENT_UNLOCKED_NONE:
@@ -167,6 +156,8 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
                 g_print ("    origin: <unknown origin type>\n");
               else
                 g_print ("    origin refspec: %s\n", origin_refspec);
+              if (source_title)
+                g_print ("    `- %s\n", source_title);
             }
 
           if (deployment_get_gpg_verify (deployment, repo))
@@ -174,8 +165,10 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
               g_autoptr(GString) output_buffer = g_string_sized_new (256);
               /* Print any digital signatures on this commit. */
 
-              result = ostree_repo_verify_commit_ext (repo, ref, NULL, NULL,
-                                                      cancellable, &local_error);
+              g_autoptr(GError) local_error = NULL;
+              g_autoptr(OstreeGpgVerifyResult) result =
+                ostree_repo_verify_commit_ext (repo, ref, NULL, NULL,
+                                               cancellable, &local_error);
 
               /* G_IO_ERROR_NOT_FOUND just means the commit is not signed. */
               if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -185,13 +178,12 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
                 }
               else if (local_error != NULL)
                 {
-                  g_propagate_error (error, local_error);
-                  goto out;
+                  g_propagate_error (error, g_steal_pointer (&local_error));
+                  return FALSE;
                 }
 
-              n_signatures = ostree_gpg_verify_result_count_all (result);
-
-              for (jj = 0; jj < n_signatures; jj++)
+              const guint n_signatures = ostree_gpg_verify_result_count_all (result);
+              for (guint jj = 0; jj < n_signatures; jj++)
                 {
                   ostree_gpg_verify_result_describe (result, jj, output_buffer, "    GPG: ",
                                                      OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
@@ -202,7 +194,5 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
         }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
