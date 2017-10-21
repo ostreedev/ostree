@@ -244,6 +244,11 @@ It's relatively well thought through - however, it is a client-side
 system assembly.  If one wants to image servers and replicate
 reliably, that'd be a different system.
 
+## Google servers (custom rsync-like approach, live updates)
+
+This paper talks about how Google was (at least at one point) managing
+updates for the host systems for some servers:
+[Live Upgrading Thousands of Servers from an Ancient Red Hat Distribution to 10 Year Newer Debian Based One (USENIX LISA 2013)](https://www.usenix.org/node/177348)
 
 ## Conary
 
