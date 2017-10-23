@@ -466,7 +466,7 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
 {
   g_autoptr(GVariant) ref_map_v = NULL;
   g_autoptr(GVariant) additional_metadata_v = NULL;
-  GVariantIter ref_map;
+  g_autoptr(GVariantIter) ref_map = NULL;
   g_auto(GVariantDict) additional_metadata = OT_VARIANT_BUILDER_INITIALIZER;
   const gchar *collection_id;
   g_autoptr(GVariantIter) collection_map = NULL;
@@ -474,7 +474,7 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
   ref_map_v = g_variant_get_child_value (summary, 0);
   additional_metadata_v = g_variant_get_child_value (summary, 1);
 
-  g_variant_iter_init (&ref_map, ref_map_v);
+  ref_map = g_variant_iter_new (ref_map_v);
   g_variant_dict_init (&additional_metadata, additional_metadata_v);
 
   /* If the summary file specifies a collection ID (to apply to all the refs in its
@@ -485,9 +485,11 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
     {
       if (!ostree_validate_collection_id (collection_id, error))
         return FALSE;
-      if (!fill_refs_and_checksums_from_summary_map (&ref_map, collection_id, refs_and_checksums, error))
+      if (!fill_refs_and_checksums_from_summary_map (ref_map, collection_id, refs_and_checksums, error))
         return FALSE;
     }
+
+  g_clear_pointer (&ref_map, (GDestroyNotify) g_variant_iter_free);
 
   /* Repeat for the other collections listed in the summary. */
   if (g_variant_dict_lookup (&additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP, "a{sa(s(taya{sv}))}", &collection_map))
@@ -496,7 +498,7 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
         {
           if (!ostree_validate_collection_id (collection_id, error))
             return FALSE;
-          if (!fill_refs_and_checksums_from_summary_map (&ref_map, collection_id, refs_and_checksums, error))
+          if (!fill_refs_and_checksums_from_summary_map (ref_map, collection_id, refs_and_checksums, error))
             return FALSE;
         }
     }
