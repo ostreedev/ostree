@@ -983,11 +983,14 @@ ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path)
 /**
  * ostree_sysroot_get_repo:
  * @self: Sysroot
- * @out_repo: (out): Repository in sysroot @self
+ * @out_repo: (out) (transfer full) (optional): Repository in sysroot @self
  * @cancellable: Cancellable
  * @error: Error
  *
- * Retrieve the OSTree repository in sysroot @self.
+ * Retrieve the OSTree repository in sysroot @self. The repo is guaranteed to be open
+ * (see ostree_repo_open()).
+ *
+ * Returns: %TRUE on success, %FALSE otherwise
  */
 gboolean
 ostree_sysroot_get_repo (OstreeSysroot         *self,
