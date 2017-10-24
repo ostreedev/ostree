@@ -74,7 +74,7 @@ append_system_uenv (OstreeBootloaderUboot   *self,
                     GError                 **error)
 {
   glnx_autofd int uenv_fd = -1;
-  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
+  g_autoptr(OstreeKernelArgs) kargs = NULL;
   const char *uenv_path = NULL;
   const char *ostree_arg = NULL;
 
