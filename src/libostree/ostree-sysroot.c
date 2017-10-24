@@ -1130,7 +1130,7 @@ find_booted_deployment (OstreeSysroot       *self,
   if (root_stbuf.st_dev == self_stbuf.st_dev &&
       root_stbuf.st_ino == self_stbuf.st_ino)
     {
-      __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kernel_args = NULL;
+      g_autoptr(OstreeKernelArgs) kernel_args = NULL;
       if (!parse_kernel_commandline (&kernel_args, cancellable, error))
         return FALSE;
 
@@ -1620,7 +1620,7 @@ clone_deployment (OstreeSysroot  *sysroot,
   /* Copy the bootloader config options */
   OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
   g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
-  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = _ostree_kernel_args_new ();
+  g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_new ();
   _ostree_kernel_args_append_argv (kargs, previous_args);
 
   /* Deploy the copy */

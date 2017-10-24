@@ -19,15 +19,15 @@
 
 #pragma once
 
-#include <gio/gio.h>
+#include "libglnx.h"
 
 G_BEGIN_DECLS
 
 typedef struct _OstreeKernelArgs OstreeKernelArgs;
+void _ostree_kernel_args_free (OstreeKernelArgs *kargs);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeKernelArgs, _ostree_kernel_args_free);
 
 OstreeKernelArgs *_ostree_kernel_args_new (void);
-void _ostree_kernel_args_free (OstreeKernelArgs *kargs);
-void _ostree_kernel_args_cleanup (void *loc);
 void _ostree_kernel_args_replace_take (OstreeKernelArgs  *kargs,
                                        char              *key);
 void _ostree_kernel_args_replace (OstreeKernelArgs  *kargs,
