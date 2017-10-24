@@ -62,7 +62,7 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
+  g_autoptr(OstreeKernelArgs) kargs = NULL;
 
   g_autoptr(GOptionContext) context =
     g_option_context_new ("REFSPEC");

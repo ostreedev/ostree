@@ -81,19 +81,13 @@ _ostree_kernel_args_new (void)
 }
 
 void
-_ostree_kernel_arg_autofree (OstreeKernelArgs *kargs)
+_ostree_kernel_args_free (OstreeKernelArgs *kargs)
 {
   if (!kargs)
     return;
   g_ptr_array_unref (kargs->order);
   g_hash_table_unref (kargs->table);
   g_free (kargs);
-}
-
-void
-_ostree_kernel_args_cleanup (void *loc)
-{
-  _ostree_kernel_arg_autofree (*((OstreeKernelArgs**)loc));
 }
 
 void
