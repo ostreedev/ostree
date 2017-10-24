@@ -64,6 +64,10 @@ def wait_check(proc):
 print("1..2")
 
 def run(n_committers, n_pruners):
+    # The number of committers needs to be even since we only create half as
+    # many trees
+    n_committers += n_committers % 2
+
     committers = set()
     pruners = set()
 
