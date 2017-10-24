@@ -235,8 +235,7 @@ scan_repo (int                 dfd,
     {
       g_debug ("Ignoring repository ‘%s’ on mount ‘%s’ as it’s on a different file system from the mount",
                path, mount_name);
-      g_propagate_error (error, g_steal_pointer (&local_error));
-      return FALSE;
+      return glnx_throw (error, "Repository is on a different file system from the mount");
     }
 
   /* Exclude repositories which resolve to @parent_repo. */
@@ -245,8 +244,7 @@ scan_repo (int                 dfd,
     {
       g_debug ("Ignoring repository ‘%s’ on mount ‘%s’ as it is the same as the one we are resolving",
                path, mount_name);
-      g_propagate_error (error, g_steal_pointer (&local_error));
-      return FALSE;
+      return glnx_throw (error, "Repository is the same as the one we are resolving");
     }
 
   /* List the repo’s refs and return them. */
