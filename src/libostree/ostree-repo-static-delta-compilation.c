@@ -1199,13 +1199,11 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint min_fallback_size;
   guint max_bsdiff_size;
   guint max_chunk_size;
-  g_auto(GVariantBuilder) metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   g_autoptr(GVariantBuilder) part_headers = NULL;
   g_autoptr(GPtrArray) part_temp_paths = NULL;
-  g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;
   const char *opt_filename;
   g_autofree char *descriptor_name = NULL;
@@ -1217,6 +1215,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   glnx_autofd int tmp_dfd = -1;
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
+  g_autoptr(OtVariantBuilder) descriptor_builder = NULL;
 
   if (!g_variant_lookup (params, "min-fallback-size", "u", &min_fallback_size))
     min_fallback_size = 4;
@@ -1263,11 +1263,43 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                   cancellable, error))
     goto out;
 
+  if (opt_filename)
+    {
+      g_autofree char *dnbuf = g_strdup (opt_filename);
+      const char *dn = dirname (dnbuf);
+      descriptor_name = g_strdup (opt_filename);
+
+      if (!glnx_opendirat (AT_FDCWD, dn, TRUE, &descriptor_dfd, error))
+        goto out;
+    }
+  else
+    {
+      g_autofree char *descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
+      g_autofree char *dnbuf = g_strdup (descriptor_relpath);
+      const char *dn = dirname (dnbuf);
+
+      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, 0755, cancellable, error))
+        goto out;
+      if (!glnx_opendirat (self->repo_dir_fd, dn, TRUE, &descriptor_dfd, error))
+        goto out;
+
+      descriptor_name = g_strdup (basename (descriptor_relpath));
+    }
+
+  if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                      &descriptor_tmpf, error))
+    goto out;
+
+  descriptor_builder = ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT), descriptor_tmpf.fd);
+
+  /* Open the metadata dict */
+  if (!ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("a{sv}"), error))
+    goto out;
+
   /* NOTE: Add user-supplied metadata first.  This is used by at least
-   * xdg-app as a way to provide MIME content sniffing, since the
+   * flatpak as a way to provide MIME content sniffing, since the
    * metadata appears first in the file.
    */
-  g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
   if (metadata != NULL)
     {
       GVariantIter iter;
@@ -1276,7 +1308,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_variant_iter_init (&iter, metadata);
       while ((item = g_variant_iter_next_value (&iter)))
         {
-          g_variant_builder_add (&metadata_builder, "@{sv}", item);
+          if (!ot_variant_builder_add_value (descriptor_builder, item, error))
+            goto out;
           g_variant_unref (item);
         }
     }
@@ -1294,7 +1327,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       default:
         g_assert_not_reached ();
       }
-    g_variant_builder_add (&metadata_builder, "{sv}", "ostree.endianness", g_variant_new_byte (endianness_char));
+    if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", "ostree.endianness", g_variant_new_byte (endianness_char)))
+      goto out;
   }
 
   if (opt_filename)
@@ -1384,7 +1418,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       if (inline_parts)
         {
           g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
-          g_variant_builder_add (&metadata_builder, "{sv}", part_relpath, delta_part);
+          if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", part_relpath, delta_part))
+            goto out;
         }
       else
         {
@@ -1427,30 +1462,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                       part_builder->uncompressed_size);
         }
     }
-
-  if (opt_filename)
-    {
-      g_autofree char *dnbuf = g_strdup (opt_filename);
-      const char *dn = dirname (dnbuf);
-      descriptor_name = g_strdup (opt_filename);
-
-      if (!glnx_opendirat (AT_FDCWD, dn, TRUE, &descriptor_dfd, error))
-        goto out;
-    }
-  else
-    {
-      g_autofree char *descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
-      g_autofree char *dnbuf = g_strdup (descriptor_relpath);
-      const char *dn = dirname (dnbuf);
-
-      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, 0755, cancellable, error))
-        goto out;
-      if (!glnx_opendirat (self->repo_dir_fd, dn, TRUE, &descriptor_dfd, error))
-        goto out;
-
-      descriptor_name = g_strdup (basename (descriptor_relpath));
-    }
-
   for (i = 0; i < part_temp_paths->len; i++)
     {
       g_autofree char *partstr = g_strdup_printf ("%u", i);
@@ -1479,8 +1490,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (detached)
     {
       g_autofree char *detached_key = _ostree_get_relative_static_delta_path (from, to, "commitmeta");
-      g_variant_builder_add (&metadata_builder, "{sv}", detached_key, detached);
+      if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", detached_key, detached))
+        goto out;
     }
+
+  /* Close metadata dict */
+  if (!ot_variant_builder_close (descriptor_builder, error))
+    goto out;
 
   /* Generate OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
   {
@@ -1490,17 +1506,26 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     /* floating */ GVariant *to_csum_v =
       ostree_checksum_to_bytes_v (to);
 
-    delta_descriptor = g_variant_ref_sink (g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "@ay"
-                                                          "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
-                                                          "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",
-                                                          g_variant_builder_end (&metadata_builder),
-                                                          GUINT64_TO_BE (g_date_time_to_unix (now)),
-                                                          from_csum_v,
-                                                          to_csum_v,
-                                                          to_commit,
-                                                          ot_gvariant_new_bytearray ((guchar*)"", 0),
-                                                          part_headers,
-                                                          fallback_headers));
+
+    if (!ot_variant_builder_add (descriptor_builder, error, "t",
+                                 GUINT64_TO_BE (g_date_time_to_unix (now))) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       from_csum_v, error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       to_csum_v, error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       to_commit, error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       ot_gvariant_new_bytearray ((guchar*)"", 0), error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       g_variant_builder_end (part_headers), error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       fallback_headers, error))
+      goto out;
+
+    if (!ot_variant_builder_end (descriptor_builder, error))
+      goto out;
+
     g_date_time_unref (now);
   }
 
@@ -1516,10 +1541,14 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_printerr ("bsdiff=%u objects\n", builder.n_bsdiff);
     }
 
-  if (!glnx_file_replace_contents_at (descriptor_dfd, descriptor_name,
-                                      g_variant_get_data (delta_descriptor),
-                                      g_variant_get_size (delta_descriptor),
-                                      0, cancellable, error))
+  if (fchmod (descriptor_tmpf.fd, 0644) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE,
+                             descriptor_dfd, descriptor_name, error))
     goto out;
 
   ret = TRUE;
