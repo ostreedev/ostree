@@ -37,6 +37,12 @@
 
 #define CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT (30)
 
+typedef enum {
+  DELTAOPT_FLAG_NONE = (1 << 0),
+  DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1),
+  DELTAOPT_FLAG_VERBOSE = (1 << 2)
+} DeltaOpts;
+
 typedef struct {
   guint64 uncompressed_size;
   GPtrArray *objects;
@@ -62,11 +68,43 @@ typedef struct {
   gboolean swap_endian;
 } OstreeStaticDeltaBuilder;
 
-typedef enum {
-  DELTAOPT_FLAG_NONE = (1 << 0),
-  DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1),
-  DELTAOPT_FLAG_VERBOSE = (1 << 2)
-} DeltaOpts;
+/* Get an input stream for a GVariant */
+static GInputStream *
+variant_to_inputstream (GVariant             *variant)
+{
+  GMemoryInputStream *ret = (GMemoryInputStream*)
+    g_memory_input_stream_new_from_data (g_variant_get_data (variant),
+                                         g_variant_get_size (variant),
+                                         NULL);
+  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
+                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
+  return (GInputStream*)ret;
+}
+
+static GBytes *
+objtype_checksum_array_new (GPtrArray *objects)
+{
+  guint i;
+  GByteArray *ret = g_byte_array_new ();
+
+  for (i = 0; i < objects->len; i++)
+    {
+      GVariant *serialized_key = objects->pdata[i];
+      OstreeObjectType objtype;
+      const char *checksum;
+      guint8 csum[OSTREE_SHA256_DIGEST_LEN];
+      guint8 objtype_v;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+      objtype_v = (guint8) objtype;
+
+      ostree_checksum_inplace_to_bytes (checksum, csum);
+
+      g_byte_array_append (ret, &objtype_v, 1);
+      g_byte_array_append (ret, csum, sizeof (csum));
+    }
+  return g_byte_array_free_to_bytes (ret);
+}
 
 static void
 ostree_static_delta_part_builder_unref (OstreeStaticDeltaPartBuilder *part_builder)
@@ -219,31 +257,6 @@ write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part,
   g_ptr_array_add (ordered, key);
 
   return offset;
-}
-
-static GBytes *
-objtype_checksum_array_new (GPtrArray *objects)
-{
-  guint i;
-  GByteArray *ret = g_byte_array_new ();
-
-  for (i = 0; i < objects->len; i++)
-    {
-      GVariant *serialized_key = objects->pdata[i];
-      OstreeObjectType objtype;
-      const char *checksum;
-      guint8 csum[OSTREE_SHA256_DIGEST_LEN];
-      guint8 objtype_v;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-      objtype_v = (guint8) objtype;
-
-      ostree_checksum_inplace_to_bytes (checksum, csum);
-
-      g_byte_array_append (ret, &objtype_v, 1);
-      g_byte_array_append (ret, csum, sizeof (csum));
-    }
-  return g_byte_array_free_to_bytes (ret);
 }
 
 static gboolean
@@ -1139,19 +1152,6 @@ get_fallback_headers (OstreeRepo               *self,
   g_autoptr(GVariant) ret_headers = g_variant_ref_sink (g_variant_builder_end (fallback_builder));
   ot_transfer_out_value (out_headers, &ret_headers);
   return TRUE;
-}
-
-/* Get an input stream for a GVariant */
-static GInputStream *
-variant_to_inputstream (GVariant             *variant)
-{
-  GMemoryInputStream *ret = (GMemoryInputStream*)
-    g_memory_input_stream_new_from_data (g_variant_get_data (variant),
-                                         g_variant_get_size (variant),
-                                         NULL);
-  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
-                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
-  return (GInputStream*)ret;
 }
 
 /**
