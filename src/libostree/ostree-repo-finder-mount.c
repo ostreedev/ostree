@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include <gio/gio.h>
+#include <gio/gunixmounts.h>
 #include <glib.h>
 #include <glib-object.h>
 #include <libglnx.h>
@@ -354,6 +355,23 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
                    mount_name, mount_root_path, local_error->message);
           continue;
         }
+
+#if GLIB_CHECK_VERSION(2, 55, 0)
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS  /* remove once GLIB_VERSION_MAX_ALLOWED ≥ 2.56 */
+      g_autoptr(GUnixMountEntry) mount_entry = g_unix_mount_at (mount_root_path, NULL);
+
+      if (mount_entry != NULL &&
+          (g_unix_is_system_fs_type (g_unix_mount_get_fs_type (mount_entry)) ||
+           g_unix_is_system_device_path (g_unix_mount_get_device_path (mount_entry))))
+        {
+          g_debug ("Ignoring mount ‘%s’ as its file system type (%s) or device "
+                   "path (%s) indicate it’s a system mount.",
+                   mount_name, g_unix_mount_get_fs_type (mount_entry),
+                   g_unix_mount_get_device_path (mount_entry));
+          continue;
+        }
+G_GNUC_END_IGNORE_DEPRECATIONS
+#endif  /* GLib 2.56.0 */
 
       /* stat() the mount root so we can later check whether the resolved
        * repositories for individual refs are on the same device (to avoid the
