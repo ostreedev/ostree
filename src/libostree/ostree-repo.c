@@ -2803,6 +2803,7 @@ load_metadata_internal (OstreeRepo       *self,
                         GVariant        **out_variant,
                         GInputStream    **out_stream,
                         guint64          *out_size,
+                        OstreeRepoCommitState *out_state,
                         GCancellable     *cancellable,
                         GError          **error)
 {
@@ -2812,6 +2813,7 @@ load_metadata_internal (OstreeRepo       *self,
   g_autoptr(GVariant) ret_variant = NULL;
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
+  g_return_val_if_fail (objtype == OSTREE_OBJECT_TYPE_COMMIT || out_state == NULL, FALSE);
 
   /* Special caching for dirmeta objects, since they're commonly referenced many
    * times.
@@ -2877,11 +2879,24 @@ load_metadata_internal (OstreeRepo       *self,
 
       if (out_size)
         *out_size = stbuf.st_size;
+
+      if (out_state)
+        {
+          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (sha256);
+          *out_state = 0;
+
+          if (!glnx_fstatat_allow_noent (self->repo_dir_fd, commitpartial_path, NULL, 0, error))
+            return FALSE;
+          if (errno == 0)
+            *out_state |= OSTREE_REPO_COMMIT_STATE_PARTIAL;
+        }
     }
   else if (self->parent_repo)
     {
-      if (!ostree_repo_load_variant (self->parent_repo, objtype, sha256, &ret_variant, error))
-        return FALSE;
+      /* Directly recurse to simplify out parameters */
+      return load_metadata_internal (self->parent_repo, objtype, sha256, error_if_not_found,
+                                     out_variant, out_stream, out_size, out_state,
+                                     cancellable, error);
     }
   else if (error_if_not_found)
     {
@@ -3193,7 +3208,7 @@ ostree_repo_load_object_stream (OstreeRepo         *self,
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
       if (!load_metadata_internal (self, objtype, checksum, TRUE, NULL,
-                                   &ret_input, &size,
+                                   &ret_input, &size, NULL,
                                    cancellable, error))
         return FALSE;
     }
@@ -3489,7 +3504,7 @@ ostree_repo_load_variant_if_exists (OstreeRepo       *self,
                                     GError          **error)
 {
   return load_metadata_internal (self, objtype, sha256, FALSE,
-                                 out_variant, NULL, NULL, NULL, error);
+                                 out_variant, NULL, NULL, NULL, NULL, error);
 }
 
 /**
@@ -3511,7 +3526,7 @@ ostree_repo_load_variant (OstreeRepo       *self,
                           GError          **error)
 {
   return load_metadata_internal (self, objtype, sha256, TRUE,
-                                 out_variant, NULL, NULL, NULL, error);
+                                 out_variant, NULL, NULL, NULL, NULL, error);
 }
 
 /**
@@ -3534,31 +3549,8 @@ ostree_repo_load_commit (OstreeRepo            *self,
                          OstreeRepoCommitState *out_state,
                          GError               **error)
 {
-  if (out_variant)
-    {
-      if (!load_metadata_internal (self, OSTREE_OBJECT_TYPE_COMMIT, checksum, TRUE,
-                                   out_variant, NULL, NULL, NULL, error))
-        return FALSE;
-    }
-
-  if (out_state)
-    {
-      g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-      struct stat stbuf;
-
-      *out_state = 0;
-
-      if (fstatat (self->repo_dir_fd, commitpartial_path, &stbuf, 0) == 0)
-        {
-          *out_state |= OSTREE_REPO_COMMIT_STATE_PARTIAL;
-        }
-      else if (errno != ENOENT)
-        {
-          return glnx_throw_errno_prefix (error, "fstatat(%s)", commitpartial_path);
-        }
-    }
-
-  return TRUE;
+  return load_metadata_internal (self, OSTREE_OBJECT_TYPE_COMMIT, checksum, TRUE,
+                                 out_variant, NULL, NULL, out_state, NULL, error);
 }
 
 /**
