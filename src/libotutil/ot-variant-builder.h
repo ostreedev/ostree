@@ -23,6 +23,8 @@
 
 #include <gio/gio.h>
 
+#include "libglnx.h"
+
 G_BEGIN_DECLS
 
 typedef struct _OtVariantBuilder OtVariantBuilder;
