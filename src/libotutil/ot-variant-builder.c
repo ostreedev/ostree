@@ -257,7 +257,7 @@ tuple_get_item (TupleInfo          *info,
  * The algorithm in tuple_generate_table() calculates values of 'a', 'b'
  * and 'c' for each item, such that the procedure for finding the item
  * is to start at the end of the previous variable-sized item, add 'a',
- * then round up to the nearest multiple of 'b', then then add 'c'.
+ * then round up to the nearest multiple of 'b', then add 'c'.
  * Note that 'b' is stored in the usual "one less than" form.  ie:
  *
  *   start = ROUND_UP(prev_end + a, (b + 1)) + c;
