@@ -1025,7 +1025,7 @@ ot_variant_builder_add_value (OtVariantBuilder *builder,
   gconstpointer data;
   gsize data_size;
   /* We ref-sink value, just like g_variant_builder_add_value does */
-  g_autoptr(GVariant) keep_around_until_return = g_variant_ref_sink (value);
+  g_autoptr(GVariant) keep_around_until_return G_GNUC_UNUSED = g_variant_ref_sink (value);
 
   g_return_val_if_fail (info->n_children < info->max_items,
                         FALSE);
