@@ -1334,13 +1334,11 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint min_fallback_size;
   guint max_bsdiff_size;
   guint max_chunk_size;
-  g_auto(GVariantBuilder) metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   g_autoptr(GVariantBuilder) part_headers = NULL;
   g_autoptr(GPtrArray) part_temp_paths = NULL;
-  g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;
   const char *opt_filename;
   g_autofree char *descriptor_name = NULL;
