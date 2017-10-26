@@ -1590,6 +1590,12 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_printerr ("bsdiff=%u objects\n", builder.n_bsdiff);
     }
 
+  if (fchmod (descriptor_tmpf.fd, 0644) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
   if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE,
                              descriptor_dfd, descriptor_name, error))
     goto out;
