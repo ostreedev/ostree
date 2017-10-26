@@ -1525,7 +1525,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
       g_variant_builder_add_value (part_headers, g_variant_ref (part_builder->header));
 
-      total_compressed_size += part_builder->compressed_size;;
+      total_compressed_size += part_builder->compressed_size;
       total_uncompressed_size += part_builder->uncompressed_size;
     }
 
