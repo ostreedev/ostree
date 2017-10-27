@@ -25,6 +25,8 @@
 #include <fcntl.h>
 #include <stdlib.h>
 
+#include <libglnx.h>
+
 #include "ostree-cmdprivate.h"
 #include "ostree-mount-util.h"
 
