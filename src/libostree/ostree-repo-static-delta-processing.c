@@ -711,7 +711,7 @@ dispatch_write (OstreeRepo                 *repo,
                GCancellable               *cancellable,
                GError                    **error)
 {
-  GLNX_AUTO_PREFIX_ERROR("opcode open-splice-and-close", error);
+  GLNX_AUTO_PREFIX_ERROR("opcode write", error);
   guint64 content_size;
   guint64 content_offset;
 
@@ -816,7 +816,7 @@ dispatch_close (OstreeRepo                 *repo,
                 GCancellable               *cancellable,
                 GError                    **error)
 {
-  GLNX_AUTO_PREFIX_ERROR("opcode open-splice-and-close", error);
+  GLNX_AUTO_PREFIX_ERROR("opcode close", error);
 
   if (state->content_out)
     {
