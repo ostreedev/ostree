@@ -37,7 +37,14 @@
 
 #define CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT (30)
 
+typedef enum {
+  DELTAOPT_FLAG_NONE = (1 << 0),
+  DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1),
+  DELTAOPT_FLAG_VERBOSE = (1 << 2)
+} DeltaOpts;
+
 typedef struct {
+  guint64 compressed_size;
   guint64 uncompressed_size;
   GPtrArray *objects;
   GString *payload;
@@ -46,6 +53,8 @@ typedef struct {
   GPtrArray *modes;
   GHashTable *xattr_set; /* GVariant(ayay) -> offset */
   GPtrArray *xattrs;
+  GLnxTmpfile part_tmpf;
+  GVariant *header;
 } OstreeStaticDeltaPartBuilder;
 
 typedef struct {
@@ -60,13 +69,47 @@ typedef struct {
   guint n_bsdiff;
   guint n_fallback;
   gboolean swap_endian;
+  int parts_dfd;
+  DeltaOpts delta_opts;
 } OstreeStaticDeltaBuilder;
 
-typedef enum {
-  DELTAOPT_FLAG_NONE = (1 << 0),
-  DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1),
-  DELTAOPT_FLAG_VERBOSE = (1 << 2)
-} DeltaOpts;
+/* Get an input stream for a GVariant */
+static GInputStream *
+variant_to_inputstream (GVariant             *variant)
+{
+  GMemoryInputStream *ret = (GMemoryInputStream*)
+    g_memory_input_stream_new_from_data (g_variant_get_data (variant),
+                                         g_variant_get_size (variant),
+                                         NULL);
+  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
+                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
+  return (GInputStream*)ret;
+}
+
+static GBytes *
+objtype_checksum_array_new (GPtrArray *objects)
+{
+  guint i;
+  GByteArray *ret = g_byte_array_new ();
+
+  for (i = 0; i < objects->len; i++)
+    {
+      GVariant *serialized_key = objects->pdata[i];
+      OstreeObjectType objtype;
+      const char *checksum;
+      guint8 csum[OSTREE_SHA256_DIGEST_LEN];
+      guint8 objtype_v;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+      objtype_v = (guint8) objtype;
+
+      ostree_checksum_inplace_to_bytes (checksum, csum);
+
+      g_byte_array_append (ret, &objtype_v, 1);
+      g_byte_array_append (ret, csum, sizeof (csum));
+    }
+  return g_byte_array_free_to_bytes (ret);
+}
 
 static void
 ostree_static_delta_part_builder_unref (OstreeStaticDeltaPartBuilder *part_builder)
@@ -81,6 +124,9 @@ ostree_static_delta_part_builder_unref (OstreeStaticDeltaPartBuilder *part_build
   g_ptr_array_unref (part_builder->modes);
   g_hash_table_unref (part_builder->xattr_set);
   g_ptr_array_unref (part_builder->xattrs);
+  glnx_tmpfile_clear (&part_builder->part_tmpf);
+  if (part_builder->header)
+    g_variant_unref (part_builder->header);
   g_free (part_builder);
 }
 
@@ -162,10 +208,123 @@ xattr_chunk_equals (const void *one, const void *two)
   return memcmp (g_variant_get_data (v1), g_variant_get_data (v2), l1) == 0;
 }
 
+static gboolean
+finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
+{
+  OstreeStaticDeltaPartBuilder *part_builder = builder->parts->pdata[builder->parts->len - 1];
+  g_autofree guchar *part_checksum = NULL;
+  g_autoptr(GBytes) objtype_checksum_array = NULL;
+  g_autoptr(GBytes) checksum_bytes = NULL;
+  g_autoptr(GOutputStream) part_temp_outstream = NULL;
+  g_autoptr(GInputStream) part_in = NULL;
+  g_autoptr(GInputStream) part_payload_in = NULL;
+  g_autoptr(GMemoryOutputStream) part_payload_out = NULL;
+  g_autoptr(GConverterOutputStream) part_payload_compressor = NULL;
+  g_autoptr(GConverter) compressor = NULL;
+  g_autoptr(GVariant) delta_part_content = NULL;
+  g_autoptr(GVariant) delta_part = NULL;
+  g_autoptr(GVariant) delta_part_header = NULL;
+  g_auto(GVariantBuilder) mode_builder = OT_VARIANT_BUILDER_INITIALIZER;
+  g_auto(GVariantBuilder) xattr_builder = OT_VARIANT_BUILDER_INITIALIZER;
+  guint8 compression_type_char;
+
+  g_variant_builder_init (&mode_builder, G_VARIANT_TYPE ("a(uuu)"));
+  g_variant_builder_init (&xattr_builder, G_VARIANT_TYPE ("aa(ayay)"));
+  guint j;
+
+  for (j = 0; j < part_builder->modes->len; j++)
+    g_variant_builder_add_value (&mode_builder, part_builder->modes->pdata[j]);
+
+  for (j = 0; j < part_builder->xattrs->len; j++)
+    g_variant_builder_add_value (&xattr_builder, part_builder->xattrs->pdata[j]);
+
+  {
+    g_autoptr(GBytes) payload_b;
+    g_autoptr(GBytes) operations_b;
+
+    payload_b = g_string_free_to_bytes (part_builder->payload);
+    part_builder->payload = NULL;
+
+    operations_b = g_string_free_to_bytes (part_builder->operations);
+    part_builder->operations = NULL;
+
+    delta_part_content = g_variant_new ("(a(uuu)aa(ayay)@ay@ay)",
+                                        &mode_builder, &xattr_builder,
+                                        ot_gvariant_new_ay_bytes (payload_b),
+                                        ot_gvariant_new_ay_bytes (operations_b));
+    g_variant_ref_sink (delta_part_content);
+  }
+
+  /* Hardcode xz for now */
+  compressor = (GConverter*)_ostree_lzma_compressor_new (NULL);
+  compression_type_char = 'x';
+  part_payload_in = variant_to_inputstream (delta_part_content);
+  part_payload_out = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  part_payload_compressor = (GConverterOutputStream*)g_converter_output_stream_new ((GOutputStream*)part_payload_out, compressor);
+
+  {
+    gssize n_bytes_written = g_output_stream_splice ((GOutputStream*)part_payload_compressor, part_payload_in,
+                                                     G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                                                     NULL, error);
+    if (n_bytes_written < 0)
+      return FALSE;
+  }
+
+  g_clear_pointer (&delta_part_content, g_variant_unref);
+
+  { g_autoptr(GBytes) payload = g_memory_output_stream_steal_as_bytes (part_payload_out);
+    delta_part = g_variant_ref_sink (g_variant_new ("(y@ay)",
+                                                    compression_type_char,
+                                                    ot_gvariant_new_ay_bytes (payload)));
+  }
+
+  if (!glnx_open_tmpfile_linkable_at (builder->parts_dfd, ".", O_RDWR | O_CLOEXEC,
+                                      &part_builder->part_tmpf, error))
+    return FALSE;
+
+  part_temp_outstream = g_unix_output_stream_new (part_builder->part_tmpf.fd, FALSE);
+
+  part_in = variant_to_inputstream (delta_part);
+  if (!ot_gio_splice_get_checksum (part_temp_outstream, part_in,
+                                   &part_checksum,
+                                   NULL, error))
+    return FALSE;
+
+  checksum_bytes = g_bytes_new (part_checksum, OSTREE_SHA256_DIGEST_LEN);
+  objtype_checksum_array = objtype_checksum_array_new (part_builder->objects);
+  delta_part_header = g_variant_new ("(u@aytt@ay)",
+                                     maybe_swap_endian_u32 (builder->swap_endian, OSTREE_DELTAPART_VERSION),
+                                     ot_gvariant_new_ay_bytes (checksum_bytes),
+                                     maybe_swap_endian_u64 (builder->swap_endian, (guint64) g_variant_get_size (delta_part)),
+                                     maybe_swap_endian_u64 (builder->swap_endian, part_builder->uncompressed_size),
+                                     ot_gvariant_new_ay_bytes (objtype_checksum_array));
+  g_variant_ref_sink (delta_part_header);
+
+  part_builder->header = g_variant_ref (delta_part_header);
+  part_builder->compressed_size = g_variant_get_size (delta_part);
+
+  if (builder->delta_opts & DELTAOPT_FLAG_VERBOSE)
+    {
+      g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT "\n",
+                  builder->parts->len, part_builder->objects->len,
+                  part_builder->compressed_size,
+                  part_builder->uncompressed_size);
+    }
+
+  return TRUE;
+}
+
 static OstreeStaticDeltaPartBuilder *
-allocate_part (OstreeStaticDeltaBuilder *builder)
+allocate_part (OstreeStaticDeltaBuilder *builder, GError **error)
 {
   OstreeStaticDeltaPartBuilder *part = g_new0 (OstreeStaticDeltaPartBuilder, 1);
+
+  if (builder->parts->len > 0)
+    {
+      if (!finish_part (builder, error))
+        return NULL;
+    }
+
   part->objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   part->payload = g_string_new (NULL);
   part->operations = g_string_new (NULL);
@@ -219,31 +378,6 @@ write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part,
   g_ptr_array_add (ordered, key);
 
   return offset;
-}
-
-static GBytes *
-objtype_checksum_array_new (GPtrArray *objects)
-{
-  guint i;
-  GByteArray *ret = g_byte_array_new ();
-
-  for (i = 0; i < objects->len; i++)
-    {
-      GVariant *serialized_key = objects->pdata[i];
-      OstreeObjectType objtype;
-      const char *checksum;
-      guint8 csum[OSTREE_SHA256_DIGEST_LEN];
-      guint8 objtype_v;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-      objtype_v = (guint8) objtype;
-
-      ostree_checksum_inplace_to_bytes (checksum, csum);
-
-      g_byte_array_append (ret, &objtype_v, 1);
-      g_byte_array_append (ret, csum, sizeof (csum));
-    }
-  return g_byte_array_free_to_bytes (ret);
 }
 
 static gboolean
@@ -338,7 +472,10 @@ process_one_object (OstreeRepo                       *repo,
   if (current_part->objects->len > 0 &&
       current_part->payload->len + content_size > builder->max_chunk_size_bytes)
     {
-      *current_part_val = current_part = allocate_part (builder);
+      current_part = allocate_part (builder, error);
+      if (current_part == NULL)
+        return FALSE;
+      *current_part_val = current_part;
     }
 
   guint64 compressed_size;
@@ -577,7 +714,10 @@ process_one_rollsum (OstreeRepo                       *repo,
   if (current_part->objects->len > 0 &&
       current_part->payload->len > builder->max_chunk_size_bytes)
     {
-      *current_part_val = current_part = allocate_part (builder);
+      current_part = allocate_part (builder, error);
+      if (current_part == NULL)
+        return FALSE;
+      *current_part_val = current_part;
     }
 
   g_autoptr(GBytes) tmp_to = NULL;
@@ -692,7 +832,10 @@ process_one_bsdiff (OstreeRepo                       *repo,
   if (current_part->objects->len > 0 &&
       current_part->payload->len > builder->max_chunk_size_bytes)
     {
-      *current_part_val = current_part = allocate_part (builder);
+      current_part = allocate_part (builder, error);
+      if (current_part == NULL)
+        return FALSE;
+      *current_part_val = current_part;
     }
 
   g_autoptr(GBytes) tmp_from = NULL;
@@ -964,7 +1107,9 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                   g_hash_table_size (modified_regfile_content));
     }
 
-  current_part = allocate_part (builder);
+  current_part = allocate_part (builder, error);
+  if (current_part == NULL)
+    return FALSE;
 
   /* Pack the metadata first */
   g_hash_table_iter_init (&hashiter, new_reachable_metadata);
@@ -1080,6 +1225,9 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
         return FALSE;
     }
 
+  if (!finish_part (builder, error))
+    return FALSE;
+
   return TRUE;
 }
 
@@ -1141,19 +1289,6 @@ get_fallback_headers (OstreeRepo               *self,
   return TRUE;
 }
 
-/* Get an input stream for a GVariant */
-static GInputStream *
-variant_to_inputstream (GVariant             *variant)
-{
-  GMemoryInputStream *ret = (GMemoryInputStream*)
-    g_memory_input_stream_new_from_data (g_variant_get_data (variant),
-                                         g_variant_get_size (variant),
-                                         NULL);
-  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
-                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
-  return (GInputStream*)ret;
-}
-
 /**
  * ostree_repo_static_delta_generate:
  * @self: Repo
@@ -1199,13 +1334,11 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint min_fallback_size;
   guint max_bsdiff_size;
   guint max_chunk_size;
-  g_auto(GVariantBuilder) metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   g_autoptr(GVariantBuilder) part_headers = NULL;
   g_autoptr(GPtrArray) part_temp_paths = NULL;
-  g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;
   const char *opt_filename;
   g_autofree char *descriptor_name = NULL;
@@ -1217,6 +1350,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   glnx_autofd int tmp_dfd = -1;
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
+  g_autoptr(OtVariantBuilder) descriptor_builder = NULL;
 
   if (!g_variant_lookup (params, "min-fallback-size", "u", &min_fallback_size))
     min_fallback_size = 4;
@@ -1258,45 +1393,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                  &to_commit, error))
     goto out;
 
-  /* Ignore optimization flags */
-  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
-                                  cancellable, error))
-    goto out;
-
-  /* NOTE: Add user-supplied metadata first.  This is used by at least
-   * xdg-app as a way to provide MIME content sniffing, since the
-   * metadata appears first in the file.
-   */
-  g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
-  if (metadata != NULL)
-    {
-      GVariantIter iter;
-      GVariant *item;
-
-      g_variant_iter_init (&iter, metadata);
-      while ((item = g_variant_iter_next_value (&iter)))
-        {
-          g_variant_builder_add (&metadata_builder, "@{sv}", item);
-          g_variant_unref (item);
-        }
-    }
-
-  { guint8 endianness_char;
-
-    switch (endianness)
-      {
-      case G_LITTLE_ENDIAN:
-        endianness_char = 'l';
-        break;
-      case G_BIG_ENDIAN:
-        endianness_char = 'B';
-        break;
-      default:
-        g_assert_not_reached ();
-      }
-    g_variant_builder_add (&metadata_builder, "{sv}", "ostree.endianness", g_variant_new_byte (endianness_char));
-  }
-
   if (opt_filename)
     {
       g_autofree char *dnbuf = g_strdup (opt_filename);
@@ -1314,119 +1410,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
         }
     }
 
-  part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
-  part_temp_paths = g_ptr_array_new_with_free_func ((GDestroyNotify)glnx_tmpfile_clear);
-  for (i = 0; i < builder.parts->len; i++)
-    {
-      OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];
-      g_autoptr(GBytes) payload_b;
-      g_autoptr(GBytes) operations_b;
-      g_autofree guchar *part_checksum = NULL;
-      g_autoptr(GBytes) objtype_checksum_array = NULL;
-      g_autoptr(GBytes) checksum_bytes = NULL;
-      g_autoptr(GOutputStream) part_temp_outstream = NULL;
-      g_autoptr(GInputStream) part_in = NULL;
-      g_autoptr(GInputStream) part_payload_in = NULL;
-      g_autoptr(GMemoryOutputStream) part_payload_out = NULL;
-      g_autoptr(GConverterOutputStream) part_payload_compressor = NULL;
-      g_autoptr(GConverter) compressor = NULL;
-      g_autoptr(GVariant) delta_part_content = NULL;
-      g_autoptr(GVariant) delta_part = NULL;
-      g_autoptr(GVariant) delta_part_header = NULL;
-      g_auto(GVariantBuilder) mode_builder = OT_VARIANT_BUILDER_INITIALIZER;
-      g_auto(GVariantBuilder) xattr_builder = OT_VARIANT_BUILDER_INITIALIZER;
-      guint8 compression_type_char;
+  builder.parts_dfd = tmp_dfd;
+  builder.delta_opts = delta_opts;
 
-      g_variant_builder_init (&mode_builder, G_VARIANT_TYPE ("a(uuu)"));
-      g_variant_builder_init (&xattr_builder, G_VARIANT_TYPE ("aa(ayay)"));
-      { guint j;
-        for (j = 0; j < part_builder->modes->len; j++)
-          g_variant_builder_add_value (&mode_builder, part_builder->modes->pdata[j]);
-
-        for (j = 0; j < part_builder->xattrs->len; j++)
-          g_variant_builder_add_value (&xattr_builder, part_builder->xattrs->pdata[j]);
-      }
-
-      payload_b = g_string_free_to_bytes (part_builder->payload);
-      part_builder->payload = NULL;
-
-      operations_b = g_string_free_to_bytes (part_builder->operations);
-      part_builder->operations = NULL;
-      /* FIXME - avoid duplicating memory here */
-      delta_part_content = g_variant_new ("(a(uuu)aa(ayay)@ay@ay)",
-                                          &mode_builder, &xattr_builder,
-                                          ot_gvariant_new_ay_bytes (payload_b),
-                                          ot_gvariant_new_ay_bytes (operations_b));
-      g_variant_ref_sink (delta_part_content);
-
-      /* Hardcode xz for now */
-      compressor = (GConverter*)_ostree_lzma_compressor_new (NULL);
-      compression_type_char = 'x';
-      part_payload_in = variant_to_inputstream (delta_part_content);
-      part_payload_out = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-      part_payload_compressor = (GConverterOutputStream*)g_converter_output_stream_new ((GOutputStream*)part_payload_out, compressor);
-
-      {
-        gssize n_bytes_written = g_output_stream_splice ((GOutputStream*)part_payload_compressor, part_payload_in,
-                                                         G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                                         cancellable, error);
-        if (n_bytes_written < 0)
-          goto out;
-      }
-
-      /* FIXME - avoid duplicating memory here */
-      { g_autoptr(GBytes) payload = g_memory_output_stream_steal_as_bytes (part_payload_out);
-        delta_part = g_variant_ref_sink (g_variant_new ("(y@ay)",
-                                                        compression_type_char,
-                                                        ot_gvariant_new_ay_bytes (payload)));
-      }
-
-      if (inline_parts)
-        {
-          g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
-          g_variant_builder_add (&metadata_builder, "{sv}", part_relpath, delta_part);
-        }
-      else
-        {
-          GLnxTmpfile *part_tmpf = g_new0 (GLnxTmpfile, 1);
-
-          if (!glnx_open_tmpfile_linkable_at (tmp_dfd, ".", O_WRONLY | O_CLOEXEC,
-                                              part_tmpf, error))
-            goto out;
-
-          /* Transfer tempfile ownership */
-          part_temp_outstream = g_unix_output_stream_new (part_tmpf->fd, FALSE);
-          g_ptr_array_add (part_temp_paths, g_steal_pointer (&part_tmpf));
-        }
-
-      part_in = variant_to_inputstream (delta_part);
-      if (!ot_gio_splice_get_checksum (part_temp_outstream, part_in,
-                                       &part_checksum,
-                                       cancellable, error))
-        goto out;
-
-      checksum_bytes = g_bytes_new (part_checksum, OSTREE_SHA256_DIGEST_LEN);
-      objtype_checksum_array = objtype_checksum_array_new (part_builder->objects);
-      delta_part_header = g_variant_new ("(u@aytt@ay)",
-                                         maybe_swap_endian_u32 (builder.swap_endian, OSTREE_DELTAPART_VERSION),
-                                         ot_gvariant_new_ay_bytes (checksum_bytes),
-                                         maybe_swap_endian_u64 (builder.swap_endian, (guint64) g_variant_get_size (delta_part)),
-                                         maybe_swap_endian_u64 (builder.swap_endian, part_builder->uncompressed_size),
-                                         ot_gvariant_new_ay_bytes (objtype_checksum_array));
-
-      g_variant_builder_add_value (part_headers, g_variant_ref (delta_part_header));
-
-      total_compressed_size += g_variant_get_size (delta_part);
-      total_uncompressed_size += part_builder->uncompressed_size;
-
-      if (delta_opts & DELTAOPT_FLAG_VERBOSE)
-        {
-          g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT "\n",
-                      i, part_builder->objects->len,
-                      (guint64)g_variant_get_size (delta_part),
-                      part_builder->uncompressed_size);
-        }
-    }
+  /* Ignore optimization flags */
+  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
+                                  cancellable, error))
+    goto out;
 
   if (opt_filename)
     {
@@ -1451,22 +1441,90 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       descriptor_name = g_strdup (basename (descriptor_relpath));
     }
 
-  for (i = 0; i < part_temp_paths->len; i++)
-    {
-      g_autofree char *partstr = g_strdup_printf ("%u", i);
-      /* Take ownership of the path/fd here */
-      g_auto(GLnxTmpfile) tmpf = *((GLnxTmpfile*)part_temp_paths->pdata[i]);
-      g_clear_pointer (&(part_temp_paths->pdata[i]), g_free);
+  if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                      &descriptor_tmpf, error))
+    goto out;
 
-      if (fchmod (tmpf.fd, 0644) < 0)
+  descriptor_builder = ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT), descriptor_tmpf.fd);
+
+  /* Open the metadata dict */
+  if (!ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("a{sv}"), error))
+    goto out;
+
+  /* NOTE: Add user-supplied metadata first.  This is used by at least
+   * flatpak as a way to provide MIME content sniffing, since the
+   * metadata appears first in the file.
+   */
+  if (metadata != NULL)
+    {
+      GVariantIter iter;
+      GVariant *item;
+
+      g_variant_iter_init (&iter, metadata);
+      while ((item = g_variant_iter_next_value (&iter)))
         {
-          glnx_set_error_from_errno (error);
-          goto out;
+          if (!ot_variant_builder_add_value (descriptor_builder, item, error))
+            goto out;
+          g_variant_unref (item);
+        }
+    }
+
+  { guint8 endianness_char;
+
+    switch (endianness)
+      {
+      case G_LITTLE_ENDIAN:
+        endianness_char = 'l';
+        break;
+      case G_BIG_ENDIAN:
+        endianness_char = 'B';
+        break;
+      default:
+        g_assert_not_reached ();
+      }
+    if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", "ostree.endianness", g_variant_new_byte (endianness_char)))
+      goto out;
+  }
+
+  part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
+  part_temp_paths = g_ptr_array_new_with_free_func ((GDestroyNotify)glnx_tmpfile_clear);
+  for (i = 0; i < builder.parts->len; i++)
+    {
+      OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];
+
+      if (inline_parts)
+        {
+          g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
+
+          lseek (part_builder->part_tmpf.fd, 0, SEEK_SET);
+
+          if (!ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("{sv}"), error) ||
+              !ot_variant_builder_add (descriptor_builder, error, "s", part_relpath) ||
+              !ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("v"), error) ||
+              !ot_variant_builder_add_from_fd (descriptor_builder, G_VARIANT_TYPE ("(yay)"), part_builder->part_tmpf.fd, part_builder->compressed_size, error) ||
+              !ot_variant_builder_close (descriptor_builder, error) ||
+              !ot_variant_builder_close (descriptor_builder, error))
+            goto out;
+        }
+      else
+        {
+          g_autofree char *partstr = g_strdup_printf ("%u", i);
+
+          if (fchmod (part_builder->part_tmpf.fd, 0644) < 0)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+
+          if (!glnx_link_tmpfile_at (&part_builder->part_tmpf, GLNX_LINK_TMPFILE_REPLACE,
+                                     descriptor_dfd, partstr, error))
+            goto out;
         }
 
-      if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                                 descriptor_dfd, partstr, error))
-        goto out;
+      g_variant_builder_add_value (part_headers, g_variant_ref (part_builder->header));
+
+      total_compressed_size += part_builder->compressed_size;
+      total_uncompressed_size += part_builder->uncompressed_size;
     }
 
   if (!get_fallback_headers (self, &builder, &fallback_headers,
@@ -1479,8 +1537,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (detached)
     {
       g_autofree char *detached_key = _ostree_get_relative_static_delta_path (from, to, "commitmeta");
-      g_variant_builder_add (&metadata_builder, "{sv}", detached_key, detached);
+      if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", detached_key, detached))
+        goto out;
     }
+
+  /* Close metadata dict */
+  if (!ot_variant_builder_close (descriptor_builder, error))
+    goto out;
 
   /* Generate OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
   {
@@ -1490,17 +1553,26 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     /* floating */ GVariant *to_csum_v =
       ostree_checksum_to_bytes_v (to);
 
-    delta_descriptor = g_variant_ref_sink (g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "@ay"
-                                                          "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
-                                                          "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",
-                                                          g_variant_builder_end (&metadata_builder),
-                                                          GUINT64_TO_BE (g_date_time_to_unix (now)),
-                                                          from_csum_v,
-                                                          to_csum_v,
-                                                          to_commit,
-                                                          ot_gvariant_new_bytearray ((guchar*)"", 0),
-                                                          part_headers,
-                                                          fallback_headers));
+
+    if (!ot_variant_builder_add (descriptor_builder, error, "t",
+                                 GUINT64_TO_BE (g_date_time_to_unix (now))) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       from_csum_v, error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       to_csum_v, error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       to_commit, error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       ot_gvariant_new_bytearray ((guchar*)"", 0), error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       g_variant_builder_end (part_headers), error) ||
+        !ot_variant_builder_add_value (descriptor_builder,
+                                       fallback_headers, error))
+      goto out;
+
+    if (!ot_variant_builder_end (descriptor_builder, error))
+      goto out;
+
     g_date_time_unref (now);
   }
 
@@ -1516,10 +1588,14 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_printerr ("bsdiff=%u objects\n", builder.n_bsdiff);
     }
 
-  if (!glnx_file_replace_contents_at (descriptor_dfd, descriptor_name,
-                                      g_variant_get_data (delta_descriptor),
-                                      g_variant_get_size (delta_descriptor),
-                                      0, cancellable, error))
+  if (fchmod (descriptor_tmpf.fd, 0644) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE,
+                             descriptor_dfd, descriptor_name, error))
     goto out;
 
   ret = TRUE;
