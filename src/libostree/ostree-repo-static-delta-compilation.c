@@ -514,8 +514,8 @@ try_content_rollsum (OstreeRepo                       *repo,
 
   if (opts & DELTAOPT_FLAG_VERBOSE)
     {
-      g_printerr ("rollsum for %s; crcs=%u bufs=%u total=%u matchsize=%llu\n",
-                  to, matches->crcmatches,
+      g_printerr ("rollsum for %s -> %s; crcs=%u bufs=%u total=%u matchsize=%llu\n",
+                  from, to, matches->crcmatches,
                   matches->bufmatches,
                   matches->total, (unsigned long long)matches->match_size);
     }
