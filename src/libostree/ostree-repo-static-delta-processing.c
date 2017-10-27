@@ -745,6 +745,7 @@ dispatch_write (OstreeRepo                 *repo,
                 return FALSE;
 
               content_size -= bytes_read;
+              content_offset += bytes_read;
             }
         }
       else
