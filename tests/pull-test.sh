@@ -52,7 +52,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..32"
+echo "1..33"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -348,11 +348,23 @@ repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${delta_target} >dry-run-pull.txt
 # Compression can vary, so we support 400-699
-assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9] bytes, 455 bytes total uncompressed'
+delta_dry_run_regexp='Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9] bytes, 455 bytes total uncompressed'
+assert_file_has_content dry-run-pull.txt "${delta_dry_run_regexp}"
 rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_streq "${prev_rev}" "${rev}"
 ${CMD_PREFIX} ostree --repo=repo fsck
 done
+
+# Test pull via file:/// - this should still use the deltas path for testing
+cd ${test_tmpdir}
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo remote delete origin
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
+${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
+${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${delta_target} >dry-run-pull.txt
+# See above
+assert_file_has_content dry-run-pull.txt "${delta_dry_run_regexp}"
+echo "ok pull file:// + deltas required"
 
 # Explicitly test delta fetches via ref name as well as commit hash
 for delta_target in main ${new_rev}; do

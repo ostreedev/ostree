@@ -1438,6 +1438,10 @@ static char *
 get_real_remote_repo_collection_id (OstreeRepo  *repo,
                                     const gchar *remote_name)
 {
+  /* remote_name == NULL can happen for pull-local */
+  if (!remote_name)
+    return NULL;
+
   g_autofree gchar *remote_collection_id = NULL;
   if (!ostree_repo_get_remote_option (repo, remote_name, "collection-id", NULL,
                                       &remote_collection_id, NULL) ||
@@ -3544,8 +3548,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_autofree char *first_scheme = _ostree_fetcher_uri_get_scheme (first_uri);
 
   /* NB: we don't support local mirrors in mirrorlists, so if this passes, it
-   * means that we're not using mirrorlists (see also fetch_mirrorlist()) */
-  if (g_str_equal (first_scheme, "file"))
+   * means that we're not using mirrorlists (see also fetch_mirrorlist())
+   * Also, we explicitly disable the "local repo" path if static deltas
+   * were explicitly requested to be required; this is going to happen
+   * most often for testing deltas without setting up a HTTP server.
+   */
+  if (g_str_equal (first_scheme, "file") && !pull_data->require_static_deltas)
     {
       g_autofree char *path = _ostree_fetcher_uri_get_path (first_uri);
       g_autoptr(GFile) remote_repo_path = g_file_new_for_path (path);
