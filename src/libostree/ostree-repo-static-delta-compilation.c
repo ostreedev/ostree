@@ -1145,18 +1145,27 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
 
   /* Now do bsdiff'ed objects */
 
-  g_hash_table_iter_init (&hashiter, bsdiff_optimized_content_objects);
-  while (g_hash_table_iter_next (&hashiter, &key, &value))
+  const guint n_bsdiff = g_hash_table_size (bsdiff_optimized_content_objects);
+  if (n_bsdiff > 0)
     {
-      const char *checksum = key;
-      ContentBsdiff *bsdiff = value;
+      const guint mod = n_bsdiff / 10;
+      g_hash_table_iter_init (&hashiter, bsdiff_optimized_content_objects);
+      while (g_hash_table_iter_next (&hashiter, &key, &value))
+        {
+          const char *checksum = key;
+          ContentBsdiff *bsdiff = value;
 
-      if (!process_one_bsdiff (repo, builder, &current_part,
-                               checksum, bsdiff,
-                               cancellable, error))
-        return FALSE;
+          if (opts & DELTAOPT_FLAG_VERBOSE &&
+              (mod == 0 || builder->n_bsdiff % mod == 0))
+            g_printerr ("processing bsdiff: [%u/%u]\n", builder->n_bsdiff, n_bsdiff);
 
-      builder->n_bsdiff++;
+          if (!process_one_bsdiff (repo, builder, &current_part,
+                                   checksum, bsdiff,
+                                   cancellable, error))
+            return FALSE;
+
+          builder->n_bsdiff++;
+        }
     }
 
   /* Scan for large objects, so we can fall back to plain HTTP-based
