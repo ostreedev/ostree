@@ -42,11 +42,11 @@ assert_streq() {
 }
 
 validate_delta_options() {
-    mkdir testrepo
-    ostree_repo_init testrepo --mode=bare-user
+    ostree --repo=testrepo init --mode=bare-user
     ostree --repo=testrepo remote add --set=gpg-verify=false local file://${repo}
     ostree --repo=${repo} static-delta generate $@ --from=${from} --to=${to}
-    ostree --repo=testrepo pull --require-static-deltas local ${branch}@${from}
+    ostree --repo=${repo} summary -u
+    ostree --repo=testrepo pull local ${branch}@${from}
     assert_streq $(ostree --repo=testrepo rev-parse ${branch}) ${from}
     ostree --repo=testrepo pull --require-static-deltas local ${branch}
     assert_streq $(ostree --repo=testrepo rev-parse ${branch}) ${to}
