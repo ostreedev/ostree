@@ -229,6 +229,8 @@ ostree_repo_init() {
     fi
 }
 
+# The original one; use setup_fake_remote_repo2 for newer code,
+# down the line we'll try to port tests.
 setup_fake_remote_repo1() {
     mode=$1
     commit_opts=${2:-}
@@ -264,6 +266,50 @@ setup_fake_remote_repo1() {
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
 
+    export OSTREE="${CMD_PREFIX} ostree --repo=repo"
+}
+
+# Newer version of the above with more "real" data
+setup_fake_remote_repo2() {
+    mode=$1
+    commit_opts=${2:-}
+    args=${3:-}
+    shift
+    oldpwd=`pwd`
+    mkdir ostree-srv
+    cd ostree-srv
+    mkdir repo
+    ostree_repo_init repo --mode=$mode
+    # Backcompat
+    ln -sr repo gnomerepo
+    # Initialize content
+    mkdir files
+    cd files
+    mkdir -p usr/{etc,bin,lib,share}
+    ln -sr usr/bin bin
+    ln -sr usr/lib lib
+    tar xf ${test_srcdir}/fah-deltadata-old.tar.xz
+    remote_ref=exampleos/42/x86_64/main
+    cd ..
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo commit \
+                  --consume $commit_opts --add-metadata-string version=42.0 -b ${remote_ref} \
+                  --tree=dir=files
+    rm files -rf
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo checkout -U ${remote_ref} files
+    (cd files && tar xf ${test_srcdir}/fah-deltadata-new.tar.xz)
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo commit \
+                  --consume $commit_opts --add-metadata-string version=42.1 -b ${remote_ref} \
+                  --tree=dir=files
+
+    # And serve via HTTP
+    cd ${test_tmpdir}
+    mkdir ${test_tmpdir}/httpd
+    cd httpd
+    ln -s ${test_tmpdir}/ostree-srv ostree
+    ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd.log --daemonize -p ${test_tmpdir}/httpd-port $args
+    port=$(cat ${test_tmpdir}/httpd-port)
+    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
+    cd ${oldpwd}
     export OSTREE="${CMD_PREFIX} ostree --repo=repo"
 }
 

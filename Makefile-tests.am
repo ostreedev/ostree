@@ -70,6 +70,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-pull-bare.sh \
 	tests/test-pull-bareuser.sh \
 	tests/test-pull-bareuseronly.sh \
+	tests/test-pull2-bareuseronly.sh \
 	tests/test-pull-commit-only.sh \
 	tests/test-pull-depth.sh \
 	tests/test-pull-mirror-summary.sh \
@@ -160,10 +161,13 @@ endif
 
 dist_installed_test_data = tests/archive-test.sh \
 	tests/pull-test.sh \
+	tests/pull-test2.sh \
 	tests/admin-test.sh \
 	tests/basic-test.sh \
 	tests/pre-endian-deltas-repo-big.tar.xz \
 	tests/pre-endian-deltas-repo-little.tar.xz \
+	tests/fah-deltadata-old.tar.xz \
+	tests/fah-deltadata-new.tar.xz \
 	tests/libtest-core.sh \
 	$(NULL)
 

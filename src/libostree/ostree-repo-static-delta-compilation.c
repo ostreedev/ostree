@@ -912,13 +912,11 @@ process_one_bsdiff (OstreeRepo                       *repo,
        * try to reverse engineer things more in the "show" path, but that gets
        * hard/messy as it's quite optimized for execution now.
        */
-#if 0
       g_printerr ("bspatch %s [%llu] → %s [%llu] bsdiff:%llu (%f)\n",
                   bsdiff_content->from_checksum, (unsigned long long)tmp_from_len,
                   to_checksum, (unsigned long long)tmp_to_len,
                   (unsigned long long)payload_size,
                   ((double)payload_size)/tmp_to_len);
-#endif
 
       g_string_append_len (current_part->payload, payload, payload_size);
     }
