@@ -906,6 +906,20 @@ process_one_bsdiff (OstreeRepo                       *repo,
       _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
       _ostree_write_varuint64 (current_part->operations, payload_size);
 
+      /* A bit too verbose to print by default...but leaving this #if 0'd out to
+       * use later. One approach I've been thinking about is to optionally
+       * output e.g. a JSON file as we build the deltas. Alternatively, we could
+       * try to reverse engineer things more in the "show" path, but that gets
+       * hard/messy as it's quite optimized for execution now.
+       */
+#if 0
+      g_printerr ("bspatch %s [%llu] → %s [%llu] bsdiff:%llu (%f)\n",
+                  bsdiff_content->from_checksum, (unsigned long long)tmp_from_len,
+                  to_checksum, (unsigned long long)tmp_to_len,
+                  (unsigned long long)payload_size,
+                  ((double)payload_size)/tmp_to_len);
+#endif
+
       g_string_append_len (current_part->payload, payload, payload_size);
     }
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
