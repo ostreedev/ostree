@@ -1438,6 +1438,10 @@ static char *
 get_real_remote_repo_collection_id (OstreeRepo  *repo,
                                     const gchar *remote_name)
 {
+  /* remote_name == NULL can happen for pull-local */
+  if (!remote_name)
+    return NULL;
+
   g_autofree gchar *remote_collection_id = NULL;
   if (!ostree_repo_get_remote_option (repo, remote_name, "collection-id", NULL,
                                       &remote_collection_id, NULL) ||
