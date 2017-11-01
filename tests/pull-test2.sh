@@ -59,4 +59,3 @@ final_rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:${remote_ref})
 assert_streq "${rev}" "${final_rev}"
 ${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok delta"
-

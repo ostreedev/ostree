@@ -294,7 +294,7 @@ setup_fake_remote_repo2() {
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo commit \
                   --consume $commit_opts --add-metadata-string version=42.0 -b ${remote_ref} \
                   --tree=dir=files
-    rm files -rf
+    test '!' -d files
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo checkout -U ${remote_ref} files
     (cd files && tar xf ${test_srcdir}/fah-deltadata-new.tar.xz)
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo commit \
