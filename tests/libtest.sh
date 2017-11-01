@@ -229,6 +229,8 @@ ostree_repo_init() {
     fi
 }
 
+# The original one; use setup_fake_remote_repo2 for newer code,
+# down the line we'll try to port tests.
 setup_fake_remote_repo1() {
     mode=$1
     commit_opts=${2:-}
@@ -267,103 +269,47 @@ setup_fake_remote_repo1() {
     export OSTREE="${CMD_PREFIX} ostree --repo=repo"
 }
 
-# Set up a large repository for stress testing.
-# Something like the Fedora Atomic Workstation branch which has
-# objects: meta: 7497 content: 103541
-# 9443 directories, 7097 symlinks, 112832 regfiles
-# So we'll make ~11 files per dir, with one of them a symlink
-# Actually, let's cut this down to 1/3 which is still useful.  So:
-# 3147 dirs, with still ~11 files per dir, for 37610 content objects
-setup_exampleos_repo() {
-    args=${1:-}
-    cd ${test_tmpdir}
+# Newer version of the above with more "real" data
+setup_fake_remote_repo2() {
+    mode=$1
+    commit_opts=${2:-}
+    args=${3:-}
+    shift
+    oldpwd=`pwd`
     mkdir ostree-srv
-    mkdir -p ostree-srv/exampleos/{repo,build-repo}
-    export ORIGIN_REPO=ostree-srv/exampleos/repo
-    export ORIGIN_BUILD_REPO=ostree-srv/exampleos/build-repo
-    ostree_repo_init ${ORIGIN_REPO} --mode=archive
-    ostree_repo_init ${ORIGIN_BUILD_REPO} --mode=bare-user
+    cd ostree-srv
+    mkdir repo
+    ostree_repo_init repo --mode=$mode
+    # Backcompat
+    ln -sr repo gnomerepo
+    # Initialize content
+    mkdir files
+    cd files
+    mkdir -p usr/{etc,bin,lib,share}
+    ln -sr usr/bin bin
+    ln -sr usr/lib lib
+    tar xf ${test_srcdir}/fah-deltadata-old.tar.xz
+    remote_ref=exampleos/42/x86_64/main
+    cd ..
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo commit \
+                  --consume $commit_opts --add-metadata-string version=42.0 -b ${remote_ref} \
+                  --tree=dir=files
+    test '!' -d files
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo checkout -U ${remote_ref} files
+    (cd files && tar xf ${test_srcdir}/fah-deltadata-new.tar.xz)
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/repo commit \
+                  --consume $commit_opts --add-metadata-string version=42.1 -b ${remote_ref} \
+                  --tree=dir=files
+
+    # And serve via HTTP
     cd ${test_tmpdir}
-    rm main -rf
-    mkdir main
-    cd main
-    ndirs=3147
-    depth=0
-    set +x  # No need to spam the logs for this
-    echo "$(date): Generating initial content..."
-    while [ $ndirs -gt 0 ]; do
-        # 2/3 of the time, recurse a dir, up to a max of 9, otherwise back up
-        x=$(($ndirs % 3))
-        case $x in
-            0) if [ $depth -gt 0 ]; then cd ..; depth=$((depth-1)); fi ;;
-            1|2) if [ $depth -lt 9 ]; then
-                         mkdir dir-${ndirs}
-                         cd dir-${ndirs}
-                         depth=$((depth+1))
-                     else
-                         if [ $depth -gt 0 ]; then cd ..; depth=$((depth-1)); fi
-                 fi ;;
-        esac
-        # One symlink - we use somewhat predictable content to have dupes
-        ln -s $(($x % 20)) link-$ndirs
-        # 10 files
-        nfiles=10
-        while [ $nfiles -gt 0 ]; do
-            echo file-$ndirs-$nfiles > f$ndirs-$nfiles
-            # Make an unreadable file to trigger https://github.com/ostreedev/ostree/pull/634
-            if [ $(($x % 10)) -eq 0 ]; then
-                chmod 0600 f$ndirs-$nfiles
-            fi
-            nfiles=$((nfiles-1))
-        done
-        ndirs=$((ndirs-1))
-    done
-    cd ${test_tmpdir}
-    set -x
-
-    export REF=exampleos/42/standard
-
-    ${CMD_PREFIX} ostree --repo=${ORIGIN_BUILD_REPO} commit -b ${REF} --tree=dir=main
-    rm main -rf
-    ${CMD_PREFIX} ostree --repo=${ORIGIN_BUILD_REPO} checkout ${REF} main
-
-    find main > files.txt
-    nfiles=$(wc -l files.txt | cut -f 1 -d ' ')
-    # We'll make 5 more commits
-    for iter in $(seq 5); do
-        set +x
-        # Change 10% of files
-        for fiter in $(seq $(($nfiles / 10))); do
-            filenum=$(($RANDOM % ${nfiles}))
-            set +o pipefail
-            filename=$(tail -n +${filenum} < files.txt | head -1)
-            set -o pipefail
-            if test -f $filename; then
-                rm -f $filename
-                echo file-${iter}-${fiter} > ${filename}
-            fi
-        done
-        set -x
-        ${CMD_PREFIX} ostree --repo=${ORIGIN_BUILD_REPO} commit --link-checkout-speedup -b ${REF} --tree=dir=main
-    done
-
-    ${CMD_PREFIX} ostree --repo=${ORIGIN_REPO} pull-local --depth=-1 ${ORIGIN_BUILD_REPO}
-
-    for x in "^^" "^" ""; do
-        ${CMD_PREFIX} ostree --repo=${ORIGIN_REPO} static-delta generate --from="${REF}${x}^" --to="${REF}${x}"
-    done
-    ${CMD_PREFIX} ostree --repo=${ORIGIN_REPO} summary -u
-
-    cd ${test_tmpdir}/ostree-srv
-    mkdir httpd
-    ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd/httpd.log --daemonize -p httpd/port $args
-    port=$(cat httpd/port)
-    echo "http://127.0.0.1:${port}" > httpd/address
-
-    cd ${test_tmpdir}
-    rm repo -rf
-    ostree_repo_init repo --mode=bare-user
-    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat ostree-srv/httpd/address)/exampleos/repo
+    mkdir ${test_tmpdir}/httpd
+    cd httpd
+    ln -s ${test_tmpdir}/ostree-srv ostree
+    ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd.log --daemonize -p ${test_tmpdir}/httpd-port $args
+    port=$(cat ${test_tmpdir}/httpd-port)
+    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
+    cd ${oldpwd}
     export OSTREE="${CMD_PREFIX} ostree --repo=repo"
 }
 
