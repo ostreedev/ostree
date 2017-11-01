@@ -3045,7 +3045,7 @@ initiate_delta_request (OtPullData *pull_data,
 
   _ostree_fetcher_request_to_membuf (pull_data->fetcher,
                                      pull_data->content_mirrorlist,
-                                     delta_name, 0,
+                                     delta_name, OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
                                      OSTREE_MAX_METADATA_SIZE,
                                      0, pull_data->cancellable,
                                      on_superblock_fetched, fdata);
