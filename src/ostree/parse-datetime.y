@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <glib.h>
+#include <stdint.h>
 
 /* There's no need to extend the stack, so there's no need to involve
    alloca.  */
@@ -54,11 +55,11 @@ xmemdup (void const *p, size_t s)
 static void
 gettime (struct timespec *ts)
  {
-#if HAVE_NANOTIME
+#ifdef HAVE_NANOTIME
    nanotime (ts);
 #else
 
-# if defined CLOCK_REALTIME && HAVE_CLOCK_GETTIME
+# if defined(CLOCK_REALTIME) && defined(HAVE_CLOCK_GETTIME)
    if (clock_gettime (CLOCK_REALTIME, ts) == 0)
      return;
 # endif
@@ -134,13 +135,6 @@ gettime (struct timespec *ts)
 
 #define HOUR(x) ((x) * 60)
 
-/* long_time_t is a signed integer type that contains all time_t values.  */
-#if TIME_T_FITS_IN_LONG_INT
-typedef long int long_time_t;
-#else
-typedef time_t long_time_t;
-#endif
-
 /* Convert a possibly-signed character to an unsigned character.  This is
    a bit safer than casting to unsigned char, since it catches some type
    errors that the cast doesn't.  */
@@ -180,15 +174,11 @@ typedef struct
   long int day;
   long int hour;
   long int minutes;
-  long_time_t seconds;
-  long int ns;
+  intmax_t seconds;
+  int ns;
 } relative_time;
 
-#if HAVE_COMPOUND_LITERALS
-# define RELATIVE_TIME_0 ((relative_time) { 0, 0, 0, 0, 0, 0, 0 })
-#else
-static relative_time const RELATIVE_TIME_0;
-#endif
+#define RELATIVE_TIME_0 ((relative_time) { 0, 0, 0, 0, 0, 0, 0 })
 
 /* Information passed to and from the parser.  */
 typedef struct
@@ -955,7 +945,8 @@ lookup_zone (parser_control const *pc, char const *name)
   return NULL;
 }
 
-#if ! HAVE_TM_GMTOFF
+// #if ! HAVE_TM_GMTOFF
+#if 1 // Always true for us
 /* Yield the difference between *A and *B,
    measured in seconds, ignoring leap seconds.
    The body of this function is taken directly from the GNU C Library;
@@ -1580,10 +1571,10 @@ parse_datetime (struct timespec *result, char const *p,
         time_t t1 = t0 + d1;
         long int d2 = 60 * pc.rel.minutes;
         time_t t2 = t1 + d2;
-        long_time_t d3 = pc.rel.seconds;
-        long_time_t t3 = t2 + d3;
+        intmax_t d3 = pc.rel.seconds;
+        intmax_t t3 = t2 + d3;
         long int d4 = (sum_ns - normalized_ns) / BILLION;
-        long_time_t t4 = t3 + d4;
+        intmax_t t4 = t3 + d4;
         time_t t5 = t4;
 
         if ((d1 / (60 * 60) ^ pc.rel.hour)
@@ -1611,39 +1602,3 @@ parse_datetime (struct timespec *result, char const *p,
     free (tz0);
   return ok;
 }
-
-#if TEST
-
-int
-main (int ac, char **av)
-{
-  char buff[BUFSIZ];
-
-  printf ("Enter date, or blank line to exit.\n\t> ");
-  fflush (stdout);
-
-  buff[BUFSIZ - 1] = '\0';
-  while (fgets (buff, BUFSIZ - 1, stdin) && buff[0])
-    {
-      struct timespec d;
-      struct tm const *tm;
-      if (! parse_datetime (&d, buff, NULL))
-        printf ("Bad format - couldn't convert.\n");
-      else if (! (tm = localtime (&d.tv_sec)))
-        {
-          long int sec = d.tv_sec;
-          printf ("localtime (%ld) failed\n", sec);
-        }
-      else
-        {
-          int ns = d.tv_nsec;
-          printf ("%04ld-%02d-%02d %02d:%02d:%02d.%09d\n",
-                  tm->tm_year + 1900L, tm->tm_mon + 1, tm->tm_mday,
-                  tm->tm_hour, tm->tm_min, tm->tm_sec, ns);
-        }
-      printf ("\t> ");
-      fflush (stdout);
-    }
-  return 0;
-}
-#endif /* TEST */
