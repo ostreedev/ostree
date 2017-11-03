@@ -54,7 +54,7 @@ src/libostree/ostree-enumtypes.h: src/libostree/ostree-enumtypes.h.template $(EN
 	--template $< \
 	$(ENUM_TYPES) > $@.tmp && mv $@.tmp $@
 
-src/libostree/ostree-enumtypes.c: src/libostree/ostree-enumtypes.c.template $(ENUM_TYPES)
+src/libostree/ostree-enumtypes.c: src/libostree/ostree-enumtypes.c.template src/libostree/ostree-enumtypes.h $(ENUM_TYPES)
 	$(AM_V_GEN) $(GLIB_MKENUMS) \
 	--template $< \
 	$(ENUM_TYPES) > $@.tmp && mv $@.tmp $@
