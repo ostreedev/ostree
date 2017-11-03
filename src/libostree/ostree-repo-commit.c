@@ -986,13 +986,16 @@ write_metadata_object (OstreeRepo         *self,
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
       GError *local_error = NULL;
-      /* If we are writing a commit, be sure there is no tombstone for it.
-         We may have deleted the commit and now we are trying to pull it again.  */
-      if (!ostree_repo_delete_object (self,
-                                      OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
-                                      actual_checksum,
-                                      cancellable,
-                                      &local_error))
+      /* If we are writing a commit, be sure there is no tombstone for it. We
+       * may have deleted the commit and now we are trying to pull it again.
+       * Delete with a shared lock here so concurrent commits and pulls aren't
+       * prevented.
+       */
+      if (!_ostree_repo_delete_object_shared (self,
+                                              OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
+                                              actual_checksum,
+                                              cancellable,
+                                              &local_error))
         {
           if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             g_clear_error (&local_error);
@@ -1203,7 +1206,9 @@ ostree_repo_scan_hardlinks (OstreeRepo    *self,
  * ostree_repo_abort_transaction().
  *
  * Currently, transactions are not atomic, and aborting a transaction
- * will not erase any data you  write during the transaction.
+ * will not erase any data you write during the transaction.
+ *
+ * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
@@ -1213,6 +1218,11 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 {
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
+
+  self->txn_locked = ostree_repo_lock_push (self, OSTREE_REPO_LOCK_SHARED,
+                                            cancellable, error);
+  if (!self->txn_locked)
+    return FALSE;
 
   memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
 
@@ -1699,6 +1709,13 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if (!ot_ensure_unlinked_at (self->repo_dir_fd, "transaction", 0))
     return FALSE;
 
+  if (self->txn_locked)
+    {
+      if (!ostree_repo_lock_pop (self, cancellable, error))
+        return FALSE;
+      self->txn_locked = FALSE;
+    }
+
   if (out_stats)
     *out_stats = self->txn_stats;
 
@@ -1738,6 +1755,13 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   glnx_release_lock_file (&self->commit_stagedir_lock);
 
   self->in_transaction = FALSE;
+
+  if (self->txn_locked)
+    {
+      if (!ostree_repo_lock_pop (self, cancellable, error))
+        return FALSE;
+      self->txn_locked = FALSE;
+    }
 
   return TRUE;
 }
@@ -2355,6 +2379,8 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
  * Replace any existing metadata associated with commit referred to by
  * @checksum with @metadata.  If @metadata is %NULL, then existing
  * data will be deleted.
+ *
+ * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
@@ -2363,6 +2389,13 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
                                             GCancellable    *cancellable,
                                             GError         **error)
 {
+  /* Take shared lock so associated commit doesn't get deleted */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   int dest_dfd;
   if (self->in_transaction)
     dest_dfd = self->commit_stagedir.fd;

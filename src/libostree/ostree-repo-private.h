@@ -37,6 +37,9 @@ G_BEGIN_DECLS
 #define _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS 8
 #define _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS 2
 
+/* Keep this in sync with the man page for the core.lock-timeout option. */
+#define _OSTREE_DEFAULT_LOCK_TIMEOUT_SECONDS 30
+
 /* In most cases, writing to disk should be much faster than
  * fetching from the network, so we shouldn't actually hit
  * this. But if using pipelining and e.g. pulling over LAN
@@ -109,6 +112,7 @@ struct OstreeRepo {
   GWeakRef sysroot; /* Weak to avoid a circular ref; see also `is_system` */
   char *remotes_config_dir;
 
+  gboolean txn_locked;
   GHashTable *txn_refs;  /* (element-type utf8 utf8) */
   GHashTable *txn_collection_refs;  /* (element-type OstreeCollectionRef utf8) */
   GMutex txn_stats_lock;
@@ -153,6 +157,7 @@ struct OstreeRepo {
   guint64 tmp_expiry_seconds;
   gchar *collection_id;
   gboolean add_remotes_config_dir; /* Add new remotes in remotes.d dir */
+  gint lock_timeout_seconds;
 
   OstreeRepo *parent_repo;
 };
@@ -413,7 +418,41 @@ _ostree_repo_get_remote_inherited (OstreeRepo  *self,
                                    const char  *name,
                                    GError     **error);
 
+gboolean
+_ostree_repo_delete_object_shared (OstreeRepo        *self,
+                                   OstreeObjectType   objtype,
+                                   const char        *sha256,
+                                   GCancellable      *cancellable,
+                                   GError           **error);
+
+
 #ifndef OSTREE_ENABLE_EXPERIMENTAL_API
+
+typedef enum {
+  OSTREE_REPO_LOCK_SHARED,
+  OSTREE_REPO_LOCK_EXCLUSIVE
+} OstreeRepoLockType;
+
+gboolean      ostree_repo_lock_push (OstreeRepo          *self,
+                                     OstreeRepoLockType   lock_type,
+                                     GCancellable        *cancellable,
+                                     GError             **error);
+gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
+                                    GCancellable  *cancellable,
+                                    GError       **error);
+
+typedef OstreeRepo OstreeRepoAutoLock;
+
+OstreeRepoAutoLock * ostree_repo_auto_lock_push (OstreeRepo          *self,
+                                                 OstreeRepoLockType   lock_type,
+                                                 GCancellable        *cancellable,
+                                                 GError             **error);
+void          ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, ostree_repo_auto_lock_cleanup)
+
+gint          ostree_repo_get_lock_timeout (OstreeRepo *self);
+gboolean      ostree_repo_set_lock_timeout (OstreeRepo *self,
+                                            gint        timeout);
 
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,

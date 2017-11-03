@@ -105,6 +105,22 @@ Boston, MA 02111-1307, USA.
                   Prints the full path to the deployment directory for the currently active deployment in the specified sysroot to standard out. This is incompatible with specifying a subcommand.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+              <term><option>--lock-timeout</option>=TIMEOUT</term>
+
+              <listitem>
+                <para>
+                  Some <command>ostree admin</command> commands require the
+                  repository to be locked while operating. This option sets
+                  the repository lock timeout to TIMEOUT seconds. If TIMEOUT
+                  is <literal>0</literal>, then one attempt to acquire or
+                  remove the lock will be made without waiting to try again.
+                  If TIMEOUT is <literal>-1</literal>, then the locking will
+                  block indefinitely. All other negative values are an error.
+                </para>
+              </listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 </refentry>

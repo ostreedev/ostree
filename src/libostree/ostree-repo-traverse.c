@@ -23,6 +23,7 @@
 
 #include "libglnx.h"
 #include "ostree.h"
+#include "ostree-repo-private.h"
 #include "otutil.h"
 
 struct _OstreeRepoRealCommitTraverseIter {
@@ -437,6 +438,8 @@ traverse_dirtree (OstreeRepo           *repo,
  *
  * Update the set @inout_reachable containing all objects reachable
  * from @commit_checksum, traversing @maxdepth parent commits.
+ *
+ * This function takes a shared lock on the @repo repository.
  */
 gboolean
 ostree_repo_traverse_commit_union (OstreeRepo      *repo,
@@ -446,6 +449,12 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
                                    GCancellable    *cancellable,
                                    GError         **error)
 {
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_SHARED,
+                                     cancellable, error);
+  if (!lock)
+    return FALSE;
+
   gboolean ret = FALSE;
   g_autofree char *tmp_checksum = NULL;
 
@@ -527,6 +536,8 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
  *
  * Create a new set @out_reachable containing all objects reachable
  * from @commit_checksum, traversing @maxdepth parent commits.
+ *
+ * This function takes a shared lock on the @repo repository.
  */
 gboolean
 ostree_repo_traverse_commit (OstreeRepo      *repo,

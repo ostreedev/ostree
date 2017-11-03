@@ -20,17 +20,34 @@
 #pragma once
 
 #include "ostree-types.h"
+/* This is only needed to get the OstreeRepoLockType and OstreeRepoAutoLock
+ * types. This should be removed once they're no longer experimental.
+ */
+#include "ostree-repo-private.h"
 
 G_BEGIN_DECLS
 
 gboolean _ostree_impl_system_generator (const char *ostree_cmdline, const char *normal_dir, const char *early_dir, const char *late_dir, GError **error);
 
+/**
+ * OstreeCmdPrivateVTable: (skip)
+ *
+ * Function table to share private API between the OSTree commandline and the
+ * library. Don't use this.
+ */
 typedef struct {
   gboolean (* ostree_system_generator) (const char *ostree_cmdline, const char *normal_dir, const char *early_dir, const char *late_dir, GError **error);
   gboolean (* ostree_generate_grub2_config) (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_dump) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_query_exists) (OstreeRepo *repo, const char *delta_id, gboolean *out_exists, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_delete) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
+  /* Remove this when ostree_repo_set_lock_timeout is no longer experimental */
+  gboolean (* ostree_repo_set_lock_timeout) (OstreeRepo *repo, gint timeout);
+  /* Remove these when ostree_repo_auto_lock_push and
+   * ostree_repo_auto_lock_cleanup are no longer experimental
+   */
+  OstreeRepoAutoLock * (* ostree_repo_auto_lock_push) (OstreeRepo *repo, OstreeRepoLockType lock_type, GCancellable *cancellable, GError **error);
+  void (* ostree_repo_auto_lock_cleanup) (OstreeRepoAutoLock *lock);
 } OstreeCmdPrivateVTable;
 
 /* Note this not really "public", we just export the symbol, but not the header */

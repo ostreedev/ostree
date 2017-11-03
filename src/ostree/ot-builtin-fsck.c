@@ -223,6 +223,16 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
 
+  /* Although the operations will obtain locks as needed, take an exclusive
+   * lock now to ensure no one else is changing the repo.
+   */
+  if (!opt_quiet)
+    g_print ("Locking repository exclusively...\n");
+  g_autoptr(OtRepoAutoLock) lock = NULL;
+  lock = ot_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+  if (!lock)
+    return FALSE;
+
   if (!opt_quiet)
     g_print ("Validating refs...\n");
 

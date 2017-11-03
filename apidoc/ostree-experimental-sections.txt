@@ -87,6 +87,13 @@ ostree_repo_finder_override_get_type
 
 <SECTION>
 <FILE>ostree-misc-experimental</FILE>
+ostree_repo_lock_push
+ostree_repo_lock_pop
+OstreeRepoAutoLock
+ostree_repo_auto_lock_push
+ostree_repo_auto_lock_cleanup
+ostree_repo_get_lock_timeout
+ostree_repo_set_lock_timeout
 ostree_repo_get_collection_id
 ostree_repo_set_collection_id
 ostree_validate_collection_id
