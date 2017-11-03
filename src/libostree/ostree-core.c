@@ -278,7 +278,7 @@ ostree_validate_remote_name (const char  *remote_name,
 
 /**
  * ostree_validate_collection_id:
- * @rev: (nullable): A collection ID
+ * @collection_id: (nullable): A collection ID
  * @error: Error
  *
  * Check whether the given @collection_id is valid. Return an error if it is
