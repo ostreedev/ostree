@@ -41,7 +41,7 @@ AM_TESTS_ENVIRONMENT += OT_SKIP_READDIR_RAND=1 G_SLICE=always-malloc
 endif
 
 uninstalled_test_data = tests/ostree-symlink-stamp tests/ostree-prepare-root-symlink-stamp \
-			tests/ostree-remount-symlink-stamp tests/rofiles-fuse-symlink-stamp
+			tests/ostree-remount-symlink-stamp
 
 dist_uninstalled_test_scripts = tests/test-symbols.sh tests/coccinelle.sh
 
@@ -143,6 +143,7 @@ endif
 
 if BUILDOPT_FUSE
 _installed_or_uninstalled_test_scripts += tests/test-rofiles-fuse.sh
+uninstalled_test_data += tests/rofiles-fuse-symlink-stamp
 else
 EXTRA_DIST += tests/test-rofiles-fuse.sh
 endif
