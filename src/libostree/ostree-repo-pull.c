@@ -2325,19 +2325,39 @@ process_one_static_delta (OtPullData                 *pull_data,
   return ret;
 }
 
-/* Loop over the static delta data we got from the summary,
- * and find the newest commit for @out_from_revision that
- * goes to @to_revision.
+/*
+ * DELTA_SEARCH_RESULT_UNCHANGED:
+ * We already have the commit.
  *
- * Additionally, @out_have_scratch_delta will be set to %TRUE
- * if there is a %NULL → @to_revision delta, also known as
+ * DELTA_SEARCH_RESULT_NO_MATCH:
+ * No deltas were found.
+ *
+ * DELTA_SEARCH_RESULT_FROM:
+ * A regular delta was found, and the "from" revision will be
+ * set in `from_revision`.
+ *
+ * DELTA_SEARCH_RESULT_SCRATCH:
+ * There is a %NULL → @to_revision delta, also known as
  * a "from scratch" delta.
+ */
+typedef struct {
+  enum {
+    DELTA_SEARCH_RESULT_UNCHANGED,
+    DELTA_SEARCH_RESULT_NO_MATCH,
+    DELTA_SEARCH_RESULT_FROM,
+    DELTA_SEARCH_RESULT_SCRATCH,
+  } result;
+  char from_revision[OSTREE_SHA256_STRING_LEN+1];
+} DeltaSearchResult;
+
+/* Loop over the static delta data we got from the summary,
+ * and find the a delta path (if available) that goes to @to_revision.
+ * See the enum in `DeltaSearchResult` for available result types.
  */
 static gboolean
 get_best_static_delta_start_for (OtPullData *pull_data,
                                  const char *to_revision,
-                                 gboolean   *out_have_scratch_delta,
-                                 char      **out_from_revision,
+                                 DeltaSearchResult   *out_result,
                                  GCancellable *cancellable,
                                  GError      **error)
 {
@@ -2348,7 +2368,28 @@ get_best_static_delta_start_for (OtPullData *pull_data,
 
   g_assert (pull_data->summary_deltas_checksums != NULL);
 
-  *out_have_scratch_delta = FALSE;
+  out_result->result = DELTA_SEARCH_RESULT_NO_MATCH;
+  out_result->from_revision[0] = '\0';
+
+  /* First, do we already have this commit completely downloaded? */
+  gboolean have_to_rev;
+  if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT,
+                               to_revision, &have_to_rev,
+                               cancellable, error))
+    return FALSE;
+  if (have_to_rev)
+    {
+      OstreeRepoCommitState to_rev_state;
+      if (!ostree_repo_load_commit (pull_data->repo, to_revision,
+                                    NULL, &to_rev_state, error))
+        return FALSE;
+      if (!(to_rev_state & OSTREE_REPO_COMMIT_STATE_PARTIAL))
+        {
+          /* We already have this commit, we're done! */
+          out_result->result = DELTA_SEARCH_RESULT_UNCHANGED;
+          return TRUE;  /* Early return */
+        }
+    }
 
   /* Loop over all deltas known from the summary file,
    * finding ones which go to to_revision */
@@ -2366,9 +2407,17 @@ get_best_static_delta_start_for (OtPullData *pull_data,
         continue;
 
       if (cur_from_rev)
-        g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
+        {
+          g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
+        }
       else
-        *out_have_scratch_delta = TRUE;
+        {
+          /* We note that we have a _SCRATCH delta here, but we'll prefer using
+           * "from" deltas (obviously, they'll be smaller) where possible if we
+           * find one below.
+           */
+          out_result->result = DELTA_SEARCH_RESULT_SCRATCH;
+        }
     }
 
   /* Loop over our candidates, find the newest one */
@@ -2407,7 +2456,11 @@ get_best_static_delta_start_for (OtPullData *pull_data,
         }
     }
 
-  *out_from_revision = g_strdup (newest_candidate);
+  if (newest_candidate)
+    {
+      out_result->result = DELTA_SEARCH_RESULT_FROM;
+      memcpy (out_result->from_revision, newest_candidate, OSTREE_SHA256_STRING_LEN+1);
+    }
   return TRUE;
 }
 
@@ -3082,25 +3135,45 @@ initiate_request (OtPullData                 *pull_data,
   /* If we have a summary, we can use the newer logic */
   if (pull_data->summary)
     {
-      gboolean have_scratch_delta = FALSE;
+      DeltaSearchResult deltares;
 
       /* Look for a delta to @to_revision in the summary data */
-      if (!get_best_static_delta_start_for (pull_data, to_revision,
-                                            &have_scratch_delta, &delta_from_revision,
+      if (!get_best_static_delta_start_for (pull_data, to_revision, &deltares,
                                             pull_data->cancellable, error))
         return FALSE;
 
-      if (delta_from_revision)   /* Did we find a delta FROM commit? */
-        initiate_delta_request (pull_data, delta_from_revision, to_revision, ref);
-      else if (have_scratch_delta)    /* No delta FROM, do we have a scratch? */
-        initiate_delta_request (pull_data, NULL, to_revision, ref);
-      else if (pull_data->require_static_deltas) /* No deltas found; are they required? */
+      switch (deltares.result)
         {
-          set_required_deltas_error (error, (ref != NULL) ? ref->ref_name : "", to_revision);
-          return FALSE;
+        case DELTA_SEARCH_RESULT_NO_MATCH:
+          {
+            if (pull_data->require_static_deltas) /* No deltas found; are they required? */
+              {
+                set_required_deltas_error (error, (ref != NULL) ? ref->ref_name : "", to_revision);
+                return FALSE;
+              }
+            else /* No deltas, fall back to object fetches. */
+              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
+          }
+          break;
+        case DELTA_SEARCH_RESULT_FROM:
+          initiate_delta_request (pull_data, deltares.from_revision, to_revision, ref);
+          break;
+        case DELTA_SEARCH_RESULT_SCRATCH:
+          initiate_delta_request (pull_data, NULL, to_revision, ref);
+          break;
+        case DELTA_SEARCH_RESULT_UNCHANGED:
+          {
+            /* If we already have the commit, here things get a little special; we've historically
+             * fetched detached metadata, so let's keep doing that.  But in the --require-static-deltas
+             * path, we don't, under the assumption the user wants as little network traffic as
+             * possible.
+             */
+            if (pull_data->require_static_deltas)
+              break;
+            else
+              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
+          }
         }
-      else /* No deltas, fall back to object fetches. */
-        queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
     }
   else if (ref != NULL)
     {

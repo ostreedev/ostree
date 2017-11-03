@@ -381,6 +381,12 @@ fi
 ${CMD_PREFIX} ostree --repo=repo fsck
 done
 
+# Test no-op with deltas: https://github.com/ostreedev/ostree/issues/1321
+cd ${test_tmpdir}
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main
+
 cd ${test_tmpdir}
 repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
