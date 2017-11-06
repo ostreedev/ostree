@@ -2326,6 +2326,9 @@ process_one_static_delta (OtPullData                 *pull_data,
 }
 
 /*
+ * DELTA_SEARCH_RESULT_UNCHANGED:
+ * We already have the commit.
+ *
  * DELTA_SEARCH_RESULT_NO_MATCH:
  * No deltas were found.
  *
@@ -2336,17 +2339,13 @@ process_one_static_delta (OtPullData                 *pull_data,
  * DELTA_SEARCH_RESULT_SCRATCH:
  * There is a %NULL → @to_revision delta, also known as
  * a "from scratch" delta.
- *
- * DELTA_SEARCH_RESULT_UNCHANGED:
- * There is a %NULL → @to_revision delta, also known as
- * a "from scratch" delta.
  */
 typedef struct {
   enum {
+    DELTA_SEARCH_RESULT_UNCHANGED,
     DELTA_SEARCH_RESULT_NO_MATCH,
     DELTA_SEARCH_RESULT_FROM,
     DELTA_SEARCH_RESULT_SCRATCH,
-    DELTA_SEARCH_RESULT_UNCHANGED
   } result;
   char from_revision[OSTREE_SHA256_STRING_LEN+1];
 } DeltaSearchResult;
@@ -2369,7 +2368,8 @@ get_best_static_delta_start_for (OtPullData *pull_data,
 
   g_assert (pull_data->summary_deltas_checksums != NULL);
 
-  memset (out_result, 0, sizeof (*out_result));
+  out_result->result = DELTA_SEARCH_RESULT_NO_MATCH;
+  out_result->from_revision[0] = '\0';
 
   /* First, do we already have this commit completely downloaded? */
   gboolean have_to_rev;
@@ -2407,9 +2407,17 @@ get_best_static_delta_start_for (OtPullData *pull_data,
         continue;
 
       if (cur_from_rev)
-        g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
+        {
+          g_ptr_array_add (candidates, g_steal_pointer (&cur_from_rev));
+        }
       else
-        out_result->result = DELTA_SEARCH_RESULT_SCRATCH;
+        {
+          /* We note that we have a _SCRATCH delta here, but we'll prefer using
+           * "from" deltas (obviously, they'll be smaller) where possible if we
+           * find one below.
+           */
+          out_result->result = DELTA_SEARCH_RESULT_SCRATCH;
+        }
     }
 
   /* Loop over our candidates, find the newest one */
