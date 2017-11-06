@@ -61,8 +61,8 @@ read_config()
 
 populate_menu()
 {
-    # Default to /boot if OSTREE_BOOT_PARTITION is not set
-    if [ -z ${OSTREE_BOOT_PARTITION+x} ]; then
+    # Default to /boot if OSTREE_BOOT_PARTITION is not set and /boot and / are on the save device
+    if [ -z ${OSTREE_BOOT_PARTITION+x} ] && [ $(df / /boot|awk '{print $1}'|uniq|wc -l) -eq 2 ]; then
         boot_prefix="/boot"
     else
         boot_prefix="${OSTREE_BOOT_PARTITION}"
