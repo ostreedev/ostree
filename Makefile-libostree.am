@@ -52,12 +52,14 @@ ENUM_TYPES += $(srcdir)/src/libostree/ostree-fetcher.h
 src/libostree/ostree-enumtypes.h: src/libostree/ostree-enumtypes.h.template $(ENUM_TYPES)
 	$(AM_V_GEN) $(GLIB_MKENUMS) \
 	--template $< \
-	$(ENUM_TYPES) > $@.tmp && mv $@.tmp $@
+	--output $@ \
+	$(ENUM_TYPES)
 
 src/libostree/ostree-enumtypes.c: src/libostree/ostree-enumtypes.c.template src/libostree/ostree-enumtypes.h $(ENUM_TYPES)
 	$(AM_V_GEN) $(GLIB_MKENUMS) \
 	--template $< \
-	$(ENUM_TYPES) > $@.tmp && mv $@.tmp $@
+	--output $@ \
+	$(ENUM_TYPES)
 
 nodist_libostree_1_la_SOURCES = \
 	src/libostree/ostree-enumtypes.h \
