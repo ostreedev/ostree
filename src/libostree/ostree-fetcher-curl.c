@@ -167,6 +167,7 @@ _ostree_fetcher_finalize (GObject *object)
 {
   OstreeFetcher *self = OSTREE_FETCHER (object);
 
+  curl_multi_cleanup (self->multi);
   g_free (self->remote_name);
   g_free (self->cookie_jar_path);
   g_free (self->proxy);
@@ -177,7 +178,6 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_pointer (&self->timer_event, (GDestroyNotify)destroy_and_unref_source);
   if (self->mainctx)
     g_main_context_unref (self->mainctx);
-  curl_multi_cleanup (self->multi);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
