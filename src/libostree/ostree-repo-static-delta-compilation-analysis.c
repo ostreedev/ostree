@@ -217,6 +217,30 @@ string_array_nonempty_intersection (GPtrArray    *a,
   return FALSE;
 }
 
+static gboolean
+sizename_is_delta_candidate (OstreeDeltaContentSizeNames *sizename)
+{
+  /* Don't build candidates for the empty object */
+  if (sizename->size == 0)
+    return FALSE;
+
+  /* Look for known non-delta-able files (currently just compression like xz) */
+  for (guint i = 0; i < sizename->basenames->len; i++)
+    {
+      const char *name = sizename->basenames->pdata[i];
+      /* We could replace this down the line with g_content_type_guess() or so,
+       * but it's not clear to me that's a major win; we'd still need to
+       * maintain a list of compression formats, and this doesn't require
+       * allocation.
+       */
+      if (g_str_has_suffix (name, ".xz"))
+        return FALSE;
+    }
+
+  /* Let's try it */
+  return TRUE;
+}
+
 /*
  * Build up a map of files with matching basenames and similar size,
  * and use it to find apparently similar objects.
@@ -258,7 +282,7 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
                                          &to_sizes,
                                          cancellable, error))
     goto out;
-  
+
   /* Iterate over all newly added objects, find objects which have
    * similar basename and sizes.
    *
@@ -278,7 +302,7 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
         (1.0+similarity_percent_threshold/100.0);
 
       /* Don't build candidates for the empty object */
-      if (to_sizenames->size == 0)
+      if (!sizename_is_delta_candidate (to_sizenames))
         continue;
 
       for (fuzzy = 0; fuzzy < 2 && !found; fuzzy++)
@@ -286,12 +310,8 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
           for (j = lower; j < upper; j++)
             {
               OstreeDeltaContentSizeNames *from_sizenames = from_sizes->pdata[j];
-
-              /* Don't build candidates for the empty object */
-              if (from_sizenames->size == 0)
-                {
-                  continue;
-                }
+              if (!sizename_is_delta_candidate (from_sizenames))
+                continue;
 
               if (from_sizenames->size < min_threshold)
                 {
