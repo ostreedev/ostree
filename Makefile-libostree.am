@@ -49,6 +49,7 @@ libostreeinclude_HEADERS = $(libostree_public_headers) $(libostree_public_built_
 ENUM_TYPES = $(NULL)
 ENUM_TYPES += $(srcdir)/src/libostree/ostree-fetcher.h
 
+# TODO: GLIB_CHECK_VERSION > 2.5x: use --output instead of mv (see https://github.com/ostreedev/ostree/pull/1329)
 src/libostree/ostree-enumtypes.h: src/libostree/ostree-enumtypes.h.template $(ENUM_TYPES)
 	$(AM_V_GEN) $(GLIB_MKENUMS) \
 	--template $< \
