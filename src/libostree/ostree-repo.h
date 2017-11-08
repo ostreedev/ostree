@@ -540,6 +540,7 @@ gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   GError       **error);
 
 typedef enum {
+  OSTREE_REPO_COMMIT_STATE_NORMAL = 0,
   OSTREE_REPO_COMMIT_STATE_PARTIAL = (1 << 0),
 } OstreeRepoCommitState;
 
