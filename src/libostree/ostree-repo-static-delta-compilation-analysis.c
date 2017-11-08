@@ -232,8 +232,15 @@ sizename_is_delta_candidate (OstreeDeltaContentSizeNames *sizename)
        * but it's not clear to me that's a major win; we'd still need to
        * maintain a list of compression formats, and this doesn't require
        * allocation.
+       * NB: We explicitly don't have .gz here in case someone might be
+       * using --rsyncable for that.
        */
-      if (g_str_has_suffix (name, ".xz"))
+      const char *dot = g_strrchr (name, '.');
+      if (!dot)
+        continue;
+      const char *extension = dot+1;
+      /* Don't add .gz here, see above */
+      if (g_str_equal (extension, "xz") || g_str_equal (extension, "bz2"))
         return FALSE;
     }
 
@@ -301,7 +308,6 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
       const guint64 max_threshold = to_sizenames->size *
         (1.0+similarity_percent_threshold/100.0);
 
-      /* Don't build candidates for the empty object */
       if (!sizename_is_delta_candidate (to_sizenames))
         continue;
 
