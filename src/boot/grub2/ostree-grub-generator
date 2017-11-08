@@ -61,8 +61,8 @@ read_config()
 
 populate_menu()
 {
-    # Default to /boot if OSTREE_BOOT_PARTITION is not set and /boot and / are on the same device
-    if [ -z ${OSTREE_BOOT_PARTITION+x} ] && [ $(df / /boot|awk '{print $1}'|uniq|wc -l) -eq 2 ]; then
+    # Default to /boot if OSTREE_BOOT_PARTITION is not set and /boot is on the same device than ostree/repo
+    if [ -z ${OSTREE_BOOT_PARTITION+x} ] && [ -d /boot/ostree ] && [ -d /ostree/repo ] && [ $(stat -c '%d' /boot/ostree) -eq $(stat -c '%d' /ostree/repo) ]; then
         boot_prefix="/boot"
     else
         boot_prefix="${OSTREE_BOOT_PARTITION}"
