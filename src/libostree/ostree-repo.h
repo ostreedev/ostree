@@ -539,6 +539,18 @@ gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   GVariant     **out_variant,
                                                   GError       **error);
 
+/**
+ * OstreeRepoCommitState:
+ * @OSTREE_REPO_COMMIT_STATE_NORMAL: Commit is complete. This is the default.
+ *    (Since: 2017.14.)
+ * @OSTREE_REPO_COMMIT_STATE_PARTIAL: One or more objects are missing from the
+ *    local copy of the commit, but metadata is present. (Since: 2015.7.)
+ *
+ * Flags representing the state of a commit in the local repository, as returned
+ * by ostree_repo_load_commit().
+ *
+ * Since: 2015.7
+ */
 typedef enum {
   OSTREE_REPO_COMMIT_STATE_NORMAL = 0,
   OSTREE_REPO_COMMIT_STATE_PARTIAL = (1 << 0),
