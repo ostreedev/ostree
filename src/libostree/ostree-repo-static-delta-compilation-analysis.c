@@ -235,7 +235,7 @@ sizename_is_delta_candidate (OstreeDeltaContentSizeNames *sizename)
        * NB: We explicitly don't have .gz here in case someone might be
        * using --rsyncable for that.
        */
-      const char *dot = g_strrchr (name, '.');
+      const char *dot = strrchr (name, '.');
       if (!dot)
         continue;
       const char *extension = dot+1;
