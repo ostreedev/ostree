@@ -55,7 +55,7 @@ assert_file_has_content_literal summary.txt "Timestamp (ostree.commit.timestamp)
 echo "ok view summary"
 
 # Check the summary can be viewed raw too.
-${OSTREE} summary --view --raw > raw-summary.txt
+${OSTREE} summary --raw > raw-summary.txt
 assert_file_has_content_literal raw-summary.txt "('main', ("
 assert_file_has_content_literal raw-summary.txt "('other', ("
 assert_file_has_content_literal raw-summary.txt "{'ostree.summary.last-modified': <uint64"
