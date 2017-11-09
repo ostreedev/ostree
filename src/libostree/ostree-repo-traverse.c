@@ -56,10 +56,6 @@ ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter   *it
 {
   struct _OstreeRepoRealCommitTraverseIter *real =
     (struct _OstreeRepoRealCommitTraverseIter*)iter;
-  gboolean ret = FALSE;
-  const guchar *csum;
-  g_autoptr(GVariant) meta_csum_bytes = NULL;
-  g_autoptr(GVariant) content_csum_bytes = NULL;
 
   memset (real, 0, sizeof (*real));
   real->initialized = TRUE;
@@ -68,21 +64,21 @@ ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter   *it
   real->current_dir = NULL;
   real->idx = 0;
 
+  g_autoptr(GVariant) content_csum_bytes = NULL;
   g_variant_get_child (commit, 6, "@ay", &content_csum_bytes);
-  csum = ostree_checksum_bytes_peek_validate (content_csum_bytes, error);
+  const guchar *csum = ostree_checksum_bytes_peek_validate (content_csum_bytes, error);
   if (!csum)
-    goto out;
+    return FALSE;
   ostree_checksum_inplace_from_bytes (csum, real->checksum_content);
 
+  g_autoptr(GVariant) meta_csum_bytes = NULL;
   g_variant_get_child (commit, 7, "@ay", &meta_csum_bytes);
   csum = ostree_checksum_bytes_peek_validate (meta_csum_bytes, error);
   if (!csum)
-    goto out;
+    return FALSE;
   ostree_checksum_inplace_from_bytes (csum, real->checksum_meta);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -312,8 +308,6 @@ traverse_iter (OstreeRepo                          *repo,
                GCancellable                        *cancellable,
                GError                             **error)
 {
-  gboolean ret = FALSE;
-
   while (TRUE)
     {
       g_autoptr(GVariant) key = NULL;
@@ -330,12 +324,11 @@ traverse_iter (OstreeRepo                          *repo,
               g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
               g_debug ("Ignoring not-found dirmeta");
-              ret = TRUE;
+              return TRUE;  /* Note early return */
             }
-          else
-            g_propagate_error (error, g_steal_pointer (&local_error));
 
-          goto out;
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
         }
       else if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_END)
         break;
@@ -371,16 +364,14 @@ traverse_iter (OstreeRepo                          *repo,
 
               if (!traverse_dirtree (repo, content_checksum, inout_reachable,
                                      ignore_missing_dirs, cancellable, error))
-                goto out;
+                return FALSE;
             }
         }
       else
         g_assert_not_reached ();
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -391,12 +382,9 @@ traverse_dirtree (OstreeRepo           *repo,
                   GCancellable         *cancellable,
                   GError              **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) dirtree = NULL;
-  ostree_cleanup_repo_commit_traverse_iter
-    OstreeRepoCommitTraverseIter iter = { 0, };
   g_autoptr(GError) local_error = NULL;
 
+  g_autoptr(GVariant) dirtree = NULL;
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, checksum,
                                  &dirtree, &local_error))
     {
@@ -404,26 +392,25 @@ traverse_dirtree (OstreeRepo           *repo,
           g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
           g_debug ("Ignoring not-found dirmeta %s", checksum);
-          ret = TRUE;
+          return TRUE; /* Early return */
         }
-      else
-        g_propagate_error (error, g_steal_pointer (&local_error));
 
-      goto out;
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
     }
 
   g_debug ("Traversing dirtree %s", checksum);
+  ostree_cleanup_repo_commit_traverse_iter
+    OstreeRepoCommitTraverseIter iter = { 0, };
   if (!ostree_repo_commit_traverse_iter_init_dirtree (&iter, repo, dirtree,
                                                       OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
                                                       error))
-    goto out;
+    return FALSE;
 
   if (!traverse_iter (repo, &iter, inout_reachable, ignore_missing_dirs, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -446,28 +433,21 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
                                    GCancellable    *cancellable,
                                    GError         **error)
 {
-  gboolean ret = FALSE;
   g_autofree char *tmp_checksum = NULL;
 
   while (TRUE)
     {
-      gboolean recurse = FALSE;
-      g_autoptr(GVariant) key = NULL;
-      g_autoptr(GVariant) commit = NULL;
-      ostree_cleanup_repo_commit_traverse_iter
-        OstreeRepoCommitTraverseIter iter = { 0, };
-      OstreeRepoCommitState commitstate;
-      gboolean ignore_missing_dirs = FALSE;
-
-      key = g_variant_ref_sink (ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT));
+      g_autoptr(GVariant) key =
+        g_variant_ref_sink (ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT));
 
       if (g_hash_table_contains (inout_reachable, key))
         break;
 
+      g_autoptr(GVariant) commit = NULL;
       if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                                commit_checksum, &commit,
                                                error))
-        goto out;
+        return FALSE;
 
       /* Just return if the parent isn't found; we do expect most
        * people to have partial repositories.
@@ -476,10 +456,12 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
         break;
 
       /* See if the commit is partial, if so it's not an error to lack objects */
+      OstreeRepoCommitState commitstate;
       if (!ostree_repo_load_commit (repo, commit_checksum, NULL, &commitstate,
                                     error))
-        goto out;
+        return FALSE;
 
+      gboolean ignore_missing_dirs = FALSE;
       if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) != 0)
         ignore_missing_dirs = TRUE;
 
@@ -487,14 +469,17 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
       key = NULL;
 
       g_debug ("Traversing commit %s", commit_checksum);
+      ostree_cleanup_repo_commit_traverse_iter
+        OstreeRepoCommitTraverseIter iter = { 0, };
       if (!ostree_repo_commit_traverse_iter_init_commit (&iter, repo, commit,
                                                          OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
                                                          error))
-        goto out;
+        return FALSE;
 
       if (!traverse_iter (repo, &iter, inout_reachable, ignore_missing_dirs, cancellable, error))
-        goto out;
+        return FALSE;
 
+      gboolean recurse = FALSE;
       if (maxdepth == -1 || maxdepth > 0)
         {
           g_free (tmp_checksum);
@@ -511,9 +496,7 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
         break;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -536,17 +519,12 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
                              GCancellable    *cancellable,
                              GError         **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GHashTable) ret_reachable =
-    ostree_repo_traverse_new_reachable ();
-
+  g_autoptr(GHashTable) ret_reachable = ostree_repo_traverse_new_reachable ();
   if (!ostree_repo_traverse_commit_union (repo, commit_checksum, maxdepth,
                                           ret_reachable, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
   if (out_reachable)
     *out_reachable = g_steal_pointer (&ret_reachable);
- out:
-  return ret;
+  return TRUE;
 }
