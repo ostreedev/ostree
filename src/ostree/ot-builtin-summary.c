@@ -210,7 +210,7 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
             return FALSE;
         }
     }
-  else if (opt_view)
+  else if (opt_view || opt_raw)
     {
       g_autoptr(GBytes) summary_data = NULL;
 
