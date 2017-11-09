@@ -5612,11 +5612,8 @@ check_remote_matches_collection_id (OstreeRepo  *repo,
   return g_str_equal (remote_collection_id, collection_id);
 }
 
-/* FIXME: Export this to bindings once OstreeRemote is properly registered as
- * a boxed type.
- */
 /**
- * ostree_repo_resolve_keyring_for_collection: (skip)
+ * ostree_repo_resolve_keyring_for_collection:
  * @self: an #OstreeRepo
  * @collection_id: the collection ID to look up a keyring for
  * @cancellable: (nullable): a #GCancellable, or %NULL
