@@ -19,6 +19,8 @@ OstreeRemote
 ostree_remote_ref
 ostree_remote_unref
 ostree_remote_get_name
+<SUBSECTION Standard>
+ostree_remote_get_type
 </SECTION>
 
 <SECTION>
