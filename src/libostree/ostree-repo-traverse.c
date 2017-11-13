@@ -326,9 +326,8 @@ traverse_iter (OstreeRepo                          *repo,
               g_debug ("Ignoring not-found dirmeta");
               return TRUE;  /* Note early return */
             }
-          else
-            g_propagate_error (error, g_steal_pointer (&local_error));
 
+          g_propagate_error (error, g_steal_pointer (&local_error));
           return FALSE;
         }
       else if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_END)
@@ -395,9 +394,8 @@ traverse_dirtree (OstreeRepo           *repo,
           g_debug ("Ignoring not-found dirmeta %s", checksum);
           return TRUE; /* Early return */
         }
-      else
-        g_propagate_error (error, g_steal_pointer (&local_error));
 
+      g_propagate_error (error, g_steal_pointer (&local_error));
       return FALSE;
     }
 
