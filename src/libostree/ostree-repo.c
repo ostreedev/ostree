@@ -1918,8 +1918,9 @@ ostree_repo_create (OstreeRepo     *self,
                            g_variant_new_variant (g_variant_new_string (self->collection_id)));
 
   glnx_autofd int repo_dir_fd = -1;
+  g_autoptr(GVariant) options = g_variant_ref_sink (g_variant_builder_end (builder));
   if (!repo_create_at_internal (AT_FDCWD, repopath, mode,
-                                g_variant_builder_end (builder),
+                                options,
                                 &repo_dir_fd,
                                 cancellable, error))
     return FALSE;
