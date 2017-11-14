@@ -1281,7 +1281,7 @@ soup_uri_set_query (SoupURI *uri, const char *query)
 /**
  * soup_uri_set_query_from_form:
  * @uri: a #SoupURI
- * @form: (element-type utf8 utf8): a #GHashTable containing HTML form
+ * @form: (element-type utf8 utf8) (transfer none): a #GHashTable containing HTML form
  * information
  *
  * Sets @uri's query to the result of encoding @form according to the

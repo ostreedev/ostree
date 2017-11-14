@@ -725,7 +725,8 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
  * ostree_repo_list_refs:
  * @self: Repo
  * @refspec_prefix: (allow-none): Only list refs which match this prefix
- * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @out_all_refs: (out) (element-type utf8 utf8) (transfer container):
+ *    Mapping from ref to checksum
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -750,7 +751,8 @@ ostree_repo_list_refs (OstreeRepo       *self,
  * ostree_repo_list_refs_ext:
  * @self: Repo
  * @refspec_prefix: (allow-none): Only list refs which match this prefix
- * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @out_all_refs: (out) (element-type utf8 utf8) (transfer container):
+ *    Mapping from ref to checksum
  * @flags: Options controlling listing behavior
  * @cancellable: Cancellable
  * @error: Error
@@ -778,7 +780,8 @@ ostree_repo_list_refs_ext (OstreeRepo                 *self,
  * ostree_repo_remote_list_refs:
  * @self: Repo
  * @remote_name: Name of the remote.
- * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @out_all_refs: (out) (element-type utf8 utf8) (transfer container):
+ *    Mapping from ref to checksum
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -893,7 +896,8 @@ remote_list_collection_refs_process_refs (OstreeRepo   *self,
  * ostree_repo_remote_list_collection_refs:
  * @self: Repo
  * @remote_name: Name of the remote.
- * @out_all_refs: (out) (element-type OstreeCollectionRef utf8): Mapping from collection–ref to checksum
+ * @out_all_refs: (out) (element-type OstreeCollectionRef utf8) (transfer container):
+ *    Mapping from collection–ref to checksum
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -1165,7 +1169,8 @@ _ostree_repo_update_collection_refs (OstreeRepo        *self,
  * ostree_repo_list_collection_refs:
  * @self: Repo
  * @match_collection_id: (nullable): If non-%NULL, only list refs from this collection
- * @out_all_refs: (out) (element-type OstreeCollectionRef utf8): Mapping from collection–ref to checksum
+ * @out_all_refs: (out) (element-type OstreeCollectionRef utf8) (transfer container):
+ *    Mapping from collection–ref to checksum
  * @flags: Options controlling listing behavior
  * @cancellable: Cancellable
  * @error: Error
