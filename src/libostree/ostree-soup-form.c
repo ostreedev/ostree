@@ -82,7 +82,7 @@ encode_pair (GString *str, const char *name, const char *value)
 
 /**
  * soup_form_encode_hash:
- * @form_data_set: (element-type utf8 utf8): a hash table containing
+ * @form_data_set: (element-type utf8 utf8) (transfer none): a hash table containing
  * name/value pairs (as strings)
  *
  * Encodes @form_data_set into a value of type
