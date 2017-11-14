@@ -61,7 +61,12 @@ read_config()
 
 populate_menu()
 {
-    boot_prefix="${OSTREE_BOOT_PARTITION}"
+    # Default to /boot if OSTREE_BOOT_PARTITION is not set and /boot is on the same device than ostree/repo
+    if [ -z ${OSTREE_BOOT_PARTITION+x} ] && [ -d /boot/ostree ] && [ -d /ostree/repo ] && [ $(stat -c '%d' /boot/ostree) -eq $(stat -c '%d' /ostree/repo) ]; then
+        boot_prefix="/boot"
+    else
+        boot_prefix="${OSTREE_BOOT_PARTITION}"
+    fi
     for config in $(ls ${entries_path}); do
         read_config ${config}
         menu="${menu}menuentry '${title}' {\n"
