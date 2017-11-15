@@ -86,12 +86,8 @@ remote_option_context_new_with_commands (void)
 gboolean
 ostree_builtin_remote (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  OstreeCommand *subcommand;
   const char *subcommand_name = NULL;
-  g_autofree char *prgname = NULL;
-  gboolean ret = FALSE;
-  int in, out;
-
+  int in,out;
   for (in = 1, out = 1; in < argc; in++, out++)
     {
       /* The non-option is the command, take it out of the arguments */
@@ -115,7 +111,7 @@ ostree_builtin_remote (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   argc = out;
 
-  subcommand = remote_subcommands;
+  OstreeCommand *subcommand = remote_subcommands;
   while (subcommand->name)
     {
       if (g_strcmp0 (subcommand_name, subcommand->name) == 0)
@@ -150,18 +146,15 @@ ostree_builtin_remote (int argc, char **argv, OstreeCommandInvocation *invocatio
       help = g_option_context_get_help (context, FALSE, NULL);
       g_printerr ("%s", help);
 
-      goto out;
+      return FALSE;
     }
 
-  prgname = g_strdup_printf ("%s %s", g_get_prgname (), subcommand_name);
+  g_autofree char *prgname = g_strdup_printf ("%s %s", g_get_prgname (), subcommand_name);
   g_set_prgname (prgname);
 
   OstreeCommandInvocation sub_invocation = { .command = subcommand };
   if (!subcommand->fn (argc, argv, &sub_invocation, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-
- out:
-  return ret;
+  return TRUE;
 }
