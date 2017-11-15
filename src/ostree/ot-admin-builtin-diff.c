@@ -43,29 +43,20 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeSysroot) sysroot = NULL;
-  gboolean ret = FALSE;
-  g_autoptr(OstreeDeployment) deployment = NULL;
-  g_autoptr(GFile) deployment_dir = NULL;
-  g_autoptr(GPtrArray) modified = NULL;
-  g_autoptr(GPtrArray) removed = NULL;
-  g_autoptr(GPtrArray) added = NULL;
-  g_autoptr(GFile) orig_etc_path = NULL;
-  g_autoptr(GFile) new_etc_path = NULL;
-
-  context = g_option_context_new ("");
-
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
   g_option_context_add_main_entries (context, options, NULL);
 
+  g_autoptr(OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           invocation, &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
                                                      cancellable, error))
-    goto out;
+    return FALSE;
+
+  g_autoptr(OstreeDeployment) deployment = NULL;
   if (opt_osname != NULL)
     {
       deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
@@ -73,28 +64,24 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocatio
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                        "No deployment for OS '%s'", opt_osname);
-          goto out;
+          return FALSE;
         }
     }
   else
     deployment = g_object_ref (ostree_sysroot_get_booted_deployment (sysroot));
 
-  deployment_dir = ostree_sysroot_get_deployment_directory (sysroot, deployment);
-
-  orig_etc_path = g_file_resolve_relative_path (deployment_dir, "usr/etc");
-  new_etc_path = g_file_resolve_relative_path (deployment_dir, "etc");
-  
-  modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
-  removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
-  added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  g_autoptr(GFile) deployment_dir = ostree_sysroot_get_deployment_directory (sysroot, deployment);
+  g_autoptr(GFile) orig_etc_path = g_file_resolve_relative_path (deployment_dir, "usr/etc");
+  g_autoptr(GFile) new_etc_path = g_file_resolve_relative_path (deployment_dir, "etc");
+  g_autoptr(GPtrArray) modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
+  g_autoptr(GPtrArray) removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  g_autoptr(GPtrArray) added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_IGNORE_XATTRS,
                          orig_etc_path, new_etc_path, modified, removed, added,
                          cancellable, error))
-    goto out;
+    return FALSE;
 
   ostree_diff_print (orig_etc_path, new_etc_path, modified, removed, added);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
