@@ -503,7 +503,7 @@ AS_IF([test x$with_grub2_mkconfig_path = x], [
   dnl on some 'grub'.  We default to grub2-mkconfig.
   AC_CHECK_PROGS(GRUB2_MKCONFIG, [grub2-mkconfig grub-mkconfig], [grub2-mkconfig])
 ],[GRUB2_MKCONFIG=$with_grub2_mkconfig_path])
-AC_DEFINE_UNQUOTED([GRUB2_MKCONFIG_PATH], ["$GRUB2_MKCONFIG"], [The system grub2-mkconfig executible name])
+AC_DEFINE_UNQUOTED([GRUB2_MKCONFIG_PATH], ["$GRUB2_MKCONFIG"], [The system grub2-mkconfig executable name])
 
 AC_ARG_WITH(static-compiler,
             AS_HELP_STRING([--with-static-compiler],
