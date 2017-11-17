@@ -4955,7 +4955,8 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       if (!glnx_opendirat (dfd_iter.fd, dent->d_name, FALSE,
                            &target_dfd, &local_error))
         {
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY))
+          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY) ||
+              g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             continue;
           else
             {
