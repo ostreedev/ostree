@@ -4980,6 +4980,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
 
       /* We found an existing tmpdir which we managed to lock */
       g_debug ("Reusing tmpdir %s", dent->d_name);
+      reusing_dir = TRUE;
       ret_tmpdir.src_dfd = tmpdir_dfd;
       ret_tmpdir.fd = glnx_steal_fd (&target_dfd);
       ret_tmpdir.path = g_strdup (dent->d_name);
