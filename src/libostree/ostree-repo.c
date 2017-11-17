@@ -4979,6 +4979,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       (void)futimens (target_dfd, NULL);
 
       /* We found an existing tmpdir which we managed to lock */
+      g_debug ("Reusing tmpdir %s", dent->d_name);
       ret_tmpdir.src_dfd = tmpdir_dfd;
       ret_tmpdir.fd = glnx_steal_fd (&target_dfd);
       ret_tmpdir.path = g_strdup (dent->d_name);
@@ -5003,6 +5004,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       if (!did_lock)
         continue;
 
+      g_debug ("Using new tmpdir %s", new_tmpdir.path);
       ret_tmpdir = new_tmpdir; /* Transfer ownership */
       new_tmpdir.initialized = FALSE;
     }
