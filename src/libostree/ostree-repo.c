@@ -5004,7 +5004,16 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
                                          error))
         return FALSE;
       if (!did_lock)
-        continue;
+        {
+          /* We raced and someone else already locked the newly created
+           * directory. Free the resources here and then mark it as
+           * uninitialized so glnx_tmpdir_cleanup doesn't delete the directory
+           * when new_tmpdir goes out of scope.
+           */
+          glnx_tmpdir_unset (&new_tmpdir);
+          new_tmpdir.initialized = FALSE;
+          continue;
+        }
 
       g_debug ("Using new tmpdir %s", new_tmpdir.path);
       ret_tmpdir = new_tmpdir; /* Transfer ownership */
