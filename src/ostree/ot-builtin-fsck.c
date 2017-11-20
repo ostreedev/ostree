@@ -30,6 +30,7 @@
 static gboolean opt_quiet;
 static gboolean opt_delete;
 static gboolean opt_add_tombstones;
+static gboolean opt_verify_back_refs;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
@@ -40,6 +41,7 @@ static GOptionEntry options[] = {
   { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones, "Add tombstones for missing commits", NULL },
   { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
+  { "verify-back-refs", 0, 0, G_OPTION_ARG_NONE, &opt_verify_back_refs, "Verify back-references", NULL },
   { NULL }
 };
 
@@ -252,6 +254,77 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
         {
           if (!ostree_repo_load_commit (repo, checksum, &commit, &commitstate, error))
             return FALSE;
+
+          /* If requested, check that all the refs listed in the ref-bindings
+           * for this commit resolve back to this commit. */
+          if (opt_verify_back_refs)
+            {
+              g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
+
+              const char *collection_id = NULL;
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+              if (!g_variant_lookup (metadata,
+                                     OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
+                                     "&s",
+                                     &collection_id))
+                collection_id = NULL;
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+
+              g_autofree const char **refs = NULL;
+              if (g_variant_lookup (metadata,
+                                    OSTREE_COMMIT_META_KEY_REF_BINDING,
+                                    "^a&s",
+                                    &refs))
+                {
+                  for (const char **iter = refs; *iter != NULL; ++iter)
+                    {
+                      g_autofree char *checksum_for_ref = NULL;
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+                      if (collection_id != NULL)
+                        {
+                          const OstreeCollectionRef collection_ref = { (char *) collection_id, (char *) *iter };
+                          if (!ostree_repo_resolve_collection_ref (repo, &collection_ref,
+                                                                   TRUE,
+                                                                   OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                                                   &checksum_for_ref,
+                                                                   cancellable,
+                                                                   error))
+                            return FALSE;
+                        }
+                      else
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
+                        {
+                          if (!ostree_repo_resolve_rev (repo, *iter, TRUE,
+                                                        &checksum_for_ref, error))
+                            return FALSE;
+                        }
+
+                      if (checksum_for_ref == NULL)
+                        {
+                          if (collection_id != NULL)
+                            return glnx_throw (error,
+                                               "Collection–ref (%s, %s) in bindings for commit %s does not exist",
+                                               collection_id, *iter, checksum);
+                          else
+                            return glnx_throw (error,
+                                               "Ref ‘%s’ in bindings for commit %s does not exist",
+                                               *iter, checksum);
+                        }
+                      else if (g_strcmp0 (checksum_for_ref, checksum) != 0)
+                        {
+                          if (collection_id != NULL)
+                            return glnx_throw (error,
+                                               "Collection–ref (%s, %s) in bindings for commit %s does not resolve to that commit",
+                                               collection_id, *iter, checksum);
+                          else
+                            return glnx_throw (error,
+                                               "Ref ‘%s’ in bindings for commit %s does not resolve to that commit",
+                                               *iter, checksum);
+                        }
+                    }
+                }
+            }
 
           if (opt_add_tombstones)
             {

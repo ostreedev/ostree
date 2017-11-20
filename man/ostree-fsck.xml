@@ -85,6 +85,17 @@ Boston, MA 02111-1307, USA.
                    Add tombstone commit for referenced but missing commits.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--verify-back-refs</option></term>
+                <listitem><para>
+                   Verify that all the refs listed in a commit’s ref-bindings
+                   point to that commit. This cannot be used in repositories
+                   where the target of refs is changed over time as new commits
+                   are added, but can be used in repositories which are
+                   regenerated from scratch for each commit.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
