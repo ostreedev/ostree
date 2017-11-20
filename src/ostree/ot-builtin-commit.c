@@ -378,13 +378,11 @@ compare_strings (gconstpointer a, gconstpointer b)
 static void
 add_ref_binding (GVariantBuilder *metadata_builder)
 {
-  if (opt_orphan)
-    return;
-
-  g_assert_nonnull (opt_branch);
+  g_assert (opt_branch != NULL || opt_orphan);
 
   g_autoptr(GPtrArray) refs = g_ptr_array_new ();
-  g_ptr_array_add (refs, opt_branch);
+  if (opt_branch != NULL)
+    g_ptr_array_add (refs, opt_branch);
   for (char **iter = opt_bind_refs; iter != NULL && *iter != NULL; ++iter)
     g_ptr_array_add (refs, *iter);
   g_ptr_array_sort (refs, compare_strings);
