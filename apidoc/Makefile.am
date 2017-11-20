@@ -83,6 +83,7 @@ IGNORE_HFILES= \
 	ostree-metalink.h \
 	ostree-repo-file-enumerator.h \
 	ostree-repo-private.h \
+	ostree-repo-pull-private.h \
 	ostree-repo-static-delta-private.h \
 	ostree-sysroot-private.h \
 	ostree-tls-cert-interaction.h \
