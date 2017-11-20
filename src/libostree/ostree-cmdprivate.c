@@ -22,6 +22,7 @@
 #include "ostree-cmdprivate.h"
 #include "ostree-repo-private.h"
 #include "ostree-core-private.h"
+#include "ostree-repo-pull-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-sysroot.h"
 #include "ostree-bootloader-grub2.h"
@@ -48,7 +49,8 @@ ostree_cmd__private__ (void)
     impl_ostree_generate_grub2_config,
     _ostree_repo_static_delta_dump,
     _ostree_repo_static_delta_query_exists,
-    _ostree_repo_static_delta_delete
+    _ostree_repo_static_delta_delete,
+    _ostree_repo_verify_bindings
   };
 
   return &table;
