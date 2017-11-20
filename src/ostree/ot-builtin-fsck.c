@@ -131,6 +131,37 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
   return TRUE;
 }
 
+/* Check that a given commit object is valid for the ref it was looked up via.
+ * @collection_id will be %NULL for normal refs, and non-%NULL for collection–refs. */
+static gboolean
+fsck_commit_for_ref (OstreeRepo    *repo,
+                     const char    *checksum,
+                     const char    *collection_id,
+                     const char    *ref_name,
+                     gboolean      *found_corruption,
+                     GCancellable  *cancellable,
+                     GError       **error)
+{
+  if (!fsck_one_object (repo, checksum, OSTREE_OBJECT_TYPE_COMMIT,
+                        found_corruption,
+                        cancellable, error))
+    return FALSE;
+
+  /* Check the commit exists. */
+  g_autoptr(GVariant) commit = NULL;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                 checksum, &commit, error))
+    {
+      if (collection_id != NULL)
+        return glnx_prefix_error (error, "Loading commit for ref (%s, %s)",
+                                  collection_id, ref_name);
+      else
+        return glnx_prefix_error (error, "Loading commit for ref %s", ref_name);
+    }
+
+  return TRUE;
+}
+
 gboolean
 ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
@@ -154,20 +185,9 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   gpointer key, value;
   g_hash_table_iter_init (&hash_iter, all_refs);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *refname = key;
-      const char *checksum = value;
-
-      if (!fsck_one_object (repo, checksum, OSTREE_OBJECT_TYPE_COMMIT,
-                            &found_corruption,
-                            cancellable, error))
-        return FALSE;
-
-      g_autoptr(GVariant) commit = NULL;
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                     checksum, &commit, error))
-        return glnx_prefix_error (error, "Loading commit for ref %s", refname);
-    }
+    if (!fsck_commit_for_ref (repo, value, NULL, key,
+                              &found_corruption, cancellable, error))
+      return FALSE;
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   if (!opt_quiet)
@@ -183,12 +203,9 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const OstreeCollectionRef *ref = key;
-      const char *checksum = value;
-      g_autoptr(GVariant) commit = NULL;
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                     checksum, &commit, error))
-        return glnx_prefix_error (error, "Loading commit for ref (%s, %s)",
-                                  ref->collection_id, ref->ref_name);
+      if (!fsck_commit_for_ref (repo, value, ref->collection_id, ref->ref_name,
+                                &found_corruption, cancellable, error))
+        return FALSE;
     }
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
