@@ -128,11 +128,6 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
                                 GCancellable *cancellable,
                                 GError      **error);
 
-gboolean _ostree_static_delta_dump (OstreeRepo     *repo,
-                                    const char *delta_id,
-                                    GCancellable   *cancellable,
-                                    GError        **error);
-
 typedef struct {
   guint n_ops_executed[OSTREE_STATIC_DELTA_N_OPS];
 } OstreeDeltaExecuteStats;
