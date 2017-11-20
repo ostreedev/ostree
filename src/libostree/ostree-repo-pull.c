@@ -1525,7 +1525,7 @@ _ostree_repo_verify_bindings (const char  *collection_id,
         return TRUE;
 
       return glnx_throw (error,
-                         "expected commit metadata to have ref "
+                         "Expected commit metadata to have ref "
                          "binding information, found none");
     }
 
@@ -1554,7 +1554,7 @@ _ostree_repo_verify_bindings (const char  *collection_id,
               refs_str = "no refs";
             }
 
-          return glnx_throw (error, "commit has no requested ref ‘%s’ "
+          return glnx_throw (error, "Commit has no requested ref ‘%s’ "
                              "in ref binding metadata (%s)",
                              ref_name, refs_str);
         }
@@ -1569,11 +1569,11 @@ _ostree_repo_verify_bindings (const char  *collection_id,
                              "&s",
                              &collection_id_binding))
         return glnx_throw (error,
-                           "expected commit metadata to have collection ID "
+                           "Expected commit metadata to have collection ID "
                            "binding information, found none");
       if (!g_str_equal (collection_id_binding, collection_id))
         return glnx_throw (error,
-                           "commit has collection ID ‘%s’ in collection binding "
+                           "Commit has collection ID ‘%s’ in collection binding "
                            "metadata, while the remote it came from has "
                            "collection ID ‘%s’",
                            collection_id_binding, collection_id);
