@@ -159,6 +159,10 @@ fsck_commit_for_ref (OstreeRepo    *repo,
         return glnx_prefix_error (error, "Loading commit for ref %s", ref_name);
     }
 
+  /* Check its bindings. */
+  if (!ostree_cmd__private__ ()->ostree_repo_verify_bindings (collection_id, ref_name, commit, error))
+    return glnx_prefix_error (error, "Commit %s", checksum);
+
   return TRUE;
 }
 
