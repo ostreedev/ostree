@@ -284,11 +284,13 @@ test_repo_finder_config_mixed_configs (Fixture       *fixture,
           g_assert_cmpuint (g_hash_table_size (result->ref_to_checksum), ==, 2);
           g_assert_true (g_hash_table_contains (result->ref_to_checksum, &ref0));
           g_assert_true (g_hash_table_contains (result->ref_to_checksum, &ref1));
+          g_assert_cmpstr (ostree_remote_get_url (result->remote), ==, collection0_uri);
         }
       else if (g_strcmp0 (ostree_remote_get_name (result->remote), "remote1") == 0)
         {
           g_assert_cmpuint (g_hash_table_size (result->ref_to_checksum), ==, 1);
           g_assert_true (g_hash_table_contains (result->ref_to_checksum, &ref3));
+          g_assert_cmpstr (ostree_remote_get_url (result->remote), ==, collection1_uri);
         }
       else
         {

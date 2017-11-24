@@ -180,3 +180,21 @@ ostree_remote_get_name (OstreeRemote *remote)
 
   return remote->name;
 }
+
+/**
+ * ostree_remote_get_url:
+ * @remote: an #OstreeRemote
+ *
+ * Get the URL from the remote.
+ *
+ * Returns: (transfer full): the remote's URL
+ * Since: 2017.14
+ */
+gchar *
+ostree_remote_get_url (OstreeRemote *remote)
+{
+  g_return_val_if_fail (remote != NULL, NULL);
+  g_return_val_if_fail (remote->ref_count > 0, NULL);
+
+  return g_key_file_get_string (remote->options, remote->group, "url", NULL);
+}

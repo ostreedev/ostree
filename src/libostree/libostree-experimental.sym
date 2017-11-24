@@ -93,4 +93,5 @@ global:
 LIBOSTREE_2017.14_EXPERIMENTAL {
 global:
   ostree_remote_get_type;
+  ostree_remote_get_url;
 } LIBOSTREE_2017.13_EXPERIMENTAL;
