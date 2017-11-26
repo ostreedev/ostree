@@ -2204,7 +2204,7 @@ _ostree_compare_timestamps (const char   *current_rev,
   g_autofree char *current_ts_str = g_date_time_format (current_dt, "%c");
   g_autofree char *new_ts_str = g_date_time_format (new_dt, "%c");
 
-  return glnx_throw (error, "Upgrade target revision '%s' with timestamp '%s' is chronologically older than current revision '%s' with timestamp '%s'",
+  return glnx_throw (error, "Upgrade target revision '%s' with timestamp '%s' is chronologically older than current revision '%s' with timestamp '%s'; use --allow-downgrade to permit",
                      new_rev, new_ts_str, current_rev, current_ts_str);
 }
 
