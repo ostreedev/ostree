@@ -4,10 +4,10 @@ branches:
     - try
 
 required: true
-context: f26-primary
+context: f27-primary
 
 container:
-    image: registry.fedoraproject.org/fedora:26
+    image: registry.fedoraproject.org/fedora:27
 
 env:
     # Enable all the sanitizers for this primary build.
