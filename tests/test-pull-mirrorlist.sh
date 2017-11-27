@@ -60,7 +60,7 @@ cat > ${test_tmpdir}/ostree-srv/mirrorlist <<EOF
 
 # comment with empty lines around
 
-http://example.com/nonexistent
+$(cat ${test_tmpdir}/content_mirror1-address)/ostree/non-existent-repo
 
 $(cat ${test_tmpdir}/content_mirror1-address)/ostree/gnomerepo
 $(cat ${test_tmpdir}/content_mirror2-address)/ostree/gnomerepo
