@@ -16,6 +16,17 @@ for x in test-suite.log config.log; do
 done
 # And now run the installed tests
 make install
+
+copy_out_gdtr_artifacts() {
+    # Keep this in sync with papr.yml
+    # TODO; Split the main/clang builds into separate build dirs
+    for x in test-suite.log config.log gdtr-results; do
+        if test -e ${resultsdir}/${x}; then
+            mv ${resultsdir}/${x} ${topdir}
+        fi
+    done
+}
+
 if test -x /usr/bin/gnome-desktop-testing-runner; then
     mkdir ${resultsdir}/gdtr-results
     # Temporary hack
@@ -24,6 +35,8 @@ if test -x /usr/bin/gnome-desktop-testing-runner; then
      env NOCONFIGURE=1 ./autogen.sh
      ./configure --prefix=/usr --libdir=/usr/lib64
      make && rm -f /usr/bin/ginsttest-runner && make install)
+    # set a trap in case a test fails
+    trap copy_out_gdtr_artifacts EXIT
     # Use the new -L option
     gnome-desktop-testing-runner -L ${resultsdir}/gdtr-results -p 0 ${INSTALLED_TESTS_PATTERN:-libostree/}
 fi
@@ -38,11 +51,3 @@ if test -x /usr/bin/clang; then
     export CC=clang
     build
 fi
-
-# Keep this in sync with papr.yml
-# TODO; Split the main/clang builds into separate build dirs
-for x in test-suite.log config.log gdtr-results; do
-    if test -e ${resultsdir}/${x}; then
-        mv ${resultsdir}/${x} ${topdir}
-    fi
-done
