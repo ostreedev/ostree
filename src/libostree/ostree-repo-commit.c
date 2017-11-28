@@ -1541,7 +1541,7 @@ cleanup_tmpdir (OstreeRepo        *self,
         {
           if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
             return glnx_prefix_error (error, "Removing %s", dent->d_name);
-            }
+        }
     }
 
   return TRUE;
