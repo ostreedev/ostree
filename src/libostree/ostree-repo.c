@@ -1797,6 +1797,7 @@ repo_create_at_internal (int             dfd,
                          GCancellable   *cancellable,
                          GError        **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Creating repo", error);
    struct stat stbuf;
   /* We do objects/ last - if it exists we do nothing and exit successfully */
   const char *state_dirs[] = { "tmp", "extensions", "state",
