@@ -1441,6 +1441,41 @@ rename_pending_loose_objects (OstreeRepo        *self,
   return TRUE;
 }
 
+/* Try to lock a transaction stage directory created by
+ * ostree_repo_prepare_transaction().
+ */
+static gboolean
+cleanup_txn_dir (OstreeRepo   *self,
+                 int           dfd,
+                 const char   *path,
+                 GCancellable *cancellable,
+                 GError      **error)
+{
+  g_auto(GLnxLockFile) lockfile = { 0, };
+  gboolean did_lock;
+
+  /* Try to lock, but if we don't get it, move on */
+  if (!_ostree_repo_try_lock_tmpdir (dfd, path, &lockfile, &did_lock, error))
+    return FALSE;
+  if (!did_lock)
+    return TRUE; /* Note early return */
+
+  /* If however this is the staging directory for the *current*
+   * boot, then don't delete it now - we may end up reusing it, as
+   * is the point.
+   */
+  if (g_str_has_prefix (path, self->stagedir_prefix))
+    return TRUE; /* Note early return */
+
+  /* But, crucially we can now clean up staging directories
+   * from *other* boots.
+   */
+  if (!glnx_shutil_rm_rf_at (dfd, path, cancellable, error))
+    return glnx_prefix_error (error, "Removing %s", path);
+
+  return TRUE;
+}
+
 /* Look in repo/tmp and delete files that are older than a day (by default).
  * This used to be primarily used by the libsoup fetcher which stored partially
  * written objects.  In practice now that that isn't done anymore, we should
@@ -1461,15 +1496,9 @@ cleanup_tmpdir (OstreeRepo        *self,
 
   while (TRUE)
     {
-      guint64 delta;
       struct dirent *dent;
-      struct stat stbuf;
-      g_auto(GLnxLockFile) lockfile = { 0, };
-      gboolean did_lock;
-
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
         return FALSE;
-
       if (dent == NULL)
         break;
 
@@ -1479,55 +1508,39 @@ cleanup_tmpdir (OstreeRepo        *self,
       if (strcmp (dent->d_name, "cache") == 0)
         continue;
 
+      struct stat stbuf;
       if (!glnx_fstatat_allow_noent (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
         return FALSE;
       if (errno == ENOENT) /* Did another cleanup win? */
         continue;
 
-      /* First, if it's a directory which needs locking, but it's
-       * busy, skip it.
-       */
+      /* Handle transaction tmpdirs */
       if (_ostree_repo_is_locked_tmpdir (dent->d_name))
         {
-          if (!_ostree_repo_try_lock_tmpdir (dfd_iter.fd, dent->d_name,
-                                             &lockfile, &did_lock, error))
+          if (!cleanup_txn_dir (self, dfd_iter.fd, dent->d_name, cancellable, error))
             return FALSE;
-          if (!did_lock)
-            continue;
+          continue; /* We've handled this, move on */
         }
 
-      /* If however this is the staging directory for the *current*
-       * boot, then don't delete it now - we may end up reusing it, as
-       * is the point.
+      /* At this point we're looking at an unknown-origin file or directory in
+       * the tmpdir. This could be something like a temporary checkout dir (used
+       * by rpm-ostree), or (from older versions of libostree) a tempfile if we
+       * don't have O_TMPFILE for commits.
        */
-      if (g_str_has_prefix (dent->d_name, self->stagedir_prefix))
+
+      /* Ignore files from the future */
+      if (stbuf.st_mtime > curtime_secs)
         continue;
-      else if (g_str_has_prefix (dent->d_name, OSTREE_REPO_TMPDIR_STAGING))
+
+      /* We're pruning content based on the expiry, which
+       * defaults to a day.  That's what we were doing before we
+       * had locking...but in future we can be smarter here.
+       */
+      guint64 delta = curtime_secs - stbuf.st_mtime;
+      if (delta > self->tmp_expiry_seconds)
         {
-          /* But, crucially we can now clean up staging directories
-           * from *other* boots
-           */
           if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
             return glnx_prefix_error (error, "Removing %s", dent->d_name);
-        }
-      else
-        {
-          /* Now we do time-based cleanup.  Ignore it if it's somehow
-           * in the future...
-           */
-          if (stbuf.st_mtime > curtime_secs)
-            continue;
-
-          /* Now, we're pruning content based on the expiry, which
-           * defaults to a day.  That's what we were doing before we
-           * had locking...but in future we can be smarter here.
-           */
-          delta = curtime_secs - stbuf.st_mtime;
-          if (delta > self->tmp_expiry_seconds)
-            {
-              if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
-                return glnx_prefix_error (error, "Removing %s", dent->d_name);
-            }
         }
     }
 
