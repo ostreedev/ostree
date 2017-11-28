@@ -38,13 +38,14 @@
 #include "ostree-checksum-input-stream.h"
 #include "ostree-varint.h"
 
-/* In most cases, we write into a staging dir for commit, but we also allow
- * direct writes into objects/ for e.g. hardlink imports.
+/* If fsync is enabled and we're in a txn, we write into a staging dir for
+ * commit, but we also allow direct writes into objects/ for e.g. hardlink
+ * imports.
  */
 static int
 commit_dest_dfd (OstreeRepo *self)
 {
-  if (self->in_transaction)
+  if (self->in_transaction && !self->disable_fsync)
     return self->commit_stagedir.fd;
   else
     return self->objects_dir_fd;
