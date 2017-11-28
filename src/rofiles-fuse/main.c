@@ -284,18 +284,11 @@ callback_truncate (const char *path, off_t size)
 }
 
 static int
-callback_utime (const char *path, struct utimbuf *buf)
+callback_utimens (const char *path, const struct timespec tv[2])
 {
-  struct timespec ts[2];
-
   path = ENSURE_RELPATH (path);
 
-  ts[0].tv_sec = buf->actime;
-  ts[0].tv_nsec = UTIME_OMIT;
-  ts[1].tv_sec = buf->modtime;
-  ts[1].tv_nsec = UTIME_OMIT;
-
-  if (utimensat (basefd, path, ts, AT_SYMLINK_NOFOLLOW) == -1)
+  if (utimensat (basefd, path, tv, AT_SYMLINK_NOFOLLOW) == -1)
     return -errno;
 
   return 0;
@@ -506,7 +499,7 @@ struct fuse_operations callback_oper = {
   .chmod = callback_chmod,
   .chown = callback_chown,
   .truncate = callback_truncate,
-  .utime = callback_utime,
+  .utimens = callback_utimens,
   .create = callback_create,
   .open = callback_open,
   .read_buf = callback_read_buf,
