@@ -4904,7 +4904,16 @@ _ostree_repo_try_lock_tmpdir (int            tmpdir_dfd,
     }
   else
     {
-      did_lock = TRUE;
+      /* It's possible that we got a lock after seeing the directory, but
+       * another process deleted the tmpdir, so verify it still exists.
+       */
+      struct stat stbuf;
+      if (!glnx_fstatat_allow_noent (tmpdir_dfd, tmpdir_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
+      if (errno == 0 && S_ISDIR (stbuf.st_mode))
+        did_lock = TRUE;
+      else
+        glnx_release_lock_file (file_lock_out);
     }
 
   *out_did_lock = did_lock;
