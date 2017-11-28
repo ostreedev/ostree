@@ -51,6 +51,20 @@ commit_dest_dfd (OstreeRepo *self)
     return self->objects_dir_fd;
 }
 
+/* If we don't have O_TMPFILE, or for symlinks we'll create temporary
+ * files.  If we have a txn, use the staging dir to ensure that
+ * things are consistently locked against concurrent cleanup, and
+ * in general we have all of our data in one place.
+ */
+static int
+commit_tmp_dfd (OstreeRepo *self)
+{
+  if (self->in_transaction)
+    return self->commit_stagedir.fd;
+  else
+    return self->tmp_dir_fd;
+}
+
 /* The objects/ directory has a two-character directory prefix for checksums
  * to avoid putting lots of files in a single directory.   This technique
  * is quite old, but Git also uses it for example.
@@ -439,7 +453,7 @@ _ostree_repo_bare_content_open (OstreeRepo            *self,
   g_assert (!real->initialized);
   real->initialized = TRUE;
   g_assert (S_ISREG (mode));
-  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                       &real->tmpf, error))
     return FALSE;
   ot_checksum_init (&real->checksum);
@@ -530,7 +544,7 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
                                               GError **error)
 {
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                       &tmpf, error))
     return FALSE;
 
@@ -668,7 +682,7 @@ write_content_object (OstreeRepo         *self,
    *
    * We use GLnxTmpfile for regular files, and OtCleanupUnlinkat for symlinks.
    */
-  g_auto(OtCleanupUnlinkat) tmp_unlinker = { self->tmp_dir_fd, NULL };
+  g_auto(OtCleanupUnlinkat) tmp_unlinker = { commit_tmp_dfd (self), NULL };
   g_auto(GLnxTmpfile) tmpf = { 0, };
   goffset unpacked_size = 0;
   gboolean indexable = FALSE;
@@ -677,7 +691,7 @@ write_content_object (OstreeRepo         *self,
     {
       /* This will not be hit for bare-user or archive */
       g_assert (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY);
-      if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd,
+      if (!_ostree_make_temporary_symlink_at (commit_tmp_dfd (self),
                                               g_file_info_get_symlink_target (file_info),
                                               &tmp_unlinker.path,
                                               cancellable, error))
@@ -700,7 +714,7 @@ write_content_object (OstreeRepo         *self,
       if (self->generate_sizes)
         indexable = TRUE;
 
-      if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+      if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                           &tmpf, error))
         return FALSE;
       temp_out = g_unix_output_stream_new (tmpf.fd, FALSE);
@@ -790,14 +804,14 @@ write_content_object (OstreeRepo         *self,
            * Note, this does not apply for bare-user repos, as they store symlinks
            * as regular files.
            */
-          if (G_UNLIKELY (fchownat (self->tmp_dir_fd, tmp_unlinker.path,
+          if (G_UNLIKELY (fchownat (tmp_unlinker.dfd, tmp_unlinker.path,
                                     uid, gid, AT_SYMLINK_NOFOLLOW) == -1))
             return glnx_throw_errno_prefix (error, "fchownat");
 
           if (xattrs != NULL)
             {
-              ot_security_smack_reset_dfd_name (self->tmp_dir_fd, tmp_unlinker.path);
-              if (!glnx_dfd_name_set_all_xattrs (self->tmp_dir_fd, tmp_unlinker.path,
+              ot_security_smack_reset_dfd_name (tmp_unlinker.dfd, tmp_unlinker.path);
+              if (!glnx_dfd_name_set_all_xattrs (tmp_unlinker.dfd, tmp_unlinker.path,
                                                  xattrs, cancellable, error))
                 return FALSE;
             }
@@ -1039,7 +1053,7 @@ write_metadata_object (OstreeRepo         *self,
 
   /* Write the metadata to a temporary file */
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                       &tmpf, error))
     return FALSE;
   if (!glnx_try_fallocate (tmpf.fd, 0, len, error))
