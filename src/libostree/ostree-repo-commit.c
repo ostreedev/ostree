@@ -1435,9 +1435,6 @@ rename_pending_loose_objects (OstreeRepo        *self,
         return glnx_throw_errno_prefix (error, "fsync");
     }
 
-  if (!glnx_tmpdir_delete (&self->commit_stagedir, cancellable, error))
-    return FALSE;
-
   return TRUE;
 }
 
@@ -1773,6 +1770,12 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if (!rename_pending_loose_objects (self, cancellable, error))
     return FALSE;
 
+  g_debug ("txn commit %s", glnx_basename (self->commit_stagedir.path));
+  if (!glnx_tmpdir_delete (&self->commit_stagedir, cancellable, error))
+    return FALSE;
+  glnx_release_lock_file (&self->commit_stagedir_lock);
+
+  /* This performs a global cleanup */
   if (!cleanup_tmpdir (self, cancellable, error))
     return FALSE;
 
@@ -1788,9 +1791,6 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
     if (!_ostree_repo_update_collection_refs (self, self->txn_collection_refs, cancellable, error))
       return FALSE;
   g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
-
-  glnx_tmpdir_unset (&self->commit_stagedir);
-  glnx_release_lock_file (&self->commit_stagedir_lock);
 
   self->in_transaction = FALSE;
 
