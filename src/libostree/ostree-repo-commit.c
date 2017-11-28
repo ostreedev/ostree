@@ -602,6 +602,7 @@ write_content_object (OstreeRepo         *self,
                       GCancellable       *cancellable,
                       GError            **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Writing content object", error);
   g_return_val_if_fail (expected_checksum || out_csum, FALSE);
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
@@ -844,8 +845,7 @@ write_content_object (OstreeRepo         *self,
                                         uid, gid, mode,
                                         xattrs,
                                         cancellable, error))
-        return glnx_prefix_error (error, "Writing object %s.%s", actual_checksum,
-                                  ostree_object_type_to_string (OSTREE_OBJECT_TYPE_FILE));
+        return FALSE;
     }
 
   /* Update statistics */
@@ -886,6 +886,8 @@ adopt_and_commit_regfile (OstreeRepo   *self,
                           GCancellable *cancellable,
                           GError      **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Commit regfile (adopt)", error);
+
   g_assert (G_IN_SET (self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER_ONLY));
   g_autoptr(GBytes) header = _ostree_file_header_new (finfo, xattrs);
 
@@ -981,6 +983,8 @@ write_metadata_object (OstreeRepo         *self,
                        GCancellable       *cancellable,
                        GError            **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Writing metadata object", error);
+
   g_return_val_if_fail (expected_checksum || out_csum, FALSE);
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
