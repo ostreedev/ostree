@@ -51,6 +51,7 @@ static gboolean opt_no_xattrs;
 static char *opt_selinux_policy;
 static gboolean opt_canonical_permissions;
 static gboolean opt_consume;
+static gboolean opt_devino_canonical;
 static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
@@ -98,6 +99,7 @@ static GOptionEntry options[] = {
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
   { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
+  { "devino-canonical", 'I', 0, G_OPTION_ARG_NONE, &opt_devino_canonical, "Assume hardlinked objects are unmodified.  Implies --link-checkout-speedup", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "tar-pathname-filter", 0, 0, G_OPTION_ARG_STRING, &opt_tar_pathname_filter, "When loading tar archives, use REGEX,REPLACEMENT against path names", "REGEX,REPLACEMENT" },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
@@ -480,6 +482,11 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
   if (opt_consume)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME;
+  if (opt_devino_canonical)
+    {
+      opt_link_checkout_speedup = TRUE; /* Imply this */
+      flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL;
+    }
   if (opt_canonical_permissions)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS;
   if (opt_generate_sizes)
