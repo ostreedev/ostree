@@ -2793,47 +2793,70 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   g_assert (dir_enum != NULL || dfd_iter != NULL);
 
   GFileType file_type = g_file_info_get_file_type (child_info);
-
   const char *name = g_file_info_get_name (child_info);
-  g_ptr_array_add (path, (char*)name);
 
-  g_autofree char *child_relpath = ptrarray_path_join (path);
-
-  /* See if we have a devino hit; this is used below. Further, for bare-user
-   * repos we'll reload our file info from the object (specifically the
-   * ostreemeta xattr). The on-disk state is not normally what we want to
-   * commit. Basically we're making sure that we pick up "real" uid/gid and any
-   * xattrs there.
+  /* Load flags into boolean constants for ease of readability (we also need to
+   * NULL-check modifier)
    */
-  const char *loose_checksum = NULL;
-  g_autoptr(GVariant) source_xattrs = NULL;
-  if (dfd_iter != NULL && (file_type != G_FILE_TYPE_DIRECTORY))
-    {
-      guint32 dev = g_file_info_get_attribute_uint32 (child_info, "unix::device");
-      guint64 inode = g_file_info_get_attribute_uint64 (child_info, "unix::inode");
-      loose_checksum = devino_cache_lookup (self, modifier, dev, inode);
-      if (loose_checksum && self->mode == OSTREE_REPO_MODE_BARE_USER)
-        {
-          child_info = NULL;
-          if (!ostree_repo_load_file (self, loose_checksum, NULL, &child_info, &source_xattrs,
-                                      cancellable, error))
-            return FALSE;
-        }
-    }
-
-  g_autoptr(GFileInfo) modified_info = NULL;
-  OstreeRepoCommitFilterResult filter_result =
-    _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
-  const gboolean child_info_was_modified = !_ostree_gfileinfo_equal (child_info, modified_info);
-
+  const gboolean canonical_permissions = modifier &&
+    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS);
+  const gboolean devino_canonical = modifier &&
+    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL);
   /* We currently only honor the CONSUME flag in the dfd_iter case to avoid even
    * more complexity in this function, and it'd mostly only be useful when
    * operating on local filesystems anyways.
    */
   const gboolean delete_after_commit = dfd_iter && modifier &&
     (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME);
-  const gboolean canonical_permissions = modifier &&
-    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS);
+
+  /* See if we have a devino hit; this is used below in a few places. */
+  const char *loose_checksum = NULL;
+  if (dfd_iter != NULL && (file_type != G_FILE_TYPE_DIRECTORY))
+    {
+      guint32 dev = g_file_info_get_attribute_uint32 (child_info, "unix::device");
+      guint64 inode = g_file_info_get_attribute_uint64 (child_info, "unix::inode");
+      loose_checksum = devino_cache_lookup (self, modifier, dev, inode);
+      if (loose_checksum && devino_canonical)
+        {
+          /* Go directly to checksum, do not pass Go, do not collect $200.
+           * In this mode the app is required to break hardlinks for any
+           * files it wants to modify.
+           */
+          if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum, error))
+            return FALSE;
+          if (delete_after_commit)
+            {
+              if (!glnx_shutil_rm_rf_at (dfd_iter->fd, name, cancellable, error))
+                return FALSE;
+            }
+          return TRUE; /* Early return */
+        }
+    }
+
+  /* Build the full path which we need for callbacks */
+  g_ptr_array_add (path, (char*)name);
+  g_autofree char *child_relpath = ptrarray_path_join (path);
+
+  /* For bare-user repos we'll reload our file info from the object
+   * (specifically the ostreemeta xattr), if it was checked out that way (via
+   * hardlink). The on-disk state is not normally what we want to commit.
+   * Basically we're making sure that we pick up "real" uid/gid and any xattrs
+   * there.
+   */
+  g_autoptr(GVariant) source_xattrs = NULL;
+  if (loose_checksum && self->mode == OSTREE_REPO_MODE_BARE_USER)
+    {
+      child_info = NULL;
+      if (!ostree_repo_load_file (self, loose_checksum, NULL, &child_info, &source_xattrs,
+                                  cancellable, error))
+        return FALSE;
+    }
+
+  /* Call the filter */
+  g_autoptr(GFileInfo) modified_info = NULL;
+  OstreeRepoCommitFilterResult filter_result =
+    _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
+  const gboolean child_info_was_modified = !_ostree_gfileinfo_equal (child_info, modified_info);
 
   if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {

@@ -644,6 +644,7 @@ typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo    *r
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS: Canonicalize permissions for bare-user-only mode.
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED: Emit an error if configured SELinux policy does not provide a label
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME: Delete added files/directories after commit; Since: 2017.13
+ * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL: If a devino cache hit is found, skip modifier filters (non-directories only); Since: 2017.14
  */
 typedef enum {
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE = 0,
@@ -652,6 +653,7 @@ typedef enum {
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS = (1 << 2),
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED = (1 << 3),
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME = (1 << 4),
+  OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL = (1 << 5),
 } OstreeRepoCommitModifierFlags;
 
 /**

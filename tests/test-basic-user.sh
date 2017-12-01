@@ -25,7 +25,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare-user"
 
-extra_basic_tests=5
+extra_basic_tests=6
 . $(dirname $0)/basic-test.sh
 
 # Reset things so we don't inherit a lot of state from earlier tests
@@ -99,3 +99,23 @@ assert_file_has_content ls.txt '^-007.. 0 0 .*/usr/bin/systemd'
 $OSTREE ls rootfs /usr/lib/dbus-daemon-helper >ls.txt
 assert_file_has_content ls.txt '^-007.. 0 81 .*/usr/lib/dbus-daemon-helper'
 echo "ok bare-user link-checkout-speedup maintains uids"
+
+cd ${test_tmpdir}
+rm -rf test2-checkout
+$OSTREE checkout -H -U test2 test2-checkout
+# With --link-checkout-speedup, specifying --owner-uid should "win" by default.
+myid=$(id -u)
+newid=$((${myid} + 1))
+$OSTREE commit ${COMMIT_ARGS} --owner-uid ${newid} --owner-gid ${newid} \
+        --link-checkout-speedup -b test2-linkcheckout-test --tree=dir=test2-checkout
+$OSTREE ls test2-linkcheckout-test /baz/cow > ls.txt
+assert_file_has_content ls.txt "^-006.. ${newid} ${newid} .*/baz/cow"
+
+# But --devino-canonical should override that
+$OSTREE commit ${COMMIT_ARGS} --owner-uid ${newid} --owner-gid ${newid} \
+        -I -b test2-devino-test --tree=dir=test2-checkout
+$OSTREE ls test2-devino-test /baz/cow > ls.txt
+assert_file_has_content ls.txt "^-006.. ${myid} ${myid} .*/baz/cow"
+
+$OSTREE refs --delete test2-{linkcheckout,devino}-test
+echo "ok commit with -I"
