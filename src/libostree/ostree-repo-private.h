@@ -82,6 +82,15 @@ typedef enum {
   OSTREE_REPO_SYSROOT_KIND_IS_SYSROOT_OSTREE, /* We match /ostree/repo */
 } OstreeRepoSysrootKind;
 
+typedef struct {
+  GHashTable *refs;  /* (element-type utf8 utf8) */
+  GHashTable *collection_refs;  /* (element-type OstreeCollectionRef utf8) */
+  OstreeRepoTransactionStats stats;
+  /* Implementation of min-free-space-percent */
+  gulong blocksize;
+  fsblkcnt_t max_blocks;
+} OstreeRepoTxn;
+
 /**
  * OstreeRepo:
  *
@@ -109,13 +118,8 @@ struct OstreeRepo {
   GWeakRef sysroot; /* Weak to avoid a circular ref; see also `is_system` */
   char *remotes_config_dir;
 
-  GHashTable *txn_refs;  /* (element-type utf8 utf8) */
-  GHashTable *txn_collection_refs;  /* (element-type OstreeCollectionRef utf8) */
-  GMutex txn_stats_lock;
-  OstreeRepoTransactionStats txn_stats;
-  /* Implementation of min-free-space-percent */
-  gulong txn_blocksize;
-  fsblkcnt_t max_txn_blocks;
+  GMutex txn_lock;
+  OstreeRepoTxn txn;
 
   GMutex cache_lock;
   guint dirmeta_cache_refcount;

@@ -658,19 +658,19 @@ write_content_object (OstreeRepo         *self,
   /* Free space check; only applies during transactions */
   if (self->min_free_space_percent > 0 && self->in_transaction)
     {
-      g_mutex_lock (&self->txn_stats_lock);
-      g_assert_cmpint (self->txn_blocksize, >, 0);
-      const fsblkcnt_t object_blocks = (size / self->txn_blocksize) + 1;
-      if (object_blocks > self->max_txn_blocks)
+      g_mutex_lock (&self->txn_lock);
+      g_assert_cmpint (self->txn.blocksize, >, 0);
+      const fsblkcnt_t object_blocks = (size / self->txn.blocksize) + 1;
+      if (object_blocks > self->txn.max_blocks)
         {
-          g_mutex_unlock (&self->txn_stats_lock);
-          g_autofree char *formatted_required = g_format_size ((guint64)object_blocks * self->txn_blocksize);
+          g_mutex_unlock (&self->txn_lock);
+          g_autofree char *formatted_required = g_format_size ((guint64)object_blocks * self->txn.blocksize);
           return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s more required",
                              self->min_free_space_percent, formatted_required);
         }
       /* This is the main bit that needs mutex protection */
-      self->max_txn_blocks -= object_blocks;
-      g_mutex_unlock (&self->txn_stats_lock);
+      self->txn.max_blocks -= object_blocks;
+      g_mutex_unlock (&self->txn_lock);
     }
 
   /* For regular files, we create them with default mode, and only
@@ -777,9 +777,9 @@ write_content_object (OstreeRepo         *self,
   /* If we already have it, just update the stats. */
   if (have_obj)
     {
-      g_mutex_lock (&self->txn_stats_lock);
-      self->txn_stats.content_objects_total++;
-      g_mutex_unlock (&self->txn_stats_lock);
+      g_mutex_lock (&self->txn_lock);
+      self->txn.stats.content_objects_total++;
+      g_mutex_unlock (&self->txn_lock);
       if (out_csum)
         *out_csum = ostree_checksum_to_bytes (actual_checksum);
       /* Note early return */
@@ -849,11 +849,11 @@ write_content_object (OstreeRepo         *self,
     }
 
   /* Update statistics */
-  g_mutex_lock (&self->txn_stats_lock);
-  self->txn_stats.content_objects_written++;
-  self->txn_stats.content_bytes_written += file_object_length;
-  self->txn_stats.content_objects_total++;
-  g_mutex_unlock (&self->txn_stats_lock);
+  g_mutex_lock (&self->txn_lock);
+  self->txn.stats.content_objects_written++;
+  self->txn.stats.content_bytes_written += file_object_length;
+  self->txn.stats.content_objects_total++;
+  g_mutex_unlock (&self->txn_lock);
 
   if (out_csum)
     {
@@ -1018,9 +1018,9 @@ write_metadata_object (OstreeRepo         *self,
        */
       if (have_obj)
         {
-          g_mutex_lock (&self->txn_stats_lock);
-          self->txn_stats.metadata_objects_total++;
-          g_mutex_unlock (&self->txn_stats_lock);
+          g_mutex_lock (&self->txn_lock);
+          self->txn.stats.metadata_objects_total++;
+          g_mutex_unlock (&self->txn_lock);
 
           if (out_csum)
             *out_csum = ostree_checksum_to_bytes (actual_checksum);
@@ -1090,10 +1090,10 @@ write_metadata_object (OstreeRepo         *self,
     }
 
   /* Update the stats, note we both wrote one and add to total */
-  g_mutex_lock (&self->txn_stats_lock);
-  self->txn_stats.metadata_objects_written++;
-  self->txn_stats.metadata_objects_total++;
-  g_mutex_unlock (&self->txn_stats_lock);
+  g_mutex_lock (&self->txn_lock);
+  self->txn.stats.metadata_objects_written++;
+  self->txn.stats.metadata_objects_total++;
+  g_mutex_unlock (&self->txn_lock);
 
   if (out_csum)
     *out_csum = ostree_checksum_to_bytes (actual_checksum);
@@ -1259,6 +1259,8 @@ devino_cache_lookup (OstreeRepo           *self,
  * existing ostree objects, then this will speed up considerably, so call it
  * before you call ostree_write_directory_to_mtree() or similar.  However,
  * ostree_repo_devino_cache_new() is better as it avoids scanning all objects.
+ *
+ * Multithreading: This function is *not* MT safe.
  */
 gboolean
 ostree_repo_scan_hardlinks (OstreeRepo    *self,
@@ -1287,8 +1289,17 @@ ostree_repo_scan_hardlinks (OstreeRepo    *self,
  * ostree_repo_commit_transaction(), or abort the transaction with
  * ostree_repo_abort_transaction().
  *
- * Currently, transactions are not atomic, and aborting a transaction
- * will not erase any data you  write during the transaction.
+ * Currently, transactions may result in partial commits or data in the target
+ * repository if interrupted during ostree_repo_commit_transaction(), and
+ * further writing refs is also not currently atomic.
+ *
+ * There can be at most one transaction active on a repo at a time per instance
+ * of `OstreeRepo`; however, it is safe to have multiple threads writing objects
+ * on a single `OstreeRepo` instance as long as their lifetime is bounded by the
+ * transaction.
+ *
+ * Multithreading: This function is *not* MT safe; only one transaction can be
+ * active at a time.
  */
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
@@ -1299,7 +1310,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
-  memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
+  memset (&self->txn.stats, 0, sizeof (OstreeRepoTransactionStats));
 
   self->in_transaction = TRUE;
   if (self->min_free_space_percent > 0)
@@ -1307,23 +1318,23 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
       struct statvfs stvfsbuf;
       if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
         return glnx_throw_errno_prefix (error, "fstatvfs");
-      g_mutex_lock (&self->txn_stats_lock);
-      self->txn_blocksize = stvfsbuf.f_bsize;
+      g_mutex_lock (&self->txn_lock);
+      self->txn.blocksize = stvfsbuf.f_bsize;
       /* Convert fragment to blocks to compute the total */
       guint64 total_blocks = (stvfsbuf.f_frsize * stvfsbuf.f_blocks) / stvfsbuf.f_bsize;
       /* Use the appropriate free block count if we're unprivileged */
       guint64 bfree = (getuid () != 0 ? stvfsbuf.f_bavail : stvfsbuf.f_bfree);
       guint64 reserved_blocks = ((double)total_blocks) * (self->min_free_space_percent/100.0);
       if (bfree > reserved_blocks)
-        self->max_txn_blocks = bfree - reserved_blocks;
+        self->txn.max_blocks = bfree - reserved_blocks;
       else
         {
-          g_mutex_unlock (&self->txn_stats_lock);
-          g_autofree char *formatted_free = g_format_size (bfree * self->txn_blocksize);
+          g_mutex_unlock (&self->txn_lock);
+          g_autofree char *formatted_free = g_format_size (bfree * self->txn.blocksize);
           return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s available",
                              self->min_free_space_percent, formatted_free);
         }
-      g_mutex_unlock (&self->txn_stats_lock);
+      g_mutex_unlock (&self->txn_lock);
     }
 
   gboolean ret_transaction_resume = FALSE;
@@ -1547,10 +1558,10 @@ cleanup_tmpdir (OstreeRepo        *self,
 static void
 ensure_txn_refs (OstreeRepo *self)
 {
-  if (self->txn_refs == NULL)
-    self->txn_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  if (self->txn_collection_refs == NULL)
-    self->txn_collection_refs = g_hash_table_new_full (ostree_collection_ref_hash,
+  if (self->txn.refs == NULL)
+    self->txn.refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  if (self->txn.collection_refs == NULL)
+    self->txn.collection_refs = g_hash_table_new_full (ostree_collection_ref_hash,
                                                        ostree_collection_ref_equal,
                                                        (GDestroyNotify) ostree_collection_ref_free,
                                                        g_free);
@@ -1573,9 +1584,10 @@ ostree_repo_transaction_set_refspec (OstreeRepo *self,
 {
   g_return_if_fail (self->in_transaction == TRUE);
 
+  g_mutex_lock (&self->txn_lock);
   ensure_txn_refs (self);
-
-  g_hash_table_replace (self->txn_refs, g_strdup (refspec), g_strdup (checksum));
+  g_hash_table_replace (self->txn.refs, g_strdup (refspec), g_strdup (checksum));
+  g_mutex_unlock (&self->txn_lock);
 }
 
 /**
@@ -1592,10 +1604,20 @@ ostree_repo_transaction_set_refspec (OstreeRepo *self,
  * Otherwise, if @checksum is %NULL, then record that the ref should
  * be deleted.
  *
- * The change will not be written out immediately, but when the transaction
- * is completed with ostree_repo_commit_transaction(). If the transaction
- * is instead aborted with ostree_repo_abort_transaction(), no changes will
- * be made to the repository.
+ * The change will be written when the transaction is completed with
+ * ostree_repo_commit_transaction(); that function takes care of writing all of
+ * the objects (such as the commit referred to by @checksum) before updating the
+ * refs. If the transaction is instead aborted with
+ * ostree_repo_abort_transaction(), no changes to the ref be made to the
+ * repository.
+ *
+ * Note however that currently writing *multiple* refs is not truly atomic; if
+ * the process or system is terminated during
+ * `ostree_repo_commit_transaction()`, it is possible that just some of the refs
+ * will have been updated. Your application should take care to handle this
+ * case.
+ *
+ * Multithreading: Since v2017.14 this function is MT safe.
  */
 void
 ostree_repo_transaction_set_ref (OstreeRepo *self,
@@ -1603,18 +1625,18 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
                                  const char *ref,
                                  const char *checksum)
 {
-  char *refspec;
-
   g_return_if_fail (self->in_transaction == TRUE);
 
-  ensure_txn_refs (self);
-
+  char *refspec;
   if (remote)
     refspec = g_strdup_printf ("%s:%s", remote, ref);
   else
     refspec = g_strdup (ref);
 
-  g_hash_table_replace (self->txn_refs, refspec, g_strdup (checksum));
+  g_mutex_lock (&self->txn_lock);
+  ensure_txn_refs (self);
+  g_hash_table_replace (self->txn.refs, refspec, g_strdup (checksum));
+  g_mutex_unlock (&self->txn_lock);
 }
 
 /**
@@ -1634,6 +1656,8 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
  * is instead aborted with ostree_repo_abort_transaction(), no changes will
  * be made to the repository.
  *
+ * Multithreading: Since v2017.14 this function is MT safe.
+ *
  * Since: 2017.8
  */
 void
@@ -1646,10 +1670,11 @@ ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
   g_return_if_fail (ref != NULL);
   g_return_if_fail (checksum == NULL || ostree_validate_checksum_string (checksum, NULL));
 
+  g_mutex_lock (&self->txn_lock);
   ensure_txn_refs (self);
-
-  g_hash_table_replace (self->txn_collection_refs,
+  g_hash_table_replace (self->txn.collection_refs,
                         ostree_collection_ref_dup (ref), g_strdup (checksum));
+  g_mutex_unlock (&self->txn_lock);
 }
 
 /**
@@ -1664,6 +1689,8 @@ ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
  * This is like ostree_repo_transaction_set_ref(), except it may be
  * invoked outside of a transaction.  This is presently safe for the
  * case where we're creating or overwriting an existing ref.
+ *
+ * Multithreading: This function is MT safe.
  */
 gboolean
 ostree_repo_set_ref_immediate (OstreeRepo *self,
@@ -1745,6 +1772,12 @@ ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
  * Complete the transaction. Any refs set with
  * ostree_repo_transaction_set_ref() or
  * ostree_repo_transaction_set_refspec() will be written out.
+ *
+ * Note that if multiple threads are performing writes, all such threads must
+ * have terminated before this function is invoked.
+ *
+ * Multithreading: This function is *not* MT safe; only one transaction can be
+ * active at a time.
  */
 gboolean
 ostree_repo_commit_transaction (OstreeRepo                  *self,
@@ -1782,15 +1815,15 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
-  if (self->txn_refs)
-    if (!_ostree_repo_update_refs (self, self->txn_refs, cancellable, error))
+  if (self->txn.refs)
+    if (!_ostree_repo_update_refs (self, self->txn.refs, cancellable, error))
       return FALSE;
-  g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn.refs, g_hash_table_destroy);
 
-  if (self->txn_collection_refs)
-    if (!_ostree_repo_update_collection_refs (self, self->txn_collection_refs, cancellable, error))
+  if (self->txn.collection_refs)
+    if (!_ostree_repo_update_collection_refs (self, self->txn.collection_refs, cancellable, error))
       return FALSE;
-  g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn.collection_refs, g_hash_table_destroy);
 
   self->in_transaction = FALSE;
 
@@ -1798,7 +1831,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
     return FALSE;
 
   if (out_stats)
-    *out_stats = self->txn_stats;
+    *out_stats = self->txn.stats;
 
   return TRUE;
 }
@@ -1829,8 +1862,8 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
-  g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
-  g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn.refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn.collection_refs, g_hash_table_destroy);
 
   glnx_tmpdir_unset (&self->commit_stagedir);
   glnx_release_lock_file (&self->commit_stagedir_lock);
