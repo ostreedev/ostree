@@ -43,6 +43,7 @@ assert_streq() {
 
 validate_delta_options() {
     ostree --repo=testrepo init --mode=bare-user
+    echo 'fsync=false' >> testrepo/config
     ostree --repo=testrepo remote add --set=gpg-verify=false local file://${repo}
     ostree --repo=${repo} static-delta generate $@ --from=${from} --to=${to}
     ostree --repo=${repo} summary -u
