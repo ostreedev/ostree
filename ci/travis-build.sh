@@ -90,9 +90,9 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 
 ${make}
 [ "$ci_test" = no ] || ${make} check || maybe_fail_tests
-cat test/test-suite.log || :
+cat test-suite.log || :
 [ "$ci_test" = no ] || ${make} distcheck || maybe_fail_tests
-cat test/test-suite.log || :
+cat test-suite.log || :
 
 ${make} install DESTDIR=$(pwd)/DESTDIR
 ( cd DESTDIR && find . )
@@ -104,7 +104,7 @@ if [ "$ci_sudo" = yes ] && [ "$ci_test" = yes ]; then
         GI_TYPELIB_PATH=/usr/local/lib/girepository-1.0 \
         ${make} installcheck || \
     maybe_fail_tests
-    cat test/test-suite.log || :
+    cat test-suite.log || :
 fi
 
 # vim:set sw=4 sts=4 et:

@@ -51,6 +51,20 @@ commit_dest_dfd (OstreeRepo *self)
     return self->objects_dir_fd;
 }
 
+/* If we don't have O_TMPFILE, or for symlinks we'll create temporary
+ * files.  If we have a txn, use the staging dir to ensure that
+ * things are consistently locked against concurrent cleanup, and
+ * in general we have all of our data in one place.
+ */
+static int
+commit_tmp_dfd (OstreeRepo *self)
+{
+  if (self->in_transaction)
+    return self->commit_stagedir.fd;
+  else
+    return self->tmp_dir_fd;
+}
+
 /* The objects/ directory has a two-character directory prefix for checksums
  * to avoid putting lots of files in a single directory.   This technique
  * is quite old, but Git also uses it for example.
@@ -439,7 +453,7 @@ _ostree_repo_bare_content_open (OstreeRepo            *self,
   g_assert (!real->initialized);
   real->initialized = TRUE;
   g_assert (S_ISREG (mode));
-  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                       &real->tmpf, error))
     return FALSE;
   ot_checksum_init (&real->checksum);
@@ -530,7 +544,7 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
                                               GError **error)
 {
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                       &tmpf, error))
     return FALSE;
 
@@ -668,7 +682,7 @@ write_content_object (OstreeRepo         *self,
    *
    * We use GLnxTmpfile for regular files, and OtCleanupUnlinkat for symlinks.
    */
-  g_auto(OtCleanupUnlinkat) tmp_unlinker = { self->tmp_dir_fd, NULL };
+  g_auto(OtCleanupUnlinkat) tmp_unlinker = { commit_tmp_dfd (self), NULL };
   g_auto(GLnxTmpfile) tmpf = { 0, };
   goffset unpacked_size = 0;
   gboolean indexable = FALSE;
@@ -677,7 +691,7 @@ write_content_object (OstreeRepo         *self,
     {
       /* This will not be hit for bare-user or archive */
       g_assert (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY);
-      if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd,
+      if (!_ostree_make_temporary_symlink_at (commit_tmp_dfd (self),
                                               g_file_info_get_symlink_target (file_info),
                                               &tmp_unlinker.path,
                                               cancellable, error))
@@ -700,7 +714,7 @@ write_content_object (OstreeRepo         *self,
       if (self->generate_sizes)
         indexable = TRUE;
 
-      if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+      if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                           &tmpf, error))
         return FALSE;
       temp_out = g_unix_output_stream_new (tmpf.fd, FALSE);
@@ -790,14 +804,14 @@ write_content_object (OstreeRepo         *self,
            * Note, this does not apply for bare-user repos, as they store symlinks
            * as regular files.
            */
-          if (G_UNLIKELY (fchownat (self->tmp_dir_fd, tmp_unlinker.path,
+          if (G_UNLIKELY (fchownat (tmp_unlinker.dfd, tmp_unlinker.path,
                                     uid, gid, AT_SYMLINK_NOFOLLOW) == -1))
             return glnx_throw_errno_prefix (error, "fchownat");
 
           if (xattrs != NULL)
             {
-              ot_security_smack_reset_dfd_name (self->tmp_dir_fd, tmp_unlinker.path);
-              if (!glnx_dfd_name_set_all_xattrs (self->tmp_dir_fd, tmp_unlinker.path,
+              ot_security_smack_reset_dfd_name (tmp_unlinker.dfd, tmp_unlinker.path);
+              if (!glnx_dfd_name_set_all_xattrs (tmp_unlinker.dfd, tmp_unlinker.path,
                                                  xattrs, cancellable, error))
                 return FALSE;
             }
@@ -1039,7 +1053,7 @@ write_metadata_object (OstreeRepo         *self,
 
   /* Write the metadata to a temporary file */
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                       &tmpf, error))
     return FALSE;
   if (!glnx_try_fallocate (tmpf.fd, 0, len, error))
@@ -1421,8 +1435,40 @@ rename_pending_loose_objects (OstreeRepo        *self,
         return glnx_throw_errno_prefix (error, "fsync");
     }
 
-  if (!glnx_tmpdir_delete (&self->commit_stagedir, cancellable, error))
+  return TRUE;
+}
+
+/* Try to lock a transaction stage directory created by
+ * ostree_repo_prepare_transaction().
+ */
+static gboolean
+cleanup_txn_dir (OstreeRepo   *self,
+                 int           dfd,
+                 const char   *path,
+                 GCancellable *cancellable,
+                 GError      **error)
+{
+  g_auto(GLnxLockFile) lockfile = { 0, };
+  gboolean did_lock;
+
+  /* Try to lock, but if we don't get it, move on */
+  if (!_ostree_repo_try_lock_tmpdir (dfd, path, &lockfile, &did_lock, error))
     return FALSE;
+  if (!did_lock)
+    return TRUE; /* Note early return */
+
+  /* If however this is the staging directory for the *current*
+   * boot, then don't delete it now - we may end up reusing it, as
+   * is the point.
+   */
+  if (g_str_has_prefix (path, self->stagedir_prefix))
+    return TRUE; /* Note early return */
+
+  /* But, crucially we can now clean up staging directories
+   * from *other* boots.
+   */
+  if (!glnx_shutil_rm_rf_at (dfd, path, cancellable, error))
+    return glnx_prefix_error (error, "Removing %s", path);
 
   return TRUE;
 }
@@ -1447,15 +1493,9 @@ cleanup_tmpdir (OstreeRepo        *self,
 
   while (TRUE)
     {
-      guint64 delta;
       struct dirent *dent;
-      struct stat stbuf;
-      g_auto(GLnxLockFile) lockfile = { 0, };
-      gboolean did_lock;
-
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
         return FALSE;
-
       if (dent == NULL)
         break;
 
@@ -1465,55 +1505,39 @@ cleanup_tmpdir (OstreeRepo        *self,
       if (strcmp (dent->d_name, "cache") == 0)
         continue;
 
+      struct stat stbuf;
       if (!glnx_fstatat_allow_noent (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
         return FALSE;
       if (errno == ENOENT) /* Did another cleanup win? */
         continue;
 
-      /* First, if it's a directory which needs locking, but it's
-       * busy, skip it.
-       */
+      /* Handle transaction tmpdirs */
       if (_ostree_repo_is_locked_tmpdir (dent->d_name))
         {
-          if (!_ostree_repo_try_lock_tmpdir (dfd_iter.fd, dent->d_name,
-                                             &lockfile, &did_lock, error))
+          if (!cleanup_txn_dir (self, dfd_iter.fd, dent->d_name, cancellable, error))
             return FALSE;
-          if (!did_lock)
-            continue;
+          continue; /* We've handled this, move on */
         }
 
-      /* If however this is the staging directory for the *current*
-       * boot, then don't delete it now - we may end up reusing it, as
-       * is the point.
+      /* At this point we're looking at an unknown-origin file or directory in
+       * the tmpdir. This could be something like a temporary checkout dir (used
+       * by rpm-ostree), or (from older versions of libostree) a tempfile if we
+       * don't have O_TMPFILE for commits.
        */
-      if (g_str_has_prefix (dent->d_name, self->stagedir_prefix))
+
+      /* Ignore files from the future */
+      if (stbuf.st_mtime > curtime_secs)
         continue;
-      else if (g_str_has_prefix (dent->d_name, OSTREE_REPO_TMPDIR_STAGING))
+
+      /* We're pruning content based on the expiry, which
+       * defaults to a day.  That's what we were doing before we
+       * had locking...but in future we can be smarter here.
+       */
+      guint64 delta = curtime_secs - stbuf.st_mtime;
+      if (delta > self->tmp_expiry_seconds)
         {
-          /* But, crucially we can now clean up staging directories
-           * from *other* boots
-           */
           if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
             return glnx_prefix_error (error, "Removing %s", dent->d_name);
-        }
-      else
-        {
-          /* Now we do time-based cleanup.  Ignore it if it's somehow
-           * in the future...
-           */
-          if (stbuf.st_mtime > curtime_secs)
-            continue;
-
-          /* Now, we're pruning content based on the expiry, which
-           * defaults to a day.  That's what we were doing before we
-           * had locking...but in future we can be smarter here.
-           */
-          delta = curtime_secs - stbuf.st_mtime;
-          if (delta > self->tmp_expiry_seconds)
-            {
-              if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
-                return glnx_prefix_error (error, "Removing %s", dent->d_name);
-            }
         }
     }
 
@@ -1746,6 +1770,12 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if (!rename_pending_loose_objects (self, cancellable, error))
     return FALSE;
 
+  g_debug ("txn commit %s", glnx_basename (self->commit_stagedir.path));
+  if (!glnx_tmpdir_delete (&self->commit_stagedir, cancellable, error))
+    return FALSE;
+  glnx_release_lock_file (&self->commit_stagedir_lock);
+
+  /* This performs a global cleanup */
   if (!cleanup_tmpdir (self, cancellable, error))
     return FALSE;
 
@@ -1761,9 +1791,6 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
     if (!_ostree_repo_update_collection_refs (self, self->txn_collection_refs, cancellable, error))
       return FALSE;
   g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
-
-  glnx_tmpdir_unset (&self->commit_stagedir);
-  glnx_release_lock_file (&self->commit_stagedir_lock);
 
   self->in_transaction = FALSE;
 
