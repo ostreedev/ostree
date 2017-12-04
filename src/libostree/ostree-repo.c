@@ -505,13 +505,13 @@ ostree_repo_finalize (GObject *object)
     g_hash_table_destroy (self->updated_uncompressed_dirs);
   if (self->config)
     g_key_file_free (self->config);
-  g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
-  g_clear_pointer (&self->txn_collection_refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn.refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn.collection_refs, g_hash_table_destroy);
   g_clear_error (&self->writable_error);
   g_clear_pointer (&self->object_sizes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&self->dirmeta_cache, (GDestroyNotify) g_hash_table_unref);
   g_mutex_clear (&self->cache_lock);
-  g_mutex_clear (&self->txn_stats_lock);
+  g_mutex_clear (&self->txn_lock);
   g_free (self->collection_id);
 
   g_clear_pointer (&self->remotes, g_hash_table_destroy);
@@ -672,7 +672,7 @@ ostree_repo_init (OstreeRepo *self)
                                                  test_error_keys, G_N_ELEMENTS (test_error_keys));
 
   g_mutex_init (&self->cache_lock);
-  g_mutex_init (&self->txn_stats_lock);
+  g_mutex_init (&self->txn_lock);
 
   self->remotes = g_hash_table_new_full (g_str_hash, g_str_equal,
                                          (GDestroyNotify) NULL,
