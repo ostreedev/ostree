@@ -18,8 +18,9 @@
 ***/
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
-LIBOSTREE_2017.14 {
-} LIBOSTREE_2017.13;
+
+LIBOSTREE_2017.15 {
+} LIBOSTREE_2017.14;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste

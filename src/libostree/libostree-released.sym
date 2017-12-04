@@ -442,6 +442,9 @@ global:
   ostree_repo_checkout_at_options_set_devino;
 } LIBOSTREE_2017.12;
 
+LIBOSTREE_2017.14 {
+} LIBOSTREE_2017.13;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
