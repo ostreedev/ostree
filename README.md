@@ -70,6 +70,10 @@ projects.
 where OSTree was born - as a high performance continuous delivery/testing
 system for GNOME.
 
+The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
+integration tool uses libostree as a caching system to store and share
+built artifacts.
+
 Building
 --------
 
