@@ -1576,6 +1576,8 @@ ensure_txn_refs (OstreeRepo *self)
  * Like ostree_repo_transaction_set_ref(), but takes concatenated
  * @refspec format as input instead of separate remote and name
  * arguments.
+ *
+ * Multithreading: Since v2017.15 this function is MT safe.
  */
 void
 ostree_repo_transaction_set_refspec (OstreeRepo *self,
@@ -1608,16 +1610,16 @@ ostree_repo_transaction_set_refspec (OstreeRepo *self,
  * ostree_repo_commit_transaction(); that function takes care of writing all of
  * the objects (such as the commit referred to by @checksum) before updating the
  * refs. If the transaction is instead aborted with
- * ostree_repo_abort_transaction(), no changes to the ref be made to the
+ * ostree_repo_abort_transaction(), no changes to the ref will be made to the
  * repository.
  *
  * Note however that currently writing *multiple* refs is not truly atomic; if
  * the process or system is terminated during
- * `ostree_repo_commit_transaction()`, it is possible that just some of the refs
+ * ostree_repo_commit_transaction(), it is possible that just some of the refs
  * will have been updated. Your application should take care to handle this
  * case.
  *
- * Multithreading: Since v2017.14 this function is MT safe.
+ * Multithreading: Since v2017.15 this function is MT safe.
  */
 void
 ostree_repo_transaction_set_ref (OstreeRepo *self,
@@ -1656,7 +1658,7 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
  * is instead aborted with ostree_repo_abort_transaction(), no changes will
  * be made to the repository.
  *
- * Multithreading: Since v2017.14 this function is MT safe.
+ * Multithreading: Since v2017.15 this function is MT safe.
  *
  * Since: 2017.8
  */
