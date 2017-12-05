@@ -88,15 +88,35 @@ available online;
 [this code](https://github.com/ostreedev/ostree/blob/master/packaging/Makefile.dist-packaging#L11)
 in OSTree is an example.
 
-Once you have a git clone or recursive archive, building is the
-same as almost every autotools project:
+Once you have a git clone or recursive archive,
+run the following commands to complete the installation process:
 
 ```
-git submodule update --init
-env NOCONFIGURE=1 ./autogen.sh
-./configure --prefix=...
+sudo mkdir /opt/ostree
+sudo chown $USERNAME /opt/ostree
+./autogen.sh
+./configure --prefix=/opt/ostree
 make
-make install DESTDIR=/path/to/dest
+sudo make install
+
+```
+
+Finally, you need to add those install paths to your path and since you have installed object introspection
+and built ostree with this capability you must also specify that on your path.
+
+This example will show the process for .bashrc, as this will cover most cases.
+
+However the process may differ depending on the shell you use.
+
+
+Edit the .profile file, usually located at ~/.profile
+
+And add the following lines to the end of the file
+
+```
+export PATH=/opt/ostree/bin:$PATH
+export GI_TYPELIB_PATH=/opt/ostree/lib/girepository-1.0/
+
 ```
 
 More documentation
