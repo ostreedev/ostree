@@ -3914,6 +3914,115 @@ ostree_repo_delete_object (OstreeRepo           *self,
   return TRUE;
 }
 
+static gboolean
+fsck_metadata_object (OstreeRepo           *self,
+                      OstreeObjectType      objtype,
+                      const char           *sha256,
+                      GCancellable         *cancellable,
+                      GError              **error)
+{
+  const char *errmsg = glnx_strjoina ("fsck ", sha256, ".", ostree_object_type_to_string (objtype));
+  GLNX_AUTO_PREFIX_ERROR (errmsg, error);
+  g_autoptr(GVariant) metadata = NULL;
+  if (!load_metadata_internal (self, objtype, sha256, TRUE,
+                               &metadata, NULL, NULL, NULL,
+                               cancellable, error))
+    return FALSE;
+
+  g_auto(OtChecksum) hasher = { 0, };
+  ot_checksum_init (&hasher);
+  ot_checksum_update (&hasher, g_variant_get_data (metadata), g_variant_get_size (metadata));
+
+  char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
+  ot_checksum_get_hexdigest (&hasher, actual_checksum, sizeof (actual_checksum));
+  if (!_ostree_compare_object_checksum (objtype, sha256, actual_checksum, error))
+    return FALSE;
+
+  switch (objtype)
+    {
+    case OSTREE_OBJECT_TYPE_COMMIT:
+      if (!ostree_validate_structureof_commit (metadata, error))
+        return FALSE;
+      break;
+    case OSTREE_OBJECT_TYPE_DIR_TREE:
+      if (!ostree_validate_structureof_dirtree (metadata, error))
+        return FALSE;
+      break;
+    case OSTREE_OBJECT_TYPE_DIR_META:
+      if (!ostree_validate_structureof_dirmeta (metadata, error))
+        return FALSE;
+      break;
+    case OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT:
+    case OSTREE_OBJECT_TYPE_COMMIT_META:
+      /* TODO */
+      break;
+    case OSTREE_OBJECT_TYPE_FILE:
+      g_assert_not_reached ();
+      break;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+fsck_content_object (OstreeRepo           *self,
+                     const char           *sha256,
+                     GCancellable         *cancellable,
+                     GError              **error)
+{
+  const char *errmsg = glnx_strjoina ("fsck content object ", sha256);
+  GLNX_AUTO_PREFIX_ERROR (errmsg, error);
+  g_autoptr(GInputStream) input = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
+
+  if (!ostree_repo_load_file (self, sha256, &input, &file_info, &xattrs,
+                              cancellable, error))
+    return FALSE;
+
+  /* TODO more consistency checks here */
+  const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+  if (!ostree_validate_structureof_file_mode (mode, error))
+    return FALSE;
+
+  g_autofree guchar *computed_csum = NULL;
+  if (!ostree_checksum_file_from_input (file_info, xattrs, input,
+                                        OSTREE_OBJECT_TYPE_FILE, &computed_csum,
+                                        cancellable, error))
+    return FALSE;
+
+  char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
+  ostree_checksum_inplace_from_bytes (computed_csum, actual_checksum);
+  return _ostree_compare_object_checksum (OSTREE_OBJECT_TYPE_FILE, sha256, actual_checksum, error);
+}
+
+/**
+ * ostree_repo_fsck_object:
+ * @self: Repo
+ * @objtype: Object type
+ * @sha256: Checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Verify consistency of the object; this performs checks only relevant to the
+ * immediate object itself, such as checksumming. This API call will not itself
+ * traverse metadata objects for example.
+ *
+ * Since: 2017.15
+ */
+gboolean
+ostree_repo_fsck_object (OstreeRepo           *self,
+                         OstreeObjectType      objtype,
+                         const char           *sha256,
+                         GCancellable         *cancellable,
+                         GError              **error)
+{
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    return fsck_metadata_object (self, objtype, sha256, cancellable, error);
+  else
+    return fsck_content_object (self, sha256, cancellable, error);
+}
+
 /**
  * ostree_repo_import_object_from:
  * @self: Destination repo

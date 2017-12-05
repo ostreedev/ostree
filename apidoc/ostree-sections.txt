@@ -348,6 +348,7 @@ ostree_repo_import_object_from_with_trust
 ostree_repo_import_archive_to_mtree
 ostree_repo_export_tree_to_archive
 ostree_repo_delete_object
+ostree_repo_fsck_object
 OstreeRepoCommitFilterResult
 OstreeRepoCommitFilter
 OstreeRepoCommitModifier
