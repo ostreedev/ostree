@@ -183,7 +183,7 @@ if ! skip_one_without_user_xattrs; then
         if ${CMD_PREFIX} ostree --repo=cacherepo fsck 2>err.txt; then
             fatal "corrupt repo fsck?"
         fi
-        assert_file_has_content err.txt "corrupted.*${checksum}"
+        assert_file_has_content err.txt "Corrupted.*${checksum}"
         rm ostree-srv/corruptrepo -rf
         ostree_repo_init ostree-srv/corruptrepo --mode=archive
         ${CMD_PREFIX} ostree --repo=ostree-srv/corruptrepo pull-local cacherepo main
