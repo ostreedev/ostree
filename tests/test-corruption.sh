@@ -29,7 +29,9 @@ setup_test_repository "bare"
 $OSTREE checkout test2 checkout-test2
 cd checkout-test2
 chmod o+x firstfile
-$OSTREE fsck -q && (echo 1>&2 "fsck unexpectedly succeeded"; exit 1)
+if $OSTREE fsck -q; then
+    fatal "fsck unexpectedly succeeded"
+fi
 chmod o-x firstfile
 $OSTREE fsck -q
 
@@ -54,7 +56,9 @@ rm checkout-test2 -rf
 $OSTREE checkout test2 checkout-test2
 cd checkout-test2
 chmod o+x firstfile
-$OSTREE fsck -q --delete && (echo 1>&2 "fsck unexpectedly succeeded"; exit 1)
+if $OSTREE fsck -q --delete; then
+    fatal "fsck unexpectedly succeeded"
+fi
 
 echo "ok chmod"
 
