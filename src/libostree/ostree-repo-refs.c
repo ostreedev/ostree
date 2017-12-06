@@ -726,13 +726,17 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
  * @self: Repo
  * @refspec_prefix: (allow-none): Only list refs which match this prefix
  * @out_all_refs: (out) (element-type utf8 utf8) (transfer container):
- *    Mapping from ref to checksum
+ *    Mapping from refspec to checksum
  * @cancellable: Cancellable
  * @error: Error
  *
  * If @refspec_prefix is %NULL, list all local and remote refspecs,
  * with their current values in @out_all_refs.  Otherwise, only list
  * refspecs which have @refspec_prefix as a prefix.
+ *
+ * @out_all_refs will be returned as a mapping from refspecs (including the
+ * remote name) to checksums. If @refspec_prefix is non-%NULL, it will be
+ * removed as a prefix from the hash table keys.
  */
 gboolean
 ostree_repo_list_refs (OstreeRepo       *self,
@@ -752,16 +756,18 @@ ostree_repo_list_refs (OstreeRepo       *self,
  * @self: Repo
  * @refspec_prefix: (allow-none): Only list refs which match this prefix
  * @out_all_refs: (out) (element-type utf8 utf8) (transfer container):
- *    Mapping from ref to checksum
+ *    Mapping from refspec to checksum
  * @flags: Options controlling listing behavior
  * @cancellable: Cancellable
  * @error: Error
  *
  * If @refspec_prefix is %NULL, list all local and remote refspecs,
  * with their current values in @out_all_refs.  Otherwise, only list
- * refspecs which have @refspec_prefix as a prefix.  Differently from
- * ostree_repo_list_refs(), the prefix will not be removed from the ref
- * name.
+ * refspecs which have @refspec_prefix as a prefix.
+ *
+ * @out_all_refs will be returned as a mapping from refspecs (including the
+ * remote name) to checksums. Differently from ostree_repo_list_refs(), the
+ * @refspec_prefix will not be removed from the refspecs in the hash table.
  */
 gboolean
 ostree_repo_list_refs_ext (OstreeRepo                 *self,
