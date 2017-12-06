@@ -771,14 +771,17 @@ initiate_next_curl_request (FetcherRequest *req,
    * there are numerous HTTP/2 fixes since the original version in
    * libcurl 7.43.0.
    */
+  if (!(self->config_flags & OSTREE_FETCHER_FLAGS_DISABLE_HTTP2))
+    {
 #if CURL_AT_LEAST_VERSION(7, 51, 0)
-  curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+      curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
 #endif
-  /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
+      /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
 #if (CURLPIPE_MULTIPLEX > 0)
-  /* wait for pipe connection to confirm */
-  curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
+      /* wait for pipe connection to confirm */
+      curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
 #endif
+    }
   curl_easy_setopt (req->easy, CURLOPT_WRITEFUNCTION, write_cb);
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
     curl_easy_setopt (req->easy, CURLOPT_VERBOSE, 1L);

@@ -2690,6 +2690,15 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
   if (gzip)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TRANSFER_GZIP;
 
+  { gboolean http2 = TRUE;
+    if (!ostree_repo_get_remote_boolean_option (self, remote_name,
+                                                "http2", TRUE,
+                                                &http2, error))
+      goto out;
+    if (!http2)
+      fetcher_flags |= OSTREE_FETCHER_FLAGS_DISABLE_HTTP2;
+  }
+
   fetcher = _ostree_fetcher_new (self->tmp_dir_fd, remote_name, fetcher_flags);
 
   {
