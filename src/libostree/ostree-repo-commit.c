@@ -2833,12 +2833,112 @@ typedef enum {
   WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT = 1,
 } WriteDirContentFlags;
 
-/* Given either a dir_enum or a dfd_iter, writes the directory entry to the mtree. For
- * subdirs, we go back through either write_dfd_iter_to_mtree_internal (dfd_iter case) or
- * write_directory_to_mtree_internal (dir_enum case) which will do the actual dirmeta +
- * dirent iteration. */
+/* Given either a dir_enum or a dfd_iter, writes the directory entry (which is
+ * itself a directory) to the mtree. For subdirs, we go back through either
+ * write_dfd_iter_to_mtree_internal (dfd_iter case) or
+ * write_directory_to_mtree_internal (dir_enum case) which will do the actual
+ * dirmeta + dirent iteration. */
 static gboolean
-write_directory_content_to_mtree_internal (OstreeRepo                  *self,
+write_dir_entry_to_mtree_internal (OstreeRepo                  *self,
+                                   OstreeRepoFile              *repo_dir,
+                                   GFileEnumerator             *dir_enum,
+                                   GLnxDirFdIterator           *dfd_iter,
+                                   WriteDirContentFlags         writeflags,
+                                   GFileInfo                   *child_info,
+                                   OstreeMutableTree           *mtree,
+                                   OstreeRepoCommitModifier    *modifier,
+                                   GPtrArray                   *path,
+                                   GCancellable                *cancellable,
+                                   GError                     **error)
+{
+  g_assert (dir_enum != NULL || dfd_iter != NULL);
+  g_assert (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY);
+
+  const char *name = g_file_info_get_name (child_info);
+
+  /* We currently only honor the CONSUME flag in the dfd_iter case to avoid even
+   * more complexity in this function, and it'd mostly only be useful when
+   * operating on local filesystems anyways.
+   */
+  const gboolean delete_after_commit = dfd_iter && modifier &&
+    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME);
+
+  /* Build the full path which we need for callbacks */
+  g_ptr_array_add (path, (char*)name);
+  g_autofree char *child_relpath = ptrarray_path_join (path);
+
+  /* Call the filter */
+  g_autoptr(GFileInfo) modified_info = NULL;
+  OstreeRepoCommitFilterResult filter_result =
+    _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
+
+  if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
+    {
+      g_ptr_array_remove_index (path, path->len - 1);
+      if (delete_after_commit)
+        {
+          g_assert (dfd_iter);
+          if (!glnx_shutil_rm_rf_at (dfd_iter->fd, name, cancellable, error))
+            return FALSE;
+        }
+      /* Note: early return */
+      return TRUE;
+    }
+
+  g_autoptr(GFile) child = NULL;
+  if (dir_enum != NULL)
+    child = g_file_enumerator_get_child (dir_enum, child_info);
+
+  g_autoptr(OstreeMutableTree) child_mtree = NULL;
+  if (!ostree_mutable_tree_ensure_dir (mtree, name, &child_mtree, error))
+    return FALSE;
+
+  /* Finally, recurse on the dir */
+  if (dir_enum != NULL)
+    {
+      if (!write_directory_to_mtree_internal (self, child, child_mtree,
+                                              modifier, path,
+                                              cancellable, error))
+        return FALSE;
+    }
+  else if (repo_dir)
+    {
+      g_assert (dir_enum != NULL);
+      g_debug ("Adding: %s", gs_file_get_path_cached (child));
+      if (!ostree_mutable_tree_replace_file (mtree, name,
+                                             ostree_repo_file_get_checksum ((OstreeRepoFile*) child),
+                                             error))
+        return FALSE;
+    }
+  else
+    {
+      g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
+
+      if (!glnx_dirfd_iterator_init_at (dfd_iter->fd, name, FALSE, &child_dfd_iter, error))
+        return FALSE;
+
+      if (!write_dfd_iter_to_mtree_internal (self, &child_dfd_iter, child_mtree,
+                                             modifier, path,
+                                             cancellable, error))
+        return FALSE;
+
+      if (delete_after_commit)
+        {
+          if (!glnx_unlinkat (dfd_iter->fd, name, AT_REMOVEDIR, error))
+            return FALSE;
+        }
+    }
+
+  g_ptr_array_remove_index (path, path->len - 1);
+
+  return TRUE;
+}
+
+/* Given either a dir_enum or a dfd_iter, writes a non-dir (regfile/symlink) to
+ * the mtree.
+ */
+static gboolean
+write_content_to_mtree_internal (OstreeRepo                  *self,
                                            OstreeRepoFile              *repo_dir,
                                            GFileEnumerator             *dir_enum,
                                            GLnxDirFdIterator           *dfd_iter,
@@ -2871,7 +2971,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
 
   /* See if we have a devino hit; this is used below in a few places. */
   const char *loose_checksum = NULL;
-  if (dfd_iter != NULL && (file_type != G_FILE_TYPE_DIRECTORY))
+  if (dfd_iter != NULL)
     {
       guint32 dev = g_file_info_get_attribute_uint32 (child_info, "unix::device");
       guint64 inode = g_file_info_get_attribute_uint64 (child_info, "unix::inode");
@@ -2933,7 +3033,6 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
 
   switch (file_type)
     {
-    case G_FILE_TYPE_DIRECTORY:
     case G_FILE_TYPE_SYMBOLIC_LINK:
     case G_FILE_TYPE_REGULAR:
       break;
@@ -2945,182 +3044,139 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   if (dir_enum != NULL)
     child = g_file_enumerator_get_child (dir_enum, child_info);
 
-  if (file_type == G_FILE_TYPE_DIRECTORY)
+  /* Our filters have passed, etc.; now we prepare to write the content object */
+  glnx_autofd int file_input_fd = -1;
+
+  /* Open the file now, since it's better for reading xattrs
+   * rather than using the /proc/self/fd links.
+   *
+   * TODO: Do this lazily, since for e.g. bare-user-only repos
+   * we don't have xattrs and don't need to open every file
+   * for things that have devino cache hits.
+   */
+  if (file_type == G_FILE_TYPE_REGULAR && dfd_iter != NULL)
     {
-      g_autoptr(OstreeMutableTree) child_mtree = NULL;
-      if (!ostree_mutable_tree_ensure_dir (mtree, name, &child_mtree, error))
+      if (!glnx_openat_rdonly (dfd_iter->fd, name, FALSE, &file_input_fd, error))
         return FALSE;
-
-      if (dir_enum != NULL)
-        {
-          if (!write_directory_to_mtree_internal (self, child, child_mtree,
-                                                  modifier, path,
-                                                  cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
-
-          if (!glnx_dirfd_iterator_init_at (dfd_iter->fd, name, FALSE, &child_dfd_iter, error))
-            return FALSE;
-
-          if (!write_dfd_iter_to_mtree_internal (self, &child_dfd_iter, child_mtree,
-                                                 modifier, path,
-                                                 cancellable, error))
-            return FALSE;
-
-          if (delete_after_commit)
-            {
-              if (!glnx_unlinkat (dfd_iter->fd, name, AT_REMOVEDIR, error))
-                return FALSE;
-            }
-        }
     }
-  else if (repo_dir)
+
+  g_autoptr(GVariant) xattrs = NULL;
+  gboolean xattrs_were_modified;
+  if (dir_enum != NULL)
     {
-      g_assert (dir_enum != NULL);
-      g_debug ("Adding: %s", gs_file_get_path_cached (child));
-      if (!ostree_mutable_tree_replace_file (mtree, name,
-                                             ostree_repo_file_get_checksum ((OstreeRepoFile*) child),
-                                             error))
+      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
+                             -1, name, source_xattrs, &xattrs, &xattrs_were_modified,
+                             cancellable, error))
         return FALSE;
     }
   else
     {
-      glnx_autofd int file_input_fd = -1;
-
-      /* Open the file now, since it's better for reading xattrs
-       * rather than using the /proc/self/fd links.
-       *
-       * TODO: Do this lazily, since for e.g. bare-user-only repos
-       * we don't have xattrs and don't need to open every file
-       * for things that have devino cache hits.
+      /* These contortions are basically so we use glnx_fd_get_all_xattrs()
+       * for regfiles, and glnx_dfd_name_get_all_xattrs() for symlinks.
        */
-      if (file_type == G_FILE_TYPE_REGULAR && dfd_iter != NULL)
-        {
-          if (!glnx_openat_rdonly (dfd_iter->fd, name, FALSE, &file_input_fd, error))
-            return FALSE;
-        }
+      int xattr_fd_arg = (file_input_fd != -1) ? file_input_fd : dfd_iter->fd;
+      const char *xattr_path_arg = (file_input_fd != -1) ? NULL : name;
+      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
+                             xattr_fd_arg, xattr_path_arg, source_xattrs,
+                             &xattrs, &xattrs_were_modified,
+                             cancellable, error))
+        return FALSE;
+    }
 
-      g_autoptr(GVariant) xattrs = NULL;
-      gboolean xattrs_were_modified;
-      if (dir_enum != NULL)
-        {
-          if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
-                                 -1, name, source_xattrs, &xattrs, &xattrs_were_modified,
-                                 cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          /* These contortions are basically so we use glnx_fd_get_all_xattrs()
-           * for regfiles, and glnx_dfd_name_get_all_xattrs() for symlinks.
-           */
-          int xattr_fd_arg = (file_input_fd != -1) ? file_input_fd : dfd_iter->fd;
-          const char *xattr_path_arg = (file_input_fd != -1) ? NULL : name;
-          if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
-                                 xattr_fd_arg, xattr_path_arg, source_xattrs,
-                                 &xattrs, &xattrs_were_modified,
-                                 cancellable, error))
-            return FALSE;
-        }
+  /* Used below to see whether we can do a fast path commit */
+  const gboolean modified_file_meta = child_info_was_modified || xattrs_were_modified;
 
-      /* Used below to see whether we can do a fast path commit */
-      const gboolean modified_file_meta = child_info_was_modified || xattrs_were_modified;
-
-      /* A big prerequisite list of conditions for whether or not we can
-       * "adopt", i.e. just checksum and rename() into place
+  /* A big prerequisite list of conditions for whether or not we can
+   * "adopt", i.e. just checksum and rename() into place
+   */
+  const gboolean can_adopt_basic =
+    file_type == G_FILE_TYPE_REGULAR
+    && dfd_iter != NULL
+    && delete_after_commit
+    && ((writeflags & WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT) > 0);
+  gboolean can_adopt = can_adopt_basic;
+  /* If basic prerquisites are met, check repo mode specific ones */
+  if (can_adopt)
+    {
+      /* For bare repos, we could actually chown/reset the xattrs, but let's
+       * do the basic optimizations here first.
        */
-      const gboolean can_adopt_basic =
-        file_type == G_FILE_TYPE_REGULAR
-        && dfd_iter != NULL
-        && delete_after_commit
-        && ((writeflags & WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT) > 0);
-      gboolean can_adopt = can_adopt_basic;
-      /* If basic prerquisites are met, check repo mode specific ones */
-      if (can_adopt)
-        {
-          /* For bare repos, we could actually chown/reset the xattrs, but let's
-           * do the basic optimizations here first.
-           */
-          if (self->mode == OSTREE_REPO_MODE_BARE)
-            can_adopt = !modified_file_meta;
-          else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
-            can_adopt = canonical_permissions;
-          else
-            /* This covers bare-user and archive.  See comments in adopt_and_commit_regfile()
-             * for notes on adding bare-user later here.
-             */
-            can_adopt = FALSE;
-        }
-      gboolean did_adopt = FALSE;
-
-      /* The very fast path - we have a devino cache hit, nothing to write */
-      if (loose_checksum && !modified_file_meta)
-        {
-          if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum,
-                                                 error))
-            return FALSE;
-        }
-      /* Next fast path - we can "adopt" the file */
-      else if (can_adopt)
-        {
-          char checksum[OSTREE_SHA256_STRING_LEN+1];
-          if (!adopt_and_commit_regfile (self, dfd_iter->fd, name, modified_info, xattrs,
-                                         checksum, cancellable, error))
-            return FALSE;
-          if (!ostree_mutable_tree_replace_file (mtree, name, checksum, error))
-            return FALSE;
-          did_adopt = TRUE;
-        }
+      if (self->mode == OSTREE_REPO_MODE_BARE)
+        can_adopt = !modified_file_meta;
+      else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+        can_adopt = canonical_permissions;
       else
-        {
-          g_autoptr(GInputStream) file_input = NULL;
+        /* This covers bare-user and archive.  See comments in adopt_and_commit_regfile()
+         * for notes on adding bare-user later here.
+         */
+        can_adopt = FALSE;
+    }
+  gboolean did_adopt = FALSE;
 
-          if (file_type == G_FILE_TYPE_REGULAR)
+  /* The very fast path - we have a devino cache hit, nothing to write */
+  if (loose_checksum && !modified_file_meta)
+    {
+      if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum,
+                                             error))
+        return FALSE;
+    }
+  /* Next fast path - we can "adopt" the file */
+  else if (can_adopt)
+    {
+      char checksum[OSTREE_SHA256_STRING_LEN+1];
+      if (!adopt_and_commit_regfile (self, dfd_iter->fd, name, modified_info, xattrs,
+                                     checksum, cancellable, error))
+        return FALSE;
+      if (!ostree_mutable_tree_replace_file (mtree, name, checksum, error))
+        return FALSE;
+      did_adopt = TRUE;
+    }
+  else
+    {
+      g_autoptr(GInputStream) file_input = NULL;
+
+      if (file_type == G_FILE_TYPE_REGULAR)
+        {
+          if (dir_enum != NULL)
             {
-              if (dir_enum != NULL)
-                {
-                  g_assert (child != NULL);
-                  file_input = (GInputStream*)g_file_read (child, cancellable, error);
-                  if (!file_input)
-                    return FALSE;
-                }
-              else
-                {
-                  /* We already opened the fd above */
-                  file_input = g_unix_input_stream_new (file_input_fd, FALSE);
-                }
+              g_assert (child != NULL);
+              file_input = (GInputStream*)g_file_read (child, cancellable, error);
+              if (!file_input)
+                return FALSE;
             }
-
-          g_autoptr(GInputStream) file_object_input = NULL;
-          guint64 file_obj_length;
-          if (!ostree_raw_file_to_content_stream (file_input,
-                                                  modified_info, xattrs,
-                                                  &file_object_input, &file_obj_length,
-                                                  cancellable, error))
-            return FALSE;
-          g_autofree guchar *child_file_csum = NULL;
-          if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
-                                          &child_file_csum, cancellable, error))
-            return FALSE;
-
-          char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
-          ostree_checksum_inplace_from_bytes (child_file_csum, tmp_checksum);
-          if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
-                                                 error))
-            return FALSE;
+          else
+            {
+              /* We already opened the fd above */
+              file_input = g_unix_input_stream_new (file_input_fd, FALSE);
+            }
         }
 
-      /* Process delete_after_commit. In the adoption case though, we already
-       * took ownership of the file above, usually via a renameat().
-       */
-      if (delete_after_commit && !did_adopt)
-        {
-          if (!glnx_unlinkat (dfd_iter->fd, name, 0, error))
-            return FALSE;
-        }
+      g_autoptr(GInputStream) file_object_input = NULL;
+      guint64 file_obj_length;
+      if (!ostree_raw_file_to_content_stream (file_input,
+                                              modified_info, xattrs,
+                                              &file_object_input, &file_obj_length,
+                                              cancellable, error))
+        return FALSE;
+      g_autofree guchar *child_file_csum = NULL;
+      if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
+                                      &child_file_csum, cancellable, error))
+        return FALSE;
+
+      char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
+      ostree_checksum_inplace_from_bytes (child_file_csum, tmp_checksum);
+      if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
+                                             error))
+        return FALSE;
+    }
+
+  /* Process delete_after_commit. In the adoption case though, we already
+   * took ownership of the file above, usually via a renameat().
+   */
+  if (delete_after_commit && !did_adopt)
+    {
+      if (!glnx_unlinkat (dfd_iter->fd, name, 0, error))
+        return FALSE;
     }
 
   g_ptr_array_remove_index (path, path->len - 1);
@@ -3129,7 +3185,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
 }
 
 /* Handles the dirmeta for the given GFile dir and then calls
- * write_directory_content_to_mtree_internal() for each directory entry. */
+ * write_{dir_entry,content}_to_mtree_internal() for each directory entry. */
 static gboolean
 write_directory_to_mtree_internal (OstreeRepo                  *self,
                                    GFile                       *dir,
@@ -3214,12 +3270,24 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
           if (child_info == NULL)
             break;
 
-          if (!write_directory_content_to_mtree_internal (self, repo_dir, dir_enum, NULL,
-                                                          WRITE_DIR_CONTENT_FLAGS_NONE,
-                                                          child_info,
-                                                          mtree, modifier, path,
-                                                          cancellable, error))
-            return FALSE;
+          if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
+            {
+              if (!write_dir_entry_to_mtree_internal (self, repo_dir, dir_enum, NULL,
+                                                      WRITE_DIR_CONTENT_FLAGS_NONE,
+                                                      child_info,
+                                                      mtree, modifier, path,
+                                                      cancellable, error))
+                return FALSE;
+            }
+          else
+            {
+              if (!write_content_to_mtree_internal (self, repo_dir, dir_enum, NULL,
+                                                    WRITE_DIR_CONTENT_FLAGS_NONE,
+                                                    child_info,
+                                                    mtree, modifier, path,
+                                                    cancellable, error))
+                return FALSE;
+            }
         }
     }
 
@@ -3227,7 +3295,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 }
 
 /* Handles the dirmeta for the dir described by src_dfd_iter and then calls
- * write_directory_content_to_mtree_internal() for each directory entry. */
+ * write_{dir_entry,content}_to_mtree_internal() for each directory entry. */
 static gboolean
 write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
                                   GLnxDirFdIterator           *src_dfd_iter,
@@ -3304,6 +3372,18 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
       g_autoptr(GFileInfo) child_info = _ostree_stbuf_to_gfileinfo (&stbuf);
       g_file_info_set_name (child_info, dent->d_name);
 
+      if (S_ISDIR (stbuf.st_mode))
+        {
+          if (!write_dir_entry_to_mtree_internal (self, NULL, NULL, src_dfd_iter,
+                                                  flags, child_info,
+                                                  mtree, modifier, path,
+                                                  cancellable, error))
+            return FALSE;
+
+          /* We handled the dir, move onto the next */
+          continue;
+        }
+
       if (S_ISREG (stbuf.st_mode))
         ;
       else if (S_ISLNK (stbuf.st_mode))
@@ -3312,18 +3392,17 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
                                          child_info, cancellable, error))
             return FALSE;
         }
-      else if (S_ISDIR (stbuf.st_mode))
-        ;
       else
         {
           return glnx_throw (error, "Not a regular file or symlink: %s",
                              dent->d_name);
         }
 
-      if (!write_directory_content_to_mtree_internal (self, NULL, NULL, src_dfd_iter,
-                                                      flags, child_info,
-                                                      mtree, modifier, path,
-                                                      cancellable, error))
+      /* Write a content object, we handled directories above */
+      if (!write_content_to_mtree_internal (self, NULL, NULL, src_dfd_iter,
+                                            flags, child_info,
+                                            mtree, modifier, path,
+                                            cancellable, error))
         return FALSE;
     }
 
