@@ -347,3 +347,9 @@ and furthermore the tar format is flexible, with multiple ways to represent data
 making it hard to impossible to reassemble and verify from on-disk state.
 The [tarsum](https://github.com/docker/docker/blob/master/pkg/tarsum/tarsum_spec.md) effort
 was intended to address this, but it was not adopted in the end for v2.
+
+## Docker-related: Balena
+
+The [Balena](https://github.com/resin-os/balena) project forks Docker and aims
+to even use Docker/OCI format for the root filesystem, and adds wire deltas
+using librsync.  See also [discussion on  libostree-list](https://mail.gnome.org/archives/ostree-list/2017-December/msg00002.html).
