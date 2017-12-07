@@ -1791,7 +1791,7 @@ _ostree_repo_remote_list (OstreeRepo *self,
   g_mutex_unlock (&self->remotes_lock);
 
   if (self->parent_repo)
-    _ostree_repo_remote_list (self, out);
+    _ostree_repo_remote_list (self->parent_repo, out);
 }
 
 /**
