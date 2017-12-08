@@ -51,6 +51,8 @@ struct _OtChecksumInstreamClass
 GType          ot_checksum_instream_get_type     (void) G_GNUC_CONST;
 
 OtChecksumInstream * ot_checksum_instream_new          (GInputStream   *stream, GChecksumType   checksum);
+OtChecksumInstream * ot_checksum_instream_new_with_start (GInputStream   *stream, GChecksumType   checksum,
+                                                          const guint8 *buf, size_t len);
 
 char * ot_checksum_instream_get_string (OtChecksumInstream *stream);
 
