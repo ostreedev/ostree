@@ -597,7 +597,8 @@ static gboolean
 write_content_object (OstreeRepo         *self,
                       const char         *expected_checksum,
                       GInputStream       *input,
-                      guint64             file_object_length,
+                      GFileInfo          *file_info,
+                      GVariant           *xattrs,
                       guchar            **out_csum,
                       GCancellable       *cancellable,
                       GError            **error)
@@ -610,18 +611,30 @@ write_content_object (OstreeRepo         *self,
 
   OstreeRepoMode repo_mode = ostree_repo_get_mode (self);
 
+  GInputStream *file_input; /* Unowned alias */
+  g_autoptr(GInputStream) file_input_owned = NULL; /* We need a temporary for bare-user symlinks */
   glnx_unref_object OtChecksumInstream *checksum_input = NULL;
   if (out_csum)
-    checksum_input = ot_checksum_instream_new (input, G_CHECKSUM_SHA256);
-
-  g_autoptr(GInputStream) file_input = NULL;
-  g_autoptr(GVariant) xattrs = NULL;
-  g_autoptr(GFileInfo) file_info = NULL;
-  if (!ostree_content_stream_parse (FALSE, checksum_input ? (GInputStream*)checksum_input : input,
-                                    file_object_length, FALSE,
-                                    &file_input, &file_info, &xattrs,
-                                    cancellable, error))
-    return FALSE;
+    {
+      /* Previously we checksummed the input verbatim; now
+       * ostree_repo_write_content() parses without checksumming, then we
+       * re-synthesize a header here. The data should be identical; if somehow
+       * it's not that's not a serious problem because we're still computing a
+       * checksum over the data we actually use.
+       */
+      g_autoptr(GBytes) header = _ostree_file_header_new (file_info, xattrs);
+      size_t len;
+      const guint8 *buf = g_bytes_get_data (header, &len);
+      /* Give a null input if there's no content */
+      g_autoptr(GInputStream) null_input = NULL;
+      if (!input)
+        null_input = input = g_memory_input_stream_new_from_data ("", 0, NULL);
+      checksum_input = ot_checksum_instream_new_with_start (input, G_CHECKSUM_SHA256,
+                                                            buf, len);
+      file_input = (GInputStream*)checksum_input;
+    }
+  else
+    file_input = input;
 
   gboolean phys_object_is_symlink = FALSE;
   const GFileType object_file_type = g_file_info_get_file_type (file_info);
@@ -645,10 +658,8 @@ write_content_object (OstreeRepo         *self,
       const char *target_str = g_file_info_get_symlink_target (file_info);
       g_autoptr(GBytes) target = g_bytes_new (target_str, strlen (target_str) + 1);
 
-      if (file_input != NULL)
-        g_object_unref (file_input);
       /* Include the terminating zero so we can e.g. mmap this file */
-      file_input = g_memory_input_stream_new_from_bytes (target);
+      file_input = file_input_owned = g_memory_input_stream_new_from_bytes (target);
       size = g_bytes_get_size (target);
     }
   else if (!phys_object_is_symlink)
@@ -851,7 +862,7 @@ write_content_object (OstreeRepo         *self,
   /* Update statistics */
   g_mutex_lock (&self->txn_lock);
   self->txn.stats.content_objects_written++;
-  self->txn.stats.content_bytes_written += file_object_length;
+  self->txn.stats.content_bytes_written += g_file_info_get_size (file_info);
   self->txn.stats.content_objects_total++;
   g_mutex_unlock (&self->txn_lock);
 
@@ -2246,8 +2257,17 @@ ostree_repo_write_content (OstreeRepo       *self,
         }
     }
 
+  /* Parse the stream */
+  g_autoptr(GInputStream) file_input = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
+  if (!ostree_content_stream_parse (FALSE, object_input, length, FALSE,
+                                    &file_input, &file_info, &xattrs,
+                                    cancellable, error))
+    return FALSE;
+
   return write_content_object (self, expected_checksum,
-                               object_input, length, out_csum,
+                               file_input, file_info, xattrs, out_csum,
                                cancellable, error);
 }
 
@@ -3151,16 +3171,9 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
             }
         }
 
-      g_autoptr(GInputStream) file_object_input = NULL;
-      guint64 file_obj_length;
-      if (!ostree_raw_file_to_content_stream (file_input,
-                                              modified_info, xattrs,
-                                              &file_object_input, &file_obj_length,
-                                              cancellable, error))
-        return FALSE;
       g_autofree guchar *child_file_csum = NULL;
-      if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
-                                      &child_file_csum, cancellable, error))
+      if (!write_content_object (self, NULL, file_input, modified_info, xattrs,
+                                 &child_file_csum, cancellable, error))
         return FALSE;
 
       char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
