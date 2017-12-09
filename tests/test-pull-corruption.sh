@@ -76,7 +76,7 @@ if ! skip_one_without_user_xattrs; then
     if ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo fsck 2>err.txt; then
         assert_not_reached "fsck with corrupted commit worked?"
     fi
-    assert_file_has_content err.txt "corrupted object ${corruptrev}\.commit"
+    assert_file_has_content_literal err.txt "Corrupted commit object; checksum expected='${corruptrev}' actual='${rev}'"
 
     # Do a pull-local; this should succeed since we don't verify checksums
     # for local repos by default.
