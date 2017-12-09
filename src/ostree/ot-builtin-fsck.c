@@ -44,118 +44,36 @@ static GOptionEntry options[] = {
 };
 
 static gboolean
-load_and_fsck_one_object (OstreeRepo            *repo,
-                          const char            *checksum,
-                          OstreeObjectType       objtype,
-                          gboolean              *out_found_corruption,
-                          GCancellable          *cancellable,
-                          GError               **error)
+fsck_one_object (OstreeRepo            *repo,
+                 const char            *checksum,
+                 OstreeObjectType       objtype,
+                 gboolean              *out_found_corruption,
+                 GCancellable          *cancellable,
+                 GError               **error)
 {
-  gboolean missing = FALSE;
-  g_autoptr(GVariant) metadata = NULL;
-  g_autoptr(GInputStream) input = NULL;
-  g_autoptr(GFileInfo) file_info = NULL;
-  g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GError) temp_error = NULL;
-
-  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+  if (!ostree_repo_fsck_object (repo, objtype, checksum, cancellable, &temp_error))
     {
-      if (!ostree_repo_load_variant (repo, objtype,
-                                     checksum, &metadata, &temp_error))
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
-          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-            {
-              g_clear_error (&temp_error);
-              g_printerr ("Object missing: %s.%s\n", checksum,
-                          ostree_object_type_to_string (objtype));
-              missing = TRUE;
-            }
-          else
-            {
-              g_propagate_error (error, g_steal_pointer (&temp_error));
-              return glnx_prefix_error (error, "Loading metadata object %s", checksum);
-            }
+          g_clear_error (&temp_error);
+          g_printerr ("Object missing: %s.%s\n", checksum,
+                      ostree_object_type_to_string (objtype));
+          *out_found_corruption = TRUE;
         }
       else
         {
-          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-            {
-              if (!ostree_validate_structureof_commit (metadata, error))
-                return glnx_prefix_error (error, "While validating commit metadata '%s'", checksum);
-            }
-          else if (objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
-            {
-              if (!ostree_validate_structureof_dirtree (metadata, error))
-                return glnx_prefix_error (error, "While validating directory tree '%s'", checksum);
-            }
-          else if (objtype == OSTREE_OBJECT_TYPE_DIR_META)
-            {
-              if (!ostree_validate_structureof_dirmeta (metadata, error))
-                return glnx_prefix_error (error, "While validating directory metadata '%s'", checksum);
-            }
-
-          input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata),
-                                                       g_variant_get_size (metadata),
-                                                       NULL);
-
-        }
-    }
-  else
-    {
-      guint32 mode;
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
-      if (!ostree_repo_load_file (repo, checksum, &input, &file_info,
-                                  &xattrs, cancellable, &temp_error))
-        {
-          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-            {
-              g_clear_error (&temp_error);
-              g_printerr ("Object missing: %s.%s\n", checksum,
-                          ostree_object_type_to_string (objtype));
-              missing = TRUE;
-            }
-          else
-            {
-              g_propagate_error (error, g_steal_pointer (&temp_error));
-              return glnx_prefix_error (error, "Loading file object %s", checksum);
-            }
-        }
-      else
-        {
-          mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-          if (!ostree_validate_structureof_file_mode (mode, error))
-            return glnx_prefix_error (error, "While validating file '%s'", checksum);
-        }
-    }
-
-  if (missing)
-    {
-      *out_found_corruption = TRUE;
-    }
-  else
-    {
-      g_autofree guchar *computed_csum = NULL;
-      g_autofree char *tmp_checksum = NULL;
-
-      if (!ostree_checksum_file_from_input (file_info, xattrs, input,
-                                            objtype, &computed_csum,
-                                            cancellable, error))
-        return FALSE;
-
-      tmp_checksum = ostree_checksum_from_bytes (computed_csum);
-      if (strcmp (checksum, tmp_checksum) != 0)
-        {
-          g_autofree char *msg = g_strdup_printf ("corrupted object %s.%s; actual checksum: %s",
-                                               checksum, ostree_object_type_to_string (objtype),
-                                               tmp_checksum);
           if (opt_delete)
             {
-              g_printerr ("%s\n", msg);
+              g_printerr ("%s\n", temp_error->message);
               (void) ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
               *out_found_corruption = TRUE;
             }
           else
-            return glnx_throw (error, "%s", msg);
+            {
+              g_propagate_error (error, g_steal_pointer (&temp_error));
+              return FALSE;
+            }
         }
     }
 
@@ -201,8 +119,8 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      if (!load_and_fsck_one_object (repo, checksum, objtype, out_found_corruption,
-                                     cancellable, error))
+      if (!fsck_one_object (repo, checksum, objtype, out_found_corruption,
+                            cancellable, error))
         return FALSE;
 
       if (mod == 0 || (i % mod == 0))
@@ -239,6 +157,12 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
     {
       const char *refname = key;
       const char *checksum = value;
+
+      if (!fsck_one_object (repo, checksum, OSTREE_OBJECT_TYPE_COMMIT,
+                            &found_corruption,
+                            cancellable, error))
+        return FALSE;
+
       g_autoptr(GVariant) commit = NULL;
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                      checksum, &commit, error))

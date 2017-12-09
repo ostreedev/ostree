@@ -20,6 +20,7 @@
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 
 LIBOSTREE_2017.15 {
+  ostree_repo_fsck_object;
 } LIBOSTREE_2017.14;
 
 /* Stub section for the stable release *after* this development one; don't

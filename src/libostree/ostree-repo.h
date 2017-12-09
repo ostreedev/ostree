@@ -650,9 +650,16 @@ gboolean      ostree_repo_import_object_from_with_trust (OstreeRepo           *s
 _OSTREE_PUBLIC
 gboolean      ostree_repo_delete_object (OstreeRepo           *self,
                                          OstreeObjectType      objtype,
-                                         const char           *sha256, 
+                                         const char           *sha256,
                                          GCancellable         *cancellable,
                                          GError              **error);
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_fsck_object (OstreeRepo           *self,
+                                       OstreeObjectType      objtype,
+                                       const char           *sha256,
+                                       GCancellable         *cancellable,
+                                       GError              **error);
 
 /** 
  * OstreeRepoCommitFilterResult:

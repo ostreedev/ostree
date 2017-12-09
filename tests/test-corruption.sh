@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2011,2017 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..3"
+echo "1..4"
 
 . $(dirname $0)/libtest.sh
 
@@ -29,7 +29,9 @@ setup_test_repository "bare"
 $OSTREE checkout test2 checkout-test2
 cd checkout-test2
 chmod o+x firstfile
-$OSTREE fsck -q && (echo 1>&2 "fsck unexpectedly succeeded"; exit 1)
+if $OSTREE fsck -q; then
+    fatal "fsck unexpectedly succeeded"
+fi
 chmod o-x firstfile
 $OSTREE fsck -q
 
@@ -38,11 +40,25 @@ echo "ok chmod"
 cd ${test_tmpdir}
 rm repo files -rf
 setup_test_repository "bare"
+rev=$($OSTREE rev-parse test2)
+echo -n > repo/objects/${rev:0:2}/${rev:2}.commit
+if $OSTREE fsck -q 2>err.txt; then
+    fatal "fsck unexpectedly succeeded"
+fi
+assert_file_has_content_literal err.txt "Corrupted commit object; checksum expected"
+
+echo "ok metadata checksum"
+
+cd ${test_tmpdir}
+rm repo files -rf
+setup_test_repository "bare"
 rm checkout-test2 -rf
 $OSTREE checkout test2 checkout-test2
 cd checkout-test2
 chmod o+x firstfile
-$OSTREE fsck -q --delete && (echo 1>&2 "fsck unexpectedly succeeded"; exit 1)
+if $OSTREE fsck -q --delete; then
+    fatal "fsck unexpectedly succeeded"
+fi
 
 echo "ok chmod"
 
