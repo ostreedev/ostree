@@ -761,6 +761,8 @@ $OSTREE show --print-metadata-key=KITTENS test2 > test2-meta
 assert_file_has_content test2-meta "CUTE"
 $OSTREE show --print-metadata-key=SOMENUM test2 > test2-meta
 assert_file_has_content test2-meta "uint64 3026418949592973312"
+$OSTREE show -B --print-metadata-key=SOMENUM test2 > test2-meta
+assert_file_has_content test2-meta "uint64 42"
 $OSTREE show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
 assert_file_has_content test2-meta "HANCOCK"
 echo "ok metadata commit with strings"

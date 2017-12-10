@@ -157,7 +157,12 @@ ot_dump_object (OstreeObjectType   objtype,
 {
   g_print ("%s %s\n", ostree_object_type_to_string (objtype), checksum);
 
-  if (flags & OSTREE_DUMP_RAW)
+  if (flags & OSTREE_DUMP_UNSWAPPED)
+    {
+      g_autofree char *formatted = g_variant_print (variant, TRUE);
+      g_print ("%s\n", formatted);
+    }
+  else if (flags & OSTREE_DUMP_RAW)
     {
       ot_dump_variant (variant);
       return;
