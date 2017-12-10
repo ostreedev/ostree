@@ -104,18 +104,20 @@ cd ${test_tmpdir}
 rm -rf test2-checkout
 $OSTREE checkout -H -U test2 test2-checkout
 # With --link-checkout-speedup, specifying --owner-uid should "win" by default.
-myid=$(id -u)
-newid=$((${myid} + 1))
-$OSTREE commit ${COMMIT_ARGS} --owner-uid ${newid} --owner-gid ${newid} \
+myuid=$(id -u)
+mygid=$(id -g)
+newuid=$((${myuid} + 1))
+newgid=$((${mygid} + 1))
+$OSTREE commit ${COMMIT_ARGS} --owner-uid ${newuid} --owner-gid ${newgid} \
         --link-checkout-speedup -b test2-linkcheckout-test --tree=dir=test2-checkout
 $OSTREE ls test2-linkcheckout-test /baz/cow > ls.txt
-assert_file_has_content ls.txt "^-006.. ${newid} ${newid} .*/baz/cow"
+assert_file_has_content ls.txt "^-006.. ${newuid} ${newgid} .*/baz/cow"
 
 # But --devino-canonical should override that
-$OSTREE commit ${COMMIT_ARGS} --owner-uid ${newid} --owner-gid ${newid} \
+$OSTREE commit ${COMMIT_ARGS} --owner-uid ${newuid} --owner-gid ${newgid} \
         -I -b test2-devino-test --tree=dir=test2-checkout
 $OSTREE ls test2-devino-test /baz/cow > ls.txt
-assert_file_has_content ls.txt "^-006.. ${myid} ${myid} .*/baz/cow"
+assert_file_has_content ls.txt "^-006.. ${myuid} ${mygid} .*/baz/cow"
 
 $OSTREE refs --delete test2-{linkcheckout,devino}-test
 echo "ok commit with -I"
