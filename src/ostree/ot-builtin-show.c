@@ -32,6 +32,7 @@ static char* opt_print_variant_type;
 static char* opt_print_metadata_key;
 static char* opt_print_detached_metadata_key;
 static gboolean opt_raw;
+static gboolean opt_no_byteswap;
 static char *opt_gpg_homedir;
 static char *opt_gpg_verify_remote;
 
@@ -46,6 +47,7 @@ static GOptionEntry options[] = {
   { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key", "KEY" },
   { "print-detached-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_detached_metadata_key, "Print string value of detached metadata key", "KEY" },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
+  { "no-byteswap", 'B', 0, G_OPTION_ARG_NONE, &opt_no_byteswap, "Do not automatically convert variant data from big endian" },
   { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
   { "gpg-verify-remote", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_verify_remote, "Use REMOTE name for GPG configuration", "REMOTE"},
   { NULL }
@@ -132,7 +134,13 @@ do_print_metadata_key (OstreeRepo     *repo,
       return FALSE;
     }
 
-  ot_dump_variant (value);
+  if (opt_no_byteswap)
+    {
+      g_autofree char *formatted = g_variant_print (value, TRUE);
+      g_print ("%s\n", formatted);
+    }
+  else
+    ot_dump_variant (value);
   return TRUE;
 }
 
@@ -150,6 +158,8 @@ print_object (OstreeRepo          *repo,
     return FALSE;
   if (opt_raw)
     flags |= OSTREE_DUMP_RAW;
+  if (opt_no_byteswap)
+    flags |= OSTREE_DUMP_UNSWAPPED;
   ot_dump_object (objtype, checksum, variant, flags);
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)

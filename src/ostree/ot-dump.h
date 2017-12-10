@@ -26,8 +26,9 @@
 #include "ostree-core.h"
 
 typedef enum {
-  OSTREE_DUMP_NONE = 0,
-  OSTREE_DUMP_RAW = 1,
+  OSTREE_DUMP_NONE = (1 << 0),
+  OSTREE_DUMP_RAW = (1 << 1),
+  OSTREE_DUMP_UNSWAPPED = (1 << 2),
 } OstreeDumpFlags;
 
 void   ot_dump_variant    (GVariant *variant);
