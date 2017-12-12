@@ -66,6 +66,16 @@ OtChecksumInstream *
 ot_checksum_instream_new (GInputStream    *base,
                           GChecksumType    checksum_type)
 {
+  return ot_checksum_instream_new_with_start (base, checksum_type, NULL, 0);
+}
+
+/* Initialize a checksum stream with starting state from data */
+OtChecksumInstream *
+ot_checksum_instream_new_with_start (GInputStream   *base,
+                                     GChecksumType   checksum_type,
+                                     const guint8   *buf,
+                                     size_t          len)
+{
   OtChecksumInstream *stream;
 
   g_return_val_if_fail (G_IS_INPUT_STREAM (base), NULL);
@@ -77,6 +87,8 @@ ot_checksum_instream_new (GInputStream    *base,
   /* For now */
   g_assert (checksum_type == G_CHECKSUM_SHA256);
   ot_checksum_init (&stream->priv->checksum);
+  if (buf)
+    ot_checksum_update (&stream->priv->checksum, buf, len);
 
   return (OtChecksumInstream*) (stream);
 }
