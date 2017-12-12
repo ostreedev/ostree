@@ -135,6 +135,15 @@ AS_IF([test x$with_curl != xno ], [
 ], [with_soup_default=check])
 AM_CONDITIONAL(USE_CURL, test x$with_curl != xno)
 if test x$with_curl = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES libcurl"; fi
+AC_ARG_ENABLE(http2,
+AS_HELP_STRING([--disable-http2],
+  [Disable use of http2 (default: no)]),,
+  [enable_http2=yes])
+AS_IF([test x$enable_http2 != xno ], [
+  AC_DEFINE([BUILDOPT_HTTP2], 1, [Define if we enable http2])
+], [
+  OSTREE_FEATURES="$OSTREE_FEATURES no-http2"
+])
 
 dnl When bumping the libsoup-2.4 dependency, remember to bump
 dnl SOUP_VERSION_MIN_REQUIRED and SOUP_VERSION_MAX_ALLOWED in
@@ -556,6 +565,7 @@ AC_OUTPUT
 
 echo "
     libostree $VERSION ($release_build_type)
+    features: $OSTREE_FEATURES
     ===============
 
 
