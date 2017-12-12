@@ -771,6 +771,7 @@ initiate_next_curl_request (FetcherRequest *req,
    * there are numerous HTTP/2 fixes since the original version in
    * libcurl 7.43.0.
    */
+#ifdef BUILDOPT_HTTP2
   if (!(self->config_flags & OSTREE_FETCHER_FLAGS_DISABLE_HTTP2))
     {
 #if CURL_AT_LEAST_VERSION(7, 51, 0)
@@ -782,6 +783,7 @@ initiate_next_curl_request (FetcherRequest *req,
       curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
 #endif
     }
+#endif
   curl_easy_setopt (req->easy, CURLOPT_WRITEFUNCTION, write_cb);
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
     curl_easy_setopt (req->easy, CURLOPT_VERBOSE, 1L);
