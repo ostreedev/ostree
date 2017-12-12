@@ -3004,12 +3004,13 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
    * there.
    */
   g_autoptr(GVariant) source_xattrs = NULL;
+  g_autoptr(GFileInfo) source_child_info = NULL;
   if (loose_checksum && self->mode == OSTREE_REPO_MODE_BARE_USER)
     {
-      child_info = NULL;
-      if (!ostree_repo_load_file (self, loose_checksum, NULL, &child_info, &source_xattrs,
+      if (!ostree_repo_load_file (self, loose_checksum, NULL, &source_child_info, &source_xattrs,
                                   cancellable, error))
         return FALSE;
+      child_info = source_child_info;
     }
 
   /* Call the filter */
