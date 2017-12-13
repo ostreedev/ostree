@@ -46,6 +46,9 @@
 #include <sys/file.h>
 #include <sys/statvfs.h>
 
+#define REPO_LOCK_DISABLED (-2)
+#define REPO_LOCK_BLOCKING (-1)
+
 /* ABI Size checks for ostree-repo.h, only for LP64 systems;
  * https://en.wikipedia.org/wiki/64-bit_computing#64-bit_data_models
  *
@@ -474,8 +477,10 @@ ostree_repo_lock_push (OstreeRepo          *self,
   if (!self->writable)
     return TRUE;
 
-  g_assert (self->lock_timeout_seconds >= -1);
-  if (self->lock_timeout_seconds == -1)
+  g_assert (self->lock_timeout_seconds >= REPO_LOCK_DISABLED);
+  if (self->lock_timeout_seconds == REPO_LOCK_DISABLED)
+    return TRUE; /* No locking */
+  else if (self->lock_timeout_seconds == REPO_LOCK_BLOCKING)
     {
       g_debug ("Pushing lock blocking");
       return push_repo_lock (self, lock_type, TRUE, error);
@@ -562,8 +567,10 @@ ostree_repo_lock_pop (OstreeRepo    *self,
   if (!self->writable)
     return TRUE;
 
-  g_assert (self->lock_timeout_seconds >= -1);
-  if (self->lock_timeout_seconds == -1)
+  g_assert (self->lock_timeout_seconds >= REPO_LOCK_DISABLED);
+  if (self->lock_timeout_seconds == REPO_LOCK_DISABLED)
+    return TRUE;
+  else if (self->lock_timeout_seconds == REPO_LOCK_BLOCKING)
     {
       g_debug ("Popping lock blocking");
       return pop_repo_lock (self, TRUE, error);
@@ -2733,13 +2740,25 @@ reload_core_config (OstreeRepo          *self,
     self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
   }
 
-  { g_autofree char *lock_timeout_seconds = NULL;
-
-    if (!ot_keyfile_get_value_with_default (self->config, "core", "lock-timeout-secs", "30",
-                                            &lock_timeout_seconds, error))
+  /* Disable locking by default for now */
+  { gboolean locking;
+    if (!ot_keyfile_get_boolean_with_default (self->config, "core", "locking",
+                                              FALSE, &locking, error))
       return FALSE;
+    if (!locking)
+      {
+        self->lock_timeout_seconds = REPO_LOCK_DISABLED;
+      }
+    else
+      {
+        g_autofree char *lock_timeout_seconds = NULL;
 
-    self->lock_timeout_seconds = g_ascii_strtoull (lock_timeout_seconds, NULL, 10);
+        if (!ot_keyfile_get_value_with_default (self->config, "core", "lock-timeout-secs", "30",
+                                                &lock_timeout_seconds, error))
+          return FALSE;
+
+        self->lock_timeout_seconds = g_ascii_strtoull (lock_timeout_seconds, NULL, 10);
+      }
   }
 
   { g_autofree char *compression_level_str = NULL;

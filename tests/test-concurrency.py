@@ -43,6 +43,7 @@ subprocess.check_call(['ostree', '--repo=repo', 'init', '--mode=bare'])
 # and we don't need xattr coverage for this
 with open('repo/config', 'a') as f:
     f.write('disable-xattrs=true\n')
+    f.write('locking=true\n')
 
 def commit(v):
     tdir='tree{}'.format(v)
