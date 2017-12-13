@@ -1476,6 +1476,8 @@ get_remote_repo_collection_id (OtPullData *pull_data)
 }
 #endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
+#endif  /* HAVE_LIBCURL_OR_LIBSOUP */
+
 /**
  * _ostree_repo_verify_bindings:
  * @collection_id: (nullable): Locally specified collection ID for the remote
@@ -1580,6 +1582,8 @@ _ostree_repo_verify_bindings (const char  *collection_id,
 
   return TRUE;
 }
+
+#ifdef HAVE_LIBCURL_OR_LIBSOUP
 
 /* Look at a commit object, and determine whether there are
  * more things to fetch.
