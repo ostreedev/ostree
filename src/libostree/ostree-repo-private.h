@@ -37,8 +37,6 @@ G_BEGIN_DECLS
 #define _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS 8
 #define _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS 2
 
-#define _OSTREE_DEFAULT_LOCK_TIMEOUT_SECONDS 30
-
 /* In most cases, writing to disk should be much faster than
  * fetching from the network, so we shouldn't actually hit
  * this. But if using pipelining and e.g. pulling over LAN
