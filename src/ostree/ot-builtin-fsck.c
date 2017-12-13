@@ -189,9 +189,16 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   gpointer key, value;
   g_hash_table_iter_init (&hash_iter, all_refs);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    if (!fsck_commit_for_ref (repo, value, NULL, key,
-                              &found_corruption, cancellable, error))
-      return FALSE;
+    {
+      const char *refspec = key;
+      const char *checksum = value;
+      g_autofree char *ref_name = NULL;
+      if (!ostree_parse_refspec (refspec, NULL, &ref_name, error))
+        return FALSE;
+      if (!fsck_commit_for_ref (repo, checksum, NULL, ref_name,
+                                &found_corruption, cancellable, error))
+        return FALSE;
+    }
 
 #ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   if (!opt_quiet)
