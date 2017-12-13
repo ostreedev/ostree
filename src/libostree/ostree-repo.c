@@ -1209,7 +1209,6 @@ ostree_repo_init (OstreeRepo *self)
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
   self->sysroot_kind = OSTREE_REPO_SYSROOT_KIND_UNKNOWN;
-  self->lock_timeout_seconds = _OSTREE_DEFAULT_LOCK_TIMEOUT_SECONDS;
 }
 
 /**
@@ -2732,6 +2731,15 @@ reload_core_config (OstreeRepo          *self,
       return FALSE;
 
     self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
+  }
+
+  { g_autofree char *lock_timeout_seconds = NULL;
+
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "lock-timeout-secs", "30",
+                                            &lock_timeout_seconds, error))
+      return FALSE;
+
+    self->lock_timeout_seconds = g_ascii_strtoull (lock_timeout_seconds, NULL, 10);
   }
 
   { g_autofree char *compression_level_str = NULL;
