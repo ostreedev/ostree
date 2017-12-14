@@ -320,6 +320,7 @@ ostree_repo_set_alias_ref_immediate
 ostree_repo_set_cache_dir
 ostree_repo_sign_delta
 ostree_repo_has_object
+ostree_repo_mark_commit_partial
 ostree_repo_write_metadata
 ostree_repo_write_metadata_async
 ostree_repo_write_metadata_finish
