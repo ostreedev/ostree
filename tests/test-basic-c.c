@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <gio/gio.h>
 #include <string.h>
+#include <err.h>
 
 #include "libglnx.h"
 #include "libostreetest.h"
@@ -236,6 +237,72 @@ test_object_writes (gconstpointer data)
   }
 }
 
+static gboolean
+impl_test_break_hardlink (int tmp_dfd,
+                          const char *path,
+                          GError **error)
+{
+  const char *linkedpath = glnx_strjoina (path, ".link");
+  struct stat orig_stbuf;
+  if (!glnx_fstatat (tmp_dfd, path, &orig_stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+
+  /* Calling ostree_break_hardlink() should be a noop */
+  struct stat stbuf;
+  if (!ostree_break_hardlink (tmp_dfd, path, TRUE, NULL, error))
+    return FALSE;
+  if (!glnx_fstatat (tmp_dfd, path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+
+  g_assert_cmpint (orig_stbuf.st_dev, ==, stbuf.st_dev);
+  g_assert_cmpint (orig_stbuf.st_ino, ==, stbuf.st_ino);
+
+  if (linkat (tmp_dfd, path, tmp_dfd, linkedpath, 0) < 0)
+    return glnx_throw_errno_prefix (error, "linkat");
+
+  if (!ostree_break_hardlink (tmp_dfd, path, TRUE, NULL, error))
+    return FALSE;
+  if (!glnx_fstatat (tmp_dfd, path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  /* This file should be different */
+  g_assert_cmpint (orig_stbuf.st_dev, ==, stbuf.st_dev);
+  g_assert_cmpint (orig_stbuf.st_ino, !=, stbuf.st_ino);
+  /* But this one is still the same */
+  if (!glnx_fstatat (tmp_dfd, linkedpath, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  g_assert_cmpint (orig_stbuf.st_dev, ==, stbuf.st_dev);
+  g_assert_cmpint (orig_stbuf.st_ino, ==, stbuf.st_ino);
+
+  (void) unlinkat (tmp_dfd, path, 0);
+  (void) unlinkat (tmp_dfd, linkedpath, 0);
+
+  return TRUE;
+}
+
+static void
+test_break_hardlink (void)
+{
+  int tmp_dfd = AT_FDCWD;
+  g_autoptr(GError) error = NULL;
+
+  /* Regular file */
+  const char hello_hardlinked_content[] = "hello hardlinked content";
+  glnx_file_replace_contents_at (tmp_dfd, "test-hardlink",
+                                 (guint8*)hello_hardlinked_content,
+                                 strlen (hello_hardlinked_content),
+                                 GLNX_FILE_REPLACE_NODATASYNC,
+                                 NULL, &error);
+  g_assert_no_error (error);
+  (void)impl_test_break_hardlink (tmp_dfd, "test-hardlink", &error);
+  g_assert_no_error (error);
+
+  /* Symlink */
+  if (symlinkat ("some-path", tmp_dfd, "test-symhardlink") < 0)
+    err (1, "symlinkat");
+  (void)impl_test_break_hardlink (tmp_dfd, "test-symhardlink", &error);
+  g_assert_no_error (error);
+}
+
 static GVariant*
 xattr_cb (OstreeRepo  *repo,
           const char  *path,
@@ -376,6 +443,7 @@ int main (int argc, char **argv)
   g_test_add_data_func ("/raw-file-to-archive-stream", repo, test_raw_file_to_archive_stream);
   g_test_add_data_func ("/objectwrites", repo, test_object_writes);
   g_test_add_func ("/xattrs-devino-cache", test_devino_cache_xattrs);
+  g_test_add_func ("/break-hardlink", test_break_hardlink);
   g_test_add_func ("/remotename", test_validate_remotename);
 
   return g_test_run();
