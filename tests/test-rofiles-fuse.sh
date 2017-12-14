@@ -26,7 +26,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare"
 
-echo "1..8"
+echo "1..10"
 
 cd ${test_tmpdir}
 mkdir mnt
@@ -117,3 +117,22 @@ echo "ok checkout copy fallback"
 
 # check that O_RDONLY|O_CREAT is handled correctly; used by flock(1) at least
 flock mnt/nonexistent-file echo "ok create file in ro mode"
+echo "ok flock"
+
+# And now with --copyup enabled
+
+fusermount -u ${test_tmpdir}/mnt
+assert_not_has_file mnt/firstfile
+rofiles-fuse --copyup checkout-test2 mnt
+assert_file_has_content mnt/firstfile first
+echo "ok copyup mount"
+
+firstfile_orig_inode=$(stat -c %i checkout-test2/firstfile)
+for path in firstfile{,-link}; do
+    echo truncating > mnt/${path}
+    assert_file_has_content mnt/${path} truncating
+done
+firstfile_new_inode=$(stat -c %i checkout-test2/firstfile)
+assert_not_streq "${firstfile_orig_inode}" "${firstfile_new_inode}"
+
+echo "ok copyup"
