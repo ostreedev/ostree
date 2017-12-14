@@ -223,6 +223,8 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
       if (opt_alias)
         {
+          if (remote)
+            return glnx_throw (error, "Cannot create alias to remote ref: %s", remote);
           if (!ostree_repo_set_alias_ref_immediate (repo, remote, ref, refspec_prefix,
                                                     cancellable, error))
             goto out;
