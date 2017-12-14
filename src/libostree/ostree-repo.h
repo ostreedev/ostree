@@ -363,6 +363,12 @@ gboolean      ostree_repo_abort_transaction (OstreeRepo     *self,
                                              GError        **error);
 
 _OSTREE_PUBLIC
+gboolean      ostree_repo_mark_commit_partial (OstreeRepo     *self,
+                                               const char     *checksum,
+                                               gboolean        is_partial,
+                                               GError        **error);
+
+_OSTREE_PUBLIC
 void          ostree_repo_transaction_set_refspec (OstreeRepo *self,
                                                    const char *refspec,
                                                    const char *checksum);

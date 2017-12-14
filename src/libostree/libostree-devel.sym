@@ -21,6 +21,7 @@
 
 LIBOSTREE_2017.15 {
   ostree_repo_fsck_object;
+  ostree_repo_mark_commit_partial;
 } LIBOSTREE_2017.14;
 
 /* Stub section for the stable release *after* this development one; don't

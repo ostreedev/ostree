@@ -37,16 +37,6 @@ typedef struct {
 } OtPruneData;
 
 static gboolean
-prune_commitpartial_file (OstreeRepo    *repo,
-                          const char    *checksum,
-                          GCancellable  *cancellable,
-                          GError       **error)
-{
-  g_autofree char *path = _ostree_get_commitpartial_path (checksum);
-  return ot_ensure_unlinked_at (repo->repo_dir_fd, path, error);
-}
-
-static gboolean
 maybe_prune_loose_object (OtPruneData        *data,
                           OstreeRepoPruneFlags    flags,
                           const char         *checksum,
@@ -68,7 +58,7 @@ maybe_prune_loose_object (OtPruneData        *data,
 
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
-              if (!prune_commitpartial_file (data->repo, checksum, cancellable, error))
+              if (!ostree_repo_mark_commit_partial (data->repo, checksum, FALSE, error))
                 return FALSE;
             }
 

@@ -1590,6 +1590,48 @@ ensure_txn_refs (OstreeRepo *self)
 }
 
 /**
+ * ostree_repo_mark_commit_partial:
+ * @self: Repo
+ * @checksum: Commit SHA-256
+ * @is_partial: Whether or not this commit is partial
+ * @error: Error
+ *
+ * Commits in "partial" state do not have all their child objects written. This
+ * occurs in various situations, such as during a pull, but also if a "subpath"
+ * pull is used, as well as "commit only" pulls.
+ *
+ * This function is used by ostree_repo_pull_with_options(); you
+ * should use this if you are implementing a different type of transport.
+ *
+ * Since: 2017.15
+ */
+gboolean
+ostree_repo_mark_commit_partial (OstreeRepo     *self,
+                                 const char     *checksum,
+                                 gboolean        is_partial,
+                                 GError        **error)
+{
+  g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
+  if (is_partial)
+    {
+      glnx_autofd int fd = openat (self->repo_dir_fd, commitpartial_path,
+                                   O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
+      if (fd == -1)
+        {
+          if (errno != EEXIST)
+            return glnx_throw_errno_prefix (error, "open(%s)", commitpartial_path);
+        }
+    }
+  else
+    {
+      if (!ot_ensure_unlinked_at (self->repo_dir_fd, commitpartial_path, 0))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+/**
  * ostree_repo_transaction_set_refspec:
  * @self: An #OstreeRepo
  * @refspec: The refspec to write

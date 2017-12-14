@@ -557,21 +557,6 @@ fetch_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
                                                 cancellable, error);
 }
 
-static gboolean
-write_commitpartial_for (OtPullData *pull_data,
-                         const char *checksum,
-                         GError **error)
-{
-  g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-  glnx_autofd int fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
-  if (fd == -1)
-    {
-      if (errno != EEXIST)
-        return glnx_throw_errno_prefix (error, "open(%s)", commitpartial_path);
-    }
-  return TRUE;
-}
-
 static void
 enqueue_one_object_request (OtPullData                *pull_data,
                             const char                *checksum,
@@ -1266,7 +1251,7 @@ meta_fetch_on_complete (GObject           *object,
                                             pull_data->cancellable, error))
             goto out;
 
-          if (!write_commitpartial_for (pull_data, checksum, error))
+          if (!ostree_repo_mark_commit_partial (pull_data->repo, checksum, TRUE, error))
             goto out;
         }
 
@@ -1802,7 +1787,7 @@ scan_one_metadata_object (OtPullData                 *pull_data,
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
           /* mark as partial to ensure we scan the commit below */
-          if (!write_commitpartial_for (pull_data, checksum, error))
+          if (!ostree_repo_mark_commit_partial (pull_data->repo, checksum, TRUE, error))
             return FALSE;
         }
 
@@ -1835,7 +1820,7 @@ scan_one_metadata_object (OtPullData                 *pull_data,
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               /* mark as partial to ensure we scan the commit below */
-              if (!write_commitpartial_for (pull_data, checksum, error))
+              if (!ostree_repo_mark_commit_partial (pull_data->repo, checksum, TRUE, error))
                 return FALSE;
             }
           if (!_ostree_repo_import_object (pull_data->repo, refd_repo,
@@ -4321,15 +4306,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       GLNX_HASH_TABLE_FOREACH_V (requested_refs_to_fetch, const char*, checksum)
         {
-          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-          if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
+          if (!ostree_repo_mark_commit_partial (pull_data->repo, checksum, FALSE, error))
             goto out;
         }
 
       GLNX_HASH_TABLE_FOREACH_V (commits_to_fetch, const char*, commit)
         {
-          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (commit);
-          if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
+          if (!ostree_repo_mark_commit_partial (pull_data->repo, commit, FALSE, error))
             goto out;
         }
     }
