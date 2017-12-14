@@ -749,6 +749,50 @@ ostree_content_file_parse (gboolean                compressed,
                                        cancellable, error);
 }
 
+static gboolean
+break_symhardlink (int                dfd,
+                   const char        *path,
+                   struct stat       *stbuf,
+                   GLnxFileCopyFlags  copyflags,
+                   GCancellable      *cancellable,
+                   GError           **error)
+{
+  guint count;
+  gboolean copy_success = FALSE;
+  char *path_tmp = glnx_strjoina (path, ".XXXXXX");
+
+  for (count = 0; count < 100; count++)
+    {
+      g_autoptr(GError) tmp_error = NULL;
+
+      glnx_gen_temp_name (path_tmp);
+
+      if (!glnx_file_copy_at (dfd, path, stbuf, dfd, path_tmp, copyflags,
+                              cancellable, &tmp_error))
+        {
+          if (g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+            continue;
+          g_propagate_error (error, g_steal_pointer (&tmp_error));
+          return FALSE;
+        }
+
+      copy_success = TRUE;
+      break;
+    }
+
+  if (!copy_success)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                   "Exceeded limit of %u file creation attempts", count);
+      return FALSE;
+    }
+
+  if (!glnx_renameat (dfd, path_tmp, dfd, path, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /**
  * ostree_break_hardlink:
  * @dfd: Directory fd
@@ -784,47 +828,24 @@ gboolean ostree_break_hardlink (int               dfd,
   if (!glnx_fstatat (dfd, path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
 
-  if (!S_ISLNK (stbuf.st_mode) && !S_ISREG (stbuf.st_mode))
+  if (stbuf.st_nlink <= 1)
+    return TRUE;  /* Note early return */
+
+  const GLnxFileCopyFlags copyflags = skip_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
+
+  if (S_ISREG (stbuf.st_mode))
+    /* Note it's now completely safe to copy a file to itself,
+     * as glnx_file_copy_at() is documented to do an O_TMPFILE + rename()
+     * with GLNX_FILE_COPY_OVERWRITE.
+     */
+    return glnx_file_copy_at (dfd, path, &stbuf, dfd, path,
+                              copyflags | GLNX_FILE_COPY_OVERWRITE,
+                              cancellable, error);
+  else if (S_ISLNK (stbuf.st_mode))
+    return break_symhardlink (dfd, path, &stbuf, copyflags,
+                              cancellable, error);
+  else
     return glnx_throw (error, "Unsupported type for entry '%s'", path);
-
-  const GLnxFileCopyFlags copyflags =
-    skip_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
-
-  if (stbuf.st_nlink > 1)
-    {
-      guint count;
-      gboolean copy_success = FALSE;
-      char *path_tmp = glnx_strjoina (path, ".XXXXXX");
-
-      for (count = 0; count < 100; count++)
-        {
-          g_autoptr(GError) tmp_error = NULL;
-
-          glnx_gen_temp_name (path_tmp);
-
-          if (!glnx_file_copy_at (dfd, path, &stbuf, dfd, path_tmp, copyflags,
-                                  cancellable, &tmp_error))
-            {
-              if (g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
-                continue;
-              g_propagate_error (error, g_steal_pointer (&tmp_error));
-              return FALSE;
-            }
-
-          copy_success = TRUE;
-          break;
-        }
-
-      if (!copy_success)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
-                       "Exceeded limit of %u file creation attempts", count);
-          return FALSE;
-        }
-
-      if (!glnx_renameat (dfd, path_tmp, dfd, path, error))
-        return FALSE;
-    }
 
   return TRUE;
 }
