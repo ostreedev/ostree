@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..5'
+echo '1..6'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -186,3 +186,10 @@ assert_file_has_content_literal refs.txt 'exampleos/x86_64/stable/server -> exam
 ${CMD_PREFIX} ostree --repo=repo summary -u
 
 echo "ok ref symlink"
+
+# https://github.com/ostreedev/ostree/issues/1342
+if ${CMD_PREFIX} ostree --repo=repo refs -A exampleos/x86_64/27/server --create=exampleos:exampleos/x86_64/stable/server 2>err.txt; then
+    fatal "Created alias ref to remote?"
+fi
+assert_file_has_content_literal err.txt 'Cannot create alias to remote ref'
+echo "ok ref no alias remote"
