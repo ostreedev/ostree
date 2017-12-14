@@ -30,6 +30,7 @@
 static gboolean opt_quiet;
 static gboolean opt_delete;
 static gboolean opt_add_tombstones;
+static gboolean opt_verify_bindings;
 static gboolean opt_verify_back_refs;
 
 /* ATTENTION:
@@ -41,7 +42,8 @@ static GOptionEntry options[] = {
   { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones, "Add tombstones for missing commits", NULL },
   { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
-  { "verify-back-refs", 0, 0, G_OPTION_ARG_NONE, &opt_verify_back_refs, "Verify back-references", NULL },
+  { "verify-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_verify_bindings, "Verify ref bindings", NULL },
+  { "verify-back-refs", 0, 0, G_OPTION_ARG_NONE, &opt_verify_back_refs, "Verify back-references (implies --verify-bindings)", NULL },
   { NULL }
 };
 
@@ -162,8 +164,11 @@ fsck_commit_for_ref (OstreeRepo    *repo,
     }
 
   /* Check its bindings. */
-  if (!ostree_cmd__private__ ()->ostree_repo_verify_bindings (collection_id, ref_name, commit, error))
-    return glnx_prefix_error (error, "Commit %s", checksum);
+  if (opt_verify_bindings)
+    {
+      if (!ostree_cmd__private__ ()->ostree_repo_verify_bindings (collection_id, ref_name, commit, error))
+        return glnx_prefix_error (error, "Commit %s", checksum);
+    }
 
   return TRUE;
 }
@@ -237,6 +242,9 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   g_autoptr(GPtrArray) tombstones = NULL;
   if (opt_add_tombstones)
     tombstones = g_ptr_array_new_with_free_func (g_free);
+
+  if (opt_verify_back_refs)
+    opt_verify_bindings = TRUE;
 
   guint n_partial = 0;
   g_hash_table_iter_init (&hash_iter, objects);
