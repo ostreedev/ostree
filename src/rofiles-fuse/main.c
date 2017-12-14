@@ -35,9 +35,14 @@
 #include <glib.h>
 
 #include "libglnx.h"
+#include "ostree.h"
 
 // Global to store our read-write path
 static int basefd = -1;
+/* Whether or not to automatically "copyup" (in overlayfs terms).
+ * What we're really doing is breaking hardlinks.
+ */
+static gboolean opt_copyup;
 
 static inline const char *
 ENSURE_RELPATH (const char *path)
@@ -200,52 +205,97 @@ callback_link (const char *from, const char *to)
 /* Check whether @stbuf refers to a hardlinked regfile or symlink, and if so
  * return -EROFS. Otherwise return 0.
  */
-static int
-can_write_stbuf (struct stat *stbuf)
+static gboolean
+can_write_stbuf (const struct stat *stbuf)
 {
   /* If it's not a regular file or symlink, ostree won't hardlink it, so allow
    * writes - it might be a FIFO or device that somehow
    * ended up underneath our mount.
    */
   if (!(S_ISREG (stbuf->st_mode) || S_ISLNK (stbuf->st_mode)))
-    return 0;
+    return TRUE;
   /* If the object isn't hardlinked, it's OK to write */
   if (stbuf->st_nlink <= 1)
-    return 0;
+    return TRUE;
   /* Otherwise, it's a hardlinked file or symlink; it must be
    * immutable.
    */
-  return -EROFS;
+  return FALSE;
 }
 
-/* Check whether @path refers to a hardlinked regfile or symlink, and if so
- * return -EROFS. Otherwise return 0.
- */
 static int
-can_write (const char *path)
+gioerror_to_errno (GIOErrorEnum e)
 {
-  struct stat stbuf;
-  if (fstatat (basefd, path, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
+  /* It's obviously crappy to have to do this but
+   * we also don't want to try to have "raw errno" versions
+   * of everything down in ostree_break_hardlink() so...
+   * let's just reverse map a few ones I think are going to be common.
+   */
+  switch (e)
     {
-      if (errno == ENOENT)
-        return 0;
-      else
-        return -errno;
+    case G_IO_ERROR_NOT_FOUND:
+      return ENOENT;
+    case G_IO_ERROR_IS_DIRECTORY:
+      return EISDIR;
+    case G_IO_ERROR_PERMISSION_DENIED:
+      return EPERM;
+    case G_IO_ERROR_NO_SPACE:
+      return ENOSPC;
+    default:
+      return EIO;
     }
-  return can_write_stbuf (&stbuf);
 }
 
-#define VERIFY_WRITE(path) do {                 \
-    int r = can_write (path);                   \
-    if (r != 0)                                 \
-      return r;                                 \
+static int
+verify_write_or_copyup (const char *path, const struct stat *stbuf)
+{
+  struct stat stbuf_local;
+
+  /* If a stbuf wasn't provided, gather it now */
+  if (!stbuf)
+    {
+      if (fstatat (basefd, path, &stbuf_local, AT_SYMLINK_NOFOLLOW) == -1)
+        {
+          if (errno == ENOENT)
+            return 0;
+          else
+            return -errno;
+        }
+      stbuf = &stbuf_local;
+    }
+
+  /* Verify writability, if that fails, perform copy-up if enabled */
+  if (!can_write_stbuf (stbuf))
+    {
+      if (opt_copyup)
+        {
+          g_autoptr(GError) tmp_error = NULL;
+          if (!ostree_break_hardlink (basefd, path, FALSE, NULL, &tmp_error))
+            return -gioerror_to_errno ((GIOErrorEnum)tmp_error->code);
+        }
+      else
+        return -EROFS;
+    }
+
+  return 0;
+}
+
+/* Given a path (which is absolute), convert it
+ * to a relative path (even for the caller) and
+ * perform either write verification or copy-up.
+ */
+#define PATH_WRITE_ENTRYPOINT(path) do {                     \
+    path = ENSURE_RELPATH (path);                            \
+    int r = verify_write_or_copyup (path, NULL);             \
+    if (r != 0)                                              \
+      return r;                                              \
   } while (0)
 
 static int
 callback_chmod (const char *path, mode_t mode)
 {
-  path = ENSURE_RELPATH (path);
-  VERIFY_WRITE(path);
+  PATH_WRITE_ENTRYPOINT (path);
+
   /* Note we can't use AT_SYMLINK_NOFOLLOW yet;
    * https://marc.info/?l=linux-kernel&m=148830147803162&w=2
    * https://marc.info/?l=linux-fsdevel&m=149193779929561&w=2
@@ -258,8 +308,8 @@ callback_chmod (const char *path, mode_t mode)
 static int
 callback_chown (const char *path, uid_t uid, gid_t gid)
 {
-  path = ENSURE_RELPATH (path);
-  VERIFY_WRITE(path);
+  PATH_WRITE_ENTRYPOINT (path);
+
   if (fchownat (basefd, path, uid, gid, AT_SYMLINK_NOFOLLOW) != 0)
     return -errno;
   return 0;
@@ -268,12 +318,9 @@ callback_chown (const char *path, uid_t uid, gid_t gid)
 static int
 callback_truncate (const char *path, off_t size)
 {
-  glnx_autofd int fd = -1;
+  PATH_WRITE_ENTRYPOINT (path);
 
-  path = ENSURE_RELPATH (path);
-  VERIFY_WRITE(path);
-
-  fd = openat (basefd, path, O_NOFOLLOW|O_WRONLY);
+  glnx_autofd int fd = openat (basefd, path, O_NOFOLLOW|O_WRONLY);
   if (fd == -1)
     return -errno;
 
@@ -286,6 +333,9 @@ callback_truncate (const char *path, off_t size)
 static int
 callback_utimens (const char *path, const struct timespec tv[2])
 {
+  /* This one isn't write-verified, we support changing times
+   * even for hardlinked files.
+   */
   path = ENSURE_RELPATH (path);
 
   if (utimensat (basefd, path, tv, AT_SYMLINK_NOFOLLOW) == -1)
@@ -324,20 +374,38 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
           return -errno;
         }
 
-      int r = can_write_stbuf (&stbuf);
+      int r = verify_write_or_copyup (path, &stbuf);
       if (r != 0)
         {
           (void) close (fd);
           return r;
         }
 
-      /* Handle O_TRUNC here only after verifying hardlink state */
-      if (finfo->flags & O_TRUNC)
+      /* In the copyup case, we need to re-open */
+      if (opt_copyup)
         {
-          if (ftruncate (fd, 0) == -1)
+          (void) close (fd);
+          /* Note that unlike the initial open, we will pass through
+           * O_TRUNC.  More ideally in this copyup case we'd avoid copying
+           * the whole file in the first place, but eh.  It's not like we're
+           * high performance anyways.
+           */
+          fd = openat (basefd, path, finfo->flags & ~(O_EXCL|O_CREAT), mode);
+          if (fd == -1)
+            return -errno;
+        }
+      else
+        {
+          /* In the non-copyup case we handle O_TRUNC here, after we've verified
+           * the hardlink state above with verify_write_or_copyup().
+           */
+          if (finfo->flags & O_TRUNC)
             {
-              (void) close (fd);
-              return -errno;
+              if (ftruncate (fd, 0) == -1)
+                {
+                  (void) close (fd);
+                  return -errno;
+                }
             }
         }
     }
@@ -521,6 +589,7 @@ struct fuse_operations callback_oper = {
 enum {
   KEY_HELP,
   KEY_VERSION,
+  KEY_COPYUP,
 };
 
 static void
@@ -565,6 +634,9 @@ rofs_parse_opt (void *data, const char *arg, int key,
     case KEY_HELP:
       usage (outargs->argv[0]);
       exit (EXIT_SUCCESS);
+    case KEY_COPYUP:
+      opt_copyup = TRUE;
+      return 0;
     default:
       fprintf (stderr, "see `%s -h' for usage\n", outargs->argv[0]);
       exit (EXIT_FAILURE);
@@ -577,6 +649,7 @@ static struct fuse_opt rofs_opts[] = {
   FUSE_OPT_KEY ("--help", KEY_HELP),
   FUSE_OPT_KEY ("-V", KEY_VERSION),
   FUSE_OPT_KEY ("--version", KEY_VERSION),
+  FUSE_OPT_KEY ("--copyup", KEY_COPYUP),
   FUSE_OPT_END
 };
 

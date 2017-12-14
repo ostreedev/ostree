@@ -19,5 +19,7 @@ bin_PROGRAMS += rofiles-fuse
 
 rofiles_fuse_SOURCES = src/rofiles-fuse/main.c
 
-rofiles_fuse_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 $(BUILDOPT_FUSE_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/libglnx $(NULL)
-rofiles_fuse_LDADD = libglnx.la $(BUILDOPT_FUSE_LIBS) $(OT_INTERNAL_GIO_UNIX_LIBS)
+rofiles_fuse_CFLAGS = $(AM_CFLAGS) -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 $(BUILDOPT_FUSE_CFLAGS) \
+											$(OT_INTERNAL_GIO_UNIX_CFLAGS) -I $(srcdir)/src/libostree -I $(builddir)/src/libostree \
+											-I$(srcdir)/libglnx
+rofiles_fuse_LDADD = libglnx.la $(BUILDOPT_FUSE_LIBS) $(OT_INTERNAL_GIO_UNIX_LIBS) libostree-1.la
