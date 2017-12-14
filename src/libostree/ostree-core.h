@@ -438,6 +438,13 @@ gboolean ostree_checksum_file (GFile             *f,
                                GCancellable      *cancellable,
                                GError           **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_break_hardlink (int               dfd,
+                                const char       *path,
+                                gboolean          skip_xattrs,
+                                GCancellable     *cancellable,
+                                GError          **error);
+
 /**
  * OstreeChecksumFlags:
  *
