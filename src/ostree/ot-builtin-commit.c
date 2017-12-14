@@ -37,6 +37,7 @@ static char *opt_body_file;
 static gboolean opt_editor;
 static char *opt_parent;
 static gboolean opt_orphan;
+static gboolean opt_no_bindings;
 static char **opt_bind_refs;
 static char *opt_branch;
 static char *opt_statoverride_file;
@@ -90,6 +91,7 @@ static GOptionEntry options[] = {
   { "editor", 'e', 0, G_OPTION_ARG_NONE, &opt_editor, "Use an editor to write the commit message", NULL },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "BRANCH" },
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
+  { "no-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_no_bindings, "Do not write any ref bindings", NULL },
   { "bind-ref", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_bind_refs, "Add a ref to ref binding commit metadata", "BRANCH" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
@@ -745,9 +747,12 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     {
       gboolean update_summary;
       guint64 timestamp;
-      g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
 
-      fill_bindings (repo, old_metadata, &metadata);
+      if (!opt_no_bindings)
+        {
+          g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
+          fill_bindings (repo, old_metadata, &metadata);
+        }
 
       if (!opt_timestamp)
         {
