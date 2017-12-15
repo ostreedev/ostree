@@ -4310,13 +4310,55 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_autofree char *formatted_xferred = g_format_size (bytes_transferred);
       g_string_append_printf (msg, "\ntransfer: secs: %u size: %s", n_seconds, formatted_xferred);
 
-      sd_journal_send ("MESSAGE=%s", msg->str,
-                       "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_MESSAGE_FETCH_COMPLETE_ID),
-                       "OSTREE_REMOTE=%s", pull_data->remote_name,
-                       "OSTREE_GPG=%s", gpg_verify_state,
-                       "OSTREE_SECONDS=%u", n_seconds,
-                       "OSTREE_XFER_SIZE=%s", formatted_xferred,
-                       NULL);
+      g_auto(GStrv) fetcher_extra_journal_info =
+        _ostree_fetcher_get_journal_info (pull_data->fetcher);
+
+      const size_t base_len = 7;
+      const size_t extra_len = g_strv_length (fetcher_extra_journal_info);
+      const size_t iov_len = base_len + extra_len;
+      size_t iov_i = 0;
+      struct iovec iov[iov_len];
+
+      OstreeFetcherHTTPVersions seen_http_versions =
+        _ostree_fetcher_get_http_versions (pull_data->fetcher);
+
+      /* A bit like what happens in sd_journal_send() */
+      char *v;
+#define _IOV_PRINTF(str, args...) (v = g_strdup_printf (str, args), (struct iovec){ .iov_base = v, .iov_len = strlen (v) })
+      iov[iov_i++] = _IOV_PRINTF ("MESSAGE=%s", msg->str);
+      iov[iov_i++] = _IOV_PRINTF ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_MESSAGE_FETCH_COMPLETE_ID));
+      iov[iov_i++] = _IOV_PRINTF ("OSTREE_REMOTE=%s", pull_data->remote_name);
+      iov[iov_i++] = _IOV_PRINTF ("OSTREE_GPG=%s", gpg_verify_state);
+      iov[iov_i++] = _IOV_PRINTF ("OSTREE_SECONDS=%u", n_seconds);
+      iov[iov_i++] = _IOV_PRINTF ("OSTREE_XFER_SIZE=%s", formatted_xferred);
+      { g_autoptr(GString) buf = g_string_new ("");
+        if (seen_http_versions & OSTREE_FETCHER_HTTP_1_0)
+          g_string_append (buf, "1.0");
+        if (seen_http_versions & OSTREE_FETCHER_HTTP_1_1)
+          {
+            if (buf->len > 0) g_string_append_c (buf, ',');
+            g_string_append (buf, "1.1");
+          }
+        if (seen_http_versions & OSTREE_FETCHER_HTTP_2_0)
+          {
+            if (buf->len > 0) g_string_append_c (buf, ',');
+            g_string_append (buf, "2.0");
+          }
+        iov[iov_i++] = _IOV_PRINTF ("OSTREE_HTTP_VERSIONS=%s", buf->str);
+      }
+
+      g_assert_cmpint (iov_i, ==, base_len);
+      for (char **iter = fetcher_extra_journal_info; iter && *iter; iter++)
+        {
+          const char *kv = *iter;
+          iov[iov_i++] = (struct iovec){ .iov_base = (char*)kv, .iov_len = strlen (kv) };
+        }
+      g_assert_cmpint (iov_i, ==, iov_len);
+
+      sd_journal_sendv (iov, iov_len);
+
+      for (i = 0; i < base_len; i++)
+        g_free (iov[i].iov_base);
     }
 #endif
 

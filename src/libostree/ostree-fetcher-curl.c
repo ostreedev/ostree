@@ -24,6 +24,8 @@
 #include <glib-unix.h>
 #include <curl/curl.h>
 
+#include "otutil.h"
+
 /* These macros came from 7.43.0, but we want to check
  * for versions a bit earlier than that (to work on CentOS 7),
  * so define them here if we're using an older version.
@@ -84,6 +86,10 @@ struct OstreeFetcher
   GHashTable *sockets; /* Set<SockInfo> */
 
   guint64 bytes_transferred;
+  guint64 dnslookup_time_secs;
+  guint64 header_size_total;
+  GHashTable *ip_addresses;
+  OstreeFetcherHTTPVersions seen_http_versions;
 };
 
 /* Information associated with a request */
@@ -218,6 +224,7 @@ _ostree_fetcher_init (OstreeFetcher *self)
   self->multi = curl_multi_init();
   self->outstanding_requests = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref, NULL);
   self->sockets = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)sock_unref, NULL);
+  self->ip_addresses = g_hash_table_new_full (NULL, NULL, g_free, NULL);
   curl_multi_setopt (self->multi, CURLMOPT_SOCKETFUNCTION, sock_cb);
   curl_multi_setopt (self->multi, CURLMOPT_SOCKETDATA, self);
   curl_multi_setopt (self->multi, CURLMOPT_TIMERFUNCTION, update_timeout_cb);
@@ -276,6 +283,42 @@ ensure_tmpfile (FetcherRequest *req, GError **error)
   return TRUE;
 }
 
+static void
+update_stats_from_req (OstreeFetcher *fetcher,
+                       CURL          *easy)
+{
+  long http_version;
+  if (curl_easy_getinfo (easy, CURLINFO_HTTP_VERSION, &http_version) == CURLE_OK)
+    {
+      switch (http_version)
+        {
+        case CURL_HTTP_VERSION_1_0:
+          fetcher->seen_http_versions |= OSTREE_FETCHER_HTTP_1_0;
+          break;
+        case CURL_HTTP_VERSION_1_1:
+          fetcher->seen_http_versions |= OSTREE_FETCHER_HTTP_1_1;
+          break;
+        case CURL_HTTP_VERSION_2_0:
+          fetcher->seen_http_versions |= OSTREE_FETCHER_HTTP_2_0;
+          break;
+        default:
+          break;
+        }
+    }
+
+  double ts;
+  if (curl_easy_getinfo (easy, CURLINFO_NAMELOOKUP_TIME, &ts) == CURLE_OK)
+    fetcher->dnslookup_time_secs += ((guint64) ts);
+
+  long size;
+  if (curl_easy_getinfo (easy, CURLINFO_HEADER_SIZE, &size) == CURLE_OK)
+    fetcher->header_size_total += size;
+
+  char *ip;
+  if (curl_easy_getinfo (easy, CURLINFO_PRIMARY_IP, &ip) == CURLE_OK)
+    g_hash_table_add (fetcher->ip_addresses, g_strdup (ip));
+}
+
 /* Check for completed transfers, and remove their easy handles */
 static void
 check_multi_info (OstreeFetcher *fetcher)
@@ -330,6 +373,9 @@ check_multi_info (OstreeFetcher *fetcher)
         }
       else
         {
+          /* Always update stats once a request is done */
+          update_stats_from_req (fetcher, easy);
+
           curl_easy_getinfo (easy, CURLINFO_RESPONSE_CODE, &response);
           if (!is_file && !(response >= 200 && response < 300))
             {
@@ -957,4 +1003,35 @@ guint64
 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 {
   return self->bytes_transferred;
+}
+
+OstreeFetcherHTTPVersions
+_ostree_fetcher_get_http_versions (OstreeFetcher *self)
+{
+  return self->seen_http_versions;
+}
+
+char **
+_ostree_fetcher_get_journal_info (OstreeFetcher *self)
+{
+  GPtrArray *ret = g_ptr_array_new ();
+
+  g_ptr_array_add (ret, g_strdup_printf ("DNSLOOKUP_SECS=%" G_GUINT64_FORMAT, self->dnslookup_time_secs));
+  g_ptr_array_add (ret, g_strdup_printf ("HEADER_SIZE=%" G_GUINT64_FORMAT, self->header_size_total));
+  /* IP addresses */
+  { g_autoptr(GString) buf = g_string_new ("IP_ADDRESSES=");
+    gboolean first = TRUE;
+    GLNX_HASH_TABLE_FOREACH (self->ip_addresses, const char *, ip)
+      {
+        if (!first)
+          g_string_append_c (buf, ' ');
+        else
+          first = TRUE;
+        g_string_append (buf, ip);
+      }
+    g_ptr_array_add (ret, g_string_free (g_steal_pointer (&buf), FALSE));
+  }
+
+  g_ptr_array_add (ret, NULL);
+  return (char**)g_ptr_array_free (ret, FALSE);
 }
