@@ -26,7 +26,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare"
 
-echo "1..10"
+echo "1..11"
 
 cd ${test_tmpdir}
 mkdir mnt
