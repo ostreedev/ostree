@@ -111,8 +111,10 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
         return FALSE;
     }
 
+  g_auto(GLnxConsoleRef) console = { 0, };
+  glnx_console_lock (&console);
+
   const guint count = g_hash_table_size (reachable_objects);
-  const guint mod = count / 10;
   guint i = 0;
   g_hash_table_iter_init (&hash_iter, reachable_objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -127,9 +129,8 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
                             cancellable, error))
         return FALSE;
 
-      if (mod == 0 || (i % mod == 0))
-        g_print ("%u/%u objects\n", i + 1, count);
       i++;
+      glnx_console_progress_n_items ("fsck objects", i, count);
     }
 
   return TRUE;
