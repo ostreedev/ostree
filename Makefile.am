@@ -31,7 +31,8 @@ AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
   -DOSTREE_GITREV='"$(OSTREE_GITREV)"' \
 	-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_40 '-DGLIB_VERSION_MAX_ALLOWED=G_ENCODE_VERSION(2,50)' \
 	-DSOUP_VERSION_MIN_REQUIRED=SOUP_VERSION_2_40 '-DSOUP_VERSION_MAX_ALLOWED=G_ENCODE_VERSION(2,48)'
-AM_CFLAGS += -std=gnu99 $(WARN_CFLAGS)
+# For strict aliasing, see https://bugzilla.gnome.org/show_bug.cgi?id=791622
+AM_CFLAGS += -std=gnu99 -fno-strict-aliasing $(WARN_CFLAGS)
 AM_DISTCHECK_CONFIGURE_FLAGS += \
 	--enable-gtk-doc \
 	--enable-man \

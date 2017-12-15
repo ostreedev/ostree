@@ -48,6 +48,7 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
   -Werror=incompatible-pointer-types \
   -Werror=misleading-indentation \
   -Werror=missing-include-dirs -Werror=aggregate-return \
+  -Wstrict-aliasing=2 \
   -Werror=unused-result \
 ])])
 AC_SUBST(WARN_CFLAGS)
