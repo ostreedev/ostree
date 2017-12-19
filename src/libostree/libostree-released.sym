@@ -445,6 +445,12 @@ global:
 LIBOSTREE_2017.14 {
 } LIBOSTREE_2017.13;
 
+LIBOSTREE_2017.15 {
+  ostree_repo_fsck_object;
+  ostree_repo_mark_commit_partial;
+  ostree_break_hardlink;
+} LIBOSTREE_2017.14;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
