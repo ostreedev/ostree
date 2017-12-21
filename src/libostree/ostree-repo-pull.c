@@ -27,12 +27,12 @@
 #include "libglnx.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ostree-repo-pull-private.h"
 
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
-#include "ostree-repo-pull-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-metalink.h"
 #include "ostree-fetcher-util.h"
