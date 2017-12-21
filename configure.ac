@@ -43,7 +43,7 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
   -Werror=switch \
   -Werror=overflow \
   -Werror=int-conversion \
-  -Werror=parenthesis \
+  -Werror=parentheses \
   -Werror=undef \
   -Werror=incompatible-pointer-types \
   -Werror=misleading-indentation \
