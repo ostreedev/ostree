@@ -385,7 +385,12 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
       if (opt_copyup)
         {
           (void) close (fd);
-          fd = openat (basefd, path, finfo->flags & ~O_TRUNC, mode);
+          /* Note that unlike the initial open, we will pass through
+           * O_TRUNC.  More ideally in this copyup case we'd avoid copying
+           * the whole file in the first place, but eh.  It's not like we're
+           * high performance anyways.
+           */
+          fd = openat (basefd, path, finfo->flags & ~(O_EXCL|O_CREAT), mode);
           if (fd == -1)
             return -errno;
         }

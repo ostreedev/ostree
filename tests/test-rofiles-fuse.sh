@@ -131,6 +131,7 @@ firstfile_orig_inode=$(stat -c %i checkout-test2/firstfile)
 for path in firstfile{,-link}; do
     echo truncating > mnt/${path}
     assert_file_has_content mnt/${path} truncating
+    assert_not_file_has_content mnt/${path} first
 done
 firstfile_new_inode=$(stat -c %i checkout-test2/firstfile)
 assert_not_streq "${firstfile_orig_inode}" "${firstfile_new_inode}"
