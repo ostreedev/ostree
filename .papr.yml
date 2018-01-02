@@ -53,7 +53,6 @@ tests:
 
 context: f26-rust
 inherit: true
-required: false
 container:
     image: registry.fedoraproject.org/fedora:26
 env:
@@ -68,7 +67,6 @@ tests:
 
 context: f26-gnutls
 inherit: true
-required: true
 container:
     image: registry.fedoraproject.org/fedora:26
 env:
