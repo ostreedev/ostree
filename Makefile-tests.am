@@ -130,7 +130,13 @@ experimental_test_scripts = \
 	tests/test-summary-collections.sh \
 	tests/test-pull-collections.sh \
 	$(NULL)
-test_extra_programs = $(NULL)
+test_extra_programs = \
+	tests/get-byte-order \
+	$(NULL)
+
+tests_get_byte_order_SOURCES = tests/get-byte-order.c
+tests_get_byte_order_CFLAGS = $(AM_CFLAGS) $(GLIB_CFLAGS)
+tests_get_byte_order_LDADD = $(GLIB_LIBS)
 
 tests_repo_finder_mount_SOURCES = tests/repo-finder-mount.c
 tests_repo_finder_mount_CFLAGS = $(common_tests_cflags)
