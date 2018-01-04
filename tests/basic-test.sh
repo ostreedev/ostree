@@ -759,8 +759,20 @@ $OSTREE show --print-metadata-key=FOO test2 > test2-meta
 assert_file_has_content test2-meta "BAR"
 $OSTREE show --print-metadata-key=KITTENS test2 > test2-meta
 assert_file_has_content test2-meta "CUTE"
+
 $OSTREE show --print-metadata-key=SOMENUM test2 > test2-meta
-assert_file_has_content test2-meta "uint64 3026418949592973312"
+case "$("${test_builddir}/get-byte-order")" in
+    (4321)
+        assert_file_has_content test2-meta "uint64 42"
+        ;;
+    (1234)
+        assert_file_has_content test2-meta "uint64 3026418949592973312"
+        ;;
+    (*)
+        fatal "neither little-endian nor big-endian?"
+        ;;
+esac
+
 $OSTREE show -B --print-metadata-key=SOMENUM test2 > test2-meta
 assert_file_has_content test2-meta "uint64 42"
 $OSTREE show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
