@@ -247,9 +247,13 @@ gioerror_to_errno (GIOErrorEnum e)
 }
 
 static int
-verify_write_or_copyup (const char *path, const struct stat *stbuf)
+verify_write_or_copyup (const char *path, const struct stat *stbuf,
+                        gboolean *out_did_copyup)
 {
   struct stat stbuf_local;
+
+  if (out_did_copyup)
+    *out_did_copyup = FALSE;
 
   /* If a stbuf wasn't provided, gather it now */
   if (!stbuf)
@@ -272,6 +276,8 @@ verify_write_or_copyup (const char *path, const struct stat *stbuf)
           g_autoptr(GError) tmp_error = NULL;
           if (!ostree_break_hardlink (basefd, path, FALSE, NULL, &tmp_error))
             return -gioerror_to_errno ((GIOErrorEnum)tmp_error->code);
+          if (out_did_copyup)
+            *out_did_copyup = TRUE;
         }
       else
         return -EROFS;
@@ -286,7 +292,7 @@ verify_write_or_copyup (const char *path, const struct stat *stbuf)
  */
 #define PATH_WRITE_ENTRYPOINT(path) do {                     \
     path = ENSURE_RELPATH (path);                            \
-    int r = verify_write_or_copyup (path, NULL);             \
+    int r = verify_write_or_copyup (path, NULL, NULL);       \
     if (r != 0)                                              \
       return r;                                              \
   } while (0)
@@ -374,7 +380,8 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
           return -errno;
         }
 
-      int r = verify_write_or_copyup (path, &stbuf);
+      gboolean did_copyup;
+      int r = verify_write_or_copyup (path, &stbuf, &did_copyup);
       if (r != 0)
         {
           (void) close (fd);
@@ -382,7 +389,7 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
         }
 
       /* In the copyup case, we need to re-open */
-      if (opt_copyup)
+      if (did_copyup)
         {
           (void) close (fd);
           /* Note that unlike the initial open, we will pass through
