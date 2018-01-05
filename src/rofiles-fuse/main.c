@@ -394,14 +394,18 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
           if (fd == -1)
             return -errno;
         }
-
-      /* Handle O_TRUNC here only after verifying hardlink state */
-      if (finfo->flags & O_TRUNC)
+      else
         {
-          if (ftruncate (fd, 0) == -1)
+          /* In the non-copyup case we handle O_TRUNC here, after we've verified
+           * the hardlink state above with verify_write_or_copyup().
+           */
+          if (finfo->flags & O_TRUNC)
             {
-              (void) close (fd);
-              return -errno;
+              if (ftruncate (fd, 0) == -1)
+                {
+                  (void) close (fd);
+                  return -errno;
+                }
             }
         }
     }
