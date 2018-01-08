@@ -197,7 +197,7 @@ AM_COND_IF(BUILDOPT_TRIVIAL_HTTPD,
 )
 
 AS_IF([test x$with_curl = xyes && test x$with_soup = xno], [
-  AC_MSG_ERROR([Curl enabled, but libsoup is not; libsoup is needed for tests])
+  AC_MSG_WARN([Curl enabled, but libsoup is not; libsoup is needed for tests (make check, etc.)])
 ])
 AM_CONDITIONAL(USE_CURL_OR_SOUP, test x$with_curl != xno || test x$with_soup != xno)
 AS_IF([test x$with_curl != xno || test x$with_soup != xno],
