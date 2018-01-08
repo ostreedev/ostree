@@ -381,6 +381,14 @@ dist_test_scripts += $(_installed_or_uninstalled_test_scripts)
 test_programs += $(_installed_or_uninstalled_test_programs)
 endif
 
+if !USE_LIBSOUP
+no-soup-for-you-warning:
+	@echo "WARNING: $(PACKAGE) was built without libsoup, which is currently" 1>&2
+	@echo "WARNING: required for many unit tests." 1>&2
+	sleep 10
+check: no-soup-for-you-warning
+endif
+
 # Unfortunately the glib test data APIs don't actually handle
 # non-recursive Automake, so we change our code to canonically look
 # for tests/ which is just a symlink when installed.
