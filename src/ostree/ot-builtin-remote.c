@@ -41,7 +41,7 @@ static OstreeCommand remote_subcommands[] = {
   { "gpg-import", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_gpg_import,
     "Import GPG keys" },
-#ifdef HAVE_LIBSOUP
+#ifdef HAVE_LIBCURL_OR_LIBSOUP
   { "add-cookie", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_add_cookie,
     "Add a cookie to remote" },
