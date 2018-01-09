@@ -45,6 +45,7 @@ static char *opt_skiplist_file;
 static char **opt_metadata_strings;
 static char **opt_metadata_variants;
 static char **opt_detached_metadata_strings;
+static char **opt_metadata_keep;
 static gboolean opt_link_checkout_speedup;
 static gboolean opt_skip_if_unchanged;
 static gboolean opt_tar_autocreate_parents;
@@ -96,6 +97,7 @@ static GOptionEntry options[] = {
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-metadata", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_variants, "Add a key/value pair to metadata, where the KEY is a string, an VALUE is g_variant_parse() formatted", "KEY=VALUE" },
+  { "keep-metadata", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_keep, "Keep metadata KEY and its associated VALUE from parent", "KEY" },
   { "add-detached-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_detached_metadata_strings, "Add a key/value pair to detached metadata", "KEY=VALUE" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
@@ -498,7 +500,15 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
         }
     }
 
-  if (opt_metadata_strings || opt_metadata_variants)
+  if (!parent && opt_metadata_keep)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Either --branch or --parent must be specified when using "
+                           "--keep-metadata");
+      goto out;
+    }
+
+  if (opt_metadata_strings || opt_metadata_variants || opt_metadata_keep)
     {
       g_autoptr(GVariantBuilder) builder =
         g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
@@ -510,6 +520,31 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       if (opt_metadata_variants &&
           !parse_keyvalue_strings (builder, opt_metadata_variants, TRUE, error))
         goto out;
+
+      if (opt_metadata_keep)
+        {
+          g_assert (parent);
+
+          g_autoptr(GVariant) parent_commit = NULL;
+          if (!ostree_repo_load_commit (repo, parent, &parent_commit, NULL, error))
+            goto out;
+
+          g_auto(GVariantDict) dict;
+          g_variant_dict_init (&dict, g_variant_get_child_value (parent_commit, 0));
+          for (char **keyp = opt_metadata_keep; keyp && *keyp; keyp++)
+            {
+              const char *key = *keyp;
+              g_autoptr(GVariant) val = g_variant_dict_lookup_value (&dict, key, NULL);
+              if (!val)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Missing metadata key '%s' from commit '%s'", key, parent);
+                  goto out;
+                }
+
+              g_variant_builder_add (builder, "{sv}", key, val);
+            }
+        }
 
       metadata = g_variant_ref_sink (g_variant_builder_end (builder));
     }
