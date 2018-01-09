@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((78 + ${extra_basic_tests:-0}))"
+echo "1..$((79 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -778,6 +778,18 @@ assert_file_has_content test2-meta "uint64 42"
 $OSTREE show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
 assert_file_has_content test2-meta "HANCOCK"
 echo "ok metadata commit with strings"
+
+$OSTREE commit ${COMMIT_ARGS} -b test2 --tree=ref=test2 \
+   --add-detached-metadata-string=SIGNATURE=HANCOCK \
+  --keep-metadata=KITTENS --keep-metadata=SOMENUM
+if $OSTREE show --print-metadata-key=FOO test2; then
+  assert_not_reached "FOO was kept without explicit --keep-metadata?"
+fi
+$OSTREE show --print-metadata-key=KITTENS test2 > test2-meta
+assert_file_has_content test2-meta "CUTE"
+$OSTREE show -B --print-metadata-key=SOMENUM test2 > test2-meta
+assert_file_has_content test2-meta "uint64 42"
+echo "ok keep metadata from parent"
 
 cd ${test_tmpdir}
 $OSTREE show --print-metadata-key=ostree.ref-binding test2 > test2-ref-binding
