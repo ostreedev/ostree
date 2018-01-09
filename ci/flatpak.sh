@@ -3,40 +3,36 @@
 
 set -xeuo pipefail
 
+# Frozen to a tag for now to help predictability; it's
+# also useful to test building *older* versions since
+# that must work.
+FLATPAK_TAG=0.10.2.1
+
 dn=$(dirname $0)
 . ${dn}/libbuild.sh
-
-build() {
-    env NOCONFIGURE=1 ./autogen.sh
-    ./configure --prefix=/usr --libdir=/usr/lib64 "$@"
-    make -j 8
-}
 
 codedir=$(pwd)
 
 pkg_upgrade
-# Core prep
-yum -y install dnf-plugins-core @buildsys-build 'dnf-command(builddep)'
-# build+install ostree, and build deps for both, so that our
-# make install overrides the ostree via rpm
-dnf builddep -y ostree flatpak
-yum -y install flatpak && rpm -e flatpak
-# we use yaml below
-yum -y install python3-PyYAML
+pkg_install_builddeps ostree
+pkg_install_builddeps flatpak
+pkg_install gettext-devel # A new dependency
+# Copy of builddeps from build.sh in flatpak
+pkg_install sudo which attr fuse \
+            libubsan libasan libtsan \
+            elfutils git gettext-devel libappstream-glib-devel \
+            /usr/bin/{update-mime-database,update-desktop-database,gtk-update-icon-cache}
+pkg_install flatpak && rpm -e flatpak
 
-# Now get flatpak's deps from rhci file
-tmpd=$(mktemp -d)
-cd ${tmpd}
-# Frozen to a tag for now on general principle
-git clone --recursive --depth=1 -b 0.9.3 https://github.com/flatpak/flatpak
-cd flatpak
-python3 -c 'import yaml; y = list(yaml.load_all(open(".redhat-ci.yml")))[0]; print("\0".join(y["packages"]))' | xargs -0 yum install -y
-# back to ostree and build
+# Build and install ostree
 cd ${codedir}
 build
 make install
+tmpd=$(mktemp -d)
+cd ${tmpd}
+# Frozen to a tag for now on general principle
+git clone --recursive --depth=1 -b ${FLATPAK_TAG} https://github.com/flatpak/flatpak
 cd ${tmpd}/flatpak
-patch -p1 < ${codedir}/ci/*.patch
 build
 # We want to capture automake results from flatpak
 cleanup() {
