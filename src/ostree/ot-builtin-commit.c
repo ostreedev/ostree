@@ -466,6 +466,38 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
         goto out;
     }
 
+  if (!(opt_branch || opt_orphan))
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "A branch must be specified with --branch, or use --orphan");
+      goto out;
+    }
+
+  if (opt_parent)
+    {
+      if (g_str_equal (opt_parent, "none"))
+        parent = NULL;
+      else
+        {
+          if (!ostree_validate_checksum_string (opt_parent, error))
+            goto out;
+          parent = g_strdup (opt_parent);
+        }
+    }
+  else if (!opt_orphan)
+    {
+      if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
+        {
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
+            {
+              /* A folder exists with the specified ref name,
+                 * which is handled by _ostree_repo_write_ref */
+              g_clear_error (error);
+            }
+          else goto out;
+        }
+    }
+
   if (opt_metadata_strings || opt_metadata_variants)
     {
       g_autoptr(GVariantBuilder) builder =
@@ -491,13 +523,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
         goto out;
 
       detached_metadata = g_variant_ref_sink (g_variant_builder_end (builder));
-    }
-
-  if (!(opt_branch || opt_orphan))
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "A branch must be specified with --branch, or use --orphan");
-      goto out;
     }
 
   if (opt_no_xattrs)
@@ -540,31 +565,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
           if (!policy)
             goto out;
           ostree_repo_commit_modifier_set_sepolicy (modifier, policy);
-        }
-    }
-
-  if (opt_parent)
-    {
-      if (g_str_equal (opt_parent, "none"))
-        parent = NULL;
-      else
-        {
-          if (!ostree_validate_checksum_string (opt_parent, error))
-            goto out;
-          parent = g_strdup (opt_parent);
-        }
-    }
-  else if (!opt_orphan)
-    {
-      if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
-        {
-          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
-            {
-              /* A folder exists with the specified ref name,
-                 * which is handled by _ostree_repo_write_ref */
-              g_clear_error (error);
-            }
-          else goto out;
         }
     }
 
