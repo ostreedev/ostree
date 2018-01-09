@@ -2,7 +2,7 @@
 
 . $(dirname $0)/libtest.sh
 
-echo "1..7"
+echo "1..10"
 
 setup_os_repository "archive-z2" "uboot"
 
@@ -20,11 +20,12 @@ echo "ok deployment with initramfs"
 pull_test_tree() {
     kernel_contents=$1
     initramfs_contents=$2
+    devicetree_contents=$3
 
-    printf "TEST SETUP:\n    kernel: %s\n    initramfs: %s\n    layout: %s\n" \
-        "$kernel_contents" "$initramfs_contents" "$layout"
+    printf "TEST SETUP:\n    kernel: %s\n    initramfs: %s\n    devicetree: %s\n    layout: %s\n" \
+        "$kernel_contents" "$initramfs_contents" "$devicetree_contents" "$layout"
 
-    rm -rf ${test_tmpdir}/osdata/usr/lib/modules/3.6.0/{initramfs.img,vmlinuz} \
+    rm -rf ${test_tmpdir}/osdata/usr/lib/modules/3.6.0/{initramfs.img,vmlinuz,devicetree} \
            ${test_tmpdir}/osdata/usr/lib/ostree-boot \
            ${test_tmpdir}/osdata/boot
     if [ "$layout" = "/usr/lib/modules" ]; then
@@ -32,14 +33,16 @@ pull_test_tree() {
         cd ${test_tmpdir}/osdata/usr/lib/modules/3.6.0
         echo -n "$kernel_contents" > vmlinuz
         [ -n "$initramfs_contents" ] && echo -n "$initramfs_contents" > initramfs.img
+        [ -n "$devicetree_contents" ] && echo -n "$devicetree_contents" > devicetree
     elif [ "$layout" = "/usr/lib/ostree-boot" ] || [ "$layout" = "/boot" ]; then
         # "Legacy" layout
         mkdir -p "${test_tmpdir}/osdata/$layout"
         cd "${test_tmpdir}/osdata/$layout"
-        bootcsum=$(echo -n "$kernel_contents$initramfs_contents" \
+        bootcsum=$(echo -n "$kernel_contents$initramfs_contents$devicetree_contents" \
                    | sha256sum | cut -f 1 -d ' ')
         echo -n "$kernel_contents" > vmlinuz-${bootcsum}
         [ -n "$initramfs_contents" ] && echo -n "$initramfs_contents" > initramfs-${bootcsum}
+        [ -n "$devicetree_contents" ] && echo -n "$devicetree_contents" > devicetree-${bootcsum}
     else
         exit 1
     fi
@@ -75,4 +78,13 @@ do
     assert_not_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'init='
 
     echo "ok switching from no initramfs to initramfs enabled sysroot layout=$layout"
+
+    pull_test_tree "the kernel" "" "my .dtb file"
+    ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+
+    assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'init='
+    assert_file_has_content sysroot/boot/"$(get_key_from_bootloader_conf sysroot/boot/loader/entries/ostree-testos-0.conf 'devicetree')" "my .dtb file"
+    assert_not_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'initrd'
+
+    echo "ok switching from initramfs to no initramfs sysroot with devicetree layout=$layout"
 done
