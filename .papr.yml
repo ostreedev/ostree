@@ -181,3 +181,39 @@ tests:
 
 artifacts:
   - test-suite.log
+
+---
+
+# Run rpm-ostree's vmcheck.  This is a temporary hack until
+# we share more code. https://github.com/projectatomic/rpm-ostree/issues/662
+inherit: false
+
+branches:
+    - master
+    - auto
+    - try
+
+context: f27-rpmostree
+required: true
+
+cluster:
+  hosts:
+    - name: vmcheck
+      distro: fedora/27/atomic
+  container:
+    image: registry.fedoraproject.org/fedora:27
+
+env:
+  HOSTS: vmcheck
+  # This should roughly match the Fedora spec file, although right now we don't
+  # explicitly enable gtk-doc because we don't really need it
+  CONFIGOPTS: '--with-selinux --with-dracut=yesbutnoconf --with-curl --with-openssl'
+
+tests:
+  - ./ci/rpmostree.sh
+
+artifacts:
+  - test-suite.log
+  - vmcheck
+
+timeout: 60m
