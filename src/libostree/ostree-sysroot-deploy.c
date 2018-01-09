@@ -93,7 +93,7 @@ sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults,
 }
 
 /* Try a hardlink if we can, otherwise fall back to copying.  Used
- * right now for kernels/initramfs in /boot, where we can just
+ * right now for kernels/initramfs/device trees in /boot, where we can just
  * hardlink if we're on the same partition.
  */
 static gboolean
@@ -894,6 +894,8 @@ typedef struct {
   char *kernel_namever;
   char *initramfs_srcpath;
   char *initramfs_namever;
+  char *devicetree_srcpath;
+  char *devicetree_namever;
   char *bootcsum;
 } OstreeKernelLayout;
 static void
@@ -904,6 +906,8 @@ _ostree_kernel_layout_free (OstreeKernelLayout *layout)
   g_free (layout->kernel_namever);
   g_free (layout->initramfs_srcpath);
   g_free (layout->initramfs_namever);
+  g_free (layout->devicetree_srcpath);
+  g_free (layout->devicetree_namever);
   g_free (layout->bootcsum);
   g_free (layout);
 }
@@ -1025,6 +1029,22 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
       if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
         return FALSE;
     }
+  g_clear_object (&in);
+  glnx_close_fd (&fd);
+
+  if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "devicetree", &fd, error))
+    return FALSE;
+  if (fd != -1)
+    {
+      ret_layout->devicetree_srcpath = g_strdup ("devicetree");
+      ret_layout->devicetree_namever = g_strdup_printf ("devicetree-%s", kver);
+      in = g_unix_input_stream_new (fd, FALSE);
+      if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
+        return FALSE;
+    }
+
+  g_clear_object (&in);
+  glnx_close_fd (&fd);
 
   char hexdigest[OSTREE_SHA256_STRING_LEN+1];
   ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof (hexdigest));
@@ -1044,6 +1064,7 @@ get_kernel_from_tree_legacy_layouts (int                  deployment_dfd,
   const char *legacy_paths[] = {"usr/lib/ostree-boot", "boot"};
   g_autofree char *kernel_checksum = NULL;
   g_autofree char *initramfs_checksum = NULL;
+  g_autofree char *devicetree_checksum = NULL;
   g_autoptr(OstreeKernelLayout) ret_layout = _ostree_kernel_layout_new ();
 
   for (guint i = 0; i < G_N_ELEMENTS (legacy_paths); i++)
@@ -1110,9 +1131,23 @@ get_kernel_from_tree_legacy_layouts (int                  deployment_dfd,
               ret_layout->initramfs_namever = g_strndup (name, dash - name);
             }
         }
+      /* See if this is the devicetree  */
+      else if (ret_layout->devicetree_srcpath == NULL && g_str_has_prefix (name, "devicetree-"))
+        {
+          const char *dash = strrchr (name, '-');
+          g_assert (dash);
+          if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
+            {
+              devicetree_checksum = g_strdup (dash + 1);
+              ret_layout->devicetree_srcpath = g_strdup (name);
+              ret_layout->devicetree_namever = g_strndup (name, dash - name);
+            }
+        }
 
-      /* If we found both a kernel and initramfs, break out of the loop */
-      if (ret_layout->kernel_srcpath != NULL && ret_layout->initramfs_srcpath != NULL)
+      /* If we found a kernel, an initramfs and a devicetree, break out of the loop */
+      if (ret_layout->kernel_srcpath != NULL &&
+          ret_layout->initramfs_srcpath != NULL &&
+          ret_layout->devicetree_srcpath != NULL)
         break;
     }
 
@@ -1130,6 +1165,19 @@ get_kernel_from_tree_legacy_layouts (int                  deployment_dfd,
       g_assert (initramfs_checksum != NULL);
       if (strcmp (kernel_checksum, initramfs_checksum) != 0)
         return glnx_throw (error, "Mismatched kernel checksum vs initrd");
+    }
+
+  /* The kernel/devicetree checksums must be the same */
+  if (ret_layout->devicetree_srcpath != NULL)
+    {
+      g_assert (kernel_checksum != NULL);
+      g_assert (devicetree_checksum != NULL);
+      if (strcmp (kernel_checksum, devicetree_checksum) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Mismatched kernel checksum vs device tree in tree");
+          return FALSE;
+        }
     }
 
   ret_layout->bootcsum = g_steal_pointer (&kernel_checksum);
@@ -1567,7 +1615,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                        &deployment_dfd, error))
     return FALSE;
 
-  /* Find the kernel/initramfs in the tree */
+  /* Find the kernel/initramfs/devicetree in the tree */
   g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
   if (!get_kernel_from_tree (deployment_dfd, &kernel_layout,
                              cancellable, error))
@@ -1622,6 +1670,21 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           if (!hardlink_or_copy_at (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
                                     bootcsum_dfd, kernel_layout->initramfs_namever,
+                                    sysroot->debug_flags,
+                                    cancellable, error))
+            return FALSE;
+        }
+    }
+
+  if (kernel_layout->devicetree_srcpath)
+    {
+      g_assert (kernel_layout->devicetree_namever);
+      if (!glnx_fstatat_allow_noent (bootcsum_dfd, kernel_layout->devicetree_namever, &stbuf, 0, error))
+        return FALSE;
+      if (errno == ENOENT)
+        {
+          if (!hardlink_or_copy_at (kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
+                                    bootcsum_dfd, kernel_layout->devicetree_namever,
                                     sysroot->debug_flags,
                                     cancellable, error))
             return FALSE;
@@ -1715,6 +1778,12 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                                              new_bootversion, osname, bootcsum,
                                              ostree_deployment_get_bootserial (deployment));
       _ostree_kernel_args_replace_take (kargs, g_steal_pointer (&prepare_root_arg));
+    }
+
+  if (kernel_layout->devicetree_namever)
+    {
+      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_namever, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "devicetree", boot_relpath);
     }
 
   /* Note this is parsed in ostree-impl-system-generator.c */

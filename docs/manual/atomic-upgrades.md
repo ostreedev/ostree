@@ -95,7 +95,7 @@ collected at any point.
 ## The /ostree/boot directory
 
 However, we want to optimize for the case where the set of
-kernel/initramfs pairs is the same between both the old and new
+kernel/initramfs/devicetree sets is the same between both the old and new
 deployment lists.  This happens when doing an upgrade that does not
 include the kernel; think of a simple translation update.  OSTree
 optimizes for this case because on some systems `/boot` may be on a
