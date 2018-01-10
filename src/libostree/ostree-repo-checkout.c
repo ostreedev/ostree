@@ -944,8 +944,6 @@ file_iter_clear(FileDirectoryIter *self) {
   CLEAR (self);
 }
 
-G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(FileDirectoryIter, file_iter_clear);
-
 static FileDentry*
 file_iter_next(FileDirectoryIter* self)
 {
@@ -1039,6 +1037,84 @@ dir_diff_iter_next(DirDiffIter* self)
     }
   else
     self->item.after = NULL;
+  return &self->item;
+}
+
+/*
+ * Diff a list files:
+ */
+
+typedef struct {
+  const char *name;
+  char *before_checksum;
+  char *after_checksum;
+} FileDiffItem;
+
+typedef struct {
+  FileDirectoryIter before_iter;
+  FileDirectoryIter after_iter;
+  int last_cmp;
+  FileDiffItem item;
+} FileDiffIter;
+
+static FileDiffIter
+file_diff_iter_init(GVariant *before_dirtree, GVariant *after_dirtree) {
+  FileDiffIter self;
+  CLEAR(&self);
+  self.before_iter = file_iter_init(before_dirtree);
+  self.after_iter = file_iter_init(after_dirtree);
+  return self;
+}
+
+static void
+file_diff_iter_clear(FileDiffIter *self) {
+  file_iter_clear (&self->before_iter);
+  file_iter_clear (&self->after_iter);
+  CLEAR(&self->item);
+}
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(FileDiffIter, file_diff_iter_clear);
+
+static int
+file_entry_cmp_by_name(FileDentry* before, FileDentry* after)
+{
+  /* NULL comes after all items as it's the list terminator */
+  if ((!before || !before->name) && (!after || !after->name))
+    return -2;
+  else if (!after || !after->name)
+    return -1;
+  else if (!before || !before->name)
+    return 1;
+  else
+    return MAX(-1, MIN(1, strcmp (before->name, after->name)));
+}
+
+static FileDiffItem*
+file_diff_iter_next(FileDiffIter* self)
+{
+  if (self->last_cmp == 0 || self->last_cmp == -1)
+    file_iter_next(&self->before_iter);
+  if (self->last_cmp == 0 || self->last_cmp == 1)
+    file_iter_next(&self->after_iter);
+
+  self->last_cmp = file_entry_cmp_by_name(&self->before_iter.entry,
+                                          &self->after_iter.entry);
+  if (self->last_cmp == -2)
+    return NULL;
+  if (self->last_cmp == 0 || self->last_cmp == -1)
+    {
+      self->item.name = self->before_iter.entry.name;
+      self->item.before_checksum = self->before_iter.entry.checksum;
+    }
+  else
+    self->item.before_checksum = NULL;
+  if (self->last_cmp == 0 || self->last_cmp == 1)
+    {
+      self->item.name = self->after_iter.entry.name;
+      self->item.after_checksum = self->after_iter.entry.checksum;
+    }
+  else
+    self->item.after_checksum = NULL;
   return &self->item;
 }
 
@@ -1217,21 +1293,43 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
       }
   }
 
-  /* Process files in this subdir */
   {
-    g_auto(FileDirectoryIter) iter = file_iter_init(dirtree);
-    FileDentry* file;
-    while ((file = file_iter_next(&iter)))
+    g_auto(DirDiffIter) iter = dir_diff_iter_init(orig_dirtree, dirtree);
+    DirDiffItem* diff;
+    while ((diff = dir_diff_iter_next(&iter)))
       {
-        push_path_element (options, state, file->name, FALSE);
-
-        if (!checkout_one_file_at (self, options, state,
-                                   file->checksum,
-                                   destination_dfd, file->name,
-                                   cancellable, error))
+        /* Validate this up front to prevent path traversal attacks. */
+        if (!ot_util_filename_validate (diff->name, error))
           return FALSE;
 
-        pop_path_element (options, state, file->name, FALSE);
+        if (!diff->after)
+          if (!glnx_shutil_rm_rf_at (destination_dfd, diff->name, cancellable, error))
+            return FALSE;
+      }
+  }
+
+  /* Process files in this subdir */
+  {
+    g_auto(FileDiffIter) iter = file_diff_iter_init(orig_dirtree, dirtree);
+    FileDiffItem* diff;
+    while ((diff = file_diff_iter_next(&iter)))
+      {
+        if (diff->after_checksum && diff->before_checksum &&
+            strcmp(diff->after_checksum, diff->before_checksum) == 0)
+          /* File is unchanged */
+          continue;
+        else if (diff->after_checksum)
+          {
+            push_path_element (options, state, diff->name, FALSE);
+
+            if (!checkout_one_file_at (self, options, state,
+                                       diff->after_checksum,
+                                       destination_dfd, diff->name,
+                                       cancellable, error))
+              return FALSE;
+
+            pop_path_element (options, state, diff->name, FALSE);
+          }
       }
   }
 
