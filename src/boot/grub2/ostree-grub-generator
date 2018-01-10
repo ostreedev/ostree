@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# To use a custom script for generating grub.cfg, set the --with-grub2-mkconfig=no
-# configure switch when configuring and building OSTree.
+# The builtin grub.cfg generator.
 #
 # This script is called by ostree/src/libostree/ostree-bootloader-grub2.c whenever
 # boot loader configuration file needs to be updated. It can be used as a template
@@ -28,7 +27,7 @@ entries_path=$(dirname $new_grub2_cfg)/entries
 
 read_config()
 {
-    config_file=${entries_path}/${1}
+    config_file=${1}
     title=""
     initrd=""
     options=""
@@ -67,11 +66,13 @@ populate_menu()
     else
         boot_prefix="${OSTREE_BOOT_PARTITION}"
     fi
-    for config in $(ls ${entries_path}); do
+    for config in $(ls $entries_path/*.conf); do
         read_config ${config}
         menu="${menu}menuentry '${title}' {\n"
         menu="${menu}\t linux ${boot_prefix}${linux} ${options}\n"
-        menu="${menu}\t initrd ${boot_prefix}${initrd}\n"
+        if [ -n "${initrd}" ] ; then
+            menu="${menu}\t initrd ${boot_prefix}${initrd}\n"
+        fi
         menu="${menu}}\n\n"
     done
     # The printf command seems to be more reliable across shells for special character (\n, \t) evaluation

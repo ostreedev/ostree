@@ -116,6 +116,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-pull-mirrorlist.sh \
 	tests/test-summary-update.sh \
 	tests/test-summary-view.sh \
+	tests/test-no-initramfs.sh \
 	$(NULL)
 
 experimental_test_scripts = \
