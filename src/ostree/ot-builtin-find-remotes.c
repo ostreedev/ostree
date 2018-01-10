@@ -30,12 +30,14 @@
 #include "ostree-remote-private.h"
 
 static gchar *opt_cache_dir = NULL;
+static gboolean opt_disable_avahi = FALSE;
 static gboolean opt_disable_fsync = FALSE;
 static gboolean opt_pull = FALSE;
 
 static GOptionEntry options[] =
   {
     { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
+    { "disable-avahi", 0, 0, G_OPTION_ARG_NONE, &opt_disable_avahi, "Do not look for remotes on the LAN", NULL },
     { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
     { "pull", 0, 0, G_OPTION_ARG_NONE, &opt_pull, "Pull the updates after finding them", NULL },
     { NULL }
@@ -127,6 +129,7 @@ ostree_builtin_find_remotes (int            argc,
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   g_autoptr(GPtrArray) refs = NULL;  /* (element-type OstreeCollectionRef) */
+  g_autoptr(GPtrArray) finders = NULL;  /* (element-type OstreeRepoFinder) */
   g_autoptr(OstreeAsyncProgress) progress = NULL;
   gsize i;
   g_autoptr(GAsyncResult) find_result = NULL, pull_result = NULL;
@@ -176,18 +179,41 @@ ostree_builtin_find_remotes (int            argc,
 
   g_ptr_array_add (refs, NULL);
 
+  /* Build the array of OstreeRepoFinder instances */
+  finders = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  g_ptr_array_add (finders, ostree_repo_finder_config_new ());
+  g_ptr_array_add (finders, ostree_repo_finder_mount_new (NULL));
+#ifdef HAVE_AVAHI
+  if (!opt_disable_avahi)
+    {
+      GMainContext *main_context = g_main_context_get_thread_default ();
+      g_autoptr(GError) local_error = NULL;
+      OstreeRepoFinderAvahi *finder_avahi;
+
+      finder_avahi = ostree_repo_finder_avahi_new (main_context);
+      ostree_repo_finder_avahi_start (finder_avahi, &local_error);
+
+      if (local_error != NULL)
+        {
+          g_warning ("Avahi finder failed; removing it: %s", local_error->message);
+          g_clear_object (&finder_avahi);
+        }
+      else
+        g_ptr_array_add (finders, finder_avahi);
+    }
+#endif  /* HAVE_AVAHI */
+  g_ptr_array_add (finders, NULL);
+
   /* Run the operation. */
   glnx_console_lock (&console);
 
   if (console.is_tty)
     progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
 
-  /* FIXME: Eventually some command line options for customising the finders
-   * list would be good. */
   ostree_repo_find_remotes_async (repo,
                                   (const OstreeCollectionRef * const *) refs->pdata,
                                   NULL  /* no options */,
-                                  NULL  /* default finders */,
+                                  (OstreeRepoFinder **) finders->pdata,
                                   progress, cancellable,
                                   get_result_cb, &find_result);
 
