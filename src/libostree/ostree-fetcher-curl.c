@@ -714,7 +714,7 @@ initiate_next_curl_request (FetcherRequest *req,
     curl_easy_setopt (req->easy, CURLOPT_URL, uri);
   }
 
-  curl_easy_setopt (req->easy, CURLOPT_USERAGENT, "ostree ");
+  curl_easy_setopt (req->easy, CURLOPT_USERAGENT, OSTREE_FETCHER_USERAGENT_STRING);
   if (self->extra_headers)
     curl_easy_setopt (req->easy, CURLOPT_HTTPHEADER, self->extra_headers);
 
