@@ -917,6 +917,59 @@ dir_iter_next(DirDirectoryIter* self)
 }
 
 /*
+ * Iterate through the files in a dirtree
+ */
+typedef struct {
+  const char *name;
+  char checksum[OSTREE_SHA256_STRING_LEN+1];
+} FileDentry;
+
+typedef struct {
+  GVariantIter viter;
+  GVariant* files;
+
+  FileDentry entry;
+} FileDirectoryIter;
+
+static FileDirectoryIter
+file_iter_init(GVariant *dirtree) {
+  FileDirectoryIter self;
+  CLEAR(&self);
+  if (dirtree)
+    {
+      self.files = g_variant_get_child_value (dirtree, 0);
+      g_variant_iter_init (&self.viter, self.files);
+    }
+  return self;
+}
+
+static void
+file_iter_clear(FileDirectoryIter *self) {
+  if (self->files)
+    g_variant_unref(self->files);
+  CLEAR (self);
+}
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(FileDirectoryIter, file_iter_clear);
+
+static FileDentry*
+file_iter_next(FileDirectoryIter* self)
+{
+  g_autoptr(GVariant) file_csum_v = NULL;
+
+  if (!self->files || !g_variant_iter_next (
+      &self->viter, "(&s@ay)", &self->entry.name, &file_csum_v))
+    {
+      CLEAR(&self->entry);
+      return NULL;
+    }
+
+  _ostree_checksum_inplace_from_bytes_v (file_csum_v, self->entry.checksum);
+
+  return &self->entry;
+}
+
+/*
  * checkout_tree_at:
  * @self: Repo
  * @mode: Options controlling all files
@@ -1067,27 +1120,21 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
     }
 
   /* Process files in this subdir */
-  { g_autoptr(GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
-    GVariantIter viter;
-    g_variant_iter_init (&viter, dir_file_contents);
-    const char *fname;
-    g_autoptr(GVariant) contents_csum_v = NULL;
-    while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, &contents_csum_v))
+  {
+    g_auto(FileDirectoryIter) iter = file_iter_init(dirtree);
+    FileDentry* file;
+    while ((file = file_iter_next(&iter)))
       {
-        push_path_element (options, state, fname, FALSE);
-
-        char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
-        _ostree_checksum_inplace_from_bytes_v (contents_csum_v, tmp_checksum);
+        push_path_element (options, state, file->name, FALSE);
 
         if (!checkout_one_file_at (self, options, state,
-                                   tmp_checksum,
-                                   destination_dfd, fname,
+                                   file->checksum,
+                                   destination_dfd, file->name,
                                    cancellable, error))
           return FALSE;
 
-        pop_path_element (options, state, fname, FALSE);
+        pop_path_element (options, state, file->name, FALSE);
       }
-    contents_csum_v = NULL; /* iter_loop freed it */
   }
 
   /* Process subdirectories */
