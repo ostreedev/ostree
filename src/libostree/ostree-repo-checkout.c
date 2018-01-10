@@ -970,15 +970,15 @@ file_iter_next(FileDirectoryIter* self)
 }
 
 /*
- * checkout_tree_at:
+ * checkout_tree_at_recurse:
  * @self: Repo
- * @mode: Options controlling all files
+ * @options: Options controlling all files
  * @state: Any state we're carrying through
  * @overwrite_mode: Whether or not to overwrite files
  * @destination_parent_fd: Place tree here
  * @destination_name: Use this name for tree
- * @source: Source tree
- * @source_info: Source info
+ * @dirtree_checksum: dirtree checksum of the tree being checked out
+ * @dirmeta_checksum: dirmeta checksum of the tree being checked out
  * @cancellable: Cancellable
  * @error: Error
  *
