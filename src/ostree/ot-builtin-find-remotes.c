@@ -30,12 +30,14 @@
 #include "ostree-remote-private.h"
 
 static gchar *opt_cache_dir = NULL;
+static gchar *opt_finders = NULL;
 static gboolean opt_disable_fsync = FALSE;
 static gboolean opt_pull = FALSE;
 
 static GOptionEntry options[] =
   {
     { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
+    { "finders", 0, 0, G_OPTION_ARG_STRING, &opt_finders, "Use the specified comma separated list of finders (e.g. config,lan,mount)", "FINDERS" },
     { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
     { "pull", 0, 0, G_OPTION_ARG_NONE, &opt_pull, "Pull the updates after finding them", NULL },
     { NULL }
@@ -116,6 +118,52 @@ collection_ref_free0 (OstreeCollectionRef *ref)
   ostree_collection_ref_free (ref);
 }
 
+static gboolean
+validate_finders_list (char           **finders,
+                       GOptionContext  *context,
+                       GError         **error)
+{
+  typedef struct {
+    gchar *finder_name;
+    gboolean already_used;
+  } Finder;
+  Finder valid_finders[] = {
+    {.finder_name = "config", .already_used = FALSE},
+    {.finder_name = "lan", .already_used = FALSE},
+    {.finder_name = "mount", .already_used = FALSE}
+  };
+
+  if (finders == NULL || *finders == NULL)
+    {
+      ot_util_usage_error (context, "List of finders in --finders option must not be empty", error);
+      return FALSE;
+    }
+
+  for (char **iter = finders; iter && *iter; iter++)
+    {
+      gboolean is_valid_finder = FALSE;
+      for (int i = 0; i < 3; i++)
+        {
+          if (valid_finders[i].already_used == TRUE)
+            continue;
+          if (g_strcmp0 (*iter, valid_finders[i].finder_name) == 0)
+            {
+              is_valid_finder = TRUE;
+              valid_finders[i].already_used = TRUE;
+            }
+        }
+      if (!is_valid_finder)
+        {
+          g_autofree gchar *error_msg = NULL;
+          error_msg = g_strdup_printf ("Unknown or duplicate finder type given in --finders option: ‘%s’", *iter);
+          ot_util_usage_error (context, error_msg, error);
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 /* TODO: Add a man page. */
 gboolean
 ostree_builtin_find_remotes (int            argc,
@@ -127,12 +175,17 @@ ostree_builtin_find_remotes (int            argc,
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   g_autoptr(GPtrArray) refs = NULL;  /* (element-type OstreeCollectionRef) */
+  g_autoptr(GPtrArray) finders = NULL;  /* (element-type OstreeRepoFinder) */
+  g_autoptr(OstreeRepoFinder) finder_config = NULL;
+  g_autoptr(OstreeRepoFinder) finder_mount = NULL;
+  g_autoptr(OstreeRepoFinder) finder_avahi = NULL;
   g_autoptr(OstreeAsyncProgress) progress = NULL;
   gsize i;
   g_autoptr(GAsyncResult) find_result = NULL, pull_result = NULL;
   g_auto(OstreeRepoFinderResultv) results = NULL;
   g_auto(GLnxConsoleRef) console = { 0, };
   g_autoptr(GHashTable) refs_found = NULL;  /* set (element-type OstreeCollectionRef) */
+  g_auto(GStrv) finders_strings = NULL;
 
   context = g_option_context_new ("COLLECTION-ID REF [COLLECTION-ID REF...]");
 
@@ -176,18 +229,65 @@ ostree_builtin_find_remotes (int            argc,
 
   g_ptr_array_add (refs, NULL);
 
+  /* Build the array of OstreeRepoFinder instances */
+  if (opt_finders != NULL)
+    {
+      g_auto(GStrv) finders_strings = NULL;
+
+      finders_strings = g_strsplit (opt_finders, ",", 0);
+      if (!validate_finders_list (finders_strings, context, error))
+        return FALSE;
+
+      finders = g_ptr_array_new ();
+      for (char **iter =finders_strings; iter && *iter; iter++)
+        {
+          if (g_strcmp0 (*iter, "config") == 0)
+            {
+              finder_config = OSTREE_REPO_FINDER (ostree_repo_finder_config_new ());
+              g_ptr_array_add (finders, finder_config);
+            }
+          else if (g_strcmp0 (*iter, "mount") == 0)
+            {
+              finder_mount = OSTREE_REPO_FINDER (ostree_repo_finder_mount_new (NULL));
+              g_ptr_array_add (finders, finder_mount);
+            }
+          else if (g_strcmp0 (*iter, "lan") == 0)
+            {
+#ifdef HAVE_AVAHI
+              GMainContext *main_context = g_main_context_get_thread_default ();
+              g_autoptr(GError) local_error = NULL;
+
+              finder_avahi = OSTREE_REPO_FINDER (ostree_repo_finder_avahi_new (main_context));
+              ostree_repo_finder_avahi_start (OSTREE_REPO_FINDER_AVAHI (finder_avahi), &local_error);
+
+              if (local_error != NULL)
+                {
+                  g_warning ("Avahi finder failed; removing it: %s", local_error->message);
+                  g_clear_object (&finder_avahi);
+                }
+              else
+                g_ptr_array_add (finders, finder_avahi);
+#else
+              ot_util_usage_error (context, "LAN repo finder requested but ostree was compiled without Avahi support", error);
+              return FALSE;
+#endif  /* HAVE_AVAHI */
+            }
+          else
+            g_assert_not_reached ();
+        }
+      g_ptr_array_add (finders, NULL);
+    }
+
   /* Run the operation. */
   glnx_console_lock (&console);
 
   if (console.is_tty)
     progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
 
-  /* FIXME: Eventually some command line options for customising the finders
-   * list would be good. */
   ostree_repo_find_remotes_async (repo,
                                   (const OstreeCollectionRef * const *) refs->pdata,
                                   NULL  /* no options */,
-                                  NULL  /* default finders */,
+                                  finders != NULL ? (OstreeRepoFinder **) finders->pdata : NULL,
                                   progress, cancellable,
                                   get_result_cb, &find_result);
 
