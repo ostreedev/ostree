@@ -246,6 +246,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
             case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
               return glnx_throw_errno_prefix (error, "symlinkat");
             case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
+            case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
               {
                 /* For unioning, we further bifurcate a bit; for the "process whiteouts"
                  * mode which is really "Docker/OCI", we need to match their semantics
@@ -343,6 +344,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
         case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
           /* Handled above */
           break;
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
           /* Special case OCI/Docker - see similar code in checkout_file_hardlink()
            * and above for symlinks.
@@ -492,6 +494,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
           break;
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
           {
             /* In both union-files and union-identical, see if the src/target are
              * already hardlinked.  If they are, we're done.
@@ -538,7 +541,8 @@ checkout_file_hardlink (OstreeRepo                          *self,
               }
             if (is_identical)
               ret_result = HARDLINK_RESULT_SKIP_EXISTED;
-            else if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+            else if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES ||
+                     options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE)
               {
                 char *tmpname = strdupa ("checkout-union-XXXXXX");
                 /* Make a link with a temp name */
@@ -1128,7 +1132,7 @@ file_diff_iter_next(FileDiffIter* self)
  * @destination_name: Use this name for tree
  * @dirtree_checksum: dirtree checksum of the tree being checked out
  * @dirmeta_checksum: dirmeta checksum of the tree being checked out
- * @orig_dirtree_checksum:
+ * @orig_dirtree_checksum: Used when overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -1247,6 +1251,11 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
           case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
           case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
             did_exist = TRUE;
+            break;
+          /* When replacing we pretend that we created the directory to ensure
+             the xattrs get updated. */
+          case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
+            did_exist = FALSE;
             break;
           }
       }
@@ -1507,9 +1516,22 @@ checkout_tree_at (OstreeRepo                        *self,
   g_assert_cmpint (g_file_info_get_file_type (source_info), ==, G_FILE_TYPE_DIRECTORY);
   const char *dirtree_checksum = ostree_repo_file_tree_get_contents_checksum (source);
   const char *dirmeta_checksum = ostree_repo_file_tree_get_metadata_checksum (source);
+  const char *overwrite_update_dirtree_checksum = NULL;
+  char csum_buf[OSTREE_SHA256_STRING_LEN+1];
+  if (options->overwrite_update_from_checksum) {
+    g_autoptr(GVariant) commit = NULL;
+    if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                   options->overwrite_update_from_checksum,
+                                   &commit, error))
+      return FALSE;
+    g_autoptr(GVariant) dirtree_v = g_variant_get_child_value (commit, 6);
+    _ostree_checksum_inplace_from_bytes_v (dirtree_v, csum_buf);
+    overwrite_update_dirtree_checksum = csum_buf;
+  }
   return checkout_tree_at_recurse (self, options, &state, destination_parent_fd,
                                    destination_name,
-                                   dirtree_checksum, dirmeta_checksum, NULL,
+                                   dirtree_checksum, dirmeta_checksum,
+                                   overwrite_update_dirtree_checksum,
                                    cancellable, error);
 }
 
@@ -1660,6 +1682,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   /* union identical requires hardlink mode */
   g_return_val_if_fail (!(options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL &&
                           !options->no_copy_fallback), FALSE);
+  g_return_val_if_fail ((options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE) ==
+                        !!options->overwrite_update_from_checksum, FALSE);
 
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
