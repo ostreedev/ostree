@@ -854,6 +854,68 @@ pop_path_element (OstreeRepoCheckoutAtOptions *options,
     g_string_truncate (state->selabel_path_buf, state->selabel_path_buf->len - n);
 }
 
+#pragma GCC diagnostic ignored "-Waggregate-return"
+
+/* It can be easy to pass the wrong size to memset */
+#define CLEAR(p) memset((p), 0, sizeof(*(p)))
+
+/*
+ * Iterate through the directories in a dirtree
+ */
+typedef struct {
+  const char *name;
+  char dirtree_checksum[OSTREE_SHA256_STRING_LEN+1];
+  char dirmeta_checksum[OSTREE_SHA256_STRING_LEN+1];
+} DirDentry;
+
+typedef struct {
+  GVariantIter viter;
+  GVariant* dir_subdirs;
+
+  DirDentry entry;
+} DirDirectoryIter;
+
+static DirDirectoryIter
+dir_iter_init(GVariant *dirtree) {
+  DirDirectoryIter self;
+  CLEAR(&self);
+  if (dirtree)
+    {
+      self.dir_subdirs = g_variant_get_child_value (dirtree, 1);
+      g_variant_iter_init (&self.viter, self.dir_subdirs);
+    }
+  return self;
+}
+
+static void
+dir_iter_clear(DirDirectoryIter *self) {
+  if (self->dir_subdirs)
+    g_variant_unref(self->dir_subdirs);
+  CLEAR(self);
+}
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(DirDirectoryIter, dir_iter_clear);
+
+static DirDentry*
+dir_iter_next(DirDirectoryIter* self)
+{
+  g_autoptr(GVariant) subdirtree_csum_v = NULL;
+  g_autoptr(GVariant) subdirmeta_csum_v = NULL;
+
+  if (!self->dir_subdirs || !g_variant_iter_next (
+      &self->viter, "(&s@ay@ay)", &self->entry.name,
+      &subdirtree_csum_v, &subdirmeta_csum_v))
+    {
+      CLEAR(&self->entry);
+      return NULL;
+    }
+
+  _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, self->entry.dirtree_checksum);
+  _ostree_checksum_inplace_from_bytes_v (subdirmeta_csum_v, self->entry.dirmeta_checksum);
+
+  return &self->entry;
+}
+
 /*
  * checkout_tree_at:
  * @self: Repo
@@ -1029,14 +1091,10 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
   }
 
   /* Process subdirectories */
-  { g_autoptr(GVariant) dir_subdirs = g_variant_get_child_value (dirtree, 1);
-    const char *dname;
-    g_autoptr(GVariant) subdirtree_csum_v = NULL;
-    g_autoptr(GVariant) subdirmeta_csum_v = NULL;
-    GVariantIter viter;
-    g_variant_iter_init (&viter, dir_subdirs);
-    while (g_variant_iter_loop (&viter, "(&s@ay@ay)", &dname,
-                                &subdirtree_csum_v, &subdirmeta_csum_v))
+  {
+    g_auto(DirDirectoryIter) iter = dir_iter_init(dirtree);
+    DirDentry* subdir;
+    while ((subdir = dir_iter_next(&iter)))
       {
         /* Validate this up front to prevent path traversal attacks. Note that
          * we don't validate at the top of this function like we do for
@@ -1044,22 +1102,19 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
          * can be called *initially* with user-specified paths for the root
          * directory.
          */
-        if (!ot_util_filename_validate (dname, error))
+        if (!ot_util_filename_validate (subdir->name, error))
           return FALSE;
 
-        push_path_element (options, state, dname, TRUE);
+        push_path_element (options, state, subdir->name, TRUE);
 
-        char subdirtree_checksum[OSTREE_SHA256_STRING_LEN+1];
-        _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, subdirtree_checksum);
-        char subdirmeta_checksum[OSTREE_SHA256_STRING_LEN+1];
-        _ostree_checksum_inplace_from_bytes_v (subdirmeta_csum_v, subdirmeta_checksum);
         if (!checkout_tree_at_recurse (self, options, state,
-                                       destination_dfd, dname,
-                                       subdirtree_checksum, subdirmeta_checksum,
+                                       destination_dfd, subdir->name,
+                                       subdir->dirtree_checksum,
+                                       subdir->dirmeta_checksum,
                                        cancellable, error))
           return FALSE;
 
-        pop_path_element (options, state, dname, TRUE);
+        pop_path_element (options, state, subdir->name, TRUE);
       }
   }
 
