@@ -25,6 +25,12 @@
 
 G_BEGIN_DECLS
 
+/* We used to only send "ostree/" but now include the version
+ * https://github.com/ostreedev/ostree/issues/1405
+ * This came up in allowing Fedora infrastructure to work around a libcurl bug with HTTP2.
+ */
+#define OSTREE_FETCHER_USERAGENT_STRING (PACKAGE_NAME "/" PACKAGE_VERSION)
+
 static inline gboolean
 _ostree_fetcher_tmpf_from_flags (OstreeFetcherRequestFlags flags,
                                  int                       dfd,
