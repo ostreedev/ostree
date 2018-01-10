@@ -38,6 +38,7 @@ static char *opt_subpath;
 static gboolean opt_union;
 static gboolean opt_union_add;
 static gboolean opt_union_identical;
+static char *opt_update;
 static gboolean opt_whiteouts;
 static gboolean opt_from_stdin;
 static char *opt_from_file;
@@ -79,6 +80,7 @@ static GOptionEntry options[] = {
   { "union-add", 0, 0, G_OPTION_ARG_NONE, &opt_union_add, "Keep existing files/directories, only add new", NULL },
   { "union-identical", 0, 0, G_OPTION_ARG_NONE, &opt_union_identical, "When layering checkouts, error out if a file would be replaced with a different version, but add new files and directories", NULL },
   { "whiteouts", 0, 0, G_OPTION_ARG_NONE, &opt_whiteouts, "Process 'whiteout' (Docker style) entries", NULL },
+  { "update", 0, 0, G_OPTION_ARG_STRING, &opt_update, "Assume that the DESTINATION already has ORIG_COMMIT  checked out - modify it in-place to be the same as COMMIT", "ORIG_COMMIT" },
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
@@ -133,7 +135,8 @@ process_one_checkout (OstreeRepo           *repo,
   if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks ||
       opt_union_add || opt_force_copy || opt_force_copy_zerosized ||
       opt_bareuseronly_dirs || opt_union_identical ||
-      opt_skiplist_file || opt_selinux_policy || opt_selinux_prefix)
+      opt_skiplist_file || opt_selinux_policy || opt_selinux_prefix ||
+      opt_update)
     {
       OstreeRepoCheckoutAtOptions options = { 0, };
 
@@ -162,6 +165,13 @@ process_one_checkout (OstreeRepo           *repo,
                        "Cannot specify both --union-add and --union-identical ");
           goto out;
         }
+      if (opt_update && (opt_union || opt_union_add || opt_union_identical))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Cannot combine --update with --union, "
+                       "--union-identical or --union-add");
+          goto out;
+        }
       if (opt_require_hardlinks && opt_force_copy)
         {
           glnx_throw (error, "Cannot specify both --require-hardlinks and --force-copy");
@@ -172,7 +182,8 @@ process_one_checkout (OstreeRepo           *repo,
           glnx_throw (error, "Cannot specify --selinux-prefix without --selinux-policy");
           goto out;
         }
-      else if (opt_union)
+
+      if (opt_union)
         options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
       else if (opt_union_add)
         options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
@@ -185,6 +196,15 @@ process_one_checkout (OstreeRepo           *repo,
               goto out;
             }
           options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL;
+        }
+      else if (opt_update)
+        {
+          options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE;
+          char *checksum;
+          if (!ostree_repo_resolve_rev (repo, opt_update, FALSE, &checksum,
+                                        error))
+            goto out;
+          options.overwrite_update_from_checksum = checksum;
         }
       if (opt_whiteouts)
         options.process_whiteouts = TRUE;
