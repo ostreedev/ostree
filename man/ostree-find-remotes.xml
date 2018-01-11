@@ -1,0 +1,113 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2018 Matthew Leeds <matthew.leeds@endlessm.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree find-remotes</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree find-remotes</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-find-remotes</refname>
+        <refpurpose>Find remotes to serve the given refs</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree find-remotes</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">COLLECTION-ID</arg> <arg choice="req">REF</arg> <arg choice="opt" rep="repeat">COLLECTION-ID REF</arg>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            OSTree has the ability do pulls not just from configured remote
+            servers but also from peer computers on the LAN and from mounted
+            filesystems such as USB drives. Currently this requires compiling
+            OSTree with experimental API enabled, and it requires the use of
+            Collection IDs and GPG verification.
+        </para>
+        <para>
+            The <command>find-remotes</command> command searches for remotes
+            which claim to provide one or more of the given COLLECTION-ID REF
+            pairs and prints information about them, with remotes sorted by
+            latency (Mounts > LAN > Internet). By default, OSTree searches for
+            remotes in configuration files, on mounted filesystems (in a
+            well-known location), and on the LAN using Avahi. Searching for LAN
+            remotes requires OSTree to have been compiled with Avahi support,
+            and it requires an Avahi daemon to be running. You can override the
+            default set of finders (sources for remotes) using the
+            <option>--finders</option> option documented below.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--disable-fsync</option></term>
+
+                <listitem><para>
+                  Do not invoke fsync().
+                </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--finders</option>=FINDERS</term>
+
+                <listitem><para>
+                  Use the specified comma separated list of finders rather than
+                  the default set. Possible values: config, lan, mount (or any
+                  combination thereof).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--pull</option></term>
+
+                <listitem><para>
+                  Pull the updates after finding them.
+                </para></listitem>
+            </varlistentry>
+
+        </variablelist>
+    </refsect1>
+</refentry>
