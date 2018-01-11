@@ -167,4 +167,13 @@ gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot,
                                            GCancellable  *cancellable,
                                            GError       **error);
 
+gboolean _ostree_sysroot_deploy_cache_steal_tree (OstreeSysroot *self,
+                                                  const char    *osname,
+                                                  int            dest_dfd,
+                                                  const char    *destination,
+                                                  char         **csum_out,
+                                                  gboolean      *exists_out,
+                                                  GCancellable  *cancellable,
+                                                  GError       **error);
+
 G_END_DECLS

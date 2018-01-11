@@ -120,7 +120,7 @@ assert_not_has_dir sysroot/boot/loader.1
 # But swap subbootversion
 assert_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.0.1
-assert_ostree_deployment_refs 0/0/{0,1}
+assert_ostree_deployment_refs 0/0/{0,1} deploy_cache/testos
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
@@ -135,7 +135,7 @@ assert_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
 assert_has_file sysroot/boot/loader/entries/ostree-3-otheros.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/otheros/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
-assert_ostree_deployment_refs 1/1/{0,1,2}
+assert_ostree_deployment_refs 1/1/{0,1,2} deploy_cache/testos
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
