@@ -1,0 +1,131 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2018 Matthew Leeds <matthew.leeds@endlessm.com>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree find-remotes</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Matthew</firstname>
+                <surname>Leeds</surname>
+                <email>matthew.leeds@endlessm.com</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree find-remotes</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-find-remotes</refname>
+        <refpurpose>Find remotes to serve the given refs</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree find-remotes</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">COLLECTION-ID</arg> <arg choice="req">REF</arg> <arg choice="opt" rep="repeat">COLLECTION-ID REF</arg>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <!-- FIXME: Reword this when no longer in experimental -->
+        <para>
+            OSTree has the ability do pulls not just from configured remote
+            servers but also from peer computers on the LAN and from mounted
+            filesystems such as USB drives. Currently this requires compiling
+            OSTree with experimental API enabled, and it requires the use of
+            collection IDs and GPG verification.
+        </para>
+        <para>
+            The <command>find-remotes</command> command searches for remotes
+            which claim to provide one or more of the given COLLECTION-ID REF
+            pairs and prints information about them, with remotes sorted by
+            latency (Mounts > LAN > Internet). By default, OSTree searches for
+            remotes in configuration files, on mounted filesystems (in a
+            well-known location), and on the LAN using Avahi. Searching for LAN
+            remotes requires OSTree to have been compiled with Avahi support,
+            and it requires an Avahi daemon to be running. You can override the
+            default set of finders (sources for remotes) using the
+            <option>--finders</option> option documented below.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--disable-fsync</option></term>
+
+                <listitem><para>
+                  Do not invoke fsync().
+                </para>
+                </listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--finders</option>=FINDERS</term>
+
+                <listitem><para>
+                  Use the specified comma separated list of finders rather than
+                  the default set. Possible values: <literal>config</literal>,
+                  <literal>lan</literal>, and <literal>mount</literal> (or any
+                  combination thereof).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--pull</option></term>
+
+                <listitem><para>
+                  Pull the most recent commit found for each ref.
+                </para></listitem>
+            </varlistentry>
+
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree find-remotes --finders=mount,lan com.exampleos.Os exampleos/x86_64/standard</command></para>
+<programlisting>
+Result 0: http://10.0.64.202:43381/0
+ - Finder: OstreeRepoFinderAvahi
+ - Keyring: exampleos.trustedkeys.gpg
+ - Priority: 60
+ - Summary last modified: 2018-01-12T19:00:28Z
+ - Refs:
+    - (com.exampleos.Os, exampleos/x86_64/standard) = c91acd964b3fda561b87bfb7f7c80e36220d76b567f0ce90c0e60742ef33c360
+
+1/1 refs were found.
+</programlisting>
+    </refsect1>
+</refentry>
