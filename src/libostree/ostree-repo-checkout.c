@@ -535,6 +535,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
                       GCancellable                      *cancellable,
                       GError                           **error)
 {
+  /* Validate this up front to prevent path traversal attacks */
+  if (!ot_util_filename_validate (destination_name, error))
+    return FALSE;
+
   gboolean need_copy = TRUE;
   gboolean is_bare_user_symlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
@@ -897,6 +901,15 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
     while (g_variant_iter_loop (&viter, "(&s@ay@ay)", &dname,
                                 &subdirtree_csum_v, &subdirmeta_csum_v))
       {
+        /* Validate this up front to prevent path traversal attacks. Note that
+         * we don't validate at the top of this function like we do for
+         * checkout_one_file_at() becuase I believe in some cases this function
+         * can be called *initially* with user-specified paths for the root
+         * directory.
+         */
+        if (!ot_util_filename_validate (dname, error))
+          return FALSE;
+
         const size_t origlen = selabel_path_buf ? selabel_path_buf->len : 0;
         if (selabel_path_buf)
           {
