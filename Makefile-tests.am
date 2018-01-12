@@ -178,6 +178,7 @@ dist_installed_test_data = tests/archive-test.sh \
 	tests/pre-endian-deltas-repo-little.tar.xz \
 	tests/fah-deltadata-old.tar.xz \
 	tests/fah-deltadata-new.tar.xz \
+	tests/ostree-path-traverse.tar.gz \
 	tests/libtest-core.sh \
 	$(NULL)
 

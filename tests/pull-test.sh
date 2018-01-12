@@ -52,7 +52,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..33"
+echo "1..34"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -216,6 +216,21 @@ else
 # bareuseronly case, we don't mark it as SKIP at the moment
 echo "ok corruption (skipped)"
 fi
+
+
+cd ${test_tmpdir}/ostree-srv
+tar xf ${test_srcdir}/ostree-path-traverse.tar.gz
+cd ${test_tmpdir}
+rm corruptrepo -rf
+ostree_repo_init corruptrepo --mode=archive
+${CMD_PREFIX} ostree --repo=corruptrepo remote add --set=gpg-verify=false pathtraverse $(cat httpd-address)/ostree/ostree-path-traverse/repo
+if ${CMD_PREFIX} ostree --repo=corruptrepo pull pathtraverse pathtraverse-test 2>err.txt; then
+    fatal "Pulled a repo with path traversal in dirtree"
+fi
+assert_file_has_content_literal err.txt 'Invalid / in filename ../afile'
+rm corruptrepo -rf
+echo "ok path traversal checked on pull"
+
 
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf
