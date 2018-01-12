@@ -164,6 +164,17 @@ _ostree_loose_path (char              *buf,
                     OstreeObjectType   objtype,
                     OstreeRepoMode     repo_mode);
 
+gboolean _ostree_validate_structureof_metadata (OstreeObjectType objtype,
+                                                GVariant      *commit,
+                                                GError       **error);
+
+gboolean
+_ostree_verify_metadata_object (OstreeObjectType objtype,
+                                const char      *expected_checksum,
+                                GVariant        *metadata,
+                                GError         **error);
+
+
 #define _OSTREE_METADATA_GPGSIGS_NAME "ostree.gpgsigs"
 #define _OSTREE_METADATA_GPGSIGS_TYPE G_VARIANT_TYPE ("aay")
 

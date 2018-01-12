@@ -2071,6 +2071,74 @@ validate_variant (GVariant           *variant,
   return TRUE;
 }
 
+/* TODO: make this public later; just wraps the previously public
+ * commit/dirtree/dirmeta verifiers.
+ */
+gboolean
+_ostree_validate_structureof_metadata (OstreeObjectType objtype,
+                                       GVariant        *metadata,
+                                       GError         **error)
+{
+  g_assert (OSTREE_OBJECT_TYPE_IS_META (objtype));
+
+  switch (objtype)
+    {
+    case OSTREE_OBJECT_TYPE_COMMIT:
+      if (!ostree_validate_structureof_commit (metadata, error))
+        return FALSE;
+      break;
+    case OSTREE_OBJECT_TYPE_DIR_TREE:
+      if (!ostree_validate_structureof_dirtree (metadata, error))
+        return FALSE;
+      break;
+    case OSTREE_OBJECT_TYPE_DIR_META:
+      if (!ostree_validate_structureof_dirmeta (metadata, error))
+        return FALSE;
+      break;
+    case OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT:
+    case OSTREE_OBJECT_TYPE_COMMIT_META:
+      /* TODO */
+      break;
+    case OSTREE_OBJECT_TYPE_FILE:
+      g_assert_not_reached ();
+      break;
+    }
+
+  return TRUE;
+}
+
+/* Used by fsck as well as pull.  Verify the checksum of a metadata object
+ * and its "structure" or the additional schema we impose on GVariants such
+ * as ensuring the "ay" checksum entries are of length 32.  Another important
+ * one is checking for path traversal in dirtree objects.
+ */
+gboolean
+_ostree_verify_metadata_object (OstreeObjectType objtype,
+                                const char      *expected_checksum,
+                                GVariant        *metadata,
+                                GError         **error)
+{
+  g_assert (expected_checksum);
+
+  g_auto(OtChecksum) hasher = { 0, };
+  ot_checksum_init (&hasher);
+  ot_checksum_update (&hasher, g_variant_get_data (metadata), g_variant_get_size (metadata));
+
+  char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
+  ot_checksum_get_hexdigest (&hasher, actual_checksum, sizeof (actual_checksum));
+  if (!_ostree_compare_object_checksum (objtype, expected_checksum, actual_checksum, error))
+    return FALSE;
+
+  /* Add the checksum + objtype prefix here */
+  { const char *error_prefix = glnx_strjoina (expected_checksum, ".", ostree_object_type_to_string (objtype));
+    GLNX_AUTO_PREFIX_ERROR(error_prefix, error);
+    if (!_ostree_validate_structureof_metadata (objtype, metadata, error))
+      return FALSE;
+  }
+
+  return TRUE;
+}
+
 /**
  * ostree_validate_structureof_commit:
  * @commit: A commit object, %OSTREE_OBJECT_TYPE_COMMIT

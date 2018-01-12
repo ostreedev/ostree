@@ -3941,6 +3941,7 @@ ostree_repo_delete_object (OstreeRepo           *self,
   return TRUE;
 }
 
+/* Thin wrapper for _ostree_verify_metadata_object() */
 static gboolean
 fsck_metadata_object (OstreeRepo           *self,
                       OstreeObjectType      objtype,
@@ -3956,39 +3957,7 @@ fsck_metadata_object (OstreeRepo           *self,
                                cancellable, error))
     return FALSE;
 
-  g_auto(OtChecksum) hasher = { 0, };
-  ot_checksum_init (&hasher);
-  ot_checksum_update (&hasher, g_variant_get_data (metadata), g_variant_get_size (metadata));
-
-  char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
-  ot_checksum_get_hexdigest (&hasher, actual_checksum, sizeof (actual_checksum));
-  if (!_ostree_compare_object_checksum (objtype, sha256, actual_checksum, error))
-    return FALSE;
-
-  switch (objtype)
-    {
-    case OSTREE_OBJECT_TYPE_COMMIT:
-      if (!ostree_validate_structureof_commit (metadata, error))
-        return FALSE;
-      break;
-    case OSTREE_OBJECT_TYPE_DIR_TREE:
-      if (!ostree_validate_structureof_dirtree (metadata, error))
-        return FALSE;
-      break;
-    case OSTREE_OBJECT_TYPE_DIR_META:
-      if (!ostree_validate_structureof_dirmeta (metadata, error))
-        return FALSE;
-      break;
-    case OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT:
-    case OSTREE_OBJECT_TYPE_COMMIT_META:
-      /* TODO */
-      break;
-    case OSTREE_OBJECT_TYPE_FILE:
-      g_assert_not_reached ();
-      break;
-    }
-
-  return TRUE;
+  return _ostree_verify_metadata_object (objtype, sha256, metadata, error);
 }
 
 static gboolean

@@ -2027,6 +2027,13 @@ ostree_repo_write_metadata (OstreeRepo         *self,
   if (!metadata_size_valid (objtype, g_variant_get_size (normalized), error))
     return FALSE;
 
+  /* For untrusted objects, verify their structure here */
+  if (expected_checksum)
+    {
+      if (!_ostree_validate_structureof_metadata (objtype, object, error))
+        return FALSE;
+    }
+
   g_autoptr(GBytes) vdata = g_variant_get_data_as_bytes (normalized);
   if (!write_metadata_object (self, objtype, expected_checksum,
                               vdata, out_csum, cancellable, error))
@@ -4101,6 +4108,7 @@ _ostree_repo_import_object (OstreeRepo           *self,
                                      &variant, error))
         return FALSE;
 
+      /* Note this one also now verifies structure in the !trusted case */
       g_autofree guchar *real_csum = NULL;
       if (!ostree_repo_write_metadata (self, objtype,
                                        checksum, variant,
