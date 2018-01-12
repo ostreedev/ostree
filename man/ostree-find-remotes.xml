@@ -30,9 +30,9 @@ Boston, MA 02111-1307, USA.
         <authorgroup>
             <author>
                 <contrib>Developer</contrib>
-                <firstname>Colin</firstname>
-                <surname>Walters</surname>
-                <email>walters@verbum.org</email>
+                <firstname>Matthew</firstname>
+                <surname>Leeds</surname>
+                <email>matthew.leeds@endlessm.com</email>
             </author>
         </authorgroup>
     </refentryinfo>
@@ -56,12 +56,13 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Description</title>
 
+        <!-- FIXME: Reword this when no longer in experimental -->
         <para>
             OSTree has the ability do pulls not just from configured remote
             servers but also from peer computers on the LAN and from mounted
             filesystems such as USB drives. Currently this requires compiling
             OSTree with experimental API enabled, and it requires the use of
-            Collection IDs and GPG verification.
+            collection IDs and GPG verification.
         </para>
         <para>
             The <command>find-remotes</command> command searches for remotes
@@ -95,7 +96,8 @@ Boston, MA 02111-1307, USA.
 
                 <listitem><para>
                   Use the specified comma separated list of finders rather than
-                  the default set. Possible values: config, lan, mount (or any
+                  the default set. Possible values: <literal>config</literal>,
+                  <literal>lan</literal>, and <literal>mount</literal> (or any
                   combination thereof).
                 </para></listitem>
             </varlistentry>
@@ -104,10 +106,26 @@ Boston, MA 02111-1307, USA.
                 <term><option>--pull</option></term>
 
                 <listitem><para>
-                  Pull the updates after finding them.
+                  Pull the most recent commit found for each ref.
                 </para></listitem>
             </varlistentry>
 
         </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree find-remotes --finders=mount,lan com.exampleos.Os exampleos/x86_64/standard</command></para>
+<programlisting>
+Result 0: http://10.0.64.202:43381/0
+ - Finder: OstreeRepoFinderAvahi
+ - Keyring: exampleos.trustedkeys.gpg
+ - Priority: 60
+ - Summary last modified: 2018-01-12T19:00:28Z
+ - Refs:
+    - (com.exampleos.Os, exampleos/x86_64/standard) = c91acd964b3fda561b87bfb7f7c80e36220d76b567f0ce90c0e60742ef33c360
+
+1/1 refs were found.
+</programlisting>
     </refsect1>
 </refentry>
