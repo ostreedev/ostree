@@ -497,8 +497,13 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
           goto out;
         }
 
-      metadata = g_variant_new_from_data (ostree_metadata_variant_type (state->output_objtype),
-                                          state->payload_data + offset, length, TRUE, NULL, NULL);
+      /* Unfortunately we need a copy because GVariant wants pointer-alignment
+       * and we didn't guarantee that in static deltas. We can do so in the
+       * future.
+       */
+      g_autoptr(GBytes) metadata_copy = g_bytes_new (state->payload_data + offset, length);
+      metadata = g_variant_new_from_bytes (ostree_metadata_variant_type (state->output_objtype),
+                                           metadata_copy, FALSE);
 
       {
         g_autofree guchar *actual_csum = NULL;

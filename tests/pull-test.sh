@@ -227,7 +227,10 @@ ${CMD_PREFIX} ostree --repo=corruptrepo remote add --set=gpg-verify=false pathtr
 if ${CMD_PREFIX} ostree --repo=corruptrepo pull pathtraverse pathtraverse-test 2>err.txt; then
     fatal "Pulled a repo with path traversal in dirtree"
 fi
-assert_file_has_content_literal err.txt 'Invalid / in filename ../afile'
+assert_file_has_content_literal err.txt 'ae9a5d2701a02740aa2ee317ba53b13e3efb0f29609cd4896e1bafeee4caddb5.dirtree: Invalid / in filename ../afile'
+# And verify we didn't write the object into the staging directory even
+find corruptrepo/tmp -name '9a5d2701a02740aa2ee317ba53b13e3efb0f29609cd4896e1bafeee4caddb5.dirtree' >find.txt
+assert_not_file_has_content find.txt '9a5d2701a02740aa2ee317ba53b13e3efb0f29609cd4896e1bafeee4caddb5'
 rm corruptrepo -rf
 echo "ok path traversal checked on pull"
 

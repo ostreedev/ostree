@@ -736,6 +736,12 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum);
 
+      /* Note this is now obsoleted by the _ostree_validate_structureof_metadata()
+       * but I'm keeping this since:
+       *  1) It's cheap
+       *  2) We want to continue to do validation for objects written to disk
+       *     before libostree's validation was strengthened.
+       */
       if (!ot_util_filename_validate (filename, error))
         return FALSE;
 
@@ -810,6 +816,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                            &dirname, &tree_csum, &meta_csum);
 
+      /* See comment above for files */
       if (!ot_util_filename_validate (dirname, error))
         return FALSE;
 
@@ -1222,24 +1229,20 @@ meta_fetch_on_complete (GObject           *object,
                                FALSE, &metadata, error))
         goto out;
 
-      /* For commit objects, compute the hash and check the GPG signature before
-       * writing to the repo, and also write the .commitpartial to say that
-       * we're still processing this commit.
+      /* Compute checksum and verify structure now. Note this is a recent change
+       * (Jan 2018) - we used to verify the checksum only when writing down
+       * below. But we want to do "structure" verification early on as well
+       * before the object is written even to the staging directory.
+       */
+      if (!_ostree_verify_metadata_object (objtype, checksum, metadata, error))
+        goto out;
+
+      /* For commit objects, check the GPG signature before writing to the repo,
+       * and also write the .commitpartial to say that we're still processing
+       * this commit.
        */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          /* Verify checksum */
-          OtChecksum hasher = { 0, };
-          ot_checksum_init (&hasher);
-          { g_autoptr(GBytes) bytes = g_variant_get_data_as_bytes (metadata);
-            ot_checksum_update_bytes (&hasher, bytes);
-          }
-          char hexdigest[OSTREE_SHA256_STRING_LEN+1];
-          ot_checksum_get_hexdigest (&hasher, hexdigest, sizeof (hexdigest));
-
-          if (!_ostree_compare_object_checksum (objtype, checksum, hexdigest, error))
-            goto out;
-
           /* Do GPG verification. `detached_data` may be NULL if no detached
            * metadata was found during pull; that's handled by
            * gpg_verify_unwritten_commit(). If we ever change the pull code to
@@ -1256,7 +1259,13 @@ meta_fetch_on_complete (GObject           *object,
             goto out;
         }
 
-      ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
+      /* Note that we now (Jan 2018) pass NULL for checksum, which means "don't
+       * verify checksum", since we just did it above. Related to this...now
+       * that we're doing all the verification here, one thing we could do later
+       * just `glnx_link_tmpfile_at()` into the repository, like the content
+       * fetch path does for trusted commits.
+       */
+      ostree_repo_write_metadata_async (pull_data->repo, objtype, NULL, metadata,
                                         pull_data->cancellable,
                                         on_metadata_written, fetch_data);
       pull_data->n_outstanding_metadata_write_requests++;
