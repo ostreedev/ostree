@@ -451,6 +451,9 @@ LIBOSTREE_2017.15 {
   ostree_break_hardlink;
 } LIBOSTREE_2017.14;
 
+LIBOSTREE_2018.1 {
+} LIBOSTREE_2017.15;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
