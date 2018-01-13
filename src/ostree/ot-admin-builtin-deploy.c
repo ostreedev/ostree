@@ -154,7 +154,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
                                    kargs_strv, &new_deployment, cancellable, error))
     return FALSE;
 
-  OstreeSysrootSimpleWriteDeploymentFlags flags = 0;
+  OstreeSysrootSimpleWriteDeploymentFlags flags = OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
   if (opt_retain)
     flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN;
   else
@@ -170,6 +170,11 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
 
   if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname, new_deployment,
                                                merge_deployment, flags, cancellable, error))
+    return FALSE;
+
+  /* And finally, cleanup of any leftover data.
+   */
+  if (!ostree_sysroot_cleanup (self, cancellable, error))
     return FALSE;
 
   return TRUE;
