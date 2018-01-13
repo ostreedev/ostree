@@ -37,8 +37,8 @@ static gboolean opt_pull = FALSE;
 static GOptionEntry options[] =
   {
     { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
-    { "finders", 0, 0, G_OPTION_ARG_STRING, &opt_finders, "Use the specified comma separated list of finders (e.g. config,lan,mount)", "FINDERS" },
     { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+    { "finders", 0, 0, G_OPTION_ARG_STRING, &opt_finders, "Use the specified comma separated list of finders (e.g. config,lan,mount)", "FINDERS" },
     { "pull", 0, 0, G_OPTION_ARG_NONE, &opt_pull, "Pull the updates after finding them", NULL },
     { NULL }
   };
@@ -119,7 +119,7 @@ collection_ref_free0 (OstreeCollectionRef *ref)
 }
 
 static gboolean
-validate_finders_list (char           **finders,
+validate_finders_list (const char     **finders,
                        GOptionContext  *context,
                        GError         **error)
 {
@@ -139,10 +139,10 @@ validate_finders_list (char           **finders,
       return FALSE;
     }
 
-  for (char **iter = finders; iter && *iter; iter++)
+  for (const char **iter = finders; iter && *iter; iter++)
     {
       gboolean is_valid_finder = FALSE;
-      for (int i = 0; i < 3; i++)
+      for (unsigned int i = 0; i < G_N_ELEMENTS (valid_finders); i++)
         {
           if (valid_finders[i].already_used == TRUE)
             continue;
@@ -232,14 +232,14 @@ ostree_builtin_find_remotes (int            argc,
   /* Build the array of OstreeRepoFinder instances */
   if (opt_finders != NULL)
     {
-      g_auto(GStrv) finders_strings = NULL;
+      g_autofree const char **finders_strings = NULL;
 
-      finders_strings = g_strsplit (opt_finders, ",", 0);
+      finders_strings = (const char **)g_strsplit (opt_finders, ",", 0);
       if (!validate_finders_list (finders_strings, context, error))
         return FALSE;
 
-      finders = g_ptr_array_new ();
-      for (char **iter =finders_strings; iter && *iter; iter++)
+      finders = g_ptr_array_new_with_free_func (NULL);
+      for (const char **iter = finders_strings; iter && *iter; iter++)
         {
           if (g_strcmp0 (*iter, "config") == 0)
             {
