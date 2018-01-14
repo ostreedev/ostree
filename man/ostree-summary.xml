@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree summary</command> <arg choice="opt">--gpg-sign=KEYID</arg> <arg choice="opt">--gpg-homedir=HOMEDIR</arg> <arg choice="req">--update</arg> <arg choice="opt" rep="repeat">--add-metadata=KEY=VALUE</arg>
+                <command>ostree summary</command> <arg choice="opt">--gpg-sign=KEYID</arg> <arg choice="opt">--gpg-homedir=HOMEDIR</arg> <arg choice="req">--update</arg> <arg choice="opt" rep="repeat">--add-metadata=<replaceable>KEY</replaceable>=<replaceable>VALUE</replaceable></arg>
             </cmdsynopsis>
 
             <cmdsynopsis>
