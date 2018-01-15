@@ -164,7 +164,6 @@ validate_finders_list (char           **finders,
   return TRUE;
 }
 
-/* TODO: Add a man page. */
 gboolean
 ostree_builtin_find_remotes (int            argc,
                              char         **argv,
