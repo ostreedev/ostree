@@ -232,14 +232,14 @@ ostree_builtin_find_remotes (int            argc,
   /* Build the array of OstreeRepoFinder instances */
   if (opt_finders != NULL)
     {
-      g_autofree const char **finders_strings = NULL;
+      g_auto(GStrv) finders_strings = NULL;
 
-      finders_strings = (const char **)g_strsplit (opt_finders, ",", 0);
-      if (!validate_finders_list (finders_strings, context, error))
+      finders_strings = g_strsplit (opt_finders, ",", 0);
+      if (!validate_finders_list ((const char **)finders_strings, context, error))
         return FALSE;
 
       finders = g_ptr_array_new_with_free_func (NULL);
-      for (const char **iter = finders_strings; iter && *iter; iter++)
+      for (const char **iter = (const char **)finders_strings; iter && *iter; iter++)
         {
           if (g_strcmp0 (*iter, "config") == 0)
             {
