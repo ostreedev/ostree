@@ -4686,7 +4686,20 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
 
       if (local_error != NULL)
         {
-          g_warning ("Avahi finder failed; removing it: %s", local_error->message);
+          /* See ostree-repo-finder-avahi.c:ostree_repo_finder_avahi_start, we
+           * intentionally throw this so as to distinguish between the Avahi
+           * finder failing because the Avahi daemon wasn't running and
+           * the Avahi finder failing because of some actual error.
+           *
+           * We need to distinguish between g_debug and g_warning here because
+           * unit tests that use this code may set G_DEBUG=fatal-warnings which
+           * would cause client code to abort if a warning were emitted.
+           */
+          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            g_debug ("Avahi finder failed under normal operation; removing it: %s", local_error->message);
+          else
+            g_warning ("Avahi finder failed abnormally; removing it: %s", local_error->message);
+
           default_finders[2] = NULL;
           g_clear_object (&finder_avahi);
         }
