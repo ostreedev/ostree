@@ -1437,9 +1437,15 @@ ostree_repo_finder_avahi_start (OstreeRepoFinderAvahi  *self,
 
   if (client == NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Failed to create finder client: %s",
-                   avahi_strerror (failure));
+      if (failure == AVAHI_ERR_NO_DAEMON)
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                     "Avahi daemon is not running: %s",
+                     avahi_strerror (failure));
+      else
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Failed to create finder client: %s",
+                     avahi_strerror (failure));
+
       return;
     }
 
