@@ -35,6 +35,7 @@ static gboolean opt_retain;
 static gboolean opt_retain_pending;
 static gboolean opt_retain_rollback;
 static gboolean opt_not_as_default;
+static gboolean opt_no_prune;
 static char **opt_kernel_argv;
 static char **opt_kernel_argv_append;
 static gboolean opt_kernel_proc_cmdline;
@@ -50,6 +51,7 @@ static gboolean opt_kernel_arg_none;
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
   { "origin-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_origin_path, "Specify origin file", "FILENAME" },
+  { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Don't prune the repo when done", NULL},
   { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployments", NULL },
   { "retain-pending", 0, 0, G_OPTION_ARG_NONE, &opt_retain_pending, "Do not delete pending deployments", NULL },
   { "retain-rollback", 0, 0, G_OPTION_ARG_NONE, &opt_retain_rollback, "Do not delete rollback deployments", NULL },
@@ -162,7 +164,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
                                    kargs_strv, &new_deployment, cancellable, error))
     return FALSE;
 
-  OstreeSysrootSimpleWriteDeploymentFlags flags = 0;
+  OstreeSysrootSimpleWriteDeploymentFlags flags = OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
   if (opt_retain)
     flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN;
   else
@@ -179,6 +181,19 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
   if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname, new_deployment,
                                                merge_deployment, flags, cancellable, error))
     return FALSE;
+
+  /* And finally, cleanup of any leftover data.
+   */
+  if (opt_no_prune)
+    {
+      if (!ostree_sysroot_prepare_cleanup (sysroot, cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+        return FALSE;
+    }
 
   return TRUE;
 }
