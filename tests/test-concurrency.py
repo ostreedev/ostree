@@ -33,7 +33,7 @@ def fatal(msg):
 # different files with different checksums.
 def mktree(dname, serial=0):
     print('Creating tree', dname, file=sys.stderr)
-    os.mkdir(dname, 0755)
+    os.mkdir(dname, 0o755)
     for v in xrange(20):
         with open('{}/{}'.format(dname, v), 'w') as f:
             f.write('{} {} {}\n'.format(dname, serial, v))
