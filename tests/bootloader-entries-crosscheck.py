@@ -38,8 +38,8 @@ def fatal(msg):
     sys.stderr.write('\n')
     sys.exit(1)
 
-def compare_entries_descending(a, b):
-    return int(b['version']) - int(a['version'])
+def entry_get_version(entry):
+    return int(entry['version'])
 
 def get_ostree_option(optionstring):
     for o in optionstring.split():
@@ -65,7 +65,7 @@ for fname in os.listdir(loaderpath):
             v = line[s+1:]
             entry[k] = v
         entries.append(entry)
-    entries.sort(compare_entries_descending)
+    entries.sort(key=entry_get_version, reverse=True)
 
 # Parse SYSLINUX config
 with open(syslinuxpath) as f:
