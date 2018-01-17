@@ -113,7 +113,7 @@ check_update_identical() {
     $OSTREE checkout $commit_b $d/b >&2
     echo Expecting $commit_a to become $commit_b: >&2
     $OSTREE diff $commit_a $commit_b >&2
-    $OSTREE checkout --update=$commit_a $commit_b $d/a >&2
+    OSTREE_DEBUG_CHECKOUT_DETAILS=1 $OSTREE checkout --update=$commit_a $commit_b $d/a >&2
     diff -r $d/a $d/b || fail >&2
 }
 
