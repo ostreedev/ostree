@@ -2130,19 +2130,12 @@ process_one_static_delta (OtPullData                 *pull_data,
                           GCancellable               *cancellable,
                           GError                    **error)
 {
-  gboolean ret = FALSE;
-  gboolean delta_byteswap;
-  g_autoptr(GVariant) metadata = NULL;
-  g_autoptr(GVariant) headers = NULL;
-  g_autoptr(GVariant) fallback_objects = NULL;
-  guint i, n;
-
-  delta_byteswap = _ostree_delta_needs_byteswap (delta_superblock);
+  gboolean delta_byteswap = _ostree_delta_needs_byteswap (delta_superblock);
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
-  metadata = g_variant_get_child_value (delta_superblock, 0);
-  headers = g_variant_get_child_value (delta_superblock, 6);
-  fallback_objects = g_variant_get_child_value (delta_superblock, 7);
+  g_autoptr(GVariant) metadata = g_variant_get_child_value (delta_superblock, 0);
+  g_autoptr(GVariant) headers = g_variant_get_child_value (delta_superblock, 6);
+  g_autoptr(GVariant) fallback_objects = g_variant_get_child_value (delta_superblock, 7);
 
   /* Gather free space so we can do a check below */
   struct statvfs stvfsbuf;
@@ -2150,8 +2143,8 @@ process_one_static_delta (OtPullData                 *pull_data,
     return glnx_throw_errno_prefix (error, "fstatvfs");
 
   /* First process the fallbacks */
-  n = g_variant_n_children (fallback_objects);
-  for (i = 0; i < n; i++)
+  guint n = g_variant_n_children (fallback_objects);
+  for (guint i = 0; i < n; i++)
     {
       g_autoptr(GVariant) fallback_object =
         g_variant_get_child_value (fallback_objects, i);
@@ -2159,99 +2152,84 @@ process_one_static_delta (OtPullData                 *pull_data,
       if (!process_one_static_delta_fallback (pull_data, delta_byteswap,
                                               fallback_object,
                                               cancellable, error))
-        goto out;
+        return FALSE;
     }
 
   /* Write the to-commit object */
   if (!pull_data->dry_run)
-  {
-    g_autoptr(GVariant) to_csum_v = NULL;
-    g_autofree char *to_checksum = NULL;
-    gboolean have_to_commit;
+    {
+      g_autoptr(GVariant) to_csum_v = g_variant_get_child_value (delta_superblock, 3);
+      if (!ostree_validate_structureof_csum_v (to_csum_v, error))
+        return FALSE;
+      g_autofree char *to_checksum = ostree_checksum_from_bytes_v (to_csum_v);
 
-    to_csum_v = g_variant_get_child_value (delta_superblock, 3);
-    if (!ostree_validate_structureof_csum_v (to_csum_v, error))
-      goto out;
-    to_checksum = ostree_checksum_from_bytes_v (to_csum_v);
+      gboolean have_to_commit;
+      if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
+                                   &have_to_commit, cancellable, error))
+        return FALSE;
 
-    if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
-                                 &have_to_commit, cancellable, error))
-      goto out;
-    
-    if (!have_to_commit)
-      {
-        FetchObjectData *fetch_data;
-        g_autoptr(GVariant) to_commit = g_variant_get_child_value (delta_superblock, 4);
-        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
-        g_autoptr(GVariant) detached_data = NULL;
+      if (!have_to_commit)
+        {
+          g_autoptr(GVariant) to_commit = g_variant_get_child_value (delta_superblock, 4);
+          g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
+          g_autoptr(GVariant) detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
 
-        detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
+          if (!gpg_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
+                                            cancellable, error))
+            return FALSE;
 
-        if (!gpg_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
-                                          cancellable, error))
-          goto out;
+          if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
+                                                                            to_revision,
+                                                                            detached_data,
+                                                                            cancellable,
+                                                                            error))
+            return FALSE;
 
-        if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
-                                                                          to_revision,
-                                                                          detached_data,
-                                                                          cancellable,
-                                                                          error))
-          goto out;
+          FetchObjectData *fetch_data = g_new0 (FetchObjectData, 1);
+          fetch_data->pull_data = pull_data;
+          fetch_data->object = ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_COMMIT);
+          fetch_data->is_detached_meta = FALSE;
+          fetch_data->object_is_stored = FALSE;
+          fetch_data->requested_ref = (ref != NULL) ? ostree_collection_ref_dup (ref) : NULL;
 
-        fetch_data = g_new0 (FetchObjectData, 1);
-        fetch_data->pull_data = pull_data;
-        fetch_data->object = ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_COMMIT);
-        fetch_data->is_detached_meta = FALSE;
-        fetch_data->object_is_stored = FALSE;
-        fetch_data->requested_ref = (ref != NULL) ? ostree_collection_ref_dup (ref) : NULL;
-
-        ostree_repo_write_metadata_async (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
-                                          to_commit,
-                                          pull_data->cancellable,
-                                          on_metadata_written, fetch_data);
-        pull_data->n_outstanding_metadata_write_requests++;
-      }
-  }
+          ostree_repo_write_metadata_async (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
+                                            to_commit,
+                                            pull_data->cancellable,
+                                            on_metadata_written, fetch_data);
+          pull_data->n_outstanding_metadata_write_requests++;
+        }
+    }
 
   n = g_variant_n_children (headers);
   pull_data->n_total_deltaparts += n;
-  
-  for (i = 0; i < n; i++)
+
+  for (guint i = 0; i < n; i++)
     {
-      const guchar *csum;
-      g_autoptr(GVariant) header = NULL;
       gboolean have_all = FALSE;
-      g_autofree char *deltapart_path = NULL;
-      FetchStaticDeltaData *fetch_data;
+
+      g_autoptr(GVariant) header = g_variant_get_child_value (headers, i);
       g_autoptr(GVariant) csum_v = NULL;
       g_autoptr(GVariant) objects = NULL;
       g_autoptr(GBytes) inline_part_bytes = NULL;
-      guint64 size, usize;
       guint32 version;
-
-      header = g_variant_get_child_value (headers, i);
+      guint64 size, usize;
       g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
-
       version = maybe_swap_endian_u32 (delta_byteswap, version);
       size = maybe_swap_endian_u64 (delta_byteswap, size);
       usize = maybe_swap_endian_u64 (delta_byteswap, usize);
 
       if (version > OSTREE_DELTAPART_VERSION)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Delta part has too new version %u", version);
-          goto out;
-        }
+        return glnx_throw (error, "Delta part has too new version %u", version);
 
-      csum = ostree_checksum_bytes_peek_validate (csum_v, error);
+      const guchar *csum = ostree_checksum_bytes_peek_validate (csum_v, error);
       if (!csum)
-        goto out;
+        return FALSE;
 
       if (!_ostree_repo_static_delta_part_have_all_objects (pull_data->repo,
                                                             objects,
                                                             &have_all,
                                                             cancellable, error))
-        goto out;
+        return FALSE;
 
       pull_data->total_deltapart_size += size;
       pull_data->total_deltapart_usize += usize;
@@ -2266,7 +2244,7 @@ process_one_static_delta (OtPullData                 *pull_data,
           continue;
         }
 
-      deltapart_path = _ostree_get_relative_static_delta_part_path (from_revision, to_revision, i);
+      g_autofree char *deltapart_path = _ostree_get_relative_static_delta_part_path (from_revision, to_revision, i);
 
       { g_autoptr(GVariant) part_datav =
           g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE ("(yay)"));
@@ -2277,8 +2255,8 @@ process_one_static_delta (OtPullData                 *pull_data,
 
       if (pull_data->dry_run)
         continue;
-      
-      fetch_data = g_new0 (FetchStaticDeltaData, 1);
+
+      FetchStaticDeltaData *fetch_data = g_new0 (FetchStaticDeltaData, 1);
       fetch_data->from_revision = g_strdup (from_revision);
       fetch_data->to_revision = g_strdup (to_revision);
       fetch_data->pull_data = pull_data;
@@ -2297,7 +2275,7 @@ process_one_static_delta (OtPullData                 *pull_data,
                                                OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
                                                NULL, &inline_delta_part,
                                                cancellable, error))
-            goto out;
+            return FALSE;
 
           _ostree_static_delta_part_execute_async (pull_data->repo,
                                                    fetch_data->objects,
@@ -2328,14 +2306,11 @@ process_one_static_delta (OtPullData                 *pull_data,
     {
       g_autofree char *formatted_required = g_format_size (pull_data->total_deltapart_usize);
       g_autofree char *formatted_avail = g_format_size (((guint64)stvfsbuf.f_bsize) * stvfsbuf.f_bfree);
-      glnx_throw (error, "Delta requires %s free space, but only %s available",
-                  formatted_required, formatted_avail);
-      goto out;
+      return glnx_throw (error, "Delta requires %s free space, but only %s available",
+                         formatted_required, formatted_avail);
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -2806,18 +2781,16 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
                                GCancellable  *cancellable,
                                GError        **error)
 {
-  gboolean ret = FALSE;
-
   if (is_metalink)
     {
-      g_autoptr(OstreeMetalink) metalink = NULL;
       GError *local_error = NULL;
 
       /* the metalink uri is buried in the mirrorlist as the first (and only)
        * element */
-      metalink = _ostree_metalink_new (fetcher, filename,
-                                       OSTREE_MAX_METADATA_SIZE,
-                                       mirrorlist->pdata[0]);
+      g_autoptr(OstreeMetalink) metalink =
+        _ostree_metalink_new (fetcher, filename,
+                              OSTREE_MAX_METADATA_SIZE,
+                              mirrorlist->pdata[0]);
 
       _ostree_metalink_request_sync (metalink, NULL, out_bytes,
                                      cancellable, &local_error);
@@ -2830,25 +2803,18 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
       else if (local_error != NULL)
         {
           g_propagate_error (error, local_error);
-          goto out;
+          return FALSE;
         }
+
+      return TRUE;
     }
   else
     {
-      ret = _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
-                                                        filename,
-                                                        OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                        out_bytes,
-                                                        OSTREE_MAX_METADATA_SIZE,
-                                                        cancellable, error);
-
-      if (!ret)
-        goto out;
+      return _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, filename,
+                                                         OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                         out_bytes, OSTREE_MAX_METADATA_SIZE,
+                                                         cancellable, error);
     }
-
-  ret = TRUE;
-out:
-  return ret;
 }
 
 static gboolean
@@ -2858,29 +2824,23 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
                   GCancellable   *cancellable,
                   GError        **error)
 {
-  gboolean ret = FALSE;
-  g_auto(GStrv) lines = NULL;
-  g_autofree char *contents = NULL;
-  g_autoptr(OstreeFetcherURI) mirrorlist = NULL;
   g_autoptr(GPtrArray) ret_mirrorlist =
     g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
 
-  mirrorlist = _ostree_fetcher_uri_parse (mirrorlist_url, error);
+  g_autoptr(OstreeFetcherURI) mirrorlist = _ostree_fetcher_uri_parse (mirrorlist_url, error);
   if (!mirrorlist)
-    goto out;
+    return FALSE;
 
+  g_autofree char *contents = NULL;
   if (!fetch_uri_contents_utf8_sync (fetcher, mirrorlist, &contents,
                                      cancellable, error))
-    {
-      g_prefix_error (error, "While fetching mirrorlist '%s': ",
-                      mirrorlist_url);
-      goto out;
-    }
+    return glnx_prefix_error (error, "While fetching mirrorlist '%s'",
+                              mirrorlist_url);
 
   /* go through each mirror in mirrorlist and do a quick sanity check that it
    * works so that we don't waste the fetcher's time when it goes through them
    * */
-  lines = g_strsplit (contents, "\n", -1);
+  g_auto(GStrv) lines = g_strsplit (contents, "\n", -1);
   g_debug ("Scanning mirrorlist from '%s'", mirrorlist_url);
   for (char **iter = lines; iter && *iter; iter++)
     {
@@ -2936,18 +2896,11 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
     }
 
   if (ret_mirrorlist->len == 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No valid mirrors were found in mirrorlist '%s'",
-                   mirrorlist_url);
-      goto out;
-    }
+    return glnx_throw (error, "No valid mirrors were found in mirrorlist '%s'",
+                       mirrorlist_url);
 
   *out_mirrorlist = g_steal_pointer (&ret_mirrorlist);
-  ret = TRUE;
-
-out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
