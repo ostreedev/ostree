@@ -49,6 +49,22 @@
 #include "ostree-linuxfsutil.h"
 #include "libglnx.h"
 
+#ifdef HAVE_LIBMOUNT
+typedef struct libmnt_table libmnt_table;
+typedef struct libmnt_fs libmnt_fs;
+typedef struct libmnt_cache libmnt_cache;
+
+#ifdef HAVE_MNT_UNREF_CACHE
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (libmnt_table, mnt_unref_table);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (libmnt_fs, mnt_unref_fs);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (libmnt_cache, mnt_unref_cache);
+#else
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (libmnt_table, mnt_free_table);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (libmnt_fs, mnt_free_fs);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (libmnt_cache, mnt_free_cache);
+#endif
+#endif /* HAVE_LIBMOUNT */
+
 #ifdef HAVE_LIBSYSTEMD
 #define OSTREE_VARRELABEL_ID            SD_ID128_MAKE(da,67,9b,08,ac,d3,45,04,b7,89,d9,6f,81,8e,a7,81)
 #define OSTREE_CONFIGMERGE_ID           SD_ID128_MAKE(d3,86,3b,ae,c1,3e,44,49,ab,03,84,68,4a,8a,f3,a7)
@@ -2184,28 +2200,17 @@ is_ro_mount (const char *path)
    * Systemd has a totally different implementation in
    * src/basic/mount-util.c.
    */
-  struct libmnt_table *tb = mnt_new_table_from_file ("/proc/self/mountinfo");
-  struct libmnt_fs *fs;
-  struct libmnt_cache *cache;
-  gboolean is_mount = FALSE;
-  struct statvfs stvfsbuf;
+  g_autoptr(libmnt_table) tb = mnt_new_table_from_file ("/proc/self/mountinfo");
 
   if (!tb)
     return FALSE;
 
-  /* to canonicalize all necessary paths */
-  cache = mnt_new_cache ();
+    /* to canonicalize all necessary paths */
+  g_autoptr(libmnt_cache) cache = mnt_new_cache ();
   mnt_table_set_cache (tb, cache);
 
-  fs = mnt_table_find_target(tb, path, MNT_ITER_BACKWARD);
-  is_mount = fs && mnt_fs_get_target (fs);
-#ifdef HAVE_MNT_UNREF_CACHE
-  mnt_unref_table (tb);
-  mnt_unref_cache (cache);
-#else
-  mnt_free_table (tb);
-  mnt_free_cache (cache);
-#endif
+  g_autoptr(libmnt_fs) fs = mnt_table_find_target(tb, path, MNT_ITER_BACKWARD);
+  gboolean is_mount = fs && mnt_fs_get_target (fs);
 
   if (!is_mount)
     return FALSE;
@@ -2213,6 +2218,7 @@ is_ro_mount (const char *path)
   /* We *could* parse the options, but it seems more reliable to
    * introspect the actual mount at runtime.
    */
+  struct statvfs stvfsbuf;
   if (statvfs (path, &stvfsbuf) == 0)
     return (stvfsbuf.f_flag & ST_RDONLY) != 0;
 
