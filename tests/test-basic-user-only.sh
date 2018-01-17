@@ -28,7 +28,7 @@ extra_basic_tests=5
 . $(dirname $0)/basic-test.sh
 
 $CMD_PREFIX ostree --version > version.yaml
-python -c 'import yaml; yaml.safe_load(open("version.yaml"))'
+python3 -c 'import yaml; yaml.safe_load(open("version.yaml"))'
 echo "ok yaml version"
 
 # Reset things so we don't inherit a lot of state from earlier tests
