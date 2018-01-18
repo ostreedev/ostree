@@ -4611,7 +4611,9 @@ static void find_remotes_cb (GObject      *obj,
  * Pass the results to ostree_repo_pull_from_remotes_async() to pull the given @refs
  * from those remotes.
  *
- * No @options are currently supported.
+ * The following @options are currently defined:
+ *
+ *   * `override-commit-ids` (`as`): Array of specific commit IDs to fetch for refs
  *
  * @finders must be a non-empty %NULL-terminated array of the #OstreeRepoFinder
  * instances to use, or %NULL to use the system default set of finders, which
@@ -4856,6 +4858,7 @@ find_remotes_cb (GObject      *obj,
   g_autoptr(OstreeFetcher) fetcher = NULL;
   g_autofree const gchar **ref_to_latest_commit = NULL;  /* indexed as @refs; (element-type commit-checksum) */
   gsize n_refs;
+  g_autofree char **override_commit_ids = NULL;
   g_autoptr(GPtrArray) remotes_to_remove = NULL;  /* (element-type OstreeRemote) */
   g_autoptr(GPtrArray) final_results = NULL;  /* (element-type OstreeRepoFinderResult) */
 
@@ -4888,13 +4891,13 @@ find_remotes_cb (GObject      *obj,
    * to be %NULL-safe. */
   g_ptr_array_set_free_func (results, (GDestroyNotify) repo_finder_result_free0);
 
-  /* FIXME: Add support for options:
-   *  - override-commit-ids (allow downgrades)
-   *
-   * Use case: multiple pulls of separate subdirs; want them to use the same
-   * configuration.
-   * Use case: downgrading a flatpak app.
-   */
+  if (data->options)
+    {
+      (void) g_variant_lookup (data->options, "override-commit-ids", "^a&s", &override_commit_ids);
+    }
+
+  if (override_commit_ids)
+    g_assert (g_strv_length ((gchar **) refs) == g_strv_length (override_commit_ids));
 
   /* FIXME: In future, we also want to pull static delta superblocks in this
    * phase, so that we have all the metadata we need for accurate size
@@ -5144,7 +5147,7 @@ find_remotes_cb (GObject      *obj,
    * differences between remotes: two remotes could both contain ref R, but one
    * remote could be outdated compared to the other, and point to an older
    * commit. For each ref, we want to find the most recent commit any remote
-   * points to for it.
+   * points to for it (unless override-commit-ids was used).
    *
    * @ref_to_latest_commit is indexed by @ref_index, and its values are the
    * latest checksum for each ref. */
@@ -5156,6 +5159,13 @@ find_remotes_cb (GObject      *obj,
       const gchar *latest_checksum = NULL;
       const CommitMetadata *latest_commit_metadata = NULL;
       g_autofree gchar *latest_commit_timestamp_str = NULL;
+
+      if (override_commit_ids)
+        {
+          g_debug ("%s: Using specified commit ‘%s’ for ref (%s, %s).",
+                   G_STRFUNC, override_commit_ids[i], refs[i]->collection_id, refs[i]->ref_name);
+          continue;
+        }
 
       for (j = 0; j < results->len; j++)
         {
@@ -5217,26 +5227,37 @@ find_remotes_cb (GObject      *obj,
                                                          ostree_collection_ref_equal,
                                                          (GDestroyNotify) ostree_collection_ref_free,
                                                          g_free);
-      n_latest_refs = 0;
 
-      for (j = 0; refs[j] != NULL; j++)
+      if (override_commit_ids)
         {
-          const gchar *latest_commit_for_ref = ref_to_latest_commit[j];
-
-          if (pointer_table_get (refs_and_remotes_table, j, i) != latest_commit_for_ref)
-            latest_commit_for_ref = NULL;
-          if (latest_commit_for_ref != NULL)
-            n_latest_refs++;
-
-          g_hash_table_insert (validated_ref_to_checksum, ostree_collection_ref_dup (refs[j]), g_strdup (latest_commit_for_ref));
+          for (j = 0; refs[j] != NULL; j++)
+            g_hash_table_insert (validated_ref_to_checksum, ostree_collection_ref_dup (refs[j]),
+                                 g_strdup (override_commit_ids[j]));
         }
-
-      if (n_latest_refs == 0)
+      else
         {
-          g_debug ("%s: Omitting remote ‘%s’ from results as none of its refs are new enough.",
-                   G_STRFUNC, result->remote->name);
-          ostree_repo_finder_result_free (g_steal_pointer (&g_ptr_array_index (results, i)));
-          continue;
+          n_latest_refs = 0;
+
+          for (j = 0; refs[j] != NULL; j++)
+            {
+              const gchar *latest_commit_for_ref = ref_to_latest_commit[j];
+
+              if (pointer_table_get (refs_and_remotes_table, j, i) != latest_commit_for_ref)
+                latest_commit_for_ref = NULL;
+              if (latest_commit_for_ref != NULL)
+                n_latest_refs++;
+
+              g_hash_table_insert (validated_ref_to_checksum, ostree_collection_ref_dup (refs[j]),
+                                   g_strdup (latest_commit_for_ref));
+            }
+
+          if (n_latest_refs == 0)
+            {
+              g_debug ("%s: Omitting remote ‘%s’ from results as none of its refs are new enough.",
+                       G_STRFUNC, result->remote->name);
+              ostree_repo_finder_result_free (g_steal_pointer (&g_ptr_array_index (results, i)));
+              continue;
+            }
         }
 
       result->ref_to_checksum = g_steal_pointer (&validated_ref_to_checksum);
