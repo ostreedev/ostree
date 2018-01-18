@@ -51,10 +51,10 @@ tests:
 
 ---
 
-context: f26-rust
+context: f27-rust
 inherit: true
 container:
-    image: registry.fedoraproject.org/fedora:26
+    image: registry.fedoraproject.org/fedora:27
 env:
   CONFIGOPTS: '--enable-rust'
   CI_PKGS: cargo
@@ -65,10 +65,10 @@ tests:
 
 ---
 
-context: f26-gnutls
+context: f27-gnutls
 inherit: true
 container:
-    image: registry.fedoraproject.org/fedora:26
+    image: registry.fedoraproject.org/fedora:27
 env:
   CONFIGOPTS: '--with-crypto=gnutls'
   CI_PKGS: pkgconfig(gnutls)
@@ -81,7 +81,7 @@ tests:
 
 inherit: true
 
-context: f26-experimental-api
+context: f27-experimental-api
 env:
   CONFIGOPTS: '--enable-experimental-api'
 
@@ -92,7 +92,7 @@ tests:
 
 inherit: true
 
-context: f26-minimal
+context: f27-minimal
 env:
   CONFIGOPTS: '--without-curl --without-soup --disable-gtk-doc --disable-man
    --disable-rust --without-libarchive --without-selinux --without-smack
@@ -107,7 +107,7 @@ tests:
 inherit: true
 required: true
 
-context: f26-libsoup
+context: f27-libsoup
 
 env:
   CONFIGOPTS: "--without-curl --without-openssl --with-libsoup"
@@ -120,7 +120,7 @@ tests:
 inherit: true
 required: true
 
-context: f26-introspection-tests
+context: f27-introspection-tests
 
 env:
     # ASAN conflicts with introspection testing;
@@ -138,15 +138,15 @@ branches:
     - auto
     - try
 
-context: f26ah-insttest
+context: f27ah-insttest
 required: false
 
 cluster:
   hosts:
     - name: vmcheck
-      distro: fedora/26/atomic
+      distro: fedora/27/atomic
   container:
-    image: registry.fedoraproject.org/fedora:26
+    image: registry.fedoraproject.org/fedora:27
 
 # Copy the build from the container to the host; ideally down the line
 # this is installing an RPM via https://github.com/jlebon/redhat-ci/issues/10
