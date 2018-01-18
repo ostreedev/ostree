@@ -1370,7 +1370,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GVariant) detached = NULL;
   gboolean inline_parts;
   guint endianness = G_BYTE_ORDER;
-  glnx_autofd int tmp_dfd = -1;
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
@@ -1416,36 +1415,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                  &to_commit, error))
     goto out;
 
-  if (opt_filename)
-    {
-      g_autofree char *dnbuf = g_strdup (opt_filename);
-      const char *dn = dirname (dnbuf);
-      if (!glnx_opendirat (AT_FDCWD, dn, TRUE, &tmp_dfd, error))
-        goto out;
-    }
-  else
-    {
-      tmp_dfd = fcntl (self->tmp_dir_fd, F_DUPFD_CLOEXEC, 3);
-      if (tmp_dfd < 0)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
-    }
-
-  builder.parts_dfd = tmp_dfd;
   builder.delta_opts = delta_opts;
 
-  /* Ignore optimization flags */
-  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
-                                  cancellable, error))
-    goto out;
-
   if (opt_filename)
     {
       g_autofree char *dnbuf = g_strdup (opt_filename);
       const char *dn = dirname (dnbuf);
-      descriptor_name = g_strdup (opt_filename);
+      descriptor_name = g_strdup (glnx_basename (opt_filename));
 
       if (!glnx_opendirat (AT_FDCWD, dn, TRUE, &descriptor_dfd, error))
         goto out;
@@ -1463,6 +1439,12 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
       descriptor_name = g_strdup (basename (descriptor_relpath));
     }
+  builder.parts_dfd = descriptor_dfd;
+
+  /* Ignore optimization flags */
+  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
+                                  cancellable, error))
+    goto out;
 
   if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_WRONLY | O_CLOEXEC,
                                       &descriptor_tmpf, error))
