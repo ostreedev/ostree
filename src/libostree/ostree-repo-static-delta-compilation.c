@@ -1370,7 +1370,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GVariant) detached = NULL;
   gboolean inline_parts;
   guint endianness = G_BYTE_ORDER;
-  glnx_autofd int tmp_dfd = -1;
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
