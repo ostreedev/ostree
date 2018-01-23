@@ -21,7 +21,8 @@ pkg_install gettext-devel # A new dependency
 pkg_install sudo which attr fuse \
             libubsan libasan libtsan \
             elfutils git gettext-devel libappstream-glib-devel \
-            /usr/bin/{update-mime-database,update-desktop-database,gtk-update-icon-cache}
+            /usr/bin/{update-mime-database,update-desktop-database,gtk-update-icon-cache} \
+            hicolor-icon-theme
 pkg_install flatpak && rpm -e flatpak
 
 # Build and install ostree
