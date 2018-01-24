@@ -4613,7 +4613,9 @@ static void find_remotes_cb (GObject      *obj,
  *
  * The following @options are currently defined:
  *
- *   * `override-commit-ids` (`as`): Array of specific commit IDs to fetch for refs
+ *   * `override-commit-ids` (`as`): Array of specific commit IDs to fetch. The nth
+ *   commit ID applies to the nth ref, so this must be the same length as @refs, if
+ *   provided.
  *
  * @finders must be a non-empty %NULL-terminated array of the #OstreeRepoFinder
  * instances to use, or %NULL to use the system default set of finders, which
@@ -4642,6 +4644,7 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   g_autoptr(OstreeRepoFinder) finder_config = NULL;
   g_autoptr(OstreeRepoFinder) finder_mount = NULL;
   g_autoptr(OstreeRepoFinder) finder_avahi = NULL;
+  g_autofree char **override_commit_ids = NULL;
 
   g_return_if_fail (OSTREE_IS_REPO (self));
   g_return_if_fail (is_valid_collection_ref_array (refs));
@@ -4650,6 +4653,12 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   g_return_if_fail (finders == NULL || is_valid_finder_array (finders));
   g_return_if_fail (progress == NULL || OSTREE_IS_ASYNC_PROGRESS (progress));
   g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
+
+  if (options)
+    {
+      (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
+      g_return_if_fail (override_commit_ids == NULL || g_strv_length ((gchar **) refs) == g_strv_length (override_commit_ids));
+    }
 
   /* Set up a task for the whole operation. */
   task = g_task_new (self, cancellable, callback, user_data);
@@ -4895,9 +4904,6 @@ find_remotes_cb (GObject      *obj,
     {
       (void) g_variant_lookup (data->options, "override-commit-ids", "^a&s", &override_commit_ids);
     }
-
-  if (override_commit_ids)
-    g_assert (g_strv_length ((gchar **) refs) == g_strv_length (override_commit_ids));
 
   /* FIXME: In future, we also want to pull static delta superblocks in this
    * phase, so that we have all the metadata we need for accurate size
@@ -5150,7 +5156,8 @@ find_remotes_cb (GObject      *obj,
    * points to for it (unless override-commit-ids was used).
    *
    * @ref_to_latest_commit is indexed by @ref_index, and its values are the
-   * latest checksum for each ref. */
+   * latest checksum for each ref. If override-commit-ids was used,
+   * @ref_to_latest_commit won't be initialized or used.*/
   ref_to_latest_commit = g_new0 (const gchar *, n_refs);
 
   for (i = 0; i < n_refs; i++)
