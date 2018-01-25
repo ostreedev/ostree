@@ -116,3 +116,6 @@ so just like `/boot`, it has a version of `0` or `1` appended.
 Each bootloader entry has a special `ostree=` argument which refers to
 one of these symbolic links.  This is parsed at runtime in the
 initramfs.
+
+###### Licensing for this document:
+`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`

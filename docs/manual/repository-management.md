@@ -240,3 +240,6 @@ That will truncate the history older than 6 months.  Deleted commits
 will have "tombstone markers" added so that you know they were
 explicitly deleted, but all content in them (that is not referenced by
 a still retained commit) will be garbage collected.
+
+###### Licensing for this document:
+`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
