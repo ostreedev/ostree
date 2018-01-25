@@ -166,3 +166,6 @@ Then to actually deploy this tree for the next boot:
 
 This is essentially what [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
 does to support its [package layering model](https://rpm-ostree.readthedocs.io/en/latest/manual/administrator-handbook/#package-layering).
+
+###### Licensing for this document:
+`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
