@@ -152,15 +152,18 @@ ostree_validate_checksum_string (const char *sha256,
 /**
  * ostree_parse_refspec:
  * @refspec: A "refspec" string
- * @out_remote: (out) (allow-none): The remote name, or %NULL if the refspec refs to a local ref
- * @out_ref: (out) (allow-none): Name of ref
+ * @out_remote: (out) (nullable) (optional): Return location for the remote name,
+ *    or %NULL if the refspec refs to a local ref
+ * @out_ref: (out) (not nullable) (optional): Return location for the ref name
  * @error: Error
  *
- * Split a refspec like "gnome-ostree:gnome-ostree/buildmaster" into
- * two parts; @out_remote will be set to "gnome-ostree", and @out_ref
- * will be "gnome-ostree/buildmaster".
+ * Split a refspec like `gnome-ostree:gnome-ostree/buildmaster` or just
+ * `gnome-ostree/buildmaster` into two parts. In the first case, @out_remote
+ * will be set to `gnome-ostree`, and @out_ref to `gnome-ostree/buildmaster`.
+ * In the second case (a local ref), @out_remote will be %NULL, and @out_ref
+ * will be `gnome-ostree/buildmaster`. In both cases, %TRUE will be returned.
  *
- * If @refspec refers to a local ref, @out_remote will be %NULL.
+ * Returns: %TRUE on successful parsing, %FALSE otherwise
  */
 gboolean
 ostree_parse_refspec (const char   *refspec,
