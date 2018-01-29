@@ -44,6 +44,15 @@ main(int argc, char *argv[])
   struct stat stbuf;
   int i;
 
+  /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
+   * also propagate to /sysroot/ostree/deploy/$stateroot/var/cache
+   *
+   * Today systemd remounts / (recursively) as shared, so we're undoing that as early
+   * as possible.  See also a copy of this in ostree-prepare-root.c.
+   */
+  if (mount ("none", "/sysroot", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
+    perror ("warning: While remounting /sysroot MS_PRIVATE");
+
   if (path_is_on_readonly_fs ("/"))
     {
       /* If / isn't writable, don't do any remounts; we don't want
