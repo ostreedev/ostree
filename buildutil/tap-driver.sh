@@ -1,6 +1,8 @@
 #! /bin/sh
 # Copyright (C) 2011-2013 Free Software Foundation, Inc.
 #
+# SPDX-License-Identifier: LGPL-2.0+
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2, or (at your option)
