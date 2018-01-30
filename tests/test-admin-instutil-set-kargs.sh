@@ -3,6 +3,8 @@
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 # Copyright (C) 2014 Owen Taylor <otaylor@redhat.com>
 #
+# SPDX-License-Identifier: LGPL-2.0+
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
