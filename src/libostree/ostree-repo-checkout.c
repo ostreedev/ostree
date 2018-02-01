@@ -38,13 +38,17 @@
 
 /* Per-checkout call state/caching */
 typedef struct {
-  GString *selabel_path_buf;
+  GString *path_buf; /* buffer for real path if filtering enabled */
+  GString *selabel_path_buf; /* buffer for selinux path if labeling enabled; this may be
+                                the same buffer as path_buf */
 } CheckoutState;
 
 static void
 checkout_state_clear (CheckoutState *state)
 {
-  if (state->selabel_path_buf)
+  if (state->path_buf)
+    g_string_free (state->path_buf, TRUE);
+  if (state->selabel_path_buf && (state->selabel_path_buf != state->path_buf))
     g_string_free (state->selabel_path_buf, TRUE);
 }
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(CheckoutState, checkout_state_clear)
@@ -529,7 +533,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
 
 static gboolean
 checkout_one_file_at (OstreeRepo                        *repo,
-                      OstreeRepoCheckoutAtOptions         *options,
+                      OstreeRepoCheckoutAtOptions       *options,
                       CheckoutState                     *state,
                       const char                        *checksum,
                       int                                destination_dfd,
@@ -545,11 +549,23 @@ checkout_one_file_at (OstreeRepo                        *repo,
   gboolean is_bare_user_symlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
 
+
   /* FIXME - avoid the GFileInfo here */
   g_autoptr(GFileInfo) source_info = NULL;
   if (!ostree_repo_load_file (repo, checksum, NULL, &source_info, NULL,
                               cancellable, error))
     return FALSE;
+
+  if (options->filter)
+    {
+      /* use struct stat for when we can get rid of GFileInfo; though for now, we end up
+       * packing and unpacking in the non-archive case; blehh */
+      struct stat stbuf = {0,};
+      _ostree_gfileinfo_to_stbuf (source_info, &stbuf);
+      if (options->filter (repo, state->path_buf->str, &stbuf, options->filter_user_data) ==
+          OSTREE_REPO_CHECKOUT_FILTER_SKIP)
+        return TRUE; /* Note early return */
+    }
 
   const gboolean is_symlink = (g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK);
   const gboolean is_whiteout = (!is_symlink && options->process_whiteouts &&
@@ -750,6 +766,41 @@ checkout_one_file_at (OstreeRepo                        *repo,
   return TRUE;
 }
 
+static inline void
+push_path_element_once (GString    *buf,
+                        const char *name,
+                        gboolean    is_dir)
+{
+  g_string_append (buf, name);
+  if (is_dir)
+    g_string_append_c (buf, '/');
+}
+
+static inline void
+push_path_element (OstreeRepoCheckoutAtOptions *options,
+                   CheckoutState               *state,
+                   const char                  *name,
+                   gboolean                     is_dir)
+{
+  if (state->path_buf)
+    push_path_element_once (state->path_buf, name, is_dir);
+  if (state->selabel_path_buf && (state->selabel_path_buf != state->path_buf))
+    push_path_element_once (state->selabel_path_buf, name, is_dir);
+}
+
+static inline void
+pop_path_element (OstreeRepoCheckoutAtOptions *options,
+                  CheckoutState               *state,
+                  const char                  *name,
+                  gboolean                     is_dir)
+{
+  const size_t n = strlen (name) + (is_dir ? 1 : 0);
+  if (state->path_buf)
+    g_string_truncate (state->path_buf, state->path_buf->len - n);
+  if (state->selabel_path_buf && (state->selabel_path_buf != state->path_buf))
+    g_string_truncate (state->selabel_path_buf, state->selabel_path_buf->len - n);
+}
+
 /*
  * checkout_tree_at:
  * @self: Repo
@@ -799,6 +850,17 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
+
+  if (options->filter)
+    {
+      struct stat stbuf = { 0, };
+      stbuf.st_mode = mode;
+      stbuf.st_uid = uid;
+      stbuf.st_gid = gid;
+      if (options->filter (self, state->path_buf->str, &stbuf, options->filter_user_data)
+          == OSTREE_REPO_CHECKOUT_FILTER_SKIP)
+        return TRUE; /* Note early return */
+    }
 
   /* First, make the directory.  Push a new scope in case we end up using
    * setfscreatecon().
@@ -865,7 +927,6 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
         return FALSE;
     }
 
-  GString *selabel_path_buf = state->selabel_path_buf;
   /* Process files in this subdir */
   { g_autoptr(GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
     GVariantIter viter;
@@ -874,9 +935,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
     g_autoptr(GVariant) contents_csum_v = NULL;
     while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, &contents_csum_v))
       {
-        const size_t origlen = selabel_path_buf ? selabel_path_buf->len : 0;
-        if (selabel_path_buf)
-          g_string_append (selabel_path_buf, fname);
+        push_path_element (options, state, fname, FALSE);
 
         char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
         _ostree_checksum_inplace_from_bytes_v (contents_csum_v, tmp_checksum);
@@ -887,8 +946,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
                                    cancellable, error))
           return FALSE;
 
-        if (selabel_path_buf)
-          g_string_truncate (selabel_path_buf, origlen);
+        pop_path_element (options, state, fname, FALSE);
       }
     contents_csum_v = NULL; /* iter_loop freed it */
   }
@@ -912,12 +970,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
         if (!ot_util_filename_validate (dname, error))
           return FALSE;
 
-        const size_t origlen = selabel_path_buf ? selabel_path_buf->len : 0;
-        if (selabel_path_buf)
-          {
-            g_string_append (selabel_path_buf, dname);
-            g_string_append_c (selabel_path_buf, '/');
-          }
+        push_path_element (options, state, dname, TRUE);
 
         char subdirtree_checksum[OSTREE_SHA256_STRING_LEN+1];
         _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, subdirtree_checksum);
@@ -929,8 +982,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
                                        cancellable, error))
           return FALSE;
 
-        if (selabel_path_buf)
-          g_string_truncate (selabel_path_buf, origlen);
+        pop_path_element (options, state, dname, TRUE);
       }
   }
 
@@ -992,18 +1044,31 @@ checkout_tree_at (OstreeRepo                        *self,
                   GError                           **error)
 {
   g_auto(CheckoutState) state = { 0, };
-  // If SELinux labeling is enabled, we need to keep track of the full path string
+
+  if (options->filter)
+    state.path_buf = g_string_new ("/");
+
+  /* If SELinux labeling is enabled, we need to keep track of the full path string */
   if (options->sepolicy)
     {
-      GString *buf = g_string_new (options->sepolicy_prefix ?: options->subpath);
-      g_assert_cmpint (buf->len, >, 0);
-      // Ensure it ends with /
-      if (buf->str[buf->len-1] != '/')
-        g_string_append_c (buf, '/');
-      state.selabel_path_buf = buf;
-
       /* Otherwise it'd just be corrupting things, and there's no use case */
       g_assert (options->force_copy);
+
+      const char *prefix = options->sepolicy_prefix ?: options->subpath;
+      if (g_str_equal (prefix, "/") && state.path_buf)
+        {
+          /* just use the same scratchpad if we can */
+          state.selabel_path_buf = state.path_buf;
+        }
+      else
+        {
+          GString *buf = g_string_new (prefix);
+          g_assert_cmpint (buf->len, >, 0);
+          /* Ensure it ends with / */
+          if (buf->str[buf->len-1] != '/')
+            g_string_append_c (buf, '/');
+          state.selabel_path_buf = buf;
+        }
     }
 
   /* Special case handling for subpath of a non-directory */
@@ -1017,7 +1082,7 @@ checkout_tree_at (OstreeRepo                        *self,
        */
       int destination_dfd = destination_parent_fd;
       glnx_autofd int destination_dfd_owned = -1;
-      if (strcmp (destination_name, ".") != 0)
+      if (!g_str_equal (destination_name, "."))
         {
           if (mkdirat (destination_parent_fd, destination_name, 0700) < 0
               && errno != EEXIST)
@@ -1027,6 +1092,9 @@ checkout_tree_at (OstreeRepo                        *self,
             return FALSE;
           destination_dfd = destination_dfd_owned;
         }
+      /* let's just ignore filter here; I can't think of a useful case for filtering when
+       * only checking out one path */
+      options->filter = NULL;
       return checkout_one_file_at (self, options, &state,
                                    ostree_repo_file_get_checksum (source),
                                    destination_dfd,

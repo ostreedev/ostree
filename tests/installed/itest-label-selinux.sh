@@ -69,7 +69,19 @@ ostree checkout testbranch --selinux-policy / \
   --subpath subdir --selinux-prefix / co
 newcon=$(getfattr --only-values -m security.selinux co/usr/bin/bash)
 assert_streq "${oldcon}" "${newcon}"
-
-ostree refs --delete testbranch
 rm co -rf
 echo "ok checkout with sepolicy and selinux-prefix"
+
+# Now check that combining --selinux-policy with --skip-list doesn't blow up
+echo > skip-list.txt << EOF
+/usr/bin/true
+EOF
+ostree checkout testbranch --selinux-policy / --skip-list skip-list.txt \
+  --subpath subdir --selinux-prefix / co
+! test -f co/usr/bin/true
+test -f co/usr/bin/bash
+newcon=$(getfattr --only-values -m security.selinux co/usr/bin/bash)
+assert_streq "${oldcon}" "${newcon}"
+rm co -rf
+ostree refs --delete testbranch
+echo "ok checkout selinux and skip-list"
