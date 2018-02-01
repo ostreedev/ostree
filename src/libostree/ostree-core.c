@@ -1687,6 +1687,26 @@ _ostree_stbuf_to_gfileinfo (const struct stat *stbuf)
 }
 
 /**
+ * _ostree_gfileinfo_to_stbuf:
+ * @file_info: File info
+ * @out_stbuf: (out): stat buffer
+ *
+ * Map GFileInfo data from @file_info onto @out_stbuf.
+ */
+void
+_ostree_gfileinfo_to_stbuf (GFileInfo    *file_info,
+                            struct stat  *out_stbuf)
+{
+  struct stat stbuf = {0,};
+  stbuf.st_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+  stbuf.st_uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  stbuf.st_gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
+  if (S_ISREG (stbuf.st_mode))
+    stbuf.st_size = g_file_info_get_attribute_uint64 (file_info, "standard::size");
+  *out_stbuf = stbuf;
+}
+
+/**
  * _ostree_gfileinfo_equal:
  * @a: First file info
  * @b: Second file info

@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((79 + ${extra_basic_tests:-0}))"
+echo "1..$((81 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -517,6 +517,35 @@ $OSTREE checkout --subpath /baz/saucer test2 .
 assert_file_has_content saucer alien
 rm t -rf
 echo "ok checkout subpath"
+
+cd ${test_tmpdir}
+rm -rf checkout-test2-skiplist
+cat > test-skiplist.txt <<EOF
+/baz/saucer
+/yet/another/tree
+EOF
+$OSTREE checkout --skip-list test-skiplist.txt test2 checkout-test2-skiplist
+cd checkout-test2-skiplist
+! test -f baz/saucer
+! test -d yet/another/tree
+test -f baz/cow
+test -d baz/deeper
+echo "ok checkout skip-list"
+
+cd ${test_tmpdir}
+rm -rf checkout-test2-skiplist
+cat > test-skiplist.txt <<EOF
+/saucer
+/deeper
+EOF
+$OSTREE checkout --skip-list test-skiplist.txt --subpath /baz \
+  test2 checkout-test2-skiplist
+cd checkout-test2-skiplist
+! test -f saucer
+! test -d deeper
+test -f cow
+test -d another
+echo "ok checkout skip-list with subpath"
 
 cd ${test_tmpdir}
 $OSTREE checkout  --union test2 checkout-test2-union
