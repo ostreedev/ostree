@@ -99,20 +99,38 @@ sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults,
  * hardlink if we're on the same partition.
  */
 static gboolean
-hardlink_or_copy_at (int         src_dfd,
-                     const char *src_subpath,
-                     int         dest_dfd,
-                     const char *dest_subpath,
-                     OstreeSysrootDebugFlags flags,
-                     GCancellable  *cancellable,
-                     GError       **error)
+install_into_boot (OstreeSePolicy *sepolicy,
+                   int         src_dfd,
+                   const char *src_subpath,
+                   int         dest_dfd,
+                   const char *dest_subpath,
+                   OstreeSysrootDebugFlags flags,
+                   GCancellable  *cancellable,
+                   GError       **error)
 {
   if (linkat (src_dfd, src_subpath, dest_dfd, dest_subpath, 0) != 0)
     {
       if (G_IN_SET (errno, EMLINK, EXDEV))
-        return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath,
-                                  sysroot_flags_to_copy_flags (0, flags),
-                                  cancellable, error);
+        {
+          /* Be sure we relabel when copying the kernel, as in current
+           * e.g. Fedora it might be labeled module_object_t or usr_t,
+           * but policy may not allow other processes to read from that
+           * like kdump.
+           * See also https://github.com/fedora-selinux/selinux-policy/commit/747f4e6775d773ab74efae5aa37f3e5e7f0d4aca
+           * This means we also drop xattrs but...I doubt anyone uses
+           * non-SELinux xattrs for the kernel anyways aside from perhaps
+           * IMA but that's its own story.
+           */
+          g_auto(OstreeSepolicyFsCreatecon) fscreatecon = { 0, };
+          const char *boot_path = glnx_strjoina ("/boot/", glnx_basename (dest_subpath));
+          if (!_ostree_sepolicy_preparefscreatecon (&fscreatecon, sepolicy,
+                                                    boot_path, S_IFREG | 0644,
+                                                    error))
+            return FALSE;
+          return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath,
+                                    GLNX_FILE_COPY_NOXATTRS,
+                                    cancellable, error);
+        }
       else
         return glnx_throw_errno_prefix (error, "linkat(%s)", dest_subpath);
     }
@@ -1617,6 +1635,11 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                        &deployment_dfd, error))
     return FALSE;
 
+  /* We need to label the kernels */
+  g_autoptr(OstreeSePolicy) sepolicy = ostree_sepolicy_new_at (deployment_dfd, cancellable, error);
+  if (!sepolicy)
+    return FALSE;
+
   /* Find the kernel/initramfs/devicetree in the tree */
   g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
   if (!get_kernel_from_tree (deployment_dfd, &kernel_layout,
@@ -1652,11 +1675,10 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     return FALSE;
   if (errno == ENOENT)
     {
-      if (!hardlink_or_copy_at (kernel_layout->boot_dfd,
-                                kernel_layout->kernel_srcpath,
-                                bootcsum_dfd, kernel_layout->kernel_namever,
-                                sysroot->debug_flags,
-                                cancellable, error))
+      if (!install_into_boot (sepolicy, kernel_layout->boot_dfd, kernel_layout->kernel_srcpath,
+                              bootcsum_dfd, kernel_layout->kernel_namever,
+                              sysroot->debug_flags,
+                              cancellable, error))
         return FALSE;
     }
 
@@ -1670,10 +1692,10 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         return FALSE;
       if (errno == ENOENT)
         {
-          if (!hardlink_or_copy_at (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
-                                    bootcsum_dfd, kernel_layout->initramfs_namever,
-                                    sysroot->debug_flags,
-                                    cancellable, error))
+          if (!install_into_boot (sepolicy, kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
+                                  bootcsum_dfd, kernel_layout->initramfs_namever,
+                                  sysroot->debug_flags,
+                                  cancellable, error))
             return FALSE;
         }
     }
@@ -1685,10 +1707,10 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         return FALSE;
       if (errno == ENOENT)
         {
-          if (!hardlink_or_copy_at (kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
-                                    bootcsum_dfd, kernel_layout->devicetree_namever,
-                                    sysroot->debug_flags,
-                                    cancellable, error))
+          if (!install_into_boot (sepolicy, kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
+                                  bootcsum_dfd, kernel_layout->devicetree_namever,
+                                  sysroot->debug_flags,
+                                  cancellable, error))
             return FALSE;
         }
     }
