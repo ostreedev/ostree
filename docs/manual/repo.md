@@ -143,3 +143,6 @@ the only way to provide GPG signatures (transitively) on deltas.
 If a repository administrator creates a summary file, they must
 thereafter run `ostree summary -u` to update it whenever a ref is
 updated or a static delta is generated.
+
+###### Licensing for this document:
+`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`

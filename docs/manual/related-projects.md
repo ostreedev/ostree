@@ -353,3 +353,6 @@ was intended to address this, but it was not adopted in the end for v2.
 The [Balena](https://github.com/resin-os/balena) project forks Docker and aims
 to even use Docker/OCI format for the root filesystem, and adds wire deltas
 using librsync.  See also [discussion on  libostree-list](https://mail.gnome.org/archives/ostree-list/2017-December/msg00002.html).
+
+###### Licensing for this document:
+`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
