@@ -29,4 +29,28 @@ for file in fstab passwd exports hostname sysctl.conf yum.repos.d \
     assert_streq "${current}" "${new}"
 done
 
+# Cleanup
 ostree admin undeploy 0
+
+cd /ostree/repo/tmp
+ostree checkout --fsync=0 -H ${host_commit} test-label
+rm test-label/usr/lib/ostree-boot/vmlinuz*
+rm test-label/usr/lib/ostree-boot/initramfs*
+cd test-label/usr/lib/modules/*
+rm initramfs.img
+echo new initramfs > initramfs.img
+cd -
+ostree commit --link-checkout-speedup --selinux-policy=test-label -b test-label --consume --tree=dir=test-label
+
+ostree admin deploy --karg-proc-cmdline test-label
+
+# This captures all of the boot entries; it'd be slightly annoying
+# to try to figure out the accurate one, so let's just ensure that at least
+# one entry is boot_t.
+# https://bugzilla.redhat.com/show_bug.cgi?id=1536991
+ls -Z /boot/ostree/*/ > bootlsz.txt
+assert_file_has_content_literal bootlsz.txt 'system_u:object_r:boot_t:s0 vmlinuz-'
+assert_file_has_content_literal bootlsz.txt 'system_u:object_r:boot_t:s0 initramfs-'
+
+ostree admin undeploy 0
+ostree refs --delete test-label
