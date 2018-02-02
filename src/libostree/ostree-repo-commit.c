@@ -30,6 +30,8 @@
 #include <gio/gunixoutputstream.h>
 #include <sys/xattr.h>
 #include <glib/gprintf.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
 
 #include "otutil.h"
 #include "ostree.h"
@@ -39,6 +41,12 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-checksum-input-stream.h"
 #include "ostree-varint.h"
+
+/* The standardized version of BTRFS_IOC_CLONE */
+#ifndef FICLONE
+#define FICLONE _IOW(0x94, 9, int)
+#endif
+
 
 /* If fsync is enabled and we're in a txn, we write into a staging dir for
  * commit, but we also allow direct writes into objects/ for e.g. hardlink
@@ -589,6 +597,192 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
   return TRUE;
 }
 
+static gboolean
+_check_support_reflink (OstreeRepo *self, gboolean *supported, GError **error)
+{
+  /* We have not checked yet if the file system supports reflinks, do it here */
+  if (g_atomic_int_get (&self->fs_support_reflink) == 0)
+    {
+      g_auto(GLnxTmpfile) src_tmpf = { 0, };
+      g_auto(GLnxTmpfile) dest_tmpf = { 0, };
+
+      if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_RDWR|O_CLOEXEC,
+                                          &src_tmpf, error))
+        return FALSE;
+      if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
+                                          &dest_tmpf, error))
+        return FALSE;
+
+      if (ioctl (dest_tmpf.fd, FICLONE, src_tmpf.fd) == 0)
+        g_atomic_int_set (&self->fs_support_reflink, 1);
+      else if (errno == EOPNOTSUPP)  /* Ignore other kind of errors as they might be temporary failures */
+        g_atomic_int_set (&self->fs_support_reflink, -1);
+    }
+  *supported = g_atomic_int_get (&self->fs_support_reflink) >= 0;
+  return TRUE;
+}
+
+static gboolean
+_create_payload_link (OstreeRepo   *self,
+                      const char   *checksum,
+                      const char   *payload_checksum,
+                      GFileInfo    *file_info,
+                      GCancellable *cancellable,
+                      GError       **error)
+{
+  gboolean reflinks_supported = FALSE;
+  if (!_check_support_reflink (self, &reflinks_supported, error))
+    return FALSE;
+
+  if (!reflinks_supported)
+    return TRUE;
+
+  if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_REGULAR
+      || !G_IN_SET(self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER, OSTREE_REPO_MODE_BARE_USER_ONLY))
+    return TRUE;
+
+  if (payload_checksum == NULL || g_file_info_get_size (file_info) < self->payload_link_threshold)
+    return TRUE;
+
+  char target_buf[_OSTREE_LOOSE_PATH_MAX + _OSTREE_PAYLOAD_LINK_PREFIX_LEN];
+  strcpy (target_buf, _OSTREE_PAYLOAD_LINK_PREFIX);
+  _ostree_loose_path (target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
+
+  if (symlinkat (target_buf, commit_tmp_dfd (self), payload_checksum) < 0)
+    {
+      if (errno != EEXIST)
+        return glnx_throw_errno_prefix (error, "symlinkat");
+    }
+  else
+    {
+      g_auto(OtCleanupUnlinkat) tmp_unlinker = { commit_tmp_dfd (self), g_strdup (payload_checksum) };
+      if (!commit_path_final (self, payload_checksum, OSTREE_OBJECT_TYPE_PAYLOAD_LINK, &tmp_unlinker, cancellable, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_import_payload_link (OstreeRepo   *self,
+                      OstreeRepo   *source,
+                      const char   *checksum,
+                      GCancellable *cancellable,
+                      GError       **error)
+{
+  gboolean reflinks_supported = FALSE;
+  g_autofree char *payload_checksum = NULL;
+  g_autoptr(GInputStream) is = NULL;
+  glnx_unref_object OtChecksumInstream *checksum_payload = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
+
+  if (!_check_support_reflink (self, &reflinks_supported, error))
+    return FALSE;
+
+  if (!reflinks_supported)
+    return TRUE;
+
+  if (!G_IN_SET(self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER, OSTREE_REPO_MODE_BARE_USER_ONLY))
+    return TRUE;
+
+  if (!ostree_repo_load_file (source, checksum, &is, &file_info, NULL, cancellable, error))
+    return FALSE;
+
+  if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_REGULAR
+      || g_file_info_get_size (file_info) < self->payload_link_threshold)
+    return TRUE;
+
+  checksum_payload = ot_checksum_instream_new (is, G_CHECKSUM_SHA256);
+
+  guint64 remaining = g_file_info_get_size (file_info);
+  while (remaining)
+    {
+      char buf[8192];
+      gssize ret = g_input_stream_read ((GInputStream *) checksum_payload, buf,
+                                        MIN (sizeof (buf), remaining), cancellable, error);
+      if (ret < 0)
+        return FALSE;
+      remaining -= ret;
+    }
+  payload_checksum = ot_checksum_instream_get_string (checksum_payload);
+
+  return _create_payload_link (self, checksum, payload_checksum, file_info, cancellable, error);
+}
+
+static gboolean
+_try_clone_from_payload_link (OstreeRepo   *self,
+                              const char   *payload_checksum,
+                              GFileInfo    *file_info,
+                              GLnxTmpfile  *tmpf,
+                              GCancellable *cancellable,
+                              GError       **error)
+{
+  gboolean reflinks_supported = FALSE;
+  int dfd_searches[] = { -1, self->objects_dir_fd };
+  if (self->commit_stagedir.initialized)
+    dfd_searches[0] = self->commit_stagedir.fd;
+
+  if (!_check_support_reflink (self, &reflinks_supported, error))
+    return FALSE;
+
+  if (!reflinks_supported)
+    return TRUE;
+
+  for (guint i = 0; i < G_N_ELEMENTS (dfd_searches); i++)
+    {
+      glnx_autofd int fdf = -1;
+      char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+      char loose_path_target_buf[_OSTREE_LOOSE_PATH_MAX];
+      char target_buf[_OSTREE_LOOSE_PATH_MAX + _OSTREE_PAYLOAD_LINK_PREFIX_LEN];
+      char target_checksum[OSTREE_SHA256_STRING_LEN+1];
+      int dfd = dfd_searches[i];
+      ssize_t size;
+      if (dfd == -1)
+        continue;
+
+      _ostree_loose_path (loose_path_buf, payload_checksum, OSTREE_OBJECT_TYPE_PAYLOAD_LINK, self->mode);
+
+      size = TEMP_FAILURE_RETRY (readlinkat (dfd, loose_path_buf, target_buf, sizeof (target_buf)));
+      if (size < 0)
+        {
+          if (errno == ENOENT)
+            continue;
+          return glnx_throw_errno_prefix (error, "readlinkat");
+        }
+
+      if (size < OSTREE_SHA256_STRING_LEN + _OSTREE_PAYLOAD_LINK_PREFIX_LEN)
+        return glnx_throw (error, "invalid data size for %s", loose_path_buf);
+
+      sprintf (target_checksum, "%.2s%.62s", target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN, target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN + 3);
+
+      _ostree_loose_path (loose_path_target_buf, target_checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
+      if (!ot_openat_ignore_enoent (dfd, loose_path_target_buf, &fdf, error))
+        return FALSE;
+
+      if (fdf < 0)
+        {
+          /* If the link is referring to an object that doesn't exist anymore in the repository, just unlink it.  */
+          if (!glnx_unlinkat (dfd, loose_path_buf, 0, error))
+            return FALSE;
+        }
+      else
+        {
+          /* This undoes all of the previous writes; we want to generate reflinked data.   */
+          if (ftruncate (tmpf->fd, 0) < 0)
+            return glnx_throw_errno_prefix (error, "ftruncate");
+
+          if (glnx_regfile_copy_bytes (fdf, tmpf->fd, -1) < 0)
+            return glnx_throw_errno_prefix (error, "regfile copy");
+
+          return TRUE;
+        }
+    }
+  if (self->parent_repo)
+    return _try_clone_from_payload_link (self->parent_repo, payload_checksum, file_info, tmpf, cancellable, error);
+
+  return TRUE;
+}
+
 /* The main driver for writing a content (regfile or symlink) object.
  * There are a variety of tricky cases here; for example, bare-user
  * repos store symlinks as regular files.  Computing checksums
@@ -616,6 +810,8 @@ write_content_object (OstreeRepo         *self,
   GInputStream *file_input; /* Unowned alias */
   g_autoptr(GInputStream) file_input_owned = NULL; /* We need a temporary for bare-user symlinks */
   glnx_unref_object OtChecksumInstream *checksum_input = NULL;
+  glnx_unref_object OtChecksumInstream *checksum_payload_input = NULL;
+  const GFileType object_file_type = g_file_info_get_file_type (file_info);
   if (out_csum)
     {
       /* Previously we checksummed the input verbatim; now
@@ -624,6 +820,7 @@ write_content_object (OstreeRepo         *self,
        * it's not that's not a serious problem because we're still computing a
        * checksum over the data we actually use.
        */
+      gboolean reflinks_supported = FALSE;
       g_autoptr(GBytes) header = _ostree_file_header_new (file_info, xattrs);
       size_t len;
       const guint8 *buf = g_bytes_get_data (header, &len);
@@ -633,13 +830,26 @@ write_content_object (OstreeRepo         *self,
         null_input = input = g_memory_input_stream_new_from_data ("", 0, NULL);
       checksum_input = ot_checksum_instream_new_with_start (input, G_CHECKSUM_SHA256,
                                                             buf, len);
-      file_input = (GInputStream*)checksum_input;
+
+      if (!_check_support_reflink (self, &reflinks_supported, error))
+        return FALSE;
+
+      if (xattrs == NULL || !G_IN_SET(self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER, OSTREE_REPO_MODE_BARE_USER_ONLY) || object_file_type != G_FILE_TYPE_REGULAR ||
+          !reflinks_supported)
+        file_input = (GInputStream*)checksum_input;
+      else
+        {
+          /* The payload checksum-input reads from the full object checksum-input; this
+           * means it skips the header.
+           */
+          checksum_payload_input = ot_checksum_instream_new ((GInputStream*)checksum_input, G_CHECKSUM_SHA256);
+          file_input = (GInputStream*)checksum_payload_input;
+        }
     }
   else
     file_input = input;
 
   gboolean phys_object_is_symlink = FALSE;
-  const GFileType object_file_type = g_file_info_get_file_type (file_info);
   switch (object_file_type)
     {
     case G_FILE_TYPE_REGULAR:
@@ -765,6 +975,7 @@ write_content_object (OstreeRepo         *self,
     }
 
   const char *actual_checksum = NULL;
+  g_autofree char *actual_payload_checksum = NULL;
   g_autofree char *actual_checksum_owned = NULL;
   if (!checksum_input)
     actual_checksum = expected_checksum;
@@ -777,6 +988,9 @@ write_content_object (OstreeRepo         *self,
                                                 error))
             return FALSE;
         }
+
+      if (checksum_payload_input)
+        actual_payload_checksum = ot_checksum_instream_get_string (checksum_payload_input);
     }
 
   g_assert (actual_checksum != NULL); /* Pacify static analysis */
@@ -794,6 +1008,10 @@ write_content_object (OstreeRepo         *self,
       g_mutex_lock (&self->txn_lock);
       self->txn.stats.content_objects_total++;
       g_mutex_unlock (&self->txn_lock);
+
+      if (!_create_payload_link (self, actual_checksum, actual_payload_checksum, file_info, cancellable, error))
+        return FALSE;
+
       if (out_csum)
         *out_csum = ostree_checksum_to_bytes (actual_checksum);
       /* Note early return */
@@ -853,11 +1071,19 @@ write_content_object (OstreeRepo         *self,
           repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
         }
 
+      /* Check if a file with the same payload is present in the repository,
+         and in case try to reflink it */
+      if (actual_payload_checksum && !_try_clone_from_payload_link (self, actual_payload_checksum, file_info, &tmpf, cancellable, error))
+        return FALSE;
+
       /* This path is for regular files */
       if (!commit_loose_regfile_object (self, actual_checksum, &tmpf,
                                         uid, gid, mode,
                                         xattrs,
                                         cancellable, error))
+        return FALSE;
+
+      if (!_create_payload_link (self, actual_checksum, actual_payload_checksum, file_info, cancellable, error))
         return FALSE;
     }
 
@@ -3999,7 +4225,11 @@ import_one_object_direct (OstreeRepo    *dest_repo,
       if (!copy_detached_metadata (dest_repo, src_repo, checksum, cancellable, error))
         return FALSE;
     }
-
+  else if (objtype == OSTREE_OBJECT_TYPE_FILE)
+    {
+      if (!_import_payload_link (dest_repo, src_repo, checksum, cancellable, error))
+        return FALSE;
+    }
   *out_was_supported = TRUE;
   return TRUE;
 }
@@ -4092,7 +4322,14 @@ _ostree_repo_import_object (OstreeRepo           *self,
     return FALSE;
   /* If we have it, we're done */
   if (has_object)
-    return TRUE;
+    {
+      if (objtype == OSTREE_OBJECT_TYPE_FILE)
+        {
+          if (!_import_payload_link (self, source, checksum, cancellable, error))
+            return FALSE;
+        }
+      return TRUE;
+    }
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {

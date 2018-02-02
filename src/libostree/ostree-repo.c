@@ -2827,6 +2827,15 @@ reload_core_config (OstreeRepo          *self,
       return FALSE;
   }
 
+  { g_autofree char *payload_threshold = NULL;
+
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "payload-link-threshold", "-1",
+                                            &payload_threshold, error))
+      return FALSE;
+
+    self->payload_link_threshold = g_ascii_strtoull (payload_threshold, NULL, 10);
+  }
+
   return TRUE;
 }
 

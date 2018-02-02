@@ -145,6 +145,13 @@ Boston, MA 02111-1307, USA.
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><varname>payload-link-threshold</varname></term>
+        <listitem><para>An integer value that specifies a minimum file size for creating
+        a payload link.  By default it is disabled.
+        </para></listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 
