@@ -68,6 +68,7 @@ G_BEGIN_DECLS
  * @OSTREE_OBJECT_TYPE_COMMIT: Toplevel object, refers to tree and dirmeta for root
  * @OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT: Toplevel object, refers to a deleted commit
  * @OSTREE_OBJECT_TYPE_COMMIT_META: Detached metadata for a commit
+ * @OSTREE_OBJECT_TYPE_PAYLOAD_LINK: Symlink to a .file given its checksum on the payload only.
  *
  * Enumeration for core object types; %OSTREE_OBJECT_TYPE_FILE is for
  * content, the other types are metadata.
@@ -79,6 +80,7 @@ typedef enum {
   OSTREE_OBJECT_TYPE_COMMIT = 4,              /* .commit */
   OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT = 5,    /* .commit-tombstone */
   OSTREE_OBJECT_TYPE_COMMIT_META = 6,         /* .commitmeta */
+  OSTREE_OBJECT_TYPE_PAYLOAD_LINK = 7,         /* .payload-link */
 } OstreeObjectType;
 
 /**
@@ -94,7 +96,7 @@ typedef enum {
  *
  * Last valid object type; use this to validate ranges.
  */
-#define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_COMMIT_META
+#define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_PAYLOAD_LINK
 
 /**
  * OSTREE_DIRMETA_GVARIANT_FORMAT:

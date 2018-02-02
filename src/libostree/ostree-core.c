@@ -1239,6 +1239,8 @@ ostree_object_type_to_string (OstreeObjectType objtype)
       return "tombstone-commit";
     case OSTREE_OBJECT_TYPE_COMMIT_META:
       return "commitmeta";
+    case OSTREE_OBJECT_TYPE_PAYLOAD_LINK:
+      return "payload-link";
     default:
       g_assert_not_reached ();
       return NULL;
@@ -1266,6 +1268,8 @@ ostree_object_type_from_string (const char *str)
     return OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT;
   else if (!strcmp (str, "commitmeta"))
     return OSTREE_OBJECT_TYPE_COMMIT_META;
+  else if (!strcmp (str, "payload-link"))
+    return OSTREE_OBJECT_TYPE_PAYLOAD_LINK;
   g_assert_not_reached ();
   return 0;
 }
@@ -2122,6 +2126,7 @@ _ostree_validate_structureof_metadata (OstreeObjectType objtype,
       break;
     case OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT:
     case OSTREE_OBJECT_TYPE_COMMIT_META:
+    case OSTREE_OBJECT_TYPE_PAYLOAD_LINK:
       /* TODO */
       break;
     case OSTREE_OBJECT_TYPE_FILE:
