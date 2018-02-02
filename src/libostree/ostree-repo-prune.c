@@ -46,11 +46,14 @@ maybe_prune_loose_object (OtPruneData        *data,
                           GCancellable       *cancellable,
                           GError            **error)
 {
+  gboolean reachable = FALSE;
   g_autoptr(GVariant) key = NULL;
 
   key = ostree_object_name_serialize (checksum, objtype);
 
-  if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
+  if (g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
+    reachable = TRUE;
+  else
     {
       guint64 storage_size = 0;
 
@@ -65,7 +68,38 @@ maybe_prune_loose_object (OtPruneData        *data,
 
       if (!(flags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE))
         {
-          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+          if (objtype == OSTREE_OBJECT_TYPE_PAYLOAD_LINK)
+            {
+              ssize_t size;
+              char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+              char target_checksum[OSTREE_SHA256_STRING_LEN+1];
+              char target_buf[_OSTREE_LOOSE_PATH_MAX + _OSTREE_PAYLOAD_LINK_PREFIX_LEN];
+
+              _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_PAYLOAD_LINK, data->repo->mode);
+              size = readlinkat (data->repo->objects_dir_fd, loose_path_buf, target_buf, sizeof (target_buf));
+              if (size < 0)
+                return glnx_throw_errno_prefix (error, "readlinkat");
+
+              if (size < OSTREE_SHA256_STRING_LEN + _OSTREE_PAYLOAD_LINK_PREFIX_LEN)
+                return glnx_throw (error, "invalid data size for %s", loose_path_buf);
+
+              sprintf (target_checksum, "%.2s%.62s", target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN, target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN + 3);
+
+              g_autoptr(GVariant) target_key = ostree_object_name_serialize (target_checksum, OSTREE_OBJECT_TYPE_FILE);
+
+              if (g_hash_table_lookup_extended (data->reachable, target_key, NULL, NULL))
+                {
+                  guint64 target_storage_size = 0;
+                  if (!ostree_repo_query_object_storage_size (data->repo, OSTREE_OBJECT_TYPE_FILE, target_checksum,
+                                                              &target_storage_size, cancellable, error))
+                    return FALSE;
+
+                  reachable = target_storage_size >= data->repo->payload_link_threshold;
+                  if (reachable)
+                    goto exit;
+                }
+            }
+          else if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!ostree_repo_mark_commit_partial (data->repo, checksum, FALSE, error))
                 return FALSE;
@@ -82,7 +116,9 @@ maybe_prune_loose_object (OtPruneData        *data,
       else
         data->n_unreachable_content++;
     }
-  else
+
+ exit:
+  if (reachable)
     {
       g_debug ("Keeping needed object %s.%s", checksum,
                ostree_object_type_to_string (objtype));
@@ -286,7 +322,7 @@ repo_prune_internal (OstreeRepo        *self,
  * of traversing all commits, only refs will be used.  Particularly
  * when combined with @depth, this is a convenient way to delete
  * history from the repository.
- * 
+ *
  * Use the %OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE to just determine
  * statistics on objects that would be deleted, without actually
  * deleting them.
