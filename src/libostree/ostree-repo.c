@@ -3278,6 +3278,8 @@ list_loose_objects_at (OstreeRepo             *self,
         objtype = OSTREE_OBJECT_TYPE_DIR_META;
       else if (strcmp (dot, ".commit") == 0)
         objtype = OSTREE_OBJECT_TYPE_COMMIT;
+      else if (strcmp (dot, ".payload-link") == 0)
+        objtype = OSTREE_OBJECT_TYPE_PAYLOAD_LINK;
       else
         continue;
 
