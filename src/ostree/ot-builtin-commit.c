@@ -124,32 +124,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static gboolean
-parse_file_by_line (const char    *path,
-                    gboolean     (*cb)(const char*, void*, GError**),
-                    void          *cbdata,
-                    GCancellable  *cancellable,
-                    GError       **error)
-{
-  g_autofree char *contents =
-    glnx_file_get_contents_utf8_at (AT_FDCWD, path, NULL, cancellable, error);
-  if (!contents)
-    return FALSE;
-
-  g_auto(GStrv) lines = g_strsplit (contents, "\n", -1);
-  for (char **iter = lines; iter && *iter; iter++)
-    {
-      /* skip empty lines at least */
-      if (**iter == '\0')
-        continue;
-
-      if (!cb (*iter, cbdata, error))
-        return FALSE;
-    }
-
-  return TRUE;
-}
-
 struct CommitFilterData {
   GHashTable *mode_adds;
   GHashTable *mode_overrides;
@@ -457,16 +431,16 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     {
       filter_data.mode_adds = mode_adds = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
       filter_data.mode_overrides = mode_overrides = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-      if (!parse_file_by_line (opt_statoverride_file, handle_statoverride_line,
-                               &filter_data, cancellable, error))
+      if (!ot_parse_file_by_line (opt_statoverride_file, handle_statoverride_line,
+                                  &filter_data, cancellable, error))
         goto out;
     }
 
   if (opt_skiplist_file)
     {
       skip_list = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-      if (!parse_file_by_line (opt_skiplist_file, handle_skiplist_line,
-                               skip_list, cancellable, error))
+      if (!ot_parse_file_by_line (opt_skiplist_file, handle_skiplist_line,
+                                  skip_list, cancellable, error))
         goto out;
     }
 
