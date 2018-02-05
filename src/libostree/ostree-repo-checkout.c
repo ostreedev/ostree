@@ -39,8 +39,8 @@
 /* Per-checkout call state/caching */
 typedef struct {
   GString *path_buf; /* buffer for real path if filtering enabled */
-  GString *selabel_path_buf; /* buffer for selinux path if labeling enabled */
-  gboolean shared_path_buf; /* we try to use the same buf if we can */
+  GString *selabel_path_buf; /* buffer for selinux path if labeling enabled; this may be
+                                the same buffer as path_buf */
 } CheckoutState;
 
 static void
@@ -48,7 +48,7 @@ checkout_state_clear (CheckoutState *state)
 {
   if (state->path_buf)
     g_string_free (state->path_buf, TRUE);
-  if (state->selabel_path_buf && !state->shared_path_buf)
+  if (state->selabel_path_buf && (state->selabel_path_buf != state->path_buf))
     g_string_free (state->selabel_path_buf, TRUE);
 }
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(CheckoutState, checkout_state_clear)
@@ -784,7 +784,7 @@ push_path_element (OstreeRepoCheckoutAtOptions *options,
 {
   if (state->path_buf)
     push_path_element_once (state->path_buf, name, is_dir);
-  if (state->selabel_path_buf && !state->shared_path_buf)
+  if (state->selabel_path_buf && (state->selabel_path_buf != state->path_buf))
     push_path_element_once (state->selabel_path_buf, name, is_dir);
 }
 
@@ -797,7 +797,7 @@ pop_path_element (OstreeRepoCheckoutAtOptions *options,
   const size_t n = strlen (name) + (is_dir ? 1 : 0);
   if (state->path_buf)
     g_string_truncate (state->path_buf, state->path_buf->len - n);
-  if (state->selabel_path_buf && !state->shared_path_buf)
+  if (state->selabel_path_buf && (state->selabel_path_buf != state->path_buf))
     g_string_truncate (state->selabel_path_buf, state->selabel_path_buf->len - n);
 }
 
@@ -1059,7 +1059,6 @@ checkout_tree_at (OstreeRepo                        *self,
         {
           /* just use the same scratchpad if we can */
           state.selabel_path_buf = state.path_buf;
-          state.shared_path_buf = TRUE;
         }
       else
         {
@@ -1069,7 +1068,6 @@ checkout_tree_at (OstreeRepo                        *self,
           if (buf->str[buf->len-1] != '/')
             g_string_append_c (buf, '/');
           state.selabel_path_buf = buf;
-          state.shared_path_buf = FALSE;
         }
     }
 
