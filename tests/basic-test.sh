@@ -42,6 +42,9 @@ else
     fi
 fi
 
+# This should be dynamic now
+assert_not_has_dir repo/uncompressed-objects-cache
+
 validate_checkout_basic() {
     (cd $1;
      assert_has_file firstfile
