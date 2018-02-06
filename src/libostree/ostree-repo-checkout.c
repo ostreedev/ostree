@@ -89,6 +89,17 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
   if (!glnx_fchmod (tmpf.fd, file_mode, error))
     return FALSE;
 
+  if (self->uncompressed_objects_dir_fd == -1)
+    {
+      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, "uncompressed-objects-cache", 0755,
+                                   cancellable, error))
+        return FALSE;
+      if (!glnx_opendirat (self->repo_dir_fd, "uncompressed-objects-cache", TRUE,
+                           &self->uncompressed_objects_dir_fd,
+                           error))
+        return FALSE;
+    }
+
   if (!_ostree_repo_ensure_loose_objdir_at (self->uncompressed_objects_dir_fd,
                                             loose_path,
                                             cancellable, error))
@@ -420,7 +431,11 @@ checkout_file_hardlink (OstreeRepo                          *self,
   int srcfd = _ostree_repo_mode_is_bare (self->mode) ?
     self->objects_dir_fd : self->uncompressed_objects_dir_fd;
 
-  if (linkat (srcfd, loose_path, destination_dfd, destination_name, 0) == 0)
+  if (srcfd == -1)
+    {
+      /* Fall through; we don't have an uncompressed object cache */
+    }
+  else if (linkat (srcfd, loose_path, destination_dfd, destination_name, 0) == 0)
     ret_result = HARDLINK_RESULT_LINKED;
   else if (!options->no_copy_fallback && (errno == EMLINK || errno == EXDEV || errno == EPERM))
     {
@@ -430,6 +445,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
     }
   else if (allow_noent && errno == ENOENT)
     {
+      /* Fall through */
     }
   else if (errno == EEXIST)
     {
@@ -1069,6 +1085,19 @@ checkout_tree_at (OstreeRepo                        *self,
             g_string_append_c (buf, '/');
           state.selabel_path_buf = buf;
         }
+    }
+
+  /* Uncompressed archive caches; should be considered deprecated */
+  const gboolean can_cache = (options->enable_uncompressed_cache
+                              && self->enable_uncompressed_cache);
+  if (can_cache
+      && !_ostree_repo_mode_is_bare (self->mode)
+      && self->uncompressed_objects_dir_fd < 0)
+    {
+      self->uncompressed_objects_dir_fd =
+        glnx_opendirat_with_errno (self->repo_dir_fd, "uncompressed-objects-cache", TRUE);
+      if (self->uncompressed_objects_dir_fd < 0 && errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "opendir(uncompressed-objects-cache)");
     }
 
   /* Special case handling for subpath of a non-directory */
