@@ -4920,7 +4920,7 @@ find_remotes_cb (GObject      *obj,
    * remote, or %NULL if the remote doesn’t have that ref. */
   n_refs = g_strv_length ((gchar **) refs);  /* it’s not a GStrv, but this works */
   refs_and_remotes_table = pointer_table_new (n_refs, results->len);
-  remotes_to_remove = g_ptr_array_new_with_free_func (NULL);
+  remotes_to_remove = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_remote_unref);
 
   /* Fetch and validate the summary file for each result. */
   /* FIXME: All these downloads could be parallelised; that requires the
@@ -4940,7 +4940,7 @@ find_remotes_cb (GObject      *obj,
       /* Add the remote to our internal list of remotes, so other libostree
        * API can access it. */
       if (!_ostree_repo_add_remote (self, result->remote))
-        g_ptr_array_add (remotes_to_remove, result->remote);
+        g_ptr_array_add (remotes_to_remove, ostree_remote_ref (result->remote));
 
       g_debug ("%s: Fetching summary for remote ‘%s’ with keyring ‘%s’.",
                G_STRFUNC, result->remote->name, result->remote->keyring);
