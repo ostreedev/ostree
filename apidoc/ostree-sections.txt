@@ -149,6 +149,7 @@ ostree_validate_structureof_dirtree
 ostree_validate_structureof_dirmeta
 ostree_commit_get_parent
 ostree_commit_get_timestamp
+ostree_commit_get_content_checksum
 ostree_check_version
 </SECTION>
 

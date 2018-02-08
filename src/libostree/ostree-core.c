@@ -2371,6 +2371,51 @@ ostree_commit_get_timestamp (GVariant  *commit_variant)
   return GUINT64_FROM_BE (ret);
 }
 
+
+/**
+ * ostree_commit_get_content_checksum:
+ * @commit_variant: A commit object
+ *
+ * There are use cases where one wants a checksum just of the content of a
+ * commit. OSTree commits by default capture the current timestamp, and may have
+ * additional metadata, which means that re-committing identical content
+ * often results in a new checksum.
+ *
+ * By comparing checksums of content, it's possible to easily distinguish
+ * cases where nothing actually changed.
+ *
+ * The content checksums is simply defined as `SHA256(root dirtree_checksum || root_dirmeta_checksum)`,
+ * i.e. the SHA-256 of the root "dirtree" object's checksum concatenated with the
+ * root "dirmeta" checksum (both in binary form, not hexadecimal).
+ *
+ * Returns: (nullable): A SHA-256 hex string, or %NULL if @commit_variant is not well-formed
+ */
+gchar *
+ostree_commit_get_content_checksum (GVariant *commit_variant)
+{
+  g_auto(OtChecksum) checksum = { 0, };
+  ot_checksum_init (&checksum);
+
+  g_autoptr(GVariant) tree_contents_csum = NULL;
+  g_autoptr(GVariant) tree_meta_csum = NULL;
+
+  g_variant_get_child (commit_variant, 6, "@ay", &tree_contents_csum);
+  g_variant_get_child (commit_variant, 7, "@ay", &tree_meta_csum);
+
+  const guchar *bytes;
+  bytes = ostree_checksum_bytes_peek_validate (tree_contents_csum, NULL);
+  if (!bytes)
+    return NULL;
+  ot_checksum_update (&checksum, bytes, OSTREE_SHA256_DIGEST_LEN);
+  bytes = ostree_checksum_bytes_peek_validate (tree_meta_csum, NULL);
+  if (!bytes)
+    return NULL;
+  ot_checksum_update (&checksum, bytes, OSTREE_SHA256_DIGEST_LEN);
+  char hexdigest[OSTREE_SHA256_STRING_LEN+1];
+  ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof (hexdigest));
+  return g_strdup (hexdigest);
+}
+
 /* Used in pull/deploy to validate we're not being downgraded */
 gboolean
 _ostree_compare_timestamps (const char   *current_rev,

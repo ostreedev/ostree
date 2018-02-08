@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((81 + ${extra_basic_tests:-0}))"
+echo "1..$((82 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -754,6 +754,16 @@ $OSTREE show test4 > show-output
 assert_file_has_content show-output "Third commit"
 assert_file_has_content show-output "commit $checksum"
 echo "ok show full output"
+
+grep -E -e '^ContentChecksum' show-output > previous-content-checksum.txt
+cd $test_tmpdir/checkout-test2
+checksum=$($OSTREE commit ${COMMIT_ARGS} -b test4 -s "Another commit with different subject")
+cd ${test_tmpdir}
+$OSTREE show test4 | grep -E -e '^ContentChecksum' > new-content-checksum.txt
+if ! diff -u previous-content-checksum.txt new-content-checksum.txt; then
+    fatal "content checksum differs"
+fi
+echo "ok content checksum"
 
 cd $test_tmpdir/checkout-test2
 checksum1=$($OSTREE commit ${COMMIT_ARGS} -b test5 -s "First commit")
