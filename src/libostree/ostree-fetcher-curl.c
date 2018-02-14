@@ -866,12 +866,6 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
   initiate_next_curl_request (req, task);
 
   g_hash_table_add (self->outstanding_requests, g_steal_pointer (&task));
-
-  /* Sanity check, I added * 2 just so we don't abort if something odd happens,
-   * but we do want to abort if we're asked to do obviously too many requests.
-   */
-  g_assert_cmpint (g_hash_table_size (self->outstanding_requests), <,
-                   _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS * 2);
 }
 
 void

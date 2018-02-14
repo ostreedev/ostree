@@ -60,7 +60,6 @@ typedef struct {
   int base_tmpdir_dfd;
 
   GVariant *extra_headers;
-  int max_outstanding;
   gboolean transfer_gzip;
 
   /* Our active HTTP requests */
@@ -386,8 +385,6 @@ start_pending_request (ThreadClosure *thread_closure,
   OstreeFetcherPendingURI *pending;
   GCancellable *cancellable;
 
-  g_assert_cmpint (g_hash_table_size (thread_closure->outstanding), <, thread_closure->max_outstanding);
-
   pending = g_task_get_task_data (task);
   cancellable = g_task_get_cancellable (task);
 
@@ -473,7 +470,6 @@ ostree_fetcher_session_thread (gpointer data)
 {
   ThreadClosure *closure = data;
   g_autoptr(GMainContext) mainctx = g_main_context_ref (closure->main_context);
-  gint max_conns;
 
   /* This becomes the GMainContext that SoupSession schedules async
    * callbacks and emits signals from.  Make it the thread-default
@@ -494,17 +490,23 @@ ostree_fetcher_session_thread (gpointer data)
 
   /* XXX: Now that we have mirrorlist support, we could make this even smarter
    * by spreading requests across mirrors. */
+  gint max_conns;
   g_object_get (closure->session, "max-conns-per-host", &max_conns, NULL);
   if (max_conns < _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS)
     {
       /* We download a lot of small objects in ostree, so this
-       * helps a lot.  Also matches what most modern browsers do. */
+       * helps a lot.  Also matches what most modern browsers do.
+       *
+       * Note since https://github.com/ostreedev/ostree/commit/f4d1334e19ce3ab2f8872b1e28da52044f559401
+       * we don't do queuing in this libsoup backend, but we still
+       * want to override libsoup's currently conservative
+       * #define SOUP_SESSION_MAX_CONNS_PER_HOST_DEFAULT 2 (as of 2018-02-14).
+       */
       max_conns = _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS;
       g_object_set (closure->session,
                     "max-conns-per-host",
                     max_conns, NULL);
     }
-  closure->max_outstanding = 3 * max_conns;
 
   /* This model ensures we don't hit a race using g_main_loop_quit();
    * see also what pull_termination_condition() in ostree-repo-pull.c
