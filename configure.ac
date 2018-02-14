@@ -519,7 +519,7 @@ AC_ARG_WITH(static-compiler,
             AS_HELP_STRING([--with-static-compiler],
                            [Use the given compiler to build ostree-prepare-root statically linked (default: no)]),,
               [with_static_compiler=no])
-AM_CONDITIONAL(BUILDOPT_USE_STATIC_COMPILER, test x$with_static_compiler != xno)
+AM_CONDITIONAL(BUILDOPT_USE_STATIC_COMPILER, test "x$with_static_compiler" != xno)
 AC_SUBST(STATIC_COMPILER, $with_static_compiler)
 
 dnl for tests (but we can't use asan with gjs or any introspection,
