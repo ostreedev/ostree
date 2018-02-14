@@ -237,14 +237,6 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      GCancellable   *cancellable,
                                      GError        **error);
 
-gboolean
-_ostree_repo_find_object (OstreeRepo           *self,
-                          OstreeObjectType      objtype,
-                          const char           *checksum,
-                          GFile               **out_stored_path,
-                          GCancellable         *cancellable,
-                          GError             **error);
-
 GFile *
 _ostree_repo_get_commit_metadata_loose_path (OstreeRepo        *self,
                                              const char        *checksum);
