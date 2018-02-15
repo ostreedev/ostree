@@ -454,6 +454,10 @@ LIBOSTREE_2017.15 {
 LIBOSTREE_2018.1 {
 } LIBOSTREE_2017.15;
 
+LIBOSTREE_2018.2 {
+  ostree_commit_get_content_checksum;
+} LIBOSTREE_2018.1;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
