@@ -17,6 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+from __future__ import division
 from __future__ import print_function
 import os
 import sys
@@ -33,8 +34,8 @@ def fatal(msg):
 # different files with different checksums.
 def mktree(dname, serial=0):
     print('Creating tree', dname, file=sys.stderr)
-    os.mkdir(dname, 0755)
-    for v in xrange(20):
+    os.mkdir(dname, 0o755)
+    for v in range(20):
         with open('{}/{}'.format(dname, v), 'w') as f:
             f.write('{} {} {}\n'.format(dname, serial, v))
 
@@ -78,13 +79,13 @@ def run(n_committers, n_pruners):
     pruners = set()
 
     print('n_committers', n_committers, 'n_pruners', n_pruners, file=sys.stderr)
-    n_trees = n_committers / 2
-    for v in xrange(n_trees):
+    n_trees = n_committers // 2
+    for v in range(n_trees):
         mktree('tree{}'.format(v))
 
-    for v in xrange(n_committers):
-        committers.add(commit(v / 2))
-    for v in xrange(n_pruners):
+    for v in range(n_committers):
+        committers.add(commit(v // 2))
+    for v in range(n_pruners):
         pruners.add(prune())
 
     failed = False
@@ -97,12 +98,12 @@ def run(n_committers, n_pruners):
     if failed:
         fatal('A child process exited abnormally')
 
-    for v in xrange(n_trees):
+    for v in range(n_trees):
         shutil.rmtree('tree{}'.format(v))
 
 # No concurrent pruning
-run(cpu_count()/2 + 2, 0)
+run(cpu_count() // 2 + 2, 0)
 print("ok no concurrent prunes")
 
-run(cpu_count()/2 + 4, 3)
+run(cpu_count() // 2 + 4, 3)
 print("ok concurrent prunes")
