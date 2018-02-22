@@ -4,12 +4,11 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libbuild.sh
+. ${dn}/libpaprci/libbuild.sh
 
 pkg_upgrade
-pkg_install_builddeps ostree
-# Until this propagates farther
-pkg_install 'pkgconfig(libcurl)' 'pkgconfig(openssl)'
+pkg_install_buildroot
+pkg_builddep ostree
 pkg_install sudo which attr fuse strace \
     libubsan libasan libtsan PyYAML redhat-rpm-config \
     elfutils
@@ -18,15 +17,13 @@ if test -n "${CI_PKGS:-}"; then
 fi
 pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang \
                   python3-PyYAML
-(. /etc/os-release;
- if test "${ID}" = "centos"; then
-     rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-     pkg_install python34{,-PyYAML}
- fi
-)
+if test "${OS_ID}" = "centos"; then
+    rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    pkg_install python34{,-PyYAML}
+fi
 
 # Default libcurl on by default in fedora unless libsoup is enabled
-if sh -c '. /etc/os-release; test "${ID}" = fedora'; then
+if test "${OS_ID}" = 'fedora'; then
     case "${CONFIGOPTS:-}" in
         *--with-soup*|*--without-curl*) ;;
         *) CONFIGOPTS="${CONFIGOPTS:-} --with-curl"

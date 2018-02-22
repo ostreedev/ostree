@@ -1,0 +1,23 @@
+---
+- hosts: localhost
+  tags:
+  - atomic
+  remote_user: root
+  tasks:
+  - find:
+      paths: /root/tests/installed/
+      patterns: "itest-*.sh"
+    register: installed_tests
+  - name: Run sysinstalled tests
+    shell: /root/tests/installed/run.sh &> /root/installed-tests.log
+    register: sysinstalled_result
+    failed_when: False
+  - name: Fetch sysinstalled results
+    fetch:
+      src: /root/installed-tests.log
+      dest: artifacts/installed-tests.log
+      flat: yes
+  - name: Assert that sysinstalled tests succeeded
+    when: sysinstalled_result.rc != 0
+    fail:
+      msg: "sysinstalled tests failed"

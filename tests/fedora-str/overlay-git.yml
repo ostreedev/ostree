@@ -1,0 +1,40 @@
+---
+- hosts: localhost
+  tags:
+  - atomic
+  remote_user: root
+  tasks:
+  # Install the built RPM to the VM
+  - command: git rev-parse HEAD
+    register: git_rev_head
+    connection: local
+  - name: Copy locally built RPMs
+    synchronize: src=x86_64/ dest=/root/x86_64/ archive=yes
+  - shell: ostree admin unlock || true
+    changed_when: False
+  # Install the RPMs we already have.  For the test suite we use rpm2cpio
+  # since it depends on libsoup, but we're not using that yet for the sysinstalled tests
+  - shell: >
+      /usr/bin/rpm -Fvh /root/x86_64/*.rpm && \
+      cd / && rpm2cpio /root/x86_64/ostree-tests-2*.rpm | cpio -div
+    changed_when: False
+  - shell: /usr/bin/rpm -Fvh /root/x86_64/*.rpm
+    changed_when: False
+  - command: ostree --version
+    changed_when: False
+    register: ostree_version
+  - set_fact:
+      ostree_version_yaml: "{{ ostree_version.stdout | from_yaml }}"
+  # FIXME: make this work when building RPMs too
+  # - name: Fail if current git is not equal to installed
+  #   when: git_rev_head.stdout != ostree_version_yaml['libostree']['Git']
+  #   fail:
+  #     msg: |
+  #       "Git rev mismatch:
+  #         HEAD={{ git_rev_head.stdout }}
+  #         binary={{ ostree_version_yaml['libostree']['Git'] }}"
+  # - debug: msg="{{ ostree_version.stdout | from_yaml }}"
+
+  # Next copy all of the tests/ directory
+  - name: Copy test data
+    synchronize: src=../../ dest=/root/tests/ archive=yes

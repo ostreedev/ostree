@@ -17,7 +17,7 @@ set -euo pipefail
 # being tested rather than the merge sha
 HEAD=${PAPR_COMMIT:-HEAD}
 dn=$(dirname $0)
-. ${dn}/libbuild.sh
+. ${dn}/libpaprci/libbuild.sh
 
 tmpd=$(mktemp -d)
 touch ${tmpd}/.tmpdir

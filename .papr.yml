@@ -1,53 +1,44 @@
+# https://fedoraproject.org/wiki/CI/Tests
 branches:
     - master
     - auto
     - try
 
+context: FAH27-insttests
 required: true
-context: f27-primary
 
 container:
-    image: registry.fedoraproject.org/fedora:27
+  image: registry.fedoraproject.org/fedora:27
 
+tests:
+  - cd tests/fedora-str && ../../ci/build-rpm.sh
+  - ./tests/fedora-str/provision.sh
+  # TODO: enhance papr to have caching, a bit like https://docs.travis-ci.com/user/caching/
+  - curl -Lo fedora-atomic-host.qcow2 https://getfedora.org/atomic_qcow2_latest
+  - env "TEST_SUBJECTS=$(pwd)/fedora-atomic-host.qcow2" ./tests/fedora-str/run.sh
+
+artifacts:
+  - tests/fedora-str/artifacts/fedora-atomic-host.qcow2.log
+  - tests/fedora-str/artifacts/installed-tests.log
+
+---
+
+# This suite skips the RPMs and does the build+unit tests in a container
+inherit: true
+context: f27-primary
 env:
-    # Enable all the sanitizers for this primary build.
-    # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
-    CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
-    # Only for CI with a known g-ir-scanner
-    GI_SCANNERFLAGS: '--warn-error'
-    ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
-    # TODO when we're doing leak checks: G_SLICE: "always-malloc"
-    CONFIGOPTS: '--with-curl --with-openssl'
+  # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
+  CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
+  # Only for CI with a known g-ir-scanner
+  GI_SCANNERFLAGS: '--warn-error'
+  ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
+  # TODO when we're doing leak checks: G_SLICE: "always-malloc"
+  CONFIGOPTS: '--with-curl --with-openssl'
 
 tests:
   - ci/ci-commitmessage-submodules.sh
   - ci/build-check.sh
   - ci/ci-release-build.sh
-
-timeout: 30m
-
-# Keep this in sync with build-check.sh
-artifacts:
-  - test-suite.log
-  - config.log
-  - gdtr-results
----
-
-context: c7-primary
-inherit: true
-required: true
-
-host:
-  distro: centos/7/atomic
-
-env:
-    CFLAGS: ''
-    CONFIGOPTS: '--with-curl --with-openssl'
-
-tests:
-  - docker run --privileged -v $PWD:$PWD --workdir $PWD
-    registry.centos.org/centos/centos:7 sh -c
-    'yum install -y git && ci/build-check.sh'
 
 ---
 
@@ -129,33 +120,6 @@ env:
 
 tests:
   - ci/build-check.sh
-
----
-
-inherit: false
-branches:
-    - master
-    - auto
-    - try
-
-context: f27ah-insttest
-required: false
-
-cluster:
-  hosts:
-    - name: vmcheck
-      distro: fedora/27/atomic
-  container:
-    image: registry.fedoraproject.org/fedora:27
-
-# Copy the build from the container to the host; ideally down the line
-# this is installing an RPM via https://github.com/jlebon/redhat-ci/issues/10
-tests:
-  - ci/build.sh
-  - make install DESTDIR=$(pwd)/insttree
-  - yum -y install rsync
-  - rsync -rl -e 'ssh -o User=root' . vmcheck:ostree/
-  - ssh root@vmcheck './ostree/tests/installed/fah-prep.sh && ./ostree/tests/installed/run.sh'
 
 ---
 
