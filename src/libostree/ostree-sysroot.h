@@ -74,6 +74,8 @@ _OSTREE_PUBLIC
 GPtrArray *ostree_sysroot_get_deployments (OstreeSysroot  *self);
 _OSTREE_PUBLIC
 OstreeDeployment *ostree_sysroot_get_booted_deployment (OstreeSysroot *self);
+_OSTREE_PUBLIC
+OstreeDeployment *ostree_sysroot_get_staged_deployment (OstreeSysroot *self);
 
 _OSTREE_PUBLIC
 GFile *ostree_sysroot_get_deployment_directory (OstreeSysroot    *self,
@@ -173,6 +175,17 @@ gboolean ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                      OstreeDeployment **out_new_deployment,
                                      GCancellable      *cancellable,
                                      GError           **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_sysroot_stage_tree (OstreeSysroot     *self,
+                                    const char        *osname,
+                                    const char        *revision,
+                                    GKeyFile          *origin,
+                                    OstreeDeployment  *merge_deployment,
+                                    char             **override_kernel_argv,
+                                    OstreeDeployment **out_new_deployment,
+                                    GCancellable      *cancellable,
+                                    GError           **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,

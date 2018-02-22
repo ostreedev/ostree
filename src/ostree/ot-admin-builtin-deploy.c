@@ -34,6 +34,7 @@
 #include <glib/gi18n.h>
 
 static gboolean opt_retain;
+static gboolean opt_stage;
 static gboolean opt_retain_pending;
 static gboolean opt_retain_rollback;
 static gboolean opt_not_as_default;
@@ -50,6 +51,7 @@ static GOptionEntry options[] = {
   { "origin-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_origin_path, "Specify origin file", "FILENAME" },
   { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Don't prune the repo when done", NULL},
   { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployments", NULL },
+  { "stage", 0, 0, G_OPTION_ARG_NONE, &opt_stage, "Complete deployment at OS shutdown", NULL },
   { "retain-pending", 0, 0, G_OPTION_ARG_NONE, &opt_retain_pending, "Do not delete pending deployments", NULL },
   { "retain-rollback", 0, 0, G_OPTION_ARG_NONE, &opt_retain_rollback, "Do not delete rollback deployments", NULL },
   { "not-as-default", 0, 0, G_OPTION_ARG_NONE, &opt_not_as_default, "Append rather than prepend new deployment", NULL },
@@ -157,31 +159,45 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
 
   g_autoptr(OstreeDeployment) new_deployment = NULL;
   g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
-  if (!ostree_sysroot_deploy_tree (sysroot, opt_osname, revision, origin, merge_deployment,
-                                   kargs_strv, &new_deployment, cancellable, error))
-    return FALSE;
-
-  OstreeSysrootSimpleWriteDeploymentFlags flags = OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
-  if (opt_retain)
-    flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN;
+  if (opt_stage)
+    {
+      if (opt_retain_pending || opt_retain_rollback)
+        return glnx_throw (error, "--stage cannot currently be combined with --retain arguments");
+      if (opt_not_as_default)
+        return glnx_throw (error, "--stage cannot currently be combined with --not-as-default");
+      if (!ostree_sysroot_stage_tree (sysroot, opt_osname, revision, origin, merge_deployment,
+                                      kargs_strv, &new_deployment, cancellable, error))
+        return FALSE;
+    }
   else
     {
-      if (opt_retain_pending)
-        flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING;
-      if (opt_retain_rollback)
-        flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK;
+      if (!ostree_sysroot_deploy_tree (sysroot, opt_osname, revision, origin, merge_deployment,
+                                       kargs_strv, &new_deployment, cancellable, error))
+        return FALSE;
+
+      OstreeSysrootSimpleWriteDeploymentFlags flags = OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
+      if (opt_retain)
+        flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN;
+      else
+        {
+          if (opt_retain_pending)
+            flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING;
+          if (opt_retain_rollback)
+            flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK;
+        }
+
+      if (opt_not_as_default)
+        flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT;
+
+      if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname, new_deployment,
+                                                   merge_deployment, flags, cancellable, error))
+        return FALSE;
     }
 
-  if (opt_not_as_default)
-    flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT;
-
-  if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname, new_deployment,
-                                               merge_deployment, flags, cancellable, error))
-    return FALSE;
-
-  /* And finally, cleanup of any leftover data.
+  /* And finally, cleanup of any leftover data.  In stage mode, we
+   * don't do a full cleanup as we didn't touch the bootloader.
    */
-  if (opt_no_prune)
+  if (opt_no_prune || opt_stage)
     {
       if (!ostree_sysroot_prepare_cleanup (sysroot, cancellable, error))
         return FALSE;

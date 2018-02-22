@@ -1,0 +1,24 @@
+# Test the deploy --stage functionality
+
+- name: Write staged-deploy commit
+  shell: |
+    ostree --repo=/ostree/repo commit --parent="${commit}" -b staged-deploy --tree=ref="${commit}" --no-bindings
+    ostree admin deploy --stage --karg-proc-cmdline --karg=ostreetest=yes staged-deploy
+  environment:
+    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
+- include_tasks: ../tasks/reboot.yml
+- name: Check that deploy-staged service worked
+  shell: |
+    # Assert that the previous boot had a journal entry for it
+    journalctl -b "-1" -u ostree-finalize-staged.service | grep -q -e 'Transaction complete'
+    # And that we have the new kernel argument
+    grep -q -e 'ostreetest=yes' /proc/cmdline
+- name: Rollback
+  shell: rpm-ostree rollback
+- include_tasks: ../tasks/reboot.yml
+- shell: |
+    ostree refs --delete staged-deploy
+    rpm-ostree cleanup -rp
+# And now we shouldn't have the kernel commandline entry
+- name: Check we do not have new kernel cmdline entry
+  shell: grep -qv -e 'ostreetest=yes' /proc/cmdline

@@ -96,7 +96,9 @@ deployment_print_status (OstreeSysroot    *sysroot,
   GKeyFile *origin = ostree_deployment_get_origin (deployment);
 
   const char *deployment_status = "";
-  if (is_pending)
+  if (ostree_deployment_is_staged (deployment))
+    deployment_status = " (staged)";
+  else if (is_pending)
     deployment_status = " (pending)";
   else if (is_rollback)
     deployment_status = " (rollback)";
@@ -199,6 +201,16 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
     }
   else
     {
+      OstreeDeployment *staged = ostree_sysroot_get_staged_deployment (sysroot);
+      if (staged)
+        {
+          if (!deployment_print_status (sysroot, repo, staged,
+                                        FALSE, FALSE, FALSE,
+                                        cancellable,
+                                        error))
+            return FALSE;
+        }
+
       for (guint i = 0; i < deployments->len; i++)
         {
           OstreeDeployment *deployment = deployments->pdata[i];

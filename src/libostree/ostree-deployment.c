@@ -339,3 +339,16 @@ ostree_deployment_is_pinned (OstreeDeployment *self)
     return FALSE;
   return g_key_file_get_boolean (self->origin, OSTREE_ORIGIN_TRANSIENT_GROUP, "pinned", NULL);
 }
+
+/**
+ * ostree_deployment_is_staged:
+ * @self: Deployment
+ *
+ * Returns: `TRUE` if deployment should be "finalized" at shutdown time
+ * Since: 2018.3
+ */
+gboolean
+ostree_deployment_is_staged (OstreeDeployment *self)
+{
+  return self->staged;
+}
