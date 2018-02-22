@@ -9,13 +9,13 @@ set -xeuo pipefail
 FLATPAK_TAG=0.10.2.1
 
 dn=$(dirname $0)
-. ${dn}/libbuild.sh
+. ${dn}/libpaprci/libbuild.sh
 
 codedir=$(pwd)
 
 pkg_upgrade
-pkg_install_builddeps ostree
-pkg_install_builddeps flatpak
+pkg_install_buildroot
+pkg_builddep ostree flatpak
 pkg_install gettext-devel # A new dependency
 # Copy of builddeps from build.sh in flatpak
 pkg_install sudo which attr fuse \

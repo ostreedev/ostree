@@ -9,13 +9,13 @@ set -xeuo pipefail
 RPMOSTREE_TAG=v2017.11
 
 dn=$(dirname $0)
-. ${dn}/libbuild.sh
+. ${dn}/libpaprci/libbuild.sh
 
 codedir=$(pwd)
 
 pkg_upgrade
-pkg_install_builddeps ostree
-pkg_install_builddeps rpm-ostree
+pkg_install_buildroot
+pkg_builddep ostree rpm-ostree
 pkg_install rpm-ostree && rpm -e rpm-ostree
 
 # Duplicate of deps from build.sh in rpm-ostree for tests

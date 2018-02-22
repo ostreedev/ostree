@@ -4,7 +4,7 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libbuild.sh
+. ${dn}/libpaprci/libbuild.sh
 ${dn}/build.sh
 topdir=$(git rev-parse --show-toplevel)
 resultsdir=$(mktemp -d)
@@ -14,8 +14,20 @@ make syntax-check  # TODO: do syntax-check under check
 for x in test-suite.log config.log; do
     mv ${x} ${resultsdir}
 done
-# And now run the installed tests
+# And now install; we'll run the test suite after we do a clang build first
+# (But we don't install that one)
 make install
+
+# And now a clang build to find unused variables because it does a better
+# job than gcc for vars with cleanups; perhaps in the future these could
+# parallelize
+if test -x /usr/bin/clang; then
+    # Except for clang-4.0: error: argument unused during compilation: '-specs=/usr/lib/rpm/redhat/redhat-hardened-cc1' [-Werror,-Wunused-command-line-argument]
+    export CFLAGS="-Wall -Werror -Wno-error=unused-command-line-argument ${CFLAGS:-}"
+    git clean -dfx && git submodule foreach git clean -dfx
+    export CC=clang
+    build
+fi
 
 copy_out_gdtr_artifacts() {
     # Keep this in sync with papr.yml
@@ -39,15 +51,4 @@ if test -x /usr/bin/gnome-desktop-testing-runner; then
     trap copy_out_gdtr_artifacts EXIT
     # Use the new -L option
     gnome-desktop-testing-runner -L ${resultsdir}/gdtr-results -p 0 ${INSTALLED_TESTS_PATTERN:-libostree/}
-fi
-
-# And now a clang build to find unused variables because it does a better
-# job than gcc for vars with cleanups; perhaps in the future these could
-# parallelize
-if test -x /usr/bin/clang; then
-    # Except for clang-4.0: error: argument unused during compilation: '-specs=/usr/lib/rpm/redhat/redhat-hardened-cc1' [-Werror,-Wunused-command-line-argument]
-    export CFLAGS="-Wall -Werror -Wno-error=unused-command-line-argument ${CFLAGS:-}"
-    git clean -dfx && git submodule foreach git clean -dfx
-    export CC=clang
-    build
 fi
