@@ -1,0 +1,71 @@
+# This file is copied from atomic-host-tests
+
+# vim: set ft=ansible:
+# There is no clean way to restart hosts in ansible. The general issue is that
+# the shutdown command may close sshd before ansible has time to "return" from
+# the task, even with async & poll. This is due to the fact that asynchronous
+# tasks still require a small synchronous bootstrapping script which takes 1 sec
+# to complete, during which it is vulnerable to erroring out if sshd dies.
+#       To mitigate this, we prefix a sleep command before the shutdown so
+# ansible has time to move on. For more info on this issue, see:
+# https://github.com/ansible/ansible/issues/10616
+#
+# The Ansible docs now recommend this combination of tasks to handle reboots
+# https://support.ansible.com/hc/en-us/articles/201958037-Reboot-a-server-and-wait-for-it-to-come-back
+
+# remember the real ansible_host for following local actions
+# (otherwise ansible will target the localhost)
+- set_fact:
+    real_ansible_host: "{{ ansible_host }}"
+    timeout: "{{ cli_reboot_timeout | default('120') }}"
+
+# Have to account for both because Fedora STR uses the old version of these
+# inventory values for some reason.
+- when: ansible_port is defined
+  set_fact:
+    real_ansible_port: "{{ ansible_port }}"
+
+- when: ansible_ssh_port is defined
+  set_fact:
+    real_ansible_port: "{{ ansible_ssh_port }}"
+
+- name: Get original bootid
+  command: cat /proc/sys/kernel/random/boot_id
+  register: orig_bootid
+
+- name: restart hosts
+  when: (not skip_shutdown is defined) or (not skip_shutdown)
+  shell: sleep 3 && shutdown -r now
+  async: 1
+  poll: 0
+  ignore_errors: true
+
+# NB: The following tasks use local actions, so we need to explicitly ensure
+# that they don't use sudo, which may require a password, and is not necessary
+# anyway.
+
+- name: wait for hosts to come back up
+  local_action:
+    wait_for host={{ real_ansible_host }}
+    port={{ real_ansible_port | default('22') }}
+    state=started
+    delay=30
+    timeout={{ timeout }}
+    search_regex="OpenSSH"
+  become: false
+
+# I'm not sure the retries are even necessary, but I'm keeping them in
+- name: Wait until bootid changes
+  command: cat /proc/sys/kernel/random/boot_id
+  register: new_bootid
+  until: new_bootid.stdout != orig_bootid.stdout
+  retries: 6
+  delay: 10
+
+# provide an empty iterator when a list is not provided
+# http://docs.ansible.com/ansible/playbooks_conditionals.html#loops-and-conditionals
+- name: check services have started
+  service:
+    name: "{{ item }}"
+    state: started
+  with_items: "{{ wait_for_services|default([]) }}"

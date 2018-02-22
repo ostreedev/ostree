@@ -40,6 +40,7 @@ BUILTINPROTO(undeploy);
 BUILTINPROTO(deploy);
 BUILTINPROTO(cleanup);
 BUILTINPROTO(pin);
+BUILTINPROTO(finalize_staged);
 BUILTINPROTO(unlock);
 BUILTINPROTO(status);
 BUILTINPROTO(set_origin);

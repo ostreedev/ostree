@@ -16,6 +16,10 @@
     # Next copy all of the tests/ directory
     - name: Copy test data
       synchronize: src=../../ dest=/root/tests/ archive=yes
+
+    # First, the Ansible-based tests
+    - import_tasks: destructive/staged-deploy.yml
+
     - find:
         paths: /root/tests/installed/destructive
         patterns: "itest-*.sh"
