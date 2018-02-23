@@ -173,6 +173,7 @@ ostree_deployment_set_index
 ostree_deployment_set_bootserial
 ostree_deployment_set_bootconfig
 ostree_deployment_set_origin
+ostree_deployment_origin_remove_transient_state
 ostree_deployment_clone
 ostree_deployment_unlocked_state_to_string
 <SUBSECTION Standard>

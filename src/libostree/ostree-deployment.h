@@ -27,6 +27,17 @@ G_BEGIN_DECLS
 #define OSTREE_DEPLOYMENT(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_DEPLOYMENT, OstreeDeployment))
 #define OSTREE_IS_DEPLOYMENT(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OSTREE_TYPE_DEPLOYMENT))
 
+/**
+ * OSTREE_ORIGIN_TRANSIENT_GROUP:
+ *
+ * The name of a `GKeyFile` group for data that should not
+ * be carried across upgrades.  For more information,
+ * see ostree_deployment_origin_remove_transient_state().
+ *
+ * Since: 2018.3
+ */
+#define OSTREE_ORIGIN_TRANSIENT_GROUP "libostree-transient"
+
 typedef struct _OstreeDeployment OstreeDeployment;
 
 _OSTREE_PUBLIC
@@ -62,6 +73,7 @@ OstreeBootconfigParser *ostree_deployment_get_bootconfig (OstreeDeployment *self
 _OSTREE_PUBLIC
 GKeyFile *ostree_deployment_get_origin (OstreeDeployment *self);
 
+
 _OSTREE_PUBLIC
 void ostree_deployment_set_index (OstreeDeployment *self, int index);
 _OSTREE_PUBLIC
@@ -70,6 +82,9 @@ _OSTREE_PUBLIC
 void ostree_deployment_set_bootconfig (OstreeDeployment *self, OstreeBootconfigParser *bootconfig);
 _OSTREE_PUBLIC
 void ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin);
+
+_OSTREE_PUBLIC
+void ostree_deployment_origin_remove_transient_state (GKeyFile *origin);
 
 _OSTREE_PUBLIC
 OstreeDeployment *ostree_deployment_clone (OstreeDeployment *self);
