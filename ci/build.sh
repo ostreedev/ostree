@@ -16,7 +16,14 @@ pkg_install sudo which attr fuse strace \
 if test -n "${CI_PKGS:-}"; then
     pkg_install ${CI_PKGS}
 fi
-pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang
+pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang \
+                  python3-PyYAML
+(. /etc/os-release;
+ if test "${ID}" = "centos"; then
+     rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+     pkg_install python34{,-PyYAML}
+ fi
+)
 
 # Default libcurl on by default in fedora unless libsoup is enabled
 if sh -c '. /etc/os-release; test "${ID}" = fedora'; then
