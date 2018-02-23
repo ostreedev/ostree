@@ -20,6 +20,8 @@
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2018.3 {
   ostree_deployment_origin_remove_transient_state;
+  ostree_sysroot_deployment_set_pinned;
+  ostree_deployment_is_pinned;
 } LIBOSTREE_2018.2;
 
 /* Stub section for the stable release *after* this development one; don't

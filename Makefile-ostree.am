@@ -74,6 +74,7 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-set-origin.c \
 	src/ostree/ot-admin-builtin-status.c \
 	src/ostree/ot-admin-builtin-switch.c \
+	src/ostree/ot-admin-builtin-pin.c \
 	src/ostree/ot-admin-builtin-upgrade.c \
 	src/ostree/ot-admin-builtin-unlock.c \
 	src/ostree/ot-admin-builtins.h \
