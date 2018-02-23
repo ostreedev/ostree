@@ -88,33 +88,18 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
   g_autoptr(GKeyFile) origin = ostree_sysroot_upgrader_dup_origin (upgrader);
   if (origin != NULL)
     {
-      gboolean origin_changed = FALSE;
-
+      /* Should we consider requiring --discard-hotfix here? */
+      ostree_deployment_origin_remove_transient_state (origin);
       if (opt_override_commit != NULL)
         {
           /* Override the commit to pull and deploy. */
           g_key_file_set_string (origin, "origin",
                                  "override-commit",
                                  opt_override_commit);
-          origin_changed = TRUE;
-        }
-      else
-        {
-          /* Strip any override-commit from the origin file so
-           * we always upgrade to the latest available commit. */
-          origin_changed = g_key_file_remove_key (origin, "origin",
-                                                  "override-commit", NULL);
         }
 
-      /* Should we consider requiring --discard-hotfix here? */
-      origin_changed |= g_key_file_remove_key (origin, "origin", "unlocked", NULL);
-
-      if (origin_changed)
-        {
-          /* XXX GCancellable parameter is not used. */
-          if (!ostree_sysroot_upgrader_set_origin (upgrader, origin, NULL, error))
-            return FALSE;
-        }
+      if (!ostree_sysroot_upgrader_set_origin (upgrader, origin, NULL, error))
+        return FALSE;
     }
 
   gboolean changed;

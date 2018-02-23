@@ -121,6 +121,35 @@ ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
     self->origin = g_key_file_ref (origin);
 }
 
+/**
+ * ostree_deployment_origin_remove_transient_state:
+ * @origin: An origin
+ *
+ * The intention of an origin file is primarily describe the "inputs" that
+ * resulted in a deployment, and it's commonly used to derive the new state. For
+ * example, a key value (in pure libostree mode) is the "refspec". However,
+ * libostree (or other applications) may want to store "transient" state that
+ * should not be carried across upgrades.
+ *
+ * This function just removes all members of the `libostree-transient` group.
+ * The name of that group is available to all libostree users; best practice
+ * would be to prefix values underneath there with a short identifier for your
+ * software.
+ *
+ * Additionally, this function will remove the `origin/unlocked` and
+ * `origin/override-commit` members; these should be considered transient state
+ * that should have been under an explicit group.
+ *
+ * Since: 2018.3
+ */
+void
+ostree_deployment_origin_remove_transient_state (GKeyFile *origin)
+{
+  g_key_file_remove_group (origin, OSTREE_ORIGIN_TRANSIENT_GROUP, NULL);
+  g_key_file_remove_key (origin, "origin", "override-commit", NULL);
+  g_key_file_remove_key (origin, "origin", "unlocked", NULL);
+}
+
 void
 _ostree_deployment_set_bootcsum (OstreeDeployment *self,
                                  const char *bootcsum)
