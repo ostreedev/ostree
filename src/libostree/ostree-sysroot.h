@@ -182,6 +182,12 @@ gboolean ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
                                                 GError           **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_deployment_set_pinned (OstreeSysroot     *self,
+                                               OstreeDeployment  *deployment,
+                                               gboolean           is_pinned,
+                                               GError           **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
                                            OstreeDeployment  *deployment,
                                            OstreeDeploymentUnlockedState unlocked_state,

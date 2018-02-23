@@ -322,3 +322,20 @@ ostree_deployment_get_unlocked (OstreeDeployment *self)
 {
   return self->unlocked;
 }
+
+/**
+ * ostree_deployment_is_pinned:
+ * @self: Deployment
+ *
+ * See ostree_sysroot_deployment_set_pinned().
+ *
+ * Returns: `TRUE` if deployment will not be subject to GC
+ * Since: 2018.3
+ */
+gboolean
+ostree_deployment_is_pinned (OstreeDeployment *self)
+{
+  if (!self->origin)
+    return FALSE;
+  return g_key_file_get_boolean (self->origin, OSTREE_ORIGIN_TRANSIENT_GROUP, "pinned", NULL);
+}

@@ -26,7 +26,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
-echo "1..3"
+echo "1..6"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -63,3 +63,50 @@ assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 
 echo "ok manual cleanup"
+
+assert_n_pinned() {
+    local n=$1
+    ${CMD_PREFIX} ostree admin status > status.txt
+    local n_pinned="$(grep -F -c -e 'Pinned: yes' < status.txt)"
+    if test "${n_pinned}" '!=' "${n}"; then
+        cat status.txt
+        fatal "${n_pinned} != ${n}"
+    fi
+}
+assert_n_deployments() {
+    local n=$1
+    ${CMD_PREFIX} ostree admin status > status.txt
+    local n_deployments="$(grep -F -c -e 'Version: ' < status.txt)"
+    if test "${n_deployments}" '!=' "${n}"; then
+        cat status.txt
+        fatal "${n_deployments} != ${n}"
+    fi
+}
+assert_n_pinned 0
+${CMD_PREFIX} ostree admin pin 0
+assert_n_pinned 1
+${CMD_PREFIX} ostree admin pin -u 0
+assert_n_pinned 0
+echo "ok pin unpin"
+
+${CMD_PREFIX} ostree admin pin 0
+${CMD_PREFIX} ostree admin pin 1
+assert_n_pinned 2
+assert_n_deployments 2
+os_repository_new_commit
+${CMD_PREFIX} ostree admin upgrade --os=testos
+assert_n_pinned 2
+assert_n_deployments 3
+echo "ok pin across upgrades"
+
+${CMD_PREFIX} ostree admin pin -u 1
+os_repository_new_commit
+${CMD_PREFIX} ostree admin upgrade --os=testos
+assert_n_pinned 1
+assert_n_deployments 3
+os_repository_new_commit
+${CMD_PREFIX} ostree admin upgrade --os=testos
+assert_n_pinned 1
+assert_n_deployments 3
+
+echo "ok pinning"

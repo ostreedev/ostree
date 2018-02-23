@@ -39,6 +39,7 @@ BUILTINPROTO(init_fs);
 BUILTINPROTO(undeploy);
 BUILTINPROTO(deploy);
 BUILTINPROTO(cleanup);
+BUILTINPROTO(pin);
 BUILTINPROTO(unlock);
 BUILTINPROTO(status);
 BUILTINPROTO(set_origin);

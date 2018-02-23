@@ -149,6 +149,8 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
                        ostree_deployment_unlocked_state_to_string (unlocked),
                        red_bold_suffix);
             }
+          if (ostree_deployment_is_pinned (deployment))
+            g_print ("    Pinned: yes\n");
           if (!origin)
             g_print ("    origin: none\n");
           else

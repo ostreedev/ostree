@@ -75,6 +75,9 @@ GKeyFile *ostree_deployment_get_origin (OstreeDeployment *self);
 
 
 _OSTREE_PUBLIC
+gboolean ostree_deployment_is_pinned (OstreeDeployment *self);
+
+_OSTREE_PUBLIC
 void ostree_deployment_set_index (OstreeDeployment *self, int index);
 _OSTREE_PUBLIC
 void ostree_deployment_set_bootserial (OstreeDeployment *self, int index);

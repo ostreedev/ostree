@@ -399,6 +399,37 @@ _ostree_admin_os_init() {
     return 0
 }
 
+_ostree_admin_pin() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sysroot
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --sysroot)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
 _ostree_admin_set_origin() {
     local boolean_options="
         $main_boolean_options

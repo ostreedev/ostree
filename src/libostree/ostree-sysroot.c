@@ -1572,12 +1572,14 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
 
       /* Retain deployment if:
        *   - we're explicitly asked to, or
+       *   - it's pinned
        *   - the deployment is for another osname, or
        *   - we're keeping pending deployments and this is a pending deployment, or
        *   - this is the merge or boot deployment, or
        *   - we're keeping rollback deployments and this is a rollback deployment
        */
       if (retain
+          || ostree_deployment_is_pinned (deployment)
           || !osname_matches
           || (retain_pending && !passed_crossover)
           || (is_booted || is_merge)
@@ -1828,6 +1830,48 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
    * regardless.
    */
   if (!_ostree_sysroot_bump_mtime (self, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+/**
+ * ostree_sysroot_deployment_set_pinned:
+ * @self: Sysroot
+ * @deployment: A deployment
+ * @is_pinned: Whether or not deployment will be automatically GC'd
+ * @error: Error
+ *
+ * By default, deployments may be subject to garbage collection. Typical uses of
+ * libostree only retain at most 2 deployments. If @is_pinned is `TRUE`, a
+ * metadata bit will be set causing libostree to avoid automatic GC of the
+ * deployment. However, this is really an "advisory" note; it's still possible
+ * for e.g. older versions of libostree unaware of pinning to GC the deployment.
+ *
+ * This function does nothing and returns successfully if the deployment
+ * is already in the desired pinning state.
+ *
+ * Since: 2018.3
+ */
+gboolean
+ostree_sysroot_deployment_set_pinned (OstreeSysroot     *self,
+                                      OstreeDeployment  *deployment,
+                                      gboolean           is_pinned,
+                                      GError           **error)
+{
+  const gboolean current_pin = ostree_deployment_is_pinned (deployment);
+  if (is_pinned == current_pin)
+    return TRUE;
+
+  g_autoptr(OstreeDeployment) deployment_clone = ostree_deployment_clone (deployment);
+  GKeyFile *origin_clone = ostree_deployment_get_origin (deployment_clone);
+
+  if (is_pinned)
+    g_key_file_set_boolean (origin_clone, OSTREE_ORIGIN_TRANSIENT_GROUP, "pinned", TRUE);
+  else
+    g_key_file_remove_key (origin_clone, OSTREE_ORIGIN_TRANSIENT_GROUP, "pinned", NULL);
+
+  if (!ostree_sysroot_write_origin_file (self, deployment, origin_clone, NULL, error))
     return FALSE;
 
   return TRUE;
