@@ -30,11 +30,6 @@
 
 #include <glib/gi18n.h>
 
-/* ATTENTION:
- * Please remember to update the bash-completion script (bash/ostree) and
- * man page (man/ostree-admin-os-init.xml) when changing the option list.
- */
-
 static GOptionEntry options[] = {
   { NULL }
 };

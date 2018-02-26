@@ -34,11 +34,6 @@ static gboolean opt_merge;
 static char **opt_replace;
 static char **opt_append;
 
-/* ATTENTION:
- * Please remember to update the bash-completion script (bash/ostree) and
- * man page (man/ostree-admin-instutil.xml) when changing the option list.
- */
-
 static GOptionEntry options[] = {
   { "import-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_proc_cmdline, "Import current /proc/cmdline", NULL },
   { "merge", 0, 0, G_OPTION_ARG_NONE, &opt_merge, "Merge with previous command line", NULL },

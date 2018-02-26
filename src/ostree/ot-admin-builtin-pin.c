@@ -29,11 +29,6 @@
 #include "ostree.h"
 #include "otutil.h"
 
-/* ATTENTION:
- * Please remember to update the bash-completion script (bash/ostree) and
- * man page (man/ostree-admin-pin.xml) when changing the option list.
- */
-
 static gboolean opt_unpin;
 
 static GOptionEntry options[] = {

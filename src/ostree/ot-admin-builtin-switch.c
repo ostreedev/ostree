@@ -34,11 +34,6 @@
 static gboolean opt_reboot;
 static char *opt_osname;
 
-/* ATTENTION:
- * Please remember to update the bash-completion script (bash/ostree) and
- * man page (man/ostree-admin-switch.xml) when changing the option list.
- */
-
 static GOptionEntry options[] = {
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after switching trees", NULL },
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
