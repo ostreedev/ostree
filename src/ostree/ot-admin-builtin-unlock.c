@@ -34,11 +34,6 @@
 
 static gboolean opt_hotfix;
 
-/* ATTENTION:
- * Please remember to update the bash-completion script (bash/ostree) and
- * man page (man/ostree-admin-unlock.xml) when changing the option list.
- */
-
 static GOptionEntry options[] = {
   { "hotfix", 0, 0, G_OPTION_ARG_NONE, &opt_hotfix, "Retain changes across reboots", NULL },
   { NULL }
