@@ -847,7 +847,9 @@ merge_configuration (OstreeSysroot         *sysroot,
   return TRUE;
 }
 
-/* Write the origin file for a deployment. */
+/* Write the origin file for a deployment; this does not bump the mtime, under
+ * the assumption the caller may be writing multiple.
+ */
 static gboolean
 write_origin_file_internal (OstreeSysroot         *sysroot,
                             OstreeDeployment      *deployment,
@@ -903,9 +905,15 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                   GCancellable          *cancellable,
                                   GError               **error)
 {
-  return write_origin_file_internal (sysroot, deployment, new_origin,
-                                     GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                     cancellable, error);
+  if (!write_origin_file_internal (sysroot, deployment, new_origin,
+                                   GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                   cancellable, error))
+    return FALSE;
+
+  if (!_ostree_sysroot_bump_mtime (sysroot, error))
+    return FALSE;
+
+  return TRUE;
 }
 
 typedef struct {
