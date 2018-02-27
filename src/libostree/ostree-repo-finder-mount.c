@@ -439,7 +439,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
         {
           ".ostree/repo",
           "ostree/repo",
-          "var/lib/flatpak",
+          "var/lib/flatpak/repo",
         };
 
       for (i = 0; i < G_N_ELEMENTS (well_known_repos); i++)
