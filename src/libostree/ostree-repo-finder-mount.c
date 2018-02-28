@@ -52,7 +52,7 @@
  * enumerated, and all OSTree repositories below it will be searched, in lexical
  * order, for the requested #OstreeCollectionRefs. The names of the directories
  * below `.ostree/repos.d` are irrelevant, apart from their lexical ordering.
- * The directories `.ostree/repo`, `ostree/repo` and `var/lib/flatpak`
+ * The directories `.ostree/repo`, `ostree/repo` and `var/lib/flatpak/repo`
  * will be searched after the others, if they exist.
  * Non-removable volumes are ignored.
  *
