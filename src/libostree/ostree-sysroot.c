@@ -1202,6 +1202,10 @@ ostree_sysroot_query_deployments_for (OstreeSysroot     *self,
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
 
+      /* Ignore deployments not for this osname */
+      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
+          continue;
+
       /* Is this deployment booted?  If so, note we're past the booted */
       if (self->booted_deployment != NULL &&
           ostree_deployment_equal (deployment, self->booted_deployment))
@@ -1209,10 +1213,6 @@ ostree_sysroot_query_deployments_for (OstreeSysroot     *self,
           found_booted = TRUE;
           continue;
         }
-
-      /* Ignore deployments not for this osname */
-      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
-          continue;
 
       if (!found_booted && !ret_pending)
         ret_pending = g_object_ref (deployment);
