@@ -295,8 +295,8 @@ scan_and_add_repo (int                 dfd,
       };
       g_array_append_val (inout_repos_refs, val);
 
-      g_debug ("%s: Adding repo ‘%s’ (%ssortable)",
-               G_STRFUNC, path, sortable ? "" : "not ");
+      g_debug ("%s: Adding repo ‘%s’ on mount ‘%s’ (%ssortable)",
+               G_STRFUNC, path, mount_name, sortable ? "" : "not ");
     }
 }
 
