@@ -108,6 +108,7 @@ case "$ci_distro" in
             libselinux1-dev \
             libsoup2.4-dev \
             libcurl4-openssl-dev \
+            libudisks2-dev \
             procps \
             zlib1g-dev \
             python3-yaml \
