@@ -3365,7 +3365,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                (GDestroyNotify)g_free);
   pull_data->ref_original_commits = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
                                                            (GDestroyNotify)NULL,
-                                                           (GDestroyNotify)g_variant_unref);
+                                                           (GDestroyNotify)g_free);
   pull_data->gpg_verified_commits = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                            (GDestroyNotify)g_free, NULL);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
