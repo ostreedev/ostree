@@ -149,6 +149,7 @@ ostree_remote_unref (OstreeRemote *remote)
   if (g_atomic_int_dec_and_test (&remote->ref_count))
     {
       g_clear_pointer (&remote->name, g_free);
+      g_clear_pointer (&remote->refspec_name, g_free);
       g_clear_pointer (&remote->group, g_free);
       g_clear_pointer (&remote->keyring, g_free);
       g_clear_object (&remote->file);
