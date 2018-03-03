@@ -5695,7 +5695,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
     }
 
   if (keyring_remote != NULL)
-    return ostree_remote_ref (keyring_remote);
+    return keyring_remote;
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,

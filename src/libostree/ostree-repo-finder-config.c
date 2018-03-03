@@ -30,6 +30,7 @@
 #include <glib-object.h>
 #include <libglnx.h>
 
+#include "ostree-autocleanups.h"
 #include "ostree-remote-private.h"
 #include "ostree-repo.h"
 #include "ostree-repo-private.h"
@@ -176,7 +177,7 @@ ostree_repo_finder_config_resolve_async (OstreeRepoFinder                  *find
   while (g_hash_table_iter_next (&iter, (gpointer *) &remote_name, (gpointer *) &supported_ref_to_checksum))
     {
       g_autoptr(GError) local_error = NULL;
-      OstreeRemote *remote;
+      g_autoptr(OstreeRemote) remote = NULL;
 
       /* We don’t know what last-modified timestamp the remote has without
        * making expensive HTTP queries, so leave that information blank. We
