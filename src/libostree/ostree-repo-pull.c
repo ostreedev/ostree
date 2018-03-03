@@ -5645,7 +5645,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
 {
   gsize i;
   g_auto(GStrv) remotes = NULL;
-  OstreeRemote *keyring_remote = NULL;
+  g_autoptr(OstreeRemote) keyring_remote = NULL;
 
   g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
   g_return_val_if_fail (ostree_validate_collection_id (collection_id, NULL), NULL);
@@ -5680,6 +5680,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
             {
               g_debug ("%s: Ignoring remote ‘%s’ as it has no keyring configured.",
                        G_STRFUNC, remotes[i]);
+              g_clear_object (&keyring_remote);
               continue;
             }
 
@@ -5695,7 +5696,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
     }
 
   if (keyring_remote != NULL)
-    return ostree_remote_ref (keyring_remote);
+    return g_steal_pointer (&keyring_remote);
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
