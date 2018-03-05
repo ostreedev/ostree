@@ -141,9 +141,10 @@ assert_file_has_content deltascount "^1$"
 ${CMD_PREFIX} ostree --repo=repo static-delta generate test
 ${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
 assert_file_has_content deltascount "^2$"
-${CMD_PREFIX} ostree --repo=repo prune --static-deltas-only --keep-younger-than="October 20 2015"
-${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
-assert_file_has_content deltascount "^1$"
+if ${CMD_PREFIX} ostree --repo=repo prune --static-deltas-only --keep-younger-than="October 20 2015" 2>err.txt; then
+    fatal "pruned deltas only"
+fi
+assert_file_has_content_literal err.txt "--static-deltas-only requires --delete-commit"
 
 echo "ok prune"
 

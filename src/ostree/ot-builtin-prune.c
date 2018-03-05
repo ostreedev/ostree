@@ -174,6 +174,15 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
         else if (!delete_commit (repo, opt_delete_commit, cancellable, error))
           return FALSE;
     }
+  else
+    {
+      /* In the future we should make this useful, but for now let's
+       * error out since what we were doing before was very misleading.
+       * https://github.com/ostreedev/ostree/issues/1479
+       */
+      if (opt_static_deltas_only)
+        return glnx_throw (error, "--static-deltas-only requires --delete-commit; see https://github.com/ostreedev/ostree/issues/1479");
+    }
 
   OstreeRepoPruneFlags pruneflags = 0;
   if (opt_refs_only)
