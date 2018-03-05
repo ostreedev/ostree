@@ -1034,7 +1034,7 @@ echo "ok test error pre commit/bootid"
 # Whiteouts
 cd ${test_tmpdir}
 mkdir -p overlay/baz/
-if touch overlay/baz/.wh.cow && touch overlay/.wh.deeper; then
+if touch overlay/baz/.wh.cow && touch overlay/.wh.deeper && touch overlay/baz/another/.wh..wh..opq; then
     touch overlay/anewfile
     mkdir overlay/anewdir/
     touch overlay/anewdir/blah
@@ -1050,6 +1050,7 @@ if touch overlay/baz/.wh.cow && touch overlay/.wh.deeper; then
     assert_not_has_dir overlay-co/deeper
     assert_has_file overlay-co/anewdir/blah
     assert_has_file overlay-co/anewfile
+    assert_not_has_file overlay-co/baz/another/y
 
     # And test replacing a directory wholesale with a symlink as well as a regular file
     mkdir overlay
