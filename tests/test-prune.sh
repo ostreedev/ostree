@@ -52,6 +52,13 @@ assert_repo_has_n_commits() {
     assert_streq "$(find ${repo}/objects -name '*.commit' | wc -l)" "${count}"
 }
 
+# Test --no-prune
+objectcount_orig=$(find repo/objects | wc -l)
+${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=0 --no-prune | tee noprune.txt
+assert_file_has_content noprune.txt 'Would delete: [1-9][0-9]* objects, freeing [1-9][0-9]*'
+objectcount_new=$(find repo/objects | wc -l)
+assert_streq "${objectcount_orig}" "${objectcount_new}"
+
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=2 -v
 assert_repo_has_n_commits repo 3
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount

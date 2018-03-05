@@ -52,28 +52,31 @@ maybe_prune_loose_object (OtPruneData        *data,
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {
+      guint64 storage_size = 0;
+
       g_debug ("Pruning unneeded object %s.%s", checksum,
                ostree_object_type_to_string (objtype));
+
+      if (!ostree_repo_query_object_storage_size (data->repo, objtype, checksum,
+                                                  &storage_size, cancellable, error))
+        return FALSE;
+
+      data->freed_bytes += storage_size;
+
       if (!(flags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE))
         {
-          guint64 storage_size = 0;
-
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!ostree_repo_mark_commit_partial (data->repo, checksum, FALSE, error))
                 return FALSE;
             }
 
-          if (!ostree_repo_query_object_storage_size (data->repo, objtype, checksum,
-                                                      &storage_size, cancellable, error))
-            return FALSE;
-
           if (!ostree_repo_delete_object (data->repo, objtype, checksum,
                                           cancellable, error))
             return FALSE;
 
-          data->freed_bytes += storage_size;
         }
+
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         data->n_unreachable_meta++;
       else
