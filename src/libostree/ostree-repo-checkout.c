@@ -35,6 +35,7 @@
 #include "ostree-repo-private.h"
 
 #define WHITEOUT_PREFIX ".wh."
+#define OPAQUE_WHITEOUT_NAME ".wh..wh..opq"
 
 /* Per-checkout call state/caching */
 typedef struct {
@@ -879,6 +880,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
                           GError                           **error)
 {
   gboolean did_exist = FALSE;
+  gboolean is_opaque_whiteout = FALSE;
   const gboolean sepolicy_enabled = options->sepolicy && !self->disable_xattrs;
   g_autoptr(GVariant) dirtree = NULL;
   g_autoptr(GVariant) dirmeta = NULL;
@@ -912,6 +914,22 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
         return TRUE; /* Note early return */
     }
 
+  if (options->process_whiteouts)
+    {
+      g_autoptr(GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
+      GVariantIter viter;
+      const char *fname;
+      g_autoptr(GVariant) contents_csum_v = NULL;
+      g_variant_iter_init (&viter, dir_file_contents);
+      while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, &contents_csum_v))
+        {
+          is_opaque_whiteout = (g_str_equal (fname, OPAQUE_WHITEOUT_NAME));
+          if (is_opaque_whiteout)
+            break;
+        }
+      contents_csum_v = NULL; /* iter_loop freed it */
+    }
+
   /* First, make the directory.  Push a new scope in case we end up using
    * setfscreatecon().
    */
@@ -928,6 +946,13 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
         if (!_ostree_sepolicy_preparefscreatecon (&fscreatecon, options->sepolicy,
                                                   state->selabel_path_buf->str,
                                                   mode, error))
+          return FALSE;
+      }
+
+    /* If it is an opaque whiteout, ensure the destination is empty first. */
+    if (is_opaque_whiteout)
+      {
+        if (!glnx_shutil_rm_rf_at (destination_parent_fd, destination_name, cancellable, error))
           return FALSE;
       }
 
