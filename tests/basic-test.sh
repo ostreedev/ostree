@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((82 + ${extra_basic_tests:-0}))"
+echo "1..$((83 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -475,6 +475,17 @@ echo "ok commit skiplist"
 cd ${test_tmpdir}
 $OSTREE prune
 echo "ok prune didn't fail"
+
+# https://github.com/ostreedev/ostree/issues/1467
+cd ${test_tmpdir}
+mv repo/refs/remotes{,.orig}
+if $OSTREE refs --list >/dev/null 2>err.txt; then
+    fatal "listed refs without remotes dir?"
+fi
+assert_file_has_content err.txt 'Listing refs.*opendir.*No such file or directory'
+mv repo/refs/remotes{.orig,}
+$OSTREE refs --list >/dev/null
+echo "ok refs enoent error"
 
 cd ${test_tmpdir}
 # Verify we can't cat dirs
