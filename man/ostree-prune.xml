@@ -114,8 +114,12 @@ Boston, MA 02111-1307, USA.
                 <term><option>--static-deltas-only</option>=DEPTH</term>
 
                 <listitem><para>
-                  Change the behaviour of --keep-younger-than and --delete-commit to prune only
-                  the static deltas files.
+                  This option may currently <emphasis>only</emphasis> be used in combination with
+                  <option>--delete-commit</option>.  Previous versions of ostree silently accepted
+                  the option without that, and ignored it.  However, there are desired use
+                  cases for pruning just static deltas (while retaining the commits), and it's
+                  likely at some point this option will be supported for use cases outside of just
+                  <option>--delete-commit</option>.
                 </para></listitem>
             </varlistentry>
         </variablelist>
