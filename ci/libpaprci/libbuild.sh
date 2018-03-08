@@ -26,7 +26,7 @@ make() {
 
 build() {
     env NOCONFIGURE=1 ./autogen.sh
-    ./configure --prefix=/usr --libdir=/usr/lib64 "$@"
+    ./configure --sysconfdir=/etc --prefix=/usr --libdir=/usr/lib64 "$@"
     make V=1
 }
 

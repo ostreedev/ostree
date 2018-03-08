@@ -4,10 +4,7 @@
   - atomic
   remote_user: root
   tasks:
-  - find:
-      paths: /root/tests/installed/
-      patterns: "itest-*.sh"
-    register: installed_tests
+  # Down the line perhaps do each log file separately?
   - name: Run sysinstalled tests
     shell: /root/tests/installed/run.sh &> /root/installed-tests.log
     register: sysinstalled_result

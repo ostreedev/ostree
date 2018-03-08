@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# Install build dependencies, run unit tests and installed tests.
+# Generate a src.rpm, then binary rpms in the current directory
 
 set -xeuo pipefail
 
@@ -26,7 +26,7 @@ if test "${OS_ID}" = 'fedora'; then
     esac
 fi
 case "${CONFIGOPTS:-}" in
-    *--with-curl*|--with-soup*)
+    *--with-curl*|*--with-soup*)
         if test -x /usr/bin/gnome-desktop-testing-runner; then
             CONFIGOPTS="${CONFIGOPTS} --enable-installed-tests=exclusive"
         fi
