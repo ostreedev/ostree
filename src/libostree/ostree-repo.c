@@ -4811,17 +4811,16 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   /* Note that fd is reused below */
   glnx_close_fd (&fd);
 
-  g_autoptr(GVariant) existing_signatures = NULL;
+  g_autoptr(GVariant) metadata = NULL;
   if (!ot_openat_ignore_enoent (self->repo_dir_fd, "summary.sig", &fd, error))
     return FALSE;
   if (fd != -1)
     {
       if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
-                               FALSE, &existing_signatures, error))
+                               FALSE, &metadata, error))
         return FALSE;
     }
 
-  g_autoptr(GVariant) new_metadata = NULL;
   for (guint i = 0; key_id[i]; i++)
     {
       g_autoptr(GBytes) signature_data = NULL;
@@ -4830,10 +4829,11 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                       cancellable, error))
         return FALSE;
 
-      new_metadata = _ostree_detached_metadata_append_gpg_sig (existing_signatures, signature_data);
+      g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
+      metadata = _ostree_detached_metadata_append_gpg_sig (old_metadata, signature_data);
     }
 
-  g_autoptr(GVariant) normalized = g_variant_get_normal_form (new_metadata);
+  g_autoptr(GVariant) normalized = g_variant_get_normal_form (metadata);
 
   if (!_ostree_repo_file_replace_contents (self,
                                            self->repo_dir_fd,
