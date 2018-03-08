@@ -30,6 +30,7 @@
 #include <glib-object.h>
 #include <libglnx.h>
 #include <stdlib.h>
+#include <udisks/udisks.h>
 
 #include "ostree-autocleanups.h"
 #include "ostree-remote-private.h"
@@ -46,15 +47,15 @@
  * @include: libostree/ostree-repo-finder-mount.h
  *
  * #OstreeRepoFinderMount is an implementation of #OstreeRepoFinder which looks
- * refs up in well-known locations on any mounted removable volumes.
+ * refs up in well-known locations on any mounted partitions such as removable
+ * drives.
  *
- * For each mounted removable volume, the directory `.ostree/repos.d` will be
- * enumerated, and all OSTree repositories below it will be searched, in lexical
- * order, for the requested #OstreeCollectionRefs. The names of the directories
- * below `.ostree/repos.d` are irrelevant, apart from their lexical ordering.
- * The directories `.ostree/repo`, `ostree/repo` and `var/lib/flatpak/repo`
- * will be searched after the others, if they exist.
- * Non-removable volumes are ignored.
+ * For each mount, the directory `.ostree/repos.d` will be enumerated, and all
+ * OSTree repositories below it will be searched, in lexical order, for the
+ * requested #OstreeCollectionRefs. The names of the directories below
+ * `.ostree/repos.d` are irrelevant, apart from their lexical ordering.  The
+ * directories `.ostree/repo`, `ostree/repo` and `var/lib/flatpak/repo` will be
+ * searched after the others, if they exist.
  *
  * For each repository which is found, a result will be returned for the
  * intersection of the refs being searched for, and the refs in `refs/heads` and
@@ -65,8 +66,8 @@
  * `.ostree/repos.d`. Any symlink which points outside the volume’s file
  * system will be ignored. Repositories are deduplicated in the results.
  *
- * The volume monitor used to find mounted volumes can be overridden by setting
- * #OstreeRepoFinderMount:monitor. By default, g_volume_monitor_get() is used.
+ * #OstreeRepoFinderMount will talk to the udisks daemon to get the list of
+ * mounts. Passing in a #GVolumeMonitor is deprecated and will be ignored.
  *
  * Since: 2017.8
  */
@@ -300,6 +301,29 @@ scan_and_add_repo (int                 dfd,
     }
 }
 
+typedef struct
+{
+  GTask                             *task; /* (owned) */
+  const OstreeCollectionRef * const *refs;
+  OstreeRepo                        *parent_repo;
+  OstreeRepoFinder                  *finder;
+} MountResolveAsyncData;
+
+static void
+mount_resolve_async_data_free (MountResolveAsyncData *data)
+{
+  if (data->task != NULL)
+    g_clear_object (&data->task);
+  g_slice_free (MountResolveAsyncData, data);
+}
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (MountResolveAsyncData, mount_resolve_async_data_free)
+
+static void
+udisks_client_cb (GObject      *source_object,
+                  GAsyncResult *res,
+                  gpointer      user_data);
+
 static void
 ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finder,
                                         const OstreeCollectionRef * const *refs,
@@ -308,27 +332,87 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
                                         GAsyncReadyCallback                callback,
                                         gpointer                           user_data)
 {
-  OstreeRepoFinderMount *self = OSTREE_REPO_FINDER_MOUNT (finder);
   g_autoptr(GTask) task = NULL;
-  g_autoptr(ObjectList) mounts = NULL;
-  g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
-  GList *l;
-  const gint priority = 50;  /* arbitrarily chosen */
+  MountResolveAsyncData *data;
 
   task = g_task_new (finder, cancellable, callback, user_data);
   g_task_set_source_tag (task, ostree_repo_finder_mount_resolve_async);
 
-  mounts = g_volume_monitor_get_mounts (self->monitor);
-  results = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_repo_finder_result_free);
+  data = g_slice_new0 (MountResolveAsyncData);
+  data->task = g_steal_pointer (&task);
+  data->refs = refs;
+  data->parent_repo = parent_repo;
+  data->finder = finder;
+  udisks_client_new (cancellable, udisks_client_cb, data);
+}
 
-  g_debug ("%s: Found %u mounts", G_STRFUNC, g_list_length (mounts));
+static void
+udisks_client_cb (GObject      *source_object,
+                  GAsyncResult *res,
+                  gpointer      user_data)
+{
+  g_autoptr(MountResolveAsyncData) data = user_data;
+  UDisksClient *udisks_client;
+  GDBusObjectManager *object_manager;
+  GList *l;
+  const gint priority = 50;  /* arbitrarily chosen */
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GList) objects = NULL; /* (element-type GDbusObject) */
+  g_autoptr(GHashTable) mounts = NULL; /* (element-type utf8 utf8) */
+  g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
+  GCancellable *cancellable;
 
-  for (l = mounts; l != NULL; l = l->next)
+  cancellable = g_task_get_cancellable (data->task);
+
+  udisks_client = udisks_client_new_finish (res, &error);
+  if (udisks_client == NULL)
     {
-      GMount *mount = G_MOUNT (l->data);
-      g_autofree gchar *mount_name = NULL;
+      g_prefix_error (&error, "Error initializing udisks client: ");
+      g_task_return_error (data->task, g_steal_pointer (&error));
+      return;
+    }
+
+  object_manager = udisks_client_get_object_manager (udisks_client);
+  objects = g_dbus_object_manager_get_objects (object_manager);
+
+  g_debug ("%s: Found %u udisks objects", G_STRFUNC, g_list_length (objects));
+
+  results = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_repo_finder_result_free);
+  mounts = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+
+  for (l = objects; l != NULL; l = l->next)
+    {
+      UDisksObject *object = UDISKS_OBJECT (l->data);
+      UDisksObjectInfo *info;
+      UDisksFilesystem *filesystem;
+      const char *one_liner;
+      const char *mount_name;
+      const char * const *mount_points;
+
+      filesystem = udisks_object_peek_filesystem (object);
+      if (filesystem == NULL)
+        continue;
+
+      mount_points = udisks_filesystem_get_mount_points (filesystem);
+      if (g_strv_length ((gchar **) mount_points) == 0)
+        continue;
+
+      info = udisks_client_get_object_info (udisks_client, object);
+      mount_name = udisks_object_info_get_name (info);
+      one_liner = udisks_object_info_get_one_liner (info);
+
+      for (char **strviter = (char **)mount_points; strviter && *strviter; strviter++)
+        {
+          g_debug ("Found mount ‘%s’ on object ‘%s’", *strviter, one_liner);
+          g_hash_table_insert (mounts, g_strdup (*strviter), g_strdup (mount_name));
+        }
+
+      g_clear_object (&info);
+    }
+
+  GLNX_HASH_TABLE_FOREACH_KV (mounts, const char *, mount_root_path, const char *, mount_name)
+    {
       g_autoptr(GFile) mount_root = NULL;
-      g_autofree gchar *mount_root_path = NULL;
       glnx_autofd int mount_root_dfd = -1;
       struct stat mount_root_stbuf;
       glnx_autofd int repos_dfd = -1;
@@ -339,17 +423,8 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
       UriAndKeyring *repo;
       g_autoptr(GError) local_error = NULL;
 
-      mount_name = g_mount_get_name (mount);
-
       /* Check the mount’s general properties. */
-      if (g_mount_is_shadowed (mount))
-        {
-          g_debug ("Ignoring mount ‘%s’ as it’s shadowed.", mount_name);
-          continue;
-        }
-
-      mount_root = g_mount_get_root (mount);
-      mount_root_path = g_file_get_path (mount_root);
+      mount_root = g_file_new_for_path (mount_root_path);
 
       if (!glnx_opendirat (AT_FDCWD, mount_root_path, TRUE, &mount_root_dfd, &local_error))
         {
@@ -357,23 +432,6 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
                    mount_name, mount_root_path, local_error->message);
           continue;
         }
-
-#if GLIB_CHECK_VERSION(2, 55, 0)
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS  /* remove once GLIB_VERSION_MAX_ALLOWED ≥ 2.56 */
-      g_autoptr(GUnixMountEntry) mount_entry = g_unix_mount_at (mount_root_path, NULL);
-
-      if (mount_entry != NULL &&
-          (g_unix_is_system_fs_type (g_unix_mount_get_fs_type (mount_entry)) ||
-           g_unix_is_system_device_path (g_unix_mount_get_device_path (mount_entry))))
-        {
-          g_debug ("Ignoring mount ‘%s’ as its file system type (%s) or device "
-                   "path (%s) indicate it’s a system mount.",
-                   mount_name, g_unix_mount_get_fs_type (mount_entry),
-                   g_unix_mount_get_device_path (mount_entry));
-          continue;
-        }
-G_GNUC_END_IGNORE_DEPRECATIONS
-#endif  /* GLib 2.56.0 */
 
       /* stat() the mount root so we can later check whether the resolved
        * repositories for individual refs are on the same device (to avoid the
@@ -426,7 +484,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
               /* Grab the set of collection–refs from the repo if we can open it. */
               scan_and_add_repo (repos_dfd, repo_dent->d_name, TRUE,
                                  mount_name, &mount_root_stbuf,
-                                 parent_repo, repos_refs, cancellable);
+                                 data->parent_repo, repos_refs, cancellable);
             }
         }
 
@@ -445,7 +503,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
       for (i = 0; i < G_N_ELEMENTS (well_known_repos); i++)
         scan_and_add_repo (mount_root_dfd, well_known_repos[i], FALSE,
                            mount_name, &mount_root_stbuf,
-                           parent_repo, repos_refs, cancellable);
+                           data->parent_repo, repos_refs, cancellable);
 
       /* Check whether a subdirectory exists for any of the @refs we’re looking
        * for. If so, and it’s a symbolic link, dereference it so multiple links
@@ -454,9 +512,9 @@ G_GNUC_END_IGNORE_DEPRECATIONS
       repo_to_refs = g_hash_table_new_full (uri_and_keyring_hash, uri_and_keyring_equal,
                                             (GDestroyNotify) uri_and_keyring_free, (GDestroyNotify) g_hash_table_unref);
 
-      for (i = 0; refs[i] != NULL; i++)
+      for (i = 0; data->refs[i] != NULL; i++)
         {
-          const OstreeCollectionRef *ref = refs[i];
+          const OstreeCollectionRef *ref = data->refs[i];
           g_autofree gchar *resolved_repo_uri = NULL;
           g_autoptr(UriAndKeyring) resolved_repo = NULL;
 
@@ -479,7 +537,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
                 }
 
               /* Finally, look up the GPG keyring for this ref. */
-              keyring_remote = ostree_repo_resolve_keyring_for_collection (parent_repo,
+              keyring_remote = ostree_repo_resolve_keyring_for_collection (data->parent_repo,
                                                                            ref->collection_id,
                                                                            cancellable, &local_error);
 
@@ -545,13 +603,13 @@ G_GNUC_END_IGNORE_DEPRECATIONS
            * the code in ostree_repo_pull_from_remotes_async() will be able to
            * check it just as quickly as we can here; so don’t duplicate the
            * code. */
-          g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, 0));
+          g_ptr_array_add (results, ostree_repo_finder_result_new (remote, data->finder, priority, supported_ref_to_checksum, 0));
         }
     }
 
   g_ptr_array_sort (results, results_compare_cb);
 
-  g_task_return_pointer (task, g_steal_pointer (&results), (GDestroyNotify) g_ptr_array_unref);
+  g_task_return_pointer (data->task, g_steal_pointer (&results), (GDestroyNotify) g_ptr_array_unref);
 }
 
 static GPtrArray *
@@ -567,17 +625,6 @@ static void
 ostree_repo_finder_mount_init (OstreeRepoFinderMount *self)
 {
   /* Nothing to see here. */
-}
-
-static void
-ostree_repo_finder_mount_constructed (GObject *object)
-{
-  OstreeRepoFinderMount *self = OSTREE_REPO_FINDER_MOUNT (object);
-
-  G_OBJECT_CLASS (ostree_repo_finder_mount_parent_class)->constructed (object);
-
-  if (self->monitor == NULL)
-    self->monitor = g_volume_monitor_get ();
 }
 
 typedef enum
@@ -628,7 +675,8 @@ ostree_repo_finder_mount_dispose (GObject *object)
 {
   OstreeRepoFinderMount *self = OSTREE_REPO_FINDER_MOUNT (object);
 
-  g_clear_object (&self->monitor);
+  if (self->monitor != NULL)
+    g_clear_object (&self->monitor);
 
   G_OBJECT_CLASS (ostree_repo_finder_mount_parent_class)->dispose (object);
 }
@@ -640,13 +688,13 @@ ostree_repo_finder_mount_class_init (OstreeRepoFinderMountClass *klass)
 
   object_class->get_property = ostree_repo_finder_mount_get_property;
   object_class->set_property = ostree_repo_finder_mount_set_property;
-  object_class->constructed = ostree_repo_finder_mount_constructed;
   object_class->dispose = ostree_repo_finder_mount_dispose;
 
   /**
    * OstreeRepoFinderMount:monitor:
    *
    * Volume monitor to use to look up mounted volumes when queried.
+   * This has been deprecated. Udisks is used instead.
    *
    * Since: 2017.8
    */
@@ -671,12 +719,12 @@ ostree_repo_finder_mount_iface_init (OstreeRepoFinderInterface *iface)
 
 /**
  * ostree_repo_finder_mount_new:
- * @monitor: (nullable) (transfer none): volume monitor to use, or %NULL to use
- *    the system default
+ * @monitor: (nullable) (transfer none): volume monitor to use (deprecated, use
+ * %NULL)
  *
- * Create a new #OstreeRepoFinderMount, using the given @monitor to look up
- * volumes. If @monitor is %NULL, the monitor from g_volume_monitor_get() will
- * be used.
+ * Create a new #OstreeRepoFinderMount. Passing in @monitor is deprecated and
+ * won't be used. The intsance will instead talk to the Udisks daemon to find
+ * mounts.
  *
  * Returns: (transfer full): a new #OstreeRepoFinderMount
  * Since: 2017.8

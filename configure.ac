@@ -122,6 +122,9 @@ PKG_CHECK_MODULES(OT_DEP_ZLIB, zlib)
 dnl We're not actually linking to this, just using the header
 PKG_CHECK_MODULES(OT_DEP_E2P, e2p)
 
+dnl Used by OstreeRepoFinderMount
+PKG_CHECK_MODULES(OT_DEP_UDISKS2, udisks2)
+
 dnl Arbitrary version that's in CentOS7.2 now
 CURL_DEPENDENCY=7.29.0
 AC_ARG_WITH(curl,
