@@ -1,0 +1,2 @@
+- include: overlay-git.yml
+- include: sysinstall-tests.yml
