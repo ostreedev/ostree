@@ -15,7 +15,7 @@ tests:
   - ./tests/fedora-str/provision.sh
   # TODO: enhance papr to have caching, a bit like https://docs.travis-ci.com/user/caching/
   - curl -Lo fedora-atomic-host.qcow2 https://getfedora.org/atomic_qcow2_latest
-  - env "TEST_SUBJECTS=$(pwd)/fedora-atomic-host.qcow2" ./tests/fedora-str/run.sh
+  - env "TEST_SUBJECTS=$(pwd)/fedora-atomic-host.qcow2" ./tests/fedora-str/playbook-run.sh tests/fedora-str/sysinstall-tests.yml
 
 artifacts:
   - tests/fedora-str/artifacts/fedora-atomic-host.qcow2.log

@@ -1,31 +1,27 @@
----
-- hosts: localhost
-  tags:
-  - atomic
-  remote_user: root
-  tasks:
-  - command: ostree --version
-    changed_when: False
-    register: ostree_orig_version
-  - set_fact:
-      ostree_orig_version_yaml: "{{ ostree_orig_version.stdout | from_yaml }}"
-  - name: Copy locally built RPMs
-    synchronize: src=x86_64/ dest=/root/x86_64/ archive=yes
-  - shell: ostree admin unlock || true
-  # Install the RPMs we already have.  For the test suite we use rpm2cpio
-  # since it depends on libsoup, but we're not using that yet for the sysinstalled tests
-  - shell: >
-      /usr/bin/rpm -Fvh /root/x86_64/*.rpm && \
-      cd / && rpm2cpio /root/x86_64/ostree-tests-2*.rpm | cpio -div
-  - command: ostree --version
-    register: ostree_new_version
-  - set_fact:
-      ostree_new_version_yaml: "{{ ostree_new_version.stdout | from_yaml }}"
-  - name: "Fail if we didn't change the ostree version"
-    when: ostree_orig_version_yaml['libostree']['Git'] == ostree_new_version_yaml['libostree']['Git']
-    fail:
-      msg: "Failed to change ostree version"
+# Run "admin unlock" and add locally built RPMs, then
+# copy the whole tests/ directory into the VM.
+- command: ostree --version
+  changed_when: False
+  register: ostree_orig_version
+- set_fact:
+    ostree_orig_version_yaml: "{{ ostree_orig_version.stdout | from_yaml }}"
+- name: Copy locally built RPMs
+  synchronize: src=x86_64/ dest=/root/x86_64/ archive=yes
+- shell: ostree admin unlock || true
+# Install the RPMs we already have.  For the test suite we use rpm2cpio
+# since it depends on libsoup, but we're not using that yet for the sysinstalled tests
+- shell: >
+    /usr/bin/rpm -Fvh /root/x86_64/*.rpm && \
+    cd / && rpm2cpio /root/x86_64/ostree-tests-2*.rpm | cpio -div
+- command: ostree --version
+  register: ostree_new_version
+- set_fact:
+    ostree_new_version_yaml: "{{ ostree_new_version.stdout | from_yaml }}"
+- name: "Fail if we didn't change the ostree version"
+  when: ostree_orig_version_yaml['libostree']['Git'] == ostree_new_version_yaml['libostree']['Git']
+  fail:
+    msg: "Failed to change ostree version"
 
-  # Next copy all of the tests/ directory
-  - name: Copy test data
-    synchronize: src=../../ dest=/root/tests/ archive=yes
+# Next copy all of the tests/ directory
+- name: Copy test data
+  synchronize: src=../../ dest=/root/tests/ archive=yes
