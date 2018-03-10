@@ -482,7 +482,7 @@ AS_IF([ test x$with_libsystemd != xno ], [
     ])
     AS_IF([ test x$have_libsystemd = xyes], [
         AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd.pc])
-        PKG_CHECK_MODULES(libsystemd)
+        PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
         with_libsystemd=yes
     ], [
         with_libsystemd=no
