@@ -2153,6 +2153,12 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
                                GCancellable   *cancellable,
                                GError        **error)
 {
+  /* Always ignore the cancellable to avoid the chance that, if it gets
+   * canceled, the transaction may not be fully cleaned up.
+   * See https://github.com/ostreedev/ostree/issues/1491 .
+   */
+  cancellable = NULL;
+
   /* Note early return */
   if (!self->in_transaction)
     return TRUE;
