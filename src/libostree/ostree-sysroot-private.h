@@ -50,6 +50,7 @@ struct OstreeSysroot {
   GLnxLockFile lock;
 
   gboolean loaded;
+  gboolean ostree_booted;
 
   gboolean is_physical; /* TRUE if we're pointed at physical storage root and not a deployment */
   GPtrArray *deployments;

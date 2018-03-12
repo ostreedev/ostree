@@ -797,6 +797,16 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   if (!ensure_repo (self, error))
     return FALSE;
 
+  /* If we didn't check already, see if we have the global ostree-booted flag;
+   * we'll use it to sanity check that we found a booted deployment for example.
+   */
+  if (!self->loaded)
+    {
+      if (!glnx_fstatat_allow_noent (AT_FDCWD, "/run/ostree-booted", NULL, 0, error))
+        return FALSE;
+      self->ostree_booted = (errno == 0);
+    }
+
   int bootversion = 0;
   if (!read_current_bootversion (self, &bootversion, cancellable, error))
     return FALSE;
@@ -852,6 +862,9 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   if (!find_booted_deployment (self, deployments, &self->booted_deployment,
                                cancellable, error))
     return FALSE;
+  /* Sanity check; note the converse case is fine */
+  if (self->booted_deployment && !self->ostree_booted)
+    return glnx_throw (error, "Unexpected state: In a booted deployment but no /run/ostree-booted?");
 
   /* Determine whether we're "physical" or not, the first time we initialize */
   if (!self->loaded)
