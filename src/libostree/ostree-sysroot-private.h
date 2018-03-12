@@ -51,6 +51,10 @@ struct OstreeSysroot {
 
   gboolean loaded;
   gboolean ostree_booted;
+  gboolean root_is_sysroot; /* TRUE if sysroot_fd is pointed to rootfs "/" */
+  /* The device/inode for /, used to detect booted deployment */
+  dev_t root_device;
+  ino_t root_inode;
 
   gboolean is_physical; /* TRUE if we're pointed at physical storage root and not a deployment */
   GPtrArray *deployments;
