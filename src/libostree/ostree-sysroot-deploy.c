@@ -523,38 +523,33 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
                           GCancellable      *cancellable,
                           GError           **error)
 {
-  gboolean ret = FALSE;
-  OstreeRepoCheckoutAtOptions checkout_opts = { 0, };
-  const char *csum = ostree_deployment_get_csum (deployment);
-  g_autofree char *checkout_target_name = NULL;
-  g_autofree char *osdeploy_path = NULL;
-  glnx_autofd int osdeploy_dfd = -1;
-  int ret_fd;
-
-  osdeploy_path = g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
-  checkout_target_name = g_strdup_printf ("%s.%d", csum, ostree_deployment_get_deployserial (deployment));
-
+  GLNX_AUTO_PREFIX_ERROR ("Checking out deployment tree", error);
+  /* Find the directory with deployments for this stateroot */
+  g_autofree char *osdeploy_path =
+    g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
   if (!glnx_shutil_mkdir_p_at (sysroot->sysroot_fd, osdeploy_path, 0775, cancellable, error))
-    goto out;
+    return FALSE;
 
+  glnx_autofd int osdeploy_dfd = -1;
   if (!glnx_opendirat (sysroot->sysroot_fd, osdeploy_path, TRUE, &osdeploy_dfd, error))
-    goto out;
+    return FALSE;
 
+  /* Clean up anything that was there before, from e.g. an interrupted checkout */
+  const char *csum = ostree_deployment_get_csum (deployment);
+  g_autofree char *checkout_target_name =
+    g_strdup_printf ("%s.%d", csum, ostree_deployment_get_deployserial (deployment));
   if (!glnx_shutil_rm_rf_at (osdeploy_dfd, checkout_target_name, cancellable, error))
-    goto out;
+    return FALSE;
 
+  /* Generate hardlink farm, then opendir it */
+  OstreeRepoCheckoutAtOptions checkout_opts = { 0, };
   if (!ostree_repo_checkout_at (repo, &checkout_opts, osdeploy_dfd,
                                 checkout_target_name, csum,
                                 cancellable, error))
-    goto out;
+    return FALSE;
 
-  if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_fd, error))
-    goto out;
-
-  ret = TRUE;
-  *out_deployment_dfd = ret_fd;
- out:
-  return ret;
+  return glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, out_deployment_dfd,
+                         error);
 }
 
 static char *
@@ -2446,10 +2441,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   glnx_autofd int deployment_dfd = -1;
   if (!checkout_deployment_tree (self, repo, new_deployment, &deployment_dfd,
                                  cancellable, error))
-    {
-      g_prefix_error (error, "Checking out tree: ");
-      return FALSE;
-    }
+    return FALSE;
 
   g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
   if (!get_kernel_from_tree (deployment_dfd, &kernel_layout,
