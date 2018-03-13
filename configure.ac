@@ -469,10 +469,26 @@ AC_ARG_WITH(mkinitcpio,
 AM_CONDITIONAL(BUILDOPT_MKINITCPIO, test x$with_mkinitcpio = xyes)
 
 dnl We have separate checks for libsystemd and the unit dir for historical reasons
-PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd], [have_libsystemd=yes], [have_libsystemd=no])
-AM_CONDITIONAL(BUILDOPT_LIBSYSTEMD, test x$have_libsystemd = xyes)
-AM_COND_IF(BUILDOPT_LIBSYSTEMD,
-           AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd]))
+AC_ARG_WITH(libsystemd,
+            AS_HELP_STRING([--without-libsystemd], [Do not use libsystemd]),
+            :, with_libsystemd=maybe)
+
+AS_IF([ test x$with_libsystemd != xno ], [
+    AC_MSG_CHECKING([for libsystemd])
+    PKG_CHECK_EXISTS(libsystemd, have_libsystemd=yes, have_libsystemd=no)
+    AC_MSG_RESULT([$have_libsystemd])
+    AS_IF([ test x$have_libsystemd = xno && test x$with_libsystemd != xmaybe ], [
+       AC_MSG_ERROR([libsystemd is enabled but could not be found])
+    ])
+    AS_IF([ test x$have_libsystemd = xyes], [
+        AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd.pc])
+        PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
+        with_libsystemd=yes
+    ], [
+        with_libsystemd=no
+    ])
+], [ with_libsystemd=no ])
+AM_CONDITIONAL(BUILDOPT_LIBSYSTEMD, test $with_libsystemd != no)
 
 AS_IF([test "x$have_libsystemd" = "xyes"], [
   with_systemd=yes
