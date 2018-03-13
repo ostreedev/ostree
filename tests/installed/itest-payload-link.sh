@@ -68,18 +68,17 @@ if cp --reflink a b; then
     ostree config --repo=repo set core.payload-link-threshold 0
     ostree --repo=repo remote add origin --set=gpg-verify=false ${origin}
     ostree --repo=repo pull --disable-static-deltas origin ${host_nonremoteref}
-    if test `find repo -name '*.payload-link' | wc -l` = 0; then
-        fatal ".payload-link files not found"
-    fi
+    find repo -type l -name '*.payload-link' >payload-links.txt
+    assert_not_streq "$(wc -l < payload-links.txt)" "0"
 
-    find repo -name '*.payload-link' | while read i;
-    do
+    # Disable logging for inner loop, otherwise it'd be enormous
+    set +x
+    cat payload-links.txt | while read i; do
         payload_checksum=$(basename $(dirname $i))$(basename $i .payload-link)
         payload_checksum_calculated=$(sha256sum $(readlink -f $i) | cut -d ' ' -f 1)
-        if test $payload_checksum != $payload_checksum_calculated; then
-            fatal ".payload-link has the wrong checksum"
-        fi
+        assert_streq "${payload_checksum}" "${payload_checksum_calculated}"
     done
+    set -x
     echo "ok pull creates .payload-link"
 else
     echo "ok # SKIP no reflink support in the file system"
