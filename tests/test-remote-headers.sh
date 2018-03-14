@@ -25,8 +25,13 @@ echo '1..2'
 
 . $(dirname $0)/libtest.sh
 
+V=$($CMD_PREFIX ostree --version | \
+  python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["libostree"]["Version"])')
+
 setup_fake_remote_repo1 "archive" "" \
-  "--expected-header foo=bar --expected-header baz=badger"
+  --expected-header foo=bar \
+  --expected-header baz=badger \
+  --expected-header "User-Agent=libostree/$V dodo/2.15"
 
 assert_fail (){
   set +e
@@ -46,9 +51,22 @@ ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat 
 # Sanity check the setup, without headers the pull should fail
 assert_fail ${CMD_PREFIX} ostree --repo=repo pull origin main
 
+# without proper User-Agent, the pull should fail
+assert_fail ${CMD_PREFIX} ostree --repo=repo pull origin main \
+  --http-header foo=bar \
+  --http-header baz=badger
+assert_fail ${CMD_PREFIX} ostree --repo=repo pull origin main \
+  --http-header foo=bar \
+  --http-header baz=badger \
+  --append-user-agent bar/1.2
+
 echo "ok setup done"
 
 # Now pull should succeed now
-${CMD_PREFIX} ostree --repo=repo pull --http-header foo=bar --http-header baz=badger origin main
+${CMD_PREFIX} ostree --repo=repo pull \
+  --http-header foo=bar \
+  --http-header baz=badger \
+  --append-user-agent dodo/2.15 \
+  origin main
 
 echo "ok pull succeeded"

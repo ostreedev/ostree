@@ -27,7 +27,8 @@ echo '1..4'
 . $(dirname $0)/libtest.sh
 
 setup_fake_remote_repo1 "archive" "" \
-  "--expected-cookies foo=bar --expected-cookies baz=badger"
+  --expected-cookies foo=bar \
+  --expected-cookies baz=badger
 
 assert_fail (){ 
   if $@; then

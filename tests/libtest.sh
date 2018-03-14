@@ -234,10 +234,9 @@ ostree_repo_init() {
 # The original one; use setup_fake_remote_repo2 for newer code,
 # down the line we'll try to port tests.
 setup_fake_remote_repo1() {
-    mode=$1
-    commit_opts=${2:-}
-    args=${3:-}
-    shift
+    mode=$1; shift
+    commit_opts=${1:-}
+    [ $# -eq 0 ] || shift
     oldpwd=`pwd`
     mkdir ostree-srv
     cd ostree-srv
@@ -263,7 +262,7 @@ setup_fake_remote_repo1() {
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir}/ostree-srv ostree
-    ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd.log --daemonize -p ${test_tmpdir}/httpd-port $args
+    ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd.log --daemonize -p ${test_tmpdir}/httpd-port "$@"
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
