@@ -114,6 +114,9 @@ void _ostree_fetcher_set_tls_database (OstreeFetcher *self,
 void _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
                                         GVariant      *extra_headers);
 
+void _ostree_fetcher_set_extra_user_agent (OstreeFetcher *self,
+                                           const char    *extra_user_agent);
+
 guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
 
 void _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
