@@ -1,2 +1,10 @@
-- include: overlay-git.yml
-- include: sysinstall-tests.yml
+# This entrypoint right now just runs the sysinstalled-tests.
+---
+- hosts: localhost
+  tags:
+  - atomic
+  remote_user: root
+  vars:
+    use_git_build: True
+  tasks:
+    - import_tasks: sysinstall-tests.yml
