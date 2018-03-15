@@ -3,9 +3,6 @@
 # TEST_SUBJECTS being set.
 set -xeuo pipefail
 
-dn=$(cd $(dirname $0) && pwd)
-cd ${dn}
-
 # https://fedoraproject.org/wiki/CI/Tests
 if test -z "${TEST_SUBJECTS:-}"; then
     cat <<EOF
