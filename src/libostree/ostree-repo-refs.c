@@ -629,8 +629,24 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
       const char *prefix_path;
       const char *path;
 
-      if (!ostree_parse_refspec (refspec_prefix, &remote, &ref_prefix, error))
-        return FALSE;
+      /* special-case "<remote>:" and "<remote>:.", which ostree_parse_refspec won't like */
+      if (g_str_has_suffix (refspec_prefix, ":") ||
+          g_str_has_suffix (refspec_prefix, ":."))
+        {
+          const char *colon = strrchr (refspec_prefix, ':');
+          g_autofree char *r = g_strndup (refspec_prefix, colon - refspec_prefix);
+          if (ostree_validate_remote_name (r, NULL))
+            {
+              remote = g_steal_pointer (&r);
+              ref_prefix = g_strdup (".");
+            }
+        }
+
+      if (!ref_prefix)
+        {
+          if (!ostree_parse_refspec (refspec_prefix, &remote, &ref_prefix, error))
+            return FALSE;
+        }
 
       if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES) && remote)
         {
