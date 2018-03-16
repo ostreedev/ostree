@@ -18,7 +18,6 @@
     echo systemd binary > components/systemd/usr/bin/systemd
     chmod a+x components/systemd/usr/bin/systemd
     echo systemd lib > components/systemd/usr/lib/libsystemd.so.1
-    
     # Make the gid on dbus 81 like fedora, also ensure no xattrs
     ostree --repo=repo commit --no-xattrs -b component-dbus --owner-uid 0 --owner-gid 81 --tree=dir=components/dbus
     ostree --repo=repo commit --no-xattrs -b component-systemd --owner-uid 0 --owner-gid 0 --tree=dir=components/systemd
@@ -26,8 +25,8 @@
     for component in dbus systemd; do
         ostree --repo=repo checkout -U -H component-${component} --union rootfs
     done
-    echo 'some rootfs data' > rootfs/usr/lib/cache.txt
-    # Commit using the host's selinux policy
+    echo some rootfs data > rootfs/usr/lib/cache.txt
+    # Commit using the host selinux policy
     ostree --repo=repo commit --selinux-policy / -b rootfs --link-checkout-speedup --tree=dir=rootfs
     ostree --repo=repo ls rootfs /usr/bin/systemd >ls.txt
     assert_file_has_content ls.txt '^-007.. 0 0 .*/usr/bin/systemd'

@@ -15,5 +15,11 @@
     - name: Copy libtest-core.sh
       synchronize: src=../libtest-core.sh dest=/root/ archive=yes
     - import_tasks: nondestructive/remotes.yml
+      tags:
+        - remotes
     - import_tasks: nondestructive/bare-root.yml
+      tags:
+        - bare-root
     - import_tasks: nondestructive/bare-user-root.yml
+      tags:
+        - bare-user-root
