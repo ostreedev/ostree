@@ -21,7 +21,3 @@
   when: ostree_orig_version_yaml['libostree']['Git'] == ostree_new_version_yaml['libostree']['Git']
   fail:
     msg: "Failed to change ostree version"
-
-# Next copy all of the tests/ directory
-- name: Copy test data
-  synchronize: src=../../ dest=/root/tests/ archive=yes

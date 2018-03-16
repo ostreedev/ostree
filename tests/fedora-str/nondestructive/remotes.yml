@@ -1,0 +1,8 @@
+# Formerly itest-remotes.sh introduced by
+# e0346c149498a7ec7d5c064a9d5485c9dcb693b1
+# "Add a notion of "physical" sysroot, use for remote writing"
+- command: ostree remote list
+  register: remotelist
+- fail:
+    msg: no ostree remotes
+  when: "{{ remotelist.stdout|length == 0 }}"

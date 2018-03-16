@@ -1,0 +1,19 @@
+# Run the non-destructive tests; these should support being executed
+# concurrently. Use a temporary directory, don't delete any data from the host
+# ostree repo, don't do ostree admin deploy, etc.
+
+---
+- hosts: localhost
+  tags:
+  - atomic
+  remote_user: root
+  vars:
+    use_git_build: True
+  tasks:
+    - import_tasks: overlay-git.yml
+      when: use_git_build
+    - name: Copy libtest-core.sh
+      synchronize: src=../libtest-core.sh dest=/root/ archive=yes
+    - import_tasks: nondestructive/remotes.yml
+    - import_tasks: nondestructive/bare-root.yml
+    - import_tasks: nondestructive/bare-user-root.yml

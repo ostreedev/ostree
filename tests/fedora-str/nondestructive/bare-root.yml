@@ -1,0 +1,42 @@
+# Originally introduced as tests/installed/test-bare-root.sh
+# in commit 654b0c4877d42b3b15a87114408722e843687ded
+# "tests/installed: New installed, privileged tests using Fedora AH"
+- tempfile:
+    path: /ostree/repo/tmp
+    state: directory
+    suffix: workdir
+  register: work
+- command: rpm-ostree status --json
+  register: host_status_json_result
+- set_fact:
+    host_status: "{{ host_status_json_result.stdout | from_json }}"
+- command: ostree refs --delete testref
+- command: ostree checkout -H "{{ host_status['deployments'][0]['checksum'] }}" co
+  args:
+    chdir: "{{ work.path }}"
+- shell: |
+    set -xeuo pipefail
+    . ~/libtest-core.sh
+    victim_symlink=usr/bin/gtar  # Seems likely to stick around
+    # Copy the link to avoid corrupting it
+    cd co
+    cp ${victim_symlink}{,.tmp}
+    mv ${victim_symlink}{.tmp,}
+    # Add another xattr to a symlink and a directory, since otherwise this is unusual
+    setfattr -n security.biometric -v iris ${victim_symlink}
+    setfattr -n security.crunchy -v withketchup usr/bin
+    cd ..
+    ostree commit -b testref --link-checkout-speedup --tree=dir=co
+    ostree fsck
+    ostree ls -X testref /${victim_symlink} > ls.txt
+    assert_file_has_content ls.txt 'security.biometric'
+    ostree ls -X testref usr/bin > ls.txt
+    assert_file_has_content ls.txt 'security.crunchy'
+
+    ostree checkout -H testref co-testref
+    getfattr -n security.biometric co-testref/${victim_symlink} > xattr.txt
+    assert_file_has_content xattr.txt 'security.biometric="iris"'
+    getfattr -n security.crunchy co-testref/usr/bin > xattr.txt
+    assert_file_has_content xattr.txt 'security.crunchy="withketchup"'
+  args:
+    chdir: "{{ work.path }}"
