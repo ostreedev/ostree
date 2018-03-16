@@ -147,6 +147,13 @@ ${CMD_PREFIX} ostree --repo=repo refs local1 --create=origin:local1
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create6
 assert_file_has_content refscount.create6 "^11$"
 
+#Check that we can list just remote refs
+${CMD_PREFIX} ostree --repo=repo refs origin: | wc -l > refscount.create7
+assert_file_has_content refscount.create7 "^2$" # origin:remote1 origin:local1
+#Also support :. for backcompat with flatpak
+${CMD_PREFIX} ostree --repo=repo refs origin:. | wc -l > refscount.create8
+assert_file_has_content refscount.create8 "^2$" # origin:remote1 origin:local1
+
 echo "ok refs"
 
 # Test symlinking a ref
