@@ -667,27 +667,24 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
                      GCancellable                  *cancellable,
                      GError                       **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GPtrArray) path_parts = g_ptr_array_new ();
-  g_autoptr(GFileInfo) root_info = NULL;
 
-  root_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
+  g_autoptr(GFileInfo) root_info =
+    g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
+                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                       cancellable, error);
   if (!root_info)
-    goto out;
+    return FALSE;
 
+  g_autoptr(GPtrArray) path_parts = g_ptr_array_new ();
   g_ptr_array_add (path_parts, (char*)prefix);
   if (!relabel_recursively (sysroot, sepolicy, dir, root_info, path_parts,
                             cancellable, error))
     {
       g_prefix_error (error, "Relabeling /%s: ", prefix);
-      goto out;
+      return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /* Handles SELinux labeling for /var; this is slated to be deleted.  See
@@ -766,12 +763,8 @@ merge_configuration (OstreeSysroot         *sysroot,
 
   if (previous_deployment)
     {
-      g_autoptr(GFile) previous_path = NULL;
-      OstreeBootconfigParser *previous_bootconfig;
-
-      previous_path = ostree_sysroot_get_deployment_directory (sysroot, previous_deployment);
-
-      previous_bootconfig = ostree_deployment_get_bootconfig (previous_deployment);
+      g_autoptr(GFile) previous_path = ostree_sysroot_get_deployment_directory (sysroot, previous_deployment);
+      OstreeBootconfigParser *previous_bootconfig = ostree_deployment_get_bootconfig (previous_deployment);
       if (previous_bootconfig)
         {
           const char *previous_options = ostree_bootconfig_parser_get (previous_bootconfig, "options");
@@ -1939,23 +1932,18 @@ deployment_bootconfigs_equal (OstreeDeployment *a,
     return FALSE;
 
   {
-    OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
-    OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
-    const char *a_boot_options = ostree_bootconfig_parser_get (a_bootconfig, "options");
-    const char *b_boot_options = ostree_bootconfig_parser_get (b_bootconfig, "options");
-    g_autoptr(OstreeKernelArgs) a_kargs = NULL;
-    g_autoptr(OstreeKernelArgs) b_kargs = NULL;
-    g_autofree char *a_boot_options_without_ostree = NULL;
-    g_autofree char *b_boot_options_without_ostree = NULL;
-
     /* We checksum the kernel arguments *except* ostree= */
-    a_kargs = _ostree_kernel_args_from_string (a_boot_options);
+    OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
+    const char *a_boot_options = ostree_bootconfig_parser_get (a_bootconfig, "options");
+    g_autoptr(OstreeKernelArgs) a_kargs = _ostree_kernel_args_from_string (a_boot_options);
     _ostree_kernel_args_replace (a_kargs, "ostree");
-    a_boot_options_without_ostree = _ostree_kernel_args_to_string (a_kargs);
+    g_autofree char *a_boot_options_without_ostree = _ostree_kernel_args_to_string (a_kargs);
 
-    b_kargs = _ostree_kernel_args_from_string (b_boot_options);
+    OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
+    const char *b_boot_options = ostree_bootconfig_parser_get (b_bootconfig, "options");
+    g_autoptr(OstreeKernelArgs) b_kargs = _ostree_kernel_args_from_string (b_boot_options);
     _ostree_kernel_args_replace (b_kargs, "ostree");
-    b_boot_options_without_ostree = _ostree_kernel_args_to_string (b_kargs);
+    g_autofree char *b_boot_options_without_ostree = _ostree_kernel_args_to_string (b_kargs);
 
     if (strcmp (a_boot_options_without_ostree, b_boot_options_without_ostree) != 0)
       return FALSE;
@@ -2086,12 +2074,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                                                GError           **error)
 {
   gboolean ret = FALSE;
-  guint i;
-  gboolean requires_new_bootversion = FALSE;
-  gboolean found_booted_deployment = FALSE;
-  gboolean bootloader_is_atomic = FALSE;
-  gboolean boot_was_ro_mount = FALSE;
-  SyncStats syncstats = { 0, };
   g_autoptr(OstreeBootloader) bootloader = NULL;
 
   g_assert (self->loaded);
@@ -2105,11 +2087,12 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
    * matching bootloader configuration, then we can just swap the
    * subbootversion bootlinks.
    */
+  gboolean requires_new_bootversion = FALSE;
   if (new_deployments->len != self->deployments->len)
     requires_new_bootversion = TRUE;
   else
     {
-      for (i = 0; i < new_deployments->len; i++)
+      for (guint i = 0; i < new_deployments->len; i++)
         {
           if (!deployment_bootconfigs_equal (new_deployments->pdata[i],
                                              self->deployments->pdata[i]))
@@ -2120,7 +2103,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
         }
     }
 
-  for (i = 0; i < new_deployments->len; i++)
+  gboolean found_booted_deployment = FALSE;
+  for (guint i = 0; i < new_deployments->len; i++)
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
       g_autoptr(GFile) deployment_root = NULL;
@@ -2146,6 +2130,9 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       goto out;
     }
 
+  gboolean bootloader_is_atomic = FALSE;
+  gboolean boot_was_ro_mount = FALSE;
+  SyncStats syncstats = { 0, };
   if (!requires_new_bootversion)
     {
       if (!create_new_bootlinks (self, self->bootversion,
@@ -2211,13 +2198,10 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 
       /* Only show the osname in bootloader titles if there are multiple
        * osname's among the new deployments.  Check for that here. */
-      for (i = 1; i < new_deployments->len; i++)
+      for (guint i = 1; i < new_deployments->len; i++)
         {
-          const gchar *osname_0, *osname_i;
-
-          osname_0 = ostree_deployment_get_osname (new_deployments->pdata[0]);
-          osname_i = ostree_deployment_get_osname (new_deployments->pdata[i]);
-
+          const char *osname_0 = ostree_deployment_get_osname (new_deployments->pdata[0]);
+          const char *osname_i = ostree_deployment_get_osname (new_deployments->pdata[i]);
           if (!g_str_equal (osname_0, osname_i))
             {
               show_osname = TRUE;
@@ -2225,7 +2209,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
             }
         }
 
-      for (i = 0; i < new_deployments->len; i++)
+      for (guint i = 0; i < new_deployments->len; i++)
         {
           OstreeDeployment *deployment = new_deployments->pdata[i];
           if (!install_deployment_kernel (self, repo, new_bootversion,
