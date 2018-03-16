@@ -690,30 +690,25 @@ parse_deployment (OstreeSysroot       *self,
   return TRUE;
 }
 
+/* Given a bootloader config, return the value part of the ostree= kernel
+ * argument.
+ */
 static char *
 get_ostree_kernel_arg_from_config (OstreeBootconfigParser  *config)
 {
-  const char *options;
-  char *ret = NULL;
-  char **opts, **iter;
-
-  options = ostree_bootconfig_parser_get (config, "options");
+  const char *options = ostree_bootconfig_parser_get (config, "options");
   if (!options)
     return NULL;
 
-  opts = g_strsplit (options, " ", -1);
-  for (iter = opts; *iter; iter++)
+  g_auto(GStrv) opts = g_strsplit (options, " ", -1);
+  for (char **iter = opts; *iter; iter++)
     {
       const char *opt = *iter;
       if (g_str_has_prefix (opt, "ostree="))
-        {
-          ret = g_strdup (opt + strlen ("ostree="));
-          break;
-        }
+        return g_strdup (opt + strlen ("ostree="));
     }
-  g_strfreev (opts);
 
-  return ret;
+  return NULL;
 }
 
 static gboolean
@@ -963,13 +958,10 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
 GPtrArray *
 ostree_sysroot_get_deployments (OstreeSysroot  *self)
 {
-  GPtrArray *copy;
-  guint i;
-
   g_return_val_if_fail (self->loaded, NULL);
 
-  copy = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-  for (i = 0; i < self->deployments->len; i++)
+  GPtrArray *copy = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  for (guint i = 0; i < self->deployments->len; i++)
     g_ptr_array_add (copy, g_object_ref (self->deployments->pdata[i]));
   return copy;
 }
@@ -1114,10 +1106,9 @@ char *
 _ostree_sysroot_join_lines (GPtrArray  *lines)
 {
   GString *buf = g_string_new ("");
-  guint i;
   gboolean prev_was_empty = FALSE;
 
-  for (i = 0; i < lines->len; i++)
+  for (guint i = 0; i < lines->len; i++)
     {
       const char *line = lines->pdata[i];
       /* Special bit to remove extraneous empty lines */
