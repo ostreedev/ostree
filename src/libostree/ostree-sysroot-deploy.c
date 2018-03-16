@@ -679,10 +679,7 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
   g_ptr_array_add (path_parts, (char*)prefix);
   if (!relabel_recursively (sysroot, sepolicy, dir, root_info, path_parts,
                             cancellable, error))
-    {
-      g_prefix_error (error, "Relabeling /%s: ", prefix);
-      return FALSE;
-    }
+    return glnx_prefix_error (error, "Relabeling /%s", prefix);
 
   return TRUE;
 }
@@ -2074,6 +2071,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                                                GError           **error)
 {
   gboolean ret = FALSE;
+  gboolean boot_was_ro_mount = FALSE;
   g_autoptr(OstreeBootloader) bootloader = NULL;
 
   g_assert (self->loaded);
@@ -2131,7 +2129,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     }
 
   gboolean bootloader_is_atomic = FALSE;
-  gboolean boot_was_ro_mount = FALSE;
   SyncStats syncstats = { 0, };
   if (!requires_new_bootversion)
     {
