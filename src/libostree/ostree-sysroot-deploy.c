@@ -760,7 +760,6 @@ merge_configuration (OstreeSysroot         *sysroot,
 
   if (previous_deployment)
     {
-      g_autoptr(GFile) previous_path = ostree_sysroot_get_deployment_directory (sysroot, previous_deployment);
       OstreeBootconfigParser *previous_bootconfig = ostree_deployment_get_bootconfig (previous_deployment);
       if (previous_bootconfig)
         {
