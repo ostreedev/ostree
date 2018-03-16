@@ -77,6 +77,7 @@ struct OstreeFetcher
   char *proxy;
   struct curl_slist *extra_headers;
   int tmpdir_dfd;
+  char *custom_user_agent;
 
   GMainContext *mainctx;
   CURLM *multi;
@@ -180,6 +181,7 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_pointer (&self->timer_event, (GDestroyNotify)destroy_and_unref_source);
   if (self->mainctx)
     g_main_context_unref (self->mainctx);
+  g_clear_pointer (&self->custom_user_agent, (GDestroyNotify)g_free);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
@@ -676,6 +678,18 @@ _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
     }
 }
 
+void
+_ostree_fetcher_set_extra_user_agent (OstreeFetcher *self,
+                                      const char    *extra_user_agent)
+{
+  g_clear_pointer (&self->custom_user_agent, (GDestroyNotify)g_free);
+  if (extra_user_agent)
+    {
+      self->custom_user_agent =
+        g_strdup_printf ("%s %s", OSTREE_FETCHER_USERAGENT_STRING, extra_user_agent);
+    }
+}
+
 /* Re-bind all of the outstanding curl items to our new main context */
 static void
 adopt_steal_mainctx (OstreeFetcher *self,
@@ -716,7 +730,8 @@ initiate_next_curl_request (FetcherRequest *req,
     curl_easy_setopt (req->easy, CURLOPT_URL, uri);
   }
 
-  curl_easy_setopt (req->easy, CURLOPT_USERAGENT, OSTREE_FETCHER_USERAGENT_STRING);
+  curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
+                    self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
   if (self->extra_headers)
     curl_easy_setopt (req->easy, CURLOPT_HTTPHEADER, self->extra_headers);
 

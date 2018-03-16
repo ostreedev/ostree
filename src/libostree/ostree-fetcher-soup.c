@@ -375,6 +375,24 @@ session_thread_set_tls_database_cb (ThreadClosure *thread_closure,
 }
 
 static void
+session_thread_set_extra_user_agent_cb (ThreadClosure *thread_closure,
+                                        gpointer data)
+{
+  const char *extra_user_agent = data;
+  if (extra_user_agent != NULL)
+    {
+      g_autofree char *ua =
+        g_strdup_printf ("%s %s", OSTREE_FETCHER_USERAGENT_STRING, extra_user_agent);
+      g_object_set (thread_closure->session, SOUP_SESSION_USER_AGENT, ua, NULL);
+    }
+  else
+    {
+      g_object_set (thread_closure->session, SOUP_SESSION_USER_AGENT,
+                    OSTREE_FETCHER_USERAGENT_STRING, NULL);
+    }
+}
+
+static void
 on_request_sent (GObject        *object, GAsyncResult   *result, gpointer        user_data);
 
 static void
@@ -772,6 +790,16 @@ _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
                            session_thread_set_headers_cb,
                            g_variant_ref (extra_headers),
                            (GDestroyNotify) g_variant_unref);
+}
+
+void
+_ostree_fetcher_set_extra_user_agent (OstreeFetcher *self,
+                                      const char    *extra_user_agent)
+{
+  session_thread_idle_add (self->thread_closure,
+                           session_thread_set_extra_user_agent_cb,
+                           g_strdup (extra_user_agent),
+                           (GDestroyNotify) g_free);
 }
 
 static gboolean

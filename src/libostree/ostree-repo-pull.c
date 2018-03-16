@@ -87,6 +87,7 @@ typedef struct {
   OstreeAsyncProgress *progress;
 
   GVariant         *extra_headers;
+  char             *append_user_agent;
 
   gboolean      dry_run;
   gboolean      dry_run_emitted_progress;
@@ -2922,11 +2923,13 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   const char *url_override = NULL;
   g_autoptr(GVariant) extra_headers = NULL;
   g_autoptr(GPtrArray) mirrorlist = NULL;
+  const char *append_user_agent = NULL;
 
   if (options)
     {
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
       (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
+      (void) g_variant_lookup (options, "append-user-agent", "&s", &append_user_agent);
     }
 
   mainctx = g_main_context_new ();
@@ -2938,6 +2941,9 @@ repo_remote_fetch_summary (OstreeRepo    *self,
 
   if (extra_headers)
     _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
+
+  if (append_user_agent)
+    _ostree_fetcher_set_extra_user_agent (fetcher, append_user_agent);
 
   {
     g_autofree char *url_string = NULL;
@@ -3054,6 +3060,9 @@ reinitialize_fetcher (OtPullData *pull_data, const char *remote_name,
 
   if (pull_data->extra_headers)
     _ostree_fetcher_set_extra_headers (pull_data->fetcher, pull_data->extra_headers);
+
+  if (pull_data->append_user_agent)
+    _ostree_fetcher_set_extra_user_agent (pull_data->fetcher, pull_data->append_user_agent);
 
   return TRUE;
 }
@@ -3240,6 +3249,7 @@ initiate_request (OtPullData                 *pull_data,
  *   * http-headers (a(ss)): Additional headers to add to all HTTP requests
  *   * update-frequency (u): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
  *   * localcache-repos (as): File paths for local repos to use as caches when doing remote fetches
+ *   * append-user-agent (s): Additional string to append to the user agent
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -3311,6 +3321,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
       (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
       (void) g_variant_lookup (options, "timestamp-check", "b", &pull_data->timestamp_check);
+      (void) g_variant_lookup (options, "append-user-agent", "s", &pull_data->append_user_agent);
 
       if (pull_data->remote_refspec_name != NULL)
         pull_data->remote_name = g_strdup (pull_data->remote_refspec_name);
@@ -4323,6 +4334,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->localcache_repos, (GDestroyNotify)g_ptr_array_unref);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
+  g_free (pull_data->append_user_agent);
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
@@ -5502,6 +5514,7 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
       copy_option (&options_dict, &local_options_dict, "http-headers", G_VARIANT_TYPE ("a(ss)"));
       copy_option (&options_dict, &local_options_dict, "subdirs", G_VARIANT_TYPE ("as"));
       copy_option (&options_dict, &local_options_dict, "update-frequency", G_VARIANT_TYPE ("u"));
+      copy_option (&options_dict, &local_options_dict, "append-user-agent", G_VARIANT_TYPE ("s"));
 
       local_options = g_variant_dict_end (&local_options_dict);
 
@@ -5725,6 +5738,7 @@ ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
  *
  * - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
  * - http-headers (a(ss)): Additional headers to add to all HTTP requests
+ * - append-user-agent (s): Additional string to append to the user agent
  *
  * Returns: %TRUE on success, %FALSE on failure
  */

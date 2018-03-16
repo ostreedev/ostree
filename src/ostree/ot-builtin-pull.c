@@ -41,6 +41,7 @@ static gboolean opt_bareuseronly_files;
 static char** opt_subpaths;
 static char** opt_http_headers;
 static char* opt_cache_dir;
+static char* opt_append_user_agent;
 static int opt_depth = 0;
 static int opt_frequency = 0;
 static char* opt_url;
@@ -69,6 +70,8 @@ static GOptionEntry options[] = {
    { "update-frequency", 0, 0, G_OPTION_ARG_INT, &opt_frequency, "Sets the update frequency, in milliseconds (0=1000ms) (default: 0)", "FREQUENCY" },
    { "localcache-repo", 'L', 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_localcache_repos, "Add REPO as local cache source for objects during this pull", "REPO" },
    { "timestamp-check", 'T', 0, G_OPTION_ARG_NONE, &opt_timestamp_check, "Require fetched commits to have newer timestamps", NULL },
+   /* let's leave this hidden for now; we just need it for tests */
+   { "append-user-agent", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_STRING, &opt_append_user_agent, "Append string to user agent", NULL },
    { NULL }
  };
 
@@ -332,6 +335,10 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
         g_variant_builder_add (&builder, "{s@v}", "http-headers",
                                g_variant_new_variant (g_variant_builder_end (&hdr_builder)));
       }
+
+    if (opt_append_user_agent)
+      g_variant_builder_add (&builder, "{s@v}", "append-user-agent",
+                             g_variant_new_variant (g_variant_new_string (opt_append_user_agent)));
 
     if (!opt_dry_run)
       {
