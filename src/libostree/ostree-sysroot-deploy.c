@@ -837,6 +837,7 @@ merge_configuration (OstreeSysroot         *sysroot,
  */
 static gboolean
 write_origin_file_internal (OstreeSysroot         *sysroot,
+                            OstreeSePolicy        *sepolicy,
                             OstreeDeployment      *deployment,
                             GKeyFile              *new_origin,
                             GLnxFileReplaceFlags   flags,
@@ -849,16 +850,21 @@ write_origin_file_internal (OstreeSysroot         *sysroot,
 
   if (origin)
     {
-      g_autofree char *origin_path = NULL;
-      g_autofree char *contents = NULL;
+      g_auto(OstreeSepolicyFsCreatecon) con = { 0, };
+      if (!_ostree_sepolicy_preparefscreatecon (&con, sepolicy,
+                                                "/etc/ostree/remotes.d/dummy.conf",
+                                                0644, error))
+        return FALSE;
+
+      g_autofree char *origin_path =
+        g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d.origin",
+                         ostree_deployment_get_osname (deployment),
+                         ostree_deployment_get_csum (deployment),
+                         ostree_deployment_get_deployserial (deployment));
+
+
       gsize len;
-
-      origin_path = g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d.origin",
-                                     ostree_deployment_get_osname (deployment),
-                                     ostree_deployment_get_csum (deployment),
-                                     ostree_deployment_get_deployserial (deployment));
-
-      contents = g_key_file_to_data (origin, &len, error);
+      g_autofree char *contents = g_key_file_to_data (origin, &len, error);
       if (!contents)
         return FALSE;
 
@@ -891,7 +897,12 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                   GCancellable          *cancellable,
                                   GError               **error)
 {
-  if (!write_origin_file_internal (sysroot, deployment, new_origin,
+  g_autoptr(GFile) rootfs = g_file_new_for_path ("/");
+  g_autoptr(OstreeSePolicy) sepolicy = ostree_sepolicy_new (rootfs, cancellable, error);
+  if (!sepolicy)
+    return FALSE;
+
+  if (!write_origin_file_internal (sysroot, sepolicy, deployment, new_origin,
                                    GLNX_FILE_REPLACE_DATASYNC_NEW,
                                    cancellable, error))
     return FALSE;
@@ -2444,21 +2455,13 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
         return FALSE;
     }
 
-  { g_auto(OstreeSepolicyFsCreatecon) con = { 0, };
-
-    if (!_ostree_sepolicy_preparefscreatecon (&con, sepolicy,
-                                              "/etc/ostree/remotes.d/dummy.conf",
-                                              0644, error))
-      return FALSE;
-
-    /* Don't fsync here, as we assume that's all done in
-     * ostree_sysroot_write_deployments().
-     */
-    if (!write_origin_file_internal (self, new_deployment, NULL,
-                                     GLNX_FILE_REPLACE_NODATASYNC,
-                                     cancellable, error))
-      return FALSE;
-  }
+  /* Don't fsync here, as we assume that's all done in
+   * ostree_sysroot_write_deployments().
+   */
+  if (!write_origin_file_internal (self, sepolicy, new_deployment, NULL,
+                                   GLNX_FILE_REPLACE_NODATASYNC,
+                                   cancellable, error))
+    return FALSE;
 
   /* After this, install_deployment_kernel() will set the other boot
    * options and write it out to disk.
