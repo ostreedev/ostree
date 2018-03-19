@@ -680,15 +680,10 @@ main (int    argc,
 
   if (!run (argc, argv, cancellable, &error))
     {
-      int is_tty = isatty (1);
-      const char *prefix = "";
-      const char *suffix = "";
-      if (is_tty)
-        {
-          prefix = "\x1b[31m\x1b[1m"; /* red, bold */
-          suffix = "\x1b[22m\x1b[0m"; /* bold off, color reset */
-        }
-      g_printerr ("%serror: %s%s\n", prefix, suffix, error->message);
+      g_printerr ("%s%serror:%s%s %s\n",
+                  ot_get_red_start (), ot_get_bold_start (),
+                  ot_get_bold_end (), ot_get_red_end (),
+                  error->message);
       return 1;
     }
 
