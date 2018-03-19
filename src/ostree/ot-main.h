@@ -106,4 +106,3 @@ TERM_ESCAPE_SEQUENCE(bold_start, "\x1b[1m")
 TERM_ESCAPE_SEQUENCE(bold_end,   "\x1b[0m")
 
 #undef TERM_ESCAPE_SEQUENCE
-
