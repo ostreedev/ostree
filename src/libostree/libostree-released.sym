@@ -458,6 +458,12 @@ LIBOSTREE_2018.2 {
   ostree_commit_get_content_checksum;
 } LIBOSTREE_2018.1;
 
+LIBOSTREE_2018.3 {
+  ostree_deployment_origin_remove_transient_state;
+  ostree_sysroot_deployment_set_pinned;
+  ostree_deployment_is_pinned;
+} LIBOSTREE_2018.2;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
