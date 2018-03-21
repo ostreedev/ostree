@@ -40,7 +40,13 @@ tests:
   - ci/build-check.sh
   - ci/ci-release-build.sh
 
+artifacts:
+  - test-suite.log
+  - config.log
+  - gdtr-results
+
 ---
+# And now the contexts below here are variant container builds
 
 context: f27-rust
 inherit: true
@@ -123,6 +129,7 @@ tests:
 
 ---
 
+# Reset inheritance for non-variant builds
 inherit: false
 branches:
     - master
@@ -130,7 +137,7 @@ branches:
     - try
 
 context: f27-flatpak
-required: false
+required: true
 
 # This test case wants an "unprivileged container with bubblewrap",
 # which we don't have right now; so just provision a VM and do a
