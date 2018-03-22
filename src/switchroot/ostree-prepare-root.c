@@ -48,23 +48,6 @@
 
 #include "ostree-mount-util.h"
 
-/* This is an API for other projects to determine whether or not the
- * currently running system is ostree-controlled.
- */
-static void
-touch_run_ostree (void)
-{
-  int fd;
-
-  fd = open ("/run/ostree-booted", O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC, 0640);
-  /* We ignore failures here in case /run isn't mounted...not much we
-   * can do about that, but we don't want to fail.
-   */
-  if (fd == -1)
-    return;
-  (void) close (fd);
-}
-
 static char*
 resolve_deploy_path (const char * root_mountpoint)
 {
@@ -205,7 +188,13 @@ main(int argc, char *argv[])
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
-  touch_run_ostree ();
+
+  /* We only stamp /run now if we're running in an initramfs, i.e. we're
+   * not pid 1.  Otherwise it's handled later via ostree-remount.service.
+   * https://mail.gnome.org/archives/ostree-list/2018-March/msg00012.html
+   */
+  if (getpid () != 1)
+    touch_run_ostree ();
 
   if (strcmp(root_mountpoint, "/") == 0)
     {
