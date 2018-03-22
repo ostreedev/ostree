@@ -31,9 +31,16 @@ prepare_tmpdir /var/tmp
 trap _tmpdir_cleanup EXIT
 ostree --repo=repo init --mode=archive
 echo -e '[archive]\nzlib-level=1\n' >> repo/config
-host_nonremoteref=$(echo ${host_refspec} | sed 's,[^:]*:,,')
-ostree --repo=repo pull-local /ostree/repo ${host_commit}
-ostree --repo=repo refs ${host_commit} --create=${host_nonremoteref}
+
+mkdir content
+cd content
+dd if=/dev/urandom of=bigobject bs=4k count=2560
+cp --reflink=auto bigobject bigobject2
+# Different metadata, same content
+chown bin:bin bigobject2
+cd ..
+ostree --repo=repo commit -b dupobjects --consume --selinux-policy=/ --tree=dir=content
+ostree --repo=repo summary -u
 
 run_tmp_webserver $(pwd)/repo
 
@@ -53,23 +60,24 @@ if ! blkdev=$(losetup --find --show $(pwd)/testblk.img); then
     exit 0
 fi
 
+# This filesystem must support reflinks
 mkfs.xfs -m reflink=1 ${blkdev}
 
 mount ${blkdev} mnt
 cd mnt
 
-# Test that coreutils will do reflink
+# Test that reflink is really there (not just --reflink=auto)
 touch a
 cp --reflink a b
 mkdir repo
 ostree --repo=repo init
 ostree config --repo=repo set core.payload-link-threshold 0
 ostree --repo=repo remote add origin --set=gpg-verify=false ${origin}
-ostree --repo=repo pull --disable-static-deltas origin ${host_nonremoteref}
+ostree --repo=repo pull --disable-static-deltas origin dupobjects
 find repo -type l -name '*.payload-link' >payload-links.txt
-assert_not_streq "$(wc -l < payload-links.txt)" "0"
+assert_streq "$(wc -l < payload-links.txt)" "1"
 
-# Disable logging for inner loop, otherwise it'd be enormous
+# Disable logging for inner loop
 set +x
 cat payload-links.txt | while read i; do
     payload_checksum=$(basename $(dirname $i))$(basename $i .payload-link)
