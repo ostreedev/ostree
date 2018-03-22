@@ -6,7 +6,7 @@
 - set_fact:
     ostree_orig_version_yaml: "{{ ostree_orig_version.stdout | from_yaml }}"
 - name: Copy locally built RPMs
-  synchronize: src=x86_64/ dest=/root/x86_64/ archive=yes
+  synchronize: src=build/x86_64/ dest=/root/x86_64/ archive=yes
 - shell: ostree admin unlock || true
 # Install the RPMs we already have.  For the test suite we use rpm2cpio
 # since it depends on libsoup, but we're not using that yet for the sysinstalled tests

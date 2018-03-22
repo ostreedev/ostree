@@ -7,24 +7,29 @@ branches:
 context: FAH27-insttests
 required: true
 
-container:
-  image: registry.fedoraproject.org/fedora:27
+# FIXME; temporary workaround
+# https://github.com/ostreedev/ostree/pull/1513#issuecomment-378784162
+host:
+  distro: fedora/27/atomic
+  specs:
+    ram: 4096
+#container:
+#  image: registry.fedoraproject.org/fedora:27
 
 tests:
-  - cd tests/fedora-str && ../../ci/build-rpm.sh
-  - ./tests/fedora-str/provision.sh
-  # TODO: enhance papr to have caching, a bit like https://docs.travis-ci.com/user/caching/
-  - curl -Lo fedora-atomic-host.qcow2 https://getfedora.org/atomic_qcow2_latest
-  - env "TEST_SUBJECTS=$(pwd)/fedora-atomic-host.qcow2" ./tests/fedora-str/playbook-run.sh tests/fedora-str/sysinstall-tests.yml
+  - cd /etc/yum.repos.d/ && curl -L -O https://copr.fedorainfracloud.org/coprs/walters/oci-kvm-hook/repo/fedora-27/walters-oci-kvm-hook-fedora-27.repo
+  - rpm-ostree install oci-kvm-hook && rpm-ostree ex livefs
+  - docker run --device /dev/kvm --rm -v $(pwd):/srv/code:z registry.fedoraproject.org/fedora:27 /bin/sh -c "cd /srv/code && ./ci/fah27-insttests.sh"
 
 artifacts:
-  - tests/fedora-str/artifacts/fedora-atomic-host.qcow2.log
-  - tests/fedora-str/artifacts/installed-tests.log
+  - tests/installed/artifacts/
 
 ---
 
 # This suite skips the RPMs and does the build+unit tests in a container
-inherit: true
+inherit: false
+container:
+  image: registry.fedoraproject.org/fedora:27
 context: f27-primary
 env:
   # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain

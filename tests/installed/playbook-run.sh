@@ -17,7 +17,9 @@ somewhere persistent.
 EOF
     exit 1
 fi
-ls -al ${TEST_SUBJECTS}
+for subj in ${TEST_SUBJECTS}; do
+    ls -al ${subj} && file ${subj}
+done
 
 # This is required
 rpm -q standard-test-roles

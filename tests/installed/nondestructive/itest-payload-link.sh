@@ -22,9 +22,10 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libinsttest.sh
+. ${dn}/../libinsttest.sh
 
 echo "1..1"
+date
 
 # Use /var/tmp so we have O_TMPFILE etc.
 prepare_tmpdir /var/tmp
@@ -86,3 +87,4 @@ cat payload-links.txt | while read i; do
 done
 set -x
 echo "ok pull creates .payload-link"
+date

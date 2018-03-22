@@ -5,9 +5,10 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libinsttest.sh
+. ${dn}/../libinsttest.sh
 
 echo "1..2"
+date
 
 cd /ostree/repo/tmp
 rm co -rf
@@ -40,3 +41,4 @@ rm co -rf
 rm co-testref -rf
 
 echo "ok xattrs"
+date

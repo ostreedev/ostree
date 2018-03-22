@@ -5,8 +5,9 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libinsttest.sh
+. ${dn}/../libinsttest.sh
 
+date
 cd /ostree/repo/tmp
 rm co -rf
 ostree checkout -H ${host_refspec} co
@@ -85,3 +86,4 @@ assert_streq "${oldcon}" "${newcon}"
 rm co -rf
 ostree refs --delete testbranch
 echo "ok checkout selinux and skip-list"
+date
