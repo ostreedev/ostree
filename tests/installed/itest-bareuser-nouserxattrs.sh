@@ -10,9 +10,8 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libinsttest.sh
 
-test_tmpdir=$(prepare_tmpdir)
+prepare_tmpdir
 trap _tmpdir_cleanup EXIT
-cd ${test_tmpdir}
 
 mkdir mnt
 mount -t tmpfs tmpfs mnt

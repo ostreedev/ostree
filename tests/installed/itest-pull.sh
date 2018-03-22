@@ -7,12 +7,10 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libinsttest.sh
 
-test_tmpdir=$(prepare_tmpdir)
+prepare_tmpdir /var/tmp
 trap _tmpdir_cleanup EXIT
 
 # Take the host's ostree, and make it archive
-cd /var/srv
-rm repo bare-repo -rf
 mkdir repo
 ostree --repo=repo init --mode=archive
 echo -e '[archive]\nzlib-level=1\n' >> repo/config
