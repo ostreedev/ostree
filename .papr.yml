@@ -11,15 +11,13 @@ container:
   image: registry.fedoraproject.org/fedora:27
 
 tests:
-  - cd tests/fedora-str && ../../ci/build-rpm.sh
-  - ./tests/fedora-str/provision.sh
+  - ./tests/installed/provision.sh
   # TODO: enhance papr to have caching, a bit like https://docs.travis-ci.com/user/caching/
-  - curl -Lo fedora-atomic-host.qcow2 https://getfedora.org/atomic_qcow2_latest
-  - env "TEST_SUBJECTS=$(pwd)/fedora-atomic-host.qcow2" ./tests/fedora-str/playbook-run.sh tests/fedora-str/sysinstall-tests.yml
+  - cd tests/installed && curl -Lo fedora-atomic-host.qcow2 https://getfedora.org/atomic_qcow2_latest &&
+    env "TEST_SUBJECTS=$(pwd)/fedora-atomic-host.qcow2" ./run.sh
 
 artifacts:
-  - tests/fedora-str/artifacts/fedora-atomic-host.qcow2.log
-  - tests/fedora-str/artifacts/installed-tests.log
+  - tests/installed/artifacts/
 
 ---
 

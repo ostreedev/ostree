@@ -20,7 +20,7 @@
 # Boston, MA 02111-1307, USA.
 
 dn=$(dirname $0)
-. ${dn}/libtest-core.sh
+. ${dn}/../libtest-core.sh
 
 # Copy of bits from tap-test
 test_tmpdir=

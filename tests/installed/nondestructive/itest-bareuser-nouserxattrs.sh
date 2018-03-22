@@ -8,10 +8,11 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libinsttest.sh
+. ${dn}/../libinsttest.sh
 
 prepare_tmpdir
 trap _tmpdir_cleanup EXIT
+date
 
 mkdir mnt
 mount -t tmpfs tmpfs mnt
@@ -21,3 +22,4 @@ if ostree --repo=mnt/repo init --mode=bare-user 2>err.txt; then
 fi
 umount mnt
 assert_file_has_content err.txt "Operation not supported"
+date
