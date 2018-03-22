@@ -104,4 +104,19 @@ read_proc_cmdline_ostree (void)
   return ret;
 }
 
+/* This is an API for other projects to determine whether or not the
+ * currently running system is ostree-controlled.
+ */
+static inline void
+touch_run_ostree (void)
+{
+  int fd = open ("/run/ostree-booted", O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC, 0640);
+  /* We ignore failures here in case /run isn't mounted...not much we
+   * can do about that, but we don't want to fail.
+   */
+  if (fd == -1)
+    return;
+  (void) close (fd);
+}
+
 #endif /* __OSTREE_MOUNT_UTIL_H_ */
