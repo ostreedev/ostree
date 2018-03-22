@@ -46,6 +46,16 @@ main(int argc, char *argv[])
   struct stat stbuf;
   int i;
 
+  /* See comments in ostree-prepare-root.c for this.
+   *
+   * This service is triggered via
+   * ConditionKernelCommandLine=ostree
+   * but it's a lot easier for various bits of userspace to check for
+   * a file versus parsing the kernel cmdline.  So let's ensure
+   * the stamp file is created here too.
+   */
+  touch_run_ostree ();
+
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
    * also propagate to /sysroot/ostree/deploy/$stateroot/var/cache
    *
