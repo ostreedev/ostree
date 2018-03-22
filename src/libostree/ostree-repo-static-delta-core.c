@@ -38,10 +38,8 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
                                            guint         *out_n_checksums,
                                            GError       **error)
 {
-  gsize n = g_variant_n_children (array);
-  guint n_checksums;
-
-  n_checksums = n / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN;
+  const gsize n = g_variant_n_children (array);
+  const guint n_checksums = n / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN;
 
   if (G_UNLIKELY(n > (G_MAXUINT32/OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN) ||
                  (n_checksums * OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN) != n))
@@ -166,8 +164,8 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
                                                  GCancellable           *cancellable,
                                                  GError                **error)
 {
-  guint8 *checksums_data;
-  guint n_checksums;
+  guint8 *checksums_data = NULL;
+  guint n_checksums = 0;
   gboolean have_object = TRUE;
 
   if (!_ostree_static_delta_parse_checksum_array (checksum_array,

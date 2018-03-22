@@ -241,14 +241,8 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
     g_variant_builder_add_value (&xattr_builder, part_builder->xattrs->pdata[j]);
 
   {
-    g_autoptr(GBytes) payload_b;
-    g_autoptr(GBytes) operations_b;
-
-    payload_b = g_string_free_to_bytes (part_builder->payload);
-    part_builder->payload = NULL;
-
-    operations_b = g_string_free_to_bytes (part_builder->operations);
-    part_builder->operations = NULL;
+    g_autoptr(GBytes) payload_b = g_string_free_to_bytes (g_steal_pointer (&part_builder->payload));
+    g_autoptr(GBytes) operations_b = g_string_free_to_bytes (g_steal_pointer (&part_builder->operations));
 
     delta_part_content = g_variant_new ("(a(uuu)aa(ayay)@ay@ay)",
                                         &mode_builder, &xattr_builder,
