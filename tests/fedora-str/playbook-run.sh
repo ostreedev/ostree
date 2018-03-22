@@ -19,6 +19,9 @@ EOF
 fi
 ls -al ${TEST_SUBJECTS}
 
+# This is required
+rpm -q standard-test-roles
+
 export ANSIBLE_INVENTORY=${ANSIBLE_INVENTORY:-$(test -e inventory && echo inventory || echo /usr/share/ansible/inventory)}
 ls -al /dev/kvm
 exec ansible-playbook --tags=atomic "$@"
