@@ -30,10 +30,10 @@ function _tmpdir_cleanup () {
     fi
 }
 prepare_tmpdir() {
-    test_tmpdir=$(mktemp -d)
+    local tmpdir=${1:-/tmp}
+    test_tmpdir=$(mktemp -p ${tmpdir} -d ostree-insttest.XXXXXXXX)
     touch ${test_tmpdir}/.testtmp
     cd ${test_tmpdir}
-    echo ${test_tmpdir}
 }
 
 # This is copied from flatpak/flatpak/tests/test-webserver.sh

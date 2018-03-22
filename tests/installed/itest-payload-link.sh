@@ -26,8 +26,9 @@ dn=$(dirname $0)
 
 echo "1..1"
 
-cd /var/srv
-mkdir repo
+# Use /var/tmp so we have O_TMPFILE etc.
+prepare_tmpdir /var/tmp
+trap _tmpdir_cleanup EXIT
 ostree --repo=repo init --mode=archive
 echo -e '[archive]\nzlib-level=1\n' >> repo/config
 host_nonremoteref=$(echo ${host_refspec} | sed 's,[^:]*:,,')
@@ -39,12 +40,10 @@ run_tmp_webserver $(pwd)/repo
 origin=$(cat ${test_tmpdir}/httpd-address)
 
 cleanup() {
-    cd ${oldpwd}
+    cd ${test_tmpdir}
     umount mnt || true
-    test -n "${blkdev}" && losetup -d ${blkdev} || true
-    rm -rf mnt testblk.img
+    test -n "${blkdev:-}" && losetup -d ${blkdev} || true
 }
-oldpwd=`pwd`
 trap cleanup EXIT
 
 mkdir mnt
@@ -57,29 +56,25 @@ fi
 mkfs.xfs -m reflink=1 ${blkdev}
 
 mount ${blkdev} mnt
+cd mnt
 
-test_tmpdir=$(pwd)/mnt
-cd ${test_tmpdir}
-
+# Test that coreutils will do reflink
 touch a
-if cp --reflink a b; then
-    mkdir repo
-    ostree --repo=repo init
-    ostree config --repo=repo set core.payload-link-threshold 0
-    ostree --repo=repo remote add origin --set=gpg-verify=false ${origin}
-    ostree --repo=repo pull --disable-static-deltas origin ${host_nonremoteref}
-    find repo -type l -name '*.payload-link' >payload-links.txt
-    assert_not_streq "$(wc -l < payload-links.txt)" "0"
+cp --reflink a b
+mkdir repo
+ostree --repo=repo init
+ostree config --repo=repo set core.payload-link-threshold 0
+ostree --repo=repo remote add origin --set=gpg-verify=false ${origin}
+ostree --repo=repo pull --disable-static-deltas origin ${host_nonremoteref}
+find repo -type l -name '*.payload-link' >payload-links.txt
+assert_not_streq "$(wc -l < payload-links.txt)" "0"
 
-    # Disable logging for inner loop, otherwise it'd be enormous
-    set +x
-    cat payload-links.txt | while read i; do
-        payload_checksum=$(basename $(dirname $i))$(basename $i .payload-link)
-        payload_checksum_calculated=$(sha256sum $(readlink -f $i) | cut -d ' ' -f 1)
-        assert_streq "${payload_checksum}" "${payload_checksum_calculated}"
-    done
-    set -x
-    echo "ok pull creates .payload-link"
-else
-    echo "ok # SKIP no reflink support in the file system"
-fi
+# Disable logging for inner loop, otherwise it'd be enormous
+set +x
+cat payload-links.txt | while read i; do
+    payload_checksum=$(basename $(dirname $i))$(basename $i .payload-link)
+    payload_checksum_calculated=$(sha256sum $(readlink -f $i) | cut -d ' ' -f 1)
+    assert_streq "${payload_checksum}" "${payload_checksum_calculated}"
+done
+set -x
+echo "ok pull creates .payload-link"

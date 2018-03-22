@@ -7,7 +7,7 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libinsttest.sh
 
-test_tmpdir=$(prepare_tmpdir)
+prepare_tmpdir
 trap _tmpdir_cleanup EXIT
 
 ostree remote list > remotes.txt

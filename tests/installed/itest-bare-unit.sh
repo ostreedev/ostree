@@ -15,14 +15,7 @@ dn=$(dirname $0)
 export G_TEST_SRCDIR=$(realpath $dn/../..)
 
 # Use /var/tmp to hopefully use XFS + O_TMPFILE etc.
-tempdir=$(mktemp -d /var/tmp/tap-test.XXXXXX)
-touch ${tempdir}/.testtmp
-function cleanup () {
-    if test -f ${tempdir}/.testtmp; then
-	      rm "${tempdir}" -rf
-    fi
-}
-trap cleanup EXIT
-cd ${tempdir}
+prepare_tmpdir /var/tmp
+trap _tmpdir_cleanup EXIT
 /usr/libexec/installed-tests/libostree/test-basic.sh
 /usr/libexec/installed-tests/libostree/test-basic-c
