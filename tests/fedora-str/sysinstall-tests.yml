@@ -6,6 +6,7 @@
   remote_user: root
   vars:
     use_git_build: True
+    tests: ""
   tasks:
     - import_tasks: overlay-git.yml
       when: use_git_build
@@ -15,6 +16,8 @@
     # Down the line perhaps do each log file separately?
     - name: Run shell script sysinstalled tests
       shell: /root/tests/installed/run.sh &> /root/installed-tests.log
+      environment:
+        TESTS: "{{ tests }}"
       register: sysinstalled_result
       failed_when: False
     - name: Fetch sysinstalled results

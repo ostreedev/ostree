@@ -25,7 +25,8 @@ dn=$(dirname $0)
 # Copy of bits from tap-test
 test_tmpdir=
 function _tmpdir_cleanup () {
-    if test -n "${test_tmpdir}" && test -f ${test_tmpdir}/.testtmp; then
+    if test -z "${TEST_SKIP_CLEANUP:-}" &&
+       test -n "${test_tmpdir}" && test -f ${test_tmpdir}/.testtmp; then
 	      rm "${test_tmpdir}" -rf
     fi
 }
