@@ -390,7 +390,6 @@ copy_modified_config_file (int                 orig_etc_fd,
  * merge_configuration_from:
  * @sysroot: Sysroot
  * @merge_deployment: Source of configuration differences
- * @merge_deployment_dfd: Directory fd, may be -1
  * @new_deployment: Target for merge of configuration
  * @new_deployment_dfd: Directory fd for @new_deployment (may *not* be -1)
  * @cancellable: Cancellable
@@ -407,27 +406,22 @@ copy_modified_config_file (int                 orig_etc_fd,
 static gboolean
 merge_configuration_from (OstreeSysroot    *sysroot,
                           OstreeDeployment *merge_deployment,
-                          int               merge_deployment_dfd,
                           OstreeDeployment *new_deployment,
                           int               new_deployment_dfd,
                           GCancellable     *cancellable,
                           GError          **error)
 {
-  glnx_autofd int owned_merge_deployment_dfd = -1;
+  GLNX_AUTO_PREFIX_ERROR ("During /etc merge", error);
   const OstreeSysrootDebugFlags flags = sysroot->debug_flags;
 
   g_assert (merge_deployment != NULL && new_deployment != NULL);
   g_assert (new_deployment_dfd != -1);
 
-  /* Allow the caller to pass -1 for the merge, for convenience */
-  if (merge_deployment_dfd == -1)
-    {
-      g_autofree char *merge_deployment_path = ostree_sysroot_get_deployment_dirpath (sysroot, merge_deployment);
-      if (!glnx_opendirat (sysroot->sysroot_fd, merge_deployment_path, FALSE,
-                           &owned_merge_deployment_dfd, error))
-        return FALSE;
-      merge_deployment_dfd = owned_merge_deployment_dfd;
-    }
+  g_autofree char *merge_deployment_path = ostree_sysroot_get_deployment_dirpath (sysroot, merge_deployment);
+  glnx_autofd int merge_deployment_dfd = -1;
+  if (!glnx_opendirat (sysroot->sysroot_fd, merge_deployment_path, FALSE,
+                       &merge_deployment_dfd, error))
+    return FALSE;
 
   /* TODO: get rid of GFile usage here */
   g_autoptr(GFile) orig_etc = ot_fdrel_to_gfile (merge_deployment_dfd, "usr/etc");
@@ -741,22 +735,19 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
   return TRUE;
 }
 
-/* OSTree implements a "3 way" merge model for /etc. For a bit more information
- * on this, see the manual. This function uses the configuration for
- * @previous_deployment, and writes the merged configuration into @deployment's
- * /etc.  If available, we also load the SELinux policy from the new root.
+/* Handle initial creation of /etc in the deployment. See also
+ * merge_configuration_from().
  */
 static gboolean
-merge_configuration (OstreeSysroot         *sysroot,
-                     OstreeRepo            *repo,
-                     OstreeDeployment      *previous_deployment,
-                     OstreeDeployment      *deployment,
-                     int                    deployment_dfd,
-                     OstreeSePolicy       **out_sepolicy,
-                     GCancellable          *cancellable,
-                     GError               **error)
+prepare_deployment_etc (OstreeSysroot         *sysroot,
+                        OstreeRepo            *repo,
+                        OstreeDeployment      *deployment,
+                        int                    deployment_dfd,
+                        OstreeSePolicy       **out_sepolicy,
+                        GCancellable          *cancellable,
+                        GError               **error)
 {
-  GLNX_AUTO_PREFIX_ERROR ("During /etc merge", error);
+  GLNX_AUTO_PREFIX_ERROR ("Preparing /etc", error);
   g_autoptr(OstreeSePolicy) sepolicy = NULL;
 
   struct stat stbuf;
@@ -803,14 +794,6 @@ merge_configuration (OstreeSysroot         *sysroot,
                                     cancellable, error))
         return FALSE;
 
-    }
-
-  if (previous_deployment)
-    {
-      if (!merge_configuration_from (sysroot, previous_deployment, -1,
-                                     deployment, deployment_dfd,
-                                     cancellable, error))
-        return FALSE;
     }
 
   if (out_sepolicy)
@@ -2444,11 +2427,17 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
     }
 
   g_autoptr(OstreeSePolicy) sepolicy = NULL;
-  if (!merge_configuration (self, repo, merge_deployment, new_deployment,
-                            deployment_dfd,
-                            &sepolicy,
-                            cancellable, error))
+  if (!prepare_deployment_etc (self, repo, new_deployment, deployment_dfd,
+                               &sepolicy, cancellable, error))
     return FALSE;
+
+  if (merge_deployment)
+    {
+      if (!merge_configuration_from (self, merge_deployment,
+                                     new_deployment, deployment_dfd,
+                                     cancellable, error))
+        return FALSE;
+    }
 
   if (!selinux_relabel_var_if_needed (self, sepolicy, os_deploy_dfd,
                                       cancellable, error))
