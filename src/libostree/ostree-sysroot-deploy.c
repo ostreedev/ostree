@@ -759,20 +759,6 @@ merge_configuration (OstreeSysroot         *sysroot,
   GLNX_AUTO_PREFIX_ERROR ("During /etc merge", error);
   g_autoptr(OstreeSePolicy) sepolicy = NULL;
 
-  if (previous_deployment)
-    {
-      OstreeBootconfigParser *previous_bootconfig = ostree_deployment_get_bootconfig (previous_deployment);
-      if (previous_bootconfig)
-        {
-          const char *previous_options = ostree_bootconfig_parser_get (previous_bootconfig, "options");
-          /* Completely overwrite the previous options here; we will extend
-           * them later.
-           */
-          ostree_bootconfig_parser_set (ostree_deployment_get_bootconfig (deployment), "options",
-                                        previous_options);
-        }
-    }
-
   struct stat stbuf;
   if (!glnx_fstatat_allow_noent (deployment_dfd, "etc", &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
@@ -2431,11 +2417,31 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
 
   _ostree_deployment_set_bootcsum (new_deployment, kernel_layout->bootcsum);
 
-  /* Create an empty boot configuration; we will merge things into
-   * it as we go.
-   */
+  /* Initial empty boot configuration. */
   g_autoptr(OstreeBootconfigParser) bootconfig = ostree_bootconfig_parser_new ();
   ostree_deployment_set_bootconfig (new_deployment, bootconfig);
+
+  /* Handle kernel arguments. After this, install_deployment_kernel() will set
+   * the other boot options and write it out to disk.
+   */
+  if (override_kernel_argv)
+    {
+      /* We have an override set, use it */
+      g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_new ();
+      _ostree_kernel_args_append_argv (kargs, override_kernel_argv);
+      g_autofree char *new_options = _ostree_kernel_args_to_string (kargs);
+      ostree_bootconfig_parser_set (bootconfig, "options", new_options);
+    }
+  else if (provided_merge_deployment)
+    {
+      /* Use the merge options by default */
+      OstreeBootconfigParser *merge_bootconfig = ostree_deployment_get_bootconfig (provided_merge_deployment);
+      if (merge_bootconfig)
+        {
+          const char *opts = ostree_bootconfig_parser_get (merge_bootconfig, "options");
+          ostree_bootconfig_parser_set (bootconfig, "options", opts);
+        }
+    }
 
   g_autoptr(OstreeSePolicy) sepolicy = NULL;
   if (!merge_configuration (self, repo, merge_deployment, new_deployment,
@@ -2462,20 +2468,6 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                    GLNX_FILE_REPLACE_NODATASYNC,
                                    cancellable, error))
     return FALSE;
-
-  /* After this, install_deployment_kernel() will set the other boot
-   * options and write it out to disk.
-   */
-  if (override_kernel_argv)
-    {
-      g_autoptr(OstreeKernelArgs) kargs = NULL;
-      g_autofree char *new_options = NULL;
-
-      kargs = _ostree_kernel_args_new ();
-      _ostree_kernel_args_append_argv (kargs, override_kernel_argv);
-      new_options = _ostree_kernel_args_to_string (kargs);
-      ostree_bootconfig_parser_set (bootconfig, "options", new_options);
-    }
 
   ot_transfer_out_value (out_new_deployment, &new_deployment);
   return TRUE;
