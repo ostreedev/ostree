@@ -411,6 +411,7 @@ merge_configuration_from (OstreeSysroot    *sysroot,
                           GCancellable     *cancellable,
                           GError          **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("During /etc merge", error);
   const OstreeSysrootDebugFlags flags = sysroot->debug_flags;
 
   g_assert (merge_deployment != NULL && new_deployment != NULL);
@@ -746,7 +747,7 @@ prepare_deployment_etc (OstreeSysroot         *sysroot,
                         GCancellable          *cancellable,
                         GError               **error)
 {
-  GLNX_AUTO_PREFIX_ERROR ("During /etc merge", error);
+  GLNX_AUTO_PREFIX_ERROR ("Preparing /etc", error);
   g_autoptr(OstreeSePolicy) sepolicy = NULL;
 
   struct stat stbuf;
