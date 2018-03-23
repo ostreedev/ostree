@@ -120,8 +120,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
           g_autofree char *superblock_subpath = g_strconcat (name2, "/superblock", NULL);
           if (!glnx_fstatat_allow_noent (sub_dfd_iter.fd, superblock_subpath, NULL, 0, error))
             return FALSE;
-
-          if (errno == 0)
+          if (errno == ENOENT)
             continue;
 
           g_autofree char *buf = g_strconcat (name1, name2, NULL);
