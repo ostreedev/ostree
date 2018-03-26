@@ -94,7 +94,7 @@ assert_has_dir "dest-mount3/some-dest"
 assert_symlink_has_content "dest-mount3/.ostree/repos.d/00-generated" "/some-dest$"
 ${CMD_PREFIX} ostree --repo=dest-mount3/.ostree/repos.d/00-generated refs --collections > dest-refs
 assert_file_has_content dest-refs "^(org.example.Collection1, test-1)$"
-assert_file_has_content dest-refs "^(org.example.Collection1, test-1)$"
+assert_file_has_content dest-refs "^(org.example.Collection1, test-2)$"
 assert_file_has_content dest-refs "^(org.example.Collection1, test-3)$"
 assert_has_file dest-mount3/.ostree/repos.d/00-generated/summary
 
