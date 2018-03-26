@@ -1428,6 +1428,7 @@ full_system_sync (OstreeSysroot     *self,
                   GCancellable      *cancellable,
                   GError           **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Full sync", error);
   guint64 start_msec = g_get_monotonic_time () / 1000;
   if (syncfs (self->sysroot_fd) != 0)
     return glnx_throw_errno_prefix (error, "syncfs(sysroot)");
@@ -1819,6 +1820,7 @@ prepare_new_bootloader_link (OstreeSysroot  *sysroot,
                              GCancellable   *cancellable,
                              GError        **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Preparing final bootloader swap", error);
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
 
@@ -1841,11 +1843,12 @@ swap_bootloader (OstreeSysroot  *sysroot,
                  GCancellable   *cancellable,
                  GError        **error)
 {
-  glnx_autofd int boot_dfd = -1;
+  GLNX_AUTO_PREFIX_ERROR ("Final bootloader swap", error);
 
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
 
+  glnx_autofd int boot_dfd = -1;
   if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
     return FALSE;
 
@@ -2032,6 +2035,91 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                                         cancellable, error);
 }
 
+/* Handle writing out a new bootloader config. One reason this needs to be a
+ * helper function is to handle wrapping it with temporarily remounting /boot
+ * rw.
+ */
+static gboolean
+write_deployments_bootswap (OstreeSysroot     *self,
+                            GPtrArray         *new_deployments,
+                            OstreeSysrootWriteDeploymentsOpts *opts,
+                            OstreeBootloader  *bootloader,
+                            SyncStats         *out_syncstats,
+                            GCancellable      *cancellable,
+                            GError           **error)
+{
+  const int new_bootversion = self->bootversion ? 0 : 1;
+
+  g_autofree char* new_loader_entries_dir = g_strdup_printf ("boot/loader.%d/entries", new_bootversion);
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, new_loader_entries_dir, cancellable, error))
+    return FALSE;
+  if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, new_loader_entries_dir, 0755,
+                               cancellable, error))
+    return FALSE;
+
+  /* Need the repo to try and extract the versions for deployments.
+   * But this is a "nice-to-have" for the bootloader UI, so failure
+   * here is not fatal to the whole operation.  We just gracefully
+   * fall back to the deployment index. */
+  g_autoptr(OstreeRepo) repo = NULL;
+  (void) ostree_sysroot_get_repo (self, &repo, cancellable, NULL);
+
+  /* Only show the osname in bootloader titles if there are multiple
+   * osname's among the new deployments.  Check for that here. */
+  gboolean show_osname = FALSE;
+  for (guint i = 1; i < new_deployments->len; i++)
+    {
+      const char *osname_0 = ostree_deployment_get_osname (new_deployments->pdata[0]);
+      const char *osname_i = ostree_deployment_get_osname (new_deployments->pdata[i]);
+      if (!g_str_equal (osname_0, osname_i))
+        {
+          show_osname = TRUE;
+          break;
+        }
+    }
+
+  for (guint i = 0; i < new_deployments->len; i++)
+    {
+      OstreeDeployment *deployment = new_deployments->pdata[i];
+      if (!install_deployment_kernel (self, repo, new_bootversion,
+                                      deployment, new_deployments->len,
+                                      show_osname, cancellable, error))
+        return FALSE;
+    }
+
+  /* Create and swap bootlinks for *new* version */
+  if (!create_new_bootlinks (self, new_bootversion,
+                             new_deployments,
+                             cancellable, error))
+    return FALSE;
+  if (!swap_bootlinks (self, new_bootversion, new_deployments,
+                       cancellable, error))
+    return FALSE;
+
+  g_debug ("Using bootloader: %s", bootloader ?
+           g_type_name (G_TYPE_FROM_INSTANCE (bootloader)) : "(none)");
+
+  if (bootloader)
+    {
+      if (!_ostree_bootloader_write_config (bootloader, new_bootversion,
+                                            cancellable, error))
+        return glnx_prefix_error (error, "Bootloader write config");
+    }
+
+  if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion,
+                                    cancellable, error))
+    return FALSE;
+
+  if (!full_system_sync (self, out_syncstats, cancellable, error))
+    return FALSE;
+
+  if (!swap_bootloader (self, self->bootversion, new_bootversion,
+                        cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /**
  * ostree_sysroot_write_deployments_with_options:
  * @self: Sysroot
@@ -2054,10 +2142,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                                                GCancellable      *cancellable,
                                                GError           **error)
 {
-  gboolean ret = FALSE;
-  gboolean boot_was_ro_mount = FALSE;
-  g_autoptr(OstreeBootloader) bootloader = NULL;
-
   g_assert (self->loaded);
 
   /* Assign a bootserial to each new deployment.
@@ -2096,51 +2180,38 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 
       deployment_root = ostree_sysroot_get_deployment_directory (self, deployment);
       if (!g_file_query_exists (deployment_root, NULL))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unable to find expected deployment root: %s",
-                       gs_file_get_path_cached (deployment_root));
-          goto out;
-        }
+        return glnx_throw (error, "Unable to find expected deployment root: %s",
+                           gs_file_get_path_cached (deployment_root));
 
       ostree_deployment_set_index (deployment, i);
     }
 
   if (self->booted_deployment && !found_booted_deployment)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Attempting to remove booted deployment");
-      goto out;
-    }
+    return glnx_throw (error, "Attempting to remove booted deployment");
 
   gboolean bootloader_is_atomic = FALSE;
   SyncStats syncstats = { 0, };
+  g_autoptr(OstreeBootloader) bootloader = NULL;
   if (!requires_new_bootversion)
     {
       if (!create_new_bootlinks (self, self->bootversion,
                                  new_deployments,
                                  cancellable, error))
-        goto out;
+        return FALSE;
 
       if (!full_system_sync (self, &syncstats, cancellable, error))
-        {
-          g_prefix_error (error, "Full sync: ");
-          goto out;
-        }
+        return FALSE;
 
       if (!swap_bootlinks (self, self->bootversion,
                            new_deployments,
                            cancellable, error))
-        goto out;
+        return FALSE;
 
       bootloader_is_atomic = TRUE;
     }
   else
     {
-      int new_bootversion = self->bootversion ? 0 : 1;
-      g_autofree char* new_loader_entries_dir = NULL;
-      g_autoptr(OstreeRepo) repo = NULL;
-      gboolean show_osname = FALSE;
-
+      gboolean boot_was_ro_mount = FALSE;
       if (self->booted_deployment)
         boot_was_ro_mount = is_ro_mount ("/boot");
 
@@ -2148,95 +2219,33 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 
       if (boot_was_ro_mount)
         {
+          /* TODO: Use new mount namespace.  https://github.com/ostreedev/ostree/issues/1265 */
           if (mount ("/boot", "/boot", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-            {
-              glnx_set_prefix_error_from_errno (error, "%s", "Remounting /boot read-write");
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "Remounting /boot read-write");
         }
 
       if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
-        goto out;
+        return FALSE;
+      bootloader_is_atomic = bootloader != NULL && _ostree_bootloader_is_atomic (bootloader);
 
-      new_loader_entries_dir = g_strdup_printf ("boot/loader.%d/entries", new_bootversion);
-      if (!glnx_shutil_rm_rf_at (self->sysroot_fd, new_loader_entries_dir, cancellable, error))
-        goto out;
-      if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, new_loader_entries_dir, 0755,
-                                   cancellable, error))
-        goto out;
-
-      /* Need the repo to try and extract the versions for deployments.
-       * But this is a "nice-to-have" for the bootloader UI, so failure
-       * here is not fatal to the whole operation.  We just gracefully
-       * fall back to the deployment index. */
-      (void) ostree_sysroot_get_repo (self, &repo, cancellable, NULL);
-
-      /* Only show the osname in bootloader titles if there are multiple
-       * osname's among the new deployments.  Check for that here. */
-      for (guint i = 1; i < new_deployments->len; i++)
+      /* Note equivalent of try/finally here */
+      gboolean success = write_deployments_bootswap (self, new_deployments, opts, bootloader,
+                                                     &syncstats, cancellable, error);
+      /* Below here don't set GError until the if (!success) check */
+      if (boot_was_ro_mount)
         {
-          const char *osname_0 = ostree_deployment_get_osname (new_deployments->pdata[0]);
-          const char *osname_i = ostree_deployment_get_osname (new_deployments->pdata[i]);
-          if (!g_str_equal (osname_0, osname_i))
+          if (mount ("/boot", "/boot", NULL, MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
             {
-              show_osname = TRUE;
-              break;
+              /* Only make this a warning because we don't want to
+               * completely bomb out if some other process happened to
+               * jump in and open a file there.  See above TODO
+               * around doing this in a new mount namespace.
+               */
+              g_printerr ("warning: Failed to remount /boot read-only: %s\n", strerror (errno));
             }
         }
-
-      for (guint i = 0; i < new_deployments->len; i++)
-        {
-          OstreeDeployment *deployment = new_deployments->pdata[i];
-          if (!install_deployment_kernel (self, repo, new_bootversion,
-                                          deployment, new_deployments->len,
-                                          show_osname, cancellable, error))
-            goto out;
-        }
-
-      /* Create and swap bootlinks for *new* version */
-      if (!create_new_bootlinks (self, new_bootversion,
-                                 new_deployments,
-                                 cancellable, error))
-        goto out;
-      if (!swap_bootlinks (self, new_bootversion, new_deployments,
-                           cancellable, error))
-        goto out;
-
-      g_debug ("Using bootloader: %s", bootloader ?
-               g_type_name (G_TYPE_FROM_INSTANCE (bootloader)) : "(none)");
-
-      if (bootloader)
-        bootloader_is_atomic = _ostree_bootloader_is_atomic (bootloader);
-
-      if (bootloader)
-        {
-          if (!_ostree_bootloader_write_config (bootloader, new_bootversion,
-                                                cancellable, error))
-            {
-              g_prefix_error (error, "Bootloader write config: ");
-              goto out;
-            }
-        }
-
-      if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion,
-                                        cancellable, error))
-        {
-          g_prefix_error (error, "Preparing final bootloader swap: ");
-          goto out;
-        }
-
-      if (!full_system_sync (self, &syncstats, cancellable, error))
-        {
-          g_prefix_error (error, "Full sync: ");
-          goto out;
-        }
-
-      if (!swap_bootloader (self, self->bootversion, new_bootversion,
-                            cancellable, error))
-        {
-          g_prefix_error (error, "Final bootloader swap: ");
-          goto out;
-        }
+      if (!success)
+        return FALSE;
     }
 
   { g_autofree char *msg =
@@ -2260,44 +2269,24 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   }
 
   if (!_ostree_sysroot_bump_mtime (self, error))
-    goto out;
+    return FALSE;
 
   /* Now reload from disk */
   if (!ostree_sysroot_load (self, cancellable, error))
-    {
-      g_prefix_error (error, "Reloading deployments after commit: ");
-      goto out;
-    }
+    return glnx_prefix_error (error, "Reloading deployments after commit");
 
   if (!cleanup_legacy_current_symlinks (self, cancellable, error))
-    goto out;
+    return FALSE;
 
   /* And finally, cleanup of any leftover data.
    */
   if (opts->do_postclean)
     {
       if (!ostree_sysroot_cleanup (self, cancellable, error))
-        {
-          g_prefix_error (error, "Performing final cleanup: ");
-          goto out;
-        }
+        return glnx_prefix_error (error, "Performing final cleanup");
     }
 
-  ret = TRUE;
- out:
-  if (boot_was_ro_mount)
-    {
-      if (mount ("/boot", "/boot", NULL, MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
-        {
-          /* Only make this a warning because we don't want to
-           * completely bomb out if some other process happened to
-           * jump in and open a file there.
-           */
-          int errsv = errno;
-          g_printerr ("warning: Failed to remount /boot read-only: %s\n", strerror (errsv));
-        }
-    }
-  return ret;
+  return TRUE;
 }
 
 static gboolean
