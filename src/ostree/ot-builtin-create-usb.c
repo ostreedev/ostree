@@ -201,11 +201,7 @@ ostree_builtin_create_usb (int            argc,
   /* FIXME: It should be possible to work without this, but find_remotes_cb() in
    * ostree-repo-pull.c currently assumes a summary file (signed or unsigned) is
    * present. */
-  struct stat stbuf;
-  if (!glnx_fstatat_allow_noent (ostree_repo_get_dfd (dest_repo), "summary", &stbuf, 0, error))
-    return FALSE;
-  if (errno == ENOENT &&
-      !ostree_repo_regenerate_summary (dest_repo, NULL, cancellable, error))
+  if (!ostree_repo_regenerate_summary (dest_repo, NULL, cancellable, error))
     return FALSE;
 
   /* Add the symlinks .ostree/repos.d/@symlink_name → @dest_repo_path, unless
