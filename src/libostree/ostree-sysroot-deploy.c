@@ -2241,8 +2241,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                * jump in and open a file there.  See above TODO
                * around doing this in a new mount namespace.
                */
-              int errsv = errno;
-              g_printerr ("warning: Failed to remount /boot read-only: %s\n", strerror (errsv));
+              g_printerr ("warning: Failed to remount /boot read-only: %s\n", strerror (errno));
             }
         }
       if (!success)
