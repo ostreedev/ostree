@@ -5396,6 +5396,13 @@ copy_option (GVariantDict       *master_options,
  *   * `flags` (`i`): #OstreeRepoPullFlags to apply to the pull operation
  *   * `inherit-transaction` (`b`): %TRUE to inherit an ongoing transaction on
  *     the #OstreeRepo, rather than encapsulating the pull in a new one
+ *   * `depth` (`i`): How far in the history to traverse; default is 0, -1 means infinite
+ *   * `disable-static-deltas` (`b`): Do not use static deltas
+ *   * `http-headers` (`a(ss)`): Additional headers to add to all HTTP requests
+ *   * `subdirs` (`as`): Pull just these subdirectories
+ *   * `update-frequency` (`u`): Frequency to call the async progress callback in
+ *     milliseconds, if any; only values higher than 0 are valid
+ *   * `append-user-agent` (`s`): Additional string to append to the user agent
  *
  * Since: 2017.8
  */
