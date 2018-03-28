@@ -545,7 +545,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
            * the code in ostree_repo_pull_from_remotes_async() will be able to
            * check it just as quickly as we can here; so don’t duplicate the
            * code. */
-          g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, 0));
+          g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, NULL, 0));
         }
     }
 

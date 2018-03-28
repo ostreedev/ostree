@@ -99,6 +99,8 @@ GPtrArray *ostree_repo_finder_resolve_all_finish (GAsyncResult  *result,
  * @ref_to_checksum: (element-type OstreeCollectionRef utf8): map of collection–ref
  *    pairs to checksums provided by this remote; values may be %NULL to
  *    indicate this remote doesn’t provide that ref
+ * @ref_to_timestamp: (element-type OstreeCollectionRef guint64) (nullable): map of
+ *    collection–ref pairs to timestamps; values may be 0 for various reasons
  * @summary_last_modified: Unix timestamp (seconds since the epoch, UTC) when
  *    the summary file on the remote was last modified, or `0` if unknown
  *
@@ -122,6 +124,15 @@ GPtrArray *ostree_repo_finder_resolve_all_finish (GAsyncResult  *result,
  * should be available locally, so the details for each checksum can be looked
  * up using ostree_repo_load_commit().
  *
+ * @ref_to_timestamp provides timestamps for the set of refs in
+ * @ref_to_checksum. The refs are keys (of type #OstreeCollectionRef) and the
+ * values are guint64 pointers with the timestamp associated with the checksum
+ * provided in @ref_to_checksum. @ref_to_timestamp can be %NULL, and when it's
+ * not, the timestamps are zero when any of the following conditions are met:
+ * (1) the override-commit-ids option was used on
+ * ostree_repo_find_remotes_async (2) there was an error in trying to get the
+ * commit metadata (3) the checksum for this ref is %NULL in @ref_to_checksum.
+ *
  * Since: 2017.8
  */
 typedef struct
@@ -131,9 +142,10 @@ typedef struct
   gint priority;
   GHashTable *ref_to_checksum;
   guint64 summary_last_modified;
+  GHashTable *ref_to_timestamp;
 
   /*< private >*/
-  gpointer padding[4];
+  gpointer padding[3];
 } OstreeRepoFinderResult;
 
 _OSTREE_PUBLIC
@@ -144,6 +156,7 @@ OstreeRepoFinderResult *ostree_repo_finder_result_new (OstreeRemote     *remote,
                                                        OstreeRepoFinder *finder,
                                                        gint              priority,
                                                        GHashTable       *ref_to_checksum,
+                                                       GHashTable       *ref_to_timestamp,
                                                        guint64           summary_last_modified);
 _OSTREE_PUBLIC
 OstreeRepoFinderResult *ostree_repo_finder_result_dup (OstreeRepoFinderResult *result);

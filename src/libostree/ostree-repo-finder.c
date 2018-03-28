@@ -436,6 +436,9 @@ G_DEFINE_BOXED_TYPE (OstreeRepoFinderResult, ostree_repo_finder_result,
  *    priority
  * @ref_to_checksum: (element-type OstreeCollectionRef utf8) (transfer none):
  *    map of collection–ref pairs to checksums provided by this result
+ * @ref_to_timestamp: (element-type OstreeCollectionRef guint64) (nullable)
+ *    (transfer none): map of collection–ref pairs to timestamps provided by this
+ *    result
  * @summary_last_modified: Unix timestamp (seconds since the epoch, UTC) when
  *    the summary file for the result was last modified, or `0` if this is unknown
  *
@@ -450,6 +453,7 @@ ostree_repo_finder_result_new (OstreeRemote     *remote,
                                OstreeRepoFinder *finder,
                                gint              priority,
                                GHashTable       *ref_to_checksum,
+                               GHashTable       *ref_to_timestamp,
                                guint64           summary_last_modified)
 {
   g_autoptr(OstreeRepoFinderResult) result = NULL;
@@ -463,6 +467,7 @@ ostree_repo_finder_result_new (OstreeRemote     *remote,
   result->finder = g_object_ref (finder);
   result->priority = priority;
   result->ref_to_checksum = g_hash_table_ref (ref_to_checksum);
+  result->ref_to_timestamp = ref_to_timestamp != NULL ? g_hash_table_ref (ref_to_timestamp) : NULL;
   result->summary_last_modified = summary_last_modified;
 
   return g_steal_pointer (&result);
@@ -484,7 +489,7 @@ ostree_repo_finder_result_dup (OstreeRepoFinderResult *result)
 
   return ostree_repo_finder_result_new (result->remote, result->finder,
                                         result->priority, result->ref_to_checksum,
-                                        result->summary_last_modified);
+                                        result->ref_to_timestamp, result->summary_last_modified);
 }
 
 /**
@@ -554,6 +559,7 @@ ostree_repo_finder_result_free (OstreeRepoFinderResult *result)
   /* This may be NULL iff the result is freed half-way through find_remotes_cb()
    * in ostree-repo-pull.c, and at no other time. */
   g_clear_pointer (&result->ref_to_checksum, g_hash_table_unref);
+  g_clear_pointer (&result->ref_to_timestamp, g_hash_table_unref);
   g_object_unref (result->finder);
   ostree_remote_unref (result->remote);
   g_free (result);
