@@ -851,7 +851,7 @@ $OSTREE show --print-metadata-key=ostree.ref-binding test2 > test2-ref-binding
 assert_file_has_content test2-ref-binding 'test2'
 
 $OSTREE commit ${COMMIT_ARGS} -b test2-unbound --no-bindings --tree=dir=${test_tmpdir}/checkout-test2
-if $OSTREE show --print-metadata-key=ostree.ref-binding; then
+if $OSTREE show --print-metadata-key=ostree.ref-binding test2-unbound; then
     fatal "ref bindings found with --no-bindings?"
 fi
 echo "ok refbinding"
