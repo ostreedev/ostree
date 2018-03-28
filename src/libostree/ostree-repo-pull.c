@@ -4880,6 +4880,7 @@ find_remotes_cb (GObject      *obj,
   g_autoptr(GHashTable) commit_metadatas = NULL;  /* (element-type commit-checksum CommitMetadata) */
   g_autoptr(OstreeFetcher) fetcher = NULL;
   g_autofree const gchar **ref_to_latest_commit = NULL;  /* indexed as @refs; (element-type commit-checksum) */
+  g_autofree guint64 *ref_to_latest_timestamp = NULL;  /* indexed as @refs; (element-type commit-timestamp) */
   gsize n_refs;
   g_autofree char **override_commit_ids = NULL;
   g_autoptr(GPtrArray) remotes_to_remove = NULL;  /* (element-type OstreeRemote) */
@@ -5035,6 +5036,7 @@ find_remotes_cb (GObject      *obj,
        * it’s been moved to @refs_and_remotes_table and is now potentially out
        * of date. */
       g_clear_pointer (&result->ref_to_checksum, g_hash_table_unref);
+      g_clear_pointer (&result->ref_to_timestamp, g_hash_table_unref);
       result->summary_last_modified = summary_last_modified;
     }
 
@@ -5171,8 +5173,12 @@ find_remotes_cb (GObject      *obj,
    *
    * @ref_to_latest_commit is indexed by @ref_index, and its values are the
    * latest checksum for each ref. If override-commit-ids was used,
-   * @ref_to_latest_commit won't be initialized or used.*/
+   * @ref_to_latest_commit won't be initialized or used.
+   *
+   * @ref_to_latest_timestamp is also indexed by @ref_index, and its values are
+   * the latest timestamp for each ref, when available.*/
   ref_to_latest_commit = g_new0 (const gchar *, n_refs);
+  ref_to_latest_timestamp = g_new0 (guint64, n_refs);
 
   for (i = 0; i < n_refs; i++)
     {
@@ -5213,6 +5219,11 @@ find_remotes_cb (GObject      *obj,
        * the summary or commit metadata files above. */
       ref_to_latest_commit[i] = latest_checksum;
 
+      if (latest_checksum != NULL && latest_commit_metadata != NULL)
+        ref_to_latest_timestamp[i] = latest_commit_metadata->timestamp;
+      else
+        ref_to_latest_timestamp[i] = 0;
+
       if (latest_commit_metadata != NULL)
         {
           latest_commit_timestamp_str = uint64_secs_to_iso8601 (latest_commit_metadata->timestamp);
@@ -5236,6 +5247,7 @@ find_remotes_cb (GObject      *obj,
     {
       OstreeRepoFinderResult *result = g_ptr_array_index (results, i);
       g_autoptr(GHashTable) validated_ref_to_checksum = NULL;  /* (element-type OstreeCollectionRef utf8) */
+      g_autoptr(GHashTable) validated_ref_to_timestamp = NULL;  /* (element-type OstreeCollectionRef guint64) */
       gsize j, n_latest_refs;
 
       /* Previous error processing this result? */
@@ -5249,11 +5261,24 @@ find_remotes_cb (GObject      *obj,
                                                          (GDestroyNotify) ostree_collection_ref_free,
                                                          g_free);
 
+      validated_ref_to_timestamp = g_hash_table_new_full (ostree_collection_ref_hash,
+                                                          ostree_collection_ref_equal,
+                                                          (GDestroyNotify) ostree_collection_ref_free,
+                                                          g_free);
       if (override_commit_ids)
         {
           for (j = 0; refs[j] != NULL; j++)
-            g_hash_table_insert (validated_ref_to_checksum, ostree_collection_ref_dup (refs[j]),
-                                 g_strdup (override_commit_ids[j]));
+            {
+              guint64 *timestamp_ptr;
+
+              g_hash_table_insert (validated_ref_to_checksum, ostree_collection_ref_dup (refs[j]),
+                                   g_strdup (override_commit_ids[j]));
+
+              timestamp_ptr = g_malloc (sizeof (guint64));
+              *timestamp_ptr = 0;
+              g_hash_table_insert (validated_ref_to_timestamp, ostree_collection_ref_dup (refs[j]),
+                                   timestamp_ptr);
+            }
         }
       else
         {
@@ -5262,6 +5287,7 @@ find_remotes_cb (GObject      *obj,
           for (j = 0; refs[j] != NULL; j++)
             {
               const gchar *latest_commit_for_ref = ref_to_latest_commit[j];
+              guint64 *timestamp_ptr;
 
               if (pointer_table_get (refs_and_remotes_table, j, i) != latest_commit_for_ref)
                 latest_commit_for_ref = NULL;
@@ -5270,6 +5296,14 @@ find_remotes_cb (GObject      *obj,
 
               g_hash_table_insert (validated_ref_to_checksum, ostree_collection_ref_dup (refs[j]),
                                    g_strdup (latest_commit_for_ref));
+
+              timestamp_ptr = g_malloc (sizeof (guint64));
+              if (latest_commit_for_ref != NULL)
+                *timestamp_ptr = ref_to_latest_timestamp[j];
+              else
+                *timestamp_ptr = 0;
+              g_hash_table_insert (validated_ref_to_timestamp, ostree_collection_ref_dup (refs[j]),
+                                   timestamp_ptr);
             }
 
           if (n_latest_refs == 0)
@@ -5282,6 +5316,7 @@ find_remotes_cb (GObject      *obj,
         }
 
       result->ref_to_checksum = g_steal_pointer (&validated_ref_to_checksum);
+      result->ref_to_timestamp = g_steal_pointer (&validated_ref_to_timestamp);
       g_ptr_array_add (final_results, g_steal_pointer (&g_ptr_array_index (results, i)));
     }
 

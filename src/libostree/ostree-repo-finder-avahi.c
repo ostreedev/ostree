@@ -844,7 +844,7 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
         }
 
       g_ptr_array_add (results, ostree_repo_finder_result_new (remote, OSTREE_REPO_FINDER (finder),
-                                                               priority, supported_ref_to_checksum,
+                                                               priority, supported_ref_to_checksum, NULL,
                                                                GUINT64_FROM_BE (g_variant_get_uint64 (summary_timestamp))));
     }
 }

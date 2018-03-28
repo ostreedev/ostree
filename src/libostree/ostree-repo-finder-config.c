@@ -192,7 +192,7 @@ ostree_repo_finder_config_resolve_async (OstreeRepoFinder                  *find
           continue;
         }
 
-      g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, 0));
+      g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, NULL, 0));
     }
 
   g_ptr_array_sort (results, results_compare_cb);
