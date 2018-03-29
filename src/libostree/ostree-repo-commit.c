@@ -777,8 +777,6 @@ _try_clone_from_payload_link (OstreeRepo   *self,
           return TRUE;
         }
     }
-  if (self->parent_repo)
-    return _try_clone_from_payload_link (self->parent_repo, payload_checksum, file_info, tmpf, cancellable, error);
 
   return TRUE;
 }
