@@ -1246,7 +1246,7 @@ write_metadata_object (OstreeRepo         *self,
     }
   else
     {
-      OtChecksum checksum = { 0, };
+      g_auto(OtChecksum) checksum = { 0, };
       ot_checksum_init (&checksum);
       gsize len;
       const guint8*bufdata = g_bytes_get_data (buf, &len);
