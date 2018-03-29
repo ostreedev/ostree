@@ -54,6 +54,7 @@ ot_bin2hex (char *out_buf, const guint8 *inbuf, gsize len)
  */
 typedef struct {
   gboolean initialized;
+  gboolean closed;
 #if defined(HAVE_OPENSSL)
   EVP_MD_CTX *checksum;
 #elif defined(HAVE_GNUTLS)
@@ -84,6 +85,7 @@ ot_checksum_init (OtChecksum *checksum)
   real->digest_len = g_checksum_type_get_length (G_CHECKSUM_SHA256);
 #endif
   g_assert_cmpint (real->digest_len, ==, _OSTREE_SHA256_DIGEST_LEN);
+  real->closed = FALSE;
   real->initialized = TRUE;
 }
 
@@ -94,6 +96,7 @@ ot_checksum_update (OtChecksum *checksum,
 {
   OtRealChecksum *real = (OtRealChecksum*)checksum;
   g_return_if_fail (real->initialized);
+  g_return_if_fail (!real->closed);
 #if defined(HAVE_OPENSSL)
   g_assert (EVP_DigestUpdate (real->checksum, buf, len));
 #elif defined(HAVE_GNUTLS)
@@ -130,7 +133,7 @@ ot_checksum_get_digest (OtChecksum *checksum,
 {
   OtRealChecksum *real = (OtRealChecksum*)checksum;
   ot_checksum_get_digest_internal (real, buf, buflen);
-  real->initialized = FALSE;
+  real->closed = TRUE;
 }
 
 void
@@ -143,7 +146,6 @@ ot_checksum_get_hexdigest (OtChecksum *checksum,
   guint8 digest_buf[digest_len];
   ot_checksum_get_digest (checksum, digest_buf, digest_len);
   ot_bin2hex (buf, (guint8*)digest_buf, digest_len);
-  real->initialized = FALSE;
 }
 
 void
