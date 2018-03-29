@@ -2214,7 +2214,7 @@ metadata_size_valid (OstreeObjectType objtype,
  * @cancellable: Cancellable
  * @error: Error
  *
- * Store the metadata object @variant.  Return the checksum
+ * Store the metadata object @object.  Return the checksum
  * as @out_csum.
  *
  * If @expected_checksum is not %NULL, verify it against the

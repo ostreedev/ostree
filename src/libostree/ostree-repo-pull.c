@@ -5235,7 +5235,7 @@ find_remotes_cb (GObject      *obj,
   for (i = 0; i < results->len; i++)
     {
       OstreeRepoFinderResult *result = g_ptr_array_index (results, i);
-      g_autoptr(GHashTable) validated_ref_to_checksum = NULL;  /* (element-type utf8 utf8) */
+      g_autoptr(GHashTable) validated_ref_to_checksum = NULL;  /* (element-type OstreeCollectionRef utf8) */
       gsize j, n_latest_refs;
 
       /* Previous error processing this result? */
