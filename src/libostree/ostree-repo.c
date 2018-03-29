@@ -5311,11 +5311,11 @@ summary_add_ref_entry (OstreeRepo       *self,
  * `core/commit-update-summary` is set.
  *
  * If the `core/collection-id` key is set in the configuration, it will be
- * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs from the
- * `refs/mirrors` directory will be included in the generated summary file,
- * listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs and refs
- * in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in lexicographic
- * order.
+ * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
+ * have associated collection IDs will be included in the generated summary
+ * file, listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs
+ * and refs in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in
+ * lexicographic order.
  */
 gboolean
 ostree_repo_regenerate_summary (OstreeRepo     *self,
