@@ -78,6 +78,22 @@ ostree --repo=repo pull --disable-static-deltas origin dupobjects
 find repo -type l -name '*.payload-link' >payload-links.txt
 assert_streq "$(wc -l < payload-links.txt)" "1"
 
+mkdir child-repo
+adduser testuser
+chown -R testuser:testuser child-repo
+(
+    # Check that commit to an user repo that has a parent=$repo still works
+    su -g testuser testuser
+    mkdir content
+    echo a >> content/a
+    echo b >> content/b
+    ostree --repo=child-repo init --mode=bare-user
+    ostree --repo=child-repo remote add origin --set=gpg-verify=false ${origin}
+    ostree config --repo=child-repo set core.payload-link-threshold 0
+    ostree config --repo=child-repo set core.parent $(pwd)/repo
+    ostree --repo=child-repo commit -b test content
+)
+
 # Disable logging for inner loop
 set +x
 cat payload-links.txt | while read i; do
