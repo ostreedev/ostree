@@ -132,8 +132,8 @@ static void resolve_cb (GObject      *obj,
  * which the result provides. If the result provides the latest commit for a ref
  * across all of the results, the checksum will be set. Otherwise, if the
  * result provides an outdated commit, or doesn’t provide a given ref at all,
- * the ref will not be set. Results which provide none of the requested @refs
- * may be listed with an empty refs map.
+ * the checksum will not be set. Results which provide none of the requested
+ * @refs may be listed with an empty refs map.
  *
  * Pass the results to ostree_repo_pull_from_remotes_async() to pull the given
  * @refs from those remotes.
