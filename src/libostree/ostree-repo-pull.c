@@ -5787,7 +5787,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   if (gpg_verify_summary && summary == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No remote summary found (check that the configured URL is correct)");
+                   "GPG verification enabled, but no summary found (check that the configured URL in remote config is correct)");
       goto out;
     }
 
