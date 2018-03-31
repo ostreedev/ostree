@@ -141,11 +141,11 @@ typedef struct
   OstreeRepoFinder *finder;
   gint priority;
   GHashTable *ref_to_checksum;
-  GHashTable *ref_to_timestamp;
   guint64 summary_last_modified;
+  GHashTable *ref_to_timestamp;
 
   /*< private >*/
-  gpointer padding[4];
+  gpointer padding[3];
 } OstreeRepoFinderResult;
 
 _OSTREE_PUBLIC

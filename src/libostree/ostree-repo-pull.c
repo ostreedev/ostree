@@ -5299,7 +5299,7 @@ find_remotes_cb (GObject      *obj,
 
               timestamp_ptr = g_malloc (sizeof (guint64));
               if (latest_commit_for_ref != NULL)
-                *timestamp_ptr = ref_to_latest_timestamp[j];
+                *timestamp_ptr = GUINT64_TO_BE (ref_to_latest_timestamp[j]);
               else
                 *timestamp_ptr = 0;
               g_hash_table_insert (validated_ref_to_timestamp, ostree_collection_ref_dup (refs[j]),

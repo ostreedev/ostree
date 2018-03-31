@@ -370,19 +370,28 @@ test_repo_finder_config_find_remotes (Fixture       *fixture,
           g_strcmp0 (ostree_remote_get_name (results[i]->remote), "remote0-copy") == 0)
         {
           g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_checksum), ==, 5);
+
           ref0_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref0);
           g_assert_true (ostree_validate_checksum_string (ref0_checksum, NULL));
+
           ref1_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref1);
           g_assert_true (ostree_validate_checksum_string (ref1_checksum, NULL));
+
           ref2_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref2);
           g_assert (ref2_checksum == NULL);
 
           g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_timestamp), ==, 5);
+
           ref0_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref0);
+          *ref0_timestamp = GUINT64_FROM_BE (*ref0_timestamp);
           g_assert_cmpuint (*ref0_timestamp, >, 0);
+
           ref1_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref1);
+          *ref1_timestamp = GUINT64_FROM_BE (*ref1_timestamp);
           g_assert_cmpuint (*ref1_timestamp, >, 0);
+
           ref2_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref2);
+          *ref2_timestamp = GUINT64_FROM_BE (*ref2_timestamp);
           g_assert_cmpuint (*ref2_timestamp, ==, 0);
 
           g_assert_cmpstr (ostree_remote_get_url (results[i]->remote), ==, collection0_uri);
@@ -390,15 +399,21 @@ test_repo_finder_config_find_remotes (Fixture       *fixture,
       else if (g_strcmp0 (ostree_remote_get_name (results[i]->remote), "remote1") == 0)
         {
           g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_checksum), ==, 5);
+
           ref3_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref3);
           g_assert_true (ostree_validate_checksum_string (ref3_checksum, NULL));
+
           ref0_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref0);
           g_assert (ref0_checksum == NULL);
 
           g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_timestamp), ==, 5);
+
           ref3_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref3);
+          *ref3_timestamp = GUINT64_FROM_BE (*ref3_timestamp);
           g_assert_cmpuint (*ref3_timestamp, >, 0);
+
           ref0_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref0);
+          *ref0_timestamp = GUINT64_FROM_BE (*ref0_timestamp);
           g_assert_cmpuint (*ref0_timestamp, ==, 0);
 
           g_assert_cmpstr (ostree_remote_get_url (results[i]->remote), ==, collection1_uri);
