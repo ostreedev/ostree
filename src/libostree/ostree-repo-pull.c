@@ -4764,7 +4764,7 @@ find_remotes_process_refs (OstreeRepo                        *self,
   for (j = 0, n = g_variant_n_children (summary_refs); j < n; j++)
     {
       const guchar *csum_bytes;
-      g_autoptr(GVariant) ref_v = NULL, csum_v = NULL, commit_metadata_v = NULL, stored_commit_metadata_v = NULL;
+      g_autoptr(GVariant) ref_v = NULL, csum_v = NULL, commit_metadata_v = NULL, stored_commit_v = NULL;
       guint64 commit_size, commit_timestamp;
       gchar tmp_checksum[OSTREE_SHA256_STRING_LEN + 1];
       gsize ref_index;
@@ -4801,9 +4801,9 @@ find_remotes_process_refs (OstreeRepo                        *self,
       if (!collection_refv_contains (refs, summary_collection_id, ref_name, &ref_index))
         continue;
 
-      /* Load the commit metadata from disk if possible, for verification. */
-      if (!ostree_repo_load_commit (self, tmp_checksum, &stored_commit_metadata_v, NULL, NULL))
-        stored_commit_metadata_v = NULL;
+      /* Load the commit from disk if possible, for verification. */
+      if (!ostree_repo_load_commit (self, tmp_checksum, &stored_commit_v, NULL, NULL))
+        stored_commit_v = NULL;
 
       /* Check the additional metadata. */
       if (!g_variant_lookup (commit_metadata_v, OSTREE_COMMIT_TIMESTAMP, "t", &commit_timestamp))
@@ -4826,7 +4826,7 @@ find_remotes_process_refs (OstreeRepo                        *self,
       if (commit_metadata == NULL)
         {
           commit_metadata = commit_metadata_new (tmp_checksum, commit_size,
-                                                 (stored_commit_metadata_v != NULL) ? ostree_commit_get_timestamp (stored_commit_metadata_v) : 0,
+                                                 (stored_commit_v != NULL) ? ostree_commit_get_timestamp (stored_commit_v) : 0,
                                                  NULL);
           g_hash_table_insert (commit_metadatas, commit_metadata->checksum,
                                commit_metadata  /* transfer */);
