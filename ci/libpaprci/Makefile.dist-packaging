@@ -30,7 +30,7 @@ srpm: dist-snapshot
     origdir=$$(pwd); \
 	  cd $(DISTGIT_NAME) && \
 		git stash && git pull -r && \
-	  sed -i -e "s,^Version:.*,Version: $(GITREV_FOR_PKG)," $(DISTGIT_NAME).spec && \
+	  sed -i -e '/^Patch/d' -e "s,^Version:.*,Version: $(GITREV_FOR_PKG)," $(DISTGIT_NAME).spec && \
     rm -f *.src.rpm && \
 	  $(mypath)/rpmbuild-cwd -bs $(DISTGIT_NAME).spec && mv *.src.rpm $${origdir}; \
 	fi
