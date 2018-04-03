@@ -2913,6 +2913,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                            GVariant      *options,
                            GBytes       **out_summary,
                            GBytes       **out_signatures,
+                           gboolean      *out_from_cache,
                            GCancellable  *cancellable,
                            GError       **error)
 {
@@ -3015,32 +3016,13 @@ repo_remote_fetch_summary (OstreeRepo    *self,
         goto out;
     }
 
-  if (!from_cache && *out_summary && *out_signatures)
-    {
-      g_autoptr(GError) temp_error = NULL;
-
-      if (!_ostree_repo_cache_summary (self,
-                                       name,
-                                       *out_summary,
-                                       *out_signatures,
-                                       cancellable,
-                                       &temp_error))
-        {
-          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED))
-            g_debug ("No permissions to save summary cache");
-          else
-            {
-              g_propagate_error (error, g_steal_pointer (&temp_error));
-              goto out;
-            }
-        }
-    }
-
   ret = TRUE;
 
  out:
   if (mainctx)
     g_main_context_pop_thread_default (mainctx);
+
+  *out_from_cache = from_cache;
   return ret;
 }
 
@@ -5763,6 +5745,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autoptr(GBytes) signatures = NULL;
   gboolean ret = FALSE;
   gboolean gpg_verify_summary;
+  gboolean summary_is_from_cache;
 
   g_return_val_if_fail (OSTREE_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
@@ -5777,6 +5760,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                   options,
                                   &summary,
                                   &signatures,
+                                  &summary_is_from_cache,
                                   cancellable,
                                   error))
     goto out;
@@ -5811,6 +5795,27 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                            error);
       if (!ostree_gpg_verify_result_require_valid_signature (result, error))
         goto out;
+    }
+
+  if (!summary_is_from_cache && summary && signatures)
+    {
+      g_autoptr(GError) temp_error = NULL;
+
+      if (!_ostree_repo_cache_summary (self,
+                                       name,
+                                       summary,
+                                       signatures,
+                                       cancellable,
+                                       &temp_error))
+        {
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED))
+            g_debug ("No permissions to save summary cache");
+          else
+            {
+              g_propagate_error (error, g_steal_pointer (&temp_error));
+              goto out;
+            }
+        }
     }
 
   if (out_summary != NULL)
