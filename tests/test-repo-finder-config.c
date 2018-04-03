@@ -303,6 +303,130 @@ test_repo_finder_config_mixed_configs (Fixture       *fixture,
   g_main_context_pop_thread_default (context);
 }
 
+/* Test that using ostree_repo_find_remotes_async() works too.*/
+static void
+test_repo_finder_config_find_remotes (Fixture       *fixture,
+                                      gconstpointer  test_data)
+{
+  g_autoptr(OstreeRepoFinder) finder = NULL;
+  g_autoptr(GMainContext) context = NULL;
+  g_autoptr(GAsyncResult) result = NULL;
+  g_auto(OstreeRepoFinderResultv) results = NULL;
+  g_autoptr(GError) error = NULL;
+  gsize i;
+  const OstreeCollectionRef ref0 = { "org.example.Collection0", "exampleos/x86_64/ref0" };
+  const OstreeCollectionRef ref1 = { "org.example.Collection0", "exampleos/x86_64/ref1" };
+  const OstreeCollectionRef ref2 = { "org.example.Collection1", "exampleos/x86_64/ref1" };
+  const OstreeCollectionRef ref3 = { "org.example.Collection1", "exampleos/x86_64/ref2" };
+  const OstreeCollectionRef ref4 = { "org.example.Collection2", "exampleos/x86_64/ref3" };
+  const OstreeCollectionRef * const refs[] = { &ref0, &ref1, &ref2, &ref3, &ref4, NULL };
+  OstreeRepoFinder *finders[2] = {NULL, };
+
+  context = g_main_context_new ();
+  g_main_context_push_thread_default (context);
+
+  /* Put together various ref configuration files. */
+  g_autofree gchar *collection0_uri = assert_create_remote (fixture, "org.example.Collection0",
+                                                            "exampleos/x86_64/ref0",
+                                                            "exampleos/x86_64/ref1",
+                                                            NULL);
+  g_autofree gchar *collection1_uri = assert_create_remote (fixture, "org.example.Collection1",
+                                                            "exampleos/x86_64/ref2",
+                                                            NULL);
+  g_autofree gchar *no_collection_uri = assert_create_remote (fixture, NULL,
+                                                              "exampleos/x86_64/ref3",
+                                                              NULL);
+
+  assert_create_remote_config (fixture->parent_repo, "remote0", collection0_uri, "org.example.Collection0");
+  assert_create_remote_config (fixture->parent_repo, "remote1", collection1_uri, "org.example.Collection1");
+  assert_create_remote_config (fixture->parent_repo, "remote0-copy", collection0_uri, "org.example.Collection0");
+  assert_create_remote_config (fixture->parent_repo, "remote1-bad-copy", collection1_uri, "org.example.NotCollection1");
+  assert_create_remote_config (fixture->parent_repo, "remote2", no_collection_uri, NULL);
+
+  finders[0] = OSTREE_REPO_FINDER (ostree_repo_finder_config_new ());
+
+  /* Resolve the refs. */
+  ostree_repo_find_remotes_async (fixture->parent_repo, refs,
+                                  NULL, finders,
+                                  NULL, NULL, result_cb, &result);
+
+  while (result == NULL)
+    g_main_context_iteration (context, TRUE);
+
+  results = ostree_repo_find_remotes_finish (fixture->parent_repo,
+                                             result, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (results);
+  g_assert_cmpuint (g_strv_length ((char **) results), ==, 3);
+
+  /* Check that the results are correct: the invalid refs should have been
+   * ignored, and the valid results canonicalised and deduplicated. */
+  for (i = 0; results[i] != NULL; i++)
+    {
+      const char *ref0_checksum, *ref1_checksum, *ref2_checksum, *ref3_checksum;
+      guint64 *ref0_timestamp, *ref1_timestamp, *ref2_timestamp, *ref3_timestamp;
+
+      if (g_strcmp0 (ostree_remote_get_name (results[i]->remote), "remote0") == 0 ||
+          g_strcmp0 (ostree_remote_get_name (results[i]->remote), "remote0-copy") == 0)
+        {
+          g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_checksum), ==, 5);
+
+          ref0_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref0);
+          g_assert_true (ostree_validate_checksum_string (ref0_checksum, NULL));
+
+          ref1_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref1);
+          g_assert_true (ostree_validate_checksum_string (ref1_checksum, NULL));
+
+          ref2_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref2);
+          g_assert (ref2_checksum == NULL);
+
+          g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_timestamp), ==, 5);
+
+          ref0_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref0);
+          *ref0_timestamp = GUINT64_FROM_BE (*ref0_timestamp);
+          g_assert_cmpuint (*ref0_timestamp, >, 0);
+
+          ref1_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref1);
+          *ref1_timestamp = GUINT64_FROM_BE (*ref1_timestamp);
+          g_assert_cmpuint (*ref1_timestamp, >, 0);
+
+          ref2_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref2);
+          *ref2_timestamp = GUINT64_FROM_BE (*ref2_timestamp);
+          g_assert_cmpuint (*ref2_timestamp, ==, 0);
+
+          g_assert_cmpstr (ostree_remote_get_url (results[i]->remote), ==, collection0_uri);
+        }
+      else if (g_strcmp0 (ostree_remote_get_name (results[i]->remote), "remote1") == 0)
+        {
+          g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_checksum), ==, 5);
+
+          ref3_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref3);
+          g_assert_true (ostree_validate_checksum_string (ref3_checksum, NULL));
+
+          ref0_checksum = g_hash_table_lookup (results[i]->ref_to_checksum, &ref0);
+          g_assert (ref0_checksum == NULL);
+
+          g_assert_cmpuint (g_hash_table_size (results[i]->ref_to_timestamp), ==, 5);
+
+          ref3_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref3);
+          *ref3_timestamp = GUINT64_FROM_BE (*ref3_timestamp);
+          g_assert_cmpuint (*ref3_timestamp, >, 0);
+
+          ref0_timestamp = g_hash_table_lookup (results[i]->ref_to_timestamp, &ref0);
+          *ref0_timestamp = GUINT64_FROM_BE (*ref0_timestamp);
+          g_assert_cmpuint (*ref0_timestamp, ==, 0);
+
+          g_assert_cmpstr (ostree_remote_get_url (results[i]->remote), ==, collection1_uri);
+        }
+      else
+        {
+          g_assert_not_reached ();
+        }
+    }
+
+  g_main_context_pop_thread_default (context);
+}
+
 int main (int argc, char **argv)
 {
   setlocale (LC_ALL, "");
@@ -313,6 +437,8 @@ int main (int argc, char **argv)
               test_repo_finder_config_no_configs, teardown);
   g_test_add ("/repo-finder-config/mixed-configs", Fixture, NULL, setup,
               test_repo_finder_config_mixed_configs, teardown);
+  g_test_add ("/repo-finder-config/find-remotes", Fixture, NULL, setup,
+              test_repo_finder_config_find_remotes, teardown);
 
   return g_test_run();
 }

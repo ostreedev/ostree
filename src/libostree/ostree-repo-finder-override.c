@@ -243,7 +243,7 @@ ostree_repo_finder_override_resolve_async (OstreeRepoFinder                  *fi
   g_hash_table_iter_init (&iter, repo_remote_to_refs);
 
   while (g_hash_table_iter_next (&iter, (gpointer *) &remote, (gpointer *) &supported_ref_to_checksum))
-    g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, 0));
+    g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, NULL, 0));
 
   g_ptr_array_sort (results, results_compare_cb);
 
