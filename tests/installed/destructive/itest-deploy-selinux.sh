@@ -5,8 +5,9 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libinsttest.sh
+. ${dn}/../libinsttest.sh
 
+date
 # Create a new deployment
 ostree admin deploy --karg-proc-cmdline ${host_refspec}
 new_deployment_path=/ostree/deploy/${host_osname}/deploy/${host_commit}.1
@@ -54,3 +55,4 @@ assert_file_has_content_literal bootlsz.txt 'system_u:object_r:boot_t:s0 initram
 
 ostree admin undeploy 0
 ostree refs --delete test-label
+date

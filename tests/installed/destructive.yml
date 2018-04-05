@@ -1,0 +1,35 @@
+# This entrypoint right now just runs the sysinstalled-tests.
+---
+- hosts: localhost
+  tags:
+  - atomic
+  remote_user: root
+  vars:
+    use_git_build: True
+    tests: "."
+  tasks:
+    - import_tasks: overlay-git.yml
+      when: use_git_build
+    # Next copy all of the tests/ directory
+    - name: Copy test data
+      synchronize: src=../../ dest=/root/tests/ archive=yes
+    - find:
+        paths: /root/tests/installed/destructive
+        patterns: "itest-*.sh"
+      register: all_tests
+    - set_fact:
+        selected_tests: "{{ all_tests.files|map(attribute='path') | select('match', tests) | list }}"
+    - assert:
+        that:
+          - "{{ selected_tests|length }} != 0"
+    - file: path=/root/logs state=directory
+    - block:
+        - name: Run destructive tests
+          shell: "{{ item }} &> /root/logs/$(basename {{ item }}).log"
+          with_items:
+            - "{{ selected_tests }}"
+      always:
+        - synchronize:
+            src: /root/logs/
+            dest: artifacts/installed-destructive
+            mode: pull

@@ -5,9 +5,10 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libinsttest.sh
+. ${dn}/../libinsttest.sh
 
 echo "1..1"
+date
 
 prepare_tmpdir
 ostree --repo=repo init --mode=bare-user
@@ -37,3 +38,4 @@ ostree --repo=repo ls -X rootfs /usr/lib/dbus-daemon-helper >ls.txt
 assert_file_has_content ls.txt '^-007.. 0 81 .*security.selinux.*/usr/lib/dbus-daemon-helper'
 assert_not_file_has_content ls.txt 'user.ostreemeta'
 echo "ok bare-user link-checkout-speedup with modified xattrs maintains uids"
+date
