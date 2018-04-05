@@ -27,7 +27,9 @@ artifacts:
 ---
 
 # This suite skips the RPMs and does the build+unit tests in a container
-inherit: true
+inherit: false
+container:
+  image: registry.fedoraproject.org/fedora:27
 context: f27-primary
 env:
   # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
