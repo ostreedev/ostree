@@ -7,14 +7,19 @@ branches:
 context: FAH27-insttests
 required: true
 
-container:
-  image: registry.fedoraproject.org/fedora:27
+# FIXME; temporary workaround
+# https://github.com/ostreedev/ostree/pull/1513#issuecomment-378784162
+host:
+  distro: fedora/27/atomic
+  specs:
+    ram: 4096
+#container:
+#  image: registry.fedoraproject.org/fedora:27
 
 tests:
-  - ./tests/installed/provision.sh
-  # TODO: enhance papr to have caching, a bit like https://docs.travis-ci.com/user/caching/
-  - cd tests/installed && curl -Lo fedora-atomic-host.qcow2 https://getfedora.org/atomic_qcow2_latest &&
-    env "TEST_SUBJECTS=$(pwd)/fedora-atomic-host.qcow2" ./run.sh
+  - cd /etc/yum.repos.d/ && curl -L -O https://copr.fedorainfracloud.org/coprs/walters/oci-kvm-hook/repo/fedora-27/walters-oci-kvm-hook-fedora-27.repo
+  - rpm-ostree install oci-kvm-hook && rpm-ostree ex livefs
+  - docker run --device /dev/kvm --rm -v $(pwd):/srv/code registry.fedoraproject.org/fedora:27 /bin/sh -c "cd /srv/code && ./ci/fah27-insttests.sh"
 
 artifacts:
   - tests/installed/artifacts/
