@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..6"
+echo "1..8"
 
 . $(dirname $0)/libtest.sh
 
@@ -89,3 +89,43 @@ if ${CMD_PREFIX} ostree --repo=ostree-path-traverse/repo checkout pathtraverse-t
 fi
 assert_file_has_content_literal err.txt 'Invalid / in filename ../afile'
 echo "ok path traverse checkout"
+
+cd ${test_tmpdir}
+rm repo files -rf
+setup_test_repository "bare"
+
+rev=$($OSTREE rev-parse test2)
+
+filechecksum=$(ostree_file_path_to_checksum repo test2 /firstfile)
+rm repo/$(ostree_checksum_to_relative_object_path repo $filechecksum)
+
+assert_not_has_file repo/state/${rev}.commitpartial
+
+if $OSTREE fsck -q 2>err.txt; then
+    assert_not_reached "fsck unexpectedly succeeded"
+fi
+assert_file_has_content_literal err.txt "Object missing:"
+assert_file_has_content_literal err.txt "Marking commit $rev as partial"
+assert_has_file repo/state/${rev}.commitpartial
+
+echo "ok missing file"
+
+cd ${test_tmpdir}
+rm repo files -rf
+setup_test_repository "bare"
+
+rev=$($OSTREE rev-parse test2)
+
+filechecksum=$(ostree_file_path_to_checksum repo test2 /firstfile)
+echo corrupted >> repo/$(ostree_checksum_to_relative_object_path repo $filechecksum)
+
+assert_not_has_file repo/state/${rev}.commitpartial
+
+if $OSTREE fsck -q --delete 2>err.txt; then
+    assert_not_reached "fsck unexpectedly succeeded"
+fi
+assert_file_has_content_literal err.txt "Corrupted file object;"
+assert_file_has_content_literal err.txt "Marking commit $rev as partial"
+assert_has_file repo/state/${rev}.commitpartial
+
+echo "ok corrupt file"

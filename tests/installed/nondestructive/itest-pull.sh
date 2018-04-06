@@ -30,6 +30,20 @@ ostree --repo=bare-repo init --mode=bare-user
 ostree --repo=bare-repo remote add origin --set=gpg-verify=false $(cat ${test_tmpdir}/httpd-address)
 log_timestamps ostree --repo=bare-repo pull --disable-static-deltas origin ${host_nonremoteref}
 
+echo "ok pull"
+
+# fsck marks commits partial
+# https://github.com/ostreedev/ostree/pull/1533
+for d in $(find bare-repo/objects/ -maxdepth 1 -type d); do
+    (find ${d} -name '*.file' || true) | head -20 | xargs rm -vf
+done
+if ostree --repo=bare-repo fsck; then
+    fatal "fsck unexpectedly succeeded"
+fi
+ostree --repo=bare-repo pull origin ${host_nonremoteref}
+# Don't need a full fsck here
+ostree --repo=bare-repo ls origin:${host_nonremoteref} >/dev/null
+
 rm bare-repo repo -rf
 
 # Try copying the host's repo across a mountpoint for direct
@@ -44,6 +58,7 @@ log_timestamps ostree --repo=repo fsck
 cd ..
 umount mnt
 
+# Cleanup
 kill -TERM $(cat ${test_tmpdir}/httpd-pid)
 echo "ok"
 date
