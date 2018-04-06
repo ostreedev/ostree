@@ -53,6 +53,8 @@ static gboolean
 fsck_one_object (OstreeRepo            *repo,
                  const char            *checksum,
                  OstreeObjectType       objtype,
+                 GHashTable            *object_parents,
+                 GVariant              *key,
                  gboolean              *out_found_corruption,
                  GCancellable          *cancellable,
                  GError               **error)
@@ -60,12 +62,14 @@ fsck_one_object (OstreeRepo            *repo,
   g_autoptr(GError) temp_error = NULL;
   if (!ostree_repo_fsck_object (repo, objtype, checksum, cancellable, &temp_error))
     {
+      gboolean object_missing = FALSE;
+
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
           g_clear_error (&temp_error);
           g_printerr ("Object missing: %s.%s\n", checksum,
                       ostree_object_type_to_string (objtype));
-          *out_found_corruption = TRUE;
+          object_missing = TRUE;
         }
       else
         {
@@ -73,12 +77,32 @@ fsck_one_object (OstreeRepo            *repo,
             {
               g_printerr ("%s\n", temp_error->message);
               (void) ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
-              *out_found_corruption = TRUE;
+              object_missing = TRUE;
             }
           else
             {
               g_propagate_error (error, g_steal_pointer (&temp_error));
               return FALSE;
+            }
+        }
+
+      if (object_missing)
+        {
+          *out_found_corruption = TRUE;
+
+          if (object_parents != NULL && objtype != OSTREE_OBJECT_TYPE_COMMIT)
+            {
+              g_auto(GStrv) parent_commits =  ostree_repo_traverse_parents_get_commits (object_parents, key);
+              int i;
+
+              /* The commit was missing or deleted, mark the commit partial */
+              for (i = 0; parent_commits[i] != NULL; i++)
+                {
+                  const char *parent_commit = parent_commits[i];
+                  g_printerr ("Marking commit %s as partial\n", parent_commit);
+                  if (!ostree_repo_mark_commit_partial (repo, parent_commit, TRUE, error))
+                    return FALSE;
+                }
             }
         }
     }
@@ -94,6 +118,7 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
                                      GError               **error)
 {
   g_autoptr(GHashTable) reachable_objects = ostree_repo_traverse_new_reachable ();
+  g_autoptr(GHashTable) object_parents = ostree_repo_traverse_new_parents ();
 
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -108,8 +133,8 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
 
-      if (!ostree_repo_traverse_commit_union (repo, checksum, 0, reachable_objects,
-                                              cancellable, error))
+      if (!ostree_repo_traverse_commit_union_with_parents (repo, checksum, 0, reachable_objects, object_parents,
+                                                           cancellable, error))
         return FALSE;
     }
 
@@ -127,8 +152,9 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      if (!fsck_one_object (repo, checksum, objtype, out_found_corruption,
-                            cancellable, error))
+      if (!fsck_one_object (repo, checksum, objtype,
+                            object_parents, serialized_key,
+                            out_found_corruption, cancellable, error))
         return FALSE;
 
       i++;
@@ -150,7 +176,7 @@ fsck_commit_for_ref (OstreeRepo    *repo,
                      GError       **error)
 {
   if (!fsck_one_object (repo, checksum, OSTREE_OBJECT_TYPE_COMMIT,
-                        found_corruption,
+                        NULL, NULL, found_corruption,
                         cancellable, error))
     return FALSE;
 
