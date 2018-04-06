@@ -22,6 +22,9 @@ LIBOSTREE_2018.5 {
   ostree_sysroot_stage_tree;
   ostree_sysroot_get_staged_deployment;
   ostree_deployment_is_staged;
+  ostree_repo_traverse_new_parents;
+  ostree_repo_traverse_parents_get_commits;
+  ostree_repo_traverse_commit_union_with_parents;
 } LIBOSTREE_2018.3;
 
 /* Stub section for the stable release *after* this development one; don't

@@ -1113,6 +1113,12 @@ _OSTREE_PUBLIC
 GHashTable *ostree_repo_traverse_new_reachable (void);
 
 _OSTREE_PUBLIC
+GHashTable *ostree_repo_traverse_new_parents (void);
+
+_OSTREE_PUBLIC
+char ** ostree_repo_traverse_parents_get_commits (GHashTable *parents, GVariant *object);
+
+_OSTREE_PUBLIC
 gboolean ostree_repo_traverse_commit (OstreeRepo         *repo,
                                       const char         *commit_checksum,
                                       int                 maxdepth,
@@ -1127,6 +1133,14 @@ gboolean ostree_repo_traverse_commit_union (OstreeRepo         *repo,
                                             GHashTable         *inout_reachable,
                                             GCancellable       *cancellable,
                                             GError            **error);
+_OSTREE_PUBLIC
+gboolean ostree_repo_traverse_commit_union_with_parents (OstreeRepo         *repo,
+                                                         const char         *commit_checksum,
+                                                         int                 maxdepth,
+                                                         GHashTable         *inout_reachable,
+                                                         GHashTable         *inout_parents,
+                                                         GCancellable       *cancellable,
+                                                         GError            **error);
 
 struct _OstreeRepoCommitTraverseIter {
   gboolean initialized;
