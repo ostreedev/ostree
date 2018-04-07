@@ -55,9 +55,12 @@ ostree_admin_instutil_option_context_new_with_commands (void)
 
   while (command->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %-24s", command->name);
-        if (command->description != NULL)
-          g_string_append_printf (summary, "%s", command->description);
+      if ((command->flags & OSTREE_BUILTIN_FLAG_HIDDEN) == 0)
+        {
+          g_string_append_printf (summary, "\n  %-24s", command->name);
+          if (command->description != NULL)
+            g_string_append_printf (summary, "%s", command->description);
+        }
 
       command++;
     }

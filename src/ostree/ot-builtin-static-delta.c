@@ -117,7 +117,8 @@ static_delta_usage (char    **argv,
 
   while (command->name)
     {
-      print_func ("  %-17s%s\n", command->name, command->description ?: "");
+      if ((command->flags & OSTREE_BUILTIN_FLAG_HIDDEN) == 0)
+        print_func ("  %-17s%s\n", command->name, command->description ?: "");
       command++;
     }
 

@@ -73,10 +73,12 @@ remote_option_context_new_with_commands (void)
 
   while (subcommand->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %-18s", subcommand->name);
-      if (subcommand->description != NULL)
-        g_string_append_printf (summary, "%s", subcommand->description);
-
+      if ((subcommand->flags & OSTREE_BUILTIN_FLAG_HIDDEN) == 0)
+        {
+          g_string_append_printf (summary, "\n  %-18s", subcommand->name);
+          if (subcommand->description != NULL)
+            g_string_append_printf (summary, "%s", subcommand->description);
+        }
       subcommand++;
     }
 
