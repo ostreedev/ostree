@@ -45,9 +45,9 @@ static OstreeCommand admin_subcommands[] = {
   { "init-fs", OSTREE_BUILTIN_FLAG_NO_REPO,
      ot_admin_builtin_init_fs,
     "Initialize a root filesystem" },
-  { "instutil", OSTREE_BUILTIN_FLAG_NO_REPO,
+  { "instutil", OSTREE_BUILTIN_FLAG_NO_REPO | OSTREE_BUILTIN_FLAG_HIDDEN,
     ot_admin_builtin_instutil,
-    "Provide instutil commands, allow admin to change boot configuration and relabel selinux " },
+    "Deprecated commands intended for installer programs" },
   { "os-init", OSTREE_BUILTIN_FLAG_NO_REPO,
     ot_admin_builtin_os_init,
     "Initialize empty state for given operating system" },
@@ -85,9 +85,12 @@ ostree_admin_option_context_new_with_commands (void)
 
   while (command->name != NULL)
     {
-      g_string_append_printf (summary, "\n  %-19s", command->name);
-        if (command->description != NULL)
-          g_string_append_printf (summary, "%s", command->description);
+      if ((command->flags & OSTREE_BUILTIN_FLAG_HIDDEN) == 0)
+        {
+          g_string_append_printf (summary, "\n  %-19s", command->name);
+          if (command->description != NULL)
+            g_string_append_printf (summary, "%s", command->description);
+        }
       command++;
     }
 
