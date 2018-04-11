@@ -3,6 +3,12 @@
 # TEST_SUBJECTS being set.
 set -xeuo pipefail
 
+dn=$(cd $(dirname $0) && pwd)
+if ! test -d build; then
+    mkdir -p build
+    (cd build && ${dn}/../../ci/build-rpm.sh)
+fi
+
 # https://fedoraproject.org/wiki/CI/Tests
 if test -z "${TEST_SUBJECTS:-}"; then
     cat <<EOF
