@@ -239,6 +239,44 @@ cleanup_other_bootversions (OstreeSysroot       *self,
   return TRUE;
 }
 
+/* Delete a deployment directory */
+gboolean
+_ostree_sysroot_rmrf_deployment (OstreeSysroot *self,
+                                 OstreeDeployment *deployment,
+                                 GCancellable  *cancellable,
+                                 GError       **error)
+{
+  g_autofree char *origin_relpath = ostree_deployment_get_origin_relpath (deployment);
+  g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  struct stat stbuf;
+  glnx_autofd int deployment_fd = -1;
+
+  if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE,
+                       &deployment_fd, error))
+    return FALSE;
+
+  if (!glnx_fstat (deployment_fd, &stbuf, error))
+    return FALSE;
+
+  /* This shouldn't happen, because higher levels should
+   * disallow having the booted deployment not in the active
+   * deployment list, but let's be extra safe. */
+  if (stbuf.st_dev == self->root_device &&
+      stbuf.st_ino == self->root_inode)
+    return TRUE;
+
+  /* This deployment wasn't referenced, so delete it */
+  if (!_ostree_linuxfs_fd_alter_immutable_flag (deployment_fd, FALSE,
+                                                cancellable, error))
+    return FALSE;
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, origin_relpath, cancellable, error))
+    return FALSE;
+  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deployment_path, cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /* As the bootloader configuration changes, we will have leftover deployments
  * on disk.  This function deletes all deployments which aren't actively
  * referenced.
@@ -279,36 +317,12 @@ cleanup_old_deployments (OstreeSysroot       *self,
     {
       OstreeDeployment *deployment = all_deployment_dirs->pdata[i];
       g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
-      g_autofree char *origin_relpath = ostree_deployment_get_origin_relpath (deployment);
 
-      if (!g_hash_table_lookup (active_deployment_dirs, deployment_path))
-        {
-          struct stat stbuf;
-          glnx_autofd int deployment_fd = -1;
+      if (g_hash_table_lookup (active_deployment_dirs, deployment_path))
+        continue;
 
-          if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE,
-                               &deployment_fd, error))
-            return FALSE;
-
-          if (!glnx_fstat (deployment_fd, &stbuf, error))
-            return FALSE;
-
-          /* This shouldn't happen, because higher levels should
-           * disallow having the booted deployment not in the active
-           * deployment list, but let's be extra safe. */
-          if (stbuf.st_dev == root_stbuf.st_dev &&
-              stbuf.st_ino == root_stbuf.st_ino)
-            continue;
-
-          /* This deployment wasn't referenced, so delete it */
-          if (!_ostree_linuxfs_fd_alter_immutable_flag (deployment_fd, FALSE,
-                                                        cancellable, error))
-            return FALSE;
-          if (!glnx_shutil_rm_rf_at (self->sysroot_fd, origin_relpath, cancellable, error))
-            return FALSE;
-          if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deployment_path, cancellable, error))
-            return FALSE;
-        }
+      if (!_ostree_sysroot_rmrf_deployment (self, deployment, cancellable, error))
+        return FALSE;
     }
 
   /* Clean up boot directories */

@@ -112,6 +112,12 @@ _ostree_sysroot_get_origin_relpath (GFile         *path,
                                     GCancellable  *cancellable,
                                     GError       **error);
 
+gboolean
+_ostree_sysroot_rmrf_deployment (OstreeSysroot *sysroot,
+                                 OstreeDeployment *deployment,
+                                 GCancellable  *cancellable,
+                                 GError       **error);
+
 char *_ostree_sysroot_join_lines (GPtrArray  *lines);
 
 gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
