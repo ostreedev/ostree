@@ -5,11 +5,6 @@ set -xeuo pipefail
 
 dn=$(cd $(dirname $0) && pwd)
 
-if ! test -d build; then
-    mkdir -p build
-    (cd build && ${dn}/../../ci/build-rpm.sh)
-fi
-
 # TODO: parallelize this
 PLAYBOOKS=${PLAYBOOKS:-nondestructive.yml destructive.yml}
 for playbook in $PLAYBOOKS; do
