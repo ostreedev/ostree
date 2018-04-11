@@ -10,7 +10,8 @@
     # Arbitrary...we want some parallelism
     batching_factor: 4
   tasks:
-    - import_tasks: overlay-git.yml
+    - import_tasks: tasks/query-host.yml
+    - import_tasks: tasks/overlay-git.yml
       when: use_git_build
     # Next copy all of the tests/ directory
     - name: Copy test data
