@@ -1438,7 +1438,8 @@ scan_loose_devino (OstreeRepo                     *self,
         return FALSE;
     }
 
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE)
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE &&
+      self->uncompressed_objects_dir_fd != -1)
     {
       if (!scan_one_loose_devino (self, self->uncompressed_objects_dir_fd, devino_cache,
                                   cancellable, error))
