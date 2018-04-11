@@ -147,8 +147,13 @@ ln -s /ENOENT sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/a-new-broken-syml
 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
-linktarget=$(readlink sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-broken-symlink)
-test "${linktarget}" = /ENOENT
+link=sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-broken-symlink
+if ! test -L ${link}; then
+    ls -al ${link}
+    fatal "Not a symlink: ${link}"
+fi
+linktarget=$(readlink ${link})
+assert_streq "${linktarget}" /ENOENT
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-config-file 'a new local config file'
