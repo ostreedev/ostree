@@ -1,9 +1,11 @@
-# Test the deploy --stage functionality
+# Test the deploy --stage functionality; first, we stage a deployment
+# reboot, and validate that it worked.
 
 - name: Write staged-deploy commit
   shell: |
     ostree --repo=/ostree/repo commit --parent="${commit}" -b staged-deploy --tree=ref="${commit}" --no-bindings
     ostree admin deploy --stage --karg-proc-cmdline --karg=ostreetest=yes staged-deploy
+    test -f /run/ostree/staged-deployment
   environment:
     commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
 - include_tasks: ../tasks/reboot.yml
@@ -13,12 +15,44 @@
     journalctl -b "-1" -u ostree-finalize-staged.service | grep -q -e 'Transaction complete'
     # And that we have the new kernel argument
     grep -q -e 'ostreetest=yes' /proc/cmdline
+    # And there should not be a staged deployment
+    test '!' -f /run/ostree/staged-deployment
 - name: Rollback
   shell: rpm-ostree rollback
 - include_tasks: ../tasks/reboot.yml
 - shell: |
-    ostree refs --delete staged-deploy
     rpm-ostree cleanup -rp
 # And now we shouldn't have the kernel commandline entry
 - name: Check we do not have new kernel cmdline entry
   shell: grep -qv -e 'ostreetest=yes' /proc/cmdline
+
+# Ensure we can unstage
+- name: Write staged-deploy commit, then unstage
+  shell: |
+    ostree admin deploy --stage --karg-proc-cmdline --karg=ostreetest=yes staged-deploy
+    ostree admin status > status.txt
+    grep -qFe '(staged)' status.txt
+    test -f /run/ostree/staged-deployment
+    ostree admin undeploy 0
+    ostree admin status > status.txt
+    grep -vqFe '(staged)' status.txt
+    test '!' -f /run/ostree/staged-deployment
+  environment:
+    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
+
+# Staged should be overwritten by non-staged
+- name: Write staged-deploy commit, then unstage
+  shell: |
+    ostree admin deploy --stage --karg-proc-cmdline --karg=ostreetest=yes staged-deploy
+    test -f /run/ostree/staged-deployment
+    ostree --repo=/ostree/repo commit --parent="${commit}" -b nonstaged-deploy --tree=ref="${commit}" --no-bindings
+    ostree admin deploy --karg-proc-cmdline --karg=ostreetest=yes nonstaged-deploy
+    ostree admin status > status.txt
+    grep -vqFe '(staged)' status.txt
+    test '!' -f /run/ostree/staged-deployment
+    ostree admin undeploy 0
+  environment:
+    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
+
+- name: Cleanup refs
+  shell: ostree refs --delete staged-deploy nonstaged-deploy 
