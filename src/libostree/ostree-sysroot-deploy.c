@@ -2158,14 +2158,26 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     requires_new_bootversion = TRUE;
   else
     {
+      gboolean is_noop = TRUE;
       for (guint i = 0; i < new_deployments->len; i++)
         {
-          if (!deployment_bootconfigs_equal (new_deployments->pdata[i],
-                                             self->deployments->pdata[i]))
+          OstreeDeployment *cur_deploy = self->deployments->pdata[i];
+          OstreeDeployment *new_deploy = new_deployments->pdata[i];
+          if (!deployment_bootconfigs_equal (cur_deploy, new_deploy))
             {
               requires_new_bootversion = TRUE;
+              is_noop = FALSE;
               break;
             }
+          if (cur_deploy != new_deploy)
+            is_noop = FALSE;
+        }
+
+      /* Silently do nothing if we're passed the same set of deployments */
+      if (is_noop)
+        {
+          g_assert (!requires_new_bootversion);
+          return TRUE;
         }
     }
 
