@@ -28,6 +28,10 @@ artifacts:
 
 # This suite skips the RPMs and does the build+unit tests in a container
 inherit: false
+branches:
+    - master
+    - auto
+    - try
 container:
   image: registry.fedoraproject.org/fedora:27
 context: f27-primary
