@@ -19,6 +19,9 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2018.5 {
+  ostree_sysroot_stage_tree;
+  ostree_sysroot_get_staged_deployment;
+  ostree_deployment_is_staged;
 } LIBOSTREE_2018.3;
 
 /* Stub section for the stable release *after* this development one; don't

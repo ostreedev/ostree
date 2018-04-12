@@ -36,6 +36,7 @@ G_BEGIN_DECLS
  * @bootconfig: Bootloader configuration
  * @origin: How to construct an upgraded version of this tree
  * @unlocked: The unlocked state
+ * @staged: TRUE iff this deployment is staged
  */
 struct _OstreeDeployment
 {
@@ -50,6 +51,7 @@ struct _OstreeDeployment
   OstreeBootconfigParser *bootconfig;
   GKeyFile *origin;
   OstreeDeploymentUnlockedState unlocked;
+  gboolean staged;
 };
 
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);
