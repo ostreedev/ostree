@@ -740,6 +740,15 @@ compare_deployments_by_boot_loader_version_reversed (gconstpointer     a_pp,
   OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
   OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
 
+  /* Staged deployments are always first */
+  if (ostree_deployment_is_staged (a))
+    {
+      g_assert (!ostree_deployment_is_staged (b));
+      return -1;
+    }
+  else if (ostree_deployment_is_staged (b))
+    return 1;
+
   return compare_boot_loader_configs (a_bootconfig, b_bootconfig);
 }
 
@@ -824,11 +833,16 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
       g_variant_dict_lookup (staged_deployment_dict, "kargs", "^a&s", &kargs);
       if (target)
         {
-          self->staged_deployment =
+          g_autoptr(OstreeDeployment) staged =
             _ostree_sysroot_deserialize_deployment_from_variant (target, error);
-          if (!self->staged_deployment)
+          if (!staged)
             return FALSE;
-          _ostree_deployment_set_bootconfig_from_kargs (self->staged_deployment, kargs);
+
+          _ostree_deployment_set_bootconfig_from_kargs (staged, kargs);
+          if (!load_origin (self, staged, NULL, error))
+            return FALSE;
+
+          self->staged_deployment = g_steal_pointer (&staged);
           self->staged_deployment_data = g_steal_pointer (&staged_deployment_data);
           /* We set this flag for ostree_deployment_is_staged() because that API
            * doesn't have access to the sysroot, which currently has the
@@ -938,17 +952,22 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   if (root_is_ostree_booted && !self->booted_deployment)
     return glnx_throw (error, "Unexpected state: /run/ostree-booted found and in / sysroot but not in a booted deployment");
 
+  if (!_ostree_sysroot_reload_staged (self, error))
+    return FALSE;
+
   /* Ensure the entires are sorted */
   g_ptr_array_sort (deployments, compare_deployments_by_boot_loader_version_reversed);
+
+  /* Staged shows up first */
+  if (self->staged_deployment)
+    g_ptr_array_insert (deployments, 0, g_object_ref (self->staged_deployment));
+
   /* And then set their index variables */
   for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       ostree_deployment_set_index (deployment, i);
     }
-
-  if (!_ostree_sysroot_reload_staged (self, error))
-    return FALSE;
 
   /* Determine whether we're "physical" or not, the first time we initialize */
   if (!self->loaded)

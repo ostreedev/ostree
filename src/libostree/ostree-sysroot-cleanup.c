@@ -308,15 +308,6 @@ cleanup_old_deployments (OstreeSysroot       *self,
       g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
     }
 
-  /* And also the staged deployment, if any */
-  if (self->staged_deployment)
-    {
-      char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, self->staged_deployment);
-      g_hash_table_replace (active_deployment_dirs, deployment_path, deployment_path);
-      char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (self->staged_deployment));
-      g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
-    }
-
   /* Find all deployment directories, both active and inactive */
   g_autoptr(GPtrArray) all_deployment_dirs = NULL;
   if (!list_all_deployment_directories (self, &all_deployment_dirs,
