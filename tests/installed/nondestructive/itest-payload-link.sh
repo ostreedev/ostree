@@ -113,11 +113,6 @@ cat >unpriv-child-repo.sh <<EOF
 #!/bin/bash
 # Check that commit to an user repo that has a parent still works
 set -xeuo pipefail
-ls -al .
-touch foo
-ls -al foo
-mkdir bar
-ls -al bar
 ostree --repo=child-repo init --mode=bare-user
 ostree --repo=child-repo remote add origin --set=gpg-verify=false ${origin}
 ostree --repo=child-repo config set core.parent $(pwd)/repo
