@@ -2165,7 +2165,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   OstreeDeployment *first_new =
     (new_deployments->len > 0 ? new_deployments->pdata[0] : NULL);
   g_autoptr(GPtrArray) new_deployments_copy = NULL;
-  if (ostree_deployment_is_staged (first_new))
+  if (first_new && ostree_deployment_is_staged (first_new))
     {
       g_assert_cmpint (new_deployments->len, >, 0);
       new_deployments_copy = g_ptr_array_sized_new (new_deployments->len - 1);
