@@ -678,7 +678,7 @@ _import_payload_link (OstreeRepo   *dest_repo,
 
   /* The two repositories are on different devices */
   if (src_repo->device != dest_repo->device)
-    return FALSE;
+    return TRUE;
 
   if (!_check_support_reflink (dest_repo, &reflinks_supported, error))
     return FALSE;
@@ -729,7 +729,7 @@ _try_clone_from_payload_link (OstreeRepo   *self,
 
   /* The two repositories are on different devices */
   if (self->device != dest_repo->device)
-    return FALSE;
+    return TRUE;
 
   if (!_check_support_reflink (dest_repo, &reflinks_supported, error))
     return FALSE;
