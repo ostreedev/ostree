@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -47,6 +48,9 @@
 #include <ctype.h>
 
 #include "ostree-mount-util.h"
+
+/* Initialized early in main */
+static bool running_as_pid1;
 
 static char*
 resolve_deploy_path (const char * root_mountpoint)
@@ -60,7 +64,6 @@ resolve_deploy_path (const char * root_mountpoint)
     errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
 
   snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target);
-  printf ("Examining %s\n", destpath);
   if (lstat (destpath, &stbuf) < 0)
     err (EXIT_FAILURE, "Couldn't find specified OSTree root '%s'", destpath);
   if (!S_ISLNK (stbuf.st_mode))
@@ -68,7 +71,9 @@ resolve_deploy_path (const char * root_mountpoint)
   deploy_path = realpath (destpath, NULL);
   if (deploy_path == NULL)
     err (EXIT_FAILURE, "realpath(%s) failed", destpath);
-  printf ("Resolved OSTree target to: %s\n", deploy_path);
+  /* Quiet logs if there's no journal */
+  if (!running_as_pid1)
+    printf ("Resolved OSTree target to: %s\n", deploy_path);
   return deploy_path;
 }
 
@@ -81,13 +86,18 @@ pivot_root(const char * new_root, const char * put_old)
 int
 main(int argc, char *argv[])
 {
-  const char *root_mountpoint = NULL, *root_arg = NULL;
-  char *deploy_path = NULL;
-  char srcpath[PATH_MAX];
-  struct stat stbuf;
-  int we_mounted_proc = 0;
+  /* If we're pid 1, that means there's no initramfs; in this situation
+   * various defaults change:
+   *
+   * - Assume that the target root is /
+   * - Quiet logging as there's no journal
+   * etc.
+   */
+  running_as_pid1 = (getpid () == 1);
 
-  if (getpid() == 1)
+  const char *root_arg = NULL;
+  bool we_mounted_proc = false;
+  if (running_as_pid1)
     {
       root_arg = "/";
     }
@@ -98,6 +108,7 @@ main(int argc, char *argv[])
       root_arg = argv[1];
     }
 
+  struct stat stbuf;
   if (stat ("/proc/cmdline", &stbuf) < 0)
     {
       if (errno != ENOENT)
@@ -109,10 +120,10 @@ main(int argc, char *argv[])
       we_mounted_proc = 1;
     }
 
-  root_mountpoint = realpath (root_arg, NULL);
+  const char *root_mountpoint = realpath (root_arg, NULL);
   if (root_mountpoint == NULL)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
-  deploy_path = resolve_deploy_path (root_mountpoint);
+  char *deploy_path = resolve_deploy_path (root_mountpoint);
 
   if (we_mounted_proc)
     {
@@ -147,6 +158,7 @@ main(int argc, char *argv[])
     err (EXIT_FAILURE, "failed to bind mount ../../var to var");
 #endif
 
+  char srcpath[PATH_MAX];
   /* If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
   snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint);
@@ -193,7 +205,7 @@ main(int argc, char *argv[])
    * not pid 1.  Otherwise it's handled later via ostree-remount.service.
    * https://mail.gnome.org/archives/ostree-list/2018-March/msg00012.html
    */
-  if (getpid () != 1)
+  if (!running_as_pid1)
     touch_run_ostree ();
 
   if (strcmp(root_mountpoint, "/") == 0)
@@ -246,7 +258,7 @@ main(int argc, char *argv[])
   if (mount ("none", "sysroot", NULL, MS_PRIVATE, NULL) < 0)
     err (EXIT_FAILURE, "remounting 'sysroot' private");
 
-  if (getpid() == 1)
+  if (running_as_pid1)
     {
       execl ("/sbin/init", "/sbin/init", NULL);
       err (EXIT_FAILURE, "failed to exec init inside ostree");
