@@ -598,12 +598,8 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
 }
 
 static gboolean
-_check_support_reflink (OstreeRepo *src, OstreeRepo *dest, gboolean *supported, GError **error)
+_check_support_reflink (OstreeRepo *dest, gboolean *supported, GError **error)
 {
-  /* The two repositories are on different devices */
-  if (src->device != dest->device)
-    return FALSE;
-
   /* We have not checked yet if the destination file system supports reflinks, do it here */
   if (g_atomic_int_get (&dest->fs_support_reflink) == 0)
     {
@@ -635,7 +631,7 @@ _create_payload_link (OstreeRepo   *self,
 {
   gboolean reflinks_supported = FALSE;
 
-  if (!_check_support_reflink (self, self, &reflinks_supported, error))
+  if (!_check_support_reflink (self, &reflinks_supported, error))
     return FALSE;
 
   if (!reflinks_supported)
@@ -680,7 +676,11 @@ _import_payload_link (OstreeRepo   *dest_repo,
   glnx_unref_object OtChecksumInstream *checksum_payload = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
 
-  if (!_check_support_reflink (src_repo, dest_repo, &reflinks_supported, error))
+  /* The two repositories are on different devices */
+  if (src_repo->device != dest_repo->device)
+    return FALSE;
+
+  if (!_check_support_reflink (dest_repo, &reflinks_supported, error))
     return FALSE;
 
   if (!reflinks_supported)
@@ -727,7 +727,11 @@ _try_clone_from_payload_link (OstreeRepo   *self,
   if (self->commit_stagedir.initialized)
     dfd_searches[0] = self->commit_stagedir.fd;
 
-  if (!_check_support_reflink (self, dest_repo, &reflinks_supported, error))
+  /* The two repositories are on different devices */
+  if (self->device != dest_repo->device)
+    return FALSE;
+
+  if (!_check_support_reflink (dest_repo, &reflinks_supported, error))
     return FALSE;
 
   if (!reflinks_supported)
@@ -836,7 +840,7 @@ write_content_object (OstreeRepo         *self,
       checksum_input = ot_checksum_instream_new_with_start (input, G_CHECKSUM_SHA256,
                                                             buf, len);
 
-      if (!_check_support_reflink (self, self, &reflinks_supported, error))
+      if (!_check_support_reflink (self, &reflinks_supported, error))
         return FALSE;
 
       if (xattrs == NULL || !G_IN_SET(self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER, OSTREE_REPO_MODE_BARE_USER_ONLY) || object_file_type != G_FILE_TYPE_REGULAR ||
