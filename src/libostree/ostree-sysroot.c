@@ -527,32 +527,30 @@ read_current_bootversion (OstreeSysroot *self,
 }
 
 static gboolean
-parse_origin (OstreeSysroot   *self,
-              int              deployment_dfd,
-              const char      *deployment_name,
-              GKeyFile       **out_origin,
-              GCancellable    *cancellable,
-              GError         **error)
+load_origin (OstreeSysroot   *self,
+             OstreeDeployment *deployment,
+             GCancellable    *cancellable,
+             GError         **error)
 {
-  g_autofree char *origin_path = g_strconcat ("../", deployment_name, ".origin", NULL);
-  g_autoptr(GKeyFile) ret_origin = g_key_file_new ();
+  g_autofree char *origin_path = ostree_deployment_get_origin_relpath (deployment);
 
-  struct stat stbuf;
-  if (!glnx_fstatat_allow_noent (deployment_dfd, origin_path, &stbuf, 0, error))
+  glnx_autofd int fd = -1;
+  if (!ot_openat_ignore_enoent (self->sysroot_fd, origin_path, &fd, error))
     return FALSE;
-  if (errno == 0)
+  if (fd >= 0)
     {
       g_autofree char *origin_contents =
-        glnx_file_get_contents_utf8_at (deployment_dfd, origin_path,
-                                        NULL, cancellable, error);
+        glnx_fd_readall_utf8 (fd, NULL, cancellable, error);
       if (!origin_contents)
         return FALSE;
 
-      if (!g_key_file_load_from_data (ret_origin, origin_contents, -1, 0, error))
+      g_autoptr(GKeyFile) origin = g_key_file_new ();
+      if (!g_key_file_load_from_data (origin, origin_contents, -1, 0, error))
         return glnx_prefix_error (error, "Parsing %s", origin_path);
+
+      ostree_deployment_set_origin (deployment, origin);
     }
 
-  ot_transfer_out_value(out_origin, &ret_origin);
   return TRUE;
 }
 
@@ -656,16 +654,11 @@ parse_deployment (OstreeSysroot       *self,
                               stbuf.st_ino == self->root_inode);
     }
 
-  g_autoptr(GKeyFile) origin = NULL;
-  if (!parse_origin (self, deployment_dfd, deploy_basename, &origin,
-                     cancellable, error))
-    return FALSE;
-
   g_autoptr(OstreeDeployment) ret_deployment
     = ostree_deployment_new (-1, osname, treecsum, deployserial,
                              bootcsum, treebootserial);
-  if (origin)
-    ostree_deployment_set_origin (ret_deployment, origin);
+  if (!load_origin (self, ret_deployment, cancellable, error))
+    return FALSE;
 
   ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_NONE;
   g_autofree char *unlocked_development_path =
@@ -675,8 +668,9 @@ parse_deployment (OstreeSysroot       *self,
     ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
   else
     {
-      g_autofree char *existing_unlocked_state =
-        g_key_file_get_string (origin, "origin", "unlocked", NULL);
+      GKeyFile *origin = ostree_deployment_get_origin (ret_deployment);
+      g_autofree char *existing_unlocked_state = origin ?
+        g_key_file_get_string (origin, "origin", "unlocked", NULL) : NULL;
 
       if (g_strcmp0 (existing_unlocked_state, "hotfix") == 0)
         {

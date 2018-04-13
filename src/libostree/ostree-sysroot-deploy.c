@@ -1874,26 +1874,26 @@ swap_bootloader (OstreeSysroot  *sysroot,
   return TRUE;
 }
 
-static GHashTable *
+/* Deployments may share boot checksums; the bootserial indexes them
+ * per-bootchecksum. It's used by the symbolic links after the bootloader.
+ */
+static void
 assign_bootserials (GPtrArray   *deployments)
 {
-  guint i;
-  GHashTable *ret =
+  g_autoptr(GHashTable) serials =
     g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
 
-  for (i = 0; i < deployments->len; i++)
+  for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-      guint count;
-
-      count = GPOINTER_TO_UINT (g_hash_table_lookup (ret, bootcsum));
-      g_hash_table_replace (ret, (char*) bootcsum,
+      /* Note that not-found maps to NULL which converts to zero */
+      guint count = GPOINTER_TO_UINT (g_hash_table_lookup (serials, bootcsum));
+      g_hash_table_replace (serials, (char*) bootcsum,
                             GUINT_TO_POINTER (count + 1));
 
       ostree_deployment_set_bootserial (deployment, count);
     }
-  return ret;
 }
 
 /* OSTree implements a special optimization where we want to avoid touching
@@ -2146,7 +2146,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 
   /* Assign a bootserial to each new deployment.
    */
-  g_hash_table_unref (assign_bootserials (new_deployments));
+  assign_bootserials (new_deployments);
 
   /* Determine whether or not we need to touch the bootloader
    * configuration.  If we have an equal number of deployments with
@@ -2158,14 +2158,26 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     requires_new_bootversion = TRUE;
   else
     {
+      gboolean is_noop = TRUE;
       for (guint i = 0; i < new_deployments->len; i++)
         {
-          if (!deployment_bootconfigs_equal (new_deployments->pdata[i],
-                                             self->deployments->pdata[i]))
+          OstreeDeployment *cur_deploy = self->deployments->pdata[i];
+          OstreeDeployment *new_deploy = new_deployments->pdata[i];
+          if (!deployment_bootconfigs_equal (cur_deploy, new_deploy))
             {
               requires_new_bootversion = TRUE;
+              is_noop = FALSE;
               break;
             }
+          if (cur_deploy != new_deploy)
+            is_noop = FALSE;
+        }
+
+      /* Silently do nothing if we're passed the same set of deployments */
+      if (is_noop)
+        {
+          g_assert (!requires_new_bootversion);
+          return TRUE;
         }
     }
 
