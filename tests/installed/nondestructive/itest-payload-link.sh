@@ -30,6 +30,9 @@ date
 # Use /var/tmp so we have O_TMPFILE etc.
 prepare_tmpdir /var/tmp
 trap _tmpdir_cleanup EXIT
+# We use this user down below, it needs access too
+setfacl -d -m u:bin:rwX .
+setfacl -m u:bin:rwX .
 ostree --repo=repo init --mode=archive
 echo -e '[archive]\nzlib-level=1\n' >> repo/config
 
@@ -49,23 +52,40 @@ origin=$(cat ${test_tmpdir}/httpd-address)
 
 cleanup() {
     cd ${test_tmpdir}
-    umount mnt || true
-    test -n "${blkdev:-}" && losetup -d ${blkdev} || true
+    for mnt in ${mnts:-}; do
+        umount ${mnt} || true
+    done
+    for blkdev in ${blkdevs:-}; do
+        losetup -d ${blkdev} || true
+    done
 }
 trap cleanup EXIT
 
-mkdir mnt
-truncate -s 2G testblk.img
-if ! blkdev=$(losetup --find --show $(pwd)/testblk.img); then
-    echo "ok # SKIP not run when cannot setup loop device"
-    exit 0
-fi
-
+truncate -s 2G testblk1.img
+blkdev1=$(losetup --find --show $(pwd)/testblk1.img)
+blkdevs="${blkdev1}"
 # This filesystem must support reflinks
-mkfs.xfs -m reflink=1 ${blkdev}
+mkfs.xfs -m reflink=1 ${blkdev1}
+mkdir mnt1
+mount ${blkdev1} mnt1
+mnts=mnt1
 
-mount ${blkdev} mnt
-cd mnt
+truncate -s 2G testblk2.img
+blkdev2=$(losetup --find --show $(pwd)/testblk2.img)
+blkdevs="${blkdev1} ${blkdev2}"
+mkfs.xfs -m reflink=1 ${blkdev2}
+mkdir mnt2
+mount ${blkdev2} mnt2
+mnts="mnt1 mnt2"
+
+cd mnt1
+# See above for setfacl rationale
+setfacl -d -m u:bin:rwX .
+setfacl -m u:bin:rwX .
+ls -al .
+runuser -u bin mkdir foo
+runuser -u bin touch foo/bar
+ls -al foo
 
 # Test that reflink is really there (not just --reflink=auto)
 touch a
@@ -78,13 +98,44 @@ ostree --repo=repo pull --disable-static-deltas origin dupobjects
 find repo -type l -name '*.payload-link' >payload-links.txt
 assert_streq "$(wc -l < payload-links.txt)" "1"
 
-# Disable logging for inner loop
-set +x
 cat payload-links.txt | while read i; do
     payload_checksum=$(basename $(dirname $i))$(basename $i .payload-link)
     payload_checksum_calculated=$(sha256sum $(readlink -f $i) | cut -d ' ' -f 1)
     assert_streq "${payload_checksum}" "${payload_checksum_calculated}"
 done
-set -x
-echo "ok pull creates .payload-link"
+echo "ok payload link"
+
+ostree --repo=repo checkout dupobjects content
+# And another object which differs just in metadata
+cp --reflink=auto content/bigobject{,3}
+chown operator:0 content/bigobject3
+cat >unpriv-child-repo.sh <<EOF
+#!/bin/bash
+# Check that commit to an user repo that has a parent still works
+set -xeuo pipefail
+ostree --repo=child-repo init --mode=bare-user
+ostree --repo=child-repo remote add origin --set=gpg-verify=false ${origin}
+ostree --repo=child-repo config set core.parent $(pwd)/repo
+ostree --repo=child-repo commit -b test content
+EOF
+chmod a+x unpriv-child-repo.sh
+runuser -u bin ./unpriv-child-repo.sh
+find child-repo -type l -name '*.payload-link' >payload-links.txt
+assert_streq "$(wc -l < payload-links.txt)" "0"
+rm content -rf
+
+echo "ok reflink unprivileged with parent repo"
+
+# We can't reflink across devices though
+cd ../mnt2
+ostree --repo=repo init --mode=archive
+ostree --repo=repo config set core.parent $(cd ../mnt1/repo && pwd)
+ostree --repo=../mnt1/repo checkout dupobjects content
+ostree --repo=repo commit -b dupobjects2 --consume --tree=dir=content
+ostree --repo=repo pull --disable-static-deltas origin dupobjects
+find repo -type l -name '*.payload-link' >payload-links.txt
+assert_streq "$(wc -l < payload-links.txt)" "0"
+
+echo "ok payload link across devices"
+
 date
