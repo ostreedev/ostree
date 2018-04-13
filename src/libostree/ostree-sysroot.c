@@ -534,7 +534,7 @@ load_origin (OstreeSysroot   *self,
 {
   g_autofree char *origin_path = ostree_deployment_get_origin_relpath (deployment);
 
-  glnx_fd_close int fd = -1;
+  glnx_autofd int fd = -1;
   if (!ot_openat_ignore_enoent (self->sysroot_fd, origin_path, &fd, error))
     return FALSE;
   if (fd >= 0)
