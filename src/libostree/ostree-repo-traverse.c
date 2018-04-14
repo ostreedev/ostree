@@ -294,18 +294,141 @@ ostree_repo_traverse_new_reachable (void)
                                 NULL, (GDestroyNotify)g_variant_unref);
 }
 
+/**
+ * ostree_repo_traverse_new_parents:
+ *
+ * This hash table is a mapping from #GVariant which can be accessed
+ * via ostree_object_name_deserialize() to a #GVariant containing either
+ * a similar #GVariant or and array of them, listing the parents of the key.
+ *
+ * Returns: (transfer container) (element-type GVariant GVariant): A new hash table
+ *
+ * Since: 2018.5
+ */
+GHashTable *
+ostree_repo_traverse_new_parents (void)
+{
+  return g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
+                                (GDestroyNotify)g_variant_unref, (GDestroyNotify)g_variant_unref);
+}
+
+static void
+parents_get_commits (GHashTable *parents_ht, GVariant *object, GHashTable *res)
+{
+  const char *checksum;
+  OstreeObjectType type;
+
+  if (object == NULL)
+    return;
+
+  ostree_object_name_deserialize (object, &checksum, &type);
+  if (type == OSTREE_OBJECT_TYPE_COMMIT)
+    g_hash_table_add (res, g_strdup (checksum));
+  else
+    {
+      GVariant *parents = g_hash_table_lookup (parents_ht, object);
+
+      if (parents == NULL)
+        g_debug ("Unexpected NULL parent");
+      else if (g_variant_is_of_type (parents, G_VARIANT_TYPE_ARRAY))
+        {
+          gsize i, len = g_variant_n_children (parents);
+
+          for (i = 0; i < len; i++)
+            {
+              g_autoptr(GVariant) parent = g_variant_get_child_value (parents, i);
+              parents_get_commits (parents_ht, parent, res);
+            }
+        }
+      else
+        parents_get_commits (parents_ht, parents, res);
+    }
+}
+
+/**
+ * ostree_repo_traverse_parents_get_commits:
+ *
+ * Gets all the commits that a certain object belongs to, as recorded
+ * by a parents table gotten from ostree_repo_traverse_commit_union_with_parents.
+ *
+ * Returns: (transfer full) (array zero-terminated=1): An array of checksums for
+ * the commits the key belongs to.
+ *
+ * Since: 2018.5
+ */
+char **
+ostree_repo_traverse_parents_get_commits (GHashTable *parents, GVariant *object)
+{
+  g_autoptr(GHashTable) res = g_hash_table_new (g_str_hash, g_str_equal);
+
+  parents_get_commits (parents, object, res);
+
+  return (char **)g_hash_table_get_keys_as_array (res, NULL);
+}
+
 static gboolean
 traverse_dirtree (OstreeRepo           *repo,
                   const char           *checksum,
+                  GVariant             *parent_key,
                   GHashTable           *inout_reachable,
+                  GHashTable           *inout_parents,
                   gboolean              ignore_missing_dirs,
                   GCancellable         *cancellable,
                   GError              **error);
 
+static void
+add_parent_ref (GHashTable  *inout_parents,
+                GVariant    *key,
+                GVariant    *parent_key)
+{
+  GVariant *old_parents;
+
+  if (inout_parents == NULL)
+    return;
+
+  old_parents = g_hash_table_lookup (inout_parents, key);
+  if (old_parents == NULL)
+    {
+      /* For the common case of a single pointer we skip using an array to save memory. */
+      g_hash_table_insert (inout_parents, g_variant_ref (key), g_variant_ref (parent_key));
+    }
+  else
+    {
+      g_autofree GVariant **new_parents = NULL;
+      gsize i, len = 0;
+
+      if (g_variant_is_of_type (old_parents, G_VARIANT_TYPE_ARRAY))
+        {
+          gsize old_parents_len = g_variant_n_children (old_parents);
+          new_parents = g_new (GVariant *,  old_parents_len + 1);
+          for (i = 0; i < old_parents_len ; i++)
+            {
+              g_autoptr(GVariant) old_parent = g_variant_get_child_value (old_parents, i);
+              if (!g_variant_equal (old_parent, parent_key))
+                new_parents[len++] = g_steal_pointer (&old_parent);
+            }
+        }
+      else
+        {
+          new_parents = g_new (GVariant *, 2);
+          if (!g_variant_equal (old_parents, parent_key))
+            new_parents[len++] = g_variant_ref (old_parents);
+        }
+      new_parents[len++] = g_variant_ref (parent_key);
+      g_hash_table_insert (inout_parents, g_variant_ref (key),
+                           g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(su)"), new_parents , len)));
+      for (i = 0; i < len; i++)
+        g_variant_unref (new_parents[i]);
+    }
+}
+
+
 static gboolean
 traverse_iter (OstreeRepo                          *repo,
                OstreeRepoCommitTraverseIter        *iter,
+               GVariant                            *parent_key,
                GHashTable                          *inout_reachable,
+               GHashTable                          *inout_parents,
                gboolean                             ignore_missing_dirs,
                GCancellable                        *cancellable,
                GError                             **error)
@@ -343,6 +466,7 @@ traverse_iter (OstreeRepo                          *repo,
 
           g_debug ("Found file object %s", checksum);
           key = g_variant_ref_sink (ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE));
+          add_parent_ref (inout_parents, key, parent_key);
           g_hash_table_add (inout_reachable, g_steal_pointer (&key));
         }
       else if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_DIR)
@@ -357,16 +481,18 @@ traverse_iter (OstreeRepo                          *repo,
           g_debug ("Found dirtree object %s", content_checksum);
           g_debug ("Found dirmeta object %s", meta_checksum);
           key = g_variant_ref_sink (ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META));
+          add_parent_ref (inout_parents, key, parent_key);
           g_hash_table_add (inout_reachable, g_steal_pointer (&key));
 
           key = g_variant_ref_sink (ostree_object_name_serialize (content_checksum, OSTREE_OBJECT_TYPE_DIR_TREE));
+          add_parent_ref (inout_parents, key, parent_key);
           if (!g_hash_table_lookup (inout_reachable, key))
             {
-              g_hash_table_add (inout_reachable, g_steal_pointer (&key));
-
-              if (!traverse_dirtree (repo, content_checksum, inout_reachable,
+              if (!traverse_dirtree (repo, content_checksum, key, inout_reachable, inout_parents,
                                      ignore_missing_dirs, cancellable, error))
                 return FALSE;
+
+              g_hash_table_add (inout_reachable, g_steal_pointer (&key));
             }
         }
       else
@@ -379,7 +505,9 @@ traverse_iter (OstreeRepo                          *repo,
 static gboolean
 traverse_dirtree (OstreeRepo           *repo,
                   const char           *checksum,
+                  GVariant             *parent_key,
                   GHashTable           *inout_reachable,
+                  GHashTable           *inout_parents,
                   gboolean              ignore_missing_dirs,
                   GCancellable         *cancellable,
                   GError              **error)
@@ -409,31 +537,39 @@ traverse_dirtree (OstreeRepo           *repo,
                                                       error))
     return FALSE;
 
-  if (!traverse_iter (repo, &iter, inout_reachable, ignore_missing_dirs, cancellable, error))
+  if (!traverse_iter (repo, &iter, parent_key, inout_reachable, inout_parents, ignore_missing_dirs, cancellable, error))
     return FALSE;
 
   return TRUE;
 }
 
 /**
- * ostree_repo_traverse_commit_union: (skip)
+ * ostree_repo_traverse_commit_union_with_parents: (skip)
  * @repo: Repo
  * @commit_checksum: ASCII SHA256 checksum
  * @maxdepth: Traverse this many parent commits, -1 for unlimited
  * @inout_reachable: Set of reachable objects
+ * @inout_parents: Map from object to parent object
  * @cancellable: Cancellable
  * @error: Error
  *
  * Update the set @inout_reachable containing all objects reachable
  * from @commit_checksum, traversing @maxdepth parent commits.
+ *
+ * Additionally this constructs a mapping from each object to the parents
+ * of the object, which can be used to track which commits an object
+ * belongs to.
+ *
+ * Since: 2018.5
  */
 gboolean
-ostree_repo_traverse_commit_union (OstreeRepo      *repo,
-                                   const char      *commit_checksum,
-                                   int              maxdepth,
-                                   GHashTable      *inout_reachable,
-                                   GCancellable    *cancellable,
-                                   GError         **error)
+ostree_repo_traverse_commit_union_with_parents (OstreeRepo      *repo,
+                                                const char      *commit_checksum,
+                                                int              maxdepth,
+                                                GHashTable      *inout_reachable,
+                                                GHashTable      *inout_parents,
+                                                GCancellable    *cancellable,
+                                                GError         **error)
 {
   g_autofree char *tmp_checksum = NULL;
 
@@ -467,8 +603,7 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
       if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) != 0)
         ignore_missing_dirs = TRUE;
 
-      g_hash_table_add (inout_reachable, key);
-      key = NULL;
+      g_hash_table_add (inout_reachable, g_variant_ref (key));
 
       g_debug ("Traversing commit %s", commit_checksum);
       ostree_cleanup_repo_commit_traverse_iter
@@ -478,7 +613,7 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
                                                          error))
         return FALSE;
 
-      if (!traverse_iter (repo, &iter, inout_reachable, ignore_missing_dirs, cancellable, error))
+      if (!traverse_iter (repo, &iter, key, inout_reachable, inout_parents, ignore_missing_dirs, cancellable, error))
         return FALSE;
 
       gboolean recurse = FALSE;
@@ -499,6 +634,32 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
     }
 
   return TRUE;
+}
+
+/**
+ * ostree_repo_traverse_commit_union: (skip)
+ * @repo: Repo
+ * @commit_checksum: ASCII SHA256 checksum
+ * @maxdepth: Traverse this many parent commits, -1 for unlimited
+ * @inout_reachable: Set of reachable objects
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Update the set @inout_reachable containing all objects reachable
+ * from @commit_checksum, traversing @maxdepth parent commits.
+ */
+gboolean
+ostree_repo_traverse_commit_union (OstreeRepo      *repo,
+                                   const char      *commit_checksum,
+                                   int              maxdepth,
+                                   GHashTable      *inout_reachable,
+                                   GCancellable    *cancellable,
+                                   GError         **error)
+{
+  return
+    ostree_repo_traverse_commit_union_with_parents (repo, commit_checksum, maxdepth,
+                                                    inout_reachable, NULL,
+                                                    cancellable, error);
 }
 
 /**
