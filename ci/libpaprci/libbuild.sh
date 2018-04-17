@@ -60,6 +60,13 @@ pkg_builddep() {
     # This is sadly the only case where it's a different command
     if test -x /usr/bin/dnf; then
         dnf builddep -y "$@"
+
+        # XXX: tmp hack -- see
+        # https://github.com/ostreedev/ostree/pull/1539
+        if rpm -q gpgme | grep -q gpgme-1.9.0-6.fc27; then
+            dnf install -y
+            https://kojipkgs.fedoraproject.org//packages/gpgme/1.10.0/4.fc27/x86_64/{gpgme{,-devel},python{2,3}-gpg}-1.10.0-4.fc27.x86_64.rpm
+        fi
     else
         yum-builddep -y "$@"
     fi
