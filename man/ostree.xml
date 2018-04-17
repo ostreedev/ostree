@@ -283,6 +283,15 @@ Boston, MA 02111-1307, USA.
                 </para></listitem>
             </varlistentry>
 
+            <!-- FIXME: Uncomment this when it's no longer experimental
+            <varlistentry>
+                <term><citerefentry><refentrytitle>ostree-create-usb</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
+
+                <listitem><para>
+                    &nbsp;Put the given refs on an external drive for P2P distribution.
+                </para></listitem>
+            </varlistentry>-->
+
             <varlistentry>
                 <term><citerefentry><refentrytitle>ostree-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
