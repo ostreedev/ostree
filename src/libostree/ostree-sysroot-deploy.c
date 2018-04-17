@@ -2144,6 +2144,38 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 {
   g_assert (self->loaded);
 
+  /* It dramatically simplifies a lot of the logic below if we
+   * drop the staged deployment from both the source deployment list,
+   * as well as the target list.  We don't want to write it to the bootloader
+   * now, which is mostly what this function is concerned with.
+   * In the future we though should probably adapt things to keep it.
+   */
+  if (self->staged_deployment)
+    {
+      if (!glnx_unlinkat (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED, 0, error))
+        return FALSE;
+
+      if (!_ostree_sysroot_rmrf_deployment (self, self->staged_deployment, cancellable, error))
+        return FALSE;
+
+      g_assert (self->staged_deployment == self->deployments->pdata[0]);
+      g_ptr_array_remove_index (self->deployments, 0);
+    }
+  /* First new deployment; we'll see if it's staged */
+  OstreeDeployment *first_new =
+    (new_deployments->len > 0 ? new_deployments->pdata[0] : NULL);
+  g_autoptr(GPtrArray) new_deployments_copy = NULL;
+  if (first_new && ostree_deployment_is_staged (first_new))
+    {
+      g_assert_cmpint (new_deployments->len, >, 0);
+      new_deployments_copy = g_ptr_array_sized_new (new_deployments->len - 1);
+      for (guint i = 1; i < new_deployments->len; i++)
+        g_ptr_array_add (new_deployments_copy, new_deployments->pdata[i]);
+    }
+  else
+    new_deployments_copy = g_ptr_array_ref (new_deployments);
+  new_deployments = new_deployments_copy;
+
   /* Assign a bootserial to each new deployment.
    */
   assign_bootserials (new_deployments);
@@ -2162,6 +2194,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       for (guint i = 0; i < new_deployments->len; i++)
         {
           OstreeDeployment *cur_deploy = self->deployments->pdata[i];
+          if (ostree_deployment_is_staged (cur_deploy))
+            continue;
           OstreeDeployment *new_deploy = new_deployments->pdata[i];
           if (!deployment_bootconfigs_equal (cur_deploy, new_deploy))
             {
@@ -2185,12 +2219,12 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   for (guint i = 0; i < new_deployments->len; i++)
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
-      g_autoptr(GFile) deployment_root = NULL;
+      g_assert (!ostree_deployment_is_staged (deployment));
 
       if (deployment == self->booted_deployment)
         found_booted_deployment = TRUE;
 
-      deployment_root = ostree_sysroot_get_deployment_directory (self, deployment);
+      g_autoptr(GFile) deployment_root = ostree_sysroot_get_deployment_directory (self, deployment);
       if (!g_file_query_exists (deployment_root, NULL))
         return glnx_throw (error, "Unable to find expected deployment root: %s",
                            gs_file_get_path_cached (deployment_root));
@@ -2672,7 +2706,10 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
         return FALSE;
     }
 
-  if (!_ostree_sysroot_reload_staged (self, error))
+  /* Bump mtime so external processes know something changed, and then reload. */
+  if (!_ostree_sysroot_bump_mtime (self, error))
+    return FALSE;
+  if (!ostree_sysroot_load (self, cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -2716,10 +2753,17 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
                                     cancellable, error))
     return FALSE;
 
+  /* Now, take ownership of the staged state, as normally the API below strips
+   * it out.
+   */
+  g_autoptr(OstreeDeployment) staged = g_steal_pointer (&self->staged_deployment);
+  staged->staged = FALSE;
+  g_ptr_array_remove_index (self->deployments, 0);
+
   /* TODO: Proxy across flags too? */
   OstreeSysrootSimpleWriteDeploymentFlags flags = 0;
-  if (!ostree_sysroot_simple_write_deployment (self, ostree_deployment_get_osname (self->staged_deployment),
-                                               self->staged_deployment, merge_deployment, flags,
+  if (!ostree_sysroot_simple_write_deployment (self, ostree_deployment_get_osname (staged),
+                                               staged, merge_deployment, flags,
                                                cancellable, error))
     return FALSE;
 
@@ -2744,6 +2788,9 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
                                      GCancellable      *cancellable,
                                      GError           **error)
 {
+  /* For now; instead of this do a redeployment */
+  g_assert (!ostree_deployment_is_staged (deployment));
+
   g_autoptr(OstreeDeployment) new_deployment = ostree_deployment_clone (deployment);
   OstreeBootconfigParser *new_bootconfig = ostree_deployment_get_bootconfig (new_deployment);
 
