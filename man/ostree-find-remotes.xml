@@ -78,6 +78,12 @@ Boston, MA 02111-1307, USA.
             default set of finders (sources for remotes) using the
             <option>--finders</option> option documented below.
         </para>
+        <para>
+            The <command>create-usb</command> command is the recommended way to
+            put refs on a USB such that <command>find-remotes</command> will
+            discover them. See
+            <citerefentry><refentrytitle>ostree-create-usb</refentrytitle><manvolnum>1</manvolnum></citerefentry>.
+        </para>
     </refsect1>
 
     <refsect1>

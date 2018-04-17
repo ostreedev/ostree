@@ -41,7 +41,6 @@ static GOptionEntry options[] =
     { NULL }
   };
 
-/* TODO: Add a man page. */
 gboolean
 ostree_builtin_create_usb (int            argc,
                            char         **argv,
