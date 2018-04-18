@@ -45,7 +45,7 @@ man1_files += rofiles-fuse.1
 endif
 
 if ENABLE_EXPERIMENTAL_API
-man1_files += ostree-find-remotes.1
+man1_files += ostree-find-remotes.1 ostree-create-usb.1
 endif
 
 man5_files = ostree.repo.5 ostree.repo-config.5

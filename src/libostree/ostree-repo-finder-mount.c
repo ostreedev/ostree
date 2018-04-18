@@ -434,7 +434,8 @@ G_GNUC_END_IGNORE_DEPRECATIONS
       g_array_sort (repos_refs, repo_and_refs_compare);
 
       /* Also check the well-known special-case directories in the mount.
-       * Add them after sorting, so they’re always last. */
+       * Add them after sorting, so they’re always last.
+       * NOTE: If you change these, update the man page. */
       const gchar * const well_known_repos[] =
         {
           ".ostree/repo",
