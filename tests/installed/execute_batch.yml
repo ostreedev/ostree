@@ -19,4 +19,4 @@
     loop_var: "async_result_item"
   register: async_poll_results
   until: async_poll_results.finished
-  retries: 240
+  retries: 500
