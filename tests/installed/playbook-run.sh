@@ -32,4 +32,6 @@ rpm -q standard-test-roles
 
 export ANSIBLE_INVENTORY=${ANSIBLE_INVENTORY:-$(test -e inventory && echo inventory || echo /usr/share/ansible/inventory)}
 ls -al /dev/kvm
+# Sadly having this on makes the reboot playbook break
+export ANSIBLE_SSH_ARGS='-o ControlMaster=no'
 exec ansible-playbook --tags=atomic "$@"
