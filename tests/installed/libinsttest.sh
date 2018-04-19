@@ -62,8 +62,8 @@ run_tmp_webserver() {
         # Snapshot the output
         cp ${test_tmpdir}/httpd-output{,.tmp}
         # If it's non-empty, see whether it matches our regexp
-        if test -s ${test_tmpdir}/httpd-output.tmp; then
-            sed -e 's,Serving HTTP on 0.0.0.0 port \([0-9]*\) \.\.\.,\1,' < ${test_tmpdir}/httpd-output.tmp > ${test_tmpdir}/httpd-port
+        if test -s ${test_tmpdir}/httpd-output.tmp; then       # py3's http.server prints the http:// address also
+          sed -e 's,Serving HTTP on 0.0.0.0 port \([0-9]*\)\( (http://[^)]*)\)\? \.\.\.,\1,' < ${test_tmpdir}/httpd-output.tmp > ${test_tmpdir}/httpd-port
             if ! cmp ${test_tmpdir}/httpd-output.tmp ${test_tmpdir}/httpd-port 1>/dev/null; then
                 # If so, we've successfully extracted the port
                 break
