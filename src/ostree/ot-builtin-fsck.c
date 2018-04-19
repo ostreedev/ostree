@@ -99,9 +99,16 @@ fsck_one_object (OstreeRepo            *repo,
               for (i = 0; parent_commits[i] != NULL; i++)
                 {
                   const char *parent_commit = parent_commits[i];
-                  g_printerr ("Marking commit %s as partial\n", parent_commit);
-                  if (!ostree_repo_mark_commit_partial (repo, parent_commit, TRUE, error))
+                  OstreeRepoCommitState state;
+                  if (!ostree_repo_load_commit (repo, parent_commit, NULL,
+                                                &state, error))
                     return FALSE;
+                  if ((state & OSTREE_REPO_COMMIT_STATE_PARTIAL) == 0)
+                    {
+                      g_printerr ("Marking commit as partial: %s\n", parent_commit);
+                      if (!ostree_repo_mark_commit_partial (repo, parent_commit, TRUE, error))
+                        return FALSE;
+                    }
                 }
             }
         }
