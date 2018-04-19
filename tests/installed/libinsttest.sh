@@ -58,7 +58,7 @@ run_tmp_webserver() {
     cd -
     child_pid=$!
 
-    for x in $(seq 50); do
+    for x in $(seq 10); do
         # Snapshot the output
         cp ${test_tmpdir}/httpd-output{,.tmp}
         # If it's non-empty, see whether it matches our regexp
@@ -69,7 +69,7 @@ run_tmp_webserver() {
                 break
             fi
         fi
-        sleep 0.1
+        sleep 1
     done
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
