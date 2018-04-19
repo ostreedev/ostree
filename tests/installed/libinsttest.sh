@@ -37,6 +37,16 @@ prepare_tmpdir() {
     cd ${test_tmpdir}
 }
 
+if test -x /usr/bin/python3; then
+    export PYTHON=/usr/bin/python3
+    export PYTHONHTTPSERVER=http.server
+elif test -x /usr/bin/python; then
+    export PYTHON=/usr/bin/python
+    export PYTHONHTTPSERVER=SimpleHTTPServer
+else
+    fatal "no python found"
+fi
+
 # This is copied from flatpak/flatpak/tests/test-webserver.sh
 run_tmp_webserver() {
     dir=$1
@@ -44,7 +54,7 @@ run_tmp_webserver() {
     test -n ${test_tmpdir}
 
     cd ${dir}
-    env PYTHONUNBUFFERED=1 setsid python -m SimpleHTTPServer 0 &>${test_tmpdir}/httpd-output &
+    env PYTHONUNBUFFERED=1 setsid $PYTHON -m $PYTHONHTTPSERVER 0 &>${test_tmpdir}/httpd-output &
     cd -
     child_pid=$!
 
@@ -74,16 +84,6 @@ fi
 
 # We need to be root
 assert_streq $(id -u) 0
-
-PYTHON=
-for py in /usr/bin/python3 /usr/bin/python; do
-    if ! test -x ${py}; then continue; fi
-    export PYTHON=${py}
-    break
-done
-if test -z "${PYTHON}"; then
-    fatal "no python found"
-fi
 
 rpmostree_query_json() {
     query=$1
