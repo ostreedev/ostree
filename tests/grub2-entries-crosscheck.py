@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 # Copyright (C) 2015 Red Hat
 #
@@ -19,6 +19,7 @@
 
 import os
 import sys
+import functools
 
 if len(sys.argv) == 1:
     loaderpath = '/boot/loader/entries'
@@ -40,7 +41,7 @@ def get_ostree_option(optionstring):
         if o.startswith('ostree='):
             return o[8:]
     raise ValueError('ostree= not found')
-            
+
 entries = []
 grub2_entries = []
 
@@ -59,7 +60,7 @@ for fname in os.listdir(loaderpath):
             v = line[s+1:]
             entry[k] = v
         entries.append(entry)
-    entries.sort(compare_entries_descending)
+    entries.sort(key=functools.cmp_to_key(compare_entries_descending))
 
 # Parse GRUB2 config
 with open(grub2path) as f:
@@ -68,7 +69,7 @@ with open(grub2path) as f:
     for line in f:
         if line.startswith('### BEGIN /etc/grub.d/15_ostree ###'):
             in_ostree_config = True
-        elif line.startswith('### END /etc/grub.d/15_ostree ###'): 
+        elif line.startswith('### END /etc/grub.d/15_ostree ###'):
             in_ostree_config = False
             if grub2_entry is not None:
                 grub2_entries.append(grub2_entry)
