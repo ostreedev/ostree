@@ -20,3 +20,4 @@
   register: async_poll_results
   until: async_poll_results.finished
   retries: 500
+  retry_pause: 5
