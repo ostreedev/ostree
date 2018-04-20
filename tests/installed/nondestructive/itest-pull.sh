@@ -4,6 +4,9 @@
 
 set -xeuo pipefail
 
+# FIXME: https://github.com/ostreedev/ostree/pull/1548
+exit 0
+
 dn=$(dirname $0)
 . ${dn}/../libinsttest.sh
 date
@@ -37,11 +40,13 @@ echo "ok pull"
 for d in $(find bare-repo/objects/ -maxdepth 1 -type d); do
     (find ${d} -name '*.file' || true) | head -20 | xargs rm -f
 done
+date
 if ostree --repo=bare-repo fsck |& tee fsck.txt; then
     fatal "fsck unexpectedly succeeded"
 fi
+date
 assert_streq $(grep -cE -e 'Marking commit as partial' fsck.txt) "1"
-ostree --repo=bare-repo pull origin ${host_nonremoteref}
+log_timestamps ostree --repo=bare-repo pull origin ${host_nonremoteref}
 # Don't need a full fsck here
 ostree --repo=bare-repo ls origin:${host_nonremoteref} >/dev/null
 
