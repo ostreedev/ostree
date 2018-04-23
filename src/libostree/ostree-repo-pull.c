@@ -1327,7 +1327,6 @@ static_deltapart_fetch_on_complete (GObject           *object,
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   g_auto(GLnxTmpfile) tmpf = { 0, };
-  g_autoptr(GInputStream) in = NULL;
   g_autoptr(GVariant) part = NULL;
   g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
@@ -1338,11 +1337,8 @@ static_deltapart_fetch_on_complete (GObject           *object,
   if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, error))
     goto out;
 
-  /* Transfer ownership of the fd */
-  in = g_unix_input_stream_new (glnx_steal_fd (&tmpf.fd), TRUE);
-
   /* TODO - make async */
-  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum,
+  if (!_ostree_static_delta_part_open (tmpf.fd, 0, -1, NULL, 0, fetch_data->expected_checksum,
                                        &part, pull_data->cancellable, error))
     goto out;
 
@@ -2270,11 +2266,10 @@ process_one_static_delta (OtPullData                 *pull_data,
 
       if (inline_part_bytes != NULL)
         {
-          g_autoptr(GInputStream) memin = g_memory_input_stream_new_from_bytes (inline_part_bytes);
           g_autoptr(GVariant) inline_delta_part = NULL;
 
           /* For inline parts we are relying on per-commit GPG, so don't bother checksumming. */
-          if (!_ostree_static_delta_part_open (memin, inline_part_bytes,
+          if (!_ostree_static_delta_part_open (-1, 0, 0, inline_part_bytes,
                                                OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
                                                NULL, &inline_delta_part,
                                                cancellable, error))
