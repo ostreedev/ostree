@@ -32,6 +32,7 @@ branches:
     - master
     - auto
     - try
+required: true
 container:
   image: registry.fedoraproject.org/fedora:27
 context: f27-primary
