@@ -194,7 +194,7 @@ typedef struct {
 } DeltaPartLocation;
 
 static DeltaPartLocation *
-delta_part_locaion_new (gint64 offset, guint64 size)
+delta_part_location_new (gint64 offset, guint64 size)
 {
   DeltaPartLocation *location = g_new (DeltaPartLocation, 1);
   location->offset = offset;
@@ -300,7 +300,7 @@ read_superblock_from_fd (int                    fd,
             return glnx_throw (error, "Unexpected type %s for inline delta part", (const char *)delta_part_type);
 
           g_hash_table_insert (delta_parts, g_strdup (key),
-                               delta_part_locaion_new (delta_part_offset, delta_part_size));
+                               delta_part_location_new (delta_part_offset, delta_part_size));
         }
       else
         {
@@ -573,7 +573,9 @@ _ostree_static_delta_part_open (int             part_fd,
           part_size = part_stbuf.st_size - part_offset;
         }
 
-      lseek (part_fd, part_offset, SEEK_SET);
+      if (lseek (part_fd, part_offset, SEEK_SET) < 0)
+        return glnx_throw_errno_prefix (error, "lseek");
+
       part_in = g_unix_input_stream_new (part_fd, FALSE);
     }
   else
