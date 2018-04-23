@@ -37,6 +37,16 @@ prepare_tmpdir() {
     cd ${test_tmpdir}
 }
 
+if test -x /usr/bin/python3; then
+    export PYTHON=/usr/bin/python3
+    export PYTHONHTTPSERVER=http.server
+elif test -x /usr/bin/python; then
+    export PYTHON=/usr/bin/python
+    export PYTHONHTTPSERVER=SimpleHTTPServer
+else
+    fatal "no python found"
+fi
+
 # This is copied from flatpak/flatpak/tests/test-webserver.sh
 run_tmp_webserver() {
     dir=$1
@@ -44,22 +54,22 @@ run_tmp_webserver() {
     test -n ${test_tmpdir}
 
     cd ${dir}
-    env PYTHONUNBUFFERED=1 setsid python -m SimpleHTTPServer 0 &>${test_tmpdir}/httpd-output &
+    env PYTHONUNBUFFERED=1 setsid $PYTHON -m $PYTHONHTTPSERVER 0 &>${test_tmpdir}/httpd-output &
     cd -
     child_pid=$!
 
-    for x in $(seq 50); do
+    for x in $(seq 10); do
         # Snapshot the output
         cp ${test_tmpdir}/httpd-output{,.tmp}
         # If it's non-empty, see whether it matches our regexp
-        if test -s ${test_tmpdir}/httpd-output.tmp; then
-            sed -e 's,Serving HTTP on 0.0.0.0 port \([0-9]*\) \.\.\.,\1,' < ${test_tmpdir}/httpd-output.tmp > ${test_tmpdir}/httpd-port
+        if test -s ${test_tmpdir}/httpd-output.tmp; then       # py3's http.server prints the http:// address also
+          sed -e 's,Serving HTTP on 0.0.0.0 port \([0-9]*\)\( (http://[^)]*)\)\? \.\.\.,\1,' < ${test_tmpdir}/httpd-output.tmp > ${test_tmpdir}/httpd-port
             if ! cmp ${test_tmpdir}/httpd-output.tmp ${test_tmpdir}/httpd-port 1>/dev/null; then
                 # If so, we've successfully extracted the port
                 break
             fi
         fi
-        sleep 0.1
+        sleep 1
     done
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
@@ -74,16 +84,6 @@ fi
 
 # We need to be root
 assert_streq $(id -u) 0
-
-PYTHON=
-for py in /usr/bin/python3 /usr/bin/python; do
-    if ! test -x ${py}; then continue; fi
-    export PYTHON=${py}
-    break
-done
-if test -z "${PYTHON}"; then
-    fatal "no python found"
-fi
 
 rpmostree_query_json() {
     query=$1
