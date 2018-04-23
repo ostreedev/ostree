@@ -6,18 +6,7 @@ OS_ID=$(. /etc/os-release; echo $ID)
 OS_VERSION_ID=$(. /etc/os-release; echo $VERSION_ID)
 
 pkg_upgrade() {
-    # https://bugzilla.redhat.com/show_bug.cgi?id=1483553
-    local ecode=0
-    yum -y distro-sync 2>err.txt || ecode=$?
-    if test ${ecode} '!=' 0 && grep -q -F -e "BDB1539 Build signature doesn't match environment" err.txt; then
-        rpm --rebuilddb
-        yum -y distro-sync
-    else
-        if test ${ecode} '!=' 0; then
-            cat err.txt
-            exit ${ecode}
-        fi
-    fi
+    yum -y distro-sync
 }
 
 make() {
