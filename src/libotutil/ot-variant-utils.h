@@ -57,4 +57,23 @@ ot_variant_bsearch_str (GVariant   *array,
                         const char *str,
                         int        *out_pos);
 
+gboolean ot_variant_fd_get_child (int                  fd,
+                                  gint64               offset,
+                                  guint64              size,
+                                  const GVariantType  *type,
+                                  gsize                index,
+                                  gint64              *child_offset,
+                                  guint64             *child_size,
+                                  const GVariantType **child_type,
+                                  GError             **error);
+
+gboolean ot_variant_fd_read_child (int                  fd,
+                                   gint64               offset,
+                                   guint64              size,
+                                   const GVariantType  *type,
+                                   gsize                index,
+                                   GVariant           **out_variant,
+                                   GError             **error);
+
+
 G_END_DECLS
