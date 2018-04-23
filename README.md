@@ -113,5 +113,8 @@ See [Contributing](CONTRIBUTING.md).
 Licensing
 -------
 
-The license for the *code* of libostree can be found in [COPYING](COPYING).
+The licensing for the *code* of libostree can be canonically found in the individual files;
+and the overall status in the [COPYING](https://github.com/ostreedev/ostree/blob/master/COPYING)
+file in the source. Currently, that's LGPLv2+.
+
 The license for the *documentation* of libostree is: `SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
