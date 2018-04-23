@@ -160,40 +160,72 @@ map_data_destroy (gpointer data)
  * starting at offset @start. If the file is large enough, mmap() may be used.
  */
 GBytes *
-ot_fd_readall_or_mmap (int           fd,
-                       goffset       start,
-                       GError      **error)
+ot_fd_readall_or_mmap_sized (int           fd,
+                             goffset       start,
+                             gsize         size,
+                             GError      **error)
 {
-  struct stat stbuf;
-  if (!glnx_fstat (fd, &stbuf, error))
-    return FALSE;
-
   /* http://stackoverflow.com/questions/258091/when-should-i-use-mmap-for-file-access */
-  if (start > stbuf.st_size)
-    return g_bytes_new_static (NULL, 0);
-  const gsize len = stbuf.st_size - start;
-  if (len > 16*1024)
+  if (size > 16*1024)
     {
       /* The reason we don't use g_mapped_file_new_from_fd() here
        * is it doesn't support passing an offset, which is actually
        * used by the static delta code.
        */
-      gpointer map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, fd, start);
+      gsize page_size = sysconf(_SC_PAGE_SIZE);
+      goffset mmap_offset = start % page_size;
+      goffset mmap_start = start - mmap_offset;
+      gpointer map = mmap (NULL, size + mmap_offset, PROT_READ, MAP_PRIVATE, fd, mmap_start);
       if (map == (void*)-1)
         return glnx_null_throw_errno_prefix (error, "mmap");
 
+      /* Mmap offset must be an whole page, so we round down */
+
       MapData *mdata = g_new (MapData, 1);
       mdata->addr = map;
-      mdata->len = len;
+      mdata->len = size + mmap_offset;
 
-      return g_bytes_new_with_free_func (map, len, map_data_destroy, mdata);
+      return g_bytes_new_with_free_func ((guchar *)map + mmap_offset, size, map_data_destroy, mdata);
     }
 
   /* Fall through to plain read into a malloc buffer */
-  if (lseek (fd, start, SEEK_SET) < 0)
-    return glnx_null_throw_errno_prefix (error, "lseek");
-  /* Not cancellable since this should be small */
-  return glnx_fd_readall_bytes (fd, NULL, error);
+
+  g_autofree guint8 *buf = g_malloc (size);
+  guint8 *p = buf;
+  gsize to_read = size;
+
+  while (to_read > 0)
+    {
+      gssize bytes_read;
+      do
+        bytes_read = pread (fd, p, to_read, start);
+      while (G_UNLIKELY (bytes_read == -1 && errno == EINTR));
+      if (G_UNLIKELY (bytes_read == -1))
+        return glnx_null_throw_errno (error);
+      if (bytes_read == 0)
+        return glnx_null_throw (error, "Unexpected end of file");
+      to_read -= bytes_read;
+      start += bytes_read;
+      p += bytes_read;
+    }
+
+  return g_bytes_new_take (g_steal_pointer (&buf), size);
+}
+
+GBytes *
+ot_fd_readall_or_mmap (int           fd,
+                       goffset       start,
+                       GError      **error)
+{
+  struct stat stbuf;
+
+  if (!glnx_fstat (fd, &stbuf, error))
+    return FALSE;
+
+  if (start > stbuf.st_size)
+    return g_bytes_new_static (NULL, 0);
+
+  return ot_fd_readall_or_mmap_sized (fd, start, stbuf.st_size - start, error);
 }
 
 /* Given an input stream, splice it to an anonymous file (O_TMPFILE).
