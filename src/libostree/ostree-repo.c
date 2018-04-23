@@ -436,7 +436,7 @@ pop_repo_lock (OstreeRepo  *self,
   return TRUE;
 }
 
-/**
+/*
  * ostree_repo_lock_push:
  * @self: a #OstreeRepo
  * @lock_type: the type of lock to acquire
@@ -462,13 +462,12 @@ pop_repo_lock (OstreeRepo  *self,
  * %TRUE is returned.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
- * Since: 2017.14
  */
 gboolean
-ostree_repo_lock_push (OstreeRepo          *self,
-                       OstreeRepoLockType   lock_type,
-                       GCancellable        *cancellable,
-                       GError             **error)
+_ostree_repo_lock_push (OstreeRepo          *self,
+                        OstreeRepoLockType   lock_type,
+                        GCancellable        *cancellable,
+                        GError             **error)
 {
   g_return_val_if_fail (self != NULL, FALSE);
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
@@ -531,8 +530,8 @@ ostree_repo_lock_push (OstreeRepo          *self,
     }
 }
 
-/**
- * ostree_repo_lock_pop:
+/*
+ * _ostree_repo_lock_pop:
  * @self: a #OstreeRepo
  * @cancellable: a #GCancellable
  * @error: a #GError
@@ -553,12 +552,11 @@ ostree_repo_lock_push (OstreeRepo          *self,
  * %TRUE is returned.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
- * Since: 2017.14
  */
 gboolean
-ostree_repo_lock_pop (OstreeRepo    *self,
-                      GCancellable  *cancellable,
-                      GError       **error)
+_ostree_repo_lock_pop (OstreeRepo    *self,
+                       GCancellable  *cancellable,
+                       GError       **error)
 {
   g_return_val_if_fail (self != NULL, FALSE);
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
@@ -621,8 +619,8 @@ ostree_repo_lock_pop (OstreeRepo    *self,
     }
 }
 
-/**
- * ostree_repo_auto_lock_push: (skip)
+/*
+ * _ostree_repo_auto_lock_push: (skip)
  * @self: a #OstreeRepo
  * @lock_type: the type of lock to acquire
  * @cancellable: a #GCancellable
@@ -636,37 +634,34 @@ ostree_repo_lock_pop (OstreeRepo    *self,
  *
  * |[<!-- language="C" -->
  * g_autoptr(OstreeRepoAutoLock) lock = NULL;
- * lock = ostree_repo_auto_lock_push (repo, lock_type, cancellable, error);
+ * lock = _ostree_repo_auto_lock_push (repo, lock_type, cancellable, error);
  * if (!lock)
  *   return FALSE;
  * ]|
  *
  * Returns: @self on success, otherwise %NULL with @error set
- * Since: 2017.14
  */
 OstreeRepoAutoLock *
-ostree_repo_auto_lock_push (OstreeRepo          *self,
-                            OstreeRepoLockType   lock_type,
-                            GCancellable        *cancellable,
-                            GError             **error)
+_ostree_repo_auto_lock_push (OstreeRepo          *self,
+                             OstreeRepoLockType   lock_type,
+                             GCancellable        *cancellable,
+                             GError             **error)
 {
-  if (!ostree_repo_lock_push (self, lock_type, cancellable, error))
+  if (!_ostree_repo_lock_push (self, lock_type, cancellable, error))
     return NULL;
   return (OstreeRepoAutoLock *)self;
 }
 
-/**
- * ostree_repo_auto_lock_cleanup: (skip)
+/*
+ * _ostree_repo_auto_lock_cleanup: (skip)
  * @lock: a #OstreeRepoAutoLock
  *
  * A cleanup handler for use with ostree_repo_auto_lock_push(). If @lock is
  * not %NULL, ostree_repo_lock_pop() will be called on it. If
  * ostree_repo_lock_pop() fails, a critical warning will be emitted.
- *
- * Since: 2017.14
  */
 void
-ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock)
+_ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock)
 {
   OstreeRepo *repo = lock;
   if (repo)
@@ -674,7 +669,7 @@ ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock)
       g_autoptr(GError) error = NULL;
       int errsv = errno;
 
-      if (!ostree_repo_lock_pop (repo, NULL, &error))
+      if (!_ostree_repo_lock_pop (repo, NULL, &error))
         g_critical ("Cleanup repo lock failed: %s", error->message);
 
       errno = errsv;
@@ -2742,10 +2737,10 @@ reload_core_config (OstreeRepo          *self,
     self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
   }
 
-  /* Disable locking by default for now */
   { gboolean locking;
+    /* Enabled by default in 2018.05 */
     if (!ot_keyfile_get_boolean_with_default (self->config, "core", "locking",
-                                              FALSE, &locking, error))
+                                              TRUE, &locking, error))
       return FALSE;
     if (!locking)
       {
