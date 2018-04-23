@@ -41,6 +41,14 @@ gboolean ot_variant_read_fd (int                  fd,
                              GVariant           **out_variant,
                              GError             **error);
 
+gboolean ot_variant_read_sized_fd (int                  fd,
+                                   goffset              offset,
+                                   gsize                size,
+                                   const GVariantType  *type,
+                                   gboolean             trusted,
+                                   GVariant           **out_variant,
+                                   GError             **error);
+
 GVariantBuilder *ot_util_variant_builder_from_variant (GVariant            *variant,
                                                        const GVariantType  *type);
 
