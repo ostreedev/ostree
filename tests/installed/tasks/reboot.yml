@@ -41,7 +41,7 @@
   shell: |
     systemctl stop sshd
     systemd-run --on-active=5 systemctl reboot
-  async: 0
+  async: 1
   poll: 0
   ignore_errors: true
 
@@ -49,7 +49,7 @@
 - debug:
     msg: "Waiting for reboot: {{ ansible_date_time.iso8601 }}"
 - wait_for_connection:
-    delay: 1
+    delay: 5
     timeout: 120
     search_regex: "OpenSSH"
 - debug:
