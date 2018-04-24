@@ -1896,6 +1896,34 @@ assign_bootserials (GPtrArray   *deployments)
     }
 }
 
+static char*
+get_deployment_nonostree_kargs (OstreeDeployment *deployment)
+{
+  /* pick up kernel arguments but filter out ostree= */
+  OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+  const char *boot_options = ostree_bootconfig_parser_get (bootconfig, "options");
+  g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_from_string (boot_options);
+  _ostree_kernel_args_replace (kargs, "ostree");
+  return _ostree_kernel_args_to_string (kargs);
+}
+
+static char*
+get_deployment_ostree_version (OstreeRepo       *repo,
+                               OstreeDeployment *deployment)
+{
+  const char *csum = ostree_deployment_get_csum (deployment);
+
+  g_autofree char *version = NULL;
+  g_autoptr(GVariant) variant = NULL;
+  if (ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum, &variant, NULL))
+    {
+      g_autoptr(GVariant) metadata = g_variant_get_child_value (variant, 0);
+      g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &version);
+    }
+
+  return g_steal_pointer (&version);
+}
+
 /* OSTree implements a special optimization where we want to avoid touching
  * the bootloader configuration if the kernel layout hasn't changed.  This is
  * handled by the ostree= kernel argument referring to a "bootlink".  But
@@ -1906,32 +1934,27 @@ assign_bootserials (GPtrArray   *deployments)
  * bootloader perspective.
  */
 static gboolean
-deployment_bootconfigs_equal (OstreeDeployment *a,
+deployment_bootconfigs_equal (OstreeRepo       *repo,
+                              OstreeDeployment *a,
                               OstreeDeployment *b)
 {
+  /* same kernel & initramfs? */
   const char *a_bootcsum = ostree_deployment_get_bootcsum (a);
   const char *b_bootcsum = ostree_deployment_get_bootcsum (b);
-
   if (strcmp (a_bootcsum, b_bootcsum) != 0)
     return FALSE;
 
-  {
-    /* We checksum the kernel arguments *except* ostree= */
-    OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
-    const char *a_boot_options = ostree_bootconfig_parser_get (a_bootconfig, "options");
-    g_autoptr(OstreeKernelArgs) a_kargs = _ostree_kernel_args_from_string (a_boot_options);
-    _ostree_kernel_args_replace (a_kargs, "ostree");
-    g_autofree char *a_boot_options_without_ostree = _ostree_kernel_args_to_string (a_kargs);
+  /* same kargs? */
+  g_autofree char *a_boot_options_without_ostree = get_deployment_nonostree_kargs (a);
+  g_autofree char *b_boot_options_without_ostree = get_deployment_nonostree_kargs (b);
+  if (strcmp (a_boot_options_without_ostree, b_boot_options_without_ostree) != 0)
+    return FALSE;
 
-    OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
-    const char *b_boot_options = ostree_bootconfig_parser_get (b_bootconfig, "options");
-    g_autoptr(OstreeKernelArgs) b_kargs = _ostree_kernel_args_from_string (b_boot_options);
-    _ostree_kernel_args_replace (b_kargs, "ostree");
-    g_autofree char *b_boot_options_without_ostree = _ostree_kernel_args_to_string (b_kargs);
-
-    if (strcmp (a_boot_options_without_ostree, b_boot_options_without_ostree) != 0)
-      return FALSE;
-  }
+  /* same ostree version? this is just for the menutitle, we won't have to cp the kernel */
+  g_autofree char *a_version = get_deployment_ostree_version (repo, a);
+  g_autofree char *b_version = get_deployment_ostree_version (repo, b);
+  if (g_strcmp0 (a_version, b_version) != 0)
+    return FALSE;
 
   return TRUE;
 }
@@ -2191,13 +2214,14 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   else
     {
       gboolean is_noop = TRUE;
+      OstreeRepo *repo = ostree_sysroot_repo (self);
       for (guint i = 0; i < new_deployments->len; i++)
         {
           OstreeDeployment *cur_deploy = self->deployments->pdata[i];
           if (ostree_deployment_is_staged (cur_deploy))
             continue;
           OstreeDeployment *new_deploy = new_deployments->pdata[i];
-          if (!deployment_bootconfigs_equal (cur_deploy, new_deploy))
+          if (!deployment_bootconfigs_equal (repo, cur_deploy, new_deploy))
             {
               requires_new_bootversion = TRUE;
               is_noop = FALSE;
