@@ -1896,6 +1896,17 @@ assign_bootserials (GPtrArray   *deployments)
     }
 }
 
+static char*
+get_deployment_nonostree_kargs (OstreeDeployment *deployment)
+{
+  /* pick up kernel arguments but filter out ostree= */
+  OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+  const char *boot_options = ostree_bootconfig_parser_get (bootconfig, "options");
+  g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_from_string (boot_options);
+  _ostree_kernel_args_replace (kargs, "ostree");
+  return _ostree_kernel_args_to_string (kargs);
+}
+
 /* OSTree implements a special optimization where we want to avoid touching
  * the bootloader configuration if the kernel layout hasn't changed.  This is
  * handled by the ostree= kernel argument referring to a "bootlink".  But
@@ -1909,29 +1920,18 @@ static gboolean
 deployment_bootconfigs_equal (OstreeDeployment *a,
                               OstreeDeployment *b)
 {
+  /* same kernel & initramfs? */
   const char *a_bootcsum = ostree_deployment_get_bootcsum (a);
   const char *b_bootcsum = ostree_deployment_get_bootcsum (b);
-
   if (strcmp (a_bootcsum, b_bootcsum) != 0)
     return FALSE;
 
-  {
-    /* We checksum the kernel arguments *except* ostree= */
-    OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
-    const char *a_boot_options = ostree_bootconfig_parser_get (a_bootconfig, "options");
-    g_autoptr(OstreeKernelArgs) a_kargs = _ostree_kernel_args_from_string (a_boot_options);
-    _ostree_kernel_args_replace (a_kargs, "ostree");
-    g_autofree char *a_boot_options_without_ostree = _ostree_kernel_args_to_string (a_kargs);
+  /* same kargs? */
+  g_autofree char *a_boot_options_without_ostree = get_deployment_nonostree_kargs (a);
+  g_autofree char *b_boot_options_without_ostree = get_deployment_nonostree_kargs (b);
+  if (strcmp (a_boot_options_without_ostree, b_boot_options_without_ostree) != 0)
+    return FALSE;
 
-    OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
-    const char *b_boot_options = ostree_bootconfig_parser_get (b_bootconfig, "options");
-    g_autoptr(OstreeKernelArgs) b_kargs = _ostree_kernel_args_from_string (b_boot_options);
-    _ostree_kernel_args_replace (b_kargs, "ostree");
-    g_autofree char *b_boot_options_without_ostree = _ostree_kernel_args_to_string (b_kargs);
-
-    if (strcmp (a_boot_options_without_ostree, b_boot_options_without_ostree) != 0)
-      return FALSE;
-  }
 
   return TRUE;
 }
