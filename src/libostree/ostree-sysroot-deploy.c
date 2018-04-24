@@ -1907,6 +1907,23 @@ get_deployment_nonostree_kargs (OstreeDeployment *deployment)
   return _ostree_kernel_args_to_string (kargs);
 }
 
+static char*
+get_deployment_ostree_version (OstreeRepo       *repo,
+                               OstreeDeployment *deployment)
+{
+  const char *csum = ostree_deployment_get_csum (deployment);
+
+  g_autofree char *version = NULL;
+  g_autoptr(GVariant) variant = NULL;
+  if (ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum, &variant, NULL))
+    {
+      g_autoptr(GVariant) metadata = g_variant_get_child_value (variant, 0);
+      g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &version);
+    }
+
+  return g_steal_pointer (&version);
+}
+
 /* OSTree implements a special optimization where we want to avoid touching
  * the bootloader configuration if the kernel layout hasn't changed.  This is
  * handled by the ostree= kernel argument referring to a "bootlink".  But
@@ -1917,7 +1934,8 @@ get_deployment_nonostree_kargs (OstreeDeployment *deployment)
  * bootloader perspective.
  */
 static gboolean
-deployment_bootconfigs_equal (OstreeDeployment *a,
+deployment_bootconfigs_equal (OstreeRepo       *repo,
+                              OstreeDeployment *a,
                               OstreeDeployment *b)
 {
   /* same kernel & initramfs? */
@@ -1932,6 +1950,11 @@ deployment_bootconfigs_equal (OstreeDeployment *a,
   if (strcmp (a_boot_options_without_ostree, b_boot_options_without_ostree) != 0)
     return FALSE;
 
+  /* same ostree version? this is just for the menutitle, we won't have to cp the kernel */
+  g_autofree char *a_version = get_deployment_ostree_version (repo, a);
+  g_autofree char *b_version = get_deployment_ostree_version (repo, b);
+  if (g_strcmp0 (a_version, b_version) != 0)
+    return FALSE;
 
   return TRUE;
 }
@@ -2191,13 +2214,14 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   else
     {
       gboolean is_noop = TRUE;
+      OstreeRepo *repo = ostree_sysroot_repo (self);
       for (guint i = 0; i < new_deployments->len; i++)
         {
           OstreeDeployment *cur_deploy = self->deployments->pdata[i];
           if (ostree_deployment_is_staged (cur_deploy))
             continue;
           OstreeDeployment *new_deploy = new_deployments->pdata[i];
-          if (!deployment_bootconfigs_equal (cur_deploy, new_deploy))
+          if (!deployment_bootconfigs_equal (repo, cur_deploy, new_deploy))
             {
               requires_new_bootversion = TRUE;
               is_noop = FALSE;
