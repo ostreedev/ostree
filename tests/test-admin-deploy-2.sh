@@ -26,7 +26,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
-echo "1..6"
+echo "1..7"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -63,6 +63,19 @@ assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 
 echo "ok manual cleanup"
+
+# Commit + upgrade twice, so that we'll rotate out the original deployment
+os_repository_new_commit "1"
+${CMD_PREFIX} ostree admin upgrade --os=testos
+oldversion=${version}
+# another commit with *same* bootcsum but *new* content
+os_repository_new_commit "1" "2"
+newversion=${version}
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf ${oldversion}
+${CMD_PREFIX} ostree admin upgrade --os=testos
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf ${newversion}
+
+echo "ok new version same bootcsum"
 
 assert_n_pinned() {
     local n=$1

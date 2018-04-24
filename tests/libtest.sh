@@ -491,7 +491,7 @@ os_repository_new_commit ()
 
     echo "content iteration ${content_iteration}" > usr/bin/content-iteration
 
-    version=$(date "+%Y%m%d.${content_iteration}")
+    export version=$(date "+%Y%m%d.${content_iteration}")
 
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b $branch -s "Build"
     cd ${test_tmpdir}
