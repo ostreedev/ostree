@@ -52,6 +52,9 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-editor.c \
 	src/ostree/ot-editor.h \
 	src/ostree/parse-datetime.h \
+	$(NULL)
+
+nodist_ostree_SOURCES = \
 	src/ostree/parse-datetime.c \
 	$(NULL)
 
