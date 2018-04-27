@@ -178,12 +178,14 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
       if (!ostree_sysroot_stage_tree (sysroot, opt_osname, revision, origin, merge_deployment,
                                       kargs_strv, &new_deployment, cancellable, error))
         return FALSE;
+      g_assert (new_deployment);
     }
   else
     {
       if (!ostree_sysroot_deploy_tree (sysroot, opt_osname, revision, origin, merge_deployment,
                                        kargs_strv, &new_deployment, cancellable, error))
         return FALSE;
+      g_assert (new_deployment);
 
       OstreeSysrootSimpleWriteDeploymentFlags flags = OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
       if (opt_retain)
