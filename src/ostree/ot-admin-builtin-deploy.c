@@ -65,8 +65,6 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeKernelArgs) kargs = NULL;
-
   g_autoptr(GOptionContext) context =
     g_option_context_new ("REFSPEC");
 
@@ -129,36 +127,48 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
   if (!ostree_sysroot_prepare_cleanup (sysroot, cancellable, error))
     return glnx_prefix_error (error, "Performing initial cleanup");
 
-  kargs = _ostree_kernel_args_new ();
-
-  /* If they want the current kernel's args, they very likely don't
-   * want the ones from the merge.
+  /* Initial set of kernel arguments; the default is to use the merge
+   * deployment, unless --karg-none or --karg-proc-cmdline are specified.
    */
-  if (opt_kernel_proc_cmdline)
+  g_autoptr(OstreeKernelArgs) kargs = NULL;
+  if (opt_kernel_arg_none)
     {
+      kargs = _ostree_kernel_args_new ();
+    }
+  else if (opt_kernel_proc_cmdline)
+    {
+      kargs = _ostree_kernel_args_new ();
       if (!_ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
         return FALSE;
     }
-  else if (merge_deployment && !opt_kernel_arg_none)
+  else if (merge_deployment && (opt_kernel_argv || opt_kernel_argv_append))
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
       g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
-
+      kargs = _ostree_kernel_args_new ();
       _ostree_kernel_args_append_argv (kargs, previous_args);
     }
 
+  /* Now replace/extend the above set.  Note that if no options are specified,
+   * we should end up passing NULL as override_kernel_argv for
+   * ostree_sysroot_deploy_tree() so we get the defaults.
+   */
   if (opt_kernel_argv)
     {
+      if (!kargs)
+        kargs = _ostree_kernel_args_new ();
       _ostree_kernel_args_replace_argv (kargs, opt_kernel_argv);
     }
 
   if (opt_kernel_argv_append)
     {
+      if (!kargs)
+        kargs = _ostree_kernel_args_new ();
       _ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
     }
 
   g_autoptr(OstreeDeployment) new_deployment = NULL;
-  g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
+  g_auto(GStrv) kargs_strv = kargs ? _ostree_kernel_args_to_strv (kargs) : NULL;
   if (opt_stage)
     {
       if (opt_retain_pending || opt_retain_rollback)
