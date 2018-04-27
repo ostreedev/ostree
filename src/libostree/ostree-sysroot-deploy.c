@@ -2736,6 +2736,7 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
   if (!ostree_sysroot_load (self, cancellable, error))
     return FALSE;
 
+  ot_transfer_out_value (out_new_deployment, &deployment);
   return TRUE;
 }
 
