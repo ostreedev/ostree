@@ -2759,10 +2759,24 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
   if (g_variant_lookup (self->staged_deployment_data, "merge-deployment", "@a{sv}",
                         &merge_deployment_v))
     {
-      merge_deployment =
+      g_autoptr(OstreeDeployment) merge_deployment_stub =
         _ostree_sysroot_deserialize_deployment_from_variant (merge_deployment_v, error);
-      if (!merge_deployment)
+      if (!merge_deployment_stub)
         return FALSE;
+      for (guint i = 0; i < self->deployments->len; i++)
+        {
+          OstreeDeployment *deployment = self->deployments->pdata[i];
+          if (ostree_deployment_equal (deployment, merge_deployment_stub))
+            {
+              merge_deployment = g_object_ref (deployment);
+              break;
+            }
+        }
+
+      if (!merge_deployment)
+        return glnx_throw (error, "Failed to find merge deployment %s.%d for staged",
+                           ostree_deployment_get_csum (merge_deployment_stub),
+                           ostree_deployment_get_deployserial (merge_deployment_stub));
     }
   g_autofree char **kargs = NULL;
   g_variant_lookup (self->staged_deployment_data, "kargs", "^a&s", &kargs);
