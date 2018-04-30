@@ -435,34 +435,36 @@ _ostree_repo_get_remote_inherited (OstreeRepo  *self,
                                    const char  *name,
                                    GError     **error);
 
-#ifndef OSTREE_ENABLE_EXPERIMENTAL_API
-
-/* All the locking APIs below are duplicated in ostree-repo.h. Remove the ones
- * here once it's no longer experimental.
+/* Locking APIs are currently private.
+ * See https://github.com/ostreedev/ostree/pull/1555
  */
-
 typedef enum {
   OSTREE_REPO_LOCK_SHARED,
   OSTREE_REPO_LOCK_EXCLUSIVE
 } OstreeRepoLockType;
 
-gboolean      ostree_repo_lock_push (OstreeRepo          *self,
+gboolean      _ostree_repo_lock_push (OstreeRepo          *self,
                                      OstreeRepoLockType   lock_type,
                                      GCancellable        *cancellable,
                                      GError             **error);
-gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
-                                    GCancellable  *cancellable,
-                                    GError       **error);
+gboolean      _ostree_repo_lock_pop (OstreeRepo    *self,
+                                     GCancellable  *cancellable,
+                                     GError       **error);
 
 typedef OstreeRepo OstreeRepoAutoLock;
 
-OstreeRepoAutoLock * ostree_repo_auto_lock_push (OstreeRepo          *self,
-                                                 OstreeRepoLockType   lock_type,
-                                                 GCancellable        *cancellable,
-                                                 GError             **error);
-void          ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, ostree_repo_auto_lock_cleanup)
+OstreeRepoAutoLock * _ostree_repo_auto_lock_push (OstreeRepo          *self,
+                                                  OstreeRepoLockType   lock_type,
+                                                  GCancellable        *cancellable,
+                                                  GError             **error);
+void          _ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, _ostree_repo_auto_lock_cleanup)
 
+#ifndef OSTREE_ENABLE_EXPERIMENTAL_API
+
+/* These APIs are duplicated in the public headers when doing an
+ * experimental-API build.
+ */
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
                                              const gchar  *collection_id,
