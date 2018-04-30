@@ -2799,11 +2799,21 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
   staged->staged = FALSE;
   g_ptr_array_remove_index (self->deployments, 0);
 
-  /* TODO: Proxy across flags too? */
-  OstreeSysrootSimpleWriteDeploymentFlags flags = 0;
+  /* TODO: Proxy across flags too?
+   *
+   * But note that we always use NO_CLEAN to avoid adding more latency at
+   * shutdown, and also because e.g. rpm-ostree wants to own the cleanup
+   * process.
+   */
+  OstreeSysrootSimpleWriteDeploymentFlags flags =
+    OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
   if (!ostree_sysroot_simple_write_deployment (self, ostree_deployment_get_osname (staged),
                                                staged, merge_deployment, flags,
                                                cancellable, error))
+    return FALSE;
+
+  /* Do the basic cleanup that may impact /boot, but not the repo pruning */
+  if (!ostree_sysroot_prepare_cleanup (self, cancellable, error))
     return FALSE;
 
   return TRUE;
