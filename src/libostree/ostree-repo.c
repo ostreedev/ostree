@@ -3545,6 +3545,9 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
       return FALSE;
     }
 
+  const char *errprefix = glnx_strjoina ("Opening content object ", checksum);
+  GLNX_AUTO_PREFIX_ERROR (errprefix, error);
+
   struct stat stbuf;
   glnx_autofd int fd = -1;
   g_autofree char *ret_symlink = NULL;
@@ -3585,7 +3588,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
     }
 
   if (!(S_ISREG (stbuf.st_mode) || S_ISLNK (stbuf.st_mode)))
-    return glnx_throw (error, "Not a regular file or symlink: %s", loose_path_buf);
+    return glnx_throw (error, "Not a regular file or symlink");
 
   /* In the non-bare-user case, gather symlink info if requested */
   if (self->mode != OSTREE_REPO_MODE_BARE_USER
