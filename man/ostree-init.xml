@@ -69,13 +69,24 @@ Boston, MA 02111-1307, USA.
         <variablelist>
             <varlistentry>
                 <term><option>--mode</option>="MODE"</term>
-                <listitem><para> Initialize repository in given mode
-                (<literal>bare</literal>, <literal>bare-user</literal>,
-                <literal>archive</literal>). The default is
-                <literal>bare</literal>. Note that for
-                <literal>archive</literal> the repository configuration file
-                will actually have <literal>archive-z2</literal>, as that's the
-                historical name.</para></listitem>
+                <listitem><para>
+                    Initialize repository in given mode
+                    (<literal>bare</literal>, <literal>bare-user</literal>,
+                    <literal>bare-user-only</literal>, <literal>archive</literal>).
+                    The default is <literal>bare</literal>. Note that for
+                    <literal>archive</literal> the repository configuration file
+                    will actually have <literal>archive-z2</literal>, as that's
+                    the historical name.</para>
+
+                    <para>See the manual for differences between these modes.
+                    Briefly, <literal>bare</literal> mode stores files as they
+                    are, so they can be directly hardlinked,
+                    <literal>bare-user</literal> uses extended attributes to
+                    store ownership and xattr information, allowing non-root
+                    operations, <literal>bare-user-only</literal> does not store
+                    ownership information, and <literal>archive</literal> stores
+                    files compressed, to be served over the network.
+                </para></listitem>
             </varlistentry>
 
             <varlistentry>
