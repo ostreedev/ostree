@@ -123,6 +123,16 @@ gboolean ostree_sysroot_prepare_cleanup (OstreeSysroot  *self,
                                          GError        **error);
 
 _OSTREE_PUBLIC
+gboolean
+ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
+                                   OstreeRepoPruneOptions *options,
+                                   gint                   *out_objects_total,
+                                   gint                   *out_objects_pruned,
+                                   guint64                *out_pruned_object_size_total,
+                                   GCancellable           *cancellable,
+                                   GError                **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                            OstreeDeployment      *deployment,
                                            GKeyFile              *new_origin,
