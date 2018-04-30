@@ -1203,6 +1203,14 @@ struct _OstreeRepoPruneOptions {
 typedef struct _OstreeRepoPruneOptions OstreeRepoPruneOptions;
 
 _OSTREE_PUBLIC
+gboolean
+ostree_repo_traverse_reachable_refs (OstreeRepo *self,
+                                     guint       depth,
+                                     GHashTable *reachable,
+                                     GCancellable *cancellable,
+                                     GError      **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_repo_prune_from_reachable (OstreeRepo             *self,
                                            OstreeRepoPruneOptions *options,
                                            gint              *out_objects_total,
