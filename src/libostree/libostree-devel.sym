@@ -19,6 +19,7 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2018.6 {
+  ostree_repo_traverse_reachable_refs;
 } LIBOSTREE_2018.5;
 
 /* Stub section for the stable release *after* this development one; don't
