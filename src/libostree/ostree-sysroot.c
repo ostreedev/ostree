@@ -636,10 +636,8 @@ parse_deployment (OstreeSysroot       *self,
     return FALSE;
 
   /* See if this is the booted deployment */
-  const gboolean root_is_ostree_booted =
-    (self->ostree_booted && self->root_is_sysroot);
   const gboolean looking_for_booted_deployment =
-    (root_is_ostree_booted && !self->booted_deployment);
+    (self->root_is_ostree_booted && !self->booted_deployment);
   gboolean is_booted_deployment = FALSE;
   if (looking_for_booted_deployment)
     {
@@ -802,9 +800,7 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
                                GError       **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Loading staged deployment", error);
-  const gboolean root_is_ostree_booted =
-    self->ostree_booted && self->root_is_sysroot;
-  if (!root_is_ostree_booted)
+  if (!self->root_is_ostree_booted)
     return TRUE; /* Note early return */
 
   g_assert (self->booted_deployment);
@@ -879,7 +875,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
     {
       if (!glnx_fstatat_allow_noent (AT_FDCWD, "/run/ostree-booted", NULL, 0, error))
         return FALSE;
-      self->ostree_booted = (errno == 0);
+      const gboolean ostree_booted = (errno == 0);
 
       { struct stat root_stbuf;
         if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
@@ -892,9 +888,11 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
       if (!glnx_fstat (self->sysroot_fd, &self_stbuf, error))
         return FALSE;
 
-      self->root_is_sysroot =
+      const gboolean root_is_sysroot =
         (self->root_device == self_stbuf.st_dev &&
          self->root_inode == self_stbuf.st_ino);
+
+      self->root_is_ostree_booted = (ostree_booted && root_is_sysroot);
     }
 
   int bootversion = 0;
@@ -947,9 +945,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
         }
     }
 
-  const gboolean root_is_ostree_booted =
-    self->ostree_booted && self->root_is_sysroot;
-  if (root_is_ostree_booted && !self->booted_deployment)
+  if (self->root_is_ostree_booted && !self->booted_deployment)
     return glnx_throw (error, "Unexpected state: /run/ostree-booted found and in / sysroot but not in a booted deployment");
 
   if (!_ostree_sysroot_reload_staged (self, error))
