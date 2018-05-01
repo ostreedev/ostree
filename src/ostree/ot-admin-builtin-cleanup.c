@@ -37,21 +37,16 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_cleanup (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
+
   g_autoptr(OstreeSysroot) sysroot = NULL;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("");
-
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           invocation, &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
