@@ -24,7 +24,7 @@ date
 
 # Test error message when opening a non-world-readable object
 # https://github.com/ostreedev/ostree/issues/1562
-rm repo -rf
+rm repo files -rf
 chmod a+rx .
 ostree --repo=repo init --mode=bare
 mkdir files
@@ -37,3 +37,5 @@ if setpriv --reuid bin --regid bin --clear-groups ostree --repo=repo cat testbra
     fatal "Listed unreadable object as non-root"
 fi
 assert_file_has_content err.txt "Opening content object.*openat: Permission denied"
+
+date
