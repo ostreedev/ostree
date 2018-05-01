@@ -50,8 +50,7 @@ struct OstreeSysroot {
   GLnxLockFile lock;
 
   gboolean loaded;
-  gboolean ostree_booted;
-  gboolean root_is_sysroot; /* TRUE if sysroot_fd is pointed to rootfs "/" */
+  gboolean root_is_ostree_booted; /* TRUE if sysroot is / and we are booted via ostree */
   /* The device/inode for /, used to detect booted deployment */
   dev_t root_device;
   ino_t root_inode;
