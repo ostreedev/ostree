@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((23 + ${extra_admin_tests:-0}))"
+echo "1..$((24 + ${extra_admin_tests:-0}))"
 
 function validate_bootloader() {
     cd ${test_tmpdir};
@@ -77,6 +77,12 @@ assert_file_has_content sysroot/ostree/boot.1/testos/${bootcsum}/0/etc/os-releas
 assert_ostree_deployment_refs 1/1/0
 ${CMD_PREFIX} ostree admin status
 echo "ok layout"
+
+if ${CMD_PREFIX} ostree admin deploy --stage --os=testos testos:testos/buildmaster/x86_64-runtime 2>err.txt; then
+    fatal "staged when not booted"
+fi
+assert_file_has_content_literal err.txt "Cannot stage a deployment when not currently booted into an OSTree system"
+echo "ok staging does not work when not booted"
 
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
