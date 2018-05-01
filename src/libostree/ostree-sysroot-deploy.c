@@ -2658,6 +2658,10 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
                            GCancellable      *cancellable,
                            GError           **error)
 {
+  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (self);
+  if (booted_deployment == NULL)
+    return glnx_throw (error, "Cannot stage a deployment when not currently booted into an OSTree system");
+
   /* This is a bit of a hack.  When adding a new service we have to end up getting
    * into the presets for downstream distros; see e.g. https://src.fedoraproject.org/rpms/ostree/pull-request/7
    *
