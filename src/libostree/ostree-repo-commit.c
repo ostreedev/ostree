@@ -1551,10 +1551,9 @@ ostree_repo_scan_hardlinks (OstreeRepo    *self,
  * on a single `OstreeRepo` instance as long as their lifetime is bounded by the
  * transaction.
  *
+ * Locking: Acquires a `shared` lock; release via commit or abort
  * Multithreading: This function is *not* MT safe; only one transaction can be
  * active at a time.
- *
- * This function takes a shared lock on the @self repository.
  */
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
@@ -2080,6 +2079,7 @@ ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
  * Note that if multiple threads are performing writes, all such threads must
  * have terminated before this function is invoked.
  *
+ * Locking: Releases `shared` lock acquired by `ostree_repo_prepare_transaction()`
  * Multithreading: This function is *not* MT safe; only one transaction can be
  * active at a time.
  */
