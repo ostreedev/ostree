@@ -4,8 +4,19 @@
 - name: Write staged-deploy commit
   shell: |
     ostree --repo=/ostree/repo commit --parent="${commit}" -b staged-deploy --tree=ref="${commit}" --no-bindings
+    newcommit=$(ostree rev-parse staged-deploy)
+    orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     ostree admin deploy --stage staged-deploy
+    new_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
+    assert_not_streq "${orig_mtime}" "${new_mtime}"
     test -f /run/ostree/staged-deployment
+    ostree refs | grep -E -e '^ostree/' | while read ref; do
+      if test "$(ostree rev-parse ${ref})" = "${newcommit}"; then
+        touch deployment-ref-found
+      fi
+    done
+    test -f deployment-ref-found
+    rm deployment-ref-found
   environment:
     commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
 - include_tasks: ../tasks/reboot.yml
