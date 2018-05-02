@@ -2143,6 +2143,25 @@ write_deployments_bootswap (OstreeSysroot     *self,
   return TRUE;
 }
 
+/* Actions taken after writing deployments is complete */
+static gboolean
+write_deployments_finish (OstreeSysroot *self,
+                          GCancellable  *cancellable,
+                          GError       **error)
+{
+  if (!_ostree_sysroot_bump_mtime (self, error))
+    return FALSE;
+
+  /* Now reload from disk */
+  if (!ostree_sysroot_load (self, cancellable, error))
+    return glnx_prefix_error (error, "Reloading deployments after commit");
+
+  if (!cleanup_legacy_current_symlinks (self, cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /**
  * ostree_sysroot_write_deployments_with_options:
  * @self: Sysroot
@@ -2173,6 +2192,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
    * now, which is mostly what this function is concerned with.
    * In the future we though should probably adapt things to keep it.
    */
+  gboolean removed_staged = FALSE;
   if (self->staged_deployment)
     {
       if (!glnx_unlinkat (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED, 0, error))
@@ -2183,6 +2203,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 
       g_assert (self->staged_deployment == self->deployments->pdata[0]);
       g_ptr_array_remove_index (self->deployments, 0);
+      removed_staged = TRUE;
     }
   /* First new deployment; we'll see if it's staged */
   OstreeDeployment *first_new =
@@ -2231,10 +2252,22 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
             is_noop = FALSE;
         }
 
-      /* Silently do nothing if we're passed the same set of deployments */
+      /* If we're passed the same set of deployments, we don't need
+       * to drop into the rest of this function which deals with
+       * changing the bootloader config.
+       */
       if (is_noop)
         {
           g_assert (!requires_new_bootversion);
+          /* However, if we dropped the staged deployment, we still
+           * need to do finalization steps such as regenerating
+           * the refs and bumping the mtime.
+           */
+          if (removed_staged)
+            {
+              if (!write_deployments_finish (self, cancellable, error))
+                return FALSE;
+            }
           return TRUE;
         }
     }
@@ -2338,14 +2371,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     _ostree_sysroot_emit_journal_msg (self, msg);
   }
 
-  if (!_ostree_sysroot_bump_mtime (self, error))
-    return FALSE;
-
-  /* Now reload from disk */
-  if (!ostree_sysroot_load (self, cancellable, error))
-    return glnx_prefix_error (error, "Reloading deployments after commit");
-
-  if (!cleanup_legacy_current_symlinks (self, cancellable, error))
+  if (!write_deployments_finish (self, cancellable, error))
     return FALSE;
 
   /* And finally, cleanup of any leftover data.
@@ -2734,6 +2760,13 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
   if (!_ostree_sysroot_bump_mtime (self, error))
     return FALSE;
   if (!ostree_sysroot_load (self, cancellable, error))
+    return FALSE;
+  /* Like deploy, we do a prepare cleanup; among other things, this ensures
+   * that a ref will be written for the staged tree.  See also
+   * https://github.com/ostreedev/ostree/pull/1566 though which
+   * adds an ostree_sysroot_cleanup_prune() API.
+   */
+  if (!ostree_sysroot_prepare_cleanup (self, cancellable, error))
     return FALSE;
 
   ot_transfer_out_value (out_new_deployment, &deployment);
