@@ -128,7 +128,7 @@ install_into_boot (OstreeSePolicy *sepolicy,
                                                     error))
             return FALSE;
           return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath,
-                                    GLNX_FILE_COPY_NOXATTRS,
+                                    GLNX_FILE_COPY_NOXATTRS | GLNX_FILE_COPY_DATASYNC,
                                     cancellable, error);
         }
       else
