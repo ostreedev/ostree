@@ -78,7 +78,8 @@ assert_ostree_deployment_refs 1/1/0
 ${CMD_PREFIX} ostree admin status
 echo "ok layout"
 
-if ${CMD_PREFIX} ostree admin deploy --stage --os=testos testos:testos/buildmaster/x86_64-runtime 2>err.txt; then
+assert_file_has_content_literal err.txt "Cannot stage a deployment when not currently booted into an OSTree system"
+if env OSTREE_EX_STAGE_DEPLOYMENTS=1 ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime 2>err.txt; then
     fatal "staged when not booted"
 fi
 assert_file_has_content_literal err.txt "Cannot stage a deployment when not currently booted into an OSTree system"
