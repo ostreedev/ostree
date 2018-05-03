@@ -644,21 +644,37 @@ ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
                                 GError                **error)
 {
   g_autoptr(OstreeDeployment) new_deployment = NULL;
-  if (!ostree_sysroot_deploy_tree (self->sysroot, self->osname,
-                                   self->new_revision,
-                                   self->origin,
-                                   self->merge_deployment,
-                                   NULL,
-                                   &new_deployment,
-                                   cancellable, error))
-    return FALSE;
 
-  if (!ostree_sysroot_simple_write_deployment (self->sysroot, self->osname,
-                                               new_deployment,
-                                               self->merge_deployment,
-                                               0,
-                                               cancellable, error))
-    return FALSE;
+  /* Experimental flag to enable staging */
+  if (getenv ("OSTREE_EX_STAGE_DEPLOYMENTS"))
+    {
+      if (!ostree_sysroot_stage_tree (self->sysroot, self->osname,
+                                      self->new_revision,
+                                      self->origin,
+                                      self->merge_deployment,
+                                      NULL,
+                                      &new_deployment,
+                                      cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      if (!ostree_sysroot_deploy_tree (self->sysroot, self->osname,
+                                       self->new_revision,
+                                       self->origin,
+                                       self->merge_deployment,
+                                       NULL,
+                                       &new_deployment,
+                                       cancellable, error))
+        return FALSE;
+
+      if (!ostree_sysroot_simple_write_deployment (self->sysroot, self->osname,
+                                                   new_deployment,
+                                                   self->merge_deployment,
+                                                   0,
+                                                   cancellable, error))
+        return FALSE;
+    }
 
   return TRUE;
 }

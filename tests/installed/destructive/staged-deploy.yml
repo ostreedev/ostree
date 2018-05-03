@@ -27,16 +27,31 @@
 - name: Check that deploy-staged service worked
   shell: |
     set -xeuo pipefail
+    rpm-ostree status
     # Assert that the previous boot had a journal entry for it
     journalctl -b "-1" -u ostree-finalize-staged.service | grep -q -e 'Transaction complete'
     # And there should not be a staged deployment
     test '!' -f /run/ostree/staged-deployment
-- name: Rollback
-  shell: rpm-ostree rollback
-- include_tasks: ../tasks/reboot.yml
-- shell: |
+
+- name: Upgrade with staging
+  shell: |
     set -xeuo pipefail
+    test '!' -f /run/ostree/staged-deployment
+    ostree admin deploy --stage staged-deploy
+    test -f /run/ostree/staged-deployment
+    origcommit=$(ostree rev-parse staged-deploy)
+    cd /ostree/repo/tmp
+    ostree checkout -H "${origcommit}" t
+    ostree commit --no-bindings --parent="${origcommit}" -b staged-deploy -I --consume t
+    newcommit=$(ostree rev-parse staged-deploy)
+    env OSTREE_EX_STAGE_DEPLOYMENTS=1 ostree admin upgrade >out.txt
+    test -f /run/ostree/staged-deployment
+    # Debating bouncing back out to Ansible for this
+    firstdeploycommit=$(rpm-ostree status |grep 'Commit:' |head -1|sed -e 's,^ *Commit: *,,')
+    test "${firstdeploycommit}" = "${newcommit}"
+    # Cleanup
     rpm-ostree cleanup -rp
+- import_tasks: ../tasks/query-host.yml
 
 # Ensure we can unstage
 - name: Write staged-deploy commit, then unstage
@@ -50,8 +65,6 @@
     ostree admin status > status.txt
     grep -vqFe '(staged)' status.txt
     test '!' -f /run/ostree/staged-deployment
-  environment:
-    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
 
 - name: Staged should be overwritten by non-staged
   shell: |

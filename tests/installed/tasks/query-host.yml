@@ -1,4 +1,5 @@
-- command: rpm-ostree status --json
+- name: Load status json
+  command: rpm-ostree status --json
   changed_when: False
   register: rpmostree_status_json
 - set_fact:

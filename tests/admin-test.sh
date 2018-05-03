@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((24 + ${extra_admin_tests:-0}))"
+echo "1..$((25 + ${extra_admin_tests:-0}))"
 
 function validate_bootloader() {
     cd ${test_tmpdir};
@@ -215,6 +215,11 @@ validate_bootloader
 echo "ok upgrade bare"
 
 os_repository_new_commit
+if env OSTREE_EX_STAGE_DEPLOYMENTS=1 ${CMD_PREFIX} ostree admin upgrade --os=testos 2>err.txt; then
+    fatal "staged when not booted"
+fi
+echo "ok upgrade failed when staged"
+
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 origrev=${rev}

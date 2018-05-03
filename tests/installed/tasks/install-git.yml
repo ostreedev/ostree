@@ -8,7 +8,8 @@
   synchronize: src=build/x86_64/ dest=/root/x86_64/ archive=yes
 - name: Install RPMs
   shell: rpm-ostree override replace /root/x86_64/*.rpm
-- include_tasks: ../tasks/reboot.yml
+- import_tasks: ../tasks/reboot.yml
+- import_tasks: ../tasks/query-host.yml
 - command: ostree --version
   register: ostree_new_version
 - set_fact:
