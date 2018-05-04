@@ -1,4 +1,7 @@
-# This entrypoint right now just runs the sysinstalled-tests.
+# This entrypoint right now just runs shell-script based tests
+# from destructive/.  Note that we `rpm-ostree usroverlay` git
+# builds.  So it's not supported to reboot in these tests.
+# These tests will be run serially, and can e.g. change deployments.
 ---
 - hosts: localhost
   tags:
@@ -16,9 +19,6 @@
     # Next copy all of the tests/ directory
     - name: Copy test data
       synchronize: src=../../ dest=/root/tests/ archive=yes
-
-    # First, the Ansible-based tests
-    - import_tasks: destructive/staged-deploy.yml
 
     - find:
         paths: /root/tests/installed/destructive

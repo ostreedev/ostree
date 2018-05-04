@@ -3,6 +3,7 @@
 
 - name: Write staged-deploy commit
   shell: |
+    set -xeuo pipefail
     cd /ostree/repo/tmp
     # https://github.com/ostreedev/ostree/issues/1569
     ostree checkout -H ${commit} t
@@ -11,7 +12,7 @@
     orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     ostree admin deploy --stage staged-deploy
     new_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
-    assert_not_streq "${orig_mtime}" "${new_mtime}"
+    test "${orig_mtime}" != "${new_mtime}"
     test -f /run/ostree/staged-deployment
     ostree refs | grep -E -e '^ostree/' | while read ref; do
       if test "$(ostree rev-parse ${ref})" = "${newcommit}"; then
@@ -25,6 +26,7 @@
 - include_tasks: ../tasks/reboot.yml
 - name: Check that deploy-staged service worked
   shell: |
+    set -xeuo pipefail
     # Assert that the previous boot had a journal entry for it
     journalctl -b "-1" -u ostree-finalize-staged.service | grep -q -e 'Transaction complete'
     # And there should not be a staged deployment
@@ -33,11 +35,13 @@
   shell: rpm-ostree rollback
 - include_tasks: ../tasks/reboot.yml
 - shell: |
+    set -xeuo pipefail
     rpm-ostree cleanup -rp
 
 # Ensure we can unstage
 - name: Write staged-deploy commit, then unstage
   shell: |
+    set -xeuo pipefail
     ostree admin deploy --stage staged-deploy
     ostree admin status > status.txt
     grep -qFe '(staged)' status.txt
@@ -49,9 +53,9 @@
   environment:
     commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
 
-# Staged should be overwritten by non-staged
-- name: Write staged-deploy commit, then unstage
+- name: Staged should be overwritten by non-staged
   shell: |
+    set -xeuo pipefail
     ostree admin deploy --stage staged-deploy
     test -f /run/ostree/staged-deployment
     ostree --repo=/ostree/repo refs --create nonstaged-deploy "${commit}"

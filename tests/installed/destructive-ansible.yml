@@ -1,0 +1,17 @@
+# Ansible-based tests.
+---
+- hosts: localhost
+  tags:
+  - atomic
+  remote_user: root
+  vars:
+    use_git_build: True
+    tests: "."
+  tasks:
+    - import_tasks: tasks/query-host.yml
+    - set_fact:
+        rpmostree_initial_deployment: "{{ rpmostree_status[\"deployments\"][0] }}"
+    - import_tasks: tasks/install-git.yml
+      when: use_git_build
+
+    - import_tasks: destructive/staged-deploy.yml
