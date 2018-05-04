@@ -2352,7 +2352,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     }
 
   { g_autofree char *msg =
-      g_strdup_printf ("%s; bootconfig swap: %s deployment count change: %i",
+      g_strdup_printf ("%s; bootconfig swap: %s; deployment count change: %i",
                        (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
                        requires_new_bootversion ? "yes" : "no",
                        new_deployments->len - self->deployments->len);
