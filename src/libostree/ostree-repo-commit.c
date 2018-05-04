@@ -1510,7 +1510,7 @@ devino_cache_lookup (OstreeRepo           *self,
  * There is an upfront cost to creating this mapping, as this will scan the
  * entire objects directory. If your commit is composed of mostly hardlinks to
  * existing ostree objects, then this will speed up considerably, so call it
- * before you call ostree_write_directory_to_mtree() or similar.  However,
+ * before you call ostree_repo_write_directory_to_mtree() or similar.  However,
  * ostree_repo_devino_cache_new() is better as it avoids scanning all objects.
  *
  * Multithreading: This function is *not* MT safe.
