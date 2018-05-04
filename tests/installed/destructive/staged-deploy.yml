@@ -3,7 +3,10 @@
 
 - name: Write staged-deploy commit
   shell: |
-    ostree --repo=/ostree/repo commit --parent="${commit}" -b staged-deploy --tree=ref="${commit}" --no-bindings
+    cd /ostree/repo/tmp
+    # https://github.com/ostreedev/ostree/issues/1569
+    ostree checkout -H ${commit} t
+    ostree commit --no-bindings --parent="${commit}" -b staged-deploy -I --consume t
     newcommit=$(ostree rev-parse staged-deploy)
     orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     ostree admin deploy --stage staged-deploy
@@ -51,7 +54,7 @@
   shell: |
     ostree admin deploy --stage staged-deploy
     test -f /run/ostree/staged-deployment
-    ostree --repo=/ostree/repo commit --parent="${commit}" -b nonstaged-deploy --tree=ref="${commit}" --no-bindings
+    ostree --repo=/ostree/repo refs --create nonstaged-deploy "${commit}"
     ostree admin deploy nonstaged-deploy
     ostree admin status > status.txt
     grep -vqFe '(staged)' status.txt
