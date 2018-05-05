@@ -4640,6 +4640,10 @@ sign_data (OstreeRepo     *self,
   if (gpgme_err_code (err) == GPG_ERR_EOF)
     return glnx_throw (error, "No gpg key found with ID %s (homedir: %s)", key_id,
                        homedir ? homedir : "<default>");
+  else if (gpgme_err_code (err) == GPG_ERR_AMBIGUOUS_NAME) {
+    return glnx_throw (error, "gpg key id %s ambiguous (homedir: %s). Try the fingerprint instead", key_id,
+                       homedir ? homedir : "<default>");
+   }
   else if (err != GPG_ERR_NO_ERROR)
     return ot_gpgme_throw (err, error, "Unable to lookup key ID %s", key_id);
 
