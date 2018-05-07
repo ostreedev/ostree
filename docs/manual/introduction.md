@@ -11,14 +11,77 @@ replicating them to clients.
 The underlying architecture might be summarized as "git for
 operating system binaries".  It operates in userspace, and will
 work on top of any Linux filesystem.  At its core is a git-like
-content-addressed object store, and layered on top of that is
-bootloader configuration, management of
-`/etc`, and other functions to perform an
-upgrade beyond just replicating files.
+content-addressed object store with branches (or "refs") to track
+meaningful filesystem trees within the store. Similarly, one can
+check out or commit to these branches.
+
+Layered on top of that is bootloader configuration, management of
+`/etc`, and other functions to perform an upgrade beyond just
+replicating files.
 
 You can use OSTree standalone in the pure replication model,
 but another approach is to add a package manager on top,
 thus creating a hybrid tree/package system.
+
+## Hello World example
+
+OSTree is mostly used as a library, but a quick tour of using its
+CLI tools can give a general idea of how it works at its most
+basic level.
+
+You can create a new OSTree repository using `init`:
+
+```
+$ ostree --repo=repo init
+```
+
+This will create a new `repo` directory containing your
+repository. Feel free to inspect it.
+
+Now, let's prepare some data to add to the repo:
+
+```
+$ mkdir tree
+$ echo "Hello world!" > tree/hello.txt
+```
+
+We can now import our `tree/` directory using the `commit`
+command:
+
+```
+$ ostree --repo=repo commit --branch=foo tree/
+```
+
+This will create a new branch `foo` pointing to the full tree
+imported from `tree/`. In fact, we could now delete `tree/` if we
+wanted to.
+
+To check that we indeed now have a `foo` branch, you can use the
+`refs` command:
+
+```
+$ ostree --repo=repo refs
+foo
+```
+
+We can also inspect the filesystem tree using the `ls` and `cat`
+commands:
+
+```
+$ ostree --repo=repo ls foo
+d00775 1000 1000      0 /
+-00664 1000 1000     13 /hello.txt
+$ ostree --repo=repo cat foo /hello.txt
+Hello world!
+```
+
+And finally, we can check out our tree from the repository:
+
+```
+$ ostree --repo=repo checkout foo tree-checkout/
+$ cat tree-checkout/hello.txt
+Hello world!
+```
 
 ## Comparison with "package managers"
 
