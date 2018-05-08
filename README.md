@@ -20,9 +20,9 @@ bootloader configuration.
 
 The core OSTree model is like git in that it checksums individual files and has
 a content-addressed-object store. It's unlike git in that it "checks out" the
-files via hardlinks, and they should thus be immutable. Therefore, another way
-to think of OSTree is that it's just a more polished version
-of
+files via hardlinks, and they thus need to be immutable to prevent corruption.
+Therefore, another way to think of OSTree is that it's just a more polished
+version of
 [Linux VServer hardlinks](http://linux-vserver.org/index.php?title=util-vserver:Vhashify&oldid=2285).
 
 **Features:**
