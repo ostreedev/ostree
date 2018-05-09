@@ -57,7 +57,7 @@ pkg_builddep() {
         fi
         # https://bugzilla.redhat.com/show_bug.cgi?id=1542453
         if rpm -q libgcrypt | grep -q libgcrypt-1.8.2-1.fc27; then
-            dnf install -y https://kojipkgs.fedoraproject.org//packages/libgcrypt/1.8.2/2.fc27/x86_64/libgcrypt-1.8.2-2.fc27.x86_64.rpm
+            dnf install -y https://fedorapeople.org/~walters/libgcrypt-1.8.2-2.fc27.x86_64.rpm
         fi
     else
         yum-builddep -y "$@"
