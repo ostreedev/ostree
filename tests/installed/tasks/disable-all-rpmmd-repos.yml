@@ -1,0 +1,5 @@
+- name: Disable all rpmmd repos
+  shell: |
+    for x in /etc/yum.repos.d/*.repo; do
+      sed -i -e 's,^enabled=,enabled=0,g' $x
+    done
