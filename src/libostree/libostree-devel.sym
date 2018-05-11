@@ -18,13 +18,15 @@
 ***/
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
+LIBOSTREE_2018.6 {
+} LIBOSTREE_2018.5;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the last number.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
  * with whatever the next version with new symbols will be.
-LIBOSTREE_2017.$NEWVERSION {
+LIBOSTREE_2018.$NEWVERSION {
 global:
   someostree_symbol_deleteme;
-} LIBOSTREE_2017.$LASTSTABLE;
+} LIBOSTREE_2018.$LASTSTABLE;
 */
