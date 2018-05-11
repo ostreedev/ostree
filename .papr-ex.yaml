@@ -1,0 +1,131 @@
+# https://fedoraproject.org/wiki/CI/Tests
+branches:
+    - master
+    - auto
+    - try
+
+context: FAH27-insttests
+required: true
+
+container:
+  image: registry.fedoraproject.org/fedora:27
+  kvm: true
+
+tests:
+  - ci/fah27-insttests.sh
+
+artifacts:
+  - tests/installed/artifacts/
+
+---
+
+# This suite skips the RPMs and does the build+unit tests in a container
+inherit: false
+branches:
+    - master
+    - auto
+    - try
+required: true
+container:
+  image: registry.fedoraproject.org/fedora:27
+context: f27-primary
+env:
+  # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
+  CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
+  # Only for CI with a known g-ir-scanner
+  GI_SCANNERFLAGS: '--warn-error'
+  ASAN_OPTIONS: 'detect_leaks=0'  # Right now we're not fully clean, but this gets us use-after-free etc
+  # TODO when we're doing leak checks: G_SLICE: "always-malloc"
+  CONFIGOPTS: '--with-curl --with-openssl'
+
+tests:
+  - ci/ci-commitmessage-submodules.sh
+  - ci/build-check.sh
+  - ci/ci-release-build.sh
+
+artifacts:
+  - test-suite.log
+  - config.log
+  - gdtr-results
+
+---
+# And now the contexts below here are variant container builds
+
+context: f27-rust
+inherit: true
+container:
+    image: registry.fedoraproject.org/fedora:27
+env:
+  CONFIGOPTS: '--enable-rust'
+  CI_PKGS: cargo
+
+tests:
+    - ci/build.sh
+    - make check TESTS=tests/test-rollsum
+
+---
+
+context: f27-gnutls
+inherit: true
+container:
+    image: registry.fedoraproject.org/fedora:27
+env:
+  CONFIGOPTS: '--with-crypto=gnutls'
+  CI_PKGS: pkgconfig(gnutls)
+
+tests:
+    - ci/build.sh
+    - make check TESTS=tests/test-basic.sh
+
+---
+
+inherit: true
+
+context: f27-experimental-api
+env:
+  CONFIGOPTS: '--enable-experimental-api'
+
+tests:
+  - ci/build-check.sh
+
+---
+
+inherit: true
+
+context: f27-minimal
+env:
+  CONFIGOPTS: '--without-curl --without-soup --disable-gtk-doc --disable-man
+   --disable-rust --without-libarchive --without-selinux --without-smack
+   --without-openssl --without-avahi --without-libmount --disable-rofiles-fuse
+   --disable-experimental-api'
+
+tests:
+  - ci/build.sh
+
+---
+
+inherit: true
+required: true
+
+context: f27-libsoup
+
+env:
+  CONFIGOPTS: "--without-curl --without-openssl --with-libsoup"
+
+tests:
+  - ci/build-check.sh
+
+---
+
+inherit: true
+required: true
+
+context: f27-introspection-tests
+
+env:
+    # ASAN conflicts with introspection testing;
+    # See https://github.com/ostreedev/ostree/issues/1014
+    INSTALLED_TESTS_PATTERN: "libostree/test-sizes.js libostree/test-sysroot.js libostree/test-core.js"
+
+tests:
+  - ci/build-check.sh
