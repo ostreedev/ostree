@@ -32,7 +32,7 @@ recommended set:
  - `/opt` → `/var/opt`
  - `/srv` → `/var/srv`
  - `/root` → `/var/roothome`
- - `/usr/local` → `/var/local`
+ - `/usr/local` → `/var/usrlocal`
  - `/mnt` → `/var/mnt`
  - `/tmp` → `/sysroot/tmp`
 
