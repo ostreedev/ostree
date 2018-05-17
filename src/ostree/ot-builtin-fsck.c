@@ -63,16 +63,31 @@ fsck_one_object (OstreeRepo            *repo,
   if (!ostree_repo_fsck_object (repo, objtype, checksum, cancellable, &temp_error))
     {
       gboolean object_missing = FALSE;
+      g_auto(GStrv) parent_commits = NULL;
+      g_autofree char *parent_commits_str = NULL;
+
+      if (object_parents)
+        {
+          parent_commits = ostree_repo_traverse_parents_get_commits (object_parents, key);
+          parent_commits_str = g_strjoinv (", ", parent_commits);
+        }
 
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
           g_clear_error (&temp_error);
-          g_printerr ("Object missing: %s.%s\n", checksum,
-                      ostree_object_type_to_string (objtype));
+          if (parent_commits_str)
+            g_printerr ("Object missing in commits %s: %s.%s\n", parent_commits_str, checksum,
+                        ostree_object_type_to_string (objtype));
+          else
+            g_printerr ("Object missing: %s.%s\n", checksum,
+                        ostree_object_type_to_string (objtype));
           object_missing = TRUE;
         }
       else
         {
+          if (parent_commits_str)
+            g_prefix_error (&temp_error, "In commits %s: ", parent_commits_str);
+
           if (opt_delete)
             {
               g_printerr ("%s\n", temp_error->message);
@@ -90,9 +105,8 @@ fsck_one_object (OstreeRepo            *repo,
         {
           *out_found_corruption = TRUE;
 
-          if (object_parents != NULL && objtype != OSTREE_OBJECT_TYPE_COMMIT)
+          if (parent_commits != NULL && objtype != OSTREE_OBJECT_TYPE_COMMIT)
             {
-              g_auto(GStrv) parent_commits =  ostree_repo_traverse_parents_get_commits (object_parents, key);
               int i;
 
               /* The commit was missing or deleted, mark the commit partial */

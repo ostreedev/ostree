@@ -104,7 +104,7 @@ assert_not_has_file repo/state/${rev}.commitpartial
 if $OSTREE fsck -q 2>err.txt; then
     assert_not_reached "fsck unexpectedly succeeded"
 fi
-assert_file_has_content_literal err.txt "Object missing:"
+assert_file_has_content_literal err.txt "Object missing"
 assert_file_has_content_literal err.txt "Marking commit as partial: $rev"
 assert_has_file repo/state/${rev}.commitpartial
 
