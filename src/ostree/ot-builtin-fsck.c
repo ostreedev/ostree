@@ -31,6 +31,7 @@
 
 static gboolean opt_quiet;
 static gboolean opt_delete;
+static gboolean opt_all;
 static gboolean opt_add_tombstones;
 static gboolean opt_verify_bindings;
 static gboolean opt_verify_back_refs;
@@ -43,6 +44,7 @@ static gboolean opt_verify_back_refs;
 static GOptionEntry options[] = {
   { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones, "Add tombstones for missing commits", NULL },
   { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
+  { "all", 'a', 0, G_OPTION_ARG_NONE, &opt_all, "Don't stop on first error", NULL },
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
   { "verify-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_verify_bindings, "Verify ref bindings", NULL },
   { "verify-back-refs", 0, 0, G_OPTION_ARG_NONE, &opt_verify_back_refs, "Verify back-references (implies --verify-bindings)", NULL },
@@ -93,6 +95,11 @@ fsck_one_object (OstreeRepo            *repo,
               g_printerr ("%s\n", temp_error->message);
               (void) ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
               object_missing = TRUE;
+            }
+          else if (opt_all)
+            {
+              *out_found_corruption = TRUE;
+              g_printerr ("%s\n", temp_error->message);
             }
           else
             {
