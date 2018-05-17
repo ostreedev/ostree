@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..8"
+echo "1..9"
 
 . $(dirname $0)/libtest.sh
 
@@ -118,6 +118,7 @@ rev=$($OSTREE rev-parse test2)
 
 filechecksum=$(ostree_file_path_to_checksum repo test2 /firstfile)
 echo corrupted >> repo/$(ostree_checksum_to_relative_object_path repo $filechecksum)
+unset filechecksum
 
 assert_not_has_file repo/state/${rev}.commitpartial
 
@@ -129,3 +130,25 @@ assert_file_has_content_literal err.txt "Marking commit as partial: $rev"
 assert_has_file repo/state/${rev}.commitpartial
 
 echo "ok corrupt file"
+
+cd ${test_tmpdir}
+rm repo files -rf
+setup_test_repository "bare"
+
+rev=$($OSTREE rev-parse test2)
+firstfilechecksum=$(ostree_file_path_to_checksum repo test2 /firstfile)
+echo corrupted >> repo/$(ostree_checksum_to_relative_object_path repo $firstfilechecksum)
+secondfilechecksum=$(ostree_file_path_to_checksum repo test2 /baz/cow)
+echo corrupted >> repo/$(ostree_checksum_to_relative_object_path repo $secondfilechecksum)
+
+assert_not_has_file repo/state/${rev}.commitpartial
+
+if $OSTREE fsck -a --delete 2>err.txt; then
+    assert_not_reached "fsck unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Corrupted file object.*${firstfilechecksum}"
+assert_file_has_content err.txt "Corrupted file object.*${secondfilechecksum}"
+assert_file_has_content_literal err.txt "Marking commit as partial: $rev"
+assert_has_file repo/state/${rev}.commitpartial
+
+echo "ok fsck --all"
