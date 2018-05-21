@@ -385,6 +385,8 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
   GError *error = *errorp;
   if (error)
     {
+      g_debug ("Request caught error: %s", error->message);
+
       if (!pull_data->caught_error)
         {
           pull_data->caught_error = TRUE;
