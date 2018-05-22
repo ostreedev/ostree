@@ -84,12 +84,10 @@ Boston, MA 02111-1307, USA.
                         fields to the summary.
                     </para>
 
-                <!-- FIXME: Uncomment this when collection ID support becomes non-experimental.
                 <para>If the repository has a collection ID configured, the
                   <filename>ostree-metadata</filename> branch for that collection ID
                   will also be updated with a new commit containing the given metadata,
                   which will be signed if the summary file is signed.</para>
-                -->
 
                 </listitem>
             </varlistentry>

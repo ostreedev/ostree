@@ -42,7 +42,7 @@ G_BEGIN_DECLS
  * (@collection_id, @ref_name). For backwards compatibility, @collection_id may be %NULL,
  * indicating a ref name which is not globally unique.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 typedef struct
 {
@@ -82,7 +82,7 @@ void ostree_collection_ref_freev (OstreeCollectionRef **refs);
  * g_auto(OstreeCollectionRefv) refs = NULL;
  * ]|
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 typedef OstreeCollectionRef** OstreeCollectionRefv;
 

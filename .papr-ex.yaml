@@ -81,17 +81,6 @@ tests:
 
 inherit: true
 
-context: f28-experimental-api
-env:
-  CONFIGOPTS: '--enable-experimental-api'
-
-tests:
-  - ci/build-check.sh
-
----
-
-inherit: true
-
 context: f28-minimal
 env:
   CONFIGOPTS: '--without-curl --without-soup --disable-gtk-doc --disable-man

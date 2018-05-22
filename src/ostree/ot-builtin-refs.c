@@ -31,9 +31,7 @@ static gboolean opt_delete;
 static gboolean opt_list;
 static gboolean opt_alias;
 static char *opt_create;
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 static gboolean opt_collections;
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
@@ -45,13 +43,10 @@ static GOptionEntry options[] = {
   { "list", 0, 0, G_OPTION_ARG_NONE, &opt_list, "Do not remove the prefix from the refs", NULL },
   { "alias", 'A', 0, G_OPTION_ARG_NONE, &opt_alias, "If used with --create, create an alias, otherwise just list aliases", NULL },
   { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit", "NEWREF" },
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections, "Enable listing collection IDs for refs", NULL },
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
   { NULL }
 };
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 static gboolean
 do_ref_with_collections (OstreeRepo    *repo,
                          const char    *refspec_prefix,
@@ -136,7 +131,6 @@ do_ref_with_collections (OstreeRepo    *repo,
  out:
   return ret;
 }
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellable *cancellable, GError **error)
 {
@@ -147,10 +141,8 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
   gboolean ret = FALSE;
   gboolean is_list;
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   if (opt_collections)
     return do_ref_with_collections (repo, refspec_prefix, cancellable, error);
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   /* If we're doing aliasing, we need the full list of aliases mostly to allow
    * replacing existing aliases.

@@ -63,14 +63,12 @@ static OstreeCommand commands[] = {
   { "export", OSTREE_BUILTIN_FLAG_NONE,
     ostree_builtin_export,
     "Stream COMMIT to stdout in tar format" },
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   { "find-remotes", OSTREE_BUILTIN_FLAG_NONE,
     ostree_builtin_find_remotes,
     "Find remotes to serve the given refs" },
   { "create-usb", OSTREE_BUILTIN_FLAG_NONE,
     ostree_builtin_create_usb,
     "Copy the refs to a USB stick" },
-#endif
   { "fsck", OSTREE_BUILTIN_FLAG_NONE,
     ostree_builtin_fsck,
     "Check the repository for consistency" },

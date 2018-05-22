@@ -50,7 +50,7 @@
  * refs are currently on a remote, or the commits they currently point to. Use
  * #OstreeRepo in combination with an #OstreeRemote to query that information.
  *
- * Since: 2017.6
+ * Since: 2018.6
  */
 
 OstreeRemote *
@@ -119,7 +119,7 @@ ostree_remote_new_from_keyfile (GKeyFile    *keyfile,
  * Increase the reference count on the given @remote.
  *
  * Returns: (transfer full): a copy of @remote, for convenience
- * Since: 2017.6
+ * Since: 2018.6
  */
 OstreeRemote *
 ostree_remote_ref (OstreeRemote *remote)
@@ -138,7 +138,7 @@ ostree_remote_ref (OstreeRemote *remote)
  * Decrease the reference count on the given @remote and free it if the
  * reference count reaches 0.
  *
- * Since: 2017.6
+ * Since: 2018.6
  */
 void
 ostree_remote_unref (OstreeRemote *remote)
@@ -158,11 +158,9 @@ ostree_remote_unref (OstreeRemote *remote)
     }
 }
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 G_DEFINE_BOXED_TYPE(OstreeRemote, ostree_remote,
                     ostree_remote_ref,
                     ostree_remote_unref);
-#endif
 
 /**
  * ostree_remote_get_name:
@@ -173,7 +171,7 @@ G_DEFINE_BOXED_TYPE(OstreeRemote, ostree_remote,
  * arbitrary, string.
  *
  * Returns: remote’s name
- * Since: 2017.7
+ * Since: 2018.6
  */
 const gchar *
 ostree_remote_get_name (OstreeRemote *remote)
@@ -191,7 +189,7 @@ ostree_remote_get_name (OstreeRemote *remote)
  * Get the URL from the remote.
  *
  * Returns: (transfer full): the remote's URL
- * Since: 2017.14
+ * Since: 2018.6
  */
 gchar *
 ostree_remote_get_url (OstreeRemote *remote)

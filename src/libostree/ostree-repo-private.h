@@ -460,33 +460,4 @@ OstreeRepoAutoLock * _ostree_repo_auto_lock_push (OstreeRepo          *self,
 void          _ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, _ostree_repo_auto_lock_cleanup)
 
-#ifndef OSTREE_ENABLE_EXPERIMENTAL_API
-
-/* These APIs are duplicated in the public headers when doing an
- * experimental-API build.
- */
-const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
-gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
-                                             const gchar  *collection_id,
-                                             GError      **error);
-
-gboolean      ostree_repo_list_collection_refs (OstreeRepo                  *self,
-                                                const char                  *match_collection_id,
-                                                GHashTable                 **out_all_refs,
-                                                OstreeRepoListRefsExtFlags   flags,
-                                                GCancellable                *cancellable,
-                                                GError                     **error);
-
-void          ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
-                                                          const OstreeCollectionRef *ref,
-                                                          const char                *checksum);
-
-gboolean      ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
-                                                        const OstreeCollectionRef  *ref,
-                                                        const char                 *checksum,
-                                                        GCancellable               *cancellable,
-                                                        GError                    **error);
-
-#endif  /* !OSTREE_ENABLE_EXPERIMENTAL_API */
-
 G_END_DECLS

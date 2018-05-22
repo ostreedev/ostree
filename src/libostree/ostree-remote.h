@@ -42,12 +42,8 @@ G_BEGIN_DECLS
  * remotes can only be passed around as (reference counted) opaque handles. In
  * future, more API may be added to create and interrogate them.
  *
- * Since: 2017.6
+ * Since: 2018.6
  */
-#ifndef OSTREE_ENABLE_EXPERIMENTAL_API
-/* This is in ostree-types.h otherwise */
-typedef struct OstreeRemote OstreeRemote;
-#endif
 
 _OSTREE_PUBLIC
 GType ostree_remote_get_type (void) G_GNUC_CONST;
