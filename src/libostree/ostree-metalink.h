@@ -48,7 +48,8 @@ GType   _ostree_metalink_get_type (void) G_GNUC_CONST;
 OstreeMetalink *_ostree_metalink_new (OstreeFetcher  *fetcher,
                                       const char     *requested_file,
                                       guint64         max_size,
-                                      OstreeFetcherURI *uri);
+                                      OstreeFetcherURI *uri,
+                                      guint             n_network_retries);
 
 gboolean _ostree_metalink_request_sync (OstreeMetalink        *self,
                                         OstreeFetcherURI      **out_target_uri,
