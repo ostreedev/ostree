@@ -108,16 +108,11 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
             return FALSE;
         }
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
       const char *collection_id = ostree_repo_get_collection_id (repo);
-#else  /* if !OSTREE_ENABLE_EXPERIMENTAL_API */
-      const char *collection_id = NULL;
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
       /* Write out a new metadata commit for the repository. */
       if (collection_id != NULL)
         {
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
           OstreeCollectionRef collection_ref = { (gchar *) collection_id, (gchar *) OSTREE_REPO_METADATA_REF };
           g_autofree char *old_ostree_metadata_checksum = NULL;
           g_autofree gchar *new_ostree_metadata_checksum = NULL;
@@ -192,10 +187,6 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
 
           if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
             return FALSE;
-#else  /* if !OSTREE_ENABLE_EXPERIMENTAL_API */
-          g_assert_not_reached ();
-          return FALSE;
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
         }
 
       /* Regenerate and sign the conventional summary file. */

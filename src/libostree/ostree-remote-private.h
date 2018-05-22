@@ -60,8 +60,4 @@ G_GNUC_INTERNAL
 OstreeRemote *ostree_remote_new_from_keyfile (GKeyFile    *keyfile,
                                               const gchar *group);
 
-#if (defined(OSTREE_COMPILATION) || GLIB_CHECK_VERSION(2, 44, 0)) && !defined(OSTREE_ENABLE_EXPERIMENTAL_API)
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRemote, ostree_remote_unref)
-#endif
-
 G_END_DECLS

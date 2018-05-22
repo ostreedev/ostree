@@ -59,9 +59,7 @@ static gboolean
 delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GHashTable) refs = NULL;  /* (element-type utf8 utf8) */
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   g_autoptr(GHashTable) collection_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   /* Check refs which are not in a collection. */
   if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))
@@ -73,7 +71,6 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
         return glnx_throw (error, "Commit '%s' is referenced by '%s'", commit_to_delete, ref);
     }
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   /* And check refs which *are* in a collection. */
   if (!ostree_repo_list_collection_refs (repo, NULL, &collection_refs,
                                          OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
@@ -87,7 +84,6 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
         return glnx_throw (error, "Commit '%s' is referenced by (%s, %s)",
                            commit_to_delete, ref->collection_id, ref->ref_name);
     }
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   if (!ot_enable_tombstone_commits (repo, error))
     return FALSE;

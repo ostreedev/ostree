@@ -331,7 +331,6 @@ parse_keyvalue_strings (GVariantBuilder   *builder,
   return TRUE;
 }
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 static void
 add_collection_binding (OstreeRepo       *repo,
                         GVariantBuilder  *metadata_builder)
@@ -344,7 +343,6 @@ add_collection_binding (OstreeRepo       *repo,
   g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
                          g_variant_new_variant (g_variant_new_string (collection_id)));
 }
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 static int
 compare_strings (gconstpointer a, gconstpointer b)
@@ -383,13 +381,11 @@ fill_bindings (OstreeRepo    *repo,
 
   add_ref_binding (metadata_builder);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   /* Allow the collection ID to be overridden using
    * --add-metadata-string=ostree.collection-binding=blah */
   if (metadata == NULL ||
       !g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING, "*", NULL))
     add_collection_binding (repo, metadata_builder);
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   *out_metadata = g_variant_ref_sink (g_variant_builder_end (metadata_builder));
 }

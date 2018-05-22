@@ -133,7 +133,7 @@ GPtrArray *ostree_repo_finder_resolve_all_finish (GAsyncResult  *result,
  * ostree_repo_find_remotes_async (2) there was an error in trying to get the
  * commit metadata (3) the checksum for this ref is %NULL in @ref_to_checksum.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 typedef struct
 {
@@ -176,7 +176,7 @@ void ostree_repo_finder_result_free (OstreeRepoFinderResult *result);
  * g_auto(OstreeRepoFinderResultv) results = NULL;
  * ]|
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 typedef OstreeRepoFinderResult** OstreeRepoFinderResultv;
 

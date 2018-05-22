@@ -58,13 +58,11 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Description</title>
 
-        <!-- FIXME: Reword this when no longer in experimental -->
         <para>
             OSTree has the ability do pulls not just from configured remote
             servers but also from peer computers on the LAN and from mounted
-            filesystems such as USB drives. Currently this requires compiling
-            OSTree with experimental API enabled, and it requires the use of
-            collection IDs and GPG verification.
+            filesystems such as USB drives. This functionality requires the use
+            of collection IDs and GPG verification.
         </para>
         <para>
             The <command>find-remotes</command> command searches for remotes

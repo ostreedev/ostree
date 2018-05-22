@@ -55,7 +55,7 @@
  * intersection is non-empty, that remote is returned as a result. Remotes which
  * do not have their `collection-id` key configured are ignored.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 
 static void ostree_repo_finder_config_iface_init (OstreeRepoFinderInterface *iface);
@@ -233,7 +233,7 @@ ostree_repo_finder_config_iface_init (OstreeRepoFinderInterface *iface)
  * Create a new #OstreeRepoFinderConfig.
  *
  * Returns: (transfer full): a new #OstreeRepoFinderConfig
- * Since: 2017.8
+ * Since: 2018.6
  */
 OstreeRepoFinderConfig *
 ostree_repo_finder_config_new (void)

@@ -572,6 +572,9 @@ AM_COND_IF([BUILDOPT_IS_DEVEL_BUILD],
             release_build_type=release)
 OSTREE_FEATURES="$OSTREE_FEATURES $release_build_type"
 
+# P2P API is public in OSTree >= 2018.6
+OSTREE_FEATURES="$OSTREE_FEATURES p2p"
+
 AC_CONFIG_FILES([
 Makefile
 apidoc/Makefile

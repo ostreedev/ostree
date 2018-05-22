@@ -120,10 +120,23 @@ __ostree_compreply_oses() {
     fi
 }
 
+# Find refs associated with the given collection ID under $repo_path.
+__ostree_compreply_collection_refs() {
+    local collection_id=( $1 )
+    refs=$( ostree refs --repo $repo_path --collections $collection_id 2>/dev/null | cut -d ' ' -f 2 | sed -e 's/)$//' )
+    COMPREPLY+=( $( compgen -W "$refs" -- "$cur" ) )
+}
+
 # Find refs under $repo_path.
 __ostree_compreply_refs() {
     refs=$( ostree refs --repo $repo_path 2>/dev/null )
     COMPREPLY+=( $( compgen -W "$refs" -- "$cur" ) )
+}
+
+# Find collection IDs under $repo_path.
+__ostree_compreply_collection_ids() {
+    collection_ids=$( ostree refs --repo $repo_path --collections 2>/dev/null | cut -d ',' -f 1 | sed -e 's/^(//' | sort | uniq )
+    COMPREPLY+=( $( compgen -W "$collection_ids" -- "$cur" ) )
 }
 
 # Find remotes under $repo_path.
@@ -410,6 +423,49 @@ _ostree_config() {
     return 0
 }
 
+_ostree_create_usb() {
+    local boolean_options="
+        $main_boolean_options
+        --disable-fsync
+    "
+
+    local options_with_args="
+        --destination-repo
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --destination-repo|--repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_dirs_only
+            elif [ $cword -gt $argpos ] && [ $(((cword - argpos) % 2)) -eq 1 ]; then
+                __ostree_compreply_collection_ids
+            elif [ $cword -gt $argpos ] && [ $(((cword - argpos) % 2)) -eq 0 ]; then
+                __ostree_compreply_collection_refs "${words[$cword - 1]}"
+            fi
+    esac
+
+    return 0
+}
+
 _ostree_diff() {
     local boolean_options="
         $main_boolean_options
@@ -489,6 +545,56 @@ _ostree_export() {
 
             if [ $cword -eq $argpos ]; then
                 __ostree_compreply_commits
+            fi
+    esac
+
+    return 0
+}
+
+_ostree_find_remotes() {
+    local boolean_options="
+        $main_boolean_options
+        --disable-fsync
+        --pull
+    "
+
+    local options_with_args="
+        --finders
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --finders)
+            local choices="config lan mount"
+            local config_first="config,lan config,mount config,lan,mount config,mount,lan"
+            local lan_first="lan,config lan,mount lan,config,mount lan,mount,config"
+            local mount_first="mount,config mount,lan mount,lan,config mount,config,lan"
+            COMPREPLY+=( $( compgen -W "$choices $config_first $lan_first $mount_first" -- "$cur" ) )
+            return 0
+            ;;
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -ge $argpos ] && [ $(((cword - argpos) % 2)) -eq 0 ]; then
+                __ostree_compreply_collection_ids
+            elif [ $cword -ge $argpos ] && [ $(((cword - argpos) % 2)) -eq 1 ]; then
+                __ostree_compreply_collection_refs "${words[$cword - 1]}"
             fi
     esac
 
@@ -576,6 +682,7 @@ _ostree_init() {
     "
 
     local options_with_args="
+        --collection-id
         --mode
         --repo
     "
@@ -839,6 +946,7 @@ _ostree_refs() {
     local boolean_options="
         $main_boolean_options
         --alias -A
+        --collections -c
         --delete
         --list
     "
@@ -878,6 +986,7 @@ _ostree_remote_add() {
     "
 
     local options_with_args="
+        --collection-id
         --contenturl
         --gpg-import
         --repo
@@ -1615,8 +1724,10 @@ _ostree() {
         checksum
         commit
         config
+        create-usb
         diff
         export
+        find-remotes
         fsck
         gpg-sign
         init

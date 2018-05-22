@@ -60,7 +60,7 @@
  * which uses #OstreeRepoFinder. For production use, #OstreeRepoFinderConfig is
  * recommended instead.
  *
- * Since: 2017.13
+ * Since: 2018.6
  */
 
 static void ostree_repo_finder_override_iface_init (OstreeRepoFinderInterface *iface);
@@ -295,7 +295,7 @@ ostree_repo_finder_override_iface_init (OstreeRepoFinderInterface *iface)
  * Create a new #OstreeRepoFinderOverride.
  *
  * Returns: (transfer full): a new #OstreeRepoFinderOverride
- * Since: 2017.13
+ * Since: 2018.6
  */
 OstreeRepoFinderOverride *
 ostree_repo_finder_override_new (void)
@@ -310,7 +310,7 @@ ostree_repo_finder_override_new (void)
  * Add the given @uri to the set of URIs which the repo finder will search for
  * matching refs when ostree_repo_finder_resolve_async() is called on it.
  *
- * Since: 2017.13
+ * Since: 2018.6
  */
 void
 ostree_repo_finder_override_add_uri (OstreeRepoFinderOverride *self,

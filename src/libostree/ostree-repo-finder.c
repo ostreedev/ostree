@@ -138,7 +138,7 @@ static void resolve_cb (GObject      *obj,
  * Pass the results to ostree_repo_pull_from_remotes_async() to pull the given
  * @refs from those remotes.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 void
 ostree_repo_finder_resolve_async (OstreeRepoFinder                  *self,
@@ -196,7 +196,7 @@ resolve_cb (GObject      *obj,
  *
  * Returns: (transfer full) (element-type OstreeRepoFinderResult): array of zero
  *    or more results
- * Since: 2017.8
+ * Since: 2018.6
  */
 GPtrArray *
 ostree_repo_finder_resolve_finish (OstreeRepoFinder  *self,
@@ -254,7 +254,7 @@ static void resolve_all_finished_one (GTask *task);
  * A version of ostree_repo_finder_resolve_async() which queries one or more
  * @finders in parallel and combines the results.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 void
 ostree_repo_finder_resolve_all_async (OstreeRepoFinder * const          *finders,
@@ -411,7 +411,7 @@ resolve_all_finished_one (GTask *task)
  *
  * Returns: (transfer full) (element-type OstreeRepoFinderResult): array of zero
  *    or more results
- * Since: 2017.8
+ * Since: 2018.6
  */
 GPtrArray *
 ostree_repo_finder_resolve_all_finish (GAsyncResult  *result,
@@ -446,7 +446,7 @@ G_DEFINE_BOXED_TYPE (OstreeRepoFinderResult, ostree_repo_finder_result,
  * are as described in the #OstreeRepoFinderResult documentation.
  *
  * Returns: (transfer full): a new #OstreeRepoFinderResult
- * Since: 2017.8
+ * Since: 2018.6
  */
 OstreeRepoFinderResult *
 ostree_repo_finder_result_new (OstreeRemote     *remote,
@@ -480,7 +480,7 @@ ostree_repo_finder_result_new (OstreeRemote     *remote,
  * Copy an #OstreeRepoFinderResult.
  *
  * Returns: (transfer full): a newly allocated copy of @result
- * Since: 2017.8
+ * Since: 2018.6
  */
 OstreeRepoFinderResult *
 ostree_repo_finder_result_dup (OstreeRepoFinderResult *result)
@@ -502,7 +502,7 @@ ostree_repo_finder_result_dup (OstreeRepoFinderResult *result)
  *
  * Returns: <0 if @a is ordered before @b, 0 if they are ordered equally,
  *    >0 if @b is ordered before @a
- * Since: 2017.8
+ * Since: 2018.6
  */
 gint
 ostree_repo_finder_result_compare (const OstreeRepoFinderResult *a,
@@ -549,7 +549,7 @@ ostree_repo_finder_result_compare (const OstreeRepoFinderResult *a,
  *
  * Free the given @result.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 void
 ostree_repo_finder_result_free (OstreeRepoFinderResult *result)
@@ -571,7 +571,7 @@ ostree_repo_finder_result_free (OstreeRepoFinderResult *result)
  *
  * Free the given @results array, freeing each element and the container.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 void
 ostree_repo_finder_result_freev (OstreeRepoFinderResult **results)

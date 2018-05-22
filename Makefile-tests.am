@@ -54,7 +54,11 @@ dist_uninstalled_test_scripts = tests/test-symbols.sh tests/coccinelle.sh
 # This overrides the glib-tap.mk emphasis on doing both, if we'd
 # used e.g. `dist_test_scripts`.
 dist_test_scripts = $(NULL)
-test_programs = $(NULL)
+test_programs = \
+	tests/test-bloom \
+	tests/test-repo-finder-config \
+	tests/test-repo-finder-mount \
+	$(NULL)
 _installed_or_uninstalled_test_scripts = \
 	tests/test-basic.sh \
 	tests/test-basic-user.sh \
@@ -119,9 +123,6 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-summary-update.sh \
 	tests/test-summary-view.sh \
 	tests/test-no-initramfs.sh \
-	$(NULL)
-
-experimental_test_scripts = \
 	tests/test-create-usb.sh \
 	tests/test-find-remotes.sh \
 	tests/test-fsck-collections.sh \
@@ -133,8 +134,12 @@ experimental_test_scripts = \
 	tests/test-summary-collections.sh \
 	tests/test-pull-collections.sh \
 	$(NULL)
+
+experimental_test_scripts = \
+	$(NULL)
 test_extra_programs = \
 	tests/get-byte-order \
+	tests/repo-finder-mount \
 	$(NULL)
 
 tests_get_byte_order_SOURCES = tests/get-byte-order.c
@@ -147,7 +152,6 @@ tests_repo_finder_mount_LDADD = $(common_tests_ldadd) libostreetest.la
 
 if ENABLE_EXPERIMENTAL_API
 _installed_or_uninstalled_test_scripts += $(experimental_test_scripts)
-test_extra_programs += tests/repo-finder-mount
 else
 EXTRA_DIST += $(experimental_test_scripts)
 endif
@@ -240,16 +244,8 @@ _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-u
 	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
 	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo
 
-if ENABLE_EXPERIMENTAL_API
-test_programs += \
-	tests/test-bloom \
-	tests/test-repo-finder-config \
-	tests/test-repo-finder-mount \
-	$(NULL)
-
 if USE_AVAHI
 test_programs += tests/test-repo-finder-avahi
-endif
 endif
 
 # An interactive tool
