@@ -1939,12 +1939,11 @@ enqueue_one_object_request (OtPullData                *pull_data,
     {
       g_debug ("queuing fetch of %s.%s%s", checksum,
                ostree_object_type_to_string (objtype),
-               is_detached_meta ? " (detached)" : "");
+               fetch_data->is_detached_meta ? " (detached)" : "");
 
       if (is_meta)
         {
-          GVariant *objname = ostree_object_name_serialize (checksum, objtype);
-          g_hash_table_insert (pull_data->pending_fetch_metadata, objname, fetch_data);
+          g_hash_table_insert (pull_data->pending_fetch_metadata, g_variant_ref (fetch_data->object), fetch_data);
         }
       else
         {
