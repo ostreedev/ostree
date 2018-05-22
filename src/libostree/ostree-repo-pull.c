@@ -2487,13 +2487,13 @@ on_superblock_fetched (GObject   *src,
                        gpointer      data)
 
 {
-  FetchDeltaSuperData *fdata = data;
-  OtPullData *pull_data = fdata->pull_data;
+  FetchDeltaSuperData *fetch_data = data;
+  OtPullData *pull_data = fetch_data->pull_data;
   g_autoptr(GError) local_error = NULL;
   GError **error = &local_error;
   g_autoptr(GBytes) delta_superblock_data = NULL;
-  const char *from_revision = fdata->from_revision;
-  const char *to_revision = fdata->to_revision;
+  const char *from_revision = fetch_data->from_revision;
+  const char *to_revision = fetch_data->to_revision;
 
   if (!_ostree_fetcher_request_to_membuf_finish ((OstreeFetcher*)src,
                                                  res,
@@ -2510,7 +2510,7 @@ on_superblock_fetched (GObject   *src,
           goto out;
         }
 
-      queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, fdata->requested_ref);
+      queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, fetch_data->requested_ref);
     }
   else
     {
@@ -2545,7 +2545,7 @@ on_superblock_fetched (GObject   *src,
                                                                        delta_superblock_data, FALSE));
 
       g_ptr_array_add (pull_data->static_delta_superblocks, g_variant_ref (delta_superblock));
-      if (!process_one_static_delta (pull_data, from_revision, to_revision, delta_superblock, fdata->requested_ref,
+      if (!process_one_static_delta (pull_data, from_revision, to_revision, delta_superblock, fetch_data->requested_ref,
                                      pull_data->cancellable, error))
         goto out;
     }
