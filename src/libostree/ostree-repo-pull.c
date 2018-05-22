@@ -224,6 +224,9 @@ static void queue_scan_one_metadata_object_c (OtPullData                *pull_da
                                               guint                      recursion_depth,
                                               const OstreeCollectionRef *ref);
 
+static void enqueue_one_object_request_s (OtPullData      *pull_data,
+                                          FetchObjectData *fetch_data);
+
 static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           const char                 *checksum,
                                           OstreeObjectType            objtype,
@@ -1917,31 +1920,14 @@ scan_one_metadata_object (OtPullData                 *pull_data,
 }
 
 static void
-enqueue_one_object_request (OtPullData                *pull_data,
-                            const char                *checksum,
-                            OstreeObjectType           objtype,
-                            const char                *path,
-                            gboolean                   is_detached_meta,
-                            gboolean                   object_is_stored,
-                            const OstreeCollectionRef *ref)
+enqueue_one_object_request_s (OtPullData      *pull_data,
+                              FetchObjectData *fetch_data)
 {
-  gboolean is_meta;
-  FetchObjectData *fetch_data;
+  const char *checksum;
+  OstreeObjectType objtype;
 
-  is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
-
-  fetch_data = g_new0 (FetchObjectData, 1);
-  fetch_data->pull_data = pull_data;
-  fetch_data->object = ostree_object_name_serialize (checksum, objtype);
-  fetch_data->path = g_strdup (path);
-  fetch_data->is_detached_meta = is_detached_meta;
-  fetch_data->object_is_stored = object_is_stored;
-  fetch_data->requested_ref = (ref != NULL) ? ostree_collection_ref_dup (ref) : NULL;
-
-  if (is_meta)
-    pull_data->n_requested_metadata++;
-  else
-    pull_data->n_requested_content++;
+  ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
+  gboolean is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
 
   /* Are too many requests are in flight? */
   if (fetcher_queue_is_full (pull_data))
@@ -1963,6 +1949,35 @@ enqueue_one_object_request (OtPullData                *pull_data,
     {
       start_fetch (pull_data, fetch_data);
     }
+}
+
+static void
+enqueue_one_object_request (OtPullData                *pull_data,
+                            const char                *checksum,
+                            OstreeObjectType           objtype,
+                            const char                *path,
+                            gboolean                   is_detached_meta,
+                            gboolean                   object_is_stored,
+                            const OstreeCollectionRef *ref)
+{
+  FetchObjectData *fetch_data;
+
+  fetch_data = g_new0 (FetchObjectData, 1);
+  fetch_data->pull_data = pull_data;
+  fetch_data->object = ostree_object_name_serialize (checksum, objtype);
+  fetch_data->path = g_strdup (path);
+  fetch_data->is_detached_meta = is_detached_meta;
+  fetch_data->object_is_stored = object_is_stored;
+  fetch_data->requested_ref = (ref != NULL) ? ostree_collection_ref_dup (ref) : NULL;
+
+  gboolean is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
+
+  if (is_meta)
+    pull_data->n_requested_metadata++;
+  else
+    pull_data->n_requested_content++;
+
+  enqueue_one_object_request_s (pull_data, g_steal_pointer (&fetch_data));
 }
 
 static void
