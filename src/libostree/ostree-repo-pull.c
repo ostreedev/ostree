@@ -226,6 +226,8 @@ static void queue_scan_one_metadata_object_c (OtPullData                *pull_da
 
 static void enqueue_one_object_request_s (OtPullData      *pull_data,
                                           FetchObjectData *fetch_data);
+static void enqueue_one_static_delta_part_request_s (OtPullData           *pull_data,
+                                                     FetchStaticDeltaData *fetch_data);
 
 static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           const char                 *checksum,
@@ -2132,6 +2134,24 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
 }
 
 static void
+enqueue_one_static_delta_part_request_s (OtPullData           *pull_data,
+                                         FetchStaticDeltaData *fetch_data)
+{
+  if (fetcher_queue_is_full (pull_data))
+    {
+      g_debug ("queuing fetch of static delta %s-%s part %u",
+               fetch_data->from_revision ?: "empty",
+               fetch_data->to_revision, fetch_data->i);
+
+      g_hash_table_add (pull_data->pending_fetch_deltaparts, fetch_data);
+    }
+  else
+    {
+      start_fetch_deltapart (pull_data, fetch_data);
+    }
+}
+
+static void
 start_fetch_deltapart (OtPullData *pull_data,
                        FetchStaticDeltaData *fetch)
 {
@@ -2313,12 +2333,7 @@ process_one_static_delta (OtPullData                 *pull_data,
         }
       else
         {
-          if (!fetcher_queue_is_full (pull_data))
-            start_fetch_deltapart (pull_data, fetch_data);
-          else
-            {
-              g_hash_table_add (pull_data->pending_fetch_deltaparts, fetch_data);
-            }
+          enqueue_one_static_delta_part_request_s (pull_data, g_steal_pointer (&fetch_data));
         }
     }
 
