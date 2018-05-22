@@ -2462,6 +2462,16 @@ typedef struct {
 } FetchDeltaSuperData;
 
 static void
+fetch_delta_super_data_free (FetchDeltaSuperData *fetch_data)
+{
+  g_free (fetch_data->from_revision);
+  g_free (fetch_data->to_revision);
+  if (fetch_data->requested_ref)
+    ostree_collection_ref_free (fetch_data->requested_ref);
+  g_free (fetch_data);
+}
+
+static void
 set_required_deltas_error (GError **error,
                            const char *from_revision,
                            const char *to_revision)
@@ -2541,15 +2551,12 @@ on_superblock_fetched (GObject   *src,
     }
 
  out:
-  g_free (fdata->from_revision);
-  g_free (fdata->to_revision);
-  if (fdata->requested_ref)
-    ostree_collection_ref_free (fdata->requested_ref);
-  g_free (fdata);
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;
   check_outstanding_requests_handle_error (pull_data, &local_error);
+
+  g_clear_pointer (&fetch_data, fetch_delta_super_data_free);
 }
 
 static gboolean
