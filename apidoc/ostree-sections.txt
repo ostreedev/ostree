@@ -413,6 +413,7 @@ ostree_repo_commit_traverse_iter_next
 OstreeRepoPruneFlags
 ostree_repo_prune
 ostree_repo_prune_static_deltas
+ostree_repo_traverse_reachable_refs
 ostree_repo_prune_from_reachable
 OstreeRepoPullFlags
 ostree_repo_pull
@@ -508,6 +509,7 @@ ostree_sysroot_get_deployment_dirpath
 ostree_sysroot_get_deployment_origin_path
 ostree_sysroot_cleanup
 ostree_sysroot_prepare_cleanup
+ostree_sysroot_cleanup_prune_repo
 ostree_sysroot_repo
 ostree_sysroot_get_repo
 ostree_sysroot_get_staged_deployment

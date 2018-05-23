@@ -420,24 +420,75 @@ generate_deployment_refs (OstreeSysroot       *self,
   return TRUE;
 }
 
-static gboolean
-prune_repo (OstreeRepo    *repo,
-            GCancellable  *cancellable,
-            GError       **error)
+/**
+ * ostree_sysroot_cleanup_prune_repo:
+ * @sysroot: Sysroot
+ * @options: Flags controlling pruning
+ * @out_objects_total: (out): Number of objects found
+ * @out_objects_pruned: (out): Number of objects deleted
+ * @out_pruned_object_size_total: (out): Storage size in bytes of objects deleted
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Prune the system repository.  This is a thin wrapper
+ * around ostree_repo_prune_from_reachable(); the primary
+ * addition is that this function automatically gathers
+ * all deployed commits into the reachable set.
+ *
+ * You generally want to at least set the `OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY`
+ * flag in @options.  A commit traversal depth of `0` is assumed.
+ *
+ * Locking: exclusive
+ * Since: 2018.6
+ */
+gboolean
+ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
+                                   OstreeRepoPruneOptions *options,
+                                   gint                   *out_objects_total,
+                                   gint                   *out_objects_pruned,
+                                   guint64                *out_pruned_object_size_total,
+                                   GCancellable           *cancellable,
+                                   GError                **error)
 {
-  gint n_objects_total;
-  gint n_objects_pruned;
-  guint64 freed_space;
-  if (!ostree_repo_prune (repo, OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, 0,
-                          &n_objects_total, &n_objects_pruned, &freed_space,
-                          cancellable, error))
+  GLNX_AUTO_PREFIX_ERROR ("Pruning system repository", error);
+  OstreeRepo *repo = ostree_sysroot_repo (sysroot);
+  const guint depth = 0; /* Historical default */
+
+  /* Hold an exclusive lock by default across gathering refs and doing
+   * the prune.
+   */
+  g_autoptr(OstreeRepoAutoLock) lock =
+    _ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+  if (!lock)
     return FALSE;
 
-  if (freed_space > 0)
+  /* Ensure reachable has refs, but default to depth 0.  This is
+   * what we've always done for the system repo, but perhaps down
+   * the line we could add a depth flag to the repo config or something?
+   */
+  if (!ostree_repo_traverse_reachable_refs (repo, depth, options->reachable, cancellable, error))
+    return FALSE;
+
+  /* Since ostree was created we've been generating "deployment refs" in
+   * generate_deployment_refs() that look like ostree/0/1 etc. to ensure that
+   * anything doing a direct prune won't delete commits backing deployments.
+   * This bit might allow us to eventually drop that behavior, although we'd
+   * have to be very careful to ensure that all software is updated to use
+   * `ostree_sysroot_cleanup_prune_repo()`.
+   */
+  for (guint i = 0; i < sysroot->deployments->len; i++)
     {
-      g_autofree char *freed_space_str = g_format_size_full (freed_space, 0);
-      g_print ("Freed objects: %s\n", freed_space_str);
+      const char *checksum = ostree_deployment_get_csum (sysroot->deployments->pdata[i]);
+      if (!ostree_repo_traverse_commit_union (repo, checksum, depth, options->reachable,
+                                              cancellable, error))
+        return FALSE;
     }
+
+  if (!ostree_repo_prune_from_reachable (repo, options,
+                                         out_objects_total, out_objects_pruned,
+                                         out_pruned_object_size_total,
+                                         cancellable, error))
+    return FALSE;
 
   return TRUE;
 }
@@ -501,8 +552,22 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
 
   if (do_prune_repo)
     {
-      if (!prune_repo (repo, cancellable, error))
-        return glnx_prefix_error (error, "Pruning repo");
+      gint n_objects_total;
+      gint n_objects_pruned;
+      guint64 freed_space;
+      g_autoptr(GHashTable) reachable = ostree_repo_traverse_new_reachable ();
+      OstreeRepoPruneOptions opts = { OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, reachable };
+      if (!ostree_sysroot_cleanup_prune_repo (self, &opts, &n_objects_total,
+                                              &n_objects_pruned, &freed_space,
+                                              cancellable, error))
+        return FALSE;
+
+      /* TODO remove printf in library */
+      if (freed_space > 0)
+        {
+          g_autofree char *freed_space_str = g_format_size_full (freed_space, 0);
+          g_print ("Freed objects: %s\n", freed_space_str);
+        }
     }
 
   return TRUE;
