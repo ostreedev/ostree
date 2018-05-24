@@ -87,10 +87,12 @@ __ostree_compreply_all_options() {
 }
 
 __ostree_compreply_all_files() {
+    compopt -o nospace
     COMPREPLY+=( $( compgen -f "$cur" ) )
 }
 
 __ostree_compreply_dirs_only() {
+    compopt -o nospace
     COMPREPLY+=( $( compgen -d "$cur" ) )
 }
 
