@@ -897,7 +897,7 @@ fetch_ref_contents (OtPullData                 *pull_data,
 
   if (!ostree_validate_checksum_string (ret_contents, error))
     return glnx_prefix_error (error, "Fetching checksum for ref (%s, %s)",
-                              ref->collection_id ? ref->collection_id : "(empty)",
+                              ref->collection_id ?: "(empty)",
                               ref->ref_name);
 
   ot_transfer_out_value (out_contents, &ret_contents);
@@ -2239,7 +2239,7 @@ process_one_static_delta (OtPullData                 *pull_data,
       if (have_all)
         {
           g_debug ("Have all objects from static delta %s-%s part %u",
-                   from_revision ? from_revision : "empty", to_revision,
+                   from_revision ?: "empty", to_revision,
                    i);
           pull_data->fetched_deltapart_size += size;
           pull_data->n_fetched_deltaparts++;
@@ -2505,7 +2505,7 @@ on_superblock_fetched (GObject   *src,
   else
     {
       g_autoptr(GVariant) delta_superblock = NULL;
-      g_autofree gchar *delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
+      g_autofree gchar *delta = g_strconcat (from_revision ?: "", from_revision ? "-" : "", to_revision, NULL);
       const guchar *expected_summary_digest = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
       guint8 actual_summary_digest[OSTREE_SHA256_DIGEST_LEN];
 
@@ -3150,7 +3150,7 @@ initiate_request (OtPullData                 *pull_data,
       if (pull_data->remote_name != NULL)
         refspec = g_strdup_printf ("%s:%s", pull_data->remote_name, ref->ref_name);
       if (!ostree_repo_resolve_rev (pull_data->repo,
-                                    (refspec != NULL) ? refspec : ref->ref_name, TRUE,
+                                    refspec ?: ref->ref_name, TRUE,
                                     &delta_from_revision, error))
         return FALSE;
 
@@ -3913,7 +3913,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   else if (refs_to_fetch != NULL)
     {
       char **strviter = refs_to_fetch;
-      char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
+      char **commitid_strviter = override_commit_ids ?: NULL;
 
       while (*strviter)
         {
@@ -4139,7 +4139,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                     ref, checksum);
           else
             ostree_repo_transaction_set_ref (pull_data->repo,
-                                             (pull_data->remote_refspec_name != NULL) ? pull_data->remote_refspec_name : pull_data->remote_name,
+                                             pull_data->remote_refspec_name ?: pull_data->remote_name,
                                              ref->ref_name, checksum);
         }
     }
