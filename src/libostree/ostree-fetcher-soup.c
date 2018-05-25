@@ -1072,10 +1072,27 @@ on_request_sent (GObject        *object,
               GIOErrorEnum code;
               switch (msg->status_code)
                 {
-                case 404:
-                case 403:
-                case 410:
+                case SOUP_STATUS_NOT_FOUND:
+                case SOUP_STATUS_FORBIDDEN:
+                case SOUP_STATUS_GONE:
                   code = G_IO_ERROR_NOT_FOUND;
+                  break;
+                case SOUP_STATUS_CANCELLED:
+                  code = G_IO_ERROR_CANCELLED;
+                  break;
+                case SOUP_STATUS_REQUEST_TIMEOUT:
+                  code = G_IO_ERROR_TIMED_OUT;
+                  break;
+                case SOUP_STATUS_CANT_RESOLVE:
+                case SOUP_STATUS_CANT_CONNECT:
+                  code = G_IO_ERROR_HOST_NOT_FOUND;
+                  break;
+                case SOUP_STATUS_IO_ERROR:
+#if !GLIB_CHECK_VERSION(2, 44, 0)
+                  code = G_IO_ERROR_BROKEN_PIPE;
+#else
+                  code = G_IO_ERROR_CONNECTION_CLOSED;
+#endif
                   break;
                 default:
                   code = G_IO_ERROR_FAILED;
