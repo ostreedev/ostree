@@ -30,11 +30,11 @@
 #include "ostree.h"
 #include "otutil.h"
 #include "ostree-repo-pull-private.h"
+#include "ostree-repo-private.h"
 
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
 
 #include "ostree-core-private.h"
-#include "ostree-repo-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-metalink.h"
 #include "ostree-fetcher-util.h"
@@ -1435,51 +1435,6 @@ commitstate_is_partial (OtPullData   *pull_data,
     || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
 }
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-/* Reads the collection-id of a given remote from the repo
- * configuration.
- */
-static char *
-get_real_remote_repo_collection_id (OstreeRepo  *repo,
-                                    const gchar *remote_name)
-{
-  /* remote_name == NULL can happen for pull-local */
-  if (!remote_name)
-    return NULL;
-
-  g_autofree gchar *remote_collection_id = NULL;
-  if (!ostree_repo_get_remote_option (repo, remote_name, "collection-id", NULL,
-                                      &remote_collection_id, NULL) ||
-      (remote_collection_id == NULL) ||
-      (remote_collection_id[0] == '\0'))
-    return NULL;
-
-  return g_steal_pointer (&remote_collection_id);
-}
-
-/* Reads the collection-id of the remote repo. Where it will be read
- * from depends on whether we pull from the "local" remote repo (the
- * "file://" URL) or "remote" remote repo (likely the "http(s)://"
- * URL).
- */
-static char *
-get_remote_repo_collection_id (OtPullData *pull_data)
-{
-  if (pull_data->remote_repo_local != NULL)
-    {
-      const char *remote_collection_id =
-        ostree_repo_get_collection_id (pull_data->remote_repo_local);
-      if ((remote_collection_id == NULL) ||
-          (remote_collection_id[0] == '\0'))
-        return NULL;
-      return g_strdup (remote_collection_id);
-    }
-
-  return get_real_remote_repo_collection_id (pull_data->repo,
-                                             pull_data->remote_name);
-}
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
-
 #endif  /* HAVE_LIBCURL_OR_LIBSOUP */
 
 /**
@@ -1586,6 +1541,164 @@ _ostree_repo_verify_bindings (const char  *collection_id,
 
   return TRUE;
 }
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+/* Reads the collection-id of a given remote from the repo
+ * configuration.
+ */
+static char *
+get_real_remote_repo_collection_id (OstreeRepo  *repo,
+                                    const gchar *remote_name)
+{
+  /* remote_name == NULL can happen for pull-local */
+  if (!remote_name)
+    return NULL;
+
+  g_autofree gchar *remote_collection_id = NULL;
+  if (!ostree_repo_get_remote_option (repo, remote_name, "collection-id", NULL,
+                                      &remote_collection_id, NULL) ||
+      (remote_collection_id == NULL) ||
+      (remote_collection_id[0] == '\0'))
+    return NULL;
+
+  return g_steal_pointer (&remote_collection_id);
+}
+
+#ifdef HAVE_LIBCURL_OR_LIBSOUP
+
+/* Reads the collection-id of the remote repo. Where it will be read
+ * from depends on whether we pull from the "local" remote repo (the
+ * "file://" URL) or "remote" remote repo (likely the "http(s)://"
+ * URL).
+ */
+static char *
+get_remote_repo_collection_id (OtPullData *pull_data)
+{
+  if (pull_data->remote_repo_local != NULL)
+    {
+      const char *remote_collection_id =
+        ostree_repo_get_collection_id (pull_data->remote_repo_local);
+      if ((remote_collection_id == NULL) ||
+          (remote_collection_id[0] == '\0'))
+        return NULL;
+      return g_strdup (remote_collection_id);
+    }
+
+  return get_real_remote_repo_collection_id (pull_data->repo,
+                                             pull_data->remote_name);
+}
+
+#endif  /* HAVE_LIBCURL_OR_LIBSOUP */
+
+/* Check whether the given remote exists, has a `collection-id` key set, and it
+ * equals @collection_id. If so, return %TRUE. Otherwise, %FALSE. */
+static gboolean
+check_remote_matches_collection_id (OstreeRepo  *repo,
+                                    const gchar *remote_name,
+                                    const gchar *collection_id)
+{
+  g_autofree gchar *remote_collection_id = NULL;
+
+  remote_collection_id = get_real_remote_repo_collection_id (repo, remote_name);
+  if (remote_collection_id == NULL)
+    return FALSE;
+
+  return g_str_equal (remote_collection_id, collection_id);
+}
+
+/**
+ * ostree_repo_resolve_keyring_for_collection:
+ * @self: an #OstreeRepo
+ * @collection_id: the collection ID to look up a keyring for
+ * @cancellable: (nullable): a #GCancellable, or %NULL
+ * @error: return location for a #GError, or %NULL
+ *
+ * Find the GPG keyring for the given @collection_id, using the local
+ * configuration from the given #OstreeRepo. This will search the configured
+ * remotes for ones whose `collection-id` key matches @collection_id, and will
+ * return the first matching remote.
+ *
+ * If multiple remotes match and have different keyrings, a debug message will
+ * be emitted, and the first result will be returned. It is expected that the
+ * keyrings should match.
+ *
+ * If no match can be found, a %G_IO_ERROR_NOT_FOUND error will be returned.
+ *
+ * Returns: (transfer full): #OstreeRemote containing the GPG keyring for
+ *    @collection_id
+ * Since: 2017.8
+ */
+OstreeRemote *
+ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
+                                            const gchar   *collection_id,
+                                            GCancellable  *cancellable,
+                                            GError       **error)
+{
+  gsize i;
+  g_auto(GStrv) remotes = NULL;
+  g_autoptr(OstreeRemote) keyring_remote = NULL;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+  g_return_val_if_fail (ostree_validate_collection_id (collection_id, NULL), NULL);
+  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  /* Look through all the currently configured remotes for the given collection. */
+  remotes = ostree_repo_remote_list (self, NULL);
+
+  for (i = 0; remotes != NULL && remotes[i] != NULL; i++)
+    {
+      g_autoptr(GError) local_error = NULL;
+
+      if (!check_remote_matches_collection_id (self, remotes[i], collection_id))
+        continue;
+
+      if (keyring_remote == NULL)
+        {
+          g_debug ("%s: Found match for collection ‘%s’ in remote ‘%s’.",
+                   G_STRFUNC, collection_id, remotes[i]);
+          keyring_remote = _ostree_repo_get_remote_inherited (self, remotes[i], &local_error);
+
+          if (keyring_remote == NULL)
+            {
+              g_debug ("%s: Error loading remote ‘%s’: %s",
+                       G_STRFUNC, remotes[i], local_error->message);
+              continue;
+            }
+
+          if (g_strcmp0 (keyring_remote->keyring, "") == 0 ||
+              g_strcmp0 (keyring_remote->keyring, "/dev/null") == 0)
+            {
+              g_debug ("%s: Ignoring remote ‘%s’ as it has no keyring configured.",
+                       G_STRFUNC, remotes[i]);
+              g_clear_object (&keyring_remote);
+              continue;
+            }
+
+          /* continue so we can catch duplicates */
+        }
+      else
+        {
+          g_debug ("%s: Duplicate keyring for collection ‘%s’ in remote ‘%s’."
+                   "Keyring will be loaded from remote ‘%s’.",
+                   G_STRFUNC, collection_id, remotes[i],
+                   keyring_remote->name);
+        }
+    }
+
+  if (keyring_remote != NULL)
+    return g_steal_pointer (&keyring_remote);
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No keyring found configured locally for collection ‘%s’",
+                   collection_id);
+      return NULL;
+    }
+}
+
+#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
 
@@ -5694,113 +5807,6 @@ ostree_repo_pull_from_remotes_finish (OstreeRepo    *self,
   return g_task_propagate_boolean (G_TASK (result), error);
 }
 
-/* Check whether the given remote exists, has a `collection-id` key set, and it
- * equals @collection_id. If so, return %TRUE. Otherwise, %FALSE. */
-static gboolean
-check_remote_matches_collection_id (OstreeRepo  *repo,
-                                    const gchar *remote_name,
-                                    const gchar *collection_id)
-{
-  g_autofree gchar *remote_collection_id = NULL;
-
-  remote_collection_id = get_real_remote_repo_collection_id (repo, remote_name);
-  if (remote_collection_id == NULL)
-    return FALSE;
-
-  return g_str_equal (remote_collection_id, collection_id);
-}
-
-/**
- * ostree_repo_resolve_keyring_for_collection:
- * @self: an #OstreeRepo
- * @collection_id: the collection ID to look up a keyring for
- * @cancellable: (nullable): a #GCancellable, or %NULL
- * @error: return location for a #GError, or %NULL
- *
- * Find the GPG keyring for the given @collection_id, using the local
- * configuration from the given #OstreeRepo. This will search the configured
- * remotes for ones whose `collection-id` key matches @collection_id, and will
- * return the first matching remote.
- *
- * If multiple remotes match and have different keyrings, a debug message will
- * be emitted, and the first result will be returned. It is expected that the
- * keyrings should match.
- *
- * If no match can be found, a %G_IO_ERROR_NOT_FOUND error will be returned.
- *
- * Returns: (transfer full): #OstreeRemote containing the GPG keyring for
- *    @collection_id
- * Since: 2017.8
- */
-OstreeRemote *
-ostree_repo_resolve_keyring_for_collection (OstreeRepo    *self,
-                                            const gchar   *collection_id,
-                                            GCancellable  *cancellable,
-                                            GError       **error)
-{
-  gsize i;
-  g_auto(GStrv) remotes = NULL;
-  g_autoptr(OstreeRemote) keyring_remote = NULL;
-
-  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
-  g_return_val_if_fail (ostree_validate_collection_id (collection_id, NULL), NULL);
-  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), NULL);
-  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
-
-  /* Look through all the currently configured remotes for the given collection. */
-  remotes = ostree_repo_remote_list (self, NULL);
-
-  for (i = 0; remotes != NULL && remotes[i] != NULL; i++)
-    {
-      g_autoptr(GError) local_error = NULL;
-
-      if (!check_remote_matches_collection_id (self, remotes[i], collection_id))
-        continue;
-
-      if (keyring_remote == NULL)
-        {
-          g_debug ("%s: Found match for collection ‘%s’ in remote ‘%s’.",
-                   G_STRFUNC, collection_id, remotes[i]);
-          keyring_remote = _ostree_repo_get_remote_inherited (self, remotes[i], &local_error);
-
-          if (keyring_remote == NULL)
-            {
-              g_debug ("%s: Error loading remote ‘%s’: %s",
-                       G_STRFUNC, remotes[i], local_error->message);
-              continue;
-            }
-
-          if (g_strcmp0 (keyring_remote->keyring, "") == 0 ||
-              g_strcmp0 (keyring_remote->keyring, "/dev/null") == 0)
-            {
-              g_debug ("%s: Ignoring remote ‘%s’ as it has no keyring configured.",
-                       G_STRFUNC, remotes[i]);
-              g_clear_object (&keyring_remote);
-              continue;
-            }
-
-          /* continue so we can catch duplicates */
-        }
-      else
-        {
-          g_debug ("%s: Duplicate keyring for collection ‘%s’ in remote ‘%s’."
-                   "Keyring will be loaded from remote ‘%s’.",
-                   G_STRFUNC, collection_id, remotes[i],
-                   keyring_remote->name);
-        }
-    }
-
-  if (keyring_remote != NULL)
-    return g_steal_pointer (&keyring_remote);
-  else
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No keyring found configured locally for collection ‘%s’",
-                   collection_id);
-      return NULL;
-    }
-}
-
 #endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 /**
@@ -5951,5 +5957,76 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                        "This version of ostree was built without libsoup or libcurl, and cannot fetch over HTTP");
   return FALSE;
 }
+
+#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
+
+void
+ostree_repo_find_remotes_async (OstreeRepo                        *self,
+                                const OstreeCollectionRef * const *refs,
+                                GVariant                          *options,
+                                OstreeRepoFinder                 **finders,
+                                OstreeAsyncProgress               *progress,
+                                GCancellable                      *cancellable,
+                                GAsyncReadyCallback                callback,
+                                gpointer                           user_data)
+{
+  g_return_if_fail (OSTREE_IS_REPO (self));
+
+  g_task_report_new_error (self, callback, user_data, ostree_repo_find_remotes_async,
+                           G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "This version of ostree was built without libsoup or libcurl, and cannot fetch over HTTP");
+}
+
+OstreeRepoFinderResult **
+ostree_repo_find_remotes_finish (OstreeRepo    *self,
+                                 GAsyncResult  *result,
+                                 GError       **error)
+{
+  g_autoptr(GPtrArray) results = NULL;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+  g_return_val_if_fail (g_task_is_valid (result, self), NULL);
+  g_return_val_if_fail (g_async_result_is_tagged (result, ostree_repo_find_remotes_async), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  results = g_task_propagate_pointer (G_TASK (result), error);
+  g_assert (results == NULL);
+  return NULL;
+}
+
+void
+ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
+                                     const OstreeRepoFinderResult * const *results,
+                                     GVariant                             *options,
+                                     OstreeAsyncProgress                  *progress,
+                                     GCancellable                         *cancellable,
+                                     GAsyncReadyCallback                   callback,
+                                     gpointer                              user_data)
+{
+  g_return_if_fail (OSTREE_IS_REPO (self));
+
+  g_task_report_new_error (self, callback, user_data, ostree_repo_find_remotes_async,
+                           G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "This version of ostree was built without libsoup or libcurl, and cannot fetch over HTTP");
+}
+
+gboolean
+ostree_repo_pull_from_remotes_finish (OstreeRepo    *self,
+                                      GAsyncResult  *result,
+                                      GError       **error)
+{
+  gboolean success;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  g_return_val_if_fail (g_async_result_is_tagged (result, ostree_repo_pull_from_remotes_async), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  success = g_task_propagate_boolean (G_TASK (result), error);
+  g_assert (!success);
+  return FALSE;
+}
+
+#endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 #endif /* HAVE_LIBCURL_OR_LIBSOUP */
