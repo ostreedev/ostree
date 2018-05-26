@@ -36,7 +36,6 @@
 #include <avahi-common/strlst.h>
 #include <avahi-glib/glib-malloc.h>
 #include <avahi-glib/glib-watch.h>
-#include <libsoup/soup.h>
 #include <netinet/in.h>
 #include <string.h>
 #endif  /* HAVE_AVAHI */
@@ -55,6 +54,7 @@
 #include "ostree-repo-private.h"
 #include "ostree-repo.h"
 #include "ostree-repo-finder-avahi-private.h"
+#include "ostree-soup-uri.h"
 #include "otutil.h"
 #endif  /* HAVE_AVAHI */
 
