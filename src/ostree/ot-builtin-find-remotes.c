@@ -179,14 +179,15 @@ ostree_builtin_find_remotes (int            argc,
   g_autoptr(GPtrArray) finders = NULL;  /* (element-type OstreeRepoFinder) */
   g_autoptr(OstreeRepoFinder) finder_config = NULL;
   g_autoptr(OstreeRepoFinder) finder_mount = NULL;
+#ifdef HAVE_AVAHI
   g_autoptr(OstreeRepoFinder) finder_avahi = NULL;
+#endif  /* HAVE_AVAHI */
   g_autoptr(OstreeAsyncProgress) progress = NULL;
   gsize i;
   g_autoptr(GAsyncResult) find_result = NULL, pull_result = NULL;
   g_auto(OstreeRepoFinderResultv) results = NULL;
   g_auto(GLnxConsoleRef) console = { 0, };
   g_autoptr(GHashTable) refs_found = NULL;  /* set (element-type OstreeCollectionRef) */
-  g_auto(GStrv) finders_strings = NULL;
 
   context = g_option_context_new ("COLLECTION-ID REF [COLLECTION-ID REF...]");
 
