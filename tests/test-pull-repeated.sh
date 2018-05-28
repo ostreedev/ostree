@@ -23,12 +23,14 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..1"
+echo "1..2"
 
 COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+
+# Test pulling from a repo which gives error 500 (internal server error) a lot of the time.
 setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}" --random-500s=50
 
-cd ${test_tmpdir}
+pushd ${test_tmpdir}
 ostree_repo_init repo --mode=archive
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 for x in $(seq 200); do
@@ -42,4 +44,26 @@ done
 ${CMD_PREFIX} ostree --repo=repo fsck
 ${CMD_PREFIX} ostree --repo=repo rev-parse main
 
+popd
 echo "ok repeated pull after 500s"
+
+# Now test from a repo which gives error 408 (request timeout) a lot of the time.
+rm ostree-srv httpd repo -rf
+setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}" --random-408s=50
+
+pushd ${test_tmpdir}
+ostree_repo_init repo --mode=archive
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+for x in $(seq 40); do
+    if ${CMD_PREFIX} ostree --repo=repo pull --mirror origin main 2>err.txt; then
+       echo "Success on iteration ${x}"
+       break;
+    fi
+    assert_file_has_content err.txt "\(408.*Request Timeout\)\|\(HTTP 408\)"
+done
+
+${CMD_PREFIX} ostree --repo=repo fsck
+${CMD_PREFIX} ostree --repo=repo rev-parse main
+
+popd
+echo "ok repeated pull after 408s"
