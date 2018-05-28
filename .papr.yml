@@ -17,8 +17,6 @@ host:
 #  image: registry.fedoraproject.org/fedora:27
 
 tests:
-  - cd /etc/yum.repos.d/ && curl -L -O https://copr.fedorainfracloud.org/coprs/walters/oci-kvm-hook/repo/fedora-27/walters-oci-kvm-hook-fedora-27.repo
-  - rpm-ostree install oci-kvm-hook && rpm-ostree ex livefs
   - docker run --device /dev/kvm --rm -v $(pwd):/srv/code:z registry.fedoraproject.org/fedora:27 /bin/sh -c "cd /srv/code && ./ci/fah27-insttests.sh"
 
 artifacts:
