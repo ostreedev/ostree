@@ -22,11 +22,15 @@ make install
 # job than gcc for vars with cleanups; perhaps in the future these could
 # parallelize
 if test -x /usr/bin/clang; then
+    if grep -q -e 'static inline.*_GLIB_AUTOPTR_LIST_FUNC_NAME' /usr/include/glib-2.0/glib/gmacros.h; then
+        echo 'Skipping clang check, see https://bugzilla.gnome.org/show_bug.cgi?id=796346'
+    else
     # Except for clang-4.0: error: argument unused during compilation: '-specs=/usr/lib/rpm/redhat/redhat-hardened-cc1' [-Werror,-Wunused-command-line-argument]
     export CFLAGS="-Wall -Werror -Wno-error=unused-command-line-argument ${CFLAGS:-}"
     git clean -dfx && git submodule foreach git clean -dfx
     export CC=clang
     build
+    fi
 fi
 
 copy_out_gdtr_artifacts() {
