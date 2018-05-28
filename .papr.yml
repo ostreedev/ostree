@@ -4,20 +4,20 @@ branches:
     - auto
     - try
 
-context: FAH27-insttests
+context: FAH28-insttests
 required: true
 
 # FIXME; temporary workaround
 # https://github.com/ostreedev/ostree/pull/1513#issuecomment-378784162
 host:
-  distro: fedora/27/atomic
+  distro: fedora/28/atomic
   specs:
     ram: 4096
 #container:
-#  image: registry.fedoraproject.org/fedora:27
+#  image: registry.fedoraproject.org/fedora:28
 
 tests:
-  - docker run --device /dev/kvm --rm -v $(pwd):/srv/code:z registry.fedoraproject.org/fedora:27 /bin/sh -c "cd /srv/code && ./ci/fah27-insttests.sh"
+  - docker run --device /dev/kvm --rm -v $(pwd):/srv/code:z registry.fedoraproject.org/fedora:28 /bin/sh -c "cd /srv/code && ./ci/fah28-insttests.sh"
 
 artifacts:
   - tests/installed/artifacts/
@@ -32,8 +32,8 @@ branches:
     - try
 required: true
 container:
-  image: registry.fedoraproject.org/fedora:27
-context: f27-primary
+  image: registry.fedoraproject.org/fedora:28
+context: f28-primary
 env:
   # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
   CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
@@ -56,10 +56,10 @@ artifacts:
 ---
 # And now the contexts below here are variant container builds
 
-context: f27-rust
+context: f28-rust
 inherit: true
 container:
-    image: registry.fedoraproject.org/fedora:27
+    image: registry.fedoraproject.org/fedora:28
 env:
   CONFIGOPTS: '--enable-rust'
   CI_PKGS: cargo
@@ -70,10 +70,10 @@ tests:
 
 ---
 
-context: f27-gnutls
+context: f28-gnutls
 inherit: true
 container:
-    image: registry.fedoraproject.org/fedora:27
+    image: registry.fedoraproject.org/fedora:28
 env:
   CONFIGOPTS: '--with-crypto=gnutls'
   CI_PKGS: pkgconfig(gnutls)
@@ -86,7 +86,7 @@ tests:
 
 inherit: true
 
-context: f27-experimental-api
+context: f28-experimental-api
 env:
   CONFIGOPTS: '--enable-experimental-api'
 
@@ -97,7 +97,7 @@ tests:
 
 inherit: true
 
-context: f27-minimal
+context: f28-minimal
 env:
   CONFIGOPTS: '--without-curl --without-soup --disable-gtk-doc --disable-man
    --disable-rust --without-libarchive --without-selinux --without-smack
@@ -112,7 +112,7 @@ tests:
 inherit: true
 required: true
 
-context: f27-libsoup
+context: f28-libsoup
 
 env:
   CONFIGOPTS: "--without-curl --without-openssl --with-libsoup"
@@ -125,7 +125,7 @@ tests:
 inherit: true
 required: true
 
-context: f27-introspection-tests
+context: f28-introspection-tests
 
 env:
     # ASAN conflicts with introspection testing;
@@ -172,15 +172,15 @@ branches:
     - auto
     - try
 
-context: f27-rpmostree
+context: f28-rpmostree
 required: true
 
 cluster:
   hosts:
     - name: vmcheck
-      distro: fedora/27/atomic
+      distro: fedora/28/atomic
   container:
-    image: registry.fedoraproject.org/fedora:27
+    image: registry.fedoraproject.org/fedora:28
 
 env:
   HOSTS: vmcheck
