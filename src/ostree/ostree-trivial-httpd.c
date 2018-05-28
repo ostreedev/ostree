@@ -45,11 +45,14 @@ static int opt_random_500s_percentage;
 /* We have a strong upper bound for any unlikely
  * cases involving repeated random 500s. */
 static int opt_random_500s_max = 100;
+static int opt_random_408s_percentage;
+static int opt_random_408s_max = 100;
 static gint opt_port = 0;
 static gchar **opt_expected_cookies;
 static gchar **opt_expected_headers;
 
 static guint emitted_random_500s_count = 0;
+static guint emitted_random_408s_count = 0;
 
 typedef struct {
   int root_dfd;
@@ -70,6 +73,8 @@ static GOptionEntry options[] = {
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
   { "random-500s", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_percentage, "Generate random HTTP 500 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
   { "random-500s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_max, "Limit HTTP 500 errors to MAX (default 100)", "MAX" },
+  { "random-408s", 0, 0, G_OPTION_ARG_INT, &opt_random_408s_percentage, "Generate random HTTP 408 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
+  { "random-408s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_408s_max, "Limit HTTP 408 errors to MAX (default 100)", "MAX" },
   { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here (use - for stdout)", "PATH" },
   { "expected-cookies", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_expected_cookies, "Expect given cookies in the http request", "KEY=VALUE" },
   { "expected-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_expected_headers, "Expect given headers in the http request", "KEY=VALUE" },
@@ -291,6 +296,14 @@ do_get (OtTrivialHttpd    *self,
       soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
       goto out;
     }
+  else if (opt_random_408s_percentage > 0 &&
+           emitted_random_408s_count < opt_random_408s_max &&
+           g_random_int_range (0, 100) < opt_random_408s_percentage)
+    {
+      emitted_random_408s_count++;
+      soup_message_set_status (msg, SOUP_STATUS_REQUEST_TIMEOUT);
+      goto out;
+    }
 
   while (path[0] == '/')
     path++;
@@ -508,6 +521,13 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid --random-500s=%u", opt_random_500s_percentage);
+      goto out;
+    }
+
+  if (!(opt_random_408s_percentage >= 0 && opt_random_408s_percentage <= 99))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid --random-408s=%u", opt_random_408s_percentage);
       goto out;
     }
 
