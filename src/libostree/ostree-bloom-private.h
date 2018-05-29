@@ -28,6 +28,8 @@
 #include <glib.h>
 #include <glib-object.h>
 
+#include "libglnx.h"
+
 G_BEGIN_DECLS
 
 /**
