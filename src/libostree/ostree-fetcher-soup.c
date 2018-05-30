@@ -1070,18 +1070,12 @@ on_request_sent (GObject        *object,
                 soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
 
               GIOErrorEnum code;
+
               switch (msg->status_code)
                 {
-                case SOUP_STATUS_NOT_FOUND:
-                case SOUP_STATUS_FORBIDDEN:
-                case SOUP_STATUS_GONE:
-                  code = G_IO_ERROR_NOT_FOUND;
-                  break;
+                /* These statuses are internal to libsoup, and not standard HTTP ones: */
                 case SOUP_STATUS_CANCELLED:
                   code = G_IO_ERROR_CANCELLED;
-                  break;
-                case SOUP_STATUS_REQUEST_TIMEOUT:
-                  code = G_IO_ERROR_TIMED_OUT;
                   break;
                 case SOUP_STATUS_CANT_RESOLVE:
                 case SOUP_STATUS_CANT_CONNECT:
@@ -1092,10 +1086,11 @@ on_request_sent (GObject        *object,
                   code = G_IO_ERROR_BROKEN_PIPE;
 #else
                   code = G_IO_ERROR_CONNECTION_CLOSED;
-#endif
                   break;
+#endif
                 default:
-                  code = G_IO_ERROR_FAILED;
+                  code = _ostree_fetcher_http_status_code_to_io_error (msg->status_code);
+                  break;
                 }
 
               {

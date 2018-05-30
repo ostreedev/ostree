@@ -337,19 +337,7 @@ check_multi_info (OstreeFetcher *fetcher)
           curl_easy_getinfo (easy, CURLINFO_RESPONSE_CODE, &response);
           if (!is_file && !(response >= 200 && response < 300))
             {
-              GIOErrorEnum giocode;
-
-              /* TODO - share with soup */
-              switch (response)
-                {
-                case 404:
-                case 403:
-                case 410:
-                  giocode = G_IO_ERROR_NOT_FOUND;
-                  break;
-                default:
-                  giocode = G_IO_ERROR_FAILED;
-                }
+              GIOErrorEnum giocode = _ostree_fetcher_http_status_code_to_io_error (response);
 
               if (req->idx + 1 == req->mirrorlist->len)
                 {
