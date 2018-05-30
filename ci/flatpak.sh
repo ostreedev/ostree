@@ -3,10 +3,7 @@
 
 set -xeuo pipefail
 
-# Frozen to a tag for now to help predictability; it's
-# also useful to test building *older* versions since
-# that must work.
-FLATPAK_TAG=0.10.2.1
+FLATPAK_TAG=master
 
 dn=$(dirname $0)
 . ${dn}/libpaprci/libbuild.sh
@@ -31,7 +28,6 @@ build
 make install
 tmpd=$(mktemp -d)
 cd ${tmpd}
-# Frozen to a tag for now on general principle
 git clone --recursive --depth=1 -b ${FLATPAK_TAG} https://github.com/flatpak/flatpak
 cd ${tmpd}/flatpak
 build
