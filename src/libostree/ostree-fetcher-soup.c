@@ -1086,8 +1086,8 @@ on_request_sent (GObject        *object,
                   code = G_IO_ERROR_BROKEN_PIPE;
 #else
                   code = G_IO_ERROR_CONNECTION_CLOSED;
-                  break;
 #endif
+                  break;
                 default:
                   code = _ostree_fetcher_http_status_code_to_io_error (msg->status_code);
                   break;
