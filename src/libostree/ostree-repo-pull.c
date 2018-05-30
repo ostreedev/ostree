@@ -1309,7 +1309,9 @@ meta_fetch_on_complete (GObject           *object,
  out:
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
-  pull_data->n_fetched_metadata++;
+
+  if (local_error == NULL)
+    pull_data->n_fetched_metadata++;
 
   if (_ostree_fetcher_should_retry_request (local_error, fetch_data->n_retries_remaining--))
     enqueue_one_object_request_s (pull_data, g_steal_pointer (&fetch_data));
@@ -1395,7 +1397,9 @@ static_deltapart_fetch_on_complete (GObject           *object,
  out:
   g_assert (pull_data->n_outstanding_deltapart_fetches > 0);
   pull_data->n_outstanding_deltapart_fetches--;
-  pull_data->n_fetched_deltaparts++;
+
+  if (local_error == NULL)
+    pull_data->n_fetched_deltaparts++;
 
   if (_ostree_fetcher_should_retry_request (local_error, fetch_data->n_retries_remaining--))
     enqueue_one_static_delta_part_request_s (pull_data, g_steal_pointer (&fetch_data));
@@ -2628,7 +2632,9 @@ on_superblock_fetched (GObject   *src,
  out:
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
-  pull_data->n_fetched_metadata++;
+
+  if (local_error == NULL)
+    pull_data->n_fetched_metadata++;
 
   /* FIXME: This should check _ostree_fetcher_should_retry_request(). */
   check_outstanding_requests_handle_error (pull_data, &local_error);
