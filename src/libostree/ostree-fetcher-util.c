@@ -218,3 +218,22 @@ _ostree_fetcher_should_retry_request (const GError *error,
 
   return FALSE;
 }
+
+/* Convert a HTTP status code representing an error from libsoup or libcurl to
+ * a #GIOError. This will return %G_IO_ERROR_FAILED if the status code is
+ * unknown or otherwise unhandled. */
+GIOError
+_ostree_fetcher_http_status_code_to_io_error (guint status_code)
+{
+  switch (status_code)
+    {
+    case 403:  /* SOUP_STATUS_FORBIDDEN */
+    case 404:  /* SOUP_STATUS_NOT_FOUND */
+    case 410:  /* SOUP_STATUS_GONE */
+      return G_IO_ERROR_NOT_FOUND;
+    case 408:  /* SOUP_STATUS_REQUEST_TIMEOUT */
+      return G_IO_ERROR_TIMED_OUT;
+    default:
+      return G_IO_ERROR_FAILED;
+    }
+}
