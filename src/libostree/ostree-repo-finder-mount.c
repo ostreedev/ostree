@@ -28,7 +28,6 @@
 #include <gio/gunixmounts.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <libglnx.h>
 #include <stdlib.h>
 
 #include "ostree-autocleanups.h"
