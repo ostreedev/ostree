@@ -10,28 +10,17 @@ dn=$(dirname $0)
 
 codedir=$(pwd)
 
-pkg_upgrade
-pkg_install_buildroot
-pkg_builddep ostree flatpak
-pkg_install gettext-devel # A new dependency
-# Copy of builddeps from build.sh in flatpak
-pkg_install sudo which attr fuse \
-            libubsan libasan libtsan \
-            elfutils git gettext-devel libappstream-glib-devel \
-            /usr/bin/{update-mime-database,update-desktop-database,gtk-update-icon-cache} \
-            hicolor-icon-theme
-pkg_install_if_os fedora gjs parallel clang python2
-pkg_install flatpak && rpm -e flatpak
-
 # Build and install ostree
 cd ${codedir}
-build
+ci/build.sh
 make install
+
+# Build flatpak
 tmpd=$(mktemp -d)
 cd ${tmpd}
 git clone --recursive --depth=1 -b ${FLATPAK_TAG} https://github.com/flatpak/flatpak
 cd ${tmpd}/flatpak
-build
+ci/build.sh
 # We want to capture automake results from flatpak
 cleanup() {
     mv test-suite.log ${codedir} || true
