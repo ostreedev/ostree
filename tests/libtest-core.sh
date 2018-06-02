@@ -37,9 +37,9 @@ assert_not_reached () {
 # Some tests look for specific English strings. Use a UTF-8 version
 # of the C (POSIX) locale if we have one, or fall back to POSIX
 # (https://sourceware.org/glibc/wiki/Proposals/C.UTF-8)
-if locale -a | grep C.UTF-8 >/dev/null; then
+if locale -a | grep '^C.UTF-8$' >/dev/null; then
     export LC_ALL=C.UTF-8
-elif locale -a | grep C.utf8 >/dev/null; then
+elif locale -a | grep '^C.utf8$' >/dev/null; then
     export LC_ALL=C.utf8
 else
     export LC_ALL=C
