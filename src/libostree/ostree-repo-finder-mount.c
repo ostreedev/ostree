@@ -28,7 +28,6 @@
 #include <gio/gunixmounts.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <libglnx.h>
 #include <stdlib.h>
 
 #include "ostree-autocleanups.h"
@@ -68,7 +67,7 @@
  * The volume monitor used to find mounted volumes can be overridden by setting
  * #OstreeRepoFinderMount:monitor. By default, g_volume_monitor_get() is used.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 
 typedef GList/*<owned GObject>*/ ObjectList;
@@ -649,7 +648,7 @@ ostree_repo_finder_mount_class_init (OstreeRepoFinderMountClass *klass)
    *
    * Volume monitor to use to look up mounted volumes when queried.
    *
-   * Since: 2017.8
+   * Since: 2018.6
    */
   g_object_class_install_property (object_class, PROP_MONITOR,
                                    g_param_spec_object ("monitor",
@@ -680,7 +679,7 @@ ostree_repo_finder_mount_iface_init (OstreeRepoFinderInterface *iface)
  * be used.
  *
  * Returns: (transfer full): a new #OstreeRepoFinderMount
- * Since: 2017.8
+ * Since: 2018.6
  */
 OstreeRepoFinderMount *
 ostree_repo_finder_mount_new (GVolumeMonitor *monitor)

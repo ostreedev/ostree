@@ -271,11 +271,9 @@ typedef enum {
  * This is most useful in concert with `OSTREE_COMMIT_META_KEY_REF_BINDING`,
  * as it more strongly binds the commit to the repository and branch.
  *
- * Since: 2017.9
+ * Since: 2018.6
  */
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 #define OSTREE_COMMIT_META_KEY_COLLECTION_BINDING "ostree.collection-binding"
-#endif
 
 _OSTREE_PUBLIC
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
@@ -324,10 +322,8 @@ int ostree_cmp_checksum_bytes (const guchar *a, const guchar *b);
 _OSTREE_PUBLIC
 gboolean ostree_validate_rev (const char *rev, GError **error);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 _OSTREE_PUBLIC
 gboolean ostree_validate_collection_id (const char *collection_id, GError **error);
-#endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 gboolean ostree_validate_remote_name (const char *remote_name, GError **error);

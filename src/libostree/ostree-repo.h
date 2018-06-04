@@ -28,10 +28,8 @@
 #include "ostree-core.h"
 #include "ostree-types.h"
 #include "ostree-async-progress.h"
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 #include "ostree-ref.h"
 #include "ostree-repo-finder.h"
-#endif
 #include "ostree-sepolicy.h"
 #include "ostree-gpg-verify-result.h"
 
@@ -107,16 +105,12 @@ OstreeRepo *  ostree_repo_create_at (int             dfd,
                                      GCancellable   *cancellable,
                                      GError        **error);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-
 _OSTREE_PUBLIC
 const gchar * ostree_repo_get_collection_id (OstreeRepo   *self);
 _OSTREE_PUBLIC
 gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
                                              const gchar  *collection_id,
                                              GError      **error);
-
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 GFile *       ostree_repo_get_path (OstreeRepo  *self);
@@ -339,14 +333,10 @@ void          ostree_repo_transaction_set_ref     (OstreeRepo *self,
                                                    const char *ref,
                                                    const char *checksum);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-
 _OSTREE_PUBLIC
 void          ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
                                                           const OstreeCollectionRef *ref,
                                                           const char                *checksum);
-
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_set_ref_immediate (OstreeRepo *self,
@@ -364,16 +354,12 @@ gboolean      ostree_repo_set_alias_ref_immediate (OstreeRepo *self,
                                                    GCancellable  *cancellable,
                                                    GError       **error);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-
 _OSTREE_PUBLIC
 gboolean      ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
                                                         const OstreeCollectionRef  *ref,
                                                         const char                 *checksum,
                                                         GCancellable               *cancellable,
                                                         GError                    **error);
-
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_has_object (OstreeRepo           *self,
@@ -479,7 +465,6 @@ gboolean      ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
                                            char                         **out_rev,
                                            GError                       **error);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 _OSTREE_PUBLIC
 gboolean      ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
                                                   const OstreeCollectionRef     *ref,
@@ -488,7 +473,6 @@ gboolean      ostree_repo_resolve_collection_ref (OstreeRepo                    
                                                   char                         **out_rev,
                                                   GCancellable                  *cancellable,
                                                   GError                       **error);
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_list_refs (OstreeRepo       *self,
@@ -524,14 +508,12 @@ gboolean ostree_repo_remote_list_refs (OstreeRepo       *self,
                                        GCancellable     *cancellable,
                                        GError          **error);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
 _OSTREE_PUBLIC
 gboolean ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
                                                   const char    *remote_name,
                                                   GHashTable   **out_all_refs,
                                                   GCancellable  *cancellable,
                                                   GError       **error);
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
@@ -1265,8 +1247,6 @@ gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
                                         GCancellable           *cancellable,
                                         GError                **error);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-
 _OSTREE_PUBLIC
 void ostree_repo_find_remotes_async (OstreeRepo                         *self,
                                      const OstreeCollectionRef * const  *refs,
@@ -1307,8 +1287,6 @@ gboolean ostree_repo_list_collection_refs (OstreeRepo                 *self,
                                            OstreeRepoListRefsExtFlags flags,
                                            GCancellable               *cancellable,
                                            GError                     **error);
-
-#endif /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 _OSTREE_PUBLIC
 void ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress,
@@ -1394,8 +1372,6 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
-
 /**
  * OSTREE_REPO_METADATA_REF:
  *
@@ -1415,11 +1391,9 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
  * keys must be namespaced by product or developer. For example,
  * `exampleos.end-of-life`. The `ostree.` prefix is reserved.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 #define OSTREE_REPO_METADATA_REF "ostree-metadata"
-
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
 G_END_DECLS
 

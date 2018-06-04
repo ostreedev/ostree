@@ -28,7 +28,6 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 #include <gio/gfiledescriptorbased.h>
-#include "libglnx.h"
 #include "otutil.h"
 #include <glnx-console.h>
 
@@ -5703,7 +5702,7 @@ _ostree_repo_memory_cache_ref_destroy (OstreeRepoMemoryCacheRef *state)
  * Get the collection ID of this repository. See [collection IDs][collection-ids].
  *
  * Returns: (nullable): collection ID for the repository
- * Since: 2017.8
+ * Since: 2018.6
  */
 const gchar *
 ostree_repo_get_collection_id (OstreeRepo *self)
@@ -5724,7 +5723,7 @@ ostree_repo_get_collection_id (OstreeRepo *self)
  * configuration on disk using ostree_repo_write_config().
  *
  * Returns: %TRUE on success, %FALSE otherwise
- * Since: 2017.8
+ * Since: 2018.6
  */
 gboolean
 ostree_repo_set_collection_id (OstreeRepo   *self,

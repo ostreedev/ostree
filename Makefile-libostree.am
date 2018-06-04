@@ -140,6 +140,13 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-gpg-verify-result.c \
 	src/libostree/ostree-gpg-verify-result-private.h \
 	src/libostree/ostree-autocleanups.h \
+	src/libostree/ostree-bloom.c \
+	src/libostree/ostree-bloom-private.h \
+	src/libostree/ostree-repo-finder.c \
+	src/libostree/ostree-repo-finder-avahi.c \
+	src/libostree/ostree-repo-finder-config.c \
+	src/libostree/ostree-repo-finder-mount.c \
+	src/libostree/ostree-repo-finder-override.c \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
@@ -154,26 +161,13 @@ libostree_1_la_SOURCES += \
 	$(NULL)
 endif
 libostree_experimental_headers = \
-	src/libostree/ostree-ref.h \
-	src/libostree/ostree-remote.h \
-	src/libostree/ostree-repo-finder.h \
-	src/libostree/ostree-repo-finder-avahi.h \
-	src/libostree/ostree-repo-finder-config.h \
-	src/libostree/ostree-repo-finder-mount.h \
-	src/libostree/ostree-repo-finder-override.h \
 	$(NULL)
 if !ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += $(libostree_experimental_headers)
 else # if ENABLE_EXPERIMENTAL_API
 libostree_1_la_SOURCES += \
-	src/libostree/ostree-bloom.c \
-	src/libostree/ostree-bloom-private.h \
-	src/libostree/ostree-repo-finder.c \
-	src/libostree/ostree-repo-finder-avahi.c \
-	src/libostree/ostree-repo-finder-config.c \
-	src/libostree/ostree-repo-finder-mount.c \
-	src/libostree/ostree-repo-finder-override.c \
 	$(NULL)
+endif
 
 if USE_AVAHI
 libostree_1_la_SOURCES += \
@@ -181,20 +175,15 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-repo-finder-avahi-private.h \
 	$(NULL)
 endif # USE_AVAHI
-endif
 
 symbol_files = $(top_srcdir)/src/libostree/libostree-released.sym
 if BUILDOPT_IS_DEVEL_BUILD
 symbol_files += $(top_srcdir)/src/libostree/libostree-devel.sym
 endif
-if ENABLE_EXPERIMENTAL_API
-symbol_files += $(top_srcdir)/src/libostree/libostree-experimental.sym
-endif
 # http://blog.jgc.org/2007/06/escaping-comma-and-space-in-gnu-make.html
 wl_versionscript_arg = -Wl,--version-script=
 EXTRA_DIST += \
 	$(top_srcdir)/src/libostree/libostree-devel.sym \
-	$(top_srcdir)/src/libostree/libostree-experimental.sym \
 	$(top_srcdir)/src/libostree/libostree-released.sym \
 	$(NULL)
 
@@ -216,11 +205,9 @@ libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_LIBARCHIVE_LIBS)
 endif
 
-if ENABLE_EXPERIMENTAL_API
 if USE_AVAHI
 libostree_1_la_CFLAGS += $(OT_DEP_AVAHI_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_AVAHI_LIBS)
-endif
 endif
 
 if BUILDOPT_LIBSYSTEMD

@@ -302,6 +302,7 @@ ostree_validate_remote_name (const char  *remote_name,
  *
  * Returns: %TRUE if @collection_id is a valid collection ID, %FALSE if it is invalid
  *    or %NULL
+ * Since: 2018.6
  */
 gboolean
 ostree_validate_collection_id (const char *collection_id, GError **error)

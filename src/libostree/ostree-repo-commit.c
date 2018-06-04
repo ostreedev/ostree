@@ -1961,7 +1961,7 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
  *
  * Multithreading: Since v2017.15 this function is MT safe.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 void
 ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
@@ -2045,7 +2045,7 @@ ostree_repo_set_alias_ref_immediate (OstreeRepo *self,
  * case where we're creating or overwriting an existing ref.
  *
  * Returns: %TRUE on success, %FALSE otherwise
- * Since: 2017.8
+ * Since: 2018.6
  */
 gboolean
 ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,

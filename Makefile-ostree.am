@@ -29,8 +29,10 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-checkout.c \
 	src/ostree/ot-builtin-checksum.c \
 	src/ostree/ot-builtin-commit.c \
+	src/ostree/ot-builtin-create-usb.c \
 	src/ostree/ot-builtin-diff.c \
 	src/ostree/ot-builtin-export.c \
+	src/ostree/ot-builtin-find-remotes.c \
 	src/ostree/ot-builtin-fsck.c \
 	src/ostree/ot-builtin-gpg-sign.c \
 	src/ostree/ot-builtin-init.c \
@@ -60,8 +62,6 @@ nodist_ostree_SOURCES = \
 
 if ENABLE_EXPERIMENTAL_API
 ostree_SOURCES += \
-	src/ostree/ot-builtin-create-usb.c \
-	src/ostree/ot-builtin-find-remotes.c \
 	$(NULL)
 endif
 

@@ -264,7 +264,6 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
         return FALSE;
     }
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
   if (!opt_quiet)
     g_print ("Validating refs in collections...\n");
 
@@ -282,7 +281,6 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
                                 &found_corruption, cancellable, error))
         return FALSE;
     }
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
   if (!opt_quiet)
     g_print ("Enumerating objects...\n");
@@ -327,13 +325,11 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
               g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
 
               const char *collection_id = NULL;
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
               if (!g_variant_lookup (metadata,
                                      OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
                                      "&s",
                                      &collection_id))
                 collection_id = NULL;
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
 
               g_autofree const char **refs = NULL;
               if (g_variant_lookup (metadata,
@@ -345,7 +341,6 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
                     {
                       g_autofree char *checksum_for_ref = NULL;
 
-#ifdef OSTREE_ENABLE_EXPERIMENTAL_API
                       if (collection_id != NULL)
                         {
                           const OstreeCollectionRef collection_ref = { (char *) collection_id, (char *) *iter };
@@ -358,7 +353,6 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
                             return FALSE;
                         }
                       else
-#endif  /* OSTREE_ENABLE_EXPERIMENTAL_API */
                         {
                           if (!ostree_repo_resolve_rev (repo, *iter, TRUE,
                                                         &checksum_for_ref, error))

@@ -27,7 +27,6 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <libglnx.h>
 
 #include "ostree-autocleanups.h"
 #include "ostree-core.h"
@@ -48,7 +47,7 @@ G_DEFINE_BOXED_TYPE (OstreeCollectionRef, ostree_collection_ref,
  * operations.
  *
  * Returns: (transfer full): a new #OstreeCollectionRef
- * Since: 2017.8
+ * Since: 2018.6
  */
 OstreeCollectionRef *
 ostree_collection_ref_new (const gchar *collection_id,
@@ -74,7 +73,7 @@ ostree_collection_ref_new (const gchar *collection_id,
  * Create a copy of the given @ref.
  *
  * Returns: (transfer full): a newly allocated copy of @ref
- * Since: 2017.8
+ * Since: 2018.6
  */
 OstreeCollectionRef *
 ostree_collection_ref_dup (const OstreeCollectionRef *ref)
@@ -90,7 +89,7 @@ ostree_collection_ref_dup (const OstreeCollectionRef *ref)
  *
  * Free the given @ref.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 void
 ostree_collection_ref_free (OstreeCollectionRef *ref)
@@ -110,7 +109,7 @@ ostree_collection_ref_free (OstreeCollectionRef *ref)
  * @ref must be non-%NULL.
  *
  * Returns: hash value for @ref
- * Since: 2017.8
+ * Since: 2018.6
  */
 guint
 ostree_collection_ref_hash (gconstpointer ref)
@@ -132,7 +131,7 @@ ostree_collection_ref_hash (gconstpointer ref)
  * ref name, and %FALSE otherwise. Both @ref1 and @ref2 must be non-%NULL.
  *
  * Returns: %TRUE if @ref1 and @ref2 are equal, %FALSE otherwise
- * Since: 2017.8
+ * Since: 2018.6
  */
 gboolean
 ostree_collection_ref_equal (gconstpointer ref1,
@@ -153,7 +152,7 @@ ostree_collection_ref_equal (gconstpointer ref1,
  * %NULL.
  *
  * Returns: (transfer full) (array zero-terminated=1): a newly allocated copy of @refs
- * Since: 2017.8
+ * Since: 2018.6
  */
 OstreeCollectionRef **
 ostree_collection_ref_dupv (const OstreeCollectionRef * const *refs)
@@ -179,7 +178,7 @@ ostree_collection_ref_dupv (const OstreeCollectionRef * const *refs)
  * Free the given array of @refs, including freeing all its elements. @refs
  * must be %NULL-terminated; it may be empty, but must not be %NULL.
  *
- * Since: 2017.8
+ * Since: 2018.6
  */
 void
 ostree_collection_ref_freev (OstreeCollectionRef **refs)
