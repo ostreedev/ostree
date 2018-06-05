@@ -3481,13 +3481,13 @@ initiate_request (OtPullData                 *pull_data,
  *     a transient network error, such as a socket timeout; default is 5, 0
  *     means return errors without retrying
  */
-gboolean
-ostree_repo_pull_with_options (OstreeRepo             *self,
-                               const char             *remote_name_or_baseurl,
-                               GVariant               *options,
-                               OstreeAsyncProgress    *progress,
-                               GCancellable           *cancellable,
-                               GError                **error)
+static gboolean
+ostree_repo_pull_with_options_internal (OstreeRepo           *self,
+                                        const char           *remote_name_or_baseurl,
+                                        GVariant             *options,
+                                        OstreeAsyncProgress  *progress,
+                                        GCancellable         *cancellable,
+                                        GError              **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GBytes) bytes_summary = NULL;
@@ -4603,6 +4603,43 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->dirs, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
   return ret;
+}
+
+gboolean
+ostree_repo_pull_with_options (OstreeRepo             *self,
+                               const char             *remote_name_or_baseurl,
+                               GVariant               *options,
+                               OstreeAsyncProgress    *progress,
+                               GCancellable           *cancellable,
+                               GError                **error)
+{
+  g_autoptr(GError) local_error = NULL;
+
+  if (!ostree_repo_pull_with_options_internal (self, remote_name_or_baseurl,
+                                               options, progress, cancellable,
+                                               &local_error))
+    {
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND) &&
+          (options == NULL ||
+           g_variant_lookup_value (options, "disable-static-deltas", NULL) == NULL))
+        {
+          g_autoptr(GVariant) modified_options = NULL;
+          g_auto(GVariantDict) modified_options_dict;
+          g_variant_dict_init (&modified_options_dict, options);
+          g_variant_dict_insert (&modified_options_dict, "disable-static-deltas",
+                                 "b", TRUE);
+          modified_options = g_variant_dict_end (&modified_options_dict);
+
+          return ostree_repo_pull_with_options_internal (self, remote_name_or_baseurl,
+                                                         modified_options, progress,
+                                                         cancellable, error);
+        }
+
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  return TRUE;
 }
 
 /* Structure used in ostree_repo_find_remotes_async() which stores metadata
