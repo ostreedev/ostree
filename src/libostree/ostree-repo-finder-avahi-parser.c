@@ -29,6 +29,7 @@
 #include <avahi-common/strlst.h>
 #include <glib.h>
 #include <glib-object.h>
+#include <libglnx.h>
 #include <string.h>
 
 #include "ostree-autocleanups.h"
