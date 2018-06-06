@@ -11,6 +11,7 @@ test-bloom
 test-bsdiff
 test-checksum
 test-gpg-verify-result
+test-include-ostree-h
 test-keyfile-utils
 test-mutable-tree
 test-ot-opt-utils

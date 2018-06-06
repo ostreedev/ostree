@@ -242,7 +242,7 @@ endif
 _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
-	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo
+	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo tests/test-include-ostree-h
 
 if USE_AVAHI
 test_programs += tests/test-repo-finder-avahi
@@ -277,6 +277,11 @@ tests_test_rollsum_LDADD = $(bupsplitpath) $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
 tests_test_bloom_SOURCES = src/libostree/ostree-bloom.c tests/test-bloom.c
 tests_test_bloom_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bloom_LDADD = $(TESTS_LDADD)
+
+tests_test_include_ostree_h_SOURCES = tests/test-include-ostree-h.c
+# Don't use TESTS_CFLAGS so we test if the public header can be included by external programs
+tests_test_include_ostree_h_CFLAGS = $(AM_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libostree -I$(builddir)/src/libostree
+tests_test_include_ostree_h_LDADD = $(TESTS_LDADD)
 
 if USE_AVAHI
 tests_test_repo_finder_avahi_SOURCES = src/libostree/ostree-repo-finder-avahi-parser.c tests/test-repo-finder-avahi.c
