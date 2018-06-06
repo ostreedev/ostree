@@ -27,6 +27,7 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib-object.h>
+#include <libglnx.h>
 #include <locale.h>
 
 #include "libostreetest.h"

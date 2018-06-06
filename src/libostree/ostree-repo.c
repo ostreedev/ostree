@@ -28,6 +28,7 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 #include <gio/gfiledescriptorbased.h>
+#include "libglnx.h"
 #include "otutil.h"
 #include <glnx-console.h>
 

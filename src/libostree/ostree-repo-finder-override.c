@@ -28,6 +28,7 @@
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib-object.h>
+#include <libglnx.h>
 
 #include "ostree-autocleanups.h"
 #include "ostree-remote-private.h"
