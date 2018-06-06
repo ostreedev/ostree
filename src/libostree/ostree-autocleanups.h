@@ -24,7 +24,6 @@
 #pragma once
 
 #include <ostree.h>
-#include <libglnx.h>
 
 G_BEGIN_DECLS
 
