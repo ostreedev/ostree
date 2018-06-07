@@ -49,6 +49,13 @@ main(int argc, char *argv[])
       exit (EXIT_SUCCESS);
   }
 
+  /* We conflict with the magic ostree-mount-deployment-var file for ostree-prepare-root */
+  { struct stat stbuf;
+    if (fstatat (AT_FDCWD, "/run/ostree-mount-deployment-var", &stbuf, 0) == 0)
+      exit (EXIT_SUCCESS);
+  }
+
+
   if (argc > 1 && argc != 4)
     errx (EXIT_FAILURE, "This program takes three or no arguments");
 

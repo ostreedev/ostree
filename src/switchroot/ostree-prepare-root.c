@@ -151,12 +151,17 @@ main(int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
-  /* In the systemd case, this is handled by ostree-system-generator */
+  bool mount_var = true;
+  /* In the systemd case, this is handled by ostree-system-generator by default */
 #ifndef HAVE_SYSTEMD_AND_LIBMOUNT
-  /* Link to the deployment's /var */
-  if (mount ("../../var", "var", NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
-    err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+  /* file in /run can override that behaviour */
+  if (lstat ("/run/ostree-mount-deployment-var", &stbuf) < 0)
+    mount_var = false;
 #endif
+
+  /* Link to the deployment's /var */
+  if (mount_var && mount ("../../var", "var", NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+    err (EXIT_FAILURE, "failed to bind mount ../../var to var");
 
   char srcpath[PATH_MAX];
   /* If /boot is on the same partition, use a bind mount to make it visible
