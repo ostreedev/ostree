@@ -31,6 +31,8 @@
 #include <fcntl.h>
 #include <string.h>
 
+#define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
+
 static inline int
 path_is_on_readonly_fs (char *path)
 {
