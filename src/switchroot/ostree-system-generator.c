@@ -49,6 +49,16 @@ main(int argc, char *argv[])
       exit (EXIT_SUCCESS);
   }
 
+  /* We conflict with the magic ostree-mount-deployment-var file for ostree-prepare-root */
+  { struct stat stbuf;
+    if (fstatat (AT_FDCWD, INITRAMFS_MOUNT_VAR, &stbuf, 0) == 0)
+      {
+        if (unlinkat (AT_FDCWD, INITRAMFS_MOUNT_VAR, 0) < 0)
+          err (EXIT_FAILURE, "Can't unlink " INITRAMFS_MOUNT_VAR);
+        exit (EXIT_SUCCESS);
+      }
+  }
+
   if (argc > 1 && argc != 4)
     errx (EXIT_FAILURE, "This program takes three or no arguments");
 
