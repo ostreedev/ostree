@@ -155,7 +155,7 @@ main(int argc, char *argv[])
   /* In the systemd case, this is handled by ostree-system-generator by default */
 #ifndef HAVE_SYSTEMD_AND_LIBMOUNT
   /* file in /run can override that behaviour */
-  if (lstat ("/run/ostree-mount-deployment-var", &stbuf) < 0)
+  if (lstat (INITRAMFS_MOUNT_VAR, &stbuf) < 0)
     mount_var = false;
 #endif
 
