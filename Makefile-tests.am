@@ -281,6 +281,8 @@ tests_test_bloom_LDADD = $(TESTS_LDADD)
 tests_test_include_ostree_h_SOURCES = tests/test-include-ostree-h.c
 # Don't use TESTS_CFLAGS so we test if the public header can be included by external programs
 tests_test_include_ostree_h_CFLAGS = $(AM_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libostree -I$(builddir)/src/libostree
+# Don't define OSTREE_COMPILATION so that we're compiling as if it's an external program
+tests_test_include_ostree_h_CPPFLAGS = $(AM_CPPFLAGS) -UOSTREE_COMPILATION
 tests_test_include_ostree_h_LDADD = $(TESTS_LDADD)
 
 if USE_AVAHI

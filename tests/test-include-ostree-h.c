@@ -26,18 +26,11 @@
 
 #include <glib.h>
 #include <locale.h>
-
-#if GLIB_CHECK_VERSION(2, 44, 0)
 #include <ostree.h>
-#endif
 
 static void
 test_include_ostree_h_compiled (void)
 {
-#if !GLIB_CHECK_VERSION(2, 44, 0)
-      g_test_skip ("Skipping test without glib >= 2.44 to avoid depending on"
-                   "libglnx for g_autoptr backports");
-#endif
 }
 
 /* Just ensure that we can compile with ostree.h included */
