@@ -2655,6 +2655,48 @@ get_remotes_d_dir (OstreeRepo          *self,
 }
 
 static gboolean
+min_free_space_size_validate_and_convert (OstreeRepo    *self,
+                                          const char    *min_free_space_size_str,
+                                          GError       **error)
+{
+  static GRegex *regex;
+  static gsize regex_initialized;
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^([0-9]+)(G|M|T)B$", 0,0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  g_autoptr(GMatchInfo) match = NULL;
+  if (!g_regex_match (regex, min_free_space_size_str, 0, &match))
+    return glnx_prefix_error (error, "Error parsing min-free-space-size parameter: '%s'", min_free_space_size_str);
+
+  g_autofree char *size_str = g_match_info_fetch (match, 1);
+  g_autofree char *unit = g_match_info_fetch (match, 2);
+  guint shifts;
+
+  switch (*unit)
+    {
+      case 'M':
+        shifts = 0;
+        break;
+      case 'G':
+        shifts = 10;
+        break;
+      case 'T':
+        shifts = 20;
+        break;
+      default:
+        g_assert_not_reached ();
+    }
+
+  self->min_free_space_size = g_ascii_strtoull (size_str, NULL, 10) << shifts;
+
+  return TRUE;
+}
+
+static gboolean
 reload_core_config (OstreeRepo          *self,
                     GCancellable        *cancellable,
                     GError             **error)
@@ -2771,18 +2813,39 @@ reload_core_config (OstreeRepo          *self,
       self->zlib_compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
   }
 
-  { g_autofree char *min_free_space_percent_str = NULL;
-    /* If changing this, be sure to change the man page too */
-    const char *default_min_free_space = "3";
+  {
+    if (g_key_file_has_key (self->config, "core", "min-free-space-size", error) &&
+        g_key_file_has_key (self->config, "core", "min-free-space-percent", error))
+      {
+        return glnx_throw (error, "min-free-space-percent and min-free-space-size are mutually exclusive.");
+      }
+    else if (g_key_file_has_key (self->config, "core", "min-free-space-size", error))
+      {
+        g_autofree char *min_free_space_size_str = NULL;
 
-    if (!ot_keyfile_get_value_with_default (self->config, "core", "min-free-space-percent",
-                                            default_min_free_space,
-                                            &min_free_space_percent_str, error))
-      return FALSE;
+        if (!ot_keyfile_get_value_with_default (self->config, "core", "min-free-space-size",
+                                                NULL, &min_free_space_size_str, error))
+          return FALSE;
 
-    self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
-    if (self->min_free_space_percent > 99)
-      return glnx_throw (error, "Invalid min-free-space-percent '%s'", min_free_space_percent_str);
+        /* Validate the string and convert the size to MBs */
+        if (!min_free_space_size_validate_and_convert (self, min_free_space_size_str, error))
+          return glnx_throw (error, "Invalid min-free-space-size '%s'", min_free_space_size_str);
+      }
+    else
+      {
+        g_autofree char *min_free_space_percent_str = NULL;
+        /* If changing this, be sure to change the man page too */
+        const char *default_min_free_space = "3";
+
+        if (!ot_keyfile_get_value_with_default (self->config, "core", "min-free-space-percent",
+                                                default_min_free_space,
+                                                &min_free_space_percent_str, error))
+          return FALSE;
+
+        self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
+        if (self->min_free_space_percent > 99)
+          return glnx_throw (error, "Invalid min-free-space-percent '%s'", min_free_space_percent_str);
+      }
   }
 
   {
