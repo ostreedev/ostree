@@ -124,6 +124,15 @@ Boston, MA 02111-1307, USA.
         keep free. The default value is 3.</para></listitem>
       </varlistentry>
 
+     <varlistentry>
+        <term><varname>min-free-space-size</varname></term>
+        <listitem><para>Value (in MB, GB or TB) that specifies a minimum space (in blocks)
+        in the underlying filesystem to keep free. Also, note that min-free-space-percent
+        and min-free-space-size are mutually exclusive. Examples of acceptable values:
+        500MB, 1GB etc.
+        </para></listitem>
+      </varlistentry>
+
       <varlistentry>
         <term><varname>add-remotes-config-dir</varname></term>
         <listitem>
