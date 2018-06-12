@@ -73,11 +73,13 @@ Boston, MA 02111-1307, USA.
             <listitem><para><command>init-fs</command></para></listitem>
             <listitem><para><command>instutil</command></para></listitem>
             <listitem><para><command>os-init</command></para></listitem>
-            <listitem><para><command>status</command></para></listitem>
+            <listitem><para><command>pin</command></para></listitem>
             <listitem><para><command>set-origin</command></para></listitem>
+            <listitem><para><command>status</command></para></listitem>
             <listitem><para><command>switch</command></para></listitem>
             <listitem><para><command>undeploy</command></para></listitem>
-            <listitem><para><command>upgrade</command></para></listitem>            
+            <listitem><para><command>unlock</command></para></listitem>
+            <listitem><para><command>upgrade</command></para></listitem>
         </itemizedlist>
 
         <para>
