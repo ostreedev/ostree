@@ -2663,7 +2663,7 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
   static gsize regex_initialized;
   if (g_once_init_enter (&regex_initialized))
     {
-      regex = g_regex_new ("^([0-9]+)(G|M|T)B$", 0,0, NULL);
+      regex = g_regex_new ("^([0-9]+)(G|M|T)B$", 0, 0, NULL);
       g_assert (regex);
       g_once_init_leave (&regex_initialized, 1);
     }
