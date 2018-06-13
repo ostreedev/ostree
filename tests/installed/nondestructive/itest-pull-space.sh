@@ -16,12 +16,27 @@ blkdev=$(losetup --find --show $(pwd)/testblk.img)
 mkfs.xfs ${blkdev}
 mkdir mnt
 mount ${blkdev} mnt
+
+# first test min-free-space-percent
 ostree --repo=mnt/repo init --mode=bare-user
 echo 'fsync=false' >> mnt/repo/config
 if ostree --repo=mnt/repo pull-local /ostree/repo ${host_commit} 2>err.txt; then
     fatal "succeeded in doing a pull with no free space"
 fi
 assert_file_has_content err.txt "min-free-space-percent"
+echo "ok min-free-space-percent"
+
+# now test min-free-space-size
+rm -rf mnt/repo
+ostree --repo=mnt/repo init --mode=bare-user
+echo 'fsync=false' >> mnt/repo/config
+echo 'min-free-space-size=10MB' >> mnt/repo/config
+if ostree --repo=mnt/repo pull-local /ostree/repo ${host_commit} 2>err.txt; then
+    fatal "succeeded in doing a pull with no free space"
+fi
+assert_file_has_content err.txt "min-free-space-size"
+echo "ok min-free-space-size"
+
 umount mnt
 losetup -d ${blkdev}
 date
