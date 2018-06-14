@@ -245,7 +245,28 @@ resolve_refspec (OstreeRepo     *self,
     {
       ret_rev = g_strdup (ref);
     }
-  else if (remote != NULL)
+  else if (self->in_transaction)
+    {
+      const char *refspec;
+
+      if (remote != NULL)
+        refspec = glnx_strjoina (remote, ":", ref);
+      else
+        refspec = ref;
+
+      g_mutex_lock (&self->txn_lock);
+      if (self->txn.refs)
+        ret_rev = g_strdup (g_hash_table_lookup (self->txn.refs, refspec));
+      g_mutex_unlock (&self->txn_lock);
+    }
+
+  if (ret_rev != NULL)
+    {
+      ot_transfer_out_value (out_rev, &ret_rev);
+      return TRUE;
+    }
+
+  if (remote != NULL)
     {
       const char *remote_ref = glnx_strjoina ("refs/remotes/", remote, "/", ref);
 
