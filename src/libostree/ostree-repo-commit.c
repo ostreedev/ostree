@@ -2188,6 +2188,8 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
                                GCancellable   *cancellable,
                                GError        **error)
 {
+  g_autoptr(GError) cleanup_error = NULL;
+
   /* Always ignore the cancellable to avoid the chance that, if it gets
    * canceled, the transaction may not be fully cleaned up.
    * See https://github.com/ostreedev/ostree/issues/1491 .
@@ -2198,8 +2200,9 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   if (!self->in_transaction)
     return TRUE;
 
-  if (!cleanup_tmpdir (self, cancellable, error))
-    return FALSE;
+  /* Do not propagate failures from cleanup_tmpdir() immediately, as we want
+   * to clean up the rest of the internal transaction state first. */
+  cleanup_tmpdir (self, cancellable, &cleanup_error);
 
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
@@ -2217,6 +2220,13 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
       if (!_ostree_repo_lock_pop (self, cancellable, error))
         return FALSE;
       self->txn_locked = FALSE;
+    }
+
+  /* Propagate cleanup_tmpdir() failure. */
+  if (cleanup_error != NULL)
+    {
+      g_propagate_error (error, g_steal_pointer (&cleanup_error));
+      return FALSE;
     }
 
   return TRUE;
