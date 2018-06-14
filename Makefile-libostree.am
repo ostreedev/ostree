@@ -28,7 +28,7 @@ if ENABLE_RUST
 bupsplitpath = @abs_top_builddir@/target/@RUST_TARGET_SUBDIR@/libbupsplit_rs.a
 BUPSPLIT_RUST_SRCS = rust/src/bupsplit.rs
 EXTRA_DIST += $(BUPSPLIT_RUST_SRCS)
-$(bupsplitpath): Makefile $(BUPSPLIT_RUST_SRCS)
+$(bupsplitpath): $(BUPSPLIT_RUST_SRCS)
 	cd $(top_srcdir)/rust && CARGO_TARGET_DIR=@abs_top_builddir@/target cargo build --verbose $(CARGO_RELEASE_ARGS)
 else
 bupsplitpath = libbupsplit.la
