@@ -153,26 +153,29 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
       size_t len;
       gboolean has_sig_suffix = FALSE;
       struct dirent *dent;
+      g_autofree gchar *d_name = NULL;
 
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
         return FALSE;
       if (dent == NULL)
         break;
 
-      len = strlen (dent->d_name);
-      if (len > 4 && g_strcmp0 (dent->d_name + len - 4, ".sig") == 0)
+      /* dirent->d_name can't be modified directly; see `man 3 readdir` */
+      d_name = g_strdup (dent->d_name);
+      len = strlen (d_name);
+      if (len > 4 && g_strcmp0 (d_name + len - 4, ".sig") == 0)
         {
           has_sig_suffix = TRUE;
-          dent->d_name[len - 4] = '\0';
+          d_name[len - 4] = '\0';
         }
 
-      if (!g_hash_table_contains (self->remotes, dent->d_name))
+      if (!g_hash_table_contains (self->remotes, d_name))
         {
           /* Restore the previous value to get the file name.  */
           if (has_sig_suffix)
-            dent->d_name[len - 4] = '.';
+            d_name[len - 4] = '.';
 
-          if (!glnx_unlinkat (dfd_iter.fd, dent->d_name, 0, error))
+          if (!glnx_unlinkat (dfd_iter.fd, d_name, 0, error))
             return FALSE;
         }
     }
