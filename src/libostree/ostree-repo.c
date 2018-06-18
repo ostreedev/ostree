@@ -2691,7 +2691,7 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
         g_assert_not_reached ();
     }
 
-  self->min_free_space_size = g_ascii_strtoull (size_str, NULL, 10) << shifts;
+  self->min_free_space_mb = g_ascii_strtoull (size_str, NULL, 10) << shifts;
 
   return TRUE;
 }
