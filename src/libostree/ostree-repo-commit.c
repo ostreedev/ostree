@@ -896,8 +896,9 @@ write_content_object (OstreeRepo         *self,
       const fsblkcnt_t object_blocks = (size / self->txn.blocksize) + 1;
       if (object_blocks > self->txn.max_blocks)
         {
+          guint64 bytes_required = (guint64)object_blocks * self->txn.blocksize;
           g_mutex_unlock (&self->txn_lock);
-          g_autofree char *formatted_required = g_format_size ((guint64)object_blocks * self->txn.blocksize);
+          g_autofree char *formatted_required = g_format_size (bytes_required);
           if (self->min_free_space_percent > 0)
             return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s more required",
                                self->min_free_space_percent, formatted_required);
@@ -1609,8 +1610,9 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
         self->txn.max_blocks = bfree - reserved_blocks;
       else
         {
+          guint64 bytes_required = bfree * self->txn.blocksize;
           g_mutex_unlock (&self->txn_lock);
-          g_autofree char *formatted_free = g_format_size (bfree * self->txn.blocksize);
+          g_autofree char *formatted_free = g_format_size (bytes_required);
           if (self->min_free_space_percent > 0)
             return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s available",
                                self->min_free_space_percent, formatted_free);
