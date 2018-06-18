@@ -23,6 +23,9 @@
 
 #pragma once
 
+/* Private, not for introspection */
+#ifndef __GI_SCANNER__
+
 #include "config.h"
 
 #include <gio/gio.h>
@@ -64,3 +67,5 @@ ot_open_archive_read (const char *path, GError **error)
 #endif
 
 G_END_DECLS
+
+#endif
