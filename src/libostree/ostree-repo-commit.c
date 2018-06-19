@@ -509,6 +509,33 @@ _ostree_repo_bare_content_commit (OstreeRepo                 *self,
 {
   OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent*) barewrite;
   g_assert (real->initialized);
+
+  if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
+    {
+      struct stat st_buf;
+      if (!glnx_fstat (real->tmpf.fd, &st_buf, error))
+        return FALSE;
+
+      g_mutex_lock (&self->txn_lock);
+      g_assert_cmpint (self->txn.blocksize, >, 0);
+
+      const fsblkcnt_t object_blocks = (st_buf.st_size / self->txn.blocksize) + 1;
+      if (object_blocks > self->txn.max_blocks)
+        {
+          g_mutex_unlock (&self->txn_lock);
+          g_autofree char *formatted_required = g_format_size (st_buf.st_size);
+          if (self->min_free_space_percent > 0)
+           return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s more required",
+                              self->min_free_space_percent, formatted_required);
+          else
+            return glnx_throw (error, "min-free-space-size %luMB woulid be exceeded, %s more required",
+                               self->min_free_space_mb, formatted_required);
+        }
+      /* This is the main bit that needs mutex protection */
+      self->txn.max_blocks -= object_blocks;
+      g_mutex_unlock (&self->txn_lock);
+    }
+
   ot_checksum_get_hexdigest (&real->checksum, checksum_buf, buflen);
 
   if (real->expected_checksum &&
