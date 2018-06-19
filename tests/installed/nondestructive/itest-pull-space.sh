@@ -39,7 +39,7 @@ echo "ok min-free-space-size (error)"
 
 umount mnt
 losetup -d ${blkdev}
-rm ${blkdev}
+rm testblk.img
 
 # min-free-space-size success
 ostree --repo=repo init --mode=bare-user
