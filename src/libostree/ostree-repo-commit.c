@@ -889,21 +889,22 @@ write_content_object (OstreeRepo         *self,
     size = 0;
 
   /* Free space check; only applies during transactions */
-  if ((self->min_free_space_percent > 0 || self->min_free_space_size > 0) && self->in_transaction)
+  if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
     {
       g_mutex_lock (&self->txn_lock);
       g_assert_cmpint (self->txn.blocksize, >, 0);
       const fsblkcnt_t object_blocks = (size / self->txn.blocksize) + 1;
       if (object_blocks > self->txn.max_blocks)
         {
+          guint64 bytes_required = (guint64)object_blocks * self->txn.blocksize;
           g_mutex_unlock (&self->txn_lock);
-          g_autofree char *formatted_required = g_format_size ((guint64)object_blocks * self->txn.blocksize);
+          g_autofree char *formatted_required = g_format_size (bytes_required);
           if (self->min_free_space_percent > 0)
             return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s more required",
                                self->min_free_space_percent, formatted_required);
           else
             return glnx_throw (error, "min-free-space-size %luMB would be exceeded, %s more required",
-                               self->min_free_space_size, formatted_required);
+                               self->min_free_space_mb, formatted_required);
         }
       /* This is the main bit that needs mutex protection */
       self->txn.max_blocks -= object_blocks;
@@ -1500,9 +1501,9 @@ min_free_space_calculate_reserved_blocks (OstreeRepo *self, struct statvfs *stvf
 {
   guint64 reserved_blocks = 0;
 
-  if (self->min_free_space_size > 0)
+  if (self->min_free_space_mb > 0)
     {
-      reserved_blocks = (self->min_free_space_size << 20) / stvfsbuf->f_bsize;
+      reserved_blocks = (self->min_free_space_mb << 20) / stvfsbuf->f_bsize;
     }
   else if (self->min_free_space_percent > 0)
     {
@@ -1595,7 +1596,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
     return FALSE;
 
   self->in_transaction = TRUE;
-  if (self->min_free_space_percent >= 0 || self->min_free_space_size >= 0)
+  if (self->min_free_space_percent >= 0 || self->min_free_space_mb >= 0)
     {
       struct statvfs stvfsbuf;
       if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
@@ -1609,14 +1610,15 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
         self->txn.max_blocks = bfree - reserved_blocks;
       else
         {
+          guint64 bytes_required = bfree * self->txn.blocksize;
           g_mutex_unlock (&self->txn_lock);
-          g_autofree char *formatted_free = g_format_size (bfree * self->txn.blocksize);
+          g_autofree char *formatted_free = g_format_size (bytes_required);
           if (self->min_free_space_percent > 0)
             return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s available",
                                self->min_free_space_percent, formatted_free);
           else
             return glnx_throw (error, "min-free-space-size %luMB would be exceeded, %s available",
-                               self->min_free_space_size, formatted_free);
+                               self->min_free_space_mb, formatted_free);
         }
       g_mutex_unlock (&self->txn_lock);
     }

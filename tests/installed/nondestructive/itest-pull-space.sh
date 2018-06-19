@@ -35,8 +35,17 @@ if ostree --repo=mnt/repo pull-local /ostree/repo ${host_commit} 2>err.txt; then
     fatal "succeeded in doing a pull with no free space"
 fi
 assert_file_has_content err.txt "min-free-space-size"
-echo "ok min-free-space-size"
+echo "ok min-free-space-size (error)"
 
 umount mnt
 losetup -d ${blkdev}
+rm testblk.img
+
+# min-free-space-size success
+ostree --repo=repo init --mode=bare-user
+echo 'fsync=false' >> repo/config
+echo 'min-free-space-size=1MB' >> repo/config
+ostree --repo=repo pull-local /ostree/repo ${host_commit}
+echo "ok min-free-space-size (success)"
+
 date

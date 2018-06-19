@@ -2670,7 +2670,7 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
 
   g_autoptr(GMatchInfo) match = NULL;
   if (!g_regex_match (regex, min_free_space_size_str, 0, &match))
-    return glnx_prefix_error (error, "Error parsing min-free-space-size parameter: '%s'", min_free_space_size_str);
+    return glnx_prefix_error (error, "Failed to parse min-free-space-size parameter: '%s'", min_free_space_size_str);
 
   g_autofree char *size_str = g_match_info_fetch (match, 1);
   g_autofree char *unit = g_match_info_fetch (match, 2);
@@ -2691,7 +2691,7 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
         g_assert_not_reached ();
     }
 
-  self->min_free_space_size = g_ascii_strtoull (size_str, NULL, 10) << shifts;
+  self->min_free_space_mb = g_ascii_strtoull (size_str, NULL, 10) << shifts;
 
   return TRUE;
 }
@@ -2814,12 +2814,12 @@ reload_core_config (OstreeRepo          *self,
   }
 
   {
-    if (g_key_file_has_key (self->config, "core", "min-free-space-size", error) &&
-        g_key_file_has_key (self->config, "core", "min-free-space-percent", error))
+    if (g_key_file_has_key (self->config, "core", "min-free-space-size", NULL) &&
+        g_key_file_has_key (self->config, "core", "min-free-space-percent", NULL))
       {
-        return glnx_throw (error, "min-free-space-percent and min-free-space-size are mutually exclusive.");
+        return glnx_throw (error, "min-free-space-percent and min-free-space-size are mutually exclusive");
       }
-    else if (g_key_file_has_key (self->config, "core", "min-free-space-size", error))
+    else if (g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
       {
         g_autofree char *min_free_space_size_str = NULL;
 
