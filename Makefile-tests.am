@@ -273,6 +273,13 @@ _installed_or_uninstalled_test_programs += \
 	$(NULL)
 endif
 
+if USE_LIBSOUP_OR_LIBSOUP3
+test_extra_programs += ostree-trivial-httpd
+ostree_trivial_httpd_SOURCES = src/ostree/ostree-trivial-httpd.c
+ostree_trivial_httpd_CFLAGS = $(common_tests_cflags) $(OT_INTERNAL_SOUP_CFLAGS)
+ostree_trivial_httpd_LDADD = $(common_tests_ldadd) $(OT_INTERNAL_SOUP_LIBS)
+endif
+
 if USE_AVAHI
 test_programs += tests/test-repo-finder-avahi
 endif

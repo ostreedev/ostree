@@ -212,14 +212,6 @@ AS_IF([test x$with_soup = xyes || test x$with_soup3 = xyes], [
   AC_DEFINE([HAVE_LIBSOUP_OR_LIBSOUP3], 1, [Define if we have libsoup.pc or libsoup3.pc])
 ])
 
-AC_ARG_ENABLE(trivial-httpd-cmdline,
-  [AS_HELP_STRING([--enable-trivial-httpd-cmdline],
-  [Continue to support "ostree trivial-httpd" [default=no]])],,
-  enable_trivial_httpd_cmdline=no)
-AS_IF([test x$enable_trivial_httpd_cmdline = xyes],
-  [AC_DEFINE([BUILDOPT_ENABLE_TRIVIAL_HTTPD_CMDLINE], 1, [Define if we are enabling ostree trivial-httpd entrypoint])]
-)
-
 AS_IF([test x$with_curl = xyes && test x$with_soup = xno && test x$with_soup3 = xno], [
   AC_MSG_WARN([Curl enabled, but libsoup is not; libsoup is needed for tests (make check, etc.)])
 ])
@@ -686,7 +678,6 @@ echo "
     introspection:                                $found_introspection
     rofiles-fuse:                                 $enable_rofiles_fuse
     HTTP backend:                                 $fetcher_backend
-    \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
     SELinux:                                      $with_selinux
     fs-verity:                                    $ac_cv_header_linux_fsverity_h
     cryptographic checksums:                      $with_crypto
