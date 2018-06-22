@@ -250,6 +250,7 @@ OstreeLzmaDecompressorClass
 <FILE>ostree-mutable-tree</FILE>
 OstreeMutableTree
 ostree_mutable_tree_new
+ostree_mutable_tree_new_from_checksum
 ostree_mutable_tree_set_metadata_checksum
 ostree_mutable_tree_get_metadata_checksum
 ostree_mutable_tree_set_contents_checksum
@@ -261,6 +262,7 @@ ostree_mutable_tree_ensure_parent_dirs
 ostree_mutable_tree_walk
 ostree_mutable_tree_get_subdirs
 ostree_mutable_tree_get_files
+ostree_mutable_tree_fill_empty_from_dirtree
 <SUBSECTION Standard>
 OSTREE_MUTABLE_TREE
 OSTREE_IS_MUTABLE_TREE

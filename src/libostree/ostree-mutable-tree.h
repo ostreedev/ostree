@@ -53,6 +53,11 @@ _OSTREE_PUBLIC
 OstreeMutableTree *ostree_mutable_tree_new (void);
 
 _OSTREE_PUBLIC
+OstreeMutableTree * ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,
+                                                           const char *contents_checksum,
+                                                           const char *metadata_checksum);
+
+_OSTREE_PUBLIC
 void ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self,
                                                 const char        *checksum);
 
@@ -99,6 +104,12 @@ gboolean ostree_mutable_tree_walk (OstreeMutableTree   *self,
                                    guint                start,
                                    OstreeMutableTree  **out_subdir,
                                    GError             **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
+                                                      OstreeRepo        *repo,
+                                                      const char        *contents_checksum,
+                                                      const char        *metadata_checksum);
 
 _OSTREE_PUBLIC
 GHashTable * ostree_mutable_tree_get_subdirs (OstreeMutableTree *self);

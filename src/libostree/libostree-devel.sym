@@ -19,6 +19,9 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2018.7 {
+global:
+    ostree_mutable_tree_fill_empty_from_dirtree;
+    ostree_mutable_tree_new_from_checksum;
 } LIBOSTREE_2018.6;
 
 /* Stub section for the stable release *after* this development one; don't
