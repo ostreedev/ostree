@@ -3602,6 +3602,14 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
       if (!ostree_repo_file_ensure_resolved (repo_dir, error))
         return FALSE;
 
+      /* ostree_mutable_tree_fill_from_dirtree returns FALSE if mtree isn't
+       * empty: in which case we're responsible for merging the trees. */
+      if (ostree_mutable_tree_fill_empty_from_dirtree (mtree,
+            ostree_repo_file_get_repo (repo_dir),
+            ostree_repo_file_tree_get_contents_checksum (repo_dir),
+            ostree_repo_file_get_checksum (repo_dir)))
+        return TRUE;
+
       ostree_mutable_tree_set_metadata_checksum (mtree, ostree_repo_file_tree_get_metadata_checksum (repo_dir));
 
       filter_result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
@@ -3914,6 +3922,9 @@ ostree_repo_write_mtree (OstreeRepo           *self,
 {
   const char *contents_checksum, *metadata_checksum;
   g_autoptr(GFile) ret_file = NULL;
+
+  if (!ostree_mutable_tree_check_error (mtree, error))
+    return glnx_prefix_error (error, "mtree");
 
   metadata_checksum = ostree_mutable_tree_get_metadata_checksum (mtree);
   if (!metadata_checksum)
