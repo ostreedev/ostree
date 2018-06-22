@@ -1432,8 +1432,7 @@ ostree_repo_finder_avahi_start (OstreeRepoFinderAvahi  *self,
 
   g_assert (self->client == NULL);
 
-  client = avahi_client_new (avahi_glib_poll_get (self->poll),
-                             AVAHI_CLIENT_NO_FAIL,
+  client = avahi_client_new (avahi_glib_poll_get (self->poll), 0,
                              client_cb, self, &failure);
 
   if (client == NULL)
