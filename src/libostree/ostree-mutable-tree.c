@@ -186,6 +186,16 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
   return ret;
 }
 
+/**
+ * ostree_mutable_tree_ensure_dir:
+ * @self: Tree
+ * @name: Name of subdirectory of self to retrieve/creates
+ * @out_subdir: (out) (transfer full): the subdirectory
+ * @error: a #GError
+ *
+ * Returns the subdirectory of self with filename @name, creating an empty one
+ * it if it doesn't exist.
+ */
 gboolean
 ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
                                 const char        *name,
