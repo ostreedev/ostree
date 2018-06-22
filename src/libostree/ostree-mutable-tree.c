@@ -47,10 +47,20 @@ struct OstreeMutableTree
 {
   GObject parent_instance;
 
+  /* This is the checksum of the Dirtree object that corresponds to the current
+   * contents of this directory.  contents_checksum can be NULL if the SHA was
+   * never calculated or contents of the mtree has been modified.  Even if
+   * contents_checksum is not NULL it may be out of date. */
   char *contents_checksum;
+
+  /* This is the checksum of the DirMeta object that holds the uid, gid, mode
+   * and xattrs of this directory.  This can be NULL. */
   char *metadata_checksum;
 
+  /* const char* filename -> const char* checksum */
   GHashTable *files;
+
+  /* const char* filename -> OstreeMutableTree* subtree */
   GHashTable *subdirs;
 };
 
