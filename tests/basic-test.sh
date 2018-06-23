@@ -435,6 +435,54 @@ $OSTREE checkout test3-combined checkout-test3-combined
 assert_has_file checkout-test3-combined/file-a
 assert_has_file checkout-test3-combined/file-b
 
+mkdir -p tree-C/usr/share tree-C/usr/bin tree-C/etc tree-D/etc
+
+echo exe >tree-C/usr/bin/exe
+echo sudoers1 >tree-C/etc/sudoers
+echo mtab >tree-C/etc/mtab
+
+echo sudoers2 >tree-D/etc/sudoers
+
+$OSTREE commit ${COMMIT_ARGS} -b test3-C1 --tree=dir=tree-C
+$OSTREE commit ${COMMIT_ARGS} -b test3-D --tree=dir=tree-D
+
+echo sudoers2 >tree-C/etc/sudoers
+$OSTREE commit ${COMMIT_ARGS} -b test3-C2 --tree=dir=tree-C
+echo sudoers1 >tree-C/etc/sudoers
+
+$OSTREE commit ${COMMIT_ARGS} -b test3-ref-ref --tree=ref=test3-C1 --tree=ref=test3-D
+$OSTREE commit ${COMMIT_ARGS} -b test3-dir-ref --tree=dir=tree-C --tree=ref=test3-D
+$OSTREE commit ${COMMIT_ARGS} -b test3-ref-dir --tree=ref=test3-C1 --tree=dir=tree-D
+$OSTREE commit ${COMMIT_ARGS} -b test3-dir-dir --tree=dir=tree-C --tree=dir=tree-D
+
+assert_trees_identical() {
+    $OSTREE diff "$1" "$2" > "diff-$1-$2"
+    cat "diff-$1-$2" 1>&2
+    assert_file_empty "diff-$1-$2"
+    rm "diff-$1-$2"
+}
+
+for x in ref dir
+do
+    for y in ref dir
+    do
+        assert_trees_identical test3-C2 "test3-$x-$y"
+    done
+done
+
+# Regression test
+
+mkdir -p tree-E/etc
+mkdir -p tree-F/etc/apt/sources.list.d/
+echo contents >tree-F/etc/apt/sources.list.d/universe.list
+
+$OSTREE commit ${COMMIT_ARGS} -b test3-E --tree=dir=tree-E
+$OSTREE commit ${COMMIT_ARGS} -b test3-F --tree=dir=tree-F
+
+$OSTREE commit ${COMMIT_ARGS} -b test3-F2 --tree=ref=test3-E --tree=ref=test3-F
+
+assert_trees_identical test3-F test3-F2
+
 echo "ok commit combined ref trees"
 
 # NB: The + is optional, but we need to make sure we support it
