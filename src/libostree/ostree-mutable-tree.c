@@ -155,6 +155,10 @@ void
 ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self,
                                            const char        *checksum)
 {
+  if (g_strcmp0 (checksum, self->metadata_checksum) == 0)
+    return;
+
+  invalidate_contents_checksum (self->parent);
   g_free (self->metadata_checksum);
   self->metadata_checksum = g_strdup (checksum);
 }
