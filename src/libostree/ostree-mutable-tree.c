@@ -47,10 +47,24 @@ struct OstreeMutableTree
 {
   GObject parent_instance;
 
+  /* The parent directory to this one.  We don't hold a ref because this mtree
+   * is owned by the parent.  We can be certain that any mtree only has one
+   * parent because external users can't set this, it's only set when we create
+   * a child from within this file (see insert_child_mtree). We ensure that the
+   * parent pointer is either valid or NULL because when the parent is destroyed
+   * it sets parent = NULL on all its children (see remove_child_mtree) */
+  OstreeMutableTree *parent;
+
   /* This is the checksum of the Dirtree object that corresponds to the current
    * contents of this directory.  contents_checksum can be NULL if the SHA was
-   * never calculated or contents of the mtree has been modified.  Even if
-   * contents_checksum is not NULL it may be out of date. */
+   * never calculated or contents of this mtree or any subdirectory has been
+   * modified.  If a contents_checksum is NULL then all the parent's checksums
+   * will be NULL (see `invalidate_contents_checksum`).
+   *
+   * Note: This invariant is partially maintained externally - we
+   * rely on the callers of `ostree_mutable_tree_set_contents_checksum` to have
+   * first ensured that the mtree contents really does correspond to this
+   * checksum */
   char *contents_checksum;
 
   /* This is the checksum of the DirMeta object that holds the uid, gid, mode
@@ -65,6 +79,8 @@ struct OstreeMutableTree
 };
 
 G_DEFINE_TYPE (OstreeMutableTree, ostree_mutable_tree, G_TYPE_OBJECT)
+
+static void invalidate_contents_checksum (OstreeMutableTree *self);
 
 static void
 ostree_mutable_tree_finalize (GObject *object)
@@ -90,13 +106,52 @@ ostree_mutable_tree_class_init (OstreeMutableTreeClass *klass)
   gobject_class->finalize = ostree_mutable_tree_finalize;
 }
 
+/* This must not be made public or we can't maintain the invariant that any
+ * OstreeMutableTree has only one parent.
+ *
+ * Ownership of @child is transferred from the caller to @self */
+static void
+insert_child_mtree (OstreeMutableTree *self, const gchar* name,
+                    OstreeMutableTree *child)
+{
+  g_assert_null (child->parent);
+  g_hash_table_insert (self->subdirs, g_strdup (name), child);
+  child->parent = self;
+  invalidate_contents_checksum (self);
+}
+
+static void
+remove_child_mtree (gpointer data)
+{
+  /* Each mtree has shared ownership of its children and each child has a
+   * non-owning reference back to parent.  If the parent goes out of scope the
+   * children may still be alive because they're reference counted. This
+   * removes the reference to the parent before it goes stale. */
+  OstreeMutableTree *child = (OstreeMutableTree*) data;
+  child->parent = NULL;
+  g_object_unref (child);
+}
+
 static void
 ostree_mutable_tree_init (OstreeMutableTree *self)
 {
   self->files = g_hash_table_new_full (g_str_hash, g_str_equal,
                                        g_free, g_free);
   self->subdirs = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                         g_free, (GDestroyNotify)g_object_unref);
+                                         g_free, remove_child_mtree);
+}
+
+static void
+invalidate_contents_checksum (OstreeMutableTree *self)
+{
+  while (self) {
+    if (!self->contents_checksum)
+      break;
+
+    g_free (self->contents_checksum);
+    g_clear_pointer (&self->contents_checksum, g_free);
+    self = self->parent;
+  }
 }
 
 void
@@ -117,6 +172,14 @@ void
 ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
                                            const char        *checksum)
 {
+  if (g_strcmp0 (checksum, self->contents_checksum) == 0)
+    return;
+
+  if (checksum && self->contents_checksum)
+    g_warning ("Setting a contents checksum on an OstreeMutableTree that "
+        "already has a checksum set.  Old checksum %s, new checksum %s",
+        self->contents_checksum, checksum);
+
   g_free (self->contents_checksum);
   self->contents_checksum = g_strdup (checksum);
 }
@@ -124,26 +187,6 @@ ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
 const char *
 ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self)
 {
-  if (!self->contents_checksum)
-    return NULL;
-
-  /* Ensure the cache is valid; this implementation is a bit
-   * lame in that we walk the whole tree every time this
-   * getter is called; a better approach would be to invalidate
-   * all of the parents whenever a child is modified.
-   *
-   * However, we only call this function once right now.
-   */
-  GLNX_HASH_TABLE_FOREACH_V (self->subdirs, OstreeMutableTree*, subdir)
-    {
-      if (!ostree_mutable_tree_get_contents_checksum (subdir))
-        {
-          g_free (self->contents_checksum);
-          self->contents_checksum = NULL;
-          return NULL;
-        }
-    }
-
   return self->contents_checksum;
 }
 
@@ -176,7 +219,7 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
       goto out;
     }
 
-  ostree_mutable_tree_set_contents_checksum (self, NULL);
+  invalidate_contents_checksum (self);
   g_hash_table_replace (self->files,
                         g_strdup (name),
                         g_strdup (checksum));
@@ -221,8 +264,7 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
   if (!ret_dir)
     {
       ret_dir = ostree_mutable_tree_new ();
-      ostree_mutable_tree_set_contents_checksum (self, NULL);
-      g_hash_table_insert (self->subdirs, g_strdup (name), g_object_ref (ret_dir));
+      insert_child_mtree (self, name, g_object_ref (ret_dir));
     }
   
   ret = TRUE;
@@ -305,7 +347,7 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
         {
           next = ostree_mutable_tree_new ();
           ostree_mutable_tree_set_metadata_checksum (next, metadata_checksum);
-          g_hash_table_insert (subdir->subdirs, g_strdup (name), next);
+          insert_child_mtree (subdir, g_strdup (name), next);
         }
       
       subdir = next;
