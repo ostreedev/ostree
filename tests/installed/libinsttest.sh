@@ -58,7 +58,7 @@ run_tmp_webserver() {
     cd -
     child_pid=$!
 
-    for x in $(seq 10); do
+    for x in $(seq 15); do
         # Snapshot the output
         cp ${test_tmpdir}/httpd-output{,.tmp}
         # If it's non-empty, see whether it matches our regexp
@@ -71,6 +71,12 @@ run_tmp_webserver() {
         fi
         sleep 1
     done
+
+    if [ ! -f ${test_tmpdir}/httpd-port ]; then
+      cat ${test_tmpdir}/httpd-output
+      fatal "can't start up httpd"
+    fi
+
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     echo "$child_pid" > ${test_tmpdir}/httpd-pid
