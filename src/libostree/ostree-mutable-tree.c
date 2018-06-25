@@ -148,7 +148,6 @@ invalidate_contents_checksum (OstreeMutableTree *self)
     if (!self->contents_checksum)
       break;
 
-    g_free (self->contents_checksum);
     g_clear_pointer (&self->contents_checksum, g_free);
     self = self->parent;
   }
@@ -158,6 +157,10 @@ void
 ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self,
                                            const char        *checksum)
 {
+  if (g_strcmp0 (checksum, self->metadata_checksum) == 0)
+    return;
+
+  invalidate_contents_checksum (self->parent);
   g_free (self->metadata_checksum);
   self->metadata_checksum = g_strdup (checksum);
 }

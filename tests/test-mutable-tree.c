@@ -31,6 +31,7 @@
 static void
 test_metadata_checksum (void)
 {
+  g_autoptr(GError) error = NULL;
   const char *checksum = "12345678901234567890123456789012";
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
 
@@ -39,6 +40,27 @@ test_metadata_checksum (void)
   ostree_mutable_tree_set_metadata_checksum (tree, checksum);
 
   g_assert_cmpstr (checksum, ==, ostree_mutable_tree_get_metadata_checksum (tree));
+
+  /* If a child tree's metadata changes the parent tree's contents needs to be
+   * recalculated */
+  glnx_unref_object OstreeMutableTree *subdir = NULL;
+  g_assert (ostree_mutable_tree_ensure_dir (tree, "subdir", &subdir, &error));
+  g_assert_nonnull (subdir);
+
+  ostree_mutable_tree_set_contents_checksum (
+      subdir, "11111111111111111111111111111111");
+  ostree_mutable_tree_set_metadata_checksum (
+      subdir, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  ostree_mutable_tree_set_contents_checksum (
+      tree, "abcdefabcdefabcdefabcdefabcdefab");
+
+  g_assert_cmpstr (ostree_mutable_tree_get_contents_checksum (tree), ==,
+      "abcdefabcdefabcdefabcdefabcdefab");
+  ostree_mutable_tree_set_metadata_checksum (
+      subdir, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+  g_assert_null (ostree_mutable_tree_get_contents_checksum (tree));
+  g_assert_cmpstr (ostree_mutable_tree_get_contents_checksum (subdir), ==,
+      "11111111111111111111111111111111");
 }
 
 static void
@@ -162,13 +184,12 @@ test_contents_checksum (void)
   const char *subdir_checksum = "ABCD0123456789012345678901234567";
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *subdir = NULL;
-  g_autoptr(GError) error = NULL;
   g_assert_null (ostree_mutable_tree_get_contents_checksum (tree));
 
   ostree_mutable_tree_set_contents_checksum (tree, checksum);
   g_assert_cmpstr (checksum, ==, ostree_mutable_tree_get_contents_checksum (tree));
 
-  g_assert (ostree_mutable_tree_ensure_dir (tree, "subdir", &subdir, &error));
+  g_assert (ostree_mutable_tree_ensure_dir (tree, "subdir", &subdir, NULL));
   g_assert_nonnull (subdir);
 
   ostree_mutable_tree_set_contents_checksum (subdir, subdir_checksum);
