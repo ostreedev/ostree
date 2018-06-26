@@ -58,7 +58,8 @@ run_tmp_webserver() {
     cd -
     child_pid=$!
 
-    for x in $(seq 15); do
+    for x in $(seq 60); do
+        echo "Waiting for web server ($x/60)..." >&2
         # Snapshot the output
         cp ${test_tmpdir}/httpd-output{,.tmp}
         # If it's non-empty, see whether it matches our regexp
