@@ -161,6 +161,15 @@ Boston, MA 02111-1307, USA.
         </para></listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><varname>collection-id</varname></term>
+        <listitem><para>A reverse DNS domain name under your control, which enables peer
+        to peer distribution of refs in this repository. See the
+        <literal>--collection-id</literal> section in
+        <citerefentry><refentrytitle>ostree-init</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+        </para></listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 
