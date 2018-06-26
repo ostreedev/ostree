@@ -104,7 +104,7 @@ static GOptionEntry options[] = {
   { "no-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_no_bindings, "Do not write any ref bindings", NULL },
   { "bind-ref", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_bind_refs, "Add a ref to ref binding commit metadata", "BRANCH" },
   { "base", 0, 0, G_OPTION_ARG_STRING, &opt_base, "Start from the given commit as a base (no modifiers apply)", "REF" },
-  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
+  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT or prefix=PATH" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-metadata", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_variants, "Add a key/value pair to metadata, where the KEY is a string, an VALUE is g_variant_parse() formatted", "KEY=VALUE" },
   { "keep-metadata", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_keep, "Keep metadata KEY and its associated VALUE from parent", "KEY" },
@@ -636,7 +636,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     {
       mtree = ostree_mutable_tree_new ();
     }
-
+  g_autoptr(OstreeMutableTree) target_mtree = g_object_ref (mtree);
 
   /* Convert implicit . or explicit path via argv into
    * --tree=dir= so that we only have one primary code path below.
@@ -691,7 +691,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
                 goto out;
               ostree_repo_commit_modifier_set_sepolicy (modifier, policy);
             }
-          if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, tree, mtree, modifier,
+          if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, tree, target_mtree, modifier,
                                                 cancellable, error))
             goto out;
         }
@@ -706,7 +706,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
             {
               if (strcmp (tree, "-") == 0)
                 {
-                  if (!ostree_repo_write_archive_to_mtree_from_fd (repo, STDIN_FILENO, mtree, modifier,
+                  if (!ostree_repo_write_archive_to_mtree_from_fd (repo, STDIN_FILENO, target_mtree, modifier,
                                                                     opt_tar_autocreate_parents,
                                                                     cancellable, error))
                     goto out;
@@ -715,7 +715,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
                 {
                   object_to_commit = g_file_new_for_path (tree);
 
-                  if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, mtree, modifier,
+                  if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, target_mtree, modifier,
                                                             opt_tar_autocreate_parents,
                                                             cancellable, error))
                     goto out;
@@ -754,7 +754,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
 
               if (!archive)
                 goto out;
-              if (!ostree_repo_import_archive_to_mtree (repo, &opts, archive, mtree,
+              if (!ostree_repo_import_archive_to_mtree (repo, &opts, archive, target_mtree,
                                                         modifier, cancellable, error))
                 goto out;
 #else
@@ -775,9 +775,30 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
           if (!ostree_repo_read_commit (repo, tree, &object_to_commit, NULL, cancellable, error))
             goto out;
 
-          if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, modifier,
+          if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, target_mtree, modifier,
                                                       cancellable, error))
             goto out;
+        }
+      else if (strcmp (tree_type, "prefix") == 0)
+        {
+          if (!tree || g_strcmp0(tree, "") == 0 || g_strcmp0(tree, "/") == 0)
+            g_set_object (&target_mtree, mtree);
+          else
+            {
+              const char dirmeta_0755_0_0[] = "446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec73f62988eb0b6c5488";
+              g_autoptr(GPtrArray) split_path = NULL;
+              if (!ot_util_path_split_validate (tree, &split_path, error))
+                goto out;
+
+              /* ensure_parent_dirs makes a directory for a file, so we have
+               * to give a dummy filename: */
+              g_ptr_array_add (split_path, g_strdup ("dummy"));
+
+              g_clear_object (&target_mtree);
+              if (!ostree_mutable_tree_ensure_parent_dirs (mtree,
+                  split_path, dirmeta_0755_0_0, &target_mtree, error))
+                goto out;
+            }
         }
       else
         {

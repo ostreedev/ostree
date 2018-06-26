@@ -99,10 +99,13 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--tree</option>="dir=PATH" or "tar=TARFILE" or "ref=COMMIT"</term>
+                <term><option>--tree</option>="dir=PATH" or "tar=TARFILE" or "ref=COMMIT" or "prefix=PATH"</term>
 
                 <listitem><para>
-                    Overlay the given argument as a tree. When committing an archive, the TARFILE can be specified as <literal>-</literal> to read the archive from standard input.
+                    Overlay the given argument as a tree. When committing an archive, the TARFILE
+                    can be specified as <literal>-</literal> to read the archive from standard
+                    input. prefix is a little different - --tree=prefix=PATH affects where in the
+                    tree the later --tree=ref/tar/dir are merged.
                 </para></listitem>
             </varlistentry>
 

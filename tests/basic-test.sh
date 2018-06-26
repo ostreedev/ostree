@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((86 + ${extra_basic_tests:-0}))"
+echo "1..$((87 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -456,6 +456,33 @@ cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit ${COMMIT_ARGS} -b test2 -s "no xattrs" --no-xattrs
 echo "ok commit with no xattrs"
 
+assert_trees_identical() {
+    $OSTREE diff "$1" "$2" > "diff-$1-$2"
+    cat "diff-$1-$2" 1>&2
+    assert_file_empty "diff-$1-$2"
+    rm "diff-$1-$2"
+}
+
+mkdir -p prefix1 prefix-expected/usr/bin
+$OSTREE commit ${COMMIT_ARGS} -b empty_usr_bin --tree=dir=prefix-expected
+echo bish-bosh >prefix1/bash
+echo bish-bosh >prefix-expected/usr/bin/bash
+echo ing >touch
+
+$OSTREE commit ${COMMIT_ARGS} -b prefix-expected-root --owner-uid 0 --owner-gid 0 --tree=dir=prefix-expected
+$OSTREE commit ${COMMIT_ARGS} -b prefix1a --owner-uid 0 --owner-gid 0 --tree=prefix=/usr/bin --tree=dir=prefix1
+
+assert_trees_identical prefix1a prefix-expected-root
+
+# --prefix refers to trees after the --tree=prefix= option, but it does mkdir
+# the given directories
+mkdir -p prefix2/usr/bin
+$OSTREE commit ${COMMIT_ARGS} -b prefix-none --owner-uid 0 --owner-gid 0 --tree=dir=prefix2 --tree=dir=prefix1
+$OSTREE commit ${COMMIT_ARGS} -b prefix-none-a --owner-uid 0 --owner-gid 0 --tree=dir=prefix1 --tree=prefix=/usr/bin
+assert_trees_identical prefix-none prefix-none-a
+
+echo "ok commit with prefix"
+
 mkdir tree-A tree-B
 touch tree-A/file-a tree-B/file-b
 
@@ -487,13 +514,6 @@ $OSTREE commit ${COMMIT_ARGS} -b test3-ref-ref --tree=ref=test3-C1 --tree=ref=te
 $OSTREE commit ${COMMIT_ARGS} -b test3-dir-ref --tree=dir=tree-C --tree=ref=test3-D
 $OSTREE commit ${COMMIT_ARGS} -b test3-ref-dir --tree=ref=test3-C1 --tree=dir=tree-D
 $OSTREE commit ${COMMIT_ARGS} -b test3-dir-dir --tree=dir=tree-C --tree=dir=tree-D
-
-assert_trees_identical() {
-    $OSTREE diff "$1" "$2" > "diff-$1-$2"
-    cat "diff-$1-$2" 1>&2
-    assert_file_empty "diff-$1-$2"
-    rm "diff-$1-$2"
-}
 
 for x in ref dir
 do
