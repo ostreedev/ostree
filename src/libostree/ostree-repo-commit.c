@@ -522,6 +522,7 @@ _ostree_repo_bare_content_commit (OstreeRepo                 *self,
       const fsblkcnt_t object_blocks = (st_buf.st_size / self->txn.blocksize) + 1;
       if (object_blocks > self->txn.max_blocks)
         {
+          self->emergency_cleanup = TRUE;
           g_mutex_unlock (&self->txn_lock);
           g_autofree char *formatted_required = g_format_size (st_buf.st_size);
           if (self->min_free_space_percent > 0)
@@ -924,6 +925,7 @@ write_content_object (OstreeRepo         *self,
       if (object_blocks > self->txn.max_blocks)
         {
           guint64 bytes_required = (guint64)object_blocks * self->txn.blocksize;
+          self->emergency_cleanup = TRUE;
           g_mutex_unlock (&self->txn_lock);
           g_autofree char *formatted_required = g_format_size (bytes_required);
           if (self->min_free_space_percent > 0)
@@ -1623,6 +1625,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
     return FALSE;
 
   self->in_transaction = TRUE;
+  self->emergency_cleanup = FALSE;
   if (self->min_free_space_percent >= 0 || self->min_free_space_mb >= 0)
     {
       struct statvfs stvfsbuf;
@@ -1638,6 +1641,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
       else
         {
           guint64 bytes_required = bfree * self->txn.blocksize;
+          self->emergency_cleanup = TRUE;
           g_mutex_unlock (&self->txn_lock);
           g_autofree char *formatted_free = g_format_size (bytes_required);
           if (self->min_free_space_percent > 0)
@@ -1783,9 +1787,10 @@ cleanup_txn_dir (OstreeRepo   *self,
 
   /* If however this is the staging directory for the *current*
    * boot, then don't delete it now - we may end up reusing it, as
-   * is the point.
+   * is the point. Delete *only if* we have hit min-free-space* checks
+   * as we don't want to hold onto caches in that case.
    */
-  if (g_str_has_prefix (path, self->stagedir_prefix))
+  if (g_str_has_prefix (path, self->stagedir_prefix) && !self->emergency_cleanup)
     return TRUE; /* Note early return */
 
   /* But, crucially we can now clean up staging directories
