@@ -2229,10 +2229,6 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   if (!self->in_transaction)
     return TRUE;
 
-  /* Do not propagate failures from cleanup_tmpdir() immediately, as we want
-   * to clean up the rest of the internal transaction state first. */
-  cleanup_tmpdir (self, cancellable, &cleanup_error);
-
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
@@ -2241,6 +2237,10 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 
   glnx_tmpdir_unset (&self->commit_stagedir);
   glnx_release_lock_file (&self->commit_stagedir_lock);
+
+  /* Do not propagate failures from cleanup_tmpdir() immediately, as we want
+   * to clean up the rest of the internal transaction state first. */
+  cleanup_tmpdir (self, cancellable, &cleanup_error);
 
   self->in_transaction = FALSE;
 
