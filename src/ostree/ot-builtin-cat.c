@@ -27,6 +27,7 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ostree-cmdprivate.h"
 
 #include <gio/gunixoutputstream.h>
 
@@ -59,27 +60,28 @@ cat_one_file (GFile         *f,
 gboolean
 ostree_builtin_cat (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("COMMIT PATH...");
+  g_autoptr(GOptionContext) context = g_option_context_new ("TREEISH PATH...");
   g_autoptr(OstreeRepo) repo = NULL;
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
 
   if (argc <= 2)
     {
-      ot_util_usage_error (context, "A COMMIT and at least one PATH argument are required", error);
+      ot_util_usage_error (context, "A TREEISH and at least one PATH argument are required", error);
       return FALSE;
     }
-  const char *rev = argv[1];
 
-  g_autoptr(GFile) root = NULL;
-  if (!ostree_repo_read_commit (repo, rev, &root, NULL, NULL, error))
+  g_autoptr(OstreeRepoFile) root = NULL;
+  if (!ostree_cmd__private__ ()->ostree_repo_open_file (
+          repo, argv[1], NULL, OSTREE_REPO_OPEN_FILE_EXPECT_TREE, &root, NULL,
+          cancellable, error))
     return FALSE;
 
   g_autoptr(GOutputStream) stdout_stream = g_unix_output_stream_new (1, FALSE);
 
   for (int i = 2; i < argc; i++)
     {
-      g_autoptr(GFile) f = g_file_resolve_relative_path (root, argv[i]);
+      g_autoptr(GFile) f = g_file_resolve_relative_path ((GFile*) root, argv[i]);
 
       if (!cat_one_file (f, stdout_stream, cancellable, error))
         return FALSE;

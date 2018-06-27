@@ -597,6 +597,8 @@ done
 rm checkout-test2 -rf
 $OSTREE cat test2 /yet/another/tree/green > greenfile-contents
 assert_file_has_content greenfile-contents "leaf"
+$OSTREE cat :test2:yet/another/tree green > greenfile-contents
+assert_file_has_content greenfile-contents "leaf"
 $OSTREE checkout test2 checkout-test2
 ls -alR checkout-test2
 ln -sr checkout-test2/{four,four-link}
