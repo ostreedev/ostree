@@ -29,6 +29,7 @@
 #include <gio/gunixoutputstream.h>
 #include "otutil.h"
 
+#include "ostree-autocleanups.h"
 #include "ostree-repo-file.h"
 #include "ostree-sepolicy-private.h"
 #include "ostree-core-private.h"
@@ -1355,21 +1356,18 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   g_return_val_if_fail (!(options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL &&
                           !options->no_copy_fallback), FALSE);
 
-  g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
-  if (!commit_root)
+  g_autoptr(OstreeRepoFile) commit_root = NULL;
+  if (!_ostree_repo_open_file (self, commit, options->subpath,
+                               OSTREE_REPO_OPEN_FILE_EXPECT_TREE |
+                               OSTREE_REPO_OPEN_FILE_EXPECT_FILE,
+                               &commit_root, NULL, cancellable, error))
     return FALSE;
 
-  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)commit_root, error))
+  if (!ostree_repo_file_ensure_resolved (commit_root, error))
     return FALSE;
 
-  g_autoptr(GFile) target_dir = NULL;
-
-  if (strcmp (options->subpath, "/") != 0)
-    target_dir = g_file_get_child (commit_root, options->subpath);
-  else
-    target_dir = g_object_ref (commit_root);
   g_autoptr(GFileInfo) target_info =
-    g_file_query_info (target_dir, OSTREE_GIO_FAST_QUERYINFO,
+    g_file_query_info ((GFile*) commit_root, OSTREE_GIO_FAST_QUERYINFO,
                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                        cancellable, error);
   if (!target_info)
@@ -1378,7 +1376,7 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   if (!checkout_tree_at (self, options,
                          destination_dfd,
                          destination_path,
-                         (OstreeRepoFile*)target_dir, target_info,
+                         commit_root, target_info,
                          cancellable, error))
     return FALSE;
 

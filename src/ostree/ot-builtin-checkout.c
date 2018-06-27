@@ -30,6 +30,7 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ostree-cmdprivate.h"
 
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;
@@ -117,7 +118,7 @@ checkout_filter (OstreeRepo         *self,
 
 static gboolean
 process_one_checkout (OstreeRepo           *repo,
-                      const char           *resolved_commit,
+                      const char           *commit,
                       const char           *subpath,
                       const char           *destination,
                       GCancellable         *cancellable,
@@ -225,30 +226,21 @@ process_one_checkout (OstreeRepo           *repo,
 
       if (!ostree_repo_checkout_at (repo, &options,
                                     AT_FDCWD, destination,
-                                    resolved_commit,
+                                    commit,
                                     cancellable, error))
         goto out;
     }
   else
     {
       GError *tmp_error = NULL;
-      g_autoptr(GFile) root = NULL;
-      g_autoptr(GFile) subtree = NULL;
+      g_autoptr(OstreeRepoFile) root = NULL;
       g_autoptr(GFileInfo) file_info = NULL;
       g_autoptr(GFile) destination_file = g_file_new_for_path (destination);
 
-      if (!ostree_repo_read_commit (repo, resolved_commit, &root, NULL, cancellable, error))
-        goto out;
-
-      if (subpath)
-        subtree = g_file_resolve_relative_path (root, subpath);
-      else
-        subtree = g_object_ref (root);
-
-      file_info = g_file_query_info (subtree, OSTREE_GIO_FAST_QUERYINFO,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     cancellable, &tmp_error);
-      if (!file_info)
+      if (!ostree_cmd__private__ ()->ostree_repo_open_file (
+              repo, commit, subpath, OSTREE_REPO_OPEN_FILE_EXPECT_TREE |
+              OSTREE_REPO_OPEN_FILE_EXPECT_FILE, &root, NULL, cancellable,
+              &tmp_error))
         {
           if (opt_allow_noent
               && g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -263,10 +255,16 @@ process_one_checkout (OstreeRepo           *repo,
           goto out;
         }
 
+      file_info = g_file_query_info ((GFile*) root, OSTREE_GIO_FAST_QUERYINFO,
+                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                     cancellable, error);
+      if (!file_info)
+        goto out;
+
       if (!ostree_repo_checkout_tree (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
                                       opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
                                       destination_file,
-                                      OSTREE_REPO_FILE (subtree), file_info,
+                                      root, file_info,
                                       cancellable, error))
         goto out;
     }
@@ -289,7 +287,6 @@ process_many_checkouts (OstreeRepo         *repo,
   g_autoptr(GDataInputStream) datastream = NULL;
   g_autofree char *revision = NULL;
   g_autofree char *subpath = NULL;
-  g_autofree char *resolved_commit = NULL;
 
   if (opt_from_stdin)
     {
@@ -326,13 +323,10 @@ process_many_checkouts (OstreeRepo         *repo,
       /* Read the null byte */
       (void) g_data_input_stream_read_byte (datastream, cancellable, NULL);
 
-      if (!ostree_repo_resolve_rev (repo, revision, FALSE, &resolved_commit, error))
-        goto out;
-
-      if (!process_one_checkout (repo, resolved_commit, subpath, target,
+      if (!process_one_checkout (repo, revision, subpath, target,
                                  cancellable, error))
         {
-          g_prefix_error (error, "Processing tree %s: ", resolved_commit);
+          g_prefix_error (error, "Processing tree %s: ", revision);
           goto out;
         }
 
@@ -392,10 +386,7 @@ ostree_builtin_checkout (int argc, char **argv, OstreeCommandInvocation *invocat
       else
         destination = argv[2];
 
-      if (!ostree_repo_resolve_rev (repo, commit, FALSE, &resolved_commit, error))
-        goto out;
-
-      if (!process_one_checkout (repo, resolved_commit, opt_subpath,
+      if (!process_one_checkout (repo, commit, opt_subpath,
                                  destination,
                                  cancellable, error))
         goto out;

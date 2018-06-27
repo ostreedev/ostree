@@ -617,19 +617,27 @@ echo "ok cat-file"
 
 cd ${test_tmpdir}
 $OSTREE checkout --subpath /yet/another test2 checkout-test2-subpath
-cd checkout-test2-subpath
-assert_file_has_content tree/green "leaf"
-cd ${test_tmpdir}
-rm checkout-test2-subpath -rf
+assert_file_has_content checkout-test2-subpath/tree/green "leaf"
+$OSTREE checkout :test2:yet/another checkout-test2-subpath2
+assert_file_has_content checkout-test2-subpath2/tree/green "leaf"
+
+rm checkout-test2-subpath checkout-test2-subpath2 -rf
 $OSTREE ls -R test2
 # Test checking out a file
 $OSTREE checkout --subpath /baz/saucer test2 checkout-test2-subpath
 assert_file_has_content checkout-test2-subpath/saucer alien
+$OSTREE checkout :test2:baz/saucer checkout-test2-subpath2
+assert_file_has_content checkout-test2-subpath2/saucer alien
+
 # Test checking out a file without making a subdir
 mkdir t
 cd t
 $OSTREE checkout --subpath /baz/saucer test2 .
 assert_file_has_content saucer alien
+rm saucer
+$OSTREE checkout :test2:baz/saucer .
+assert_file_has_content saucer alien
+cd ..
 rm t -rf
 echo "ok checkout subpath"
 
