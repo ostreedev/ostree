@@ -152,6 +152,7 @@ struct OstreeRepo {
   gid_t target_owner_gid;
   guint min_free_space_percent; /* See the min-free-space-percent config option */
   guint64 min_free_space_mb; /* See the min-free-space-size config option */
+  gboolean cleanup_stagedir;
 
   guint test_error_flags; /* OstreeRepoTestErrorFlags */
 
