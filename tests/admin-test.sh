@@ -68,9 +68,9 @@ echo "ok --print-current-dir"
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
 assert_has_dir sysroot/ostree/boot.1.1
-assert_has_file sysroot/boot/loader/entries/ostree-testos-0.conf
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* quiet'
+assert_has_file sysroot/boot/loader/entries/ostree-1-testos.conf
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.* root=LABEL=MOO'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.* quiet'
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.1/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
@@ -96,7 +96,7 @@ assert_not_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.1.0
 assert_not_has_dir sysroot/ostree/boot.1.1
 # Ensure we propagated kernel arguments from previous deployment
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.* root=LABEL=MOO'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.0/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
 assert_ostree_deployment_refs 0/1/{0,1}
@@ -123,8 +123,8 @@ ${CMD_PREFIX} ostree admin os-init otheros
 ${CMD_PREFIX} ostree admin deploy --os=otheros testos/buildmaster/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
-assert_has_file sysroot/boot/loader/entries/ostree-testos-1.conf
-assert_has_file sysroot/boot/loader/entries/ostree-otheros-0.conf
+assert_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
+assert_has_file sysroot/boot/loader/entries/ostree-3-otheros.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/otheros/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 assert_ostree_deployment_refs 1/1/{0,1,2}
@@ -136,9 +136,9 @@ echo "ok independent deploy"
 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
-assert_has_file sysroot/boot/loader/entries/ostree-testos-0.conf
+assert_has_file sysroot/boot/loader/entries/ostree-4-testos.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.2/etc/os-release 'NAME=TestOS'
-assert_has_file sysroot/boot/loader/entries/ostree-testos-2.conf
+assert_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin status
 assert_ostree_deployment_refs 0/1/{0,1,2,3}
@@ -172,14 +172,14 @@ echo "ok deploy with modified /etc"
 for i in $(seq 4); do
   ${CMD_PREFIX} ostree admin undeploy 0
 done
-assert_has_file sysroot/boot/loader/entries/ostree-testos-0.conf
-assert_not_has_file sysroot/boot/loader/entries/ostree-testos-1.conf
-assert_not_has_file sysroot/boot/loader/entries/ostree-otheros-1.conf
+assert_has_file sysroot/boot/loader/entries/ostree-1-testos.conf
+assert_not_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
+assert_not_has_file sysroot/boot/loader/entries/ostree-3-otheros.conf
 ${CMD_PREFIX} ostree admin deploy --not-as-default --os=otheros testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
-assert_has_file sysroot/boot/loader/entries/ostree-testos-0.conf
-assert_has_file sysroot/boot/loader/entries/ostree-otheros-1.conf
+assert_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
+assert_has_file sysroot/boot/loader/entries/ostree-1-otheros.conf
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
@@ -188,9 +188,9 @@ echo "ok deploy --not-as-default"
 ${CMD_PREFIX} ostree admin deploy --retain-rollback --os=otheros testos:testos/buildmaster/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
-assert_has_file sysroot/boot/loader/entries/ostree-otheros-0.conf
-assert_has_file sysroot/boot/loader/entries/ostree-testos-1.conf
-assert_has_file sysroot/boot/loader/entries/ostree-otheros-2.conf
+assert_has_file sysroot/boot/loader/entries/ostree-3-otheros.conf
+assert_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
+assert_has_file sysroot/boot/loader/entries/ostree-1-otheros.conf
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
@@ -265,7 +265,7 @@ echo "ok deploy with unknown OS"
 
 ${CMD_PREFIX} ostree admin deploy --os=testos --karg-append=console=/dev/foo --karg-append=console=/dev/bar testos:testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'console=/dev/foo.*console=/dev/bar'
+assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf 'console=/dev/foo.*console=/dev/bar'
 validate_bootloader
 
 echo "ok deploy with multiple kernel args"
@@ -275,7 +275,7 @@ os_repository_new_commit 0 "test upgrade multiple kernel args"
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_streq ${origrev} ${newrev}
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'console=/dev/foo.*console=/dev/bar'
+assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf 'console=/dev/foo.*console=/dev/bar'
 validate_bootloader
 
 echo "ok upgrade with multiple kernel args"

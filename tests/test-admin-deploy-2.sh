@@ -71,9 +71,9 @@ oldversion=${version}
 # another commit with *same* bootcsum but *new* content
 os_repository_new_commit "1" "2"
 newversion=${version}
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf ${oldversion}
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf ${oldversion}
 ${CMD_PREFIX} ostree admin upgrade --os=testos
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf ${newversion}
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf ${newversion}
 
 echo "ok new version same bootcsum"
 

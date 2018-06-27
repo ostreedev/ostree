@@ -1628,8 +1628,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   g_assert_cmpstr (kernel_layout->bootcsum, ==, bootcsum);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
-  g_autofree char *bootconf_name = g_strdup_printf ("ostree-%s-%d.conf", osname,
-                                   ostree_deployment_get_index (deployment));
+  g_autofree char *bootconf_name = g_strdup_printf ("ostree-%d-%s.conf",
+                                   n_deployments - ostree_deployment_get_index (deployment),
+                                   osname);
   if (!glnx_shutil_mkdir_p_at (boot_dfd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
 
