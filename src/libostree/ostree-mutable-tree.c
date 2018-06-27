@@ -80,6 +80,8 @@ struct OstreeMutableTree
 
 G_DEFINE_TYPE (OstreeMutableTree, ostree_mutable_tree, G_TYPE_OBJECT)
 
+static void invalidate_contents_checksum (OstreeMutableTree *self);
+
 static void
 ostree_mutable_tree_finalize (GObject *object)
 {
@@ -115,6 +117,7 @@ insert_child_mtree (OstreeMutableTree *self, const gchar* name,
   g_assert_null (child->parent);
   g_hash_table_insert (self->subdirs, g_strdup (name), child);
   child->parent = self;
+  invalidate_contents_checksum (self);
 }
 
 static void
@@ -146,7 +149,7 @@ invalidate_contents_checksum (OstreeMutableTree *self)
       break;
 
     g_free (self->contents_checksum);
-    self->contents_checksum = NULL;
+    g_clear_pointer (&self->contents_checksum, g_free);
     self = self->parent;
   }
 }
@@ -265,7 +268,6 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
   if (!ret_dir)
     {
       ret_dir = ostree_mutable_tree_new ();
-      invalidate_contents_checksum (self);
       insert_child_mtree (self, name, g_object_ref (ret_dir));
     }
   
@@ -347,7 +349,6 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
       next = g_hash_table_lookup (subdir->subdirs, name);
       if (!next) 
         {
-          invalidate_contents_checksum (subdir);
           next = ostree_mutable_tree_new ();
           ostree_mutable_tree_set_metadata_checksum (next, metadata_checksum);
           insert_child_mtree (subdir, g_strdup (name), next);
