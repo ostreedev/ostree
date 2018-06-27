@@ -184,13 +184,12 @@ test_contents_checksum (void)
   const char *subdir_checksum = "ABCD0123456789012345678901234567";
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *subdir = NULL;
-  g_autoptr(GError) error = NULL;
   g_assert_null (ostree_mutable_tree_get_contents_checksum (tree));
 
   ostree_mutable_tree_set_contents_checksum (tree, checksum);
   g_assert_cmpstr (checksum, ==, ostree_mutable_tree_get_contents_checksum (tree));
 
-  g_assert (ostree_mutable_tree_ensure_dir (tree, "subdir", &subdir, &error));
+  g_assert (ostree_mutable_tree_ensure_dir (tree, "subdir", &subdir, NULL));
   g_assert_nonnull (subdir);
 
   ostree_mutable_tree_set_contents_checksum (subdir, subdir_checksum);

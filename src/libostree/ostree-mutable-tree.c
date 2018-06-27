@@ -148,7 +148,6 @@ invalidate_contents_checksum (OstreeMutableTree *self)
     if (!self->contents_checksum)
       break;
 
-    g_free (self->contents_checksum);
     g_clear_pointer (&self->contents_checksum, g_free);
     self = self->parent;
   }
