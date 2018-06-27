@@ -466,6 +466,26 @@ _ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
                                        GCancellable  *cancellable,
                                        GError       **error);
 
+/**
+ * OstreeRepoOpenFileFlags:
+ * @OSTREE_REPO_READ_FILE_TREE: Allow returning a tree
+ * @OSTREE_REPO_READ_FILE_FILE: Allow returning a file
+ */
+typedef enum {
+  OSTREE_REPO_OPEN_FILE_EXPECT_TREE = (1 << 0),
+  OSTREE_REPO_OPEN_FILE_EXPECT_FILE = (1 << 1),
+  OSTREE_REPO_OPEN_FILE_DEFAULTS = OSTREE_REPO_OPEN_FILE_EXPECT_TREE | OSTREE_REPO_OPEN_FILE_EXPECT_FILE
+} OstreeRepoOpenFileFlags;
+
+gboolean _ostree_repo_open_file (OstreeRepo               *self,
+                                 const char               *treeish,
+                                 const char               *path,
+                                 OstreeRepoOpenFileFlags   flags,
+                                 OstreeRepoFile          **out,
+                                 char                    **out_commit_sha,
+                                 GCancellable             *cancellable,
+                                 GError                  **error);
+
 /* Locking APIs are currently private.
  * See https://github.com/ostreedev/ostree/pull/1555
  */
