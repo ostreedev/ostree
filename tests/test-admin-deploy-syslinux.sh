@@ -38,8 +38,8 @@ for test_bootdir in "boot" "usr/lib/ostree-boot"; do
     ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
     rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
     ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
-    assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
-    assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* quiet'
+    assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.* root=LABEL=MOO'
+    assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.* quiet'
     assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
     assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0.img 'an initramfs'
     # kernel/initrams should also be in the tree's /boot with the checksum
@@ -64,7 +64,7 @@ cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.* root=LABEL=MOO'
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0.img 'an initramfs'
 # Note this bootcsum shouldn't be the modules one

@@ -65,7 +65,7 @@ ${CMD_PREFIX} ostree admin upgrade --os=testos --pull-only
 ${CMD_PREFIX} ostree admin upgrade --os=testos --deploy-only
 
 # Check we got redirected to the new branch
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf "${bootcsum}"
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf "${bootcsum}"
 rev=$(${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo rev-parse testos/buildmaster/newbranch)
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/usr/bin/content-iteration "1"
 
