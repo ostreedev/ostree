@@ -4030,6 +4030,14 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
                                       GCancellable              *cancellable,
                                       GError                   **error)
 {
+  if (g_file_query_file_type (dir, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                              cancellable) != G_FILE_TYPE_DIRECTORY)
+    {
+      g_autofree char * basename = g_file_get_basename (dir);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY,
+                   "File \"%s\" is not a directory", basename);
+      return FALSE;
+    }
 
   /* Short cut local files */
   if (g_file_is_native (dir))

@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((86 + ${extra_basic_tests:-0}))"
+echo "1..$((87 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -517,6 +517,20 @@ $OSTREE commit ${COMMIT_ARGS} -b test3-F2 --tree=ref=test3-E --tree=ref=test3-F
 assert_trees_identical test3-F test3-F2
 
 echo "ok commit combined ref trees"
+
+mkdir -p tree-G/many/subdirs/here
+echo contents1 >tree-G/many/subdirs/here/file1
+echo contents2 >tree-G/many/file2
+
+$OSTREE commit ${COMMIT_ARGS} -b test4-G --tree=dir=tree-G
+$OSTREE commit ${COMMIT_ARGS} -b test4-G-subdir --tree=dir=tree-G/many
+$OSTREE commit ${COMMIT_ARGS} -b test4-G-subtree --tree=ref=:test4-G:many
+
+assert_trees_identical test4-G-subtree test4-G-subdir
+
+! $OSTREE commit ${COMMIT_ARGS} -b test4-G-ref-file --tree=ref=:test4-G:many/file2 2>errmsg
+assert_file_has_content errmsg 'error: Bad treeish ":test4-G:many/file2": "file2" is a file, not a directory'
+echo "ok commit ref subtrees"
 
 # NB: The + is optional, but we need to make sure we support it
 cd ${test_tmpdir}
