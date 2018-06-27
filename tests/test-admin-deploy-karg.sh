@@ -35,12 +35,12 @@ export rev
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree admin deploy --karg=FOO=BAR --os=testos testos:testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree admin deploy --karg=TESTARG=TESTVALUE --os=testos testos:testos/buildmaster/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-1.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
 ${CMD_PREFIX} ostree admin deploy --karg=ANOTHERARG=ANOTHERVALUE --os=testos testos:testos/buildmaster/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*ANOTHERARG=ANOTHERVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*ANOTHERARG=ANOTHERVALUE'
 
 echo "ok deploy with --karg, but same config"
 
@@ -51,7 +51,7 @@ for arg in $(cat /proc/cmdline); do
 	  ;;
 	initrd=*|BOOT_IMAGE=*) # Skip options set by bootloader that gets filtered out
 	   ;;
-	*) assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf "options.*$arg"
+	*) assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf "options.*$arg"
 	   ;;
     esac
 done
@@ -62,8 +62,8 @@ ${CMD_PREFIX} ostree admin status
 ${CMD_PREFIX} ostree admin undeploy 0
 
 ${CMD_PREFIX} ostree admin deploy  --os=testos --karg-append=APPENDARG=VALAPPEND --karg-append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
 
 echo "ok deploy --karg-append"
