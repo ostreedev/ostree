@@ -21,6 +21,10 @@
     done
     test -f deployment-ref-found
     rm deployment-ref-found
+    if ostree admin pin 0 2>err.txt; then
+      echo "Pinned staged deployment"; exit 1
+    fi
+    grep -qFe 'Cannot pin staged deployment' err.txt
   environment:
     commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
 - include_tasks: ../tasks/reboot.yml
