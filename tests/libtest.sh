@@ -34,6 +34,14 @@ else
 fi
 . ${test_srcdir}/libtest-core.sh
 
+save_core() {
+  if [ -e core ]; then
+    cp core "$test_srcdir/core"
+  fi
+}
+
+trap save_core EXIT;
+
 test_tmpdir=$(pwd)
 
 # Sanity check that we're in a tmpdir that has
