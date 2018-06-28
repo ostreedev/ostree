@@ -98,9 +98,11 @@ done
 echo 'some rootfs data' > rootfs/usr/lib/cache.txt
 $OSTREE commit -b rootfs --link-checkout-speedup --tree=dir=rootfs
 $OSTREE ls rootfs /usr/bin/systemd >ls.txt
-assert_file_has_content ls.txt '^-007.. 0 0 .*/usr/bin/systemd'
+assert_file_has_content ls.txt '^-007.. 0 0 .* /usr/bin/systemd'
+$OSTREE ls :rootfs:usr/bin systemd >ls.txt
+assert_file_has_content ls.txt '^-007.. 0 0 .* /usr/bin/systemd'
 $OSTREE ls rootfs /usr/lib/dbus-daemon-helper >ls.txt
-assert_file_has_content ls.txt '^-007.. 0 81 .*/usr/lib/dbus-daemon-helper'
+assert_file_has_content ls.txt '^-007.. 0 81 .* /usr/lib/dbus-daemon-helper'
 echo "ok bare-user link-checkout-speedup maintains uids"
 
 cd ${test_tmpdir}

@@ -267,7 +267,7 @@ $OSTREE prune --refs-only
 if $OSTREE ls ${orphaned_rev} 2>err.txt; then
     assert_not_reached "Found orphaned commit"
 fi
-assert_file_has_content err.txt "No such metadata object"
+assert_file_has_content err.txt "error: No DIR_TREE or COMMIT found for sha "
 echo "ok commit orphaned"
 
 cd ${test_tmpdir}
