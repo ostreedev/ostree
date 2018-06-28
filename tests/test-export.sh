@@ -30,7 +30,7 @@ fi
 
 setup_test_repository "archive"
 
-echo '1..5'
+echo '1..6'
 
 $OSTREE checkout test2 test2-co
 $OSTREE commit --no-xattrs -b test2-noxattrs -s "test2 without xattrs" --tree=dir=test2-co
@@ -53,6 +53,15 @@ ${CMD_PREFIX} ostree --repo=repo diff --no-xattrs ./t2 ./t/baz > diff.txt
 assert_file_empty diff.txt
 
 echo 'ok export --subpath gnutar diff (no xattrs)'
+
+cd ${test_tmpdir}
+${OSTREE} 'export' :test2-noxattrs:baz -o test2-subpath.tar
+mkdir t2a
+(cd t2a && tar xf ../test2-subpath.tar)
+${CMD_PREFIX} ostree --repo=repo diff --no-xattrs ./t2a ./t/baz > diff.txt
+assert_file_empty diff.txt
+
+echo 'ok export treeish gnutar diff (no xattrs)'
 
 cd ${test_tmpdir}
 ${OSTREE} 'export' test2-noxattrs --prefix=the-prefix/ -o test2-prefix.tar

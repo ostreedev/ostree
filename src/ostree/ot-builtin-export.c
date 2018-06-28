@@ -27,6 +27,7 @@
 #include "ostree-libarchive-private.h"
 #include "ostree.h"
 #include "ostree-repo-file.h"
+#include "ostree-cmdprivate.h"
 
 #ifdef HAVE_LIBARCHIVE
 #include <archive.h>
@@ -69,7 +70,7 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   gboolean ret = FALSE;
-  g_autoptr(GFile) root = NULL;
+  g_autoptr(OstreeRepoFile) root = NULL;
   g_autoptr(GFile) subtree = NULL;
   g_autofree char *commit = NULL;
   g_autoptr(GVariant) commit_data = NULL;
@@ -130,22 +131,23 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
   if (opt_no_xattrs)
     opts.disable_xattrs = TRUE;
 
-  if (!ostree_repo_read_commit (repo, rev, &root, &commit, cancellable, error))
+  if (!ostree_cmd__private__ ()->ostree_repo_open_file (
+          repo, rev, opt_subpath, OSTREE_REPO_OPEN_FILE_EXPECT_TREE, &root,
+          &commit, cancellable, error))
     goto out;
 
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_data, error))
-    goto out;
+  if (commit)
+    {
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit,
+                                     &commit_data, error))
+        goto out;
 
-  opts.timestamp_secs = ostree_commit_get_timestamp (commit_data);
-
-  if (opt_subpath)
-    subtree = g_file_resolve_relative_path (root, opt_subpath);
-  else
-    subtree = g_object_ref (root);
+      opts.timestamp_secs = ostree_commit_get_timestamp (commit_data);
+    }
 
   opts.path_prefix = opt_prefix;
 
-  if (!ostree_repo_export_tree_to_archive (repo, &opts, (OstreeRepoFile*)subtree, a,
+  if (!ostree_repo_export_tree_to_archive (repo, &opts, root, a,
                                            cancellable, error))
     goto out;
 
