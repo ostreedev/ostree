@@ -37,7 +37,7 @@ static char *opt_destination_repo = NULL;
 static GOptionEntry options[] =
   {
     { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
-    { "destination-repo", 0, 0, G_OPTION_ARG_FILENAME, &opt_destination_repo, "Use custom repository directory within the mount", NULL },
+    { "destination-repo", 0, 0, G_OPTION_ARG_FILENAME, &opt_destination_repo, "Use custom repository directory within the mount", "DEST" },
     { NULL }
   };
 
