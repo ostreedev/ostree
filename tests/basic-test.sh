@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((87 + ${extra_basic_tests:-0}))"
+echo "1..$((88 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -299,11 +299,17 @@ fi
 
 cd ${test_tmpdir}
 $OSTREE diff test2^ test2 > diff-test2
-assert_file_has_content diff-test2 'D */a/5'
-assert_file_has_content diff-test2 'A */yet$'
-assert_file_has_content diff-test2 'A */yet/message$'
-assert_file_has_content diff-test2 'A */yet/another/tree/green$'
+assert_file_has_content diff-test2 'D *a/5'
+assert_file_has_content diff-test2 'A *yet$'
+assert_file_has_content diff-test2 'A *yet/message$'
+assert_file_has_content diff-test2 'A *yet/another/tree/green$'
 echo "ok diff revisions"
+
+$OSTREE diff :test2^:a :test2:yet > diff-test2
+assert_file_has_content diff-test2 'D *5'
+assert_file_has_content diff-test2 'A *message$'
+assert_file_has_content diff-test2 'A *another/tree/green$'
+echo "ok diff subdirs"
 
 cd ${test_tmpdir}/checkout-test2-4
 echo afile > oh-look-a-file
@@ -317,15 +323,15 @@ cd ${test_tmpdir}/checkout-test2-4
 $OSTREE diff ${DIFF_ARGS} test2 ./ > ${test_tmpdir}/diff-test2
 assert_file_empty ${test_tmpdir}/diff-test2
 $OSTREE diff ${DIFF_ARGS} test2 --owner-uid=$((`id -u`+1)) ./ > ${test_tmpdir}/diff-test2
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/message$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/another/tree/green$'
 echo "ok diff file with different uid"
 
 $OSTREE diff ${DIFF_ARGS} test2 --owner-gid=$((`id -g`+1)) ./ > ${test_tmpdir}/diff-test2
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/message$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/another/tree/green$'
 echo "ok diff file with different gid"
 
 cd ${test_tmpdir}/checkout-test2-4
@@ -334,7 +340,7 @@ mkdir four
 touch four/other
 $OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2-2
 cd ${test_tmpdir}
-assert_file_has_content diff-test2-2 'M */four$'
+assert_file_has_content diff-test2-2 'M *four$'
 echo "ok diff file changing type"
 
 if ! skip_one_without_user_xattrs; then
@@ -900,8 +906,8 @@ EOF
 $OSTREE commit ${COMMIT_ARGS} --statoverride=statoverride.txt \
   --table-output --link-checkout-speedup -b test2-tmp test2-checkout > stats.txt
 $OSTREE diff test2 test2-tmp > diff-test2
-assert_file_has_content diff-test2 'M */baz/cow$'
-assert_not_file_has_content diff-test2 'M */baz/cowro$'
+assert_file_has_content diff-test2 'M *baz/cow$'
+assert_not_file_has_content diff-test2 'M *baz/cowro$'
 assert_not_file_has_content diff-test2 'baz/saucer'
 # only /baz/cow is a cache miss
 assert_file_has_content stats.txt '^Content Written: 1$'

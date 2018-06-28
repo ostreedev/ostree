@@ -27,6 +27,7 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ostree-cmdprivate.h"
 
 static gboolean opt_stats;
 static gboolean opt_fs_diff;
@@ -66,8 +67,12 @@ parse_file_or_commit (OstreeRepo  *repo,
     }
   else
     {
-      if (!ostree_repo_read_commit (repo, arg, &ret_file, NULL, cancellable, error))
+      g_autoptr(OstreeRepoFile) rfile = NULL;
+      if (!ostree_cmd__private__ ()->ostree_repo_open_file (
+              repo, arg, NULL, OSTREE_REPO_OPEN_FILE_EXPECT_TREE, &rfile, NULL,
+              cancellable, error))
         goto out;
+      ret_file = (GFile*) g_steal_pointer (&rfile);
     }
 
   ret = TRUE;
