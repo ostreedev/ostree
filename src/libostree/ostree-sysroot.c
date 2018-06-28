@@ -1894,7 +1894,8 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
  * for e.g. older versions of libostree unaware of pinning to GC the deployment.
  *
  * This function does nothing and returns successfully if the deployment
- * is already in the desired pinning state.
+ * is already in the desired pinning state.  It is an error to try to pin
+ * the staged deployment (as it's not in the bootloader entries).
  *
  * Since: 2018.3
  */
@@ -1907,6 +1908,9 @@ ostree_sysroot_deployment_set_pinned (OstreeSysroot     *self,
   const gboolean current_pin = ostree_deployment_is_pinned (deployment);
   if (is_pinned == current_pin)
     return TRUE;
+
+  if (ostree_deployment_is_staged (deployment))
+    return glnx_throw (error, "Cannot pin staged deployment");
 
   g_autoptr(OstreeDeployment) deployment_clone = ostree_deployment_clone (deployment);
   GKeyFile *origin_clone = ostree_deployment_get_origin (deployment_clone);
