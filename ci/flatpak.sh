@@ -28,7 +28,7 @@ pkg_install sudo which attr fuse bison \
             libubsan libasan libtsan clang python2 \
             elfutils git gettext-devel libappstream-glib-devel hicolor-icon-theme \
             /usr/bin/{update-mime-database,update-desktop-database,gtk-update-icon-cache}
-pkg_install_builddeps flatpak
+pkg_builddep flatpak
 # Now install ostree over the package version
 cd ${codedir}
 make install
