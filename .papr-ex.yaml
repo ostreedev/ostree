@@ -99,7 +99,7 @@ required: true
 context: f28-libsoup
 
 env:
-  CONFIGOPTS: "--without-curl --without-openssl --with-libsoup"
+  CONFIGOPTS: "--without-curl --without-openssl --with-soup"
 
 tests:
   - ci/build-check.sh
