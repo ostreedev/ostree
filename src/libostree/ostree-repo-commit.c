@@ -1632,34 +1632,32 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   self->in_transaction = TRUE;
   self->cleanup_stagedir = FALSE;
-  if (self->min_free_space_percent >= 0 || self->min_free_space_mb >= 0)
-    {
-      struct statvfs stvfsbuf;
-      if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
-        return glnx_throw_errno_prefix (error, "fstatvfs");
 
-      g_mutex_lock (&self->txn_lock);
-      self->txn.blocksize = stvfsbuf.f_bsize;
-      guint64 reserved_blocks = min_free_space_calculate_reserved_blocks (self, &stvfsbuf);
-      /* Use the appropriate free block count if we're unprivileged */
-      guint64 bfree = (getuid () != 0 ? stvfsbuf.f_bavail : stvfsbuf.f_bfree);
-      if (bfree > reserved_blocks)
-        self->txn.max_blocks = bfree - reserved_blocks;
-      else
-        {
-          guint64 bytes_required = bfree * self->txn.blocksize;
-          self->cleanup_stagedir = TRUE;
-          g_mutex_unlock (&self->txn_lock);
-          g_autofree char *formatted_free = g_format_size (bytes_required);
-          if (self->min_free_space_percent > 0)
-            return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s available",
-                               self->min_free_space_percent, formatted_free);
-          else
-            return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB would be exceeded, %s available",
-                               self->min_free_space_mb, formatted_free);
-        }
+  struct statvfs stvfsbuf;
+  if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs");
+
+  g_mutex_lock (&self->txn_lock);
+  self->txn.blocksize = stvfsbuf.f_bsize;
+  guint64 reserved_blocks = min_free_space_calculate_reserved_blocks (self, &stvfsbuf);
+  /* Use the appropriate free block count if we're unprivileged */
+  guint64 bfree = (getuid () != 0 ? stvfsbuf.f_bavail : stvfsbuf.f_bfree);
+  if (bfree > reserved_blocks)
+    self->txn.max_blocks = bfree - reserved_blocks;
+  else
+    {
+      guint64 bytes_required = bfree * self->txn.blocksize;
+      self->cleanup_stagedir = TRUE;
       g_mutex_unlock (&self->txn_lock);
+      g_autofree char *formatted_free = g_format_size (bytes_required);
+      if (self->min_free_space_percent > 0)
+        return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s available",
+                           self->min_free_space_percent, formatted_free);
+      else
+        return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB would be exceeded, %s available",
+                           self->min_free_space_mb, formatted_free);
     }
+  g_mutex_unlock (&self->txn_lock);
 
   gboolean ret_transaction_resume = FALSE;
   if (!_ostree_repo_allocate_tmpdir (self->tmp_dir_fd,
