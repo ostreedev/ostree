@@ -19,7 +19,7 @@
 Description=OSTree Remount OS/ bind mounts
 DefaultDependencies=no
 ConditionKernelCommandLine=ostree
-OnFailure=emergency.service
+OnFailure=emergency.target
 Conflicts=umount.target
 After=-.mount
 After=systemd-remount-fs.service
