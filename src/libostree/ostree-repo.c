@@ -2670,7 +2670,7 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
 
   g_autoptr(GMatchInfo) match = NULL;
   if (!g_regex_match (regex, min_free_space_size_str, 0, &match))
-    return glnx_throw (error, "Failed to parse min-free-space-size parameter: '%s'", min_free_space_size_str);
+    return glnx_throw (error, "Failed to match '^[0-9]+[GMT]B$'");
 
   g_autofree char *size_str = g_match_info_fetch (match, 1);
   g_autofree char *unit = g_match_info_fetch (match, 2);
@@ -2693,10 +2693,7 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
 
   guint64 min_free_space = g_ascii_strtoull (size_str, NULL, 10);
   if (shifts > 0 && g_bit_nth_lsf (min_free_space, 63 - shifts) != -1)
-    {
-      glnx_throw (error, "Integer overflow detected");
-      return FALSE;
-    }
+    return glnx_throw (error, "Integer overflow detected");
 
   self->min_free_space_mb = min_free_space << shifts;
 
