@@ -238,6 +238,13 @@ if USE_LIBSOUP
 libostree_1_la_SOURCES += src/libostree/ostree-fetcher-soup.c
 libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 libostree_1_la_LIBADD += $(OT_INTERNAL_SOUP_LIBS)
+else
+if USE_AVAHI
+libostree_1_la_SOURCES += src/libostree/ostree-soup-uri.h \
+	src/libostree/ostree-soup-uri.c \
+	src/libostree/ostree-soup-form.c \
+	$(NULL)
+endif
 endif
 endif
 
