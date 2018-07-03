@@ -126,10 +126,10 @@ Boston, MA 02111-1307, USA.
 
      <varlistentry>
         <term><varname>min-free-space-size</varname></term>
-        <listitem><para>Value (in MB, GB or TB) that specifies a minimum space (in blocks)
-        in the underlying filesystem to keep free. Also, note that min-free-space-percent
+        <listitem><para>Value (in MB, GB or TB) that specifies a minimum space in the
+        underlying filesystem to keep free. Also, note that min-free-space-percent
         and min-free-space-size are mutually exclusive. Examples of acceptable values:
-        500MB, 1GB etc.
+        500MB, 1GB etc. The default value is 0MB, which disables this check.
         </para></listitem>
       </varlistentry>
 
