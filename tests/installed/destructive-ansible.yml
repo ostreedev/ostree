@@ -13,3 +13,4 @@
       when: use_git_build
     - import_tasks: tasks/query-host.yml
     - import_tasks: destructive/staged-deploy.yml
+    - import_tasks: destructive/var-mount.yml

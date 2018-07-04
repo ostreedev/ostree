@@ -151,13 +151,16 @@ main(int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
+  /* Default to true, but in the systemd case, default to false because it's handled by
+   * ostree-system-generator. */
   bool mount_var = true;
-  /* In the systemd case, this is handled by ostree-system-generator by default */
-#ifndef HAVE_SYSTEMD_AND_LIBMOUNT
-  /* file in /run can override that behaviour */
-  if (lstat (INITRAMFS_MOUNT_VAR, &stbuf) < 0)
-    mount_var = false;
+#ifdef HAVE_SYSTEMD_AND_LIBMOUNT
+  mount_var = false;
 #endif
+
+  /* file in /run can override the default behaviour so that we definitely mount /var */
+  if (lstat (INITRAMFS_MOUNT_VAR, &stbuf) == 0)
+    mount_var = true;
 
   /* Link to the deployment's /var */
   if (mount_var && mount ("../../var", "var", NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
