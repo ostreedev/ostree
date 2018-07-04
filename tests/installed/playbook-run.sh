@@ -7,6 +7,10 @@ dn=$(cd $(dirname $0) && pwd)
 if ! test -d build; then
     mkdir -p build
     (cd build && ${dn}/../../ci/build-rpm.sh)
+else
+    # XXX: we should invalidate based on `git describe` or something
+    echo "NOTE: Re-using prebuilt RPMs:"
+    find build -name '*.rpm'
 fi
 
 # https://fedoraproject.org/wiki/CI/Tests
