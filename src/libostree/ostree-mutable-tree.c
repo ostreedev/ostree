@@ -89,6 +89,8 @@ struct OstreeMutableTree
   /* The repo so we can look up the checksums. */
   OstreeRepo *repo;
 
+  GError *cached_error;
+
   /* ======== Valid for state WHOLE: ========== */
 
   /* const char* filename -> const char* checksum. */
@@ -110,6 +112,7 @@ ostree_mutable_tree_finalize (GObject *object)
   g_free (self->contents_checksum);
   g_free (self->metadata_checksum);
 
+  g_clear_pointer (&self->cached_error, g_error_free);
   g_hash_table_destroy (self->files);
   g_hash_table_destroy (self->subdirs);
 
@@ -237,17 +240,12 @@ _ostree_mutable_tree_make_whole (OstreeMutableTree           *self,
 /* _ostree_mutable_tree_make_whole can fail if state == MTREE_STATE_LAZY, but
  * we have getters that preceed the existence of MTREE_STATE_LAZY which can't
  * return errors.  So instead this function will fail and print a warning. */
-static void
+static gboolean
 _assert_ostree_mutable_tree_make_whole (OstreeMutableTree *self)
 {
-  GError *err = NULL;
-  if (!_ostree_mutable_tree_make_whole (self, NULL, &err))
-    {
-      g_warning ("Failed to make lazy OstreeMutableTree whole and no way to "
-                 "report error to caller.  Error was: %s",
-                 err ? err->message : "unknown");
-      g_return_if_reached ();
-    }
+  if (self->cached_error)
+    return FALSE;
+  return ostree_mutable_tree_make_whole (self, NULL, &self->cached_error);
 }
 
 void
@@ -605,6 +603,30 @@ ostree_mutable_tree_get_files (OstreeMutableTree *self)
 {
   _assert_ostree_mutable_tree_make_whole (self);
   return self->files;
+}
+
+/**
+ * ostree_mutable_tree_check_error:
+ * @self: Tree
+ *
+ * In some cases, a tree may be in a "lazy" state that loads
+ * data in the background; if an error occurred during a non-throwing
+ * API call, it will have been cached.  This function checks for a
+ * cached error.  The tree remains in error state.
+ *
+ * Since: 2018.7
+ * Returns: `TRUE` on success
+ */
+gboolean
+ostree_mutable_tree_check_error (GError **error)
+{
+  if (self->cached_error)
+    {
+      if (error)
+        *error = g_error_copy (self->cached_error);
+      return FALSE;
+    }
+  return TRUE;
 }
 
 /**

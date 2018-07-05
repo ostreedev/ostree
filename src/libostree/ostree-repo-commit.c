@@ -3922,6 +3922,9 @@ ostree_repo_write_mtree (OstreeRepo           *self,
   const char *contents_checksum, *metadata_checksum;
   g_autoptr(GFile) ret_file = NULL;
 
+  if (!ostree_mutable_tree_check_error (mtree, error))
+    return glnx_prefix_error ("mtree");
+
   metadata_checksum = ostree_mutable_tree_get_metadata_checksum (mtree);
   if (!metadata_checksum)
     return glnx_throw (error, "Can't commit an empty tree");
