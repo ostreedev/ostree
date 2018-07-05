@@ -33,15 +33,6 @@ setup_fake_remote_repo1 "archive" "" \
   --expected-header baz=badger \
   --expected-header "User-Agent=libostree/$V dodo/2.15"
 
-assert_fail (){
-  set +e
-  $@
-  if [ $? = 0 ] ; then
-    echo 1>&2 "$@ did not fail"; exit 1
-  fi
-  set -euo pipefail
-}
-
 cd ${test_tmpdir}
 rm repo -rf
 mkdir repo

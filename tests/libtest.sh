@@ -648,3 +648,12 @@ assert_not_ref () {
         fatal "rev-parse $2 unexpectedly succeeded!"
     fi
 }
+
+assert_fail () {
+  set +e
+  $@
+  if [ $? = 0 ] ; then
+    echo 1>&2 "$@ did not fail"; exit 1
+  fi
+  set -euo pipefail
+}
