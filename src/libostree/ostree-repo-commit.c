@@ -429,6 +429,28 @@ add_size_index_to_metadata (OstreeRepo        *self,
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 
+static gboolean
+throw_min_free_space_error (OstreeRepo  *self,
+                            guint64      bytes_required,
+                            GError     **error)
+{
+  const char *err_msg = NULL;
+  g_autofree char *err_msg_owned = NULL;
+
+  if (bytes_required > 0)
+    {
+      g_autofree char *formatted_required = g_format_size (bytes_required);
+      err_msg = err_msg_owned = g_strdup_printf ("would be exceeded, at least %s requested", formatted_required);
+    }
+  else
+    err_msg  = "would be exceeded.";
+
+  if (self->min_free_space_percent > 0)
+    return glnx_throw (error, "min-free-space-percent '%u%%' %s", self->min_free_space_percent, err_msg);
+  else
+    return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB %s", self->min_free_space_mb, err_msg);
+}
+
 typedef struct {
   gboolean initialized;
   GLnxTmpfile tmpf;
@@ -524,13 +546,7 @@ _ostree_repo_bare_content_commit (OstreeRepo                 *self,
         {
           self->cleanup_stagedir = TRUE;
           g_mutex_unlock (&self->txn_lock);
-          g_autofree char *formatted_required = g_format_size (st_buf.st_size);
-          if (self->min_free_space_percent > 0)
-           return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s more required",
-                              self->min_free_space_percent, formatted_required);
-          else
-            return glnx_throw (error, "min-free-space-size %luMB woulid be exceeded, %s more required",
-                               self->min_free_space_mb, formatted_required);
+          return throw_min_free_space_error (self, st_buf.st_size, error);
         }
       /* This is the main bit that needs mutex protection */
       self->txn.max_blocks -= object_blocks;
@@ -927,13 +943,7 @@ write_content_object (OstreeRepo         *self,
           guint64 bytes_required = (guint64)object_blocks * self->txn.blocksize;
           self->cleanup_stagedir = TRUE;
           g_mutex_unlock (&self->txn_lock);
-          g_autofree char *formatted_required = g_format_size (bytes_required);
-          if (self->min_free_space_percent > 0)
-            return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s more required",
-                               self->min_free_space_percent, formatted_required);
-          else
-            return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB would be exceeded, %s more required",
-                               self->min_free_space_mb, formatted_required);
+          return throw_min_free_space_error (self, bytes_required, error);
         }
       /* This is the main bit that needs mutex protection */
       self->txn.max_blocks -= object_blocks;
@@ -1646,16 +1656,9 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
     self->txn.max_blocks = bfree - reserved_blocks;
   else
     {
-      guint64 bytes_required = bfree * self->txn.blocksize;
       self->cleanup_stagedir = TRUE;
       g_mutex_unlock (&self->txn_lock);
-      g_autofree char *formatted_free = g_format_size (bytes_required);
-      if (self->min_free_space_percent > 0)
-        return glnx_throw (error, "min-free-space-percent '%u%%' would be exceeded, %s available",
-                           self->min_free_space_percent, formatted_free);
-      else
-        return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB would be exceeded, %s available",
-                           self->min_free_space_mb, formatted_free);
+      return throw_min_free_space_error (self, 0, error);
     }
   g_mutex_unlock (&self->txn_lock);
 
