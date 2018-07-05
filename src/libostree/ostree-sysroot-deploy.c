@@ -2182,39 +2182,56 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 {
   g_assert (self->loaded);
 
-  /* It dramatically simplifies a lot of the logic below if we
-   * drop the staged deployment from both the source deployment list,
-   * as well as the target list.  We don't want to write it to the bootloader
-   * now, which is mostly what this function is concerned with.
-   * In the future we though should probably adapt things to keep it.
+  /* Dealing with the staged deployment is quite tricky here. This function is
+   * primarily concerned with writing out "finalized" deployments which have
+   * bootloader entries. Originally, we simply dropped the staged deployment
+   * here unconditionally. Now, the high level strategy is to retain it, but
+   * *only* if it's the first item in the new deployment list - otherwise, it's
+   * silently dropped.
    */
-  gboolean removed_staged = FALSE;
-  if (self->staged_deployment)
+
+  g_autoptr(GPtrArray) new_deployments_copy = g_ptr_array_new ();
+  gboolean removed_staged = (self->staged_deployment != NULL);
+  if (new_deployments->len > 0)
     {
+      OstreeDeployment *first = new_deployments->pdata[0];
+      /* If the first deployment is the staged, we filter it out for now */
+      g_assert (first);
+      if (first == self->staged_deployment)
+        {
+          g_assert (ostree_deployment_is_staged (first));
+
+          /* In this case note staged was retained */
+          removed_staged = FALSE;
+        }
+
+      /* Create a copy without any staged deployments */
+      for (guint i = 0; i < new_deployments->len; i++)
+        {
+          OstreeDeployment *deployment = new_deployments->pdata[i];
+          if (!ostree_deployment_is_staged (deployment))
+            g_ptr_array_add (new_deployments_copy, deployment);
+        }
+      new_deployments = new_deployments_copy;
+    }
+
+  /* Take care of removing the staged deployment's on-disk state if we should */
+  if (removed_staged)
+    {
+      g_assert (self->staged_deployment);
+      g_assert (self->staged_deployment == self->deployments->pdata[0]);
+
       if (!glnx_unlinkat (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED, 0, error))
         return FALSE;
 
       if (!_ostree_sysroot_rmrf_deployment (self, self->staged_deployment, cancellable, error))
         return FALSE;
 
-      g_assert (self->staged_deployment == self->deployments->pdata[0]);
+      /* Clear it out of the *current* deployments list to maintain invariants */
+      self->staged_deployment = NULL;
       g_ptr_array_remove_index (self->deployments, 0);
-      removed_staged = TRUE;
     }
-  /* First new deployment; we'll see if it's staged */
-  OstreeDeployment *first_new =
-    (new_deployments->len > 0 ? new_deployments->pdata[0] : NULL);
-  g_autoptr(GPtrArray) new_deployments_copy = NULL;
-  if (first_new && ostree_deployment_is_staged (first_new))
-    {
-      g_assert_cmpint (new_deployments->len, >, 0);
-      new_deployments_copy = g_ptr_array_sized_new (new_deployments->len - 1);
-      for (guint i = 1; i < new_deployments->len; i++)
-        g_ptr_array_add (new_deployments_copy, new_deployments->pdata[i]);
-    }
-  else
-    new_deployments_copy = g_ptr_array_ref (new_deployments);
-  new_deployments = new_deployments_copy;
+  const guint nonstaged_current_len = self->deployments->len - (self->staged_deployment ? 1 : 0);
 
   /* Assign a bootserial to each new deployment.
    */
@@ -2226,7 +2243,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
    * subbootversion bootlinks.
    */
   gboolean requires_new_bootversion = FALSE;
-  if (new_deployments->len != self->deployments->len)
+
+  if (new_deployments->len != nonstaged_current_len)
     requires_new_bootversion = TRUE;
   else
     {

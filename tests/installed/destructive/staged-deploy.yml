@@ -70,7 +70,7 @@
     grep -vqFe '(staged)' status.txt
     test '!' -f /run/ostree/staged-deployment
 
-- name: Staged should be overwritten by non-staged
+- name: Staged should be overwritten by non-staged as first
   shell: |
     set -xeuo pipefail
     ostree admin deploy --stage staged-deploy
@@ -81,6 +81,20 @@
     grep -vqFe '(staged)' status.txt
     test '!' -f /run/ostree/staged-deployment
     ostree admin undeploy 0
+  environment:
+    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
+
+- name: Staged is retained when pushing rollback
+  shell: |
+    set -xeuo pipefail
+    ostree admin deploy --stage staged-deploy
+    test -f /run/ostree/staged-deployment
+    ostree admin deploy --retain-pending --not-as-default nonstaged-deploy
+    test -f /run/ostree/staged-deployment
+    ostree admin status > status.txt
+    grep -qFe '(staged)' status.txt
+    ostree admin undeploy 0
+    ostree admin undeploy 1
   environment:
     commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
 
