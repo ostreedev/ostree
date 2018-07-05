@@ -44,6 +44,7 @@ static char* opt_cache_dir;
 static char* opt_append_user_agent;
 static int opt_depth = 0;
 static int opt_frequency = 0;
+static int opt_network_retries = -1;
 static char* opt_url;
 static char** opt_localcache_repos;
 
@@ -68,6 +69,7 @@ static GOptionEntry options[] = {
    { "url", 0, 0, G_OPTION_ARG_STRING, &opt_url, "Pull objects from this URL instead of the one from the remote config", NULL },
    { "http-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_http_headers, "Add NAME=VALUE as HTTP header to all requests", "NAME=VALUE" },
    { "update-frequency", 0, 0, G_OPTION_ARG_INT, &opt_frequency, "Sets the update frequency, in milliseconds (0=1000ms) (default: 0)", "FREQUENCY" },
+   { "network-retries", 0, 0, G_OPTION_ARG_INT, &opt_network_retries, "Specifies how many times each download should be retried upon error (default: 5)", "N"},
    { "localcache-repo", 'L', 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_localcache_repos, "Add REPO as local cache source for objects during this pull", "REPO" },
    { "timestamp-check", 'T', 0, G_OPTION_ARG_NONE, &opt_timestamp_check, "Require fetched commits to have newer timestamps", NULL },
    /* let's leave this hidden for now; we just need it for tests */
@@ -293,6 +295,10 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
    
     g_variant_builder_add (&builder, "{s@v}", "update-frequency",
                            g_variant_new_variant (g_variant_new_uint32 (opt_frequency)));
+    
+    if (opt_network_retries >= 0)
+      g_variant_builder_add (&builder, "{s@v}", "n-network-retries",
+                             g_variant_new_variant (g_variant_new_uint32 (opt_network_retries)));
 
     g_variant_builder_add (&builder, "{s@v}", "disable-static-deltas",
                            g_variant_new_variant (g_variant_new_boolean (opt_disable_static_deltas)));
