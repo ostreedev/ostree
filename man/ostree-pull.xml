@@ -129,6 +129,14 @@ Boston, MA 02111-1307, USA.
                     Traverse DEPTH parents (-1=infinite) (default: 0).
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--network-retries</option>=N</term>
+
+                <listitem><para>
+                    Specifies how many times each download should be retried upon error (default: 5)
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
