@@ -112,6 +112,11 @@ gboolean ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
                                                       const char        *metadata_checksum);
 
 _OSTREE_PUBLIC
+gboolean
+ostree_mutable_tree_check_error (OstreeMutableTree     *self,
+                                 GError               **error);
+
+_OSTREE_PUBLIC
 GHashTable * ostree_mutable_tree_get_subdirs (OstreeMutableTree *self);
 _OSTREE_PUBLIC
 GHashTable * ostree_mutable_tree_get_files (OstreeMutableTree *self);

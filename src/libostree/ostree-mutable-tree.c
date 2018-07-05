@@ -245,7 +245,7 @@ _assert_ostree_mutable_tree_make_whole (OstreeMutableTree *self)
 {
   if (self->cached_error)
     return FALSE;
-  return ostree_mutable_tree_make_whole (self, NULL, &self->cached_error);
+  return _ostree_mutable_tree_make_whole (self, NULL, &self->cached_error);
 }
 
 void
@@ -618,7 +618,8 @@ ostree_mutable_tree_get_files (OstreeMutableTree *self)
  * Returns: `TRUE` on success
  */
 gboolean
-ostree_mutable_tree_check_error (GError **error)
+ostree_mutable_tree_check_error (OstreeMutableTree     *self,
+                                 GError               **error)
 {
   if (self->cached_error)
     {

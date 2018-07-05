@@ -3923,7 +3923,7 @@ ostree_repo_write_mtree (OstreeRepo           *self,
   g_autoptr(GFile) ret_file = NULL;
 
   if (!ostree_mutable_tree_check_error (mtree, error))
-    return glnx_prefix_error ("mtree");
+    return glnx_prefix_error (error, "mtree");
 
   metadata_checksum = ostree_mutable_tree_get_metadata_checksum (mtree);
   if (!metadata_checksum)
