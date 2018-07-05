@@ -908,6 +908,7 @@ _ostree_pull() {
         --depth
         --http-header
         --localcache-repo -L
+        --network-retries
         --repo
         --subpath
         --update-frequency
