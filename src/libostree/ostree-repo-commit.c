@@ -443,7 +443,7 @@ throw_min_free_space_error (OstreeRepo  *self,
       err_msg = err_msg_owned = g_strdup_printf ("would be exceeded, at least %s requested", formatted_required);
     }
   else
-    err_msg  = "would be exceeded.";
+    err_msg  = "would be exceeded";
 
   if (self->min_free_space_percent > 0)
     return glnx_throw (error, "min-free-space-percent '%u%%' %s", self->min_free_space_percent, err_msg);
