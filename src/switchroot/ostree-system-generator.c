@@ -41,14 +41,6 @@ static const char *arg_dest_late = "/tmp";
 int
 main(int argc, char *argv[])
 {
-  /* Important: if this isn't an ostree-booted system, do nothing; people could
-   * have the package installed as a dependency for flatpak or whatever.
-   */
-  { struct stat stbuf;
-    if (fstatat (AT_FDCWD, "/run/ostree-booted", &stbuf, 0) < 0)
-      exit (EXIT_SUCCESS);
-  }
-
   /* We conflict with the magic ostree-mount-deployment-var file for ostree-prepare-root */
   { struct stat stbuf;
     if (fstatat (AT_FDCWD, INITRAMFS_MOUNT_VAR, &stbuf, 0) == 0)
@@ -67,9 +59,22 @@ main(int argc, char *argv[])
   if (argc > 3)
     arg_dest_late = argv[3];
 
+  /* If we're installed on a system which isn't using OSTree for boot (e.g.
+   * package installed as a dependency for flatpak or whatever), silently
+   * exit so that we don't error, but at the same time work where switchroot
+   * is PID 1 (and so hasn't created /run/ostree-booted).
+   */
   char *ostree_cmdline = read_proc_cmdline_ostree ();
   if (!ostree_cmdline)
-    errx (EXIT_FAILURE, "Failed to find ostree= kernel argument");
+    exit (EXIT_SUCCESS);
+
+  /* See comments in ostree-prepare-root.c for this.
+   *
+   * It's a lot easier for various bits of userspace to check for
+   * a file versus parsing the kernel cmdline.  So let's ensure
+   * the stamp file is created here too.
+   */
+  touch_run_ostree ();
 
   { g_autoptr(GError) local_error = NULL;
     if (!ostree_cmd__private__()->ostree_system_generator (ostree_cmdline, arg_dest, NULL, arg_dest_late, &local_error))

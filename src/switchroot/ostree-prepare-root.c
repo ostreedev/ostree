@@ -210,8 +210,9 @@ main(int argc, char *argv[])
 
 
   /* We only stamp /run now if we're running in an initramfs, i.e. we're
-   * not pid 1.  Otherwise it's handled later via ostree-remount.service.
+   * not pid 1.  Otherwise it's handled later via ostree-system-generator.
    * https://mail.gnome.org/archives/ostree-list/2018-March/msg00012.html
+   * https://github.com/ostreedev/ostree/pull/1675
    */
   if (!running_as_pid1)
     touch_run_ostree ();
