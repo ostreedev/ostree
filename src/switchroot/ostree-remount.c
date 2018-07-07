@@ -94,7 +94,7 @@ main(int argc, char *argv[])
       /* It's a mounted, read-only fs; remount it */
       if (mount (target, target, NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
         {
-          /* Also ignore ENINVAL - if the target isn't a mountpoint
+          /* Also ignore EINVAL - if the target isn't a mountpoint
            * already, then assume things are OK.
            */
           if (errno != EINVAL)
