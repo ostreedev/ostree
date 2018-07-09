@@ -4677,6 +4677,7 @@ static gboolean resolve_sha_to_tree (OstreeRepo       *self,
                                      char            **out_commit_sha,
                                      GCancellable     *cancellable,
                                      GError           **error);
+static char* split_treeish_path (char *treeish);
 
 const char dirmeta_0755_0_0[] = "446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec73f62988eb0b6c5488";
 
@@ -4701,10 +4702,11 @@ const char dirmeta_0755_0_0[] = "446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec7
  *
  * @ref can take the form:
  *
- *    REMOTE:REF
- *    :REF
+ *    REMOTE:REF[:PATH]
+ *    :REF[:PATH]
  *    REF
- *    COMMIT_SHA
+ *    COMMIT_SHA[:PATH]
+ *    TREE_SHA:PATH
  *    TREE_SHA (but only if "path" parameter is also provided)
  *
  * Not currently supported (but could be implemented):
@@ -4727,6 +4729,7 @@ _ostree_repo_open_file (OstreeRepo               *self,
   g_return_val_if_fail (ref, FALSE);
 
   g_autofree char * rev = g_strdup (ref);
+  char * ref_path = split_treeish_path (rev);
   g_autofree char * commit_sha = NULL;
 
   g_autofree char * sha = NULL;
@@ -4739,6 +4742,19 @@ _ostree_repo_open_file (OstreeRepo               *self,
   if (!resolve_sha_to_tree (self, sha, &ret_out, &commit_sha, cancellable,
                             error))
     return FALSE;
+
+  if (ref_path && g_strcmp0 (ref_path, "") != 0 &&
+      g_strcmp0 (ref_path, "/") != 0 && g_strcmp0 (path, "/.") != 0)
+    {
+      g_set_object (&ret_out, OSTREE_REPO_FILE (
+            g_file_resolve_relative_path ((GFile*) ret_out, ref_path)));
+      if (!ret_out)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "File \"%s\" not found", ref_path);
+          return FALSE;
+        }
+    }
 
   if (path && g_strcmp0 (path, "") != 0 && g_strcmp0 (path, "/") != 0 &&
       g_strcmp0 (path, "/.") != 0)
@@ -4860,6 +4876,47 @@ resolve_sha_to_tree (OstreeRepo       *self,
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                "No DIR_TREE or COMMIT found for sha %s", sha);
   return FALSE;
+}
+
+/* Parses a treeish spliting the PATH from the end if present.
+ *
+ * treeish is modified in place, a ':' is replaced by '\0'.  The returned string
+ * is a substring of the original passed in treeish and need not be freed.
+ *
+ * There is not ambiguity between SHA:PATH and REMOTE:REF because REMOTE is not
+ * allowed to be a valid SHA.
+ */
+static char*
+split_treeish_path (char *treeish)
+{
+  if (ostree_validate_structureof_checksum_string (treeish, NULL))
+    /* TREE_SHA, BLOB_SHA or COMMIT_SHA */
+    return treeish + strlen (treeish);
+
+  char *colon = strchr (treeish, ':');
+
+  if (!colon)
+    /* REF */
+    return treeish + strlen (treeish);
+
+  *colon = '\0';
+
+  if (ostree_validate_structureof_checksum_string (treeish, NULL))
+    /* SHA:PATH */
+    return colon + 1;
+
+  *colon = ':';
+  char *colon2 = strchr (colon + 1, ':');
+
+  if (colon2)
+    {
+      /* [REMOTE]:REF:PATH */
+      *colon2 = '\0';
+      return colon2 + 1;
+    }
+
+  /* [REMOTE]:REF */
+  return treeish + strlen (treeish);
 }
 
 /**
