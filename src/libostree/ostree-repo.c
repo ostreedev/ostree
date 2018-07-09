@@ -4678,6 +4678,8 @@ static gboolean resolve_sha_to_tree (OstreeRepo       *self,
                                      GCancellable     *cancellable,
                                      GError           **error);
 
+const char dirmeta_0755_0_0[] = "446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec73f62988eb0b6c5488";
+
 /**
  * _ostree_repo_open_file:
  * @self: Repo
@@ -4703,6 +4705,7 @@ static gboolean resolve_sha_to_tree (OstreeRepo       *self,
  *    :REF
  *    REF
  *    COMMIT_SHA
+ *    TREE_SHA (but only if "path" parameter is also provided)
  *
  * Not currently supported (but could be implemented):
  *
@@ -4822,8 +4825,40 @@ resolve_sha_to_tree (OstreeRepo       *self,
       return TRUE;
     }
 
+  if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_DIR_TREE, sha,
+                               &has_object, cancellable, error))
+    return FALSE;
+  if (has_object)
+    {
+      /* We're a bit cheeky here - we need to specify a metadata checksum but we
+       * don't have one, so we default to 0755 - generally a sensible option for
+       * directories */
+      g_autoptr(OstreeRepoFile) root =  _ostree_repo_file_new_root (
+          self, sha, dirmeta_0755_0_0);
+      if (!root)
+        return FALSE;
+      ot_transfer_out_value (out, &root);
+      if (out_commit_sha)
+        *out_commit_sha = NULL;
+      return TRUE;
+    }
+
+  if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_FILE, sha,
+                               &has_object, cancellable, error))
+    return FALSE;
+  if (has_object)
+    {
+      /* For now we can't construct a OstreeRepoFile that has no parent
+       * directory nor a name.  In the future we could enhance OstreeRepoFile a
+       * bit to enable that but it's left unimplemented for now. */
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "TODO: treeishes which are blobs not yet implemented: %s",
+                   sha);
+      return FALSE;
+    }
+
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-               "No COMMIT found for sha %s", sha);
+               "No DIR_TREE or COMMIT found for sha %s", sha);
   return FALSE;
 }
 
