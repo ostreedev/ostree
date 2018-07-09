@@ -2853,7 +2853,7 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
   if (!glnx_unlinkat (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED, 0, error))
     return FALSE;
 
-  if (!sysroot_finalize_deployment (self, self->staged_deployment, NULL, merge_deployment,
+  if (!sysroot_finalize_deployment (self, self->staged_deployment, kargs, merge_deployment,
                                     cancellable, error))
     return FALSE;
 
