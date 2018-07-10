@@ -3813,12 +3813,15 @@ load_metadata_internal (OstreeRepo       *self,
   return TRUE;
 }
 
-static GVariant  *
-filemeta_to_stat (struct stat *stbuf,
-                  GVariant   *metadata)
+GVariant  *
+_ostree_filemeta_to_stat (struct stat *stbuf,
+                          GBytes      *bytes)
 {
   guint32 uid, gid, mode;
   GVariant *xattrs;
+
+  g_autoptr(GVariant) metadata = g_variant_ref_sink (g_variant_new_from_bytes (
+        OSTREE_FILEMETA_GVARIANT_FORMAT, bytes, FALSE));
 
   g_variant_get (metadata, "(uuu@a(ayay))",
                  &uid, &gid, &mode, &xattrs);
@@ -3958,9 +3961,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
       if (bytes == NULL)
         return FALSE;
 
-      g_autoptr(GVariant) metadata = g_variant_ref_sink (g_variant_new_from_bytes (OSTREE_FILEMETA_GVARIANT_FORMAT,
-                                                                                   bytes, FALSE));
-      ret_xattrs = filemeta_to_stat (&stbuf, metadata);
+      ret_xattrs = _ostree_filemeta_to_stat (&stbuf, bytes);
       if (S_ISLNK (stbuf.st_mode))
         {
           if (out_symlink)

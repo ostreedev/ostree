@@ -310,6 +310,10 @@ _ostree_repo_file_replace_contents (OstreeRepo    *self,
                                     GCancellable  *cancellable,
                                     GError       **error);
 
+GVariant  *
+_ostree_filemeta_to_stat (struct stat *stbuf,
+                          GBytes      *bytes);
+
 gboolean
 _ostree_repo_write_ref (OstreeRepo                 *self,
                         const char                 *remote,
