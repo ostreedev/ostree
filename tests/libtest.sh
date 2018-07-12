@@ -49,6 +49,7 @@ trap run_exit_cmds EXIT
 save_core() {
   if [ -e core ]; then
     cp core "$test_srcdir/core"
+    gdb -batch -ex bt "$test_builddir/../.libs/ostree" core
   fi
 }
 libtest_exit_cmds+=(save_core)
