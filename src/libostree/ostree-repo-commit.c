@@ -3207,6 +3207,69 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   return g_variant_ref_sink (serialized_tree);
 }
 
+/* v is a GVariant of type "a(ayay)" representing a list of xattrs */
+static GBytes*
+variant_xattr_lookup(GVariant *v, const gchar *key)
+{
+  GVariantIter iter;
+  g_variant_iter_init (&iter, v);
+  while (TRUE)
+    {
+      gchar *k;
+      g_autoptr(GVariant) v = NULL;
+
+      if (!g_variant_iter_next (&iter, "(^&ay@ay)", &k, &v))
+        return NULL;
+      if (g_strcmp0 (k, key) == 0)
+        return g_variant_get_data_as_bytes (v);
+    }
+}
+
+static gboolean
+load_bare_user_xattrs (GVariant                 *original_xattrs,
+                       GFileInfo                *file_info,
+                       GFileInfo               **out_modified_info,
+                       GVariant                **out_xattrs,
+                       GCancellable             *cancellable,
+                       GError                  **error)
+{
+  struct stat current_stat;
+  _ostree_gfileinfo_to_stbuf (file_info, &current_stat);
+
+  struct stat new_stat;
+  g_autoptr(GVariant) ret_xattrs = NULL;
+
+  g_autoptr(GBytes) bytes = variant_xattr_lookup (original_xattrs, "user.ostreemeta");
+  if (bytes == NULL)
+    {
+      new_stat = current_stat;
+      new_stat.st_uid = 0;
+      new_stat.st_gid = 0;
+    }
+  else
+    ret_xattrs = _ostree_filemeta_to_stat (&new_stat, bytes);
+
+  new_stat.st_mode = (current_stat.st_mode & S_IFMT) | (new_stat.st_mode & 07777);
+
+  if (new_stat.st_uid != current_stat.st_uid ||
+      new_stat.st_gid != current_stat.st_gid ||
+      new_stat.st_mode != current_stat.st_mode)
+    {
+      g_autoptr(GFileInfo) modified_info = g_file_info_dup (file_info);
+
+      g_file_info_set_attribute_uint32 (modified_info, "unix::uid", new_stat.st_uid);
+      g_file_info_set_attribute_uint32 (modified_info, "unix::gid", new_stat.st_gid);
+      g_file_info_set_attribute_uint32 (modified_info, "unix::mode", new_stat.st_mode);
+
+      g_set_object (out_modified_info, modified_info);
+    }
+  else
+    g_set_object (out_modified_info, g_object_ref (file_info));
+
+  *out_xattrs = g_steal_pointer (&ret_xattrs);
+  return TRUE;
+}
+
 /* If any filtering is set up, perform it, and return modified file info in
  * @out_modified_info. Note that if no filtering is applied, @out_modified_info
  * will simply be another reference (with incremented refcount) to @file_info.
@@ -3225,7 +3288,7 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
       (modifier->filter == NULL &&
        (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) == 0))
     {
-      *out_modified_info = g_object_ref (file_info);
+      g_set_object (out_modified_info, file_info);
       return OSTREE_REPO_COMMIT_FILTER_ALLOW;
     }
 
@@ -3257,7 +3320,7 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
       g_file_info_set_attribute_uint32 (modified_info, "unix::gid", 0);
     }
 
-  *out_modified_info = modified_info;
+  g_set_object (out_modified_info, modified_info);
 
   return result;
 }
@@ -3293,6 +3356,7 @@ get_final_xattrs (OstreeRepo                       *self,
                   int                               dfd,
                   const char                       *dfd_subpath,
                   GVariant                         *source_xattrs,
+                  GFileInfo                       **out_fileinfo,
                   GVariant                        **out_xattrs,
                   gboolean                         *out_modified,
                   GCancellable                     *cancellable,
@@ -3303,10 +3367,13 @@ get_final_xattrs (OstreeRepo                       *self,
   const gboolean skip_xattrs = (modifier &&
       modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
                          OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0;
+  const gboolean use_bare_user_xattrs = (modifier &&
+      modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_USE_BARE_USER_XATTRS);
 
   /* fetch on-disk xattrs if needed & not disabled */
   g_autoptr(GVariant) original_xattrs = NULL;
-  if (!skip_xattrs && !self->disable_xattrs)
+  g_autoptr(GVariant) ret_xattrs = NULL;
+  if ((!skip_xattrs && !self->disable_xattrs) || use_bare_user_xattrs)
     {
       if (source_xattrs)
         original_xattrs = g_variant_ref (source_xattrs);
@@ -3337,18 +3404,34 @@ get_final_xattrs (OstreeRepo                       *self,
         }
 
       g_assert (original_xattrs);
+      ret_xattrs = g_variant_ref (original_xattrs);
     }
 
-  g_autoptr(GVariant) ret_xattrs = NULL;
+  g_autoptr(GFileInfo) ret_fileinfo = NULL;
+  if (use_bare_user_xattrs)
+    {
+      if (!load_bare_user_xattrs (ret_xattrs, file_info,
+                                  &ret_fileinfo, &ret_xattrs,
+                                  cancellable, error))
+        return FALSE;
+    }
+  else
+    ret_fileinfo = g_object_ref (file_info);
+
   if (modifier && modifier->xattr_callback)
     {
-      ret_xattrs = modifier->xattr_callback (self, relpath, file_info,
-                                             modifier->xattr_user_data);
+      // The file_info passed to the xattr_callback hasn't been updated with the
+      // new xattrs from load_bare_user_xattrs.  The exising callbacks don't
+      // read xattrs from file_info anyway, so this is fine.
+      GVariant *cb_xattrs = modifier->xattr_callback (
+          self, relpath, ret_fileinfo, modifier->xattr_user_data);
+      if (cb_xattrs)
+        {
+          /* if callback returned NULL default to on-disk state */
+          g_variant_unref (ret_xattrs);
+          ret_xattrs = cb_xattrs;
+        }
     }
-
-  /* if callback returned NULL or didn't exist, default to on-disk state */
-  if (!ret_xattrs && original_xattrs)
-    ret_xattrs = g_variant_ref (original_xattrs);
 
   if (modifier && modifier->sepolicy)
     {
@@ -3392,11 +3475,14 @@ get_final_xattrs (OstreeRepo                       *self,
         }
     }
 
-  if (original_xattrs && ret_xattrs && g_variant_equal (original_xattrs, ret_xattrs))
+  if (original_xattrs && ret_xattrs && g_variant_equal (original_xattrs, ret_xattrs) &&
+      _ostree_gfileinfo_equal(ret_fileinfo, file_info))
     modified = FALSE;
 
   if (out_xattrs)
     *out_xattrs = g_steal_pointer (&ret_xattrs);
+  if (out_fileinfo)
+    g_set_object (out_fileinfo, g_steal_pointer (&ret_fileinfo));
   if (out_modified)
     *out_modified = modified;
   return TRUE;
@@ -3612,7 +3698,6 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
   g_autoptr(GFileInfo) modified_info = NULL;
   OstreeRepoCommitFilterResult filter_result =
     _ostree_repo_commit_modifier_apply (self, modifier, child_relpath, child_info, &modified_info);
-  const gboolean child_info_was_modified = !_ostree_gfileinfo_equal (child_info, modified_info);
 
   if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
@@ -3660,9 +3745,9 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
   gboolean xattrs_were_modified;
   if (dir_enum != NULL)
     {
-      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
-                             -1, name, source_xattrs, &xattrs, &xattrs_were_modified,
-                             cancellable, error))
+      if (!get_final_xattrs (self, modifier, child_relpath, modified_info, child,
+                             -1, name, source_xattrs, &modified_info, &xattrs,
+                             &xattrs_were_modified, cancellable, error))
         return FALSE;
     }
   else
@@ -3672,15 +3757,17 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
        */
       int xattr_fd_arg = (file_input_fd != -1) ? file_input_fd : dfd_iter->fd;
       const char *xattr_path_arg = (file_input_fd != -1) ? NULL : name;
-      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child,
+      if (!get_final_xattrs (self, modifier, child_relpath, modified_info, child,
                              xattr_fd_arg, xattr_path_arg, source_xattrs,
-                             &xattrs, &xattrs_were_modified,
+                             &modified_info, &xattrs, &xattrs_were_modified,
                              cancellable, error))
         return FALSE;
     }
 
   /* Used below to see whether we can do a fast path commit */
-  const gboolean modified_file_meta = child_info_was_modified || xattrs_were_modified;
+  const gboolean modified_file_meta =
+      !_ostree_gfileinfo_equal (child_info, modified_info) ||
+      xattrs_were_modified;
 
   /* A big prerequisite list of conditions for whether or not we can
    * "adopt", i.e. just checksum and rename() into place
@@ -3818,6 +3905,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
     }
   else
     {
+      /* This is a real file */
       g_autoptr(GVariant) xattrs = NULL;
 
       g_autoptr(GFileInfo) child_info =
@@ -3836,8 +3924,8 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
-          if (!get_final_xattrs (self, modifier, relpath, child_info, dir, -1, NULL,
-                                 NULL, &xattrs, NULL, cancellable, error))
+          if (!get_final_xattrs (self, modifier, relpath, modified_info, dir, -1, NULL,
+                                 NULL, &modified_info, &xattrs, NULL, cancellable, error))
             return FALSE;
 
           g_autofree guchar *child_file_csum = NULL;
@@ -3935,7 +4023,8 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
       if (!get_final_xattrs (self, modifier, relpath, modified_info, NULL, src_dfd_iter->fd,
-                             NULL, NULL, &xattrs, NULL, cancellable, error))
+                             NULL, NULL, &modified_info, &xattrs,
+                             NULL, cancellable, error))
         return FALSE;
 
       if (!_ostree_repo_write_directory_meta (self, modified_info, xattrs, &child_file_csum,

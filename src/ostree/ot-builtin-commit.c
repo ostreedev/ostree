@@ -53,6 +53,7 @@ static gboolean opt_skip_if_unchanged;
 static gboolean opt_tar_autocreate_parents;
 static char *opt_tar_pathname_filter;
 static gboolean opt_no_xattrs;
+static gboolean opt_use_bare_user_xattrs;
 static char *opt_selinux_policy;
 static gboolean opt_selinux_policy_from_base;
 static gboolean opt_canonical_permissions;
@@ -114,6 +115,7 @@ static GOptionEntry options[] = {
   { "canonical-permissions", 0, 0, G_OPTION_ARG_NONE, &opt_canonical_permissions, "Canonicalize permissions in the same way bare-user does for hardlinked files", NULL },
   { "mode-ro-executables", 0, 0, G_OPTION_ARG_NONE, &opt_ro_executables, "Ensure executable files are not writable", NULL },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
+  { "use-bare-user-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_use_bare_user_xattrs, "Set uid, gid, mode and xattrs according to the user.ostreemeta xattr on files", NULL },
   { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
   { "selinux-policy-from-base", 'P', 0, G_OPTION_ARG_NONE, &opt_selinux_policy_from_base, "Set SELinux labels based on first --tree argument", NULL },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
@@ -555,6 +557,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (opt_no_xattrs)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
+  if (opt_use_bare_user_xattrs)
+    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_USE_BARE_USER_XATTRS;
   if (opt_consume)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME;
   if (opt_devino_canonical)
@@ -580,6 +584,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       || opt_statoverride_file != NULL
       || opt_skiplist_file != NULL
       || opt_no_xattrs
+      || opt_use_bare_user_xattrs
       || opt_ro_executables
       || opt_selinux_policy
       || opt_selinux_policy_from_base)
