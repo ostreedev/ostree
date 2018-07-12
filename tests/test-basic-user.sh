@@ -127,42 +127,55 @@ $OSTREE refs --delete test2-{linkcheckout,devino}-test
 echo "ok commit with -I"
 
 mkdir -p xattrroot/bin xattrroot/home/ostree
-touch xattrroot/bin/sudo xattrroot/bin/bash
+touch xattrroot/bin/sudo xattrroot/bin/bash xattrroot/bin/bwrap
 
 cat >setx.py <<'EOF'
 #/usr/bin/python
 import os
-import struct
+import socket
 import sys
 
 import xattr
+from gi.repository import GLib
 
 
-def setx(filename, uid, gid, mode):
+def setx(filename, uid, gid, mode, xattrs=None):
+    if xattrs is None:
+        xattrs = {}
     type_bits = os.stat(filename).st_mode & 0o170000
-    return xattr.setxattr(filename, "user.ostreemeta",
-                          struct.pack('>III', uid, gid, mode | type_bits))
+    v = GLib.Variant('(uuua(ayay))', (socket.htonl(uid), socket.htonl(gid),
+                                      socket.htonl(type_bits | mode),
+                                      xattrs.items()))
+    xattr.setxattr(filename, "user.ostreemeta",
+                   v.get_data_as_bytes().get_data())
+
 
 setx("xattrroot", 0, 0, 0o0755)
 setx("xattrroot/bin", 0, 0, 0o0755)
+setx("xattrroot/bin/bwrap", 0, 0, 0o0755, {
+    b"security.capability": (b"\x00\x01\x02\x00\x20\x00\x00\x00"
+                             b"\x20\x00\x00\x00\x00\x00\x00\x00"
+                             b"\x00\x00\x00\x00")})
 setx("xattrroot/bin/bash", 0, 0, 0o0755)
 setx("xattrroot/bin/sudo", 0, 0, 0o4755)
 setx("xattrroot/home", 0, 0, 0o0755)
 setx("xattrroot/home/ostree", 1001, 80, 0o0700)
 EOF
 python setx.py
+attr -l xattrroot/bin/bwrap
 
 $OSTREE commit -b xattrtest --tree=dir=xattrroot \
                --link-checkout-speedup --consume \
                --use-bare-user-xattrs
-$OSTREE ls -R xattrtest >out
+$OSTREE ls -RX xattrtest >out
 cat >expected <<EOF
-d00755 0 0      0 /
-d00755 0 0      0 /bin
--00755 0 0      0 /bin/bash
--04755 0 0      0 /bin/sudo
-d00755 0 0      0 /home
-d00700 1001 80      0 /home/ostree
+d00755 0 0      0 { @a(ayay) [] } /
+d00755 0 0      0 { @a(ayay) [] } /bin
+-00755 0 0      0 { @a(ayay) [] } /bin/bash
+-00755 0 0      0 { [([byte 0x73, 0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79, 0x2e, 0x63, 0x61, 0x70, 0x61, 0x62, 0x69, 0x6c, 0x69, 0x74, 0x79], [byte 0x00, 0x01, 0x02, 0x00, 0x20, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])] } /bin/bwrap
+-04755 0 0      0 { @a(ayay) [] } /bin/sudo
+d00755 0 0      0 { @a(ayay) [] } /home
+d00700 1001 80      0 { @a(ayay) [] } /home/ostree
 EOF
 
 diff -u expected out || fatal "Tree contents incorrect"
