@@ -752,8 +752,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (!skip_commit)
     {
-      gboolean update_summary;
       guint64 timestamp;
+      gboolean change_update_summary;
 
       if (!opt_no_bindings)
         {
@@ -824,21 +824,32 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
         goto out;
 
-      /* The default for this option is FALSE, even for archive repos,
-       * because ostree supports multiple processes committing to the same
-       * repo (but different refs) concurrently, and in fact gnome-continuous
-       * actually does this.  In that context it's best to update the summary
-       * explicitly instead of automatically here. */
       if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
-                                                "commit-update-summary", FALSE,
-                                                &update_summary, error))
+                                                "change-update-summary", FALSE,
+                                                &change_update_summary, error))
         goto out;
 
-      if (update_summary && !ostree_repo_regenerate_summary (repo,
-                                                             NULL,
-                                                             cancellable,
-                                                             error))
-        goto out;
+      /* No need to update it again if we did for each ref change */
+      if (opt_orphan || !change_update_summary)
+        {
+          gboolean commit_update_summary;
+
+          /* The default for this option is FALSE, even for archive repos,
+           * because ostree supports multiple processes committing to the same
+           * repo (but different refs) concurrently, and in fact gnome-continuous
+           * actually does this.  In that context it's best to update the summary
+           * explicitly instead of automatically here. */
+          if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
+                                                    "commit-update-summary", FALSE,
+                                                    &commit_update_summary, error))
+            goto out;
+
+          if (commit_update_summary && !ostree_repo_regenerate_summary (repo,
+                                                                        NULL,
+                                                                        cancellable,
+                                                                        error))
+            goto out;
+        }
     }
   else
     {

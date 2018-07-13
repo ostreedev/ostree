@@ -437,6 +437,11 @@ _ostree_repo_get_remote_inherited (OstreeRepo  *self,
                                    const char  *name,
                                    GError     **error);
 
+gboolean
+_ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
+                                       GCancellable  *cancellable,
+                                       GError       **error);
+
 /* Locking APIs are currently private.
  * See https://github.com/ostreedev/ostree/pull/1555
  */
