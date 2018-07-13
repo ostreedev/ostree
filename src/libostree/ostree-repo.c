@@ -5377,7 +5377,8 @@ summary_add_ref_entry (OstreeRepo       *self,
  * will aid clients in working out when to check for updates.
  *
  * It is regenerated automatically after a commit if
- * `core/commit-update-summary` is set.
+ * `core/commit-update-summary` is set, and automatically after any ref is
+ * added, removed, or updated if `core/change-update-summary` is set.
  *
  * If the `core/collection-id` key is set in the configuration, it will be
  * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
