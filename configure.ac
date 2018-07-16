@@ -220,6 +220,10 @@ AS_IF([ test x$have_gpgme = xno ], [
    AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_DEPENDENCY or later])
 ])
 OSTREE_FEATURES="$OSTREE_FEATURES gpgme"
+dnl This apparently doesn't ship a pkg-config file either, and we need
+dnl to link to it directly.
+OT_DEP_GPGME_CFLAGS="${OT_DEP_GPGME_CFLAGS} $(gpg-error-config --cflags)"
+OT_DEP_GPGME_LIBS="${OT_DEP_GPGME_LIBS} $(gpg-error-config --libs)"
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 # What's in RHEL7.2.
