@@ -2818,12 +2818,10 @@ reload_core_config (OstreeRepo          *self,
   }
 
   {
-    if (g_key_file_has_key (self->config, "core", "min-free-space-size", NULL) &&
-        g_key_file_has_key (self->config, "core", "min-free-space-percent", NULL))
-      {
-        return glnx_throw (error, "min-free-space-percent and min-free-space-size are mutually exclusive");
-      }
-    else if (g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
+    /* Try to parse both min-free-space-* config options first. If both are absent, fallback on 3% free space.
+     * If both are present and are non-zero, use min-free-space-size unconditionally and display a warning.
+     */
+    if (g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
       {
         g_autofree char *min_free_space_size_str = NULL;
 
@@ -2835,20 +2833,30 @@ reload_core_config (OstreeRepo          *self,
         if (!min_free_space_size_validate_and_convert (self, min_free_space_size_str, error))
           return glnx_prefix_error (error, "Invalid min-free-space-size '%s'", min_free_space_size_str);
       }
-    else
+
+    if (g_key_file_has_key (self->config, "core", "min-free-space-percent", NULL))
       {
         g_autofree char *min_free_space_percent_str = NULL;
-        /* If changing this, be sure to change the man page too */
-        const char *default_min_free_space = "3";
 
         if (!ot_keyfile_get_value_with_default (self->config, "core", "min-free-space-percent",
-                                                default_min_free_space,
-                                                &min_free_space_percent_str, error))
+                                                NULL, &min_free_space_percent_str, error))
           return FALSE;
 
         self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
         if (self->min_free_space_percent > 99)
           return glnx_throw (error, "Invalid min-free-space-percent '%s'", min_free_space_percent_str);
+      }
+    else if (!g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
+      {
+        /* Default fallback of 3% free space. If changing this, be sure to change the man page too */
+        self->min_free_space_percent = 3;
+        self->min_free_space_mb = 0;
+      }
+
+    if (self->min_free_space_percent != 0 && self->min_free_space_mb != 0)
+      {
+        self->min_free_space_percent = 0;
+        g_debug ("Both min-free-space-percent and -size are mentioned in config. Enforcing min-free-space-size check only.");
       }
   }
 
