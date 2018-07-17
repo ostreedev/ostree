@@ -220,10 +220,15 @@ AS_IF([ test x$have_gpgme = xno ], [
    AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_DEPENDENCY or later])
 ])
 OSTREE_FEATURES="$OSTREE_FEATURES gpgme"
+PKG_CHECK_MODULES(OT_DEP_GPG_ERROR, [gpg-error], [], [
 dnl This apparently doesn't ship a pkg-config file either, and we need
 dnl to link to it directly.
-OT_DEP_GPGME_CFLAGS="${OT_DEP_GPGME_CFLAGS} $(gpg-error-config --cflags)"
-OT_DEP_GPGME_LIBS="${OT_DEP_GPGME_LIBS} $(gpg-error-config --libs)"
+    AC_PATH_PROG(GPG_ERROR_CONFIG, [gpg-error-config], [AC_MSG_ERROR([Missing gpg-error-config])])
+    OT_DEP_GPG_ERROR_CFLAGS="$( $GPG_ERROR_CONFIG --cflags )"
+    OT_DEP_GPG_ERROR_LIBS="$( $GPG_ERROR_CONFIG --libs )"
+])
+OT_DEP_GPGME_CFLAGS="${OT_DEP_GPGME_CFLAGS} ${OT_DEP_GPG_ERROR_CFLAGS}"
+OT_DEP_GPGME_LIBS="${OT_DEP_GPGME_LIBS} ${OT_DEP_GPG_ERROR_LIBS}"
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 # What's in RHEL7.2.
