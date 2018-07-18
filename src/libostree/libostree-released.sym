@@ -527,6 +527,13 @@ global:
   ostree_validate_collection_id;
 } LIBOSTREE_2018.5;
 
+LIBOSTREE_2018.7 {
+global:
+    ostree_mutable_tree_fill_empty_from_dirtree;
+    ostree_mutable_tree_new_from_checksum;
+    ostree_mutable_tree_check_error;
+} LIBOSTREE_2018.6;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
