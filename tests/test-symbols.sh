@@ -54,7 +54,7 @@ echo 'ok documented symbols'
 
 # ONLY update this checksum in release commits!
 cat > released-sha256.txt <<EOF
-0d9b42d7e6694a6875962e253c0ffc61f8363dfdfb78f41b843223708cae60d5  ${released_syms}
+611278b6081cbd34e365f3a7988e0c981644a828230973d7675a1a31ef09a0e3  ${released_syms}
 EOF
 sha256sum -c released-sha256.txt
 
