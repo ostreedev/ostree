@@ -5,7 +5,7 @@ branches:
     - try
 
 context: FAH28-insttests
-required: true
+required: false
 
 container:
   image: registry.fedoraproject.org/fedora:28
