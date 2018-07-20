@@ -5,7 +5,7 @@ branches:
     - try
 
 context: FAH28-insttests
-required: true
+required: false
 
 # FIXME; temporary workaround
 # https://github.com/ostreedev/ostree/pull/1513#issuecomment-378784162
