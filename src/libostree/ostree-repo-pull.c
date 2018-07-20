@@ -4131,7 +4131,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           {
             const char *delta;
             g_autoptr(GVariant) csum_v = NULL;
-            guchar *csum_data = g_malloc (OSTREE_SHA256_DIGEST_LEN);
             g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
 
             g_variant_get_child (ref, 0, "&s", &delta);
@@ -4140,6 +4139,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             if (!validate_variant_is_csum (csum_v, error))
               goto out;
 
+            guchar *csum_data = g_malloc (OSTREE_SHA256_DIGEST_LEN);
             memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
             g_hash_table_insert (pull_data->summary_deltas_checksums,
                                  g_strdup (delta),
