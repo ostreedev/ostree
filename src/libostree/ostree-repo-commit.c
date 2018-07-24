@@ -445,10 +445,10 @@ throw_min_free_space_error (OstreeRepo  *self,
   else
     err_msg  = "would be exceeded";
 
-  if (self->min_free_space_percent > 0)
-    return glnx_throw (error, "min-free-space-percent '%u%%' %s", self->min_free_space_percent, err_msg);
-  else
+  if (self->min_free_space_mb > 0)
     return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB %s", self->min_free_space_mb, err_msg);
+  else
+    return glnx_throw (error, "min-free-space-percent '%u%%' %s", self->min_free_space_percent, err_msg);
 }
 
 typedef struct {
