@@ -293,7 +293,7 @@ ostree_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation,
       else if (opt_create)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "You must specify an existing ref when creating a new ref");
+                       "You must specify a revision when creating a new ref");
           goto out;
         }
 
