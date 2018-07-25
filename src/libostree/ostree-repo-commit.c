@@ -2201,6 +2201,24 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
       return FALSE;
   g_clear_pointer (&self->txn.collection_refs, g_hash_table_destroy);
 
+  /* Update the summary if change-update-summary is set, because doing so was
+   * delayed for each ref change during the transaction.
+   */
+  {
+    gboolean update_summary;
+
+    if (!ot_keyfile_get_boolean_with_default (self->config, "core",
+                                              "change-update-summary", FALSE,
+                                              &update_summary, error))
+      return FALSE;
+
+    if (update_summary && !ostree_repo_regenerate_summary (self,
+                                                           NULL,
+                                                           cancellable,
+                                                           error))
+      return FALSE;
+  }
+
   self->in_transaction = FALSE;
 
   if (!ot_ensure_unlinked_at (self->repo_dir_fd, "transaction", 0))
