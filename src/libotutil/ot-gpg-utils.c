@@ -262,10 +262,8 @@ data_read_cb (void *handle, void *buffer, size_t size)
 
   g_return_val_if_fail (G_IS_INPUT_STREAM (input_stream), -1);
 
-  g_input_stream_read_all (input_stream, buffer, size,
-                           &bytes_read, NULL, &local_error);
-
-  if (local_error != NULL)
+  if (!g_input_stream_read_all (input_stream, buffer, size,
+                                &bytes_read, NULL, &local_error))
     {
       set_errno_from_gio_error (local_error);
       g_clear_error (&local_error);
@@ -287,7 +285,7 @@ data_write_cb (void *handle, const void *buffer, size_t size)
   if (g_output_stream_write_all (output_stream, buffer, size,
                                  &bytes_written, NULL, &local_error))
     {
-      g_output_stream_flush (output_stream, NULL, &local_error);
+      (void)g_output_stream_flush (output_stream, NULL, &local_error);
     }
 
   if (local_error != NULL)
