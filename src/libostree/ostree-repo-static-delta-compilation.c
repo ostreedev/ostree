@@ -313,14 +313,13 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
 static OstreeStaticDeltaPartBuilder *
 allocate_part (OstreeStaticDeltaBuilder *builder, GError **error)
 {
-  OstreeStaticDeltaPartBuilder *part = g_new0 (OstreeStaticDeltaPartBuilder, 1);
-
   if (builder->parts->len > 0)
     {
       if (!finish_part (builder, error))
         return NULL;
     }
 
+  OstreeStaticDeltaPartBuilder *part = g_new0 (OstreeStaticDeltaPartBuilder, 1);
   part->objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   part->payload = g_string_new (NULL);
   part->operations = g_string_new (NULL);
