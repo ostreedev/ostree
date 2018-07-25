@@ -4611,8 +4611,9 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
 
           if (bytes_sec > 0)
             {
-              /* MAX(0, value) here just to be defensive */
-              guint64 est_time_remaining = MAX(0, (total_delta_part_size - fetched_delta_part_size)) / bytes_sec;
+              guint64 est_time_remaining = 0;
+              if (total_delta_part_size > fetched_delta_part_size)
+                est_time_remaining = (total_delta_part_size - fetched_delta_part_size) / bytes_sec;
               g_autofree char *formatted_est_time_remaining = _formatted_time_remaining_from_seconds (est_time_remaining);
               /* No space between %s and remaining, since formatted_est_time_remaining has a trailing space */
               g_string_append_printf (buf, "Receiving delta parts: %u/%u %s/%s %s/s %sremaining",
@@ -4891,7 +4892,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   g_autoptr(GVariant) metadata = NULL;
   if (!ot_openat_ignore_enoent (self->repo_dir_fd, "summary.sig", &fd, error))
     return FALSE;
-  if (fd != -1)
+  if (fd >= 0)
     {
       if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
                                FALSE, &metadata, error))
