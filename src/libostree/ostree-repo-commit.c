@@ -1295,6 +1295,7 @@ write_metadata_object (OstreeRepo         *self,
   char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
   if (is_tombstone)
     {
+      g_assert (expected_checksum != NULL);
       memcpy (actual_checksum, expected_checksum, sizeof (actual_checksum));
     }
   else
@@ -3309,6 +3310,7 @@ write_dir_entry_to_mtree_internal (OstreeRepo                  *self,
     }
   else
     {
+      g_assert (dfd_iter != NULL);
       g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
 
       if (!glnx_dirfd_iterator_init_at (dfd_iter->fd, name, FALSE, &child_dfd_iter, error))
