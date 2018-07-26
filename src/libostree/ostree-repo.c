@@ -5386,7 +5386,8 @@ summary_add_ref_entry (OstreeRepo       *self,
  * will aid clients in working out when to check for updates.
  *
  * It is regenerated automatically after a commit if
- * `core/commit-update-summary` is set.
+ * `core/commit-update-summary` is set, and automatically after any ref is
+ * added, removed, or updated if `core/change-update-summary` is set.
  *
  * If the `core/collection-id` key is set in the configuration, it will be
  * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
@@ -5394,6 +5395,8 @@ summary_add_ref_entry (OstreeRepo       *self,
  * file, listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs
  * and refs in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in
  * lexicographic order.
+ *
+ * Locking: exclusive
  */
 gboolean
 ostree_repo_regenerate_summary (OstreeRepo     *self,
@@ -5401,6 +5404,18 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
+  /* Take an exclusive lock. This makes sure the commits and deltas don't get
+   * deleted while generating the summary. It also means we can be sure refs
+   * won't be created/updated/deleted during the operation, without having to
+   * add exclusive locks to those operations which would prevent concurrent
+   * commits from working.
+   */
+  g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  lock = _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
+                                      cancellable, error);
+  if (!lock)
+    return FALSE;
+
   g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   g_autoptr(GVariantBuilder) refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
@@ -5573,6 +5588,28 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     return FALSE;
 
   if (!ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", error))
+    return FALSE;
+
+  return TRUE;
+}
+
+/* Regenerate the summary if `core/change-update-summary` is set */
+gboolean
+_ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
+                                       GCancellable  *cancellable,
+                                       GError       **error)
+{
+  gboolean update_summary;
+
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core",
+                                            "change-update-summary", FALSE,
+                                            &update_summary, error))
+    return FALSE;
+
+  if (update_summary && !ostree_repo_regenerate_summary (self,
+                                                         NULL,
+                                                         cancellable,
+                                                         error))
     return FALSE;
 
   return TRUE;
