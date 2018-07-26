@@ -1141,10 +1141,12 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
         return FALSE;
     }
 
-  if (!self->in_transaction && !_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
+  if (!_ostree_repo_update_mtime (self, error))
     return FALSE;
 
-  if (!_ostree_repo_update_mtime (self, error))
+  /* Update the summary after updating the mtime so the summary doesn't look
+   * out of date */
+  if (!self->in_transaction && !_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
     return FALSE;
 
   return TRUE;
