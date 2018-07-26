@@ -2204,20 +2204,8 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   /* Update the summary if change-update-summary is set, because doing so was
    * delayed for each ref change during the transaction.
    */
-  {
-    gboolean update_summary;
-
-    if (!ot_keyfile_get_boolean_with_default (self->config, "core",
-                                              "change-update-summary", FALSE,
-                                              &update_summary, error))
-      return FALSE;
-
-    if (update_summary && !ostree_repo_regenerate_summary (self,
-                                                           NULL,
-                                                           cancellable,
-                                                           error))
-      return FALSE;
-  }
+  if (!_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
+    return FALSE;
 
   self->in_transaction = FALSE;
 

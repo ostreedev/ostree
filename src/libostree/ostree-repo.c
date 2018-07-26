@@ -5584,6 +5584,28 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   return TRUE;
 }
 
+/* Regenerate the summary if `core/change-update-summary` is set */
+gboolean
+_ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
+                                       GCancellable  *cancellable,
+                                       GError       **error)
+{
+  gboolean update_summary;
+
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core",
+                                            "change-update-summary", FALSE,
+                                            &update_summary, error))
+    return FALSE;
+
+  if (update_summary && !ostree_repo_regenerate_summary (self,
+                                                         NULL,
+                                                         cancellable,
+                                                         error))
+    return FALSE;
+
+  return TRUE;
+}
+
 gboolean
 _ostree_repo_is_locked_tmpdir (const char *filename)
 {
