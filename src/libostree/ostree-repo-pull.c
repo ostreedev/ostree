@@ -2486,7 +2486,10 @@ process_one_static_delta (OtPullData                 *pull_data,
                                                OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
                                                NULL, &inline_delta_part,
                                                cancellable, error))
-            return FALSE;
+            {
+              fetch_static_delta_data_free (fetch_data);
+              return FALSE;
+            }
 
           _ostree_static_delta_part_execute_async (pull_data->repo,
                                                    fetch_data->objects,
