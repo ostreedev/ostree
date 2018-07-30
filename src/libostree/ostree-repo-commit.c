@@ -2195,18 +2195,20 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if (self->txn.refs)
     if (!_ostree_repo_update_refs (self, self->txn.refs, cancellable, error))
       return FALSE;
-  g_clear_pointer (&self->txn.refs, g_hash_table_destroy);
 
   if (self->txn.collection_refs)
     if (!_ostree_repo_update_collection_refs (self, self->txn.collection_refs, cancellable, error))
       return FALSE;
-  g_clear_pointer (&self->txn.collection_refs, g_hash_table_destroy);
 
   /* Update the summary if auto-update-summary is set, because doing so was
    * delayed for each ref change during the transaction.
    */
-  if (!_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
+  if ((self->txn.refs || self->txn.collection_refs) &&
+      !_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
     return FALSE;
+
+  g_clear_pointer (&self->txn.refs, g_hash_table_destroy);
+  g_clear_pointer (&self->txn.collection_refs, g_hash_table_destroy);
 
   self->in_transaction = FALSE;
 
