@@ -5385,8 +5385,7 @@ summary_add_ref_entry (OstreeRepo       *self,
  * regular, setting the `ostree.summary.expires` key in @additional_metadata
  * will aid clients in working out when to check for updates.
  *
- * It is regenerated automatically after a commit if
- * `core/commit-update-summary` is set, and automatically after any ref is
+ * It is regenerated automatically after any ref is
  * added, removed, or updated if `core/auto-update-summary` is set.
  *
  * If the `core/collection-id` key is set in the configuration, it will be
@@ -5593,20 +5592,31 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   return TRUE;
 }
 
-/* Regenerate the summary if `core/auto-update-summary` is set */
+/* Regenerate the summary if `core/auto-update-summary` is set. We default to FALSE for
+ * this setting because OSTree supports multiple processes committing to the same repo (but
+ * different refs) concurrently, and in fact gnome-continuous actually does this.  In that
+ * context it's best to update the summary explicitly once at the end of multiple
+ * transactions instead of automatically here.  `auto-update-summary` only updates
+ * atomically within a transaction. */
 gboolean
 _ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
                                        GCancellable  *cancellable,
                                        GError       **error)
 {
   gboolean auto_update_summary;
-
   if (!ot_keyfile_get_boolean_with_default (self->config, "core",
                                             "auto-update-summary", FALSE,
                                             &auto_update_summary, error))
     return FALSE;
 
-  if (auto_update_summary &&
+  /* Deprecated alias for `auto-update-summary`. */
+  gboolean commit_update_summary;
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core",
+                                            "commit-update-summary", FALSE,
+                                            &commit_update_summary, error))
+    return FALSE;
+
+  if ((auto_update_summary || commit_update_summary) &&
       !ostree_repo_regenerate_summary (self, NULL, cancellable, error))
     return FALSE;
 
