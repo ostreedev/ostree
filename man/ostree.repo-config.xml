@@ -94,7 +94,7 @@ Boston, MA 02111-1307, USA.
       </varlistentry>
 
       <varlistentry>
-        <term><varname>change-update-summary</varname></term>
+        <term><varname>auto-update-summary</varname></term>
         <listitem><para>Boolean value controlling whether or not to
         automatically update the summary file after any ref is added,
         removed, or updated. This covers a superset of the cases covered by
