@@ -5387,7 +5387,7 @@ summary_add_ref_entry (OstreeRepo       *self,
  *
  * It is regenerated automatically after a commit if
  * `core/commit-update-summary` is set, and automatically after any ref is
- * added, removed, or updated if `core/change-update-summary` is set.
+ * added, removed, or updated if `core/auto-update-summary` is set.
  *
  * If the `core/collection-id` key is set in the configuration, it will be
  * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
@@ -5593,23 +5593,21 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   return TRUE;
 }
 
-/* Regenerate the summary if `core/change-update-summary` is set */
+/* Regenerate the summary if `core/auto-update-summary` is set */
 gboolean
 _ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
                                        GCancellable  *cancellable,
                                        GError       **error)
 {
-  gboolean update_summary;
+  gboolean auto_update_summary;
 
   if (!ot_keyfile_get_boolean_with_default (self->config, "core",
-                                            "change-update-summary", FALSE,
-                                            &update_summary, error))
+                                            "auto-update-summary", FALSE,
+                                            &auto_update_summary, error))
     return FALSE;
 
-  if (update_summary && !ostree_repo_regenerate_summary (self,
-                                                         NULL,
-                                                         cancellable,
-                                                         error))
+  if (auto_update_summary &&
+      !ostree_repo_regenerate_summary (self, NULL, cancellable, error))
     return FALSE;
 
   return TRUE;

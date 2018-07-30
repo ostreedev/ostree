@@ -753,7 +753,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   if (!skip_commit)
     {
       guint64 timestamp;
-      gboolean change_update_summary;
+      gboolean auto_update_summary;
 
       if (!opt_no_bindings)
         {
@@ -825,12 +825,12 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
         goto out;
 
       if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
-                                                "change-update-summary", FALSE,
-                                                &change_update_summary, error))
+                                                "auto-update-summary", FALSE,
+                                                &auto_update_summary, error))
         goto out;
 
       /* No need to update it again if we did for each ref change */
-      if (opt_orphan || !change_update_summary)
+      if (opt_orphan || !auto_update_summary)
         {
           gboolean commit_update_summary;
 

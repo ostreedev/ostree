@@ -2202,7 +2202,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
       return FALSE;
   g_clear_pointer (&self->txn.collection_refs, g_hash_table_destroy);
 
-  /* Update the summary if change-update-summary is set, because doing so was
+  /* Update the summary if auto-update-summary is set, because doing so was
    * delayed for each ref change during the transaction.
    */
   if (!_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
