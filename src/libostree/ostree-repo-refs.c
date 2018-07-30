@@ -1158,17 +1158,10 @@ _ostree_repo_update_refs (OstreeRepo        *self,
                           GCancellable      *cancellable,
                           GError           **error)
 {
-  GHashTableIter hash_iter;
-  gpointer key, value;
-
-  g_hash_table_iter_init (&hash_iter, refs);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  GLNX_HASH_TABLE_FOREACH_KV (refs, const char*, refspec, const char*, rev)
     {
-      const char *refspec = key;
-      const char *rev = value;
       g_autofree char *remote = NULL;
       g_autofree char *ref_name = NULL;
-
       if (!ostree_parse_refspec (refspec, &remote, &ref_name, error))
         return FALSE;
 
