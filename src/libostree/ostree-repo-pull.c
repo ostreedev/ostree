@@ -5258,8 +5258,9 @@ find_remotes_cb (GObject      *obj,
                                             summary_bytes, FALSE);
 
       /* Check the summary’s additional metadata and set up @commit_metadata
-       * and @refs_and_remotes_table with all the refs listed in the summary
-       * file which intersect with @refs. */
+       * and @refs_and_remotes_table with the refs listed in the summary file,
+       * filtered by the keyring associated with this result and the
+       * intersection with @refs. */
       additional_metadata_v = g_variant_get_child_value (summary_v, 1);
 
       if (g_variant_lookup (additional_metadata_v, OSTREE_SUMMARY_COLLECTION_ID, "s", &summary_collection_id))
@@ -5280,6 +5281,13 @@ find_remotes_cb (GObject      *obj,
       while (summary_collection_map != NULL &&
              g_variant_iter_loop (summary_collection_map, "{s@a(s(taya{sv}))}", &summary_collection_id, &summary_refs))
         {
+          /* Exclude refs that don't use the associated keyring if this is a
+           * dynamic remote, by comparing against the collection ID of the
+           * remote this one inherits from */
+          if (result->remote->refspec_name != NULL &&
+              !check_remote_matches_collection_id (self, result->remote->refspec_name, summary_collection_id))
+            continue;
+
           if (!find_remotes_process_refs (self, refs, result, i, summary_collection_id, summary_refs,
                                           commit_metadatas, refs_and_remotes_table))
             {
