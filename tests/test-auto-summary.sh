@@ -65,7 +65,7 @@ touch repo/summary.sig
 $OSTREE summary --update
 assert_not_has_file repo/summary.sig
 
-# Check that without change-update-summary set, adding, changing, or deleting a ref doesn't update the summary
+# Check that without auto-update-summary set, adding, changing, or deleting a ref doesn't update the summary
 $OSTREE summary --update
 OLD_MD5=$(md5sum repo/summary)
 $OSTREE commit -b test2 -s "A commit" test
@@ -80,8 +80,8 @@ $OSTREE refs --delete test
 
 assert_streq "$OLD_MD5" "$(md5sum repo/summary)"
 
-# Check that with change-update-summary set, adding, changing, or deleting a ref updates the summary
-$OSTREE --repo=repo config set core.change-update-summary true
+# Check that with auto-update-summary set, adding, changing, or deleting a ref updates the summary
+$OSTREE --repo=repo config set core.auto-update-summary true
 
 $OSTREE summary --update
 OLD_MD5=$(md5sum repo/summary)
