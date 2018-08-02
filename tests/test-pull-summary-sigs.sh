@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..9"
+echo "1..10"
 
 COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}"
@@ -229,5 +229,38 @@ cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.
 cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig.2 >&2
 
 echo "ok pull with signed summary remote old summary signature"
+
+# Reset to the old valid summary and pull to cache it
+cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.1,}
+cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.1,}
+repo_reinit
+${OSTREE} --repo=repo pull origin main
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
+cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.1 >&2
+cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig.1 >&2
+
+# Simulate a broken summary cache to see if it can be recovered from.
+# Prior to commit c4c2b5eb the client would save the summary to the
+# cache before validating the signature. That would mean the cache would
+# have mismatched summary and signature and ostree would remain
+# deadlocked there until the remote published a new signature.
+cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.2 repo/tmp/cache/summaries/origin
+${OSTREE} --repo=repo pull origin main
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
+cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.1 >&2
+cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig.1 >&2
+
+# Publish new signature and check that subsequent pull succeeds
+cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.2,}
+cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.2,}
+${OSTREE} --repo=repo pull origin main
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
+cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.2 >&2
+cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig.2 >&2
+
+echo "ok pull with signed summary broken cache"
 
 libtest_cleanup_gpg
