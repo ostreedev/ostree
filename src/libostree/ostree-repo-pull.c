@@ -4027,12 +4027,43 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
       {
         g_autoptr(OstreeGpgVerifyResult) result = NULL;
+        g_autoptr(GError) temp_error = NULL;
 
         result = ostree_repo_verify_summary (self, pull_data->remote_name,
                                              bytes_summary, bytes_sig,
-                                             cancellable, error);
-        if (!ostree_gpg_verify_result_require_valid_signature (result, error))
-          goto out;
+                                             cancellable, &temp_error);
+        if (!ostree_gpg_verify_result_require_valid_signature (result, &temp_error))
+          {
+            if (summary_from_cache)
+              {
+                /* The cached summary doesn't match, fetch a new one and verify again */
+                summary_from_cache = FALSE;
+                g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                g_debug ("Remote %s cached summary invalid, pulling new version",
+                         pull_data->remote_name);
+                if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                                 pull_data->meta_mirrorlist,
+                                                                 "summary",
+                                                                 OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                                 pull_data->n_network_retries,
+                                                                 &bytes_summary,
+                                                                 OSTREE_MAX_METADATA_SIZE,
+                                                                 cancellable, error))
+                  goto out;
+
+                g_autoptr(OstreeGpgVerifyResult) retry =
+                  ostree_repo_verify_summary (self, pull_data->remote_name,
+                                              bytes_summary, bytes_sig,
+                                              cancellable, error);
+                if (!ostree_gpg_verify_result_require_valid_signature (retry, error))
+                  goto out;
+              }
+            else
+              {
+                g_propagate_error (error, g_steal_pointer (&temp_error));
+                goto out;
+              }
+          }
       }
 
     if (bytes_summary)
