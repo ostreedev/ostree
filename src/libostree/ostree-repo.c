@@ -1187,6 +1187,7 @@ ostree_repo_init (OstreeRepo *self)
   static gsize gpgme_initialized;
   const GDebugKey test_error_keys[] = {
     { "pre-commit", OSTREE_REPO_TEST_ERROR_PRE_COMMIT },
+    { "invalid-cache", OSTREE_REPO_TEST_ERROR_INVALID_CACHE },
   };
 
   if (g_once_init_enter (&gpgme_initialized))
