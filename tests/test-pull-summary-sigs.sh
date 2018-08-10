@@ -245,7 +245,19 @@ cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summ
 # cache before validating the signature. That would mean the cache would
 # have mismatched summary and signature and ostree would remain
 # deadlocked there until the remote published a new signature.
+#
+# First pull with OSTREE_REPO_TEST_ERROR=invalid-cache to see the
+# invalid cache is detected. Then pull again to check if it can be
+# recovered from.
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.2 repo/tmp/cache/summaries/origin
+if OSTREE_REPO_TEST_ERROR=invalid-cache ${OSTREE} --repo=repo pull origin main 2>err.txt; then
+    assert_not_reached "Should have hit OSTREE_REPO_TEST_ERROR_INVALID_CACHE"
+fi
+assert_file_has_content err.txt "OSTREE_REPO_TEST_ERROR_INVALID_CACHE"
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
+cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.2 >&2
+cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig.1 >&2
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig

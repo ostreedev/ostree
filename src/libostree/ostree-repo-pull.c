@@ -4037,10 +4037,20 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             if (summary_from_cache)
               {
                 /* The cached summary doesn't match, fetch a new one and verify again */
+                if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
+                  {
+                    g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "Remote %s cached summary invalid and "
+                                 "OSTREE_REPO_TEST_ERROR_INVALID_CACHE specified",
+                                 pull_data->remote_name);
+                    goto out;
+                  }
+                else
+                  g_debug ("Remote %s cached summary invalid, pulling new version",
+                           pull_data->remote_name);
+
                 summary_from_cache = FALSE;
                 g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
-                g_debug ("Remote %s cached summary invalid, pulling new version",
-                         pull_data->remote_name);
                 if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                                  pull_data->meta_mirrorlist,
                                                                  "summary",
