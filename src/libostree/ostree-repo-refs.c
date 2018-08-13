@@ -1251,7 +1251,6 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
                                         (GDestroyNotify) ostree_collection_ref_free,
                                         g_free);
 
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   g_autoptr(GString) base_path = g_string_new ("");
 
   const gchar *main_collection_id = ostree_repo_get_collection_id (self);
@@ -1277,6 +1276,8 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
     {
       const char *refs_dir = *iter;
       gboolean refs_dir_exists = FALSE;
+      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+
       if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, refs_dir,
                                          &dfd_iter, &refs_dir_exists, error))
         return FALSE;
