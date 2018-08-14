@@ -534,6 +534,8 @@ global:
     ostree_mutable_tree_check_error;
 } LIBOSTREE_2018.6;
 
+/* No new symbols in 2018.8 */
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
