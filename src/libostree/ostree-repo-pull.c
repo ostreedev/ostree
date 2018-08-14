@@ -5667,7 +5667,7 @@ copy_option (GVariantDict       *master_options,
 {
   g_autoptr(GVariant) option_v = g_variant_dict_lookup_value (master_options, key, expected_type);
   if (option_v != NULL)
-    g_variant_dict_insert_value (slave_options, key, g_steal_pointer (&option_v));
+    g_variant_dict_insert_value (slave_options, key, option_v);
 }
 
 /**
