@@ -61,7 +61,8 @@ G_BEGIN_DECLS
 #define OSTREE_COMMIT_TIMESTAMP "ostree.commit.timestamp"
 
 typedef enum {
-  OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0)
+  OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0),
+  OSTREE_REPO_TEST_ERROR_INVALID_CACHE = (1 << 1),
 } OstreeRepoTestErrorFlags;
 
 struct OstreeRepoCommitModifier {
