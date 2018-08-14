@@ -360,7 +360,8 @@ EXTRA_DIST += \
 	$(NULL)
 
 tests/libreaddir-rand.so: Makefile
-	$(AM_V_GEN) ln -fns ../.libs/libreaddir-rand.so tests
+	mkdir -p tests/
+	$(AM_V_GEN) ln -fns ../.libs/libreaddir-rand.so tests/
 ALL_LOCAL_RULES += tests/libreaddir-rand.so
 CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp \
 		tests/ostree-prepare-root-symlink-stamp tests/ostree-remount-symlink-stamp \
