@@ -129,24 +129,36 @@ Boston, MA 02111-1307, USA.
 
       <varlistentry>
         <term><varname>min-free-space-percent</varname></term>
-        <listitem><para>Integer percentage value (0-99) that specifies a minimum
-        percentage of total space (in blocks) in the underlying filesystem to
-        keep free. The default value is 3. This default value is enforced when none
-        of min-free-space-* options are set.</para>
-        <para>In case this option is co-existing with min-free-space-size (see below),
-        and min-free-space-size is set to a non-zero value, min-free-space-percent
-        would be ignored and min-free-space-size check would be enforced instead.
-        </para></listitem>
+        <listitem>
+          <para>
+            Integer percentage value (0-99) that specifies a minimum percentage
+            of total space (in blocks) in the underlying filesystem to keep
+            free. The default value is 3, which is enforced when neither this
+            option nor <varname>min-free-space-size</varname> are set.
+          </para>
+          <para>
+            If <varname>min-free-space-size</varname> is set to a non-zero
+            value, <varname>min-free-space-percent</varname> is ignored.
+          </para>
+        </listitem>
       </varlistentry>
 
      <varlistentry>
         <term><varname>min-free-space-size</varname></term>
-        <listitem><para>Value (in MB, GB or TB) that specifies a minimum space in the
-        underlying filesystem to keep free. Examples of acceptable values: 500MB, 1GB
-        etc.</para>
-        <para>In case this option is co-existing with min-free-space-percent (see above),
-        and set to a non-zero value, this option takes priority.
-        </para></listitem>
+        <listitem>
+          <para>
+            Value (in power-of-2 MB, GB or TB) that specifies a minimum space
+            in the underlying filesystem to keep free. Examples of acceptable
+            values: <literal>500MB</literal> (524 288 000 bytes),
+            <literal>1GB</literal> (1 073 741 824 bytes),
+            <literal>1TB</literal> (1 099 511 627 776 bytes).
+          </para>
+          <para>
+            If this option is set to a non-zero value, and
+            <varname>min-free-space-percent</varname> is also set, this option
+            takes priority.
+          </para>
+        </listitem>
       </varlistentry>
 
       <varlistentry>
