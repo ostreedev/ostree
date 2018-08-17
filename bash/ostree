@@ -398,6 +398,7 @@ _ostree_config() {
     "
 
     local options_with_args="
+        --group
         --repo
     "
 
