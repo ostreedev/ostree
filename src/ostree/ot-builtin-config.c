@@ -28,12 +28,15 @@
 #include "ostree.h"
 #include "otutil.h"
 
+static char* opt_group;
+
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
  * man page (man/ostree-config.xml) when changing the option list.
  */
 
 static GOptionEntry options[] = {
+  { "group", 0, 0, G_OPTION_ARG_STRING, &opt_group , "Group name followed by key for a remote config", NULL },
   { NULL }
 };
 
@@ -44,7 +47,7 @@ split_key_string (const char   *k,
                   GError     **error)
 {
   const char *dot = strchr (k, '.');
-  
+
   if (!dot)
     {
       return glnx_throw (error,
@@ -85,18 +88,32 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (!strcmp (op, "set"))
     {
-      if (argc < 4)
+      printf("GROUP NUMBER = %s  %d\n", opt_group, argc);
+      if (opt_group)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "KEY and VALUE must be specified");
-          goto out;
+          if (argc < 4)
+            {
+                g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "GROUP name, KEY and VALUE must be specified");
+                goto out;
+            }
+          section = g_strdup(opt_group);
+          key = g_strdup(argv[2]);
+          value = argv[3];
         }
-
-      section_key = argv[2];
-      value = argv[3];
-
-      if (!split_key_string (section_key, &section, &key, error))
-        goto out;
+      else
+        {
+          if (argc < 4)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "KEY and VALUE must be specified");
+              goto out;
+            }
+          section_key = argv[2];
+          value = argv[3];
+          if(!split_key_string (section_key, &section, &key, error))
+            goto out;
+        }
 
       config = ostree_repo_copy_config (repo);
       g_key_file_set_string (config, section, key, value);
@@ -108,17 +125,29 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
     {
       GKeyFile *readonly_config = NULL;
       g_autofree char *value = NULL;
-      if (argc < 3)
+      if (opt_group)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "KEY must be specified");
-          goto out;
+          if (argc < 3)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Group name and key must be specified");
+              goto out;
+            }
+          section = g_strdup(opt_group);
+          key = g_strdup(argv[2]);
         }
-
-      section_key = argv[2];
-
-      if (!split_key_string (section_key, &section, &key, error))
-        goto out;
+      else
+        {
+          if(argc < 3)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "KEY must be specified");
+              goto out;
+            }
+          section_key = argv[2];
+          if (!split_key_string (section_key, &section, &key, error))
+            goto out;
+        }
 
       readonly_config = ostree_repo_get_config (repo);
       value = g_key_file_get_string (readonly_config, section, key, error);
@@ -133,7 +162,7 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
                    "Unknown operation %s", op);
       goto out;
     }
-  
+
   ret = TRUE;
  out:
   if (config)
