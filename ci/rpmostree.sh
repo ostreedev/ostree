@@ -6,7 +6,7 @@ set -xeuo pipefail
 # Frozen to a tag for now to help predictability; it's
 # also useful to test building *older* versions since
 # that must work.
-RPMOSTREE_TAG=v2018.5
+RPMOSTREE_TAG=v2018.7
 
 dn=$(dirname $0)
 . ${dn}/libpaprci/libbuild.sh
