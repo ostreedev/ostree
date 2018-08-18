@@ -48,4 +48,4 @@ if ! make vmsync; then
     fatal "vmsync failed"
 fi
 # Now run tests; just a subset ⊂ for now to avoid CI overload
-make vmcheck TESTS="basic layering-basic"
+make vmcheck TESTS="layering-basic-1 layering-basic-2"
