@@ -1441,12 +1441,10 @@ ostree_repo_copy_config (OstreeRepo *self)
 /**
  * ostree_repo_write_config:
  * @self: Repo
- * @new_config: Overwrite the config file with this data.  Do not change later!
+ * @new_config: Overwrite the config file with this data
  * @error: a #GError
  *
- * Save @new_config in place of this repository's config file.  Note
- * that @new_config should not be modified after - this function
- * simply adds a reference.
+ * Save @new_config in place of this repository's config file.
  */
 gboolean
 ostree_repo_write_config (OstreeRepo *self,
