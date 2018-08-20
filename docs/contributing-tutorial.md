@@ -277,10 +277,8 @@ To find the IP address of a Vagrant VM, run `vagrant ssh-config` in the same dir
 
 6. Set `rsync` to sync changes in `/etc` and `/usr` from `<ostree-install-dir>/` on the host to the VM:
 
-    ```
-    $ rsync -av <ostree-install-dir>/etc/ root@<ip-address>:/etc
-    $ rsync -av <ostree-install-dir>/usr/ root@<ip-address>:/usr
-    ```
+        $ rsync -av <ostree-install-dir>/etc/ root@<ip-address>:/etc
+        $ rsync -av <ostree-install-dir>/usr/ root@<ip-address>:/usr
 
     Using option `-n` will execute the commands as a trial, which is helpful to list the files that will be synced.
 
@@ -436,7 +434,7 @@ When returning to work on a patch, it is recommended to update your fork with th
 
 If creating a new branch:
 
-```
+```bash
 $ git checkout master
 $ git pull upstream master
 $ git checkout -b <name-of-patch>
@@ -444,7 +442,7 @@ $ git checkout -b <name-of-patch>
 
 If continuing on a branch already created:
 
-```
+```bash
 $ git checkout <name-of-patch>
 $ git pull --rebase upstream master
 ```
