@@ -66,7 +66,7 @@ apt-get build-dep ostree
 
 ### OSTree Build Commands
 
-These are the basic commands to build OSTree. Depending on the OS that OSTree will be build for, the flags or options for `./autogen.sh` and `./configure` will vary.
+These are the basic commands to build OSTree. Depending on the OS that OSTree will be built for, the flags or options for `./autogen.sh` and `./configure` will vary.
 
 See `ostree-build.sh` in this tutorial below for specific commands to building OSTree for Fedora 28 and Fedora 28 Atomic Host.
 
