@@ -51,7 +51,13 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
+                <command>ostree config get</command> <arg choice="req">SECTIONNAME.KEYNAME</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
                 <command>ostree config get</command> <arg choice="req"> --group=GROUPNAME</arg> <arg choice="req"> KEYNAME</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree config set</command> <arg choice="req">SECTIONNAME.KEYNAME</arg> <arg choice="req">VALUE</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree config set</command> <arg choice="req"> --group=GROUPNAME</arg> <arg choice="req"> KEYNAME</arg> <arg choice="req">VALUE</arg>
@@ -68,7 +74,8 @@ Boston, MA 02111-1307, USA.
 
     <refsect1>
         <title>Example</title>
-        <para><command>$ ostree config get --group=core mode</command></para>
+        <para><command>$ ostree config get core.mode</command></para>
         <para>bare</para>
+        <para><command>$ ostree config set --group='remote "myremote"' url http://example.com/repo</command></para>
     </refsect1>
 </refentry>
