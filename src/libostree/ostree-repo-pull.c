@@ -3348,6 +3348,19 @@ initiate_request (OtPullData                 *pull_data,
       return TRUE;
     }
 
+  /* If doing a delta from a ref, look up the from-revision, since we need it
+   * on most paths below. */
+  if (ref != NULL)
+    {
+      g_autofree char *refspec = NULL;
+      if (pull_data->remote_name != NULL)
+        refspec = g_strdup_printf ("%s:%s", pull_data->remote_name, ref->ref_name);
+      if (!ostree_repo_resolve_rev (pull_data->repo,
+                                    refspec ?: ref->ref_name, TRUE,
+                                    &delta_from_revision, error))
+        return FALSE;
+    }
+
   /* If we have a summary, we can use the newer logic */
   if (pull_data->summary)
     {
@@ -3375,7 +3388,16 @@ initiate_request (OtPullData                 *pull_data,
           enqueue_one_static_delta_superblock_request (pull_data, deltares.from_revision, to_revision, ref);
           break;
         case DELTA_SEARCH_RESULT_SCRATCH:
-          enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
+          {
+            /* If a from-scratch delta is available, we don’t want to use it if
+             * the ref already exists locally, since we are likely only a few
+             * commits out of date; so doing an object pull is likely more
+             * bandwidth efficient. */
+            if (delta_from_revision != NULL)
+              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
+            else
+              enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
+          }
           break;
         case DELTA_SEARCH_RESULT_UNCHANGED:
           {
@@ -3395,13 +3417,6 @@ initiate_request (OtPullData                 *pull_data,
     {
       /* Are we doing a delta via a ref?  In that case we can fall back to the older
        * logic of just using the current tip of the ref as a delta FROM source. */
-      g_autofree char *refspec = NULL;
-      if (pull_data->remote_name != NULL)
-        refspec = g_strdup_printf ("%s:%s", pull_data->remote_name, ref->ref_name);
-      if (!ostree_repo_resolve_rev (pull_data->repo,
-                                    refspec ?: ref->ref_name, TRUE,
-                                    &delta_from_revision, error))
-        return FALSE;
 
       /* Determine whether the from revision we have is partial; this
        * can happen if e.g. one uses `ostree pull --commit-metadata-only`.
