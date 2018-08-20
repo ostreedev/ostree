@@ -36,7 +36,7 @@ static char* opt_group;
  */
 
 static GOptionEntry options[] = {
-  { "group", 0, 0, G_OPTION_ARG_STRING, &opt_group , "Group name followed by key for a remote config", NULL },
+  { "group", 0, 0, G_OPTION_ARG_STRING, &opt_group , "Group name", NULL },
   { NULL }
 };
 
@@ -88,7 +88,6 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (!strcmp (op, "set"))
     {
-      printf("GROUP NUMBER = %s  %d\n", opt_group, argc);
       if (opt_group)
         {
           if (argc < 4)
