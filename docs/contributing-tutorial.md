@@ -103,7 +103,7 @@ Make allows parallel execution of recipes. Use `make -j<N>` to speed up the buil
 
 See page 106 of the [GNU Make Manual](https://www.gnu.org/software/make/manual/make.pdf) for more information about the `--jobs` or `-j` option.
 
-## [Testing a Build](#testing-a-build)
+## Testing a Build
 
 It is best practice to build software (definitely including ostree) in a container or virtual machine first.
 
@@ -358,7 +358,7 @@ This will add a command which prints `Hello OSTree!` when `ostree hello-ostree` 
         $ ostree hello-ostree
         Hello OSTree!
 
-### [OSTree Tests](#ostree-tests)
+### OSTree Tests
 
 Tests for OSTree are done by shell scripting, by running OSTree commands and examining output. These steps will go through adding a test for `hello-ostree`.
 
