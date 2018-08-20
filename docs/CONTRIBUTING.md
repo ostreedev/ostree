@@ -168,7 +168,7 @@ Instead do this:
           }
       }
 
-Contributing: Tutorial
-----------------------
+Contributing Tutorial
+---------------------
 
 For a detailed walk-through on building, modifying, and testing, see this [tutorial on how to start contributing to OSTree](contributing-tutorial.md).
