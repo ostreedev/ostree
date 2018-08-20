@@ -62,7 +62,7 @@ apt-get install build-essential && \
 apt-get build-dep ostree
 ```
 
-[build.sh](../ci/build.sh) will have a list of packages needed to build ostree.
+[build.sh](https://github.com/ostreedev/ostree/blob/master/ci/build.sh) will have a list of packages needed to build ostree.
 
 ### OSTree Build Commands
 
