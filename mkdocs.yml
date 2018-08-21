@@ -2,6 +2,7 @@ site_name: OSTree
 pages:
   - Home: 'index.md'
   - Contributing: 'CONTRIBUTING.md'
+  - Contributing Tutorial: 'contributing-tutorial.md'
   - Manual:
       - Introduction: 'manual/introduction.md'
       - Repository: 'manual/repo.md'

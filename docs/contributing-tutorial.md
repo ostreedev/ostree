@@ -62,11 +62,11 @@ apt-get install build-essential && \
 apt-get build-dep ostree
 ```
 
-[build.sh](../ci/build.sh) will have a list of packages needed to build ostree.
+[build.sh](https://github.com/ostreedev/ostree/blob/master/ci/build.sh) will have a list of packages needed to build ostree.
 
 ### OSTree Build Commands
 
-These are the basic commands to build OSTree. Depending on the OS that OSTree will be build for, the flags or options for `./autogen.sh` and `./configure` will vary.
+These are the basic commands to build OSTree. Depending on the OS that OSTree will be built for, the flags or options for `./autogen.sh` and `./configure` will vary.
 
 See `ostree-build.sh` in this tutorial below for specific commands to building OSTree for Fedora 28 and Fedora 28 Atomic Host.
 
@@ -103,7 +103,7 @@ Make allows parallel execution of recipes. Use `make -j<N>` to speed up the buil
 
 See page 106 of the [GNU Make Manual](https://www.gnu.org/software/make/manual/make.pdf) for more information about the `--jobs` or `-j` option.
 
-## [Testing a Build](#testing-a-build)
+## Testing a Build
 
 It is best practice to build software (definitely including ostree) in a container or virtual machine first.
 
@@ -277,10 +277,8 @@ To find the IP address of a Vagrant VM, run `vagrant ssh-config` in the same dir
 
 6. Set `rsync` to sync changes in `/etc` and `/usr` from `<ostree-install-dir>/` on the host to the VM:
 
-    ```
-    $ rsync -av <ostree-install-dir>/etc/ root@<ip-address>:/etc
-    $ rsync -av <ostree-install-dir>/usr/ root@<ip-address>:/usr
-    ```
+        $ rsync -av <ostree-install-dir>/etc/ root@<ip-address>:/etc
+        $ rsync -av <ostree-install-dir>/usr/ root@<ip-address>:/usr
 
     Using option `-n` will execute the commands as a trial, which is helpful to list the files that will be synced.
 
@@ -358,7 +356,7 @@ This will add a command which prints `Hello OSTree!` when `ostree hello-ostree` 
         $ ostree hello-ostree
         Hello OSTree!
 
-### [OSTree Tests](#ostree-tests)
+### OSTree Tests
 
 Tests for OSTree are done by shell scripting, by running OSTree commands and examining output. These steps will go through adding a test for `hello-ostree`.
 
@@ -436,7 +434,7 @@ When returning to work on a patch, it is recommended to update your fork with th
 
 If creating a new branch:
 
-```
+```bash
 $ git checkout master
 $ git pull upstream master
 $ git checkout -b <name-of-patch>
@@ -444,7 +442,7 @@ $ git checkout -b <name-of-patch>
 
 If continuing on a branch already created:
 
-```
+```bash
 $ git checkout <name-of-patch>
 $ git pull --rebase upstream master
 ```
