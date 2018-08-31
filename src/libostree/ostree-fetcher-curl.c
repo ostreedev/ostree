@@ -172,6 +172,9 @@ _ostree_fetcher_finalize (GObject *object)
 
   curl_multi_cleanup (self->multi);
   g_free (self->remote_name);
+  g_free (self->tls_ca_db_path);
+  g_free (self->tls_client_cert_path);
+  g_free (self->tls_client_key_path);
   g_free (self->cookie_jar_path);
   g_free (self->proxy);
   g_assert_cmpint (g_hash_table_size (self->outstanding_requests), ==, 0);
