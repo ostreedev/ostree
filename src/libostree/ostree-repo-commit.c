@@ -1536,23 +1536,28 @@ devino_cache_lookup (OstreeRepo           *self,
   return dev_ino_val->checksum;
 }
 
-static guint64
-min_free_space_calculate_reserved_blocks (OstreeRepo *self, struct statvfs *stvfsbuf)
+static gboolean
+min_free_space_calculate_reserved_blocks (OstreeRepo *self, struct statvfs *stvfsbuf, GError **error)
 {
-  guint64 reserved_blocks = 0;
+  self->reserved_blocks = 0;
 
   if (self->min_free_space_mb > 0)
     {
-      reserved_blocks = (self->min_free_space_mb << 20) / stvfsbuf->f_bsize;
+      if (self->min_free_space_mb > (G_MAXUINT64 >> 20) ||
+          self->txn.blocksize > (1 << 20))
+        return glnx_throw (error, "min-free-space value is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
+                           G_MAXUINT64 / stvfsbuf->f_bsize);
+
+      self->reserved_blocks = (self->min_free_space_mb << 20) / self->txn.blocksize;
     }
   else if (self->min_free_space_percent > 0)
     {
       /* Convert fragment to blocks to compute the total */
       guint64 total_blocks = (stvfsbuf->f_frsize * stvfsbuf->f_blocks) / stvfsbuf->f_bsize;
-      reserved_blocks = ((double)total_blocks) * (self->min_free_space_percent/100.0);
+      self->reserved_blocks = ((double)total_blocks) * (self->min_free_space_percent/100.0);
     }
 
-  return reserved_blocks;
+  return TRUE;
 }
 
 /**
@@ -1650,11 +1655,16 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   g_mutex_lock (&self->txn_lock);
   self->txn.blocksize = stvfsbuf.f_bsize;
-  guint64 reserved_blocks = min_free_space_calculate_reserved_blocks (self, &stvfsbuf);
+  if (!min_free_space_calculate_reserved_blocks (self, &stvfsbuf, error))
+    {
+      g_mutex_unlock (&self->txn_lock);
+      return FALSE;
+    }
+
   /* Use the appropriate free block count if we're unprivileged */
   guint64 bfree = (getuid () != 0 ? stvfsbuf.f_bavail : stvfsbuf.f_bfree);
-  if (bfree > reserved_blocks)
-    self->txn.max_blocks = bfree - reserved_blocks;
+  if (bfree > self->reserved_blocks)
+    self->txn.max_blocks = bfree - self->reserved_blocks;
   else
     {
       self->cleanup_stagedir = TRUE;
