@@ -151,6 +151,50 @@ test_repo_equal (Fixture       *fixture,
   g_assert_false (ostree_repo_equal (closed_repo, closed_repo));
 }
 
+static void
+test_repo_get_min_free_space (Fixture *fixture,
+                              gconstpointer test_data)
+{
+  g_autoptr (GKeyFile) config = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autoptr(OstreeRepo) repo = ostree_repo_create_at (fixture->tmpdir.fd, ".",
+                                                      OSTREE_REPO_MODE_ARCHIVE,
+                                                      NULL,
+                                                      NULL, &error);
+  g_assert_no_error (error);
+
+  const char *values_to_test[] = { "500MB",
+                                   "0MB",
+                                   "17179869185GB", /* Overflow parameter: bytes > G_MAXUINT64 */
+                                   NULL
+                                 };
+
+  config = ostree_repo_copy_config (repo);
+
+  for (guint i = 0; values_to_test[i] != NULL; i++)
+    {
+      g_key_file_remove_key (config, "core", "min-free-space-size", NULL);
+      g_key_file_set_string (config, "core", "min-free-space-size", values_to_test[i]);
+
+      ostree_repo_write_config (repo, config, &error);
+      g_assert_no_error (error);
+      ostree_repo_reload_config (repo, NULL, &error);
+      g_assert_no_error (error);
+
+      ostree_repo_prepare_transaction (repo, FALSE, NULL, &error);
+      if (error != NULL && g_strrstr (error->message, "min-free-space value is greater than the maximum allowed value"))
+        continue;
+
+      g_assert_no_error (error);
+
+      ostree_repo_get_min_free_space_bytes (repo);
+      g_assert_no_error (error);
+
+      ostree_repo_commit_transaction (repo, NULL, NULL, &error);
+      g_assert_no_error (error);
+    }
+}
+
 int
 main (int    argc,
       char **argv)
@@ -164,6 +208,9 @@ main (int    argc,
               test_repo_hash_closed, teardown);
   g_test_add ("/repo/equal", Fixture, NULL, setup,
               test_repo_equal, teardown);
+  g_test_add ("/repo/get_min_free_space", Fixture, NULL, setup,
+              test_repo_get_min_free_space, teardown);
+
 
   return g_test_run ();
 }
