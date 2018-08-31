@@ -3293,6 +3293,26 @@ ostree_repo_get_mode (OstreeRepo  *self)
 }
 
 /**
+ * ostree_repo_get_min_free_space:
+ * @self: Repo
+ *
+ * It should be noted that this function should be used only if there
+ * is a transaction active. It is a programmer error to request it
+ * otherwise.
+ *
+ * Returns: Value (in bytes) of min-free-space-* config option
+ * Since: 2018.9
+ */
+guint64
+ostree_repo_get_min_free_space_bytes (OstreeRepo  *self)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (self), 0);
+  g_return_val_if_fail (self->in_transaction == TRUE, 0);
+
+  return self->reserved_blocks * self->txn.blocksize;
+}
+
+/**
  * ostree_repo_get_parent:
  * @self: Repo
  *
