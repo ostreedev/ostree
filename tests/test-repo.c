@@ -151,6 +151,57 @@ test_repo_equal (Fixture       *fixture,
   g_assert_false (ostree_repo_equal (closed_repo, closed_repo));
 }
 
+static void
+test_repo_get_min_free_space (Fixture *fixture,
+                              gconstpointer test_data)
+{
+  g_autoptr (GKeyFile) config = NULL;
+  g_autoptr(GError) error = NULL;
+  typedef struct
+    {
+      const char *val;
+      gboolean should_succeed;
+    } min_free_space_value;
+
+  g_autoptr(OstreeRepo) repo = ostree_repo_create_at (fixture->tmpdir.fd, ".",
+                                                      OSTREE_REPO_MODE_ARCHIVE,
+                                                      NULL,
+                                                      NULL, &error);
+  g_assert_no_error (error);
+
+  min_free_space_value values_to_test[] = {
+                                            {"500MB", TRUE },
+                                            { "0MB", TRUE },
+                                            { "17179869185GB", FALSE }, /* Overflow parameter: bytes > G_MAXUINT64 */
+                                            { NULL, FALSE }
+                                          };
+
+  config = ostree_repo_copy_config (repo);
+
+  for (guint i = 0; values_to_test[i].val != NULL; i++)
+    {
+      g_key_file_remove_key (config, "core", "min-free-space-size", NULL);
+      g_key_file_set_string (config, "core", "min-free-space-size", values_to_test[i].val);
+
+      ostree_repo_write_config (repo, config, &error);
+      g_assert_no_error (error);
+      ostree_repo_reload_config (repo, NULL, &error);
+      g_assert_no_error (error);
+
+      ostree_repo_prepare_transaction (repo, FALSE, NULL, &error);
+      if (values_to_test[i].should_succeed)
+        g_assert_no_error (error);
+      else
+        continue;
+
+      ostree_repo_get_min_free_space_bytes (repo);
+      g_assert_no_error (error);
+
+      ostree_repo_commit_transaction (repo, NULL, NULL, &error);
+      g_assert_no_error (error);
+    }
+}
+
 int
 main (int    argc,
       char **argv)
@@ -164,6 +215,9 @@ main (int    argc,
               test_repo_hash_closed, teardown);
   g_test_add ("/repo/equal", Fixture, NULL, setup,
               test_repo_equal, teardown);
+  g_test_add ("/repo/get_min_free_space", Fixture, NULL, setup,
+              test_repo_get_min_free_space, teardown);
+
 
   return g_test_run ();
 }
