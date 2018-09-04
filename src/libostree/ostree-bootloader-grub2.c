@@ -57,7 +57,8 @@ struct _OstreeBootloaderGrub2
   GObject       parent_instance;
 
   OstreeSysroot  *sysroot;
-  GFile          *config_path_bios;
+  GFile          *config_path_bios_1;
+  GFile          *config_path_bios_2;
   GFile          *config_path_efi;
   gboolean        is_efi;
 };
@@ -77,7 +78,8 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
 
   /* Look for the BIOS path first */
-  if (g_file_query_exists (self->config_path_bios, NULL))
+  if (g_file_query_exists (self->config_path_bios_1, NULL) ||
+      g_file_query_exists (self->config_path_bios_2, NULL))
     {
       /* If we found it, we're done */
       *out_is_active = TRUE;
@@ -97,7 +99,7 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
                                            cancellable, error);
       if (!direnum)
         return FALSE;
-  
+
       while (TRUE)
         {
           GFileInfo *file_info;
@@ -448,7 +450,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
 }
 
 static gboolean
-_ostree_bootloader_grub2_is_atomic (OstreeBootloader      *bootloader) 
+_ostree_bootloader_grub2_is_atomic (OstreeBootloader      *bootloader)
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
   return !self->is_efi;
@@ -460,7 +462,8 @@ _ostree_bootloader_grub2_finalize (GObject *object)
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (object);
 
   g_clear_object (&self->sysroot);
-  g_clear_object (&self->config_path_bios);
+  g_clear_object (&self->config_path_bios_1);
+  g_clear_object (&self->config_path_bios_2);
   g_clear_object (&self->config_path_efi);
 
   G_OBJECT_CLASS (_ostree_bootloader_grub2_parent_class)->finalize (object);
@@ -493,6 +496,9 @@ _ostree_bootloader_grub2_new (OstreeSysroot *sysroot)
 {
   OstreeBootloaderGrub2 *self = g_object_new (OSTREE_TYPE_BOOTLOADER_GRUB2, NULL);
   self->sysroot = g_object_ref (sysroot);
-  self->config_path_bios = g_file_resolve_relative_path (self->sysroot->path, "boot/grub2/grub.cfg");
+  /* Used by (at least) Debian */
+  self->config_path_bios_1 = g_file_resolve_relative_path (self->sysroot->path, "boot/grub/grub.cfg");
+  /* Used by (at least) Fedora */
+  self->config_path_bios_2 = g_file_resolve_relative_path (self->sysroot->path, "boot/grub2/grub.cfg");
   return self;
 }
