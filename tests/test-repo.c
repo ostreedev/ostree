@@ -157,24 +157,31 @@ test_repo_get_min_free_space (Fixture *fixture,
 {
   g_autoptr (GKeyFile) config = NULL;
   g_autoptr(GError) error = NULL;
+  typedef struct
+    {
+      const char *val;
+      gboolean should_succeed;
+    } min_free_space_value;
+
   g_autoptr(OstreeRepo) repo = ostree_repo_create_at (fixture->tmpdir.fd, ".",
                                                       OSTREE_REPO_MODE_ARCHIVE,
                                                       NULL,
                                                       NULL, &error);
   g_assert_no_error (error);
 
-  const char *values_to_test[] = { "500MB",
-                                   "0MB",
-                                   "17179869185GB", /* Overflow parameter: bytes > G_MAXUINT64 */
-                                   NULL
-                                 };
+  min_free_space_value values_to_test[] = {
+                                            {"500MB", TRUE },
+                                            { "0MB", TRUE },
+                                            { "17179869185GB", FALSE }, /* Overflow parameter: bytes > G_MAXUINT64 */
+                                            { NULL, FALSE }
+                                          };
 
   config = ostree_repo_copy_config (repo);
 
-  for (guint i = 0; values_to_test[i] != NULL; i++)
+  for (guint i = 0; values_to_test[i].val != NULL; i++)
     {
       g_key_file_remove_key (config, "core", "min-free-space-size", NULL);
-      g_key_file_set_string (config, "core", "min-free-space-size", values_to_test[i]);
+      g_key_file_set_string (config, "core", "min-free-space-size", values_to_test[i].val);
 
       ostree_repo_write_config (repo, config, &error);
       g_assert_no_error (error);
@@ -182,10 +189,10 @@ test_repo_get_min_free_space (Fixture *fixture,
       g_assert_no_error (error);
 
       ostree_repo_prepare_transaction (repo, FALSE, NULL, &error);
-      if (error != NULL && g_strrstr (error->message, "min-free-space value is greater than the maximum allowed value"))
+      if (values_to_test[i].should_succeed)
+        g_assert_no_error (error);
+      else
         continue;
-
-      g_assert_no_error (error);
 
       ostree_repo_get_min_free_space_bytes (repo);
       g_assert_no_error (error);
