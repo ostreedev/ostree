@@ -496,7 +496,9 @@ _ostree_bootloader_grub2_new (OstreeSysroot *sysroot)
 {
   OstreeBootloaderGrub2 *self = g_object_new (OSTREE_TYPE_BOOTLOADER_GRUB2, NULL);
   self->sysroot = g_object_ref (sysroot);
+  /* Used by (at least) Debian */
   self->config_path_bios_1 = g_file_resolve_relative_path (self->sysroot->path, "boot/grub/grub.cfg");
+  /* Used by (at least) Fedora */
   self->config_path_bios_2 = g_file_resolve_relative_path (self->sysroot->path, "boot/grub2/grub.cfg");
   return self;
 }
