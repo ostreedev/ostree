@@ -509,6 +509,16 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
   return TRUE;
 }
 
+static gboolean
+remove_null_checksum_refs_cb (gpointer key,
+                              gpointer value,
+                              gpointer user_data)
+{
+  const char *checksum = value;
+
+  return (checksum == NULL);
+}
+
 /* Given a summary file (@summary_bytes), extract the refs it lists, and use that
  * to fill in the checksums in the @supported_ref_to_checksum map. This includes
  * the main refs list in the summary, and the map of collection IDs to further
@@ -518,14 +528,13 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
  * set and %FALSE will be returned. If the intersection of the summary file refs
  * and the keys in @supported_ref_to_checksum is empty, an error is set. */
 static gboolean
-get_refs_and_checksums_from_summary (GBytes      *summary_bytes,
-                                     GHashTable  *supported_ref_to_checksum /* (element-type OstreeCollectionRef utf8) */,
-                                     GError     **error)
+get_refs_and_checksums_from_summary (GBytes       *summary_bytes,
+                                     GHashTable   *supported_ref_to_checksum /* (element-type OstreeCollectionRef utf8) */,
+                                     OstreeRemote *remote,
+                                     GError      **error)
 {
   g_autoptr(GVariant) summary = g_variant_ref_sink (g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE));
-  GHashTableIter iter;
-  const OstreeCollectionRef *ref;
-  const gchar *checksum;
+  guint removed_refs;
 
   if (!g_variant_is_normal_form (summary))
     {
@@ -544,20 +553,20 @@ get_refs_and_checksums_from_summary (GBytes      *summary_bytes,
   if (!fill_refs_and_checksums_from_summary (summary, supported_ref_to_checksum, error))
     return FALSE;
 
-  /* Check that at least one of the refs has a non-%NULL checksum set, otherwise
-   * we can discard this peer. */
-  g_hash_table_iter_init (&iter, supported_ref_to_checksum);
-  while (g_hash_table_iter_next (&iter,
-                                 (gpointer *) &ref,
-                                 (gpointer *) &checksum))
+  removed_refs = g_hash_table_foreach_remove (supported_ref_to_checksum, remove_null_checksum_refs_cb, NULL);
+  if (removed_refs > 0)
+    g_debug ("Removed %d refs from the list resolved from ‘%s’ (possibly bloom filter false positives)",
+             removed_refs, remote->name);
+
+  /* If none of the refs had a non-%NULL checksum set, we can discard this peer. */
+  if (g_hash_table_size (supported_ref_to_checksum) == 0)
     {
-      if (checksum != NULL)
-        return TRUE;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No matching refs were found in the summary file");
+      return FALSE;
     }
 
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-               "No matching refs were found in the summary file");
-  return FALSE;
+  return TRUE;
 }
 
 /* Download the summary file from @remote, and return the bytes of the file in
@@ -661,7 +670,7 @@ get_checksums (OstreeRepoFinderAvahi  *finder,
       return FALSE;
     }
 
-  return get_refs_and_checksums_from_summary (summary_bytes, supported_ref_to_checksum, error);
+  return get_refs_and_checksums_from_summary (summary_bytes, supported_ref_to_checksum, remote, error);
 }
 
 /* Build some #OstreeRepoFinderResults out of the given #OstreeAvahiService by
