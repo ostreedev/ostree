@@ -510,9 +510,9 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
 }
 
 static gboolean
-remove_null_checksum_refs (gpointer key,
-                           gpointer value,
-                           gpointer user_data)
+remove_null_checksum_refs_cb (gpointer key,
+                              gpointer value,
+                              gpointer user_data)
 {
   const char *checksum = value;
 
@@ -553,7 +553,7 @@ get_refs_and_checksums_from_summary (GBytes       *summary_bytes,
   if (!fill_refs_and_checksums_from_summary (summary, supported_ref_to_checksum, error))
     return FALSE;
 
-  removed_refs = g_hash_table_foreach_remove (supported_ref_to_checksum, remove_null_checksum_refs, NULL);
+  removed_refs = g_hash_table_foreach_remove (supported_ref_to_checksum, remove_null_checksum_refs_cb, NULL);
   if (removed_refs > 0)
     g_debug ("Removed %d refs from the list resolved from ‘%s’ (possibly bloom filter false positives)",
              removed_refs, remote->name);
