@@ -2656,6 +2656,37 @@ get_remotes_d_dir (OstreeRepo          *self,
 }
 
 static gboolean
+min_free_space_calculate_reserved_bytes (OstreeRepo *self, guint64 *bytes, GError **error)
+{
+  guint64 reserved_bytes = 0;
+
+  struct statvfs stvfsbuf;
+  if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs");
+
+  if (self->min_free_space_mb > 0)
+    {
+      if (self->min_free_space_mb > (G_MAXUINT64 >> 20))
+        return glnx_throw (error, "min-free-space value is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
+                           (G_MAXUINT64 >> 20));
+
+      reserved_bytes = self->min_free_space_mb << 20;
+    }
+  else if (self->min_free_space_percent > 0)
+    {
+      if (stvfsbuf.f_frsize > (G_MAXUINT64 / stvfsbuf.f_blocks))
+        return glnx_throw (error, "Filesystem's size is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
+                           (G_MAXUINT64 / stvfsbuf.f_blocks));
+
+      guint64 total_bytes = (stvfsbuf.f_frsize * stvfsbuf.f_blocks);
+      reserved_bytes = ((double)total_bytes) * (self->min_free_space_percent/100.0);
+    }
+
+  *bytes = reserved_bytes;
+  return TRUE;
+}
+
+static gboolean
 min_free_space_size_validate_and_convert (OstreeRepo    *self,
                                           const char    *min_free_space_size_str,
                                           GError       **error)
@@ -3297,21 +3328,25 @@ ostree_repo_get_mode (OstreeRepo  *self)
 /**
  * ostree_repo_get_min_free_space:
  * @self: Repo
+ * @out_reserved_bytes: (out): Location to store the result
+ * @error: Return location for a #GError
  *
- * It should be noted that this function should be used only if there
- * is a transaction active. It is a programmer error to request it
- * otherwise.
+ * It can be used to query the value (in bytes) of min-free-space-* config option.
  *
- * Returns: Value (in bytes) of min-free-space-* config option
+ * Returns: %TRUE on success, %FALSE otherwise.
  * Since: 2018.9
  */
-guint64
-ostree_repo_get_min_free_space_bytes (OstreeRepo  *self)
+gboolean
+ostree_repo_get_min_free_space_bytes (OstreeRepo  *self, guint64 *out_reserved_bytes, GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_REPO (self), 0);
-  g_return_val_if_fail (self->in_transaction == TRUE, 0);
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (out_reserved_bytes != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  return self->reserved_blocks * self->txn.blocksize;
+  if (!min_free_space_calculate_reserved_bytes (self, out_reserved_bytes, error))
+    return glnx_prefix_error (error, "Error calculating min-free-space bytes");
+
+  return TRUE;
 }
 
 /**
