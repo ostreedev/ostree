@@ -157,6 +157,7 @@ test_repo_get_min_free_space (Fixture *fixture,
 {
   g_autoptr (GKeyFile) config = NULL;
   g_autoptr(GError) error = NULL;
+  guint64 bytes = 0;
   typedef struct
     {
       const char *val;
@@ -188,17 +189,11 @@ test_repo_get_min_free_space (Fixture *fixture,
       ostree_repo_reload_config (repo, NULL, &error);
       g_assert_no_error (error);
 
-      ostree_repo_prepare_transaction (repo, FALSE, NULL, &error);
+      ostree_repo_get_min_free_space_bytes (repo, &bytes, &error);
       if (values_to_test[i].should_succeed)
         g_assert_no_error (error);
       else
         continue;
-
-      ostree_repo_get_min_free_space_bytes (repo);
-      g_assert_no_error (error);
-
-      ostree_repo_commit_transaction (repo, NULL, NULL, &error);
-      g_assert_no_error (error);
     }
 }
 
