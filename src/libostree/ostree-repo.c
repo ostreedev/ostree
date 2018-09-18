@@ -90,17 +90,19 @@ G_STATIC_ASSERT(sizeof(OstreeRepoPruneOptions) ==
  * The #OstreeRepo is like git, a content-addressed object store.
  * Unlike git, it records uid, gid, and extended attributes.
  *
- * There are three possible "modes" for an #OstreeRepo;
- * %OSTREE_REPO_MODE_BARE is very simple - content files are
- * represented exactly as they are, and checkouts are just hardlinks.
- * %OSTREE_REPO_MODE_BARE_USER is similar, except the uid/gids are not
- * set on the files, and checkouts as hardlinks hardlinks work only for user checkouts.
- * A %OSTREE_REPO_MODE_ARCHIVE_Z2 repository in contrast stores
- * content files zlib-compressed.  It is suitable for non-root-owned
+ * There are four possible "modes" for an #OstreeRepo; %OSTREE_REPO_MODE_BARE
+ * is very simple - content files are represented exactly as they are, and
+ * checkouts are just hardlinks. %OSTREE_REPO_MODE_BARE_USER is similar, except
+ * the uid/gids are not set on the files, and checkouts as hardlinks work only
+ * for user checkouts. %OSTREE_REPO_MODE_BARE_USER_ONLY is the same as
+ * BARE_USER, but all metadata is not stored, so it can only be used for user
+ * checkouts. This mode does not require xattrs. A %OSTREE_REPO_MODE_ARCHIVE
+ * (also known as %OSTREE_REPO_MODE_ARCHIVE_Z2) repository in contrast stores
+ * content files zlib-compressed. It is suitable for non-root-owned
  * repositories that can be served via a static HTTP server.
  *
  * Creating an #OstreeRepo does not invoke any file I/O, and thus needs
- * to be initialized, either from an existing contents or with a new
+ * to be initialized, either from existing contents or as a new
  * repository. If you have an existing repo, use ostree_repo_open()
  * to load it from disk and check its validity. To initialize a new
  * repository in the given filepath, use ostree_repo_create() instead.
