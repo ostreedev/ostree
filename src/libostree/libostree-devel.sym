@@ -19,6 +19,7 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2018.9 {
+  ostree_mutable_tree_remove;
   ostree_repo_get_min_free_space_bytes;
 } LIBOSTREE_2018.7;
 

@@ -333,6 +333,51 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
 }
 
 /**
+ * ostree_mutable_tree_remove:
+ * @self: Tree
+ * @name: Name of file or subdirectory to remove
+ * @allow_noent: If @FALSE, an error will be thrown if @name does not exist in the tree
+ * @error: a #GError
+ *
+ * Remove the file or subdirectory named @name from the mutable tree @self.
+ */
+gboolean
+ostree_mutable_tree_remove (OstreeMutableTree *self,
+                            const char        *name,
+                            gboolean           allow_noent,
+                            GError           **error)
+{
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  if (!ot_util_filename_validate (name, error))
+    goto out;
+
+  if (!_ostree_mutable_tree_make_whole (self, NULL, error))
+    goto out;
+
+  if (!g_hash_table_remove (self->files, name) &&
+      !g_hash_table_remove (self->subdirs, name))
+    {
+      if (allow_noent)
+        {
+          ret = TRUE;
+          goto out;
+        }
+
+      set_error_noent (error, name);
+      goto out;
+    }
+
+  invalidate_contents_checksum (self);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
  * ostree_mutable_tree_ensure_dir:
  * @self: Tree
  * @name: Name of subdirectory of self to retrieve/creates
