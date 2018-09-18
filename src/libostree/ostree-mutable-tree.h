@@ -78,6 +78,12 @@ gboolean ostree_mutable_tree_replace_file (OstreeMutableTree *self,
                                            GError           **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_mutable_tree_remove (OstreeMutableTree *self,
+                                     const char        *name,
+                                     gboolean           allow_noent,
+                                     GError           **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
                                          const char        *name,
                                          OstreeMutableTree **out_subdir,
