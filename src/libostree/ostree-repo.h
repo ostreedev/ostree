@@ -1397,6 +1397,27 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
  */
 #define OSTREE_REPO_METADATA_REF "ostree-metadata"
 
+/**
+ * OSTREE_META_KEY_DEPLOY_COLLECTION_ID:
+ *
+ * GVariant type `s`. This key can be used in the repo metadata which is stored
+ * in OSTREE_REPO_METADATA_REF as well as in the summary. The semantics of this
+ * are that the remote repository wants clients to update their remote config
+ * to add this collection ID (clients can't do P2P operations involving a
+ * remote without a collection ID configured on it, even if one is configured
+ * on the server side).
+ *
+ * Currently, ostree does not implement changing a remote config based on this
+ * key, but it may do so in a later release, and until then clients such as
+ * Flatpak may implement it.
+ *
+ * This is a replacement for the similar metadata key implemented by flatpak,
+ * xa.collection-id.
+ *
+ * Since: 2018.9
+ */
+#define OSTREE_META_KEY_DEPLOY_COLLECTION_ID "ostree.deploy-collection-id"
+
 G_END_DECLS
 
 
