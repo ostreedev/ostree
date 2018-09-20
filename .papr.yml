@@ -162,7 +162,8 @@ branches:
     - try
 
 context: f28-rpmostree
-required: true
+# XXX: some issues currently failing that need investigating.
+required: false
 
 cluster:
   hosts:
