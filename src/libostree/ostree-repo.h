@@ -1405,14 +1405,16 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
  * are that the remote repository wants clients to update their remote config
  * to add this collection ID (clients can't do P2P operations involving a
  * remote without a collection ID configured on it, even if one is configured
- * on the server side).
+ * on the server side). Clients must never change or remove a collection ID
+ * already set in their remote config.
  *
- * Currently, ostree does not implement changing a remote config based on this
+ * Currently, OSTree does not implement changing a remote config based on this
  * key, but it may do so in a later release, and until then clients such as
  * Flatpak may implement it.
  *
  * This is a replacement for the similar metadata key implemented by flatpak,
- * xa.collection-id.
+ * `xa.collection-id`, which is now deprecated as clients which supported it had
+ * bugs with their P2P implementations.
  *
  * Since: 2018.9
  */
