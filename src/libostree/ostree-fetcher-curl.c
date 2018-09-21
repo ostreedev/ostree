@@ -330,9 +330,8 @@ check_multi_info (OstreeFetcher *fetcher)
               g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED, "[%u] %s",
                                        curlres,
                                        curl_easy_strerror (curlres));
-              if (req->fetcher->remote_name)
-                _ostree_fetcher_journal_failure (req->fetcher->remote_name,
-                                                 eff_url, curl_easy_strerror (curlres));
+              _ostree_fetcher_journal_failure (req->fetcher->remote_name,
+                                               eff_url, curl_easy_strerror (curlres));
             }
         }
       else
