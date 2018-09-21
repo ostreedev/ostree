@@ -128,7 +128,9 @@ _OSTREE_PUBLIC
 OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 
 _OSTREE_PUBLIC
-guint64        ostree_repo_get_min_free_space_bytes (OstreeRepo *self);
+gboolean       ostree_repo_get_min_free_space_bytes (OstreeRepo *self,
+                                                     guint64 *out_reserved_bytes,
+                                                     GError **error);
 _OSTREE_PUBLIC
 GKeyFile *    ostree_repo_get_config (OstreeRepo *self);
 

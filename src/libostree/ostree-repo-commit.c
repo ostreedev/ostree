@@ -1536,30 +1536,6 @@ devino_cache_lookup (OstreeRepo           *self,
   return dev_ino_val->checksum;
 }
 
-static gboolean
-min_free_space_calculate_reserved_blocks (OstreeRepo *self, struct statvfs *stvfsbuf, GError **error)
-{
-  self->reserved_blocks = 0;
-
-  if (self->min_free_space_mb > 0)
-    {
-      if (self->min_free_space_mb > (G_MAXUINT64 >> 20) ||
-          self->txn.blocksize > (1 << 20))
-        return glnx_throw (error, "min-free-space value is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
-                           G_MAXUINT64 / stvfsbuf->f_bsize);
-
-      self->reserved_blocks = (self->min_free_space_mb << 20) / self->txn.blocksize;
-    }
-  else if (self->min_free_space_percent > 0)
-    {
-      /* Convert fragment to blocks to compute the total */
-      guint64 total_blocks = (stvfsbuf->f_frsize * stvfsbuf->f_blocks) / stvfsbuf->f_bsize;
-      self->reserved_blocks = ((double)total_blocks) * (self->min_free_space_percent/100.0);
-    }
-
-  return TRUE;
-}
-
 /**
  * ostree_repo_scan_hardlinks:
  * @self: An #OstreeRepo
@@ -1631,6 +1607,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
                                  GError        **error)
 {
   g_autoptr(_OstreeRepoAutoTransaction) txn = NULL;
+  guint64 reserved_bytes = 0;
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
@@ -1655,11 +1632,12 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   g_mutex_lock (&self->txn_lock);
   self->txn.blocksize = stvfsbuf.f_bsize;
-  if (!min_free_space_calculate_reserved_blocks (self, &stvfsbuf, error))
+  if (!ostree_repo_get_min_free_space_bytes (self, &reserved_bytes, error))
     {
       g_mutex_unlock (&self->txn_lock);
       return FALSE;
     }
+  self->reserved_blocks = reserved_bytes / self->txn.blocksize;
 
   /* Use the appropriate free block count if we're unprivileged */
   guint64 bfree = (getuid () != 0 ? stvfsbuf.f_bavail : stvfsbuf.f_bfree);
