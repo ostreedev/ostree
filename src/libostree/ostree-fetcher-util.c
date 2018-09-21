@@ -172,6 +172,7 @@ _ostree_fetcher_journal_failure (const char *remote_name,
                    "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_HTTP_FAILURE_ID),
                    "OSTREE_REMOTE=%s", remote_name,
                    "OSTREE_URL=%s", url,
+                   "PRIORITY=%i", LOG_ERR,
                    NULL);
 #endif
 }
