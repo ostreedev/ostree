@@ -2509,6 +2509,47 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
   return TRUE;
 }
 
+/* Get a directory fd for the /var of @deployment.
+ * Before we supported having /var be a separate mount point,
+ * this was easy. However, as https://github.com/ostreedev/ostree/issues/1729
+ * raised, in the primary case where we're
+ * doing a new deployment for the booted stateroot,
+ * we need to use /var/.  This code doesn't correctly
+ * handle the case of `ostree admin --sysroot upgrade`,
+ * nor (relatedly) the case of upgrading a separate stateroot.
+ */
+static gboolean
+get_var_dfd (OstreeSysroot      *self,
+             int                 osdeploy_dfd,
+             OstreeDeployment   *deployment,
+             int                *ret_fd,
+             GError            **error)
+{
+  const char *booted_stateroot =
+    self->booted_deployment ? ostree_deployment_get_osname (self->booted_deployment) : NULL;
+
+  int base_dfd;
+  const char *base_path;
+  /* The common case is when we're doing a new deployment for the same stateroot (osname).
+   * If we have a separate mounted /var, then we need to use it - the /var in the
+   * stateroot will probably just be an empty directory.
+   *
+   * If the stateroot doesn't match, just fall back to /var in the target's stateroot.
+   */
+  if (g_strcmp0 (booted_stateroot, ostree_deployment_get_osname (deployment)) == 0)
+    {
+      base_dfd = AT_FDCWD;
+      base_path = "/var";
+    }
+  else
+    {
+      base_dfd = osdeploy_dfd;
+      base_path = "var";
+    }
+
+  return glnx_opendirat (base_dfd, base_path, TRUE, ret_fd, error);
+}
+
 static gboolean
 sysroot_finalize_deployment (OstreeSysroot     *self,
                              OstreeDeployment  *deployment,
@@ -2547,6 +2588,9 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
   glnx_autofd int os_deploy_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, osdeploypath, TRUE, &os_deploy_dfd, error))
     return FALSE;
+  glnx_autofd int var_dfd = -1;
+  if (!get_var_dfd (self, os_deploy_dfd, deployment, &var_dfd, error))
+    return FALSE;
 
   /* Ensure that the new deployment does not have /etc/.updated or
    * /var/.updated so that systemd ConditionNeedsUpdate=/etc|/var services run
@@ -2554,7 +2598,7 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
    */
   if (!ot_ensure_unlinked_at (deployment_dfd, "etc/.updated", error))
     return FALSE;
-  if (!ot_ensure_unlinked_at (os_deploy_dfd, "var/.updated", error))
+  if (!ot_ensure_unlinked_at (var_dfd, ".updated", error))
     return FALSE;
 
   g_autoptr(OstreeSePolicy) sepolicy = ostree_sepolicy_new_at (deployment_dfd, cancellable, error);
