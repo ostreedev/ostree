@@ -4293,11 +4293,12 @@ import_one_object_direct (OstreeRepo    *dest_repo,
         }
 
       /* Don't want to copy xattrs for archive repos, nor for
-       * bare-user-only.
+       * bare-user-only.  We also only do this for content
+       * objects.
        */
       const gboolean src_is_bare_or_bare_user =
         G_IN_SET (src_repo->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER);
-      if (src_is_bare_or_bare_user)
+      if (src_is_bare_or_bare_user && !OSTREE_OBJECT_TYPE_IS_META(objtype))
         {
           g_autoptr(GVariant) xattrs = NULL;
 
