@@ -33,11 +33,13 @@
 
 static gboolean opt_disable_fsync = FALSE;
 static char *opt_destination_repo = NULL;
+static char *opt_commit = NULL;
 
 static GOptionEntry options[] =
   {
     { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
     { "destination-repo", 0, 0, G_OPTION_ARG_FILENAME, &opt_destination_repo, "Use custom repository directory within the mount", "DEST" },
+    { "commit", 0, 0, G_OPTION_ARG_STRING, &opt_commit, "Pull a specific commit (only works when a single ref is specified)", "COMMIT" },
     { NULL }
   };
 
@@ -75,6 +77,12 @@ ostree_builtin_create_usb (int            argc,
   if (argc % 2 == 1)
     {
       ot_util_usage_error (context, "Only complete COLLECTION-ID REF pairs may be specified", error);
+      return FALSE;
+    }
+
+  if (opt_commit && argc > 4)
+    {
+      ot_util_usage_error (context, "The --commit option can only be used when a single COLLECTION-ID REF pair is specified", error);
       return FALSE;
     }
 
@@ -158,7 +166,7 @@ ostree_builtin_create_usb (int            argc,
       const OstreeCollectionRef *ref = g_ptr_array_index (refs, i);
 
       g_variant_builder_add (&refs_builder, "(sss)",
-                             ref->collection_id, ref->ref_name, "");
+                             ref->collection_id, ref->ref_name, opt_commit ?: "");
     }
 
   {
