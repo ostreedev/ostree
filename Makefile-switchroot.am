@@ -57,6 +57,11 @@ ostree_remount_SOURCES = \
     $(NULL)
 ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) -Isrc/switchroot
 
+if BUILDOPT_SYSTEMD
+ostree_prepare_root_CPPFLAGS += -DHAVE_SYSTEMD=1
+ostree_prepare_root_LDADD = $(AM_LDFLAGS) $(LIBSYSTEMD_LIBS)
+endif
+
 # This is the "new mode" of using a generator for /var; see
 # https://github.com/ostreedev/ostree/issues/855
 if BUILDOPT_SYSTEMD_AND_LIBMOUNT
