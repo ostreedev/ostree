@@ -62,6 +62,19 @@ ostree --repo=repo init --mode=bare
 log_timestamps ostree --repo=repo pull-local /ostree/repo ${host_commit}
 log_timestamps ostree --repo=repo fsck
 cd ..
+
+# Also, we shouldn't copy xattrs on metadata objects
+commit_path=objects/${host_commit:0:2}/${host_commit:2}.commit
+ostree --repo=testarchive init --mode=archive
+ostree --repo=testarchive pull-local --commit-metadata-only /ostree/repo ${host_commit}
+setfattr -n user.ostreetesting -v hello testarchive/${commit_path}
+ostree --repo=mnt/testarchive2 init --mode=archive
+ostree --repo=mnt/testarchive2 pull-local --commit-metadata-only testarchive ${host_commit}
+if getfattr -m user.ostreetesting mnt/testarchive2/${commit_path} 2>/dev/null; then
+    fatal "copied metadata xattr"
+fi
+echo "ok no metadata xattr copy"
+
 umount mnt
 
 # Cleanup
