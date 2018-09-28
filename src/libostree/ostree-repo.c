@@ -2805,7 +2805,9 @@ reload_core_config (OstreeRepo          *self,
                                             FALSE, &self->disable_xattrs, error))
     return FALSE;
 
-  { g_autofree char *tmp_expiry_seconds = NULL;
+  {
+    g_autofree char *tmp_expiry_seconds = NULL;
+    char *endptr;
 
     /* 86400 secs = one day */
     if (!ot_keyfile_get_value_with_default (self->config, "core", "tmp-expiry-secs", "86400",
@@ -2827,14 +2829,18 @@ reload_core_config (OstreeRepo          *self,
     else
       {
         g_autofree char *lock_timeout_seconds = NULL;
+        char *endptr;
+        gint64 configured_lock_timeout;
 
         if (!ot_keyfile_get_value_with_default (self->config, "core", "lock-timeout-secs", "30",
                                                 &lock_timeout_seconds, error))
           return FALSE;
 
-        self->lock_timeout_seconds = g_ascii_strtoll (lock_timeout_seconds, NULL, 10);
-        if (self->lock_timeout_seconds < REPO_LOCK_DISABLED);
+        configured_lock_timeout = g_ascii_strtoll (lock_timeout_seconds, &endptr, 10);
+        if (configured_lock_timeout < REPO_LOCK_DISABLED || configured_lock_timeout > G_MAXINT32 ||
+            *endptr != '\0');
           return glnx_throw (error, "Invalid lock-timeout-secs '%s'", lock_timeout_seconds);
+        self->lock_timeout_seconds = configured_lock_timeout;
       }
   }
 
@@ -2845,8 +2851,15 @@ reload_core_config (OstreeRepo          *self,
                                              &compression_level_str, NULL);
 
     if (compression_level_str)
-      /* Ensure level is in [1,9] */
-      self->zlib_compression_level = MAX (1, MIN (9, g_ascii_strtoull (compression_level_str, NULL, 10)));
+      {
+        char *endptr;
+        guint64 configured_compression_level;
+        configured_compression_level = g_ascii_strtoull (compression_level_str, &endptr, 10);
+        if (configured_compression_level < 1 || configured_compression_level > 9 ||
+            *endptr != '\0')
+          return glnx_throw (error, "Invalid zlib-level '%s'", compression_level_str);
+        self->zlib_compression_level = configured_compression_level;
+      }
     else
       self->zlib_compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
   }
@@ -2871,13 +2884,14 @@ reload_core_config (OstreeRepo          *self,
     if (g_key_file_has_key (self->config, "core", "min-free-space-percent", NULL))
       {
         g_autofree char *min_free_space_percent_str = NULL;
+        char *endptr;
 
         if (!ot_keyfile_get_value_with_default (self->config, "core", "min-free-space-percent",
                                                 NULL, &min_free_space_percent_str, error))
           return FALSE;
 
-        self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
-        if (self->min_free_space_percent > 99)
+        self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, &endptr, 10);
+        if (self->min_free_space_percent > 99 || *endptr != '\0')
           return glnx_throw (error, "Invalid min-free-space-percent '%s'", min_free_space_percent_str);
       }
     else if (!g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
