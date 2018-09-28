@@ -19,6 +19,7 @@
 # https://lists.freedesktop.org/archives/systemd-devel/2018-March/040557.html
 [Unit]
 Description=OSTree Finalize Staged Deployment
+Documentation=man:ostree(1)
 ConditionPathExists=/run/ostree-booted
 DefaultDependencies=no
 
