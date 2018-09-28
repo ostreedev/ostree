@@ -73,7 +73,7 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autofree char *key = NULL;
   GKeyFile *config = NULL;
 
-  context = g_option_context_new ("(get KEY|set KEY VALUE)");
+  context = g_option_context_new ("(get KEY|set KEY VALUE|unset KEY)");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
@@ -154,6 +154,47 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
         goto out;
 
       g_print ("%s\n", value);
+    }
+  else if (!strcmp (op, "unset"))
+    {
+      g_autoptr(GError) local_error = NULL;
+      if (opt_group)
+        {
+          if (argc < 3)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Group name and key must be specified");
+              goto out;
+            }
+          section = g_strdup(opt_group);
+          key = g_strdup(argv[2]);
+        }
+      else
+        {
+          if (argc < 3)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "KEY must be specified");
+              goto out;
+            }
+          section_key = argv[2];
+          if (!split_key_string (section_key, &section, &key, error))
+            goto out;
+        }
+
+      config = ostree_repo_copy_config (repo);
+      if (!g_key_file_remove_key (config, section, key, &local_error))
+        {
+          if (!g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND) &&
+              !g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND))
+            {
+              g_propagate_error (error, g_steal_pointer (&local_error));
+              goto out;
+            }
+        }
+
+      if (local_error == NULL && !ostree_repo_write_config (repo, config, error))
+        goto out;
     }
   else
     {

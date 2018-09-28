@@ -62,14 +62,37 @@ Boston, MA 02111-1307, USA.
             <cmdsynopsis>
                 <command>ostree config set</command> <arg choice="req"> --group=GROUPNAME</arg> <arg choice="req"> KEYNAME</arg> <arg choice="req">VALUE</arg>
             </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree config unset</command> <arg choice="req">SECTIONNAME.KEYNAME</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree config unset</command> <arg choice="req"> --group=GROUPNAME</arg> <arg choice="req"> KEYNAME</arg>
+            </cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1>
         <title>Description</title>
 
-        <para>
-            Displays or changes a configuration setting.
-        </para>
+        <itemizedlist>
+            <listitem><para>
+                <command>ostree config get</command> displays the value of
+                <arg choice="plain">KEYNAME</arg> in the group <arg choice="plain">GROUPNAME</arg>
+                (or <arg choice="plain">SECTIONNAME</arg> depending on the
+                syntax used).
+            </para></listitem>
+            <listitem><para>
+                <command>ostree config set</command> sets the value of
+                <arg choice="plain">KEYNAME</arg> in the group <arg choice="plain">GROUPNAME</arg>
+                to <arg choice="plain">VALUE</arg>.
+            </para></listitem>
+            <listitem><para>
+                <command>ostree config unset</command> removes the key
+                <arg choice="plain">KEYNAME</arg> from the group <arg choice="plain">GROUPNAME</arg>
+                so that OSTree uses the default value for it. It is not an
+                error for the specified <arg choice="plain">GROUPNAME</arg> or
+                <arg choice="plain">KEYNAME</arg> not to exist.
+            </para></listitem>
+        </itemizedlist>
     </refsect1>
 
     <refsect1>
@@ -77,5 +100,6 @@ Boston, MA 02111-1307, USA.
         <para><command>$ ostree config get core.mode</command></para>
         <para>bare</para>
         <para><command>$ ostree config set --group='remote "myremote"' url http://example.com/repo</command></para>
+        <para><command>$ ostree config unset core.lock-timeout-secs</command></para>
     </refsect1>
 </refentry>
