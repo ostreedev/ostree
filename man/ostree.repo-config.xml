@@ -198,6 +198,23 @@ Boston, MA 02111-1307, USA.
         </para></listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><varname>locking</varname></term>
+        <listitem><para>Boolean value controlling whether or not OSTree does
+        repository locking internally. This uses file locks and is
+        hence for multiple process exclusion (e.g. Flatpak and OSTree
+        writing to the same repository separately). This is enabled by
+        default since 2018.5.
+        </para></listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><varname>lock-timeout-secs</varname></term>
+        <listitem><para>Integer value controlling the number of seconds to
+        block while attempting to acquire a lock (see above). A value
+        of -1 means block indefinitely. The default value is 30.
+        </para></listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 
