@@ -2832,7 +2832,7 @@ reload_core_config (OstreeRepo          *self,
                                                 &lock_timeout_seconds, error))
           return FALSE;
 
-        self->lock_timeout_seconds = g_ascii_strtoull (lock_timeout_seconds, NULL, 10);
+        self->lock_timeout_seconds = g_ascii_strtoll (lock_timeout_seconds, NULL, 10);
       }
   }
 
