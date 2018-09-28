@@ -305,31 +305,22 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
                                   const char        *checksum,
                                   GError           **error)
 {
-  gboolean ret = FALSE;
-
   g_return_val_if_fail (name != NULL, FALSE);
 
   if (!ot_util_filename_validate (name, error))
-    goto out;
+    return FALSE;
 
   if (!_ostree_mutable_tree_make_whole (self, NULL, error))
-    goto out;
+    return FALSE;
 
   if (g_hash_table_lookup (self->subdirs, name))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Can't replace directory with file: %s", name);
-      goto out;
-    }
+    return glnx_throw (error, "Can't replace directory with file: %s", name);
 
   invalidate_contents_checksum (self);
   g_hash_table_replace (self->files,
                         g_strdup (name),
                         g_strdup (checksum));
-
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -347,34 +338,24 @@ ostree_mutable_tree_remove (OstreeMutableTree *self,
                             gboolean           allow_noent,
                             GError           **error)
 {
-  gboolean ret = FALSE;
-
   g_return_val_if_fail (name != NULL, FALSE);
 
   if (!ot_util_filename_validate (name, error))
-    goto out;
+    return FALSE;
 
   if (!_ostree_mutable_tree_make_whole (self, NULL, error))
-    goto out;
+    return FALSE;
 
   if (!g_hash_table_remove (self->files, name) &&
       !g_hash_table_remove (self->subdirs, name))
     {
       if (allow_noent)
-        {
-          ret = TRUE;
-          goto out;
-        }
-
-      set_error_noent (error, name);
-      goto out;
+        return TRUE; /* NB: early return */
+      return set_error_noent (error, name);
     }
 
   invalidate_contents_checksum (self);
-
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
@@ -393,36 +374,29 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
                                 OstreeMutableTree **out_subdir,
                                 GError           **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(OstreeMutableTree) ret_dir = NULL;
-
   g_return_val_if_fail (name != NULL, FALSE);
 
   if (!ot_util_filename_validate (name, error))
-    goto out;
+    return FALSE;
 
   if (!_ostree_mutable_tree_make_whole (self, NULL, error))
-    goto out;
+    return FALSE;
 
   if (g_hash_table_lookup (self->files, name))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Can't replace file with directory: %s", name);
-      goto out;
-    }
+    return glnx_throw (error, "Can't replace file with directory: %s", name);
 
-  ret_dir = ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
+  g_autoptr(OstreeMutableTree) ret_dir =
+    ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
   if (!ret_dir)
     {
       ret_dir = ostree_mutable_tree_new ();
       invalidate_contents_checksum (self);
       insert_child_mtree (self, name, g_object_ref (ret_dir));
     }
-  
-  ret = TRUE;
-  ot_transfer_out_value (out_subdir, &ret_dir);
- out:
-  return ret;
+
+  if (out_subdir)
+    *out_subdir = g_steal_pointer (&ret_dir);
+  return TRUE;
 }
 
 gboolean
@@ -432,29 +406,24 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
                             OstreeMutableTree  **out_subdir,
                             GError             **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(OstreeMutableTree) ret_subdir = NULL;
-  g_autofree char *ret_file_checksum = NULL;
-  
   if (!_ostree_mutable_tree_make_whole (self, NULL, error))
-    goto out;
+    return FALSE;
 
-  ret_subdir = ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
+  g_autofree char *ret_file_checksum = NULL;
+  g_autoptr(OstreeMutableTree) ret_subdir =
+    ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
   if (!ret_subdir)
     {
       ret_file_checksum = g_strdup (g_hash_table_lookup (self->files, name));
       if (!ret_file_checksum)
-        {
-          set_error_noent (error, name);
-          goto out;
-        }
+        return set_error_noent (error, name);
     }
 
-  ret = TRUE;
-  ot_transfer_out_value (out_file_checksum, &ret_file_checksum);
-  ot_transfer_out_value (out_subdir, &ret_subdir);
- out:
-  return ret;
+  if (out_file_checksum)
+    *out_file_checksum = g_steal_pointer (&ret_file_checksum);
+  if (out_subdir)
+    *out_subdir = g_steal_pointer (&ret_subdir);
+  return TRUE;
 }
 
 /**
@@ -475,49 +444,38 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
                                         OstreeMutableTree **out_parent,
                                         GError            **error)
 {
-  gboolean ret = FALSE;
-  int i;
-  OstreeMutableTree *subdir = self; /* nofree */
-  g_autoptr(OstreeMutableTree) ret_parent = NULL;
+  g_assert (metadata_checksum != NULL);
 
   if (!_ostree_mutable_tree_make_whole (self, NULL, error))
-    goto out;
-
-  g_assert (metadata_checksum != NULL);
+    return FALSE;
 
   if (!self->metadata_checksum)
     ostree_mutable_tree_set_metadata_checksum (self, metadata_checksum);
 
-  for (i = 0; i+1 < split_path->len; i++)
+  OstreeMutableTree *subdir = self; /* nofree */
+  for (guint i = 0; i+1 < split_path->len; i++)
     {
       OstreeMutableTree *next;
       const char *name = split_path->pdata[i];
 
       if (g_hash_table_lookup (subdir->files, name))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Can't replace file with directory: %s", name);
-          goto out;
-        }
+        return glnx_throw (error, "Can't replace file with directory: %s", name);
 
       next = g_hash_table_lookup (subdir->subdirs, name);
-      if (!next) 
+      if (!next)
         {
           invalidate_contents_checksum (subdir);
           next = ostree_mutable_tree_new ();
           ostree_mutable_tree_set_metadata_checksum (next, metadata_checksum);
           insert_child_mtree (subdir, g_strdup (name), next);
         }
-      
+
       subdir = next;
     }
 
-  ret_parent = g_object_ref (subdir);
-
-  ret = TRUE;
-  ot_transfer_out_value (out_parent, &ret_parent);
- out:
-  return ret;
+  if (out_parent)
+    *out_parent = g_object_ref (subdir);
+  return TRUE;
 }
 
 const char empty_tree_csum[] = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d";
