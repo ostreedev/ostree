@@ -2761,6 +2761,10 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
   if (booted_deployment == NULL)
     return glnx_throw (error, "Cannot stage a deployment when not currently booted into an OSTree system");
 
+  /* This is used by the testsuite to exercise the path unit, until it becomes the default
+   * (which is pending on the preset making it everywhere). */
+  if ((self->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH) == 0)
+    {
   /* This is a bit of a hack.  When adding a new service we have to end up getting
    * into the presets for downstream distros; see e.g. https://src.fedoraproject.org/rpms/ostree/pull-request/7
    *
@@ -2773,6 +2777,11 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
     return FALSE;
   if (!g_spawn_check_exit_status (estatus, error))
     return FALSE;
+    }
+  else
+    {
+      g_print ("test-staged-path: Not running `systemctl start`\n");
+    } /* OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH */
 
   g_autoptr(OstreeDeployment) deployment = NULL;
   if (!sysroot_initialize_deployment (self, osname, revision, origin, override_kernel_argv,

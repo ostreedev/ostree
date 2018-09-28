@@ -1,16 +1,31 @@
 # Test the deploy --stage functionality; first, we stage a deployment
 # reboot, and validate that it worked.
 
+# for now, until the preset propagates down
+- name: Start up path unit
+  shell: |
+    set -xeuo pipefail
+    systemctl enable --now ostree-finalize-staged.path
 - name: Write staged-deploy commit
   shell: |
     set -xeuo pipefail
+    export OSTREE_SYSROOT_DEBUG="test-staged-path"
     cd /ostree/repo/tmp
     # https://github.com/ostreedev/ostree/issues/1569
     ostree checkout -H ${commit} t
     ostree commit --no-bindings --parent="${commit}" -b staged-deploy -I --consume t
     newcommit=$(ostree rev-parse staged-deploy)
     orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
-    ostree admin deploy --stage staged-deploy
+    systemctl show -p SubState ostree-finalize-staged.path | grep -q waiting
+    systemctl show -p ActiveState ostree-finalize-staged.service | grep -q inactive
+    systemctl show -p TriggeredBy ostree-finalize-staged.service | grep -q path
+    ostree admin deploy --stage staged-deploy | tee out.txt
+    if ! grep -q 'test-staged-path: Not running' out.txt; then
+      cat out.txt
+      exit 1
+    fi
+    systemctl show -p SubState ostree-finalize-staged.path | grep running
+    systemctl show -p ActiveState ostree-finalize-staged.service | grep active
     new_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     test "${orig_mtime}" != "${new_mtime}"
     test -f /run/ostree/staged-deployment

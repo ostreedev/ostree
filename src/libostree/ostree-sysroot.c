@@ -189,6 +189,7 @@ ostree_sysroot_init (OstreeSysroot *self)
     { "mutable-deployments", OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS },
     { "test-fifreeze", OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE },
     { "no-xattrs", OSTREE_SYSROOT_DEBUG_NO_XATTRS },
+    { "test-staged-path", OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH },
   };
 
   self->debug_flags = g_parse_debug_string (g_getenv ("OSTREE_SYSROOT_DEBUG"),
