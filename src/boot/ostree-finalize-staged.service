@@ -31,6 +31,3 @@ Conflicts=final.target
 Type=oneshot
 RemainAfterExit=yes
 ExecStop=/usr/bin/ostree admin finalize-staged
-
-[Install]
-WantedBy=multi-user.target
