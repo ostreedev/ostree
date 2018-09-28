@@ -454,9 +454,9 @@ pop_repo_lock (OstreeRepo  *self,
  * state is not changed and the stack is simply updated.
  *
  * ostree_repo_lock_push() waits for the lock depending on the repository's
- * lock-timeout configuration. When lock-timeout is -1, a blocking lock is
+ * lock-timeout-secs configuration. When lock-timeout-secs is -1, a blocking lock is
  * attempted. Otherwise, the lock is taken non-blocking and
- * ostree_repo_lock_push() will sleep synchronously up to lock-timeout seconds
+ * ostree_repo_lock_push() will sleep synchronously up to lock-timeout-secs seconds
  * attempting to acquire the lock. If the lock cannot be acquired within the
  * timeout, a %G_IO_ERROR_WOULD_BLOCK error is returned.
  *
@@ -544,9 +544,9 @@ _ostree_repo_lock_push (OstreeRepo          *self,
  * lock.
  *
  * ostree_repo_lock_pop() waits for the lock depending on the repository's
- * lock-timeout configuration. When lock-timeout is -1, a blocking lock is
+ * lock-timeout-secs configuration. When lock-timeout-secs is -1, a blocking lock is
  * attempted. Otherwise, the lock is removed non-blocking and
- * ostree_repo_lock_pop() will sleep synchronously up to lock-timeout seconds
+ * ostree_repo_lock_pop() will sleep synchronously up to lock-timeout-secs seconds
  * attempting to remove the lock. If the lock cannot be removed within the
  * timeout, a %G_IO_ERROR_WOULD_BLOCK error is returned.
  *
