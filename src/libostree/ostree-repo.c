@@ -2833,6 +2833,8 @@ reload_core_config (OstreeRepo          *self,
           return FALSE;
 
         self->lock_timeout_seconds = g_ascii_strtoll (lock_timeout_seconds, NULL, 10);
+        if (self->lock_timeout_seconds < REPO_LOCK_DISABLED);
+          return glnx_throw (error, "Invalid lock-timeout-secs '%s'", lock_timeout_seconds);
       }
   }
 
