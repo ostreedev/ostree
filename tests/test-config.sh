@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..2'
+echo '1..3'
 
 ostree_repo_init repo
 ${CMD_PREFIX} ostree remote add --repo=repo --set=xa.title=Flathub --set=xa.title-is-set=true flathub https://dl.flathub.org/repo/
@@ -53,3 +53,27 @@ assert_file_has_content repo/config "Nightly Flathub"
 assert_file_has_content repo/config "false"
 assert_file_has_content repo/config "http://example.com/ostree/"
 echo "ok config set"
+
+# Check that "ostree config unset" works
+${CMD_PREFIX} ostree config --repo=repo set core.lock-timeout-secs 60
+assert_file_has_content repo/config "lock-timeout-secs=60"
+${CMD_PREFIX} ostree config --repo=repo unset core.lock-timeout-secs
+assert_not_file_has_content repo/config "lock-timeout-secs="
+
+# Check that "ostree config get" errors out on the key
+if ${CMD_PREFIX} ostree config --repo=repo get core.lock-timeout-secs 2>err.txt; then
+    assert_not_reached "ostree config get should not work after unsetting a key"
+fi
+assert_file_has_content err.txt "error: Key file does not have key “lock-timeout-secs” in group “core”"
+
+# Check that it's idempotent
+${CMD_PREFIX} ostree config --repo=repo unset core.lock-timeout-secs
+assert_not_file_has_content repo/config "lock-timeout-secs="
+
+# Check that the group doesn't need to exist
+${CMD_PREFIX} ostree config --repo=repo unset --group='remote "aoeuhtns"' 'xa.title'
+
+# Check that the key doesn't need to exist
+${CMD_PREFIX} ostree config --repo=repo set --group='remote "aoeuhtns"' 'xa.title-is-set' 'false'
+${CMD_PREFIX} ostree config --repo=repo unset --group='remote "aoeuhtns"' 'xa.title'
+echo "ok config unset"
