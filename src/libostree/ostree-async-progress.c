@@ -228,7 +228,7 @@ idle_invoke_async_progress (gpointer user_data)
   OstreeAsyncProgress *self = user_data;
 
   g_mutex_lock (&self->lock);
-  self->idle_source = NULL;
+  g_clear_pointer (&self->idle_source, g_source_unref);
   g_mutex_unlock (&self->lock);
 
   g_signal_emit (self, signals[CHANGED], 0);
