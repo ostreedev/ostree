@@ -16,7 +16,8 @@
 # Boston, MA 02111-1307, USA.
 
 [Unit]
-Description=OSTree Remount OS/ bind mounts
+Description=OSTree Remount OS/ Bind Mounts
+Documentation=man:ostree(1)
 DefaultDependencies=no
 ConditionKernelCommandLine=ostree
 OnFailure=emergency.target
