@@ -3,7 +3,6 @@ work_mode = "normal"
 library = "OSTree"
 version = "1.0"
 target_path = "../libostree"
-generate_safety_asserts = true
 deprecate_by_min_version = true
 single_version_file = true
 
