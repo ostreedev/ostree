@@ -13,6 +13,10 @@ use glib::Error;
 mod auto;
 pub use auto::*;
 
+mod repo;
+
 // public modules
-pub mod prelude;
-pub use prelude::*;
+pub mod prelude {
+    pub use auto::traits::*;
+    pub use repo::RepoExtManual;
+}
