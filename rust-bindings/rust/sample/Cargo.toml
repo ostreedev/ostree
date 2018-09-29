@@ -1,0 +1,8 @@
+[package]
+name = "sample"
+version = "0.1.0"
+authors = ["Felix Krull <f_krull@gmx.de>"]
+
+[dependencies]
+libostree = { path = "../libostree" }
+gio = "^0.5.0"
