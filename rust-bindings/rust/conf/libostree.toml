@@ -13,9 +13,28 @@ generate = [
     "OSTree.ObjectType",
 ]
 
+manual = [
+    "GLib.Error",
+    "GLib.Variant",
+    "Gio.Cancellable",
+    "Gio.File",
+
+    #"OSTree.RepoCheckoutAtOptions",
+]
+
 [[object]]
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
     pattern = ".+_async"
+    ignore = true
+
+    [[object.function]]
+    pattern = "checkout_at"
+        [[object.function.parameter]]
+        name = "options"
+        const = true
+
+    [[object.function]]
+    pattern = "mode_from_string"
     ignore = true

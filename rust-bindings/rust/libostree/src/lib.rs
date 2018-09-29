@@ -5,7 +5,9 @@ extern crate gobject_sys as gobject_ffi;
 
 #[macro_use]
 extern crate glib;
+extern crate gio;
+
+pub use glib::Error;
 
 mod auto;
-
 pub use auto::*;

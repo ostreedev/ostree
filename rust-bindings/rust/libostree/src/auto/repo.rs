@@ -2,8 +2,11 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
+use Error;
+use ObjectType;
 use RepoMode;
 use ffi;
+use gio;
 use glib;
 use glib::StaticType;
 use glib::Value;
@@ -23,9 +26,11 @@ glib_wrapper! {
 }
 
 impl Repo {
-    //pub fn new<P: IsA</*Ignored*/gio::File>>(path: &P) -> Repo {
-    //    unsafe { TODO: call ffi::ostree_repo_new() }
-    //}
+    pub fn new<P: IsA<gio::File>>(path: &P) -> Repo {
+        unsafe {
+            from_glib_full(ffi::ostree_repo_new(path.to_glib_none().0))
+        }
+    }
 
     pub fn new_default() -> Repo {
         unsafe {
@@ -33,21 +38,31 @@ impl Repo {
         }
     }
 
-    //pub fn new_for_sysroot_path<P: IsA</*Ignored*/gio::File>, Q: IsA</*Ignored*/gio::File>>(repo_path: &P, sysroot_path: &Q) -> Repo {
-    //    unsafe { TODO: call ffi::ostree_repo_new_for_sysroot_path() }
-    //}
+    pub fn new_for_sysroot_path<P: IsA<gio::File>, Q: IsA<gio::File>>(repo_path: &P, sysroot_path: &Q) -> Repo {
+        unsafe {
+            from_glib_full(ffi::ostree_repo_new_for_sysroot_path(repo_path.to_glib_none().0, sysroot_path.to_glib_none().0))
+        }
+    }
 
-    //pub fn create_at<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(dfd: i32, path: &str, mode: RepoMode, options: /*Ignored*/&glib::Variant, cancellable: P, error: /*Ignored*/Option<Error>) -> Option<Repo> {
-    //    unsafe { TODO: call ffi::ostree_repo_create_at() }
-    //}
+    pub fn create_at<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path: &str, mode: RepoMode, options: &glib::Variant, cancellable: P) -> Result<Repo, Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ffi::ostree_repo_create_at(dfd, path.to_glib_none().0, mode.to_glib(), options.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //pub fn mode_from_string(mode: &str, out_mode: RepoMode, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_mode_from_string() }
-    //}
-
-    //pub fn open_at<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(dfd: i32, path: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> Option<Repo> {
-    //    unsafe { TODO: call ffi::ostree_repo_open_at() }
-    //}
+    pub fn open_at<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path: &str, cancellable: P) -> Result<Repo, Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ffi::ostree_repo_open_at(dfd, path.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     //pub fn pull_default_console_progress_changed<P: Into<Option</*Unimplemented*/Fundamental: Pointer>>>(progress: /*Ignored*/&AsyncProgress, user_data: P) {
     //    unsafe { TODO: call ffi::ostree_repo_pull_default_console_progress_changed() }
@@ -63,41 +78,41 @@ impl Repo {
     //}
 
     //#[cfg(any(feature = "v2018_5", feature = "dox"))]
-    //pub fn traverse_parents_get_commits(parents: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, object: /*Ignored*/&glib::Variant) -> Vec<String> {
+    //pub fn traverse_parents_get_commits(parents: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, object: &glib::Variant) -> Vec<String> {
     //    unsafe { TODO: call ffi::ostree_repo_traverse_parents_get_commits() }
     //}
 }
 
 pub trait RepoExt {
-    //fn abort_transaction<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn abort_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    //fn add_gpg_signature_summary<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, key_id: &[&str], homedir: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    fn add_gpg_signature_summary<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, key_id: &[&str], homedir: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn append_gpg_signature<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, signature_bytes: /*Ignored*/&glib::Bytes, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn append_gpg_signature<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, signature_bytes: /*Ignored*/&glib::Bytes, cancellable: P) -> Result<(), Error>;
 
-    //fn checkout_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutAtOptions>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn checkout_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutAtOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error>;
 
-    //fn checkout_gc<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn checkout_gc<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    //fn checkout_tree<'a, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, mode: /*Ignored*/RepoCheckoutMode, overwrite_mode: /*Ignored*/RepoCheckoutOverwriteMode, destination: &P, source: /*Ignored*/&RepoFile, source_info: /*Ignored*/&gio::FileInfo, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn checkout_tree<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, mode: /*Ignored*/RepoCheckoutMode, overwrite_mode: /*Ignored*/RepoCheckoutOverwriteMode, destination: &P, source: /*Ignored*/&RepoFile, source_info: /*Ignored*/&gio::FileInfo, cancellable: Q) -> Result<(), Error>;
 
-    //fn checkout_tree_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutOptions>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn checkout_tree_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error>;
 
-    //fn commit_transaction<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, out_stats: /*Ignored*/RepoTransactionStats, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn commit_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, out_stats: /*Ignored*/RepoTransactionStats, cancellable: P) -> Result<(), Error>;
 
     //fn copy_config(&self) -> /*Ignored*/Option<glib::KeyFile>;
 
-    //fn create<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, mode: RepoMode, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn create<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, mode: RepoMode, cancellable: P) -> Result<(), Error>;
 
-    //fn delete_object<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn delete_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<(), Error>;
 
     #[cfg(any(feature = "v2017_12", feature = "dox"))]
     fn equal(&self, b: &Repo) -> bool;
 
-    //fn export_tree_to_archive<'a, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoExportArchiveOptions, root: /*Ignored*/&RepoFile, archive: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn export_tree_to_archive<'a, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoExportArchiveOptions, root: /*Ignored*/&RepoFile, archive: P, cancellable: Q) -> Result<(), Error>;
 
-    //#[cfg(any(feature = "v2017_15", feature = "dox"))]
-    //fn fsck_object<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    #[cfg(any(feature = "v2017_15", feature = "dox"))]
+    fn fsck_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<(), Error>;
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn get_collection_id(&self) -> Option<String>;
@@ -112,142 +127,142 @@ pub trait RepoExt {
 
     fn get_parent(&self) -> Option<Repo>;
 
-    //fn get_path(&self) -> /*Ignored*/Option<gio::File>;
+    fn get_path(&self) -> Option<gio::File>;
 
-    //fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool, error: /*Ignored*/Option<Error>) -> Result<(bool), Error>;
+    fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool) -> Result<bool, Error>;
 
-    //fn get_remote_list_option(&self, remote_name: &str, option_name: &str, error: /*Ignored*/Option<Error>) -> Result<(Vec<String>), Error>;
+    fn get_remote_list_option(&self, remote_name: &str, option_name: &str) -> Result<Vec<String>, Error>;
 
-    //fn get_remote_option<'a, P: Into<Option<&'a str>>>(&self, remote_name: &str, option_name: &str, default_value: P, error: /*Ignored*/Option<Error>) -> Result<(String), Error>;
+    fn get_remote_option<'a, P: Into<Option<&'a str>>>(&self, remote_name: &str, option_name: &str, default_value: P) -> Result<String, Error>;
 
-    //fn gpg_verify_data<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: IsA</*Ignored*/gio::File> + 'b, R: Into<Option<&'b Q>>, S: IsA</*Ignored*/gio::File> + 'c, T: Into<Option<&'c S>>, U: Into<Option<&'d /*Ignored*/gio::Cancellable>>>(&self, remote_name: P, data: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, keyringdir: R, extra_keyring: T, cancellable: U, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult>;
+    //fn gpg_verify_data<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: IsA<gio::File> + 'b, R: Into<Option<&'b Q>>, S: IsA<gio::File> + 'c, T: Into<Option<&'c S>>, U: Into<Option<&'d gio::Cancellable>>>(&self, remote_name: P, data: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, keyringdir: R, extra_keyring: T, cancellable: U) -> Result</*Ignored*/GpgVerifyResult, Error>;
 
-    //fn has_object<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(bool), Error>;
+    fn has_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<bool, Error>;
 
     #[cfg(any(feature = "v2017_12", feature = "dox"))]
     fn hash(&self) -> u32;
 
-    //fn import_archive_to_mtree<'a, 'b, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoImportArchiveOptions, archive: P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool;
+    //fn import_archive_to_mtree<'a, 'b, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoImportArchiveOptions, archive: P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R) -> Result<(), Error>;
 
-    //fn import_object_from<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn import_object_from<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<(), Error>;
 
-    //fn import_object_from_with_trust<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn import_object_from_with_trust<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: P) -> Result<(), Error>;
 
     fn is_system(&self) -> bool;
 
-    //fn is_writable(&self, error: /*Ignored*/Option<Error>) -> bool;
+    fn is_writable(&self) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error>;
 
-    //fn list_commit_objects_starting_with<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn list_commit_objects_starting_with<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error>;
 
-    //fn list_objects<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, flags: /*Ignored*/RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn list_objects<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, flags: /*Ignored*/RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error>;
 
-    //fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: Q) -> Result<(), Error>;
 
-    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error>;
 
-    //fn list_static_delta_names<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn list_static_delta_names<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2015_7", feature = "dox"))]
-    //fn load_commit(&self, checksum: &str, out_commit: /*Ignored*/glib::Variant, error: /*Ignored*/Option<Error>) -> Result<(/*Ignored*/RepoCommitState), Error>;
+    //fn load_commit(&self, checksum: &str) -> Result<(glib::Variant, /*Ignored*/RepoCommitState), Error>;
 
-    //fn load_file<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, out_input: /*Ignored*/Option<gio::InputStream>, out_file_info: /*Ignored*/Option<gio::FileInfo>, out_xattrs: /*Ignored*/Option<glib::Variant>, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn load_file<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, out_input: /*Ignored*/Option<gio::InputStream>, out_file_info: /*Ignored*/Option<gio::FileInfo>, cancellable: P) -> Result<Option<glib::Variant>, Error>;
 
-    //fn load_object_stream<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, out_input: /*Ignored*/gio::InputStream, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(u64), Error>;
+    //fn load_object_stream<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, out_input: /*Ignored*/gio::InputStream, cancellable: P) -> Result<u64, Error>;
 
-    //fn load_variant(&self, objtype: ObjectType, sha256: &str, out_variant: /*Ignored*/glib::Variant, error: /*Ignored*/Option<Error>) -> bool;
+    fn load_variant(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, Error>;
 
-    //fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str, out_variant: /*Ignored*/glib::Variant, error: /*Ignored*/Option<Error>) -> bool;
+    fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, Error>;
 
-    //#[cfg(any(feature = "v2017_15", feature = "dox"))]
-    //fn mark_commit_partial(&self, checksum: &str, is_partial: bool, error: /*Ignored*/Option<Error>) -> bool;
+    #[cfg(any(feature = "v2017_15", feature = "dox"))]
+    fn mark_commit_partial(&self, checksum: &str, is_partial: bool) -> Result<(), Error>;
 
-    //fn open<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn open<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    //fn prepare_transaction<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(bool), Error>;
+    fn prepare_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<bool, Error>;
 
-    //fn prune<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, flags: /*Ignored*/RepoPruneFlags, depth: i32, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(i32, i32, u64), Error>;
+    //fn prune<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, flags: /*Ignored*/RepoPruneFlags, depth: i32, cancellable: P) -> Result<(i32, i32, u64), Error>;
 
-    //fn prune_from_reachable<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(i32, i32, u64), Error>;
+    //fn prune_from_reachable<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P) -> Result<(i32, i32, u64), Error>;
 
-    //fn prune_static_deltas<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, commit: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    fn prune_static_deltas<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, commit: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn pull<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn pull<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn pull_one_dir<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, dir_to_pull: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn pull_one_dir<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name: &str, dir_to_pull: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn pull_with_options<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, remote_name_or_baseurl: &str, options: /*Ignored*/&glib::Variant, progress: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn pull_with_options<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name_or_baseurl: &str, options: &glib::Variant, progress: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn query_object_storage_size<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(u64), Error>;
+    fn query_object_storage_size<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<u64, Error>;
 
-    //fn read_commit<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, ref_: &str, out_root: /*Ignored*/gio::File, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(String), Error>;
+    fn read_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, ref_: &str, cancellable: P) -> Result<(gio::File, String), Error>;
 
-    //fn read_commit_detached_metadata<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, out_metadata: /*Ignored*/glib::Variant, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn read_commit_detached_metadata<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, cancellable: P) -> Result<glib::Variant, Error>;
 
-    //fn regenerate_summary<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, additional_metadata: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    fn regenerate_summary<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, additional_metadata: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn reload_config<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn reload_config<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    //fn remote_add<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, name: &str, url: &str, options: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    fn remote_add<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, url: &str, options: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn remote_change<'a, 'b, 'c, P: IsA</*Ignored*/gio::File> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<&'b /*Ignored*/glib::Variant>>, S: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, sysroot: Q, changeop: /*Ignored*/RepoRemoteChange, name: &str, url: &str, options: R, cancellable: S, error: /*Ignored*/Option<Error>) -> bool;
+    //fn remote_change<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<&'b glib::Variant>>, S: Into<Option<&'c gio::Cancellable>>>(&self, sysroot: Q, changeop: /*Ignored*/RepoRemoteChange, name: &str, url: &str, options: R, cancellable: S) -> Result<(), Error>;
 
-    //fn remote_delete<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, name: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn remote_delete<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, name: &str, cancellable: P) -> Result<(), Error>;
 
-    //fn remote_fetch_summary<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, name: &str, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn remote_fetch_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, name: &str, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: P) -> Result<(), Error>;
 
-    //fn remote_fetch_summary_with_options<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, name: &str, options: P, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn remote_fetch_summary_with_options<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, options: P, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: Q) -> Result<(), Error>;
 
-    //fn remote_get_gpg_verify(&self, name: &str, error: /*Ignored*/Option<Error>) -> Result<(bool), Error>;
+    fn remote_get_gpg_verify(&self, name: &str) -> Result<bool, Error>;
 
-    //fn remote_get_gpg_verify_summary(&self, name: &str, error: /*Ignored*/Option<Error>) -> Result<(bool), Error>;
+    fn remote_get_gpg_verify_summary(&self, name: &str) -> Result<bool, Error>;
 
-    //fn remote_get_url(&self, name: &str, error: /*Ignored*/Option<Error>) -> Result<(String), Error>;
+    fn remote_get_url(&self, name: &str) -> Result<String, Error>;
 
-    //fn remote_gpg_import<'a, 'b, P: IsA</*Ignored*/gio::InputStream> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<u32>>, S: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, name: &str, source_stream: Q, key_ids: &[&str], out_imported: R, cancellable: S, error: /*Ignored*/Option<Error>) -> bool;
+    //fn remote_gpg_import<'a, 'b, P: IsA</*Ignored*/gio::InputStream> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<u32>>, S: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, source_stream: Q, key_ids: &[&str], out_imported: R, cancellable: S) -> Result<(), Error>;
 
     fn remote_list(&self) -> Vec<String>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn remote_list_collection_refs<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn remote_list_collection_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error>;
 
-    //fn remote_list_refs<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
-
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_collection_ref<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(Option<String>), Error>;
+    //fn remote_list_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_keyring_for_collection<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, collection_id: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<Remote>;
-
-    //fn resolve_rev(&self, refspec: &str, allow_noent: bool, error: /*Ignored*/Option<Error>) -> Result<(String), Error>;
-
-    //fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags, error: /*Ignored*/Option<Error>) -> Result<(String), Error>;
-
-    //fn scan_hardlinks<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
-
-    //fn set_alias_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, remote: P, ref_: &str, target: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool;
-
-    //fn set_cache_dir<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn resolve_collection_ref<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags, cancellable: P) -> Result<Option<String>, Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn set_collection_id<'a, P: Into<Option<&'a str>>>(&self, collection_id: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn resolve_keyring_for_collection<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, collection_id: &str, cancellable: P) -> Result</*Ignored*/Remote, Error>;
+
+    fn resolve_rev(&self, refspec: &str, allow_noent: bool) -> Result<String, Error>;
+
+    //fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags) -> Result<String, Error>;
+
+    fn scan_hardlinks<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
+
+    fn set_alias_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, target: Q, cancellable: R) -> Result<(), Error>;
+
+    fn set_cache_dir<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error>;
+
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    fn set_collection_id<'a, P: Into<Option<&'a str>>>(&self, collection_id: P) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn set_collection_ref_immediate<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, checksum: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn set_collection_ref_immediate<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, checksum: P, cancellable: Q) -> Result<(), Error>;
 
     fn set_disable_fsync(&self, disable_fsync: bool);
 
-    //fn set_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, remote: P, ref_: &str, checksum: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool;
+    fn set_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, checksum: Q, cancellable: R) -> Result<(), Error>;
 
-    //fn sign_commit<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, key_id: &str, homedir: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    fn sign_commit<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, commit_checksum: &str, key_id: &str, homedir: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn sign_delta<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, from_commit: &str, to_commit: &str, key_id: &str, homedir: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn sign_delta<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, from_commit: &str, to_commit: &str, key_id: &str, homedir: &str, cancellable: P) -> Result<(), Error>;
 
-    //fn static_delta_execute_offline<'a, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, dir_or_file: &P, skip_validation: bool, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    fn static_delta_execute_offline<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, dir_or_file: &P, skip_validation: bool, cancellable: Q) -> Result<(), Error>;
 
-    //fn static_delta_generate<'a, 'b, 'c, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/glib::Variant>>, R: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, opt: /*Ignored*/StaticDeltaGenerateOpt, from: &str, to: &str, metadata: P, params: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool;
+    //fn static_delta_generate<'a, 'b, 'c, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b glib::Variant>>, R: Into<Option<&'c gio::Cancellable>>>(&self, opt: /*Ignored*/StaticDeltaGenerateOpt, from: &str, to: &str, metadata: P, params: Q, cancellable: R) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
     //fn transaction_set_collection_ref<'a, P: Into<Option<&'a str>>>(&self, ref_: /*Ignored*/&CollectionRef, checksum: P);
@@ -256,87 +271,107 @@ pub trait RepoExt {
 
     fn transaction_set_refspec<'a, P: Into<Option<&'a str>>>(&self, refspec: &str, checksum: P);
 
-    //fn traverse_commit<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn traverse_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error>;
 
-    //fn traverse_commit_union<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn traverse_commit_union<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_5", feature = "dox"))]
-    //fn traverse_commit_union_with_parents<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, inout_parents: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn traverse_commit_union_with_parents<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, inout_parents: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn traverse_reachable_refs<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn traverse_reachable_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error>;
 
-    //fn verify_commit<'a, 'b, 'c, P: IsA</*Ignored*/gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA</*Ignored*/gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T, error: /*Ignored*/Option<Error>) -> bool;
+    fn verify_commit<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA<gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T) -> Result<(), Error>;
 
-    //fn verify_commit_ext<'a, 'b, 'c, P: IsA</*Ignored*/gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA</*Ignored*/gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult>;
+    //fn verify_commit_ext<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA<gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T) -> Result</*Ignored*/GpgVerifyResult, Error>;
 
-    //fn verify_commit_for_remote<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, remote_name: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult>;
+    //fn verify_commit_for_remote<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, remote_name: &str, cancellable: P) -> Result</*Ignored*/GpgVerifyResult, Error>;
 
-    //fn verify_summary<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, summary: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, cancellable: P, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult>;
+    //fn verify_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, summary: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, cancellable: P) -> Result</*Ignored*/GpgVerifyResult, Error>;
 
-    //fn write_archive_to_mtree<'a, 'b, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, archive: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, autocreate_parents: bool, cancellable: R, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_archive_to_mtree<'a, 'b, P: IsA<gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, archive: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, autocreate_parents: bool, cancellable: R) -> Result<(), Error>;
 
-    //fn write_commit<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d /*Ignored*/glib::Variant>>, T: Into<Option<&'e /*Ignored*/gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, cancellable: T, error: /*Ignored*/Option<Error>) -> Result<(String), Error>;
+    //fn write_commit<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d glib::Variant>>, T: Into<Option<&'e gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, cancellable: T) -> Result<String, Error>;
 
-    //fn write_commit_detached_metadata<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, metadata: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    fn write_commit_detached_metadata<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, checksum: &str, metadata: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn write_commit_with_time<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d /*Ignored*/glib::Variant>>, T: Into<Option<&'e /*Ignored*/gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, time: u64, cancellable: T, error: /*Ignored*/Option<Error>) -> Result<(String), Error>;
+    //fn write_commit_with_time<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d glib::Variant>>, T: Into<Option<&'e gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, time: u64, cancellable: T) -> Result<String, Error>;
 
-    //fn write_config(&self, new_config: /*Ignored*/&glib::KeyFile, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_config(&self, new_config: /*Ignored*/&glib::KeyFile) -> Result<(), Error>;
 
-    //fn write_content<'a, 'b, P: Into<Option<&'a str>>, Q: IsA</*Ignored*/gio::InputStream>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, expected_checksum: P, object_input: &Q, length: u64, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: R, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_content<'a, 'b, P: Into<Option<&'a str>>, Q: IsA</*Ignored*/gio::InputStream>, R: Into<Option<&'b gio::Cancellable>>>(&self, expected_checksum: P, object_input: &Q, length: u64, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: R) -> Result<(), Error>;
 
-    //fn write_content_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, object_input: &P, length: u64, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_content_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, object_input: &P, length: u64, cancellable: Q) -> Result<(), Error>;
 
-    //fn write_dfd_to_mtree<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, dfd: i32, path: &str, mtree: /*Ignored*/&MutableTree, modifier: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_dfd_to_mtree<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, dfd: i32, path: &str, mtree: /*Ignored*/&MutableTree, modifier: P, cancellable: Q) -> Result<(), Error>;
 
-    //fn write_directory_to_mtree<'a, 'b, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, dir: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_directory_to_mtree<'a, 'b, P: IsA<gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, dir: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R) -> Result<(), Error>;
 
-    //fn write_metadata<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, expected_checksum: P, object: /*Ignored*/&glib::Variant, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_metadata<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, objtype: ObjectType, expected_checksum: P, object: &glib::Variant, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Q) -> Result<(), Error>;
 
-    //fn write_metadata_stream_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, object_input: &P, length: u64, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_metadata_stream_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, object_input: &P, length: u64, cancellable: Q) -> Result<(), Error>;
 
-    //fn write_metadata_trusted<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, variant: /*Ignored*/&glib::Variant, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    fn write_metadata_trusted<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, variant: &glib::Variant, cancellable: P) -> Result<(), Error>;
 
-    //fn write_mtree<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, mtree: /*Ignored*/&MutableTree, out_file: /*Ignored*/gio::File, cancellable: P, error: /*Ignored*/Option<Error>) -> bool;
+    //fn write_mtree<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, mtree: /*Ignored*/&MutableTree, cancellable: P) -> Result<gio::File, Error>;
 
     fn get_property_remotes_config_dir(&self) -> Option<String>;
 
-    //fn get_property_sysroot_path(&self) -> /*Ignored*/Option<gio::File>;
+    fn get_property_sysroot_path(&self) -> Option<gio::File>;
 
     //fn connect_gpg_verify_result<Unsupported or ignored types>(&self, f: F) -> SignalHandlerId;
 }
 
 impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
-    //fn abort_transaction<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_abort_transaction() }
-    //}
+    fn abort_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_abort_transaction(self.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn add_gpg_signature_summary<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, key_id: &[&str], homedir: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_add_gpg_signature_summary() }
-    //}
+    fn add_gpg_signature_summary<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, key_id: &[&str], homedir: P, cancellable: Q) -> Result<(), Error> {
+        let homedir = homedir.into();
+        let homedir = homedir.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_add_gpg_signature_summary(self.to_glib_none().0, key_id.to_glib_none().0, homedir.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn append_gpg_signature<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, signature_bytes: /*Ignored*/&glib::Bytes, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn append_gpg_signature<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, signature_bytes: /*Ignored*/&glib::Bytes, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_append_gpg_signature() }
     //}
 
-    //fn checkout_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutAtOptions>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn checkout_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutAtOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_checkout_at() }
     //}
 
-    //fn checkout_gc<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_checkout_gc() }
-    //}
+    fn checkout_gc<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_checkout_gc(self.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn checkout_tree<'a, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, mode: /*Ignored*/RepoCheckoutMode, overwrite_mode: /*Ignored*/RepoCheckoutOverwriteMode, destination: &P, source: /*Ignored*/&RepoFile, source_info: /*Ignored*/&gio::FileInfo, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn checkout_tree<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, mode: /*Ignored*/RepoCheckoutMode, overwrite_mode: /*Ignored*/RepoCheckoutOverwriteMode, destination: &P, source: /*Ignored*/&RepoFile, source_info: /*Ignored*/&gio::FileInfo, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_checkout_tree() }
     //}
 
-    //fn checkout_tree_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutOptions>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn checkout_tree_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_checkout_tree_at() }
     //}
 
-    //fn commit_transaction<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, out_stats: /*Ignored*/RepoTransactionStats, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn commit_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, out_stats: /*Ignored*/RepoTransactionStats, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_commit_transaction() }
     //}
 
@@ -344,13 +379,25 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
     //    unsafe { TODO: call ffi::ostree_repo_copy_config() }
     //}
 
-    //fn create<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, mode: RepoMode, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_create() }
-    //}
+    fn create<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, mode: RepoMode, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_create(self.to_glib_none().0, mode.to_glib(), cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn delete_object<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_delete_object() }
-    //}
+    fn delete_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_delete_object(self.to_glib_none().0, objtype.to_glib(), sha256.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     #[cfg(any(feature = "v2017_12", feature = "dox"))]
     fn equal(&self, b: &Repo) -> bool {
@@ -359,14 +406,20 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
-    //fn export_tree_to_archive<'a, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoExportArchiveOptions, root: /*Ignored*/&RepoFile, archive: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn export_tree_to_archive<'a, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoExportArchiveOptions, root: /*Ignored*/&RepoFile, archive: P, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_export_tree_to_archive() }
     //}
 
-    //#[cfg(any(feature = "v2017_15", feature = "dox"))]
-    //fn fsck_object<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_fsck_object() }
-    //}
+    #[cfg(any(feature = "v2017_15", feature = "dox"))]
+    fn fsck_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_fsck_object(self.to_glib_none().0, objtype.to_glib(), sha256.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn get_collection_id(&self) -> Option<String> {
@@ -403,29 +456,55 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
-    //fn get_path(&self) -> /*Ignored*/Option<gio::File> {
-    //    unsafe { TODO: call ffi::ostree_repo_get_path() }
-    //}
+    fn get_path(&self) -> Option<gio::File> {
+        unsafe {
+            from_glib_none(ffi::ostree_repo_get_path(self.to_glib_none().0))
+        }
+    }
 
-    //fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool, error: /*Ignored*/Option<Error>) -> Result<(bool), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_get_remote_boolean_option() }
-    //}
+    fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool) -> Result<bool, Error> {
+        unsafe {
+            let mut out_value = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_get_remote_boolean_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, default_value.to_glib(), &mut out_value, &mut error);
+            if error.is_null() { Ok(from_glib(out_value)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn get_remote_list_option(&self, remote_name: &str, option_name: &str, error: /*Ignored*/Option<Error>) -> Result<(Vec<String>), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_get_remote_list_option() }
-    //}
+    fn get_remote_list_option(&self, remote_name: &str, option_name: &str) -> Result<Vec<String>, Error> {
+        unsafe {
+            let mut out_value = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_get_remote_list_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, &mut out_value, &mut error);
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_full(out_value)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn get_remote_option<'a, P: Into<Option<&'a str>>>(&self, remote_name: &str, option_name: &str, default_value: P, error: /*Ignored*/Option<Error>) -> Result<(String), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_get_remote_option() }
-    //}
+    fn get_remote_option<'a, P: Into<Option<&'a str>>>(&self, remote_name: &str, option_name: &str, default_value: P) -> Result<String, Error> {
+        let default_value = default_value.into();
+        let default_value = default_value.to_glib_none();
+        unsafe {
+            let mut out_value = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_get_remote_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, default_value.0, &mut out_value, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_value)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn gpg_verify_data<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: IsA</*Ignored*/gio::File> + 'b, R: Into<Option<&'b Q>>, S: IsA</*Ignored*/gio::File> + 'c, T: Into<Option<&'c S>>, U: Into<Option<&'d /*Ignored*/gio::Cancellable>>>(&self, remote_name: P, data: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, keyringdir: R, extra_keyring: T, cancellable: U, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult> {
+    //fn gpg_verify_data<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: IsA<gio::File> + 'b, R: Into<Option<&'b Q>>, S: IsA<gio::File> + 'c, T: Into<Option<&'c S>>, U: Into<Option<&'d gio::Cancellable>>>(&self, remote_name: P, data: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, keyringdir: R, extra_keyring: T, cancellable: U) -> Result</*Ignored*/GpgVerifyResult, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_gpg_verify_data() }
     //}
 
-    //fn has_object<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(bool), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_has_object() }
-    //}
+    fn has_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<bool, Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut out_have_object = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_has_object(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, &mut out_have_object, cancellable.0, &mut error);
+            if error.is_null() { Ok(from_glib(out_have_object)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     #[cfg(any(feature = "v2017_12", feature = "dox"))]
     fn hash(&self) -> u32 {
@@ -434,17 +513,29 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
-    //fn import_archive_to_mtree<'a, 'b, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoImportArchiveOptions, archive: P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool {
+    //fn import_archive_to_mtree<'a, 'b, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoImportArchiveOptions, archive: P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_import_archive_to_mtree() }
     //}
 
-    //fn import_object_from<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_import_object_from() }
-    //}
+    fn import_object_from<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_import_object_from(self.to_glib_none().0, source.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn import_object_from_with_trust<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_import_object_from_with_trust() }
-    //}
+    fn import_object_from_with_trust<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_import_object_from_with_trust(self.to_glib_none().0, source.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, trusted.to_glib(), cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     fn is_system(&self) -> bool {
         unsafe {
@@ -452,146 +543,250 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
-    //fn is_writable(&self, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_is_writable() }
-    //}
+    fn is_writable(&self) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_is_writable(self.to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_collection_refs() }
     //}
 
-    //fn list_commit_objects_starting_with<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn list_commit_objects_starting_with<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_commit_objects_starting_with() }
     //}
 
-    //fn list_objects<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, flags: /*Ignored*/RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn list_objects<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, flags: /*Ignored*/RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_objects() }
     //}
 
-    //fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_refs() }
     //}
 
-    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_refs_ext() }
     //}
 
-    //fn list_static_delta_names<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn list_static_delta_names<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_static_delta_names() }
     //}
 
     //#[cfg(any(feature = "v2015_7", feature = "dox"))]
-    //fn load_commit(&self, checksum: &str, out_commit: /*Ignored*/glib::Variant, error: /*Ignored*/Option<Error>) -> Result<(/*Ignored*/RepoCommitState), Error> {
+    //fn load_commit(&self, checksum: &str) -> Result<(glib::Variant, /*Ignored*/RepoCommitState), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_load_commit() }
     //}
 
-    //fn load_file<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, out_input: /*Ignored*/Option<gio::InputStream>, out_file_info: /*Ignored*/Option<gio::FileInfo>, out_xattrs: /*Ignored*/Option<glib::Variant>, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn load_file<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, out_input: /*Ignored*/Option<gio::InputStream>, out_file_info: /*Ignored*/Option<gio::FileInfo>, cancellable: P) -> Result<Option<glib::Variant>, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_load_file() }
     //}
 
-    //fn load_object_stream<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, out_input: /*Ignored*/gio::InputStream, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(u64), Error> {
+    //fn load_object_stream<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, out_input: /*Ignored*/gio::InputStream, cancellable: P) -> Result<u64, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_load_object_stream() }
     //}
 
-    //fn load_variant(&self, objtype: ObjectType, sha256: &str, out_variant: /*Ignored*/glib::Variant, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_load_variant() }
-    //}
+    fn load_variant(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, Error> {
+        unsafe {
+            let mut out_variant = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_load_variant(self.to_glib_none().0, objtype.to_glib(), sha256.to_glib_none().0, &mut out_variant, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_variant)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str, out_variant: /*Ignored*/glib::Variant, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_load_variant_if_exists() }
-    //}
+    fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, Error> {
+        unsafe {
+            let mut out_variant = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_load_variant_if_exists(self.to_glib_none().0, objtype.to_glib(), sha256.to_glib_none().0, &mut out_variant, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_variant)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //#[cfg(any(feature = "v2017_15", feature = "dox"))]
-    //fn mark_commit_partial(&self, checksum: &str, is_partial: bool, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_mark_commit_partial() }
-    //}
+    #[cfg(any(feature = "v2017_15", feature = "dox"))]
+    fn mark_commit_partial(&self, checksum: &str, is_partial: bool) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_mark_commit_partial(self.to_glib_none().0, checksum.to_glib_none().0, is_partial.to_glib(), &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn open<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_open() }
-    //}
+    fn open<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_open(self.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn prepare_transaction<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(bool), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_prepare_transaction() }
-    //}
+    fn prepare_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<bool, Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut out_transaction_resume = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_prepare_transaction(self.to_glib_none().0, &mut out_transaction_resume, cancellable.0, &mut error);
+            if error.is_null() { Ok(from_glib(out_transaction_resume)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn prune<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, flags: /*Ignored*/RepoPruneFlags, depth: i32, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(i32, i32, u64), Error> {
+    //fn prune<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, flags: /*Ignored*/RepoPruneFlags, depth: i32, cancellable: P) -> Result<(i32, i32, u64), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_prune() }
     //}
 
-    //fn prune_from_reachable<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(i32, i32, u64), Error> {
+    //fn prune_from_reachable<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P) -> Result<(i32, i32, u64), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_prune_from_reachable() }
     //}
 
-    //fn prune_static_deltas<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, commit: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_prune_static_deltas() }
-    //}
+    fn prune_static_deltas<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, commit: P, cancellable: Q) -> Result<(), Error> {
+        let commit = commit.into();
+        let commit = commit.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_prune_static_deltas(self.to_glib_none().0, commit.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn pull<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn pull<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_pull() }
     //}
 
-    //fn pull_one_dir<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, dir_to_pull: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn pull_one_dir<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name: &str, dir_to_pull: &str, refs_to_fetch: &[&str], flags: /*Ignored*/RepoPullFlags, progress: P, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_pull_one_dir() }
     //}
 
-    //fn pull_with_options<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, remote_name_or_baseurl: &str, options: /*Ignored*/&glib::Variant, progress: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn pull_with_options<'a, 'b, P: Into<Option<&'a /*Ignored*/AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name_or_baseurl: &str, options: &glib::Variant, progress: P, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_pull_with_options() }
     //}
 
-    //fn query_object_storage_size<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(u64), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_query_object_storage_size() }
-    //}
+    fn query_object_storage_size<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<u64, Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut out_size = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_query_object_storage_size(self.to_glib_none().0, objtype.to_glib(), sha256.to_glib_none().0, &mut out_size, cancellable.0, &mut error);
+            if error.is_null() { Ok(out_size) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn read_commit<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, ref_: &str, out_root: /*Ignored*/gio::File, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(String), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_read_commit() }
-    //}
+    fn read_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, ref_: &str, cancellable: P) -> Result<(gio::File, String), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut out_root = ptr::null_mut();
+            let mut out_commit = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_read_commit(self.to_glib_none().0, ref_.to_glib_none().0, &mut out_root, &mut out_commit, cancellable.0, &mut error);
+            if error.is_null() { Ok((from_glib_full(out_root), from_glib_full(out_commit))) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn read_commit_detached_metadata<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, out_metadata: /*Ignored*/glib::Variant, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_read_commit_detached_metadata() }
-    //}
+    fn read_commit_detached_metadata<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, cancellable: P) -> Result<glib::Variant, Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut out_metadata = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_read_commit_detached_metadata(self.to_glib_none().0, checksum.to_glib_none().0, &mut out_metadata, cancellable.0, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_metadata)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn regenerate_summary<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, additional_metadata: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_regenerate_summary() }
-    //}
+    fn regenerate_summary<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, additional_metadata: P, cancellable: Q) -> Result<(), Error> {
+        let additional_metadata = additional_metadata.into();
+        let additional_metadata = additional_metadata.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_regenerate_summary(self.to_glib_none().0, additional_metadata.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn reload_config<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_reload_config() }
-    //}
+    fn reload_config<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_reload_config(self.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn remote_add<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, name: &str, url: &str, options: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_remote_add() }
-    //}
+    fn remote_add<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, url: &str, options: P, cancellable: Q) -> Result<(), Error> {
+        let options = options.into();
+        let options = options.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_remote_add(self.to_glib_none().0, name.to_glib_none().0, url.to_glib_none().0, options.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn remote_change<'a, 'b, 'c, P: IsA</*Ignored*/gio::File> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<&'b /*Ignored*/glib::Variant>>, S: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, sysroot: Q, changeop: /*Ignored*/RepoRemoteChange, name: &str, url: &str, options: R, cancellable: S, error: /*Ignored*/Option<Error>) -> bool {
+    //fn remote_change<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<&'b glib::Variant>>, S: Into<Option<&'c gio::Cancellable>>>(&self, sysroot: Q, changeop: /*Ignored*/RepoRemoteChange, name: &str, url: &str, options: R, cancellable: S) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_remote_change() }
     //}
 
-    //fn remote_delete<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, name: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_remote_delete() }
-    //}
+    fn remote_delete<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, name: &str, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_remote_delete(self.to_glib_none().0, name.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn remote_fetch_summary<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, name: &str, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn remote_fetch_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, name: &str, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_remote_fetch_summary() }
     //}
 
-    //fn remote_fetch_summary_with_options<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, name: &str, options: P, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn remote_fetch_summary_with_options<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, options: P, out_summary: /*Ignored*/glib::Bytes, out_signatures: /*Ignored*/glib::Bytes, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_remote_fetch_summary_with_options() }
     //}
 
-    //fn remote_get_gpg_verify(&self, name: &str, error: /*Ignored*/Option<Error>) -> Result<(bool), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_remote_get_gpg_verify() }
-    //}
+    fn remote_get_gpg_verify(&self, name: &str) -> Result<bool, Error> {
+        unsafe {
+            let mut out_gpg_verify = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_remote_get_gpg_verify(self.to_glib_none().0, name.to_glib_none().0, &mut out_gpg_verify, &mut error);
+            if error.is_null() { Ok(from_glib(out_gpg_verify)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn remote_get_gpg_verify_summary(&self, name: &str, error: /*Ignored*/Option<Error>) -> Result<(bool), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_remote_get_gpg_verify_summary() }
-    //}
+    fn remote_get_gpg_verify_summary(&self, name: &str) -> Result<bool, Error> {
+        unsafe {
+            let mut out_gpg_verify_summary = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_remote_get_gpg_verify_summary(self.to_glib_none().0, name.to_glib_none().0, &mut out_gpg_verify_summary, &mut error);
+            if error.is_null() { Ok(from_glib(out_gpg_verify_summary)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn remote_get_url(&self, name: &str, error: /*Ignored*/Option<Error>) -> Result<(String), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_remote_get_url() }
-    //}
+    fn remote_get_url(&self, name: &str) -> Result<String, Error> {
+        unsafe {
+            let mut out_url = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_remote_get_url(self.to_glib_none().0, name.to_glib_none().0, &mut out_url, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_url)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn remote_gpg_import<'a, 'b, P: IsA</*Ignored*/gio::InputStream> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<u32>>, S: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, name: &str, source_stream: Q, key_ids: &[&str], out_imported: R, cancellable: S, error: /*Ignored*/Option<Error>) -> bool {
+    //fn remote_gpg_import<'a, 'b, P: IsA</*Ignored*/gio::InputStream> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<u32>>, S: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, source_stream: Q, key_ids: &[&str], out_imported: R, cancellable: S) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_remote_gpg_import() }
     //}
 
@@ -604,51 +799,84 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
     }
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn remote_list_collection_refs<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn remote_list_collection_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_remote_list_collection_refs() }
     //}
 
-    //fn remote_list_refs<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn remote_list_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_remote_list_refs() }
     //}
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_collection_ref<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags, cancellable: P, error: /*Ignored*/Option<Error>) -> Result<(Option<String>), Error> {
+    //fn resolve_collection_ref<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags, cancellable: P) -> Result<Option<String>, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_resolve_collection_ref() }
     //}
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_keyring_for_collection<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, collection_id: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<Remote> {
+    //fn resolve_keyring_for_collection<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, collection_id: &str, cancellable: P) -> Result</*Ignored*/Remote, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_resolve_keyring_for_collection() }
     //}
 
-    //fn resolve_rev(&self, refspec: &str, allow_noent: bool, error: /*Ignored*/Option<Error>) -> Result<(String), Error> {
-    //    unsafe { TODO: call ffi::ostree_repo_resolve_rev() }
-    //}
+    fn resolve_rev(&self, refspec: &str, allow_noent: bool) -> Result<String, Error> {
+        unsafe {
+            let mut out_rev = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_resolve_rev(self.to_glib_none().0, refspec.to_glib_none().0, allow_noent.to_glib(), &mut out_rev, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_rev)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags, error: /*Ignored*/Option<Error>) -> Result<(String), Error> {
+    //fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: /*Ignored*/RepoResolveRevExtFlags) -> Result<String, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_resolve_rev_ext() }
     //}
 
-    //fn scan_hardlinks<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_scan_hardlinks() }
-    //}
+    fn scan_hardlinks<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_scan_hardlinks(self.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn set_alias_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, remote: P, ref_: &str, target: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_set_alias_ref_immediate() }
-    //}
+    fn set_alias_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, target: Q, cancellable: R) -> Result<(), Error> {
+        let remote = remote.into();
+        let remote = remote.to_glib_none();
+        let target = target.into();
+        let target = target.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_set_alias_ref_immediate(self.to_glib_none().0, remote.0, ref_.to_glib_none().0, target.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn set_cache_dir<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_set_cache_dir() }
-    //}
+    fn set_cache_dir<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_set_cache_dir(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    fn set_collection_id<'a, P: Into<Option<&'a str>>>(&self, collection_id: P) -> Result<(), Error> {
+        let collection_id = collection_id.into();
+        let collection_id = collection_id.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_set_collection_id(self.to_glib_none().0, collection_id.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn set_collection_id<'a, P: Into<Option<&'a str>>>(&self, collection_id: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_set_collection_id() }
-    //}
-
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn set_collection_ref_immediate<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, checksum: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn set_collection_ref_immediate<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, ref_: /*Ignored*/&CollectionRef, checksum: P, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_set_collection_ref_immediate() }
     //}
 
@@ -658,23 +886,53 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
-    //fn set_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, remote: P, ref_: &str, checksum: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_set_ref_immediate() }
-    //}
+    fn set_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, checksum: Q, cancellable: R) -> Result<(), Error> {
+        let remote = remote.into();
+        let remote = remote.to_glib_none();
+        let checksum = checksum.into();
+        let checksum = checksum.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_set_ref_immediate(self.to_glib_none().0, remote.0, ref_.to_glib_none().0, checksum.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn sign_commit<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, key_id: &str, homedir: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_sign_commit() }
-    //}
+    fn sign_commit<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, commit_checksum: &str, key_id: &str, homedir: P, cancellable: Q) -> Result<(), Error> {
+        let homedir = homedir.into();
+        let homedir = homedir.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_sign_commit(self.to_glib_none().0, commit_checksum.to_glib_none().0, key_id.to_glib_none().0, homedir.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn sign_delta<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, from_commit: &str, to_commit: &str, key_id: &str, homedir: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_sign_delta() }
-    //}
+    fn sign_delta<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, from_commit: &str, to_commit: &str, key_id: &str, homedir: &str, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_sign_delta(self.to_glib_none().0, from_commit.to_glib_none().0, to_commit.to_glib_none().0, key_id.to_glib_none().0, homedir.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn static_delta_execute_offline<'a, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, dir_or_file: &P, skip_validation: bool, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_static_delta_execute_offline() }
-    //}
+    fn static_delta_execute_offline<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, dir_or_file: &P, skip_validation: bool, cancellable: Q) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_static_delta_execute_offline(self.to_glib_none().0, dir_or_file.to_glib_none().0, skip_validation.to_glib(), cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn static_delta_generate<'a, 'b, 'c, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/glib::Variant>>, R: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, opt: /*Ignored*/StaticDeltaGenerateOpt, from: &str, to: &str, metadata: P, params: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool {
+    //fn static_delta_generate<'a, 'b, 'c, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b glib::Variant>>, R: Into<Option<&'c gio::Cancellable>>>(&self, opt: /*Ignored*/StaticDeltaGenerateOpt, from: &str, to: &str, metadata: P, params: Q, cancellable: R) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_static_delta_generate() }
     //}
 
@@ -701,89 +959,113 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
-    //fn traverse_commit<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn traverse_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_traverse_commit() }
     //}
 
-    //fn traverse_commit_union<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn traverse_commit_union<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_traverse_commit_union() }
     //}
 
     //#[cfg(any(feature = "v2018_5", feature = "dox"))]
-    //fn traverse_commit_union_with_parents<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, inout_parents: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn traverse_commit_union_with_parents<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, inout_parents: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_traverse_commit_union_with_parents() }
     //}
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn traverse_reachable_refs<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn traverse_reachable_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_traverse_reachable_refs() }
     //}
 
-    //fn verify_commit<'a, 'b, 'c, P: IsA</*Ignored*/gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA</*Ignored*/gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_verify_commit() }
-    //}
+    fn verify_commit<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA<gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T) -> Result<(), Error> {
+        let keyringdir = keyringdir.into();
+        let keyringdir = keyringdir.to_glib_none();
+        let extra_keyring = extra_keyring.into();
+        let extra_keyring = extra_keyring.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_verify_commit(self.to_glib_none().0, commit_checksum.to_glib_none().0, keyringdir.0, extra_keyring.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn verify_commit_ext<'a, 'b, 'c, P: IsA</*Ignored*/gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA</*Ignored*/gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult> {
+    //fn verify_commit_ext<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA<gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T) -> Result</*Ignored*/GpgVerifyResult, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_verify_commit_ext() }
     //}
 
-    //fn verify_commit_for_remote<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, commit_checksum: &str, remote_name: &str, cancellable: P, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult> {
+    //fn verify_commit_for_remote<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, remote_name: &str, cancellable: P) -> Result</*Ignored*/GpgVerifyResult, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_verify_commit_for_remote() }
     //}
 
-    //fn verify_summary<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, remote_name: &str, summary: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, cancellable: P, error: /*Ignored*/Option<Error>) -> /*Ignored*/Option<GpgVerifyResult> {
+    //fn verify_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, summary: /*Ignored*/&glib::Bytes, signatures: /*Ignored*/&glib::Bytes, cancellable: P) -> Result</*Ignored*/GpgVerifyResult, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_verify_summary() }
     //}
 
-    //fn write_archive_to_mtree<'a, 'b, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, archive: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, autocreate_parents: bool, cancellable: R, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_archive_to_mtree<'a, 'b, P: IsA<gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, archive: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, autocreate_parents: bool, cancellable: R) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_archive_to_mtree() }
     //}
 
-    //fn write_commit<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d /*Ignored*/glib::Variant>>, T: Into<Option<&'e /*Ignored*/gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, cancellable: T, error: /*Ignored*/Option<Error>) -> Result<(String), Error> {
+    //fn write_commit<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d glib::Variant>>, T: Into<Option<&'e gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, cancellable: T) -> Result<String, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_commit() }
     //}
 
-    //fn write_commit_detached_metadata<'a, 'b, P: Into<Option<&'a /*Ignored*/glib::Variant>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, metadata: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_write_commit_detached_metadata() }
-    //}
+    fn write_commit_detached_metadata<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, checksum: &str, metadata: P, cancellable: Q) -> Result<(), Error> {
+        let metadata = metadata.into();
+        let metadata = metadata.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_write_commit_detached_metadata(self.to_glib_none().0, checksum.to_glib_none().0, metadata.0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn write_commit_with_time<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d /*Ignored*/glib::Variant>>, T: Into<Option<&'e /*Ignored*/gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, time: u64, cancellable: T, error: /*Ignored*/Option<Error>) -> Result<(String), Error> {
+    //fn write_commit_with_time<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d glib::Variant>>, T: Into<Option<&'e gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: /*Ignored*/&RepoFile, time: u64, cancellable: T) -> Result<String, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_commit_with_time() }
     //}
 
-    //fn write_config(&self, new_config: /*Ignored*/&glib::KeyFile, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_config(&self, new_config: /*Ignored*/&glib::KeyFile) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_config() }
     //}
 
-    //fn write_content<'a, 'b, P: Into<Option<&'a str>>, Q: IsA</*Ignored*/gio::InputStream>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, expected_checksum: P, object_input: &Q, length: u64, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: R, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_content<'a, 'b, P: Into<Option<&'a str>>, Q: IsA</*Ignored*/gio::InputStream>, R: Into<Option<&'b gio::Cancellable>>>(&self, expected_checksum: P, object_input: &Q, length: u64, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: R) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_content() }
     //}
 
-    //fn write_content_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, checksum: &str, object_input: &P, length: u64, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_content_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, object_input: &P, length: u64, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_content_trusted() }
     //}
 
-    //fn write_dfd_to_mtree<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, dfd: i32, path: &str, mtree: /*Ignored*/&MutableTree, modifier: P, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_dfd_to_mtree<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, dfd: i32, path: &str, mtree: /*Ignored*/&MutableTree, modifier: P, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_dfd_to_mtree() }
     //}
 
-    //fn write_directory_to_mtree<'a, 'b, P: IsA</*Ignored*/gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, dir: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_directory_to_mtree<'a, 'b, P: IsA<gio::File>, Q: Into<Option<&'a /*Ignored*/RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, dir: &P, mtree: /*Ignored*/&MutableTree, modifier: Q, cancellable: R) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_directory_to_mtree() }
     //}
 
-    //fn write_metadata<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, expected_checksum: P, object: /*Ignored*/&glib::Variant, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_metadata<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, objtype: ObjectType, expected_checksum: P, object: &glib::Variant, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_metadata() }
     //}
 
-    //fn write_metadata_stream_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, object_input: &P, length: u64, cancellable: Q, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_metadata_stream_trusted<'a, P: IsA</*Ignored*/gio::InputStream>, Q: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, object_input: &P, length: u64, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_metadata_stream_trusted() }
     //}
 
-    //fn write_metadata_trusted<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, variant: /*Ignored*/&glib::Variant, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
-    //    unsafe { TODO: call ffi::ostree_repo_write_metadata_trusted() }
-    //}
+    fn write_metadata_trusted<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, variant: &glib::Variant, cancellable: P) -> Result<(), Error> {
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_write_metadata_trusted(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, variant.to_glib_none().0, cancellable.0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
-    //fn write_mtree<'a, P: Into<Option<&'a /*Ignored*/gio::Cancellable>>>(&self, mtree: /*Ignored*/&MutableTree, out_file: /*Ignored*/gio::File, cancellable: P, error: /*Ignored*/Option<Error>) -> bool {
+    //fn write_mtree<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, mtree: /*Ignored*/&MutableTree, cancellable: P) -> Result<gio::File, Error> {
     //    unsafe { TODO: call ffi::ostree_repo_write_mtree() }
     //}
 
@@ -795,13 +1077,13 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
-    //fn get_property_sysroot_path(&self) -> /*Ignored*/Option<gio::File> {
-    //    unsafe {
-    //        let mut value = Value::from_type(</*Unknown type*/ as StaticType>::static_type());
-    //        gobject_ffi::g_object_get_property(self.to_glib_none().0, "sysroot-path".to_glib_none().0, value.to_glib_none_mut().0);
-    //        value.get()
-    //    }
-    //}
+    fn get_property_sysroot_path(&self) -> Option<gio::File> {
+        unsafe {
+            let mut value = Value::from_type(<gio::File as StaticType>::static_type());
+            gobject_ffi::g_object_get_property(self.to_glib_none().0, "sysroot-path".to_glib_none().0, value.to_glib_none_mut().0);
+            value.get()
+        }
+    }
 
     //fn connect_gpg_verify_result<Unsupported or ignored types>(&self, f: F) -> SignalHandlerId {
     //    Ignored result: OSTree.GpgVerifyResult

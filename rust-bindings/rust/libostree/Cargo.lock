@@ -4,6 +4,26 @@ version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "fragile"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "gio"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fragile 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gio-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gobject-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "gio-sys"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -62,6 +82,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "libostree"
 version = "0.2.0"
 dependencies = [
+ "gio 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gobject-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -91,6 +112,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"
+"checksum fragile 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "05f8140122fa0d5dcb9fc8627cfce2b37cc1500f752636d46ea28bc26785c2f9"
+"checksum gio 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7aeedbcb85cc6a53f1928dbe6c015dc9a9b64a7e2fb7484d6f5d0d1d400e1db0"
 "checksum gio-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6975ada29f7924dc1c90b30ed3b32d777805a275556c05e420da4fbdc22eb250"
 "checksum glib 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "740f7fda8dde5f5e3944dabdb4a73ac6094a8a7fdf0af377468e98ca93733e61"
 "checksum glib-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3573351e846caed9f11207b275cd67bc07f0c2c94fb628e5d7c92ca056c7882d"
