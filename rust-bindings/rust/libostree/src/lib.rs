@@ -7,7 +7,12 @@ extern crate gobject_sys as gobject_ffi;
 extern crate glib;
 extern crate gio;
 
-pub use glib::Error;
+use glib::Error;
 
+// re-exports
 mod auto;
 pub use auto::*;
+
+// public modules
+pub mod prelude;
+pub use prelude::*;
