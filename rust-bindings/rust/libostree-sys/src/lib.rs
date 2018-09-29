@@ -6,6 +6,9 @@
 #![cfg_attr(feature = "cargo-clippy", allow(approx_constant, type_complexity, unreadable_literal))]
 
 extern crate libc;
+extern crate glib_sys as glib;
+extern crate gobject_sys as gobject;
+extern crate gio_sys as gio;
 
 #[allow(unused_imports)]
 use libc::{c_int, c_char, c_uchar, c_float, c_uint, c_double,
