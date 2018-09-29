@@ -21,6 +21,17 @@ glib_wrapper! {
 }
 
 impl RepoDevInoCache {
+    /// OSTree has support for pairing `RepoExt::checkout_tree_at` using
+    /// hardlinks in combination with a later
+    /// `RepoExt::write_directory_to_mtree` using a (normally modified)
+    /// directory. In order for OSTree to optimally detect just the new
+    /// files, use this function and fill in the `devino_to_csum_cache`
+    /// member of `OstreeRepoCheckoutAtOptions`, then call
+    /// `ostree_repo_commit_set_devino_cache`.
+    ///
+    /// # Returns
+    ///
+    /// Newly allocated cache
     pub fn new() -> RepoDevInoCache {
         unsafe {
             from_glib_full(ffi::ostree_repo_devino_cache_new())
