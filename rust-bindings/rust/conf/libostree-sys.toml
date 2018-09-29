@@ -1,0 +1,7 @@
+[options]
+work_mode = "sys"
+library = "OSTree"
+version = "1.0"
+target_path = "../libostree-sys"
+
+girs_dir = "../gir-files"
