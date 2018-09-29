@@ -82,10 +82,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "libostree"
 version = "0.2.0"
 dependencies = [
+ "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "gio 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gio-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glib-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gobject-sys 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "libostree-sys 0.2.0",
 ]
 

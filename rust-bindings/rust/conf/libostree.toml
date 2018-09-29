@@ -4,20 +4,48 @@ library = "OSTree"
 version = "1.0"
 target_path = "../libostree"
 deprecate_by_min_version = true
-single_version_file = true
 
 girs_dir = "../gir-files"
 
 generate = [
-    "OSTree.RepoMode",
+    "OSTree.AsyncProgress",
+    "OSTree.CollectionRef",
+    "OSTree.GpgSignatureFormatFlags",
+    "OSTree.GpgVerifyResult",
     "OSTree.ObjectType",
+    "OSTree.Remote",
+    "OSTree.RepoCheckoutMode",
+    "OSTree.RepoCheckoutOverwriteMode",
+    "OSTree.RepoCommitModifier",
+    "OSTree.RepoCommitState",
+    "OSTree.RepoDevInoCache",
+    "OSTree.RepoMode",
+    "OSTree.RepoPruneFlags",
+    "OSTree.RepoPullFlags",
+    "OSTree.RepoRemoteChange",
+    "OSTree.RepoResolveRevExtFlags",
+    "OSTree.RepoTransactionStats",
+    "OSTree.SePolicy",
+    "OSTree.SePolicyRestoreconFlags",
+    "OSTree.StaticDeltaGenerateOpt",
+
+    #"OSTree.RepoPruneOptions",
+    #"OSTree.RepoExportArchiveOptions",
+    #"OSTree.RepoCheckoutOptions",
+    #"OSTree.RepoCheckoutAtOptions",
 ]
 
 manual = [
-    "GLib.Error",
-    "GLib.Variant",
     "Gio.Cancellable",
     "Gio.File",
+    "Gio.FileInfo",
+    "Gio.FileQueryInfoFlags",
+    "Gio.InputStream",
+    "GLib.Bytes",
+    "GLib.Error",
+    "GLib.KeyFile",
+    "GLib.String",
+    "GLib.Variant",
 ]
 
 [[object]]
@@ -28,11 +56,32 @@ status = "generate"
     ignore = true
 
     [[object.function]]
-    pattern = "checkout_at"
-        [[object.function.parameter]]
-        name = "options"
-        const = true
-
-    [[object.function]]
     pattern = "mode_from_string"
     ignore = true
+
+    [[object.function]]
+    pattern = "remote_gpg_import"
+    ignore = true
+
+[[object]]
+name = "OSTree.RepoFile"
+status = "generate"
+    [[object.function]]
+    pattern = "get_xattrs"
+    ignore = true
+
+    [[object.function]]
+    pattern = "tree_find_child"
+    ignore = true
+
+    [[object.function]]
+    pattern = "tree_query_child"
+    ignore = true
+
+[[object]]
+name = "OSTree.MutableTree"
+status = "generate"
+    [[object.function]]
+    pattern = "lookup"
+    ignore = true
+
