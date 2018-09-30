@@ -85,3 +85,9 @@ status = "generate"
     pattern = "lookup"
     ignore = true
 
+[[object]]
+name = "OSTree.*"
+status = "generate"
+    [[object.function]]
+    pattern = "cmp_checksum_bytes|checksum_inplace_to_bytes"
+    ignore = true

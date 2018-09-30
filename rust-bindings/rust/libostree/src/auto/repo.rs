@@ -51,75 +51,24 @@ glib_wrapper! {
 }
 
 impl Repo {
-    /// ## `path`
-    /// Path to a repository
-    ///
-    /// # Returns
-    ///
-    /// An accessor object for an OSTree repository located at `path`
     pub fn new<P: IsA<gio::File>>(path: &P) -> Repo {
         unsafe {
             from_glib_full(ffi::ostree_repo_new(path.to_glib_none().0))
         }
     }
 
-    /// If the current working directory appears to be an OSTree
-    /// repository, create a new `Repo` object for accessing it.
-    /// Otherwise use the path in the OSTREE_REPO environment variable
-    /// (if defined) or else the default system repository located at
-    /// /ostree/repo.
-    ///
-    /// # Returns
-    ///
-    /// An accessor object for an OSTree repository located at /ostree/repo
     pub fn new_default() -> Repo {
         unsafe {
             from_glib_full(ffi::ostree_repo_new_default())
         }
     }
 
-    /// Creates a new `Repo` instance, taking the system root path explicitly
-    /// instead of assuming "/".
-    /// ## `repo_path`
-    /// Path to a repository
-    /// ## `sysroot_path`
-    /// Path to the system root
-    ///
-    /// # Returns
-    ///
-    /// An accessor object for the OSTree repository located at `repo_path`.
     pub fn new_for_sysroot_path<P: IsA<gio::File>, Q: IsA<gio::File>>(repo_path: &P, sysroot_path: &Q) -> Repo {
         unsafe {
             from_glib_full(ffi::ostree_repo_new_for_sysroot_path(repo_path.to_glib_none().0, sysroot_path.to_glib_none().0))
         }
     }
 
-    /// This is a file-descriptor relative version of `RepoExt::create`.
-    /// Create the underlying structure on disk for the repository, and call
-    /// `Repo::open_at` on the result, preparing it for use.
-    ///
-    /// If a repository already exists at `dfd` + `path` (defined by an `objects/`
-    /// subdirectory existing), then this function will simply call
-    /// `Repo::open_at`. In other words, this function cannot be used to change
-    /// the mode or configuration (`repo/config`) of an existing repo.
-    ///
-    /// The `options` dict may contain:
-    ///
-    ///  - collection-id: s: Set as collection ID in repo/config (Since 2017.9)
-    /// ## `dfd`
-    /// Directory fd
-    /// ## `path`
-    /// Path
-    /// ## `mode`
-    /// The mode to store the repository in
-    /// ## `options`
-    /// a{sv}: See below for accepted keys
-    /// ## `cancellable`
-    /// Cancellable
-    ///
-    /// # Returns
-    ///
-    /// A new OSTree repository reference
     pub fn create_at<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path: &str, mode: RepoMode, options: &glib::Variant, cancellable: P) -> Result<Repo, Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -130,17 +79,6 @@ impl Repo {
         }
     }
 
-    /// This combines `Repo::new` (but using fd-relative access) with
-    /// `RepoExt::open`. Use this when you know you should be operating on an
-    /// already extant repository. If you want to create one, use `Repo::create_at`.
-    /// ## `dfd`
-    /// Directory fd
-    /// ## `path`
-    /// Path
-    ///
-    /// # Returns
-    ///
-    /// An accessor object for an OSTree repository located at `dfd` + `path`
     pub fn open_at<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path: &str, cancellable: P) -> Result<Repo, Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -170,365 +108,73 @@ impl Repo {
     //}
 }
 
-/// Trait containing all `Repo` methods.
-///
-/// # Implementors
-///
-/// [`Repo`](struct.Repo.html)
 pub trait RepoExt {
-    /// Abort the active transaction; any staged objects and ref changes will be
-    /// discarded. You *must* invoke this if you have chosen not to invoke
-    /// `RepoExt::commit_transaction`. Calling this function when not in a
-    /// transaction will do nothing and return successfully.
-    /// ## `cancellable`
-    /// Cancellable
     fn abort_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    /// Add a GPG signature to a summary file.
-    /// ## `key_id`
-    /// NULL-terminated array of GPG keys.
-    /// ## `homedir`
-    /// GPG home directory, or `None`
-    /// ## `cancellable`
-    /// A `gio::Cancellable`
     fn add_gpg_signature_summary<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, key_id: &[&str], homedir: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Append a GPG signature to a commit.
-    /// ## `commit_checksum`
-    /// SHA256 of given commit to sign
-    /// ## `signature_bytes`
-    /// Signature data
-    /// ## `cancellable`
-    /// A `gio::Cancellable`
     fn append_gpg_signature<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, signature_bytes: &glib::Bytes, cancellable: P) -> Result<(), Error>;
 
     //fn checkout_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutAtOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error>;
 
-    /// Call this after finishing a succession of checkout operations; it
-    /// will delete any currently-unused uncompressed objects from the
-    /// cache.
-    /// ## `cancellable`
-    /// Cancellable
     fn checkout_gc<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    /// Check out `source` into `destination`, which must live on the
-    /// physical filesystem. `source` may be any subdirectory of a given
-    /// commit. The `mode` and `overwrite_mode` allow control over how the
-    /// files are checked out.
-    /// ## `mode`
-    /// Options controlling all files
-    /// ## `overwrite_mode`
-    /// Whether or not to overwrite files
-    /// ## `destination`
-    /// Place tree here
-    /// ## `source`
-    /// Source tree
-    /// ## `source_info`
-    /// Source info
-    /// ## `cancellable`
-    /// Cancellable
     fn checkout_tree<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, mode: RepoCheckoutMode, overwrite_mode: RepoCheckoutOverwriteMode, destination: &P, source: &RepoFile, source_info: &gio::FileInfo, cancellable: Q) -> Result<(), Error>;
 
     //fn checkout_tree_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error>;
 
-    /// Complete the transaction. Any refs set with
-    /// `RepoExt::transaction_set_ref` or
-    /// `RepoExt::transaction_set_refspec` will be written out.
-    ///
-    /// Note that if multiple threads are performing writes, all such threads must
-    /// have terminated before this function is invoked.
-    ///
-    /// Locking: Releases `shared` lock acquired by `ostree_repo_prepare_transaction()`
-    /// Multithreading: This function is *not* MT safe; only one transaction can be
-    /// active at a time.
-    /// ## `out_stats`
-    /// A set of statistics of things
-    /// that happened during this transaction.
-    /// ## `cancellable`
-    /// Cancellable
     fn commit_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<RepoTransactionStats, Error>;
 
-    ///
-    /// # Returns
-    ///
-    /// A newly-allocated copy of the repository config
     fn copy_config(&self) -> Option<glib::KeyFile>;
 
-    /// Create the underlying structure on disk for the repository, and call
-    /// `RepoExt::open` on the result, preparing it for use.
-    ///
-    /// Since version 2016.8, this function will succeed on an existing
-    /// repository, and finish creating any necessary files in a partially
-    /// created repository. However, this function cannot change the mode
-    /// of an existing repository, and will silently ignore an attempt to
-    /// do so.
-    ///
-    /// Since 2017.9, "existing repository" is defined by the existence of an
-    /// `objects` subdirectory.
-    ///
-    /// This function predates `Repo::create_at`. It is an error to call
-    /// this function on a repository initialized via `Repo::open_at`.
-    /// ## `mode`
-    /// The mode to store the repository in
-    /// ## `cancellable`
-    /// Cancellable
     fn create<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, mode: RepoMode, cancellable: P) -> Result<(), Error>;
 
-    /// Remove the object of type `objtype` with checksum `sha256`
-    /// from the repository. An error of type `gio::IOErrorEnum::NotFound`
-    /// is thrown if the object does not exist.
-    /// ## `objtype`
-    /// Object type
-    /// ## `sha256`
-    /// Checksum
-    /// ## `cancellable`
-    /// Cancellable
     fn delete_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<(), Error>;
 
-    /// Check whether two opened repositories are the same on disk: if their root
-    /// directories are the same inode. If `self` or `b` are not open yet (due to
-    /// `RepoExt::open` not being called on them yet), `false` will be returned.
-    ///
-    /// Feature: `v2017_12`
-    ///
-    /// ## `b`
-    /// an `Repo`
-    ///
-    /// # Returns
-    ///
-    /// `true` if `self` and `b` are the same repository on disk, `false` otherwise
     #[cfg(any(feature = "v2017_12", feature = "dox"))]
     fn equal(&self, b: &Repo) -> bool;
 
     //fn export_tree_to_archive<'a, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoExportArchiveOptions, root: &RepoFile, archive: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Verify consistency of the object; this performs checks only relevant to the
-    /// immediate object itself, such as checksumming. This API call will not itself
-    /// traverse metadata objects for example.
-    ///
-    /// Feature: `v2017_15`
-    ///
-    /// ## `objtype`
-    /// Object type
-    /// ## `sha256`
-    /// Checksum
-    /// ## `cancellable`
-    /// Cancellable
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
     fn fsck_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<(), Error>;
 
-    /// Get the collection ID of this repository. See [collection IDs][collection-ids].
-    ///
-    /// Feature: `v2018_6`
-    ///
-    ///
-    /// # Returns
-    ///
-    /// collection ID for the repository
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn get_collection_id(&self) -> Option<String>;
 
-    ///
-    /// # Returns
-    ///
-    /// The repository configuration; do not modify
     fn get_config(&self) -> Option<glib::KeyFile>;
 
-    /// In some cases it's useful for applications to access the repository
-    /// directly; for example, writing content into `repo/tmp` ensures it's
-    /// on the same filesystem. Another case is detecting the mtime on the
-    /// repository (to see whether a ref was written).
-    ///
-    /// # Returns
-    ///
-    /// File descriptor for repository root - owned by `self`
     fn get_dfd(&self) -> i32;
 
-    /// For more information see `RepoExt::set_disable_fsync`.
-    ///
-    /// # Returns
-    ///
-    /// Whether or not `fsync` is enabled for this repo.
     fn get_disable_fsync(&self) -> bool;
 
     fn get_mode(&self) -> RepoMode;
 
-    /// Before this function can be used, `ostree_repo_init` must have been
-    /// called.
-    ///
-    /// # Returns
-    ///
-    /// Parent repository, or `None` if none
     fn get_parent(&self) -> Option<Repo>;
 
-    /// Note that since the introduction of `Repo::open_at`, this function may
-    /// return a process-specific path in `/proc` if the repository was created using
-    /// that API. In general, you should avoid use of this API.
-    ///
-    /// # Returns
-    ///
-    /// Path to repo
     fn get_path(&self) -> Option<gio::File>;
 
-    /// OSTree remotes are represented by keyfile groups, formatted like:
-    /// `[remote "remotename"]`. This function returns a value named `option_name`
-    /// underneath that group, and returns it as a boolean.
-    /// If the option is not set, `out_value` will be set to `default_value`. If an
-    /// error is returned, `out_value` will be set to `false`.
-    /// ## `remote_name`
-    /// Name
-    /// ## `option_name`
-    /// Option
-    /// ## `default_value`
-    /// Value returned if `option_name` is not present
-    /// ## `out_value`
-    /// location to store the result.
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, otherwise `false` with `error` set
     fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool) -> Result<bool, Error>;
 
-    /// OSTree remotes are represented by keyfile groups, formatted like:
-    /// `[remote "remotename"]`. This function returns a value named `option_name`
-    /// underneath that group, and returns it as a zero terminated array of strings.
-    /// If the option is not set, or if an error is returned, `out_value` will be set
-    /// to `None`.
-    /// ## `remote_name`
-    /// Name
-    /// ## `option_name`
-    /// Option
-    /// ## `out_value`
-    /// location to store the list
-    ///  of strings. The list should be freed with
-    ///  `g_strfreev`.
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, otherwise `false` with `error` set
     fn get_remote_list_option(&self, remote_name: &str, option_name: &str) -> Result<Vec<String>, Error>;
 
-    /// OSTree remotes are represented by keyfile groups, formatted like:
-    /// `[remote "remotename"]`. This function returns a value named `option_name`
-    /// underneath that group, or `default_value` if the remote exists but not the
-    /// option name. If an error is returned, `out_value` will be set to `None`.
-    /// ## `remote_name`
-    /// Name
-    /// ## `option_name`
-    /// Option
-    /// ## `default_value`
-    /// Value returned if `option_name` is not present
-    /// ## `out_value`
-    /// Return location for value
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, otherwise `false` with `error` set
     fn get_remote_option<'a, P: Into<Option<&'a str>>>(&self, remote_name: &str, option_name: &str, default_value: P) -> Result<String, Error>;
 
-    /// Verify `signatures` for `data` using GPG keys in the keyring for
-    /// `remote_name`, and return an `GpgVerifyResult`.
-    ///
-    /// The `remote_name` parameter can be `None`. In that case it will do
-    /// the verifications using GPG keys in the keyrings of all remotes.
-    /// ## `remote_name`
-    /// Name of remote
-    /// ## `data`
-    /// Data as a `glib::Bytes`
-    /// ## `signatures`
-    /// Signatures as a `glib::Bytes`
-    /// ## `keyringdir`
-    /// Path to directory GPG keyrings; overrides built-in default if given
-    /// ## `extra_keyring`
-    /// Path to additional keyring file (not a directory)
-    /// ## `cancellable`
-    /// Cancellable
-    ///
-    /// # Returns
-    ///
-    /// an `GpgVerifyResult`, or `None` on error
     fn gpg_verify_data<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: IsA<gio::File> + 'b, R: Into<Option<&'b Q>>, S: IsA<gio::File> + 'c, T: Into<Option<&'c S>>, U: Into<Option<&'d gio::Cancellable>>>(&self, remote_name: P, data: &glib::Bytes, signatures: &glib::Bytes, keyringdir: R, extra_keyring: T, cancellable: U) -> Result<GpgVerifyResult, Error>;
 
-    /// Set `out_have_object` to `true` if `self` contains the given object;
-    /// `false` otherwise.
-    /// ## `objtype`
-    /// Object type
-    /// ## `checksum`
-    /// ASCII SHA256 checksum
-    /// ## `out_have_object`
-    /// `true` if repository contains object
-    /// ## `cancellable`
-    /// Cancellable
-    ///
-    /// # Returns
-    ///
-    /// `false` if an unexpected error occurred, `true` otherwise
     fn has_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<bool, Error>;
 
-    /// Calculate a hash value for the given open repository, suitable for use when
-    /// putting it into a hash table. It is an error to call this on an `Repo`
-    /// which is not yet open, as a persistent hash value cannot be calculated until
-    /// the repository is open and the inode of its root directory has been loaded.
-    ///
-    /// This function does no I/O.
-    ///
-    /// Feature: `v2017_12`
-    ///
-    ///
-    /// # Returns
-    ///
-    /// hash value for the `Repo`
     #[cfg(any(feature = "v2017_12", feature = "dox"))]
     fn hash(&self) -> u32;
 
     //fn import_archive_to_mtree<'a, 'b, P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option<&'a RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, opts: /*Ignored*/&mut RepoImportArchiveOptions, archive: P, mtree: &MutableTree, modifier: Q, cancellable: R) -> Result<(), Error>;
 
-    /// Copy object named by `objtype` and `checksum` into `self` from the
-    /// source repository `source`. If both repositories are of the same
-    /// type and on the same filesystem, this will simply be a fast Unix
-    /// hard link operation.
-    ///
-    /// Otherwise, a copy will be performed.
-    /// ## `source`
-    /// Source repo
-    /// ## `objtype`
-    /// Object type
-    /// ## `checksum`
-    /// checksum
-    /// ## `cancellable`
-    /// Cancellable
     fn import_object_from<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<(), Error>;
 
-    /// Copy object named by `objtype` and `checksum` into `self` from the
-    /// source repository `source`. If both repositories are of the same
-    /// type and on the same filesystem, this will simply be a fast Unix
-    /// hard link operation.
-    ///
-    /// Otherwise, a copy will be performed.
-    /// ## `source`
-    /// Source repo
-    /// ## `objtype`
-    /// Object type
-    /// ## `checksum`
-    /// checksum
-    /// ## `trusted`
-    /// If `true`, assume the source repo is valid and trusted
-    /// ## `cancellable`
-    /// Cancellable
     fn import_object_from_with_trust<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: P) -> Result<(), Error>;
 
-    ///
-    /// # Returns
-    ///
-    /// `true` if this repository is the root-owned system global repository
     fn is_system(&self) -> bool;
 
-    /// Returns whether the repository is writable by the current user.
-    /// If the repository is not writable, the `error` indicates why.
-    ///
-    /// # Returns
-    ///
-    /// `true` if this repository is writable
     fn is_writable(&self) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -544,448 +190,62 @@ pub trait RepoExt {
 
     //fn list_static_delta_names<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error>;
 
-    /// A version of `RepoExt::load_variant` specialized to commits,
-    /// capable of returning extended state information. Currently
-    /// the only extended state is `RepoCommitState::Partial`, which
-    /// means that only a sub-path of the commit is available.
-    ///
-    /// Feature: `v2015_7`
-    ///
-    /// ## `checksum`
-    /// Commit checksum
-    /// ## `out_commit`
-    /// Commit
-    /// ## `out_state`
-    /// Commit state
     #[cfg(any(feature = "v2015_7", feature = "dox"))]
     fn load_commit(&self, checksum: &str) -> Result<(glib::Variant, RepoCommitState), Error>;
 
-    /// Load content object, decomposing it into three parts: the actual
-    /// content (for regular files), the metadata, and extended attributes.
-    /// ## `checksum`
-    /// ASCII SHA256 checksum
-    /// ## `out_input`
-    /// File content
-    /// ## `out_file_info`
-    /// File information
-    /// ## `out_xattrs`
-    /// Extended attributes
-    /// ## `cancellable`
-    /// Cancellable
     fn load_file<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, cancellable: P) -> Result<(Option<gio::InputStream>, Option<gio::FileInfo>, Option<glib::Variant>), Error>;
 
-    /// Load object as a stream; useful when copying objects between
-    /// repositories.
-    /// ## `objtype`
-    /// Object type
-    /// ## `checksum`
-    /// ASCII SHA256 checksum
-    /// ## `out_input`
-    /// Stream for object
-    /// ## `out_size`
-    /// Length of `out_input`
-    /// ## `cancellable`
-    /// Cancellable
     fn load_object_stream<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<(gio::InputStream, u64), Error>;
 
-    /// Load the metadata object `sha256` of type `objtype`, storing the
-    /// result in `out_variant`.
-    /// ## `objtype`
-    /// Expected object type
-    /// ## `sha256`
-    /// Checksum string
-    /// ## `out_variant`
-    /// Metadata object
     fn load_variant(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, Error>;
 
-    /// Attempt to load the metadata object `sha256` of type `objtype` if it
-    /// exists, storing the result in `out_variant`. If it doesn't exist,
-    /// `None` is returned.
-    /// ## `objtype`
-    /// Object type
-    /// ## `sha256`
-    /// ASCII checksum
-    /// ## `out_variant`
-    /// Metadata
     fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, Error>;
 
-    /// Commits in "partial" state do not have all their child objects written. This
-    /// occurs in various situations, such as during a pull, but also if a "subpath"
-    /// pull is used, as well as "commit only" pulls.
-    ///
-    /// This function is used by `RepoExt::pull_with_options`; you
-    /// should use this if you are implementing a different type of transport.
-    ///
-    /// Feature: `v2017_15`
-    ///
-    /// ## `checksum`
-    /// Commit SHA-256
-    /// ## `is_partial`
-    /// Whether or not this commit is partial
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
     fn mark_commit_partial(&self, checksum: &str, is_partial: bool) -> Result<(), Error>;
 
     fn open<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    /// Starts or resumes a transaction. In order to write to a repo, you
-    /// need to start a transaction. You can complete the transaction with
-    /// `RepoExt::commit_transaction`, or abort the transaction with
-    /// `RepoExt::abort_transaction`.
-    ///
-    /// Currently, transactions may result in partial commits or data in the target
-    /// repository if interrupted during `RepoExt::commit_transaction`, and
-    /// further writing refs is also not currently atomic.
-    ///
-    /// There can be at most one transaction active on a repo at a time per instance
-    /// of `OstreeRepo`; however, it is safe to have multiple threads writing objects
-    /// on a single `OstreeRepo` instance as long as their lifetime is bounded by the
-    /// transaction.
-    ///
-    /// Locking: Acquires a `shared` lock; release via commit or abort
-    /// Multithreading: This function is *not* MT safe; only one transaction can be
-    /// active at a time.
-    /// ## `out_transaction_resume`
-    /// Whether this transaction
-    /// is resuming from a previous one. This is a legacy state, now OSTree
-    /// pulls use per-commit `state/.commitpartial` files.
-    /// ## `cancellable`
-    /// Cancellable
     fn prepare_transaction<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<bool, Error>;
 
-    /// Delete content from the repository. By default, this function will
-    /// only delete "orphaned" objects not referred to by any commit. This
-    /// can happen during a local commit operation, when we have written
-    /// content objects but not saved the commit referencing them.
-    ///
-    /// However, if `RepoPruneFlags::RefsOnly` is provided, instead
-    /// of traversing all commits, only refs will be used. Particularly
-    /// when combined with `depth`, this is a convenient way to delete
-    /// history from the repository.
-    ///
-    /// Use the `RepoPruneFlags::NoPrune` to just determine
-    /// statistics on objects that would be deleted, without actually
-    /// deleting them.
-    ///
-    /// Locking: exclusive
-    /// ## `flags`
-    /// Options controlling prune process
-    /// ## `depth`
-    /// Stop traversal after this many iterations (-1 for unlimited)
-    /// ## `out_objects_total`
-    /// Number of objects found
-    /// ## `out_objects_pruned`
-    /// Number of objects deleted
-    /// ## `out_pruned_object_size_total`
-    /// Storage size in bytes of objects deleted
-    /// ## `cancellable`
-    /// Cancellable
     fn prune<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, flags: RepoPruneFlags, depth: i32, cancellable: P) -> Result<(i32, i32, u64), Error>;
 
     //fn prune_from_reachable<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P) -> Result<(i32, i32, u64), Error>;
 
-    /// Prune static deltas, if COMMIT is specified then delete static delta files only
-    /// targeting that commit; otherwise any static delta of non existing commits are
-    /// deleted.
-    ///
-    /// Locking: exclusive
-    /// ## `commit`
-    /// ASCII SHA256 checksum for commit, or `None` for each
-    /// non existing commit
-    /// ## `cancellable`
-    /// Cancellable
     fn prune_static_deltas<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, commit: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Connect to the remote repository, fetching the specified set of
-    /// refs `refs_to_fetch`. For each ref that is changed, download the
-    /// commit, all metadata, and all content objects, storing them safely
-    /// on disk in `self`.
-    ///
-    /// If `flags` contains `RepoPullFlags::Mirror`, and
-    /// the `refs_to_fetch` is `None`, and the remote repository contains a
-    /// summary file, then all refs will be fetched.
-    ///
-    /// If `flags` contains `RepoPullFlags::CommitOnly`, then only the
-    /// metadata for the commits in `refs_to_fetch` is pulled.
-    ///
-    /// Warning: This API will iterate the thread default main context,
-    /// which is a bug, but kept for compatibility reasons. If you want to
-    /// avoid this, use `glib::MainContext::push_thread_default` to push a new
-    /// one around this call.
-    /// ## `remote_name`
-    /// Name of remote
-    /// ## `refs_to_fetch`
-    /// Optional list of refs; if `None`, fetch all configured refs
-    /// ## `flags`
-    /// Options controlling fetch behavior
-    /// ## `progress`
-    /// Progress
-    /// ## `cancellable`
-    /// Cancellable
     fn pull<'a, 'b, P: Into<Option<&'a AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name: &str, refs_to_fetch: &[&str], flags: RepoPullFlags, progress: P, cancellable: Q) -> Result<(), Error>;
 
-    /// This is similar to `RepoExt::pull`, but only fetches a single
-    /// subpath.
-    /// ## `remote_name`
-    /// Name of remote
-    /// ## `dir_to_pull`
-    /// Subdirectory path
-    /// ## `refs_to_fetch`
-    /// Optional list of refs; if `None`, fetch all configured refs
-    /// ## `flags`
-    /// Options controlling fetch behavior
-    /// ## `progress`
-    /// Progress
-    /// ## `cancellable`
-    /// Cancellable
     fn pull_one_dir<'a, 'b, P: Into<Option<&'a AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name: &str, dir_to_pull: &str, refs_to_fetch: &[&str], flags: RepoPullFlags, progress: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Like `RepoExt::pull`, but supports an extensible set of flags.
-    /// The following are currently defined:
-    ///
-    ///  * refs (as): Array of string refs
-    ///  * collection-refs (a(sss)): Array of (collection ID, ref name, checksum) tuples to pull;
-    ///  mutually exclusive with `refs` and `override-commit-ids`. Checksums may be the empty
-    ///  string to pull the latest commit for that ref
-    ///  * flags (i): An instance of `RepoPullFlags`
-    ///  * subdir (s): Pull just this subdirectory
-    ///  * subdirs (as): Pull just these subdirectories
-    ///  * override-remote-name (s): If local, add this remote to refspec
-    ///  * gpg-verify (b): GPG verify commits
-    ///  * gpg-verify-summary (b): GPG verify summary
-    ///  * depth (i): How far in the history to traverse; default is 0, -1 means infinite
-    ///  * disable-static-deltas (b): Do not use static deltas
-    ///  * require-static-deltas (b): Require static deltas
-    ///  * override-commit-ids (as): Array of specific commit IDs to fetch for refs
-    ///  * timestamp-check (b): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
-    ///  * dry-run (b): Only print information on what will be downloaded (requires static deltas)
-    ///  * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
-    ///  * inherit-transaction (b): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
-    ///  * http-headers (a(ss)): Additional headers to add to all HTTP requests
-    ///  * update-frequency (u): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
-    ///  * localcache-repos (as): File paths for local repos to use as caches when doing remote fetches
-    ///  * append-user-agent (s): Additional string to append to the user agent
-    ///  * n-network-retries (u): Number of times to retry each download on receiving
-    ///  a transient network error, such as a socket timeout; default is 5, 0
-    ///  means return errors without retrying
-    /// ## `remote_name_or_baseurl`
-    /// Name of remote or file:// url
-    /// ## `options`
-    /// A GVariant a{sv} with an extensible set of flags.
-    /// ## `progress`
-    /// Progress
-    /// ## `cancellable`
-    /// Cancellable
     fn pull_with_options<'a, 'b, P: Into<Option<&'a AsyncProgress>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, remote_name_or_baseurl: &str, options: &glib::Variant, progress: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Return the size in bytes of object with checksum `sha256`, after any
-    /// compression has been applied.
-    /// ## `objtype`
-    /// Object type
-    /// ## `sha256`
-    /// Checksum
-    /// ## `out_size`
-    /// Size in bytes object occupies physically
-    /// ## `cancellable`
-    /// Cancellable
     fn query_object_storage_size<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<u64, Error>;
 
-    /// Load the content for `rev` into `out_root`.
-    /// ## `ref_`
-    /// Ref or ASCII checksum
-    /// ## `out_root`
-    /// An `RepoFile` corresponding to the root
-    /// ## `out_commit`
-    /// The resolved commit checksum
-    /// ## `cancellable`
-    /// Cancellable
     fn read_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, ref_: &str, cancellable: P) -> Result<(gio::File, String), Error>;
 
-    /// OSTree commits can have arbitrary metadata associated; this
-    /// function retrieves them. If none exists, `out_metadata` will be set
-    /// to `None`.
-    /// ## `checksum`
-    /// ASCII SHA256 commit checksum
-    /// ## `out_metadata`
-    /// Metadata associated with commit in with format "a{sv}", or `None` if none exists
-    /// ## `cancellable`
-    /// Cancellable
     fn read_commit_detached_metadata<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, cancellable: P) -> Result<glib::Variant, Error>;
 
-    /// An OSTree repository can contain a high level "summary" file that
-    /// describes the available branches and other metadata.
-    ///
-    /// If the timetable for making commits and updating the summary file is fairly
-    /// regular, setting the `ostree.summary.expires` key in `additional_metadata`
-    /// will aid clients in working out when to check for updates.
-    ///
-    /// It is regenerated automatically after any ref is
-    /// added, removed, or updated if `core/auto-update-summary` is set.
-    ///
-    /// If the `core/collection-id` key is set in the configuration, it will be
-    /// included as `OSTREE_SUMMARY_COLLECTION_ID` in the summary file. Refs that
-    /// have associated collection IDs will be included in the generated summary
-    /// file, listed under the `OSTREE_SUMMARY_COLLECTION_MAP` key. Collection IDs
-    /// and refs in `OSTREE_SUMMARY_COLLECTION_MAP` are guaranteed to be in
-    /// lexicographic order.
-    ///
-    /// Locking: exclusive
-    /// ## `additional_metadata`
-    /// A GVariant of type a{sv}, or `None`
-    /// ## `cancellable`
-    /// Cancellable
     fn regenerate_summary<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, additional_metadata: P, cancellable: Q) -> Result<(), Error>;
 
-    /// By default, an `Repo` will cache the remote configuration and its
-    /// own repo/config data. This API can be used to reload it.
-    /// ## `cancellable`
-    /// cancellable
     fn reload_config<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    /// Create a new remote named `name` pointing to `url`. If `options` is
-    /// provided, then it will be mapped to `glib::KeyFile` entries, where the
-    /// GVariant dictionary key is an option string, and the value is
-    /// mapped as follows:
-    ///  * s: `glib::KeyFile::set_string`
-    ///  * b: `glib::KeyFile::set_boolean`
-    ///  * as: `glib::KeyFile::set_string_list`
-    /// ## `name`
-    /// Name of remote
-    /// ## `url`
-    /// URL for remote (if URL begins with metalink=, it will be used as such)
-    /// ## `options`
-    /// GVariant of type a{sv}
-    /// ## `cancellable`
-    /// Cancellable
     fn remote_add<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, url: &str, options: P, cancellable: Q) -> Result<(), Error>;
 
-    /// A combined function handling the equivalent of
-    /// `RepoExt::remote_add`, `RepoExt::remote_delete`, with more
-    /// options.
-    /// ## `sysroot`
-    /// System root
-    /// ## `changeop`
-    /// Operation to perform
-    /// ## `name`
-    /// Name of remote
-    /// ## `url`
-    /// URL for remote (if URL begins with metalink=, it will be used as such)
-    /// ## `options`
-    /// GVariant of type a{sv}
-    /// ## `cancellable`
-    /// Cancellable
     fn remote_change<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<&'b glib::Variant>>, S: Into<Option<&'c gio::Cancellable>>>(&self, sysroot: Q, changeop: RepoRemoteChange, name: &str, url: &str, options: R, cancellable: S) -> Result<(), Error>;
 
-    /// Delete the remote named `name`. It is an error if the provided
-    /// remote does not exist.
-    /// ## `name`
-    /// Name of remote
-    /// ## `cancellable`
-    /// Cancellable
     fn remote_delete<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, name: &str, cancellable: P) -> Result<(), Error>;
 
-    /// Tries to fetch the summary file and any GPG signatures on the summary file
-    /// over HTTP, and returns the binary data in `out_summary` and `out_signatures`
-    /// respectively.
-    ///
-    /// If no summary file exists on the remote server, `out_summary` is set to
-    /// `None`. Likewise if the summary file is not signed, `out_signatures` is
-    /// set to `None`. In either case the function still returns `true`.
-    ///
-    /// This method does not verify the signature of the downloaded summary file.
-    /// Use `RepoExt::verify_summary` for that.
-    ///
-    /// Parse the summary data into a `glib::Variant` using `glib::Variant::new_from_bytes`
-    /// with `OSTREE_SUMMARY_GVARIANT_FORMAT` as the format string.
-    /// ## `name`
-    /// name of a remote
-    /// ## `out_summary`
-    /// return location for raw summary data, or
-    ///  `None`
-    /// ## `out_signatures`
-    /// return location for raw summary
-    ///  signature data, or `None`
-    /// ## `cancellable`
-    /// a `gio::Cancellable`
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` on failure
     fn remote_fetch_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, name: &str, cancellable: P) -> Result<(glib::Bytes, glib::Bytes), Error>;
 
-    /// Like `RepoExt::remote_fetch_summary`, but supports an extensible set of flags.
-    /// The following are currently defined:
-    ///
-    /// - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
-    /// - http-headers (a(ss)): Additional headers to add to all HTTP requests
-    /// - append-user-agent (s): Additional string to append to the user agent
-    /// - n-network-retries (u): Number of times to retry each download on receiving
-    ///  a transient network error, such as a socket timeout; default is 5, 0
-    ///  means return errors without retrying
-    /// ## `name`
-    /// name of a remote
-    /// ## `options`
-    /// A GVariant a{sv} with an extensible set of flags
-    /// ## `out_summary`
-    /// return location for raw summary data, or
-    ///  `None`
-    /// ## `out_signatures`
-    /// return location for raw summary
-    ///  signature data, or `None`
-    /// ## `cancellable`
-    /// a `gio::Cancellable`
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` on failure
     fn remote_fetch_summary_with_options<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, options: P, cancellable: Q) -> Result<(glib::Bytes, glib::Bytes), Error>;
 
-    /// Return whether GPG verification is enabled for the remote named `name`
-    /// through `out_gpg_verify`. It is an error if the provided remote does
-    /// not exist.
-    /// ## `name`
-    /// Name of remote
-    /// ## `out_gpg_verify`
-    /// Remote's GPG option
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` on failure
     fn remote_get_gpg_verify(&self, name: &str) -> Result<bool, Error>;
 
-    /// Return whether GPG verification of the summary is enabled for the remote
-    /// named `name` through `out_gpg_verify_summary`. It is an error if the provided
-    /// remote does not exist.
-    /// ## `name`
-    /// Name of remote
-    /// ## `out_gpg_verify_summary`
-    /// Remote's GPG option
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` on failure
     fn remote_get_gpg_verify_summary(&self, name: &str) -> Result<bool, Error>;
 
-    /// Return the URL of the remote named `name` through `out_url`. It is an
-    /// error if the provided remote does not exist.
-    /// ## `name`
-    /// Name of remote
-    /// ## `out_url`
-    /// Remote's URL
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` on failure
     fn remote_get_url(&self, name: &str) -> Result<String, Error>;
 
-    /// List available remote names in an `Repo`. Remote names are sorted
-    /// alphabetically. If no remotes are available the function returns `None`.
-    /// ## `out_n_remotes`
-    /// Number of remotes available
-    ///
-    /// # Returns
-    ///
-    /// a `None`-terminated
-    ///  array of remote names
     fn remote_list(&self) -> Vec<String>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -993,316 +253,45 @@ pub trait RepoExt {
 
     //fn remote_list_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error>;
 
-    /// Look up the checksum for the given collection–ref, returning it in `out_rev`.
-    /// This will search through the mirrors and remote refs.
-    ///
-    /// If `allow_noent` is `true` and the given `ref_` cannot be found, `true` will be
-    /// returned and `out_rev` will be set to `None`. If `allow_noent` is `false` and
-    /// the given `ref_` cannot be found, a `gio::IOErrorEnum::NotFound` error will be
-    /// returned.
-    ///
-    /// There are currently no `flags` which affect the behaviour of this function.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `ref_`
-    /// a collection–ref to resolve
-    /// ## `allow_noent`
-    /// `true` to not throw an error if `ref_` doesn’t exist
-    /// ## `flags`
-    /// options controlling behaviour
-    /// ## `out_rev`
-    /// return location for
-    ///  the checksum corresponding to `ref_`, or `None` if `allow_noent` is `true` and
-    ///  the `ref_` could not be found
-    /// ## `cancellable`
-    /// a `gio::Cancellable`, or `None`
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` on failure
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn resolve_collection_ref<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, ref_: &CollectionRef, allow_noent: bool, flags: RepoResolveRevExtFlags, cancellable: P) -> Result<Option<String>, Error>;
 
-    /// Find the GPG keyring for the given `collection_id`, using the local
-    /// configuration from the given `Repo`. This will search the configured
-    /// remotes for ones whose `collection-id` key matches `collection_id`, and will
-    /// return the first matching remote.
-    ///
-    /// If multiple remotes match and have different keyrings, a debug message will
-    /// be emitted, and the first result will be returned. It is expected that the
-    /// keyrings should match.
-    ///
-    /// If no match can be found, a `gio::IOErrorEnum::NotFound` error will be returned.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `collection_id`
-    /// the collection ID to look up a keyring for
-    /// ## `cancellable`
-    /// a `gio::Cancellable`, or `None`
-    ///
-    /// # Returns
-    ///
-    /// `Remote` containing the GPG keyring for
-    ///  `collection_id`
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn resolve_keyring_for_collection<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, collection_id: &str, cancellable: P) -> Result<Remote, Error>;
 
-    /// Look up the given refspec, returning the checksum it references in
-    /// the parameter `out_rev`. Will fall back on remote directory if cannot
-    /// find the given refspec in local.
-    /// ## `refspec`
-    /// A refspec
-    /// ## `allow_noent`
-    /// Do not throw an error if refspec does not exist
-    /// ## `out_rev`
-    /// A checksum,or `None` if `allow_noent` is true and it does not exist
     fn resolve_rev(&self, refspec: &str, allow_noent: bool) -> Result<String, Error>;
 
-    /// Look up the given refspec, returning the checksum it references in
-    /// the parameter `out_rev`. Differently from `RepoExt::resolve_rev`,
-    /// this will not fall back to searching through remote repos if a
-    /// local ref is specified but not found.
-    /// ## `refspec`
-    /// A refspec
-    /// ## `allow_noent`
-    /// Do not throw an error if refspec does not exist
-    /// ## `flags`
-    /// Options controlling behavior
-    /// ## `out_rev`
-    /// A checksum,or `None` if `allow_noent` is true and it does not exist
     fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: RepoResolveRevExtFlags) -> Result<String, Error>;
 
-    /// This function is deprecated in favor of using `RepoDevInoCache::new`,
-    /// which allows a precise mapping to be built up between hardlink checkout files
-    /// and their checksums between `ostree_repo_checkout_at()` and
-    /// `ostree_repo_write_directory_to_mtree()`.
-    ///
-    /// When invoking `RepoExt::write_directory_to_mtree`, it has to compute the
-    /// checksum of all files. If your commit contains hardlinks from a checkout,
-    /// this functions builds a mapping of device numbers and inodes to their
-    /// checksum.
-    ///
-    /// There is an upfront cost to creating this mapping, as this will scan the
-    /// entire objects directory. If your commit is composed of mostly hardlinks to
-    /// existing ostree objects, then this will speed up considerably, so call it
-    /// before you call `RepoExt::write_directory_to_mtree` or similar. However,
-    /// `RepoDevInoCache::new` is better as it avoids scanning all objects.
-    ///
-    /// Multithreading: This function is *not* MT safe.
-    /// ## `cancellable`
-    /// Cancellable
     fn scan_hardlinks<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
-    /// Like `RepoExt::set_ref_immediate`, but creates an alias.
-    /// ## `remote`
-    /// A remote for the ref
-    /// ## `ref_`
-    /// The ref to write
-    /// ## `target`
-    /// The ref target to point it to, or `None` to unset
-    /// ## `cancellable`
-    /// GCancellable
     fn set_alias_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, target: Q, cancellable: R) -> Result<(), Error>;
 
-    /// Set a custom location for the cache directory used for e.g.
-    /// per-remote summary caches. Setting this manually is useful when
-    /// doing operations on a system repo as a user because you don't have
-    /// write permissions in the repo, where the cache is normally stored.
-    /// ## `dfd`
-    /// directory fd
-    /// ## `path`
-    /// subpath in `dfd`
-    /// ## `cancellable`
-    /// a `gio::Cancellable`
     fn set_cache_dir<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error>;
 
-    /// Set or clear the collection ID of this repository. See [collection IDs][collection-ids].
-    /// The update will be made in memory, but must be written out to the repository
-    /// configuration on disk using `RepoExt::write_config`.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `collection_id`
-    /// new collection ID, or `None` to unset it
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` otherwise
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn set_collection_id<'a, P: Into<Option<&'a str>>>(&self, collection_id: P) -> Result<(), Error>;
 
-    /// This is like `RepoExt::transaction_set_collection_ref`, except it may be
-    /// invoked outside of a transaction. This is presently safe for the
-    /// case where we're creating or overwriting an existing ref.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `ref_`
-    /// The collection–ref to write
-    /// ## `checksum`
-    /// The checksum to point it to, or `None` to unset
-    /// ## `cancellable`
-    /// GCancellable
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` otherwise
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn set_collection_ref_immediate<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, ref_: &CollectionRef, checksum: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Disable requests to `fsync` to stable storage during commits. This
-    /// option should only be used by build system tools which are creating
-    /// disposable virtual machines, or have higher level mechanisms for
-    /// ensuring data consistency.
-    /// ## `disable_fsync`
-    /// If `true`, do not fsync
     fn set_disable_fsync(&self, disable_fsync: bool);
 
-    /// This is like `RepoExt::transaction_set_ref`, except it may be
-    /// invoked outside of a transaction. This is presently safe for the
-    /// case where we're creating or overwriting an existing ref.
-    ///
-    /// Multithreading: This function is MT safe.
-    /// ## `remote`
-    /// A remote for the ref
-    /// ## `ref_`
-    /// The ref to write
-    /// ## `checksum`
-    /// The checksum to point it to, or `None` to unset
-    /// ## `cancellable`
-    /// GCancellable
     fn set_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, checksum: Q, cancellable: R) -> Result<(), Error>;
 
-    /// Add a GPG signature to a commit.
-    /// ## `commit_checksum`
-    /// SHA256 of given commit to sign
-    /// ## `key_id`
-    /// Use this GPG key id
-    /// ## `homedir`
-    /// GPG home directory, or `None`
-    /// ## `cancellable`
-    /// A `gio::Cancellable`
     fn sign_commit<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, commit_checksum: &str, key_id: &str, homedir: P, cancellable: Q) -> Result<(), Error>;
 
-    /// This function is deprecated, sign the summary file instead.
-    /// Add a GPG signature to a static delta.
-    /// ## `from_commit`
-    /// From commit
-    /// ## `to_commit`
-    /// To commit
-    /// ## `key_id`
-    /// key id
-    /// ## `homedir`
-    /// homedir
-    /// ## `cancellable`
-    /// cancellable
     fn sign_delta<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, from_commit: &str, to_commit: &str, key_id: &str, homedir: &str, cancellable: P) -> Result<(), Error>;
 
-    /// Given a directory representing an already-downloaded static delta
-    /// on disk, apply it, generating a new commit. The directory must be
-    /// named with the form "FROM-TO", where both are checksums, and it
-    /// must contain a file named "superblock", along with at least one part.
-    /// ## `dir_or_file`
-    /// Path to a directory containing static delta data, or directly to the superblock
-    /// ## `skip_validation`
-    /// If `true`, assume data integrity
-    /// ## `cancellable`
-    /// Cancellable
     fn static_delta_execute_offline<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, dir_or_file: &P, skip_validation: bool, cancellable: Q) -> Result<(), Error>;
 
-    /// Generate a lookaside "static delta" from `from` (`None` means
-    /// from-empty) which can generate the objects in `to`. This delta is
-    /// an optimization over fetching individual objects, and can be
-    /// conveniently stored and applied offline.
-    ///
-    /// The `params` argument should be an a{sv}. The following attributes
-    /// are known:
-    ///  - min-fallback-size: u: Minimum uncompressed size in megabytes to use fallback, 0 to disable fallbacks
-    ///  - max-chunk-size: u: Maximum size in megabytes of a delta part
-    ///  - max-bsdiff-size: u: Maximum size in megabytes to consider bsdiff compression
-    ///  for input files
-    ///  - compression: y: Compression type: 0=none, x=lzma, g=gzip
-    ///  - bsdiff-enabled: b: Enable bsdiff compression. Default TRUE.
-    ///  - inline-parts: b: Put part data in header, to get a single file delta. Default FALSE.
-    ///  - verbose: b: Print diagnostic messages. Default FALSE.
-    ///  - endianness: b: Deltas use host byte order by default; this option allows choosing (G_BIG_ENDIAN or G_LITTLE_ENDIAN)
-    ///  - filename: ay: Save delta superblock to this filename, and parts in the same directory. Default saves to repository.
-    /// ## `opt`
-    /// High level optimization choice
-    /// ## `from`
-    /// ASCII SHA256 checksum of origin, or `None`
-    /// ## `to`
-    /// ASCII SHA256 checksum of target
-    /// ## `metadata`
-    /// Optional metadata
-    /// ## `params`
-    /// Parameters, see below
-    /// ## `cancellable`
-    /// Cancellable
     fn static_delta_generate<'a, 'b, 'c, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b glib::Variant>>, R: Into<Option<&'c gio::Cancellable>>>(&self, opt: StaticDeltaGenerateOpt, from: &str, to: &str, metadata: P, params: Q, cancellable: R) -> Result<(), Error>;
 
-    /// If `checksum` is not `None`, then record it as the target of local ref named
-    /// `ref_`.
-    ///
-    /// Otherwise, if `checksum` is `None`, then record that the ref should
-    /// be deleted.
-    ///
-    /// The change will not be written out immediately, but when the transaction
-    /// is completed with `RepoExt::commit_transaction`. If the transaction
-    /// is instead aborted with `RepoExt::abort_transaction`, no changes will
-    /// be made to the repository.
-    ///
-    /// Multithreading: Since v2017.15 this function is MT safe.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `ref_`
-    /// The collection–ref to write
-    /// ## `checksum`
-    /// The checksum to point it to
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn transaction_set_collection_ref<'a, P: Into<Option<&'a str>>>(&self, ref_: &CollectionRef, checksum: P);
 
-    /// If `checksum` is not `None`, then record it as the target of ref named
-    /// `ref_`; if `remote` is provided, the ref will appear to originate from that
-    /// remote.
-    ///
-    /// Otherwise, if `checksum` is `None`, then record that the ref should
-    /// be deleted.
-    ///
-    /// The change will be written when the transaction is completed with
-    /// `RepoExt::commit_transaction`; that function takes care of writing all of
-    /// the objects (such as the commit referred to by `checksum`) before updating the
-    /// refs. If the transaction is instead aborted with
-    /// `RepoExt::abort_transaction`, no changes to the ref will be made to the
-    /// repository.
-    ///
-    /// Note however that currently writing *multiple* refs is not truly atomic; if
-    /// the process or system is terminated during
-    /// `RepoExt::commit_transaction`, it is possible that just some of the refs
-    /// will have been updated. Your application should take care to handle this
-    /// case.
-    ///
-    /// Multithreading: Since v2017.15 this function is MT safe.
-    /// ## `remote`
-    /// A remote for the ref
-    /// ## `ref_`
-    /// The ref to write
-    /// ## `checksum`
-    /// The checksum to point it to
     fn transaction_set_ref<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>>(&self, remote: P, ref_: &str, checksum: Q);
 
-    /// Like `RepoExt::transaction_set_ref`, but takes concatenated
-    /// `refspec` format as input instead of separate remote and name
-    /// arguments.
-    ///
-    /// Multithreading: Since v2017.15 this function is MT safe.
-    /// ## `refspec`
-    /// The refspec to write
-    /// ## `checksum`
-    /// The checksum to point it to
     fn transaction_set_refspec<'a, P: Into<Option<&'a str>>>(&self, refspec: &str, checksum: P);
 
     //fn traverse_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error>;
@@ -1315,235 +304,44 @@ pub trait RepoExt {
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
     //fn traverse_reachable_refs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error>;
 
-    /// Check for a valid GPG signature on commit named by the ASCII
-    /// checksum `commit_checksum`.
-    /// ## `commit_checksum`
-    /// ASCII SHA256 checksum
-    /// ## `keyringdir`
-    /// Path to directory GPG keyrings; overrides built-in default if given
-    /// ## `extra_keyring`
-    /// Path to additional keyring file (not a directory)
-    /// ## `cancellable`
-    /// Cancellable
-    ///
-    /// # Returns
-    ///
-    /// `true` if there was a GPG signature from a trusted keyring, otherwise `false`
     fn verify_commit<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA<gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T) -> Result<(), Error>;
 
-    /// Read GPG signature(s) on the commit named by the ASCII checksum
-    /// `commit_checksum` and return detailed results.
-    /// ## `commit_checksum`
-    /// ASCII SHA256 checksum
-    /// ## `keyringdir`
-    /// Path to directory GPG keyrings; overrides built-in default if given
-    /// ## `extra_keyring`
-    /// Path to additional keyring file (not a directory)
-    /// ## `cancellable`
-    /// Cancellable
-    ///
-    /// # Returns
-    ///
-    /// an `GpgVerifyResult`, or `None` on error
     fn verify_commit_ext<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA<gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T) -> Result<GpgVerifyResult, Error>;
 
-    /// Read GPG signature(s) on the commit named by the ASCII checksum
-    /// `commit_checksum` and return detailed results, based on the keyring
-    /// configured for `remote`.
-    /// ## `commit_checksum`
-    /// ASCII SHA256 checksum
-    /// ## `remote_name`
-    /// OSTree remote to use for configuration
-    /// ## `cancellable`
-    /// Cancellable
-    ///
-    /// # Returns
-    ///
-    /// an `GpgVerifyResult`, or `None` on error
     fn verify_commit_for_remote<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, remote_name: &str, cancellable: P) -> Result<GpgVerifyResult, Error>;
 
-    /// Verify `signatures` for `summary` data using GPG keys in the keyring for
-    /// `remote_name`, and return an `GpgVerifyResult`.
-    /// ## `remote_name`
-    /// Name of remote
-    /// ## `summary`
-    /// Summary data as a `glib::Bytes`
-    /// ## `signatures`
-    /// Summary signatures as a `glib::Bytes`
-    /// ## `cancellable`
-    /// Cancellable
-    ///
-    /// # Returns
-    ///
-    /// an `GpgVerifyResult`, or `None` on error
     fn verify_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, summary: &glib::Bytes, signatures: &glib::Bytes, cancellable: P) -> Result<GpgVerifyResult, Error>;
 
-    /// Import an archive file `archive` into the repository, and write its
-    /// file structure to `mtree`.
-    /// ## `archive`
-    /// A path to an archive file
-    /// ## `mtree`
-    /// The `MutableTree` to write to
-    /// ## `modifier`
-    /// Optional commit modifier
-    /// ## `autocreate_parents`
-    /// Autocreate parent directories
-    /// ## `cancellable`
-    /// Cancellable
     fn write_archive_to_mtree<'a, 'b, P: IsA<gio::File>, Q: Into<Option<&'a RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, archive: &P, mtree: &MutableTree, modifier: Q, autocreate_parents: bool, cancellable: R) -> Result<(), Error>;
 
-    /// Write a commit metadata object, referencing `root_contents_checksum`
-    /// and `root_metadata_checksum`.
-    /// ## `parent`
-    /// ASCII SHA256 checksum for parent, or `None` for none
-    /// ## `subject`
-    /// Subject
-    /// ## `body`
-    /// Body
-    /// ## `metadata`
-    /// GVariant of type a{sv}, or `None` for none
-    /// ## `root`
-    /// The tree to point the commit to
-    /// ## `out_commit`
-    /// Resulting ASCII SHA256 checksum for commit
-    /// ## `cancellable`
-    /// Cancellable
     fn write_commit<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d glib::Variant>>, T: Into<Option<&'e gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: &RepoFile, cancellable: T) -> Result<String, Error>;
 
-    /// Replace any existing metadata associated with commit referred to by
-    /// `checksum` with `metadata`. If `metadata` is `None`, then existing
-    /// data will be deleted.
-    /// ## `checksum`
-    /// ASCII SHA256 commit checksum
-    /// ## `metadata`
-    /// Metadata to associate with commit in with format "a{sv}", or `None` to delete
-    /// ## `cancellable`
-    /// Cancellable
     fn write_commit_detached_metadata<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, checksum: &str, metadata: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Write a commit metadata object, referencing `root_contents_checksum`
-    /// and `root_metadata_checksum`.
-    /// ## `parent`
-    /// ASCII SHA256 checksum for parent, or `None` for none
-    /// ## `subject`
-    /// Subject
-    /// ## `body`
-    /// Body
-    /// ## `metadata`
-    /// GVariant of type a{sv}, or `None` for none
-    /// ## `root`
-    /// The tree to point the commit to
-    /// ## `time`
-    /// The time to use to stamp the commit
-    /// ## `out_commit`
-    /// Resulting ASCII SHA256 checksum for commit
-    /// ## `cancellable`
-    /// Cancellable
     fn write_commit_with_time<'a, 'b, 'c, 'd, 'e, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c str>>, S: Into<Option<&'d glib::Variant>>, T: Into<Option<&'e gio::Cancellable>>>(&self, parent: P, subject: Q, body: R, metadata: S, root: &RepoFile, time: u64, cancellable: T) -> Result<String, Error>;
 
-    /// Save `new_config` in place of this repository's config file.
-    /// ## `new_config`
-    /// Overwrite the config file with this data
     fn write_config(&self, new_config: &glib::KeyFile) -> Result<(), Error>;
 
     //fn write_content<'a, 'b, P: Into<Option<&'a str>>, Q: IsA<gio::InputStream>, R: Into<Option<&'b gio::Cancellable>>>(&self, expected_checksum: P, object_input: &Q, length: u64, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: R) -> Result<(), Error>;
 
-    /// Store the content object streamed as `object_input`, with total
-    /// length `length`. The given `checksum` will be treated as trusted.
-    ///
-    /// This function should be used when importing file objects from local
-    /// disk, for example.
-    /// ## `checksum`
-    /// Store content using this ASCII SHA256 checksum
-    /// ## `object_input`
-    /// Content stream
-    /// ## `length`
-    /// Length of `object_input`
-    /// ## `cancellable`
-    /// Cancellable
     fn write_content_trusted<'a, P: IsA<gio::InputStream>, Q: Into<Option<&'a gio::Cancellable>>>(&self, checksum: &str, object_input: &P, length: u64, cancellable: Q) -> Result<(), Error>;
 
-    /// Store as objects all contents of the directory referred to by `dfd`
-    /// and `path` all children into the repository `self`, overlaying the
-    /// resulting filesystem hierarchy into `mtree`.
-    /// ## `dfd`
-    /// Directory file descriptor
-    /// ## `path`
-    /// Path
-    /// ## `mtree`
-    /// Overlay directory contents into this tree
-    /// ## `modifier`
-    /// Optional modifier
-    /// ## `cancellable`
-    /// Cancellable
     fn write_dfd_to_mtree<'a, 'b, P: Into<Option<&'a RepoCommitModifier>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, dfd: i32, path: &str, mtree: &MutableTree, modifier: P, cancellable: Q) -> Result<(), Error>;
 
-    /// Store objects for `dir` and all children into the repository `self`,
-    /// overlaying the resulting filesystem hierarchy into `mtree`.
-    /// ## `dir`
-    /// Path to a directory
-    /// ## `mtree`
-    /// Overlay directory contents into this tree
-    /// ## `modifier`
-    /// Optional modifier
-    /// ## `cancellable`
-    /// Cancellable
     fn write_directory_to_mtree<'a, 'b, P: IsA<gio::File>, Q: Into<Option<&'a RepoCommitModifier>>, R: Into<Option<&'b gio::Cancellable>>>(&self, dir: &P, mtree: &MutableTree, modifier: Q, cancellable: R) -> Result<(), Error>;
 
     //fn write_metadata<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, objtype: ObjectType, expected_checksum: P, object: &glib::Variant, out_csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Q) -> Result<(), Error>;
 
-    /// Store the metadata object `variant`; the provided `checksum` is
-    /// trusted.
-    /// ## `objtype`
-    /// Object type
-    /// ## `checksum`
-    /// Store object with this ASCII SHA256 checksum
-    /// ## `object_input`
-    /// Metadata object stream
-    /// ## `length`
-    /// Length, may be 0 for unknown
-    /// ## `cancellable`
-    /// Cancellable
     fn write_metadata_stream_trusted<'a, P: IsA<gio::InputStream>, Q: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, object_input: &P, length: u64, cancellable: Q) -> Result<(), Error>;
 
-    /// Store the metadata object `variant`; the provided `checksum` is
-    /// trusted.
-    /// ## `objtype`
-    /// Object type
-    /// ## `checksum`
-    /// Store object with this ASCII SHA256 checksum
-    /// ## `variant`
-    /// Metadata object
-    /// ## `cancellable`
-    /// Cancellable
     fn write_metadata_trusted<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, variant: &glib::Variant, cancellable: P) -> Result<(), Error>;
 
-    /// Write all metadata objects for `mtree` to repo; the resulting
-    /// `out_file` points to the `ObjectType::DirTree` object that
-    /// the `mtree` represented.
-    /// ## `mtree`
-    /// Mutable tree
-    /// ## `out_file`
-    /// An `RepoFile` representing `mtree`'s root.
-    /// ## `cancellable`
-    /// Cancellable
     fn write_mtree<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, mtree: &MutableTree, cancellable: P) -> Result<gio::File, Error>;
 
     fn get_property_remotes_config_dir(&self) -> Option<String>;
 
     fn get_property_sysroot_path(&self) -> Option<gio::File>;
 
-    /// Emitted during a pull operation upon GPG verification (if enabled).
-    /// Applications can connect to this signal to output the verification
-    /// results if desired.
-    ///
-    /// The signal will be emitted from whichever `glib::MainContext` is the
-    /// thread-default at the point when `RepoExt::pull_with_options`
-    /// is called.
-    /// ## `checksum`
-    /// checksum of the signed object
-    /// ## `result`
-    /// an `GpgVerifyResult`
     fn connect_gpg_verify_result<F: Fn(&Self, &str, &GpgVerifyResult) + 'static>(&self, f: F) -> SignalHandlerId;
 }
 

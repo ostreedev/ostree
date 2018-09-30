@@ -62,6 +62,34 @@ pub use self::flags::RepoCommitState;
 pub use self::flags::RepoPullFlags;
 pub use self::flags::SePolicyRestoreconFlags;
 
+pub mod functions;
+
+mod constants;
+pub use self::constants::COMMIT_GVARIANT_STRING;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::constants::COMMIT_META_KEY_COLLECTION_BINDING;
+#[cfg(any(feature = "v2017_7", feature = "dox"))]
+pub use self::constants::COMMIT_META_KEY_ENDOFLIFE;
+#[cfg(any(feature = "v2017_7", feature = "dox"))]
+pub use self::constants::COMMIT_META_KEY_ENDOFLIFE_REBASE;
+#[cfg(any(feature = "v2017_9", feature = "dox"))]
+pub use self::constants::COMMIT_META_KEY_REF_BINDING;
+#[cfg(any(feature = "v2017_13", feature = "dox"))]
+pub use self::constants::COMMIT_META_KEY_SOURCE_TITLE;
+#[cfg(any(feature = "v2014_9", feature = "dox"))]
+pub use self::constants::COMMIT_META_KEY_VERSION;
+pub use self::constants::DIRMETA_GVARIANT_STRING;
+pub use self::constants::FILEMETA_GVARIANT_STRING;
+#[cfg(any(feature = "v2018_3", feature = "dox"))]
+pub use self::constants::ORIGIN_TRANSIENT_GROUP;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::constants::REPO_METADATA_REF;
+pub use self::constants::SUMMARY_GVARIANT_STRING;
+pub use self::constants::SUMMARY_SIG_GVARIANT_STRING;
+pub use self::constants::TREE_GVARIANT_STRING;
+#[cfg(any(feature = "v2017_4", feature = "dox"))]
+pub use self::constants::VERSION_S;
+
 #[doc(hidden)]
 pub mod traits {
     pub use super::AsyncProgressExt;

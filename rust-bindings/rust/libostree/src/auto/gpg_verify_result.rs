@@ -22,20 +22,6 @@ glib_wrapper! {
 }
 
 impl GpgVerifyResult {
-    /// Similar to `GpgVerifyResultExt::describe` but takes a `glib::Variant` of
-    /// all attributes for a GPG signature instead of an `GpgVerifyResult`
-    /// and signature index.
-    ///
-    /// The `variant` `<emphasis>`MUST`</emphasis>` have been created by
-    /// `GpgVerifyResultExt::get_all`.
-    /// ## `variant`
-    /// a `glib::Variant` from `GpgVerifyResultExt::get_all`
-    /// ## `output_buffer`
-    /// a `glib::String` to hold the description
-    /// ## `line_prefix`
-    /// optional line prefix string
-    /// ## `flags`
-    /// flags to adjust the description format
     pub fn describe_variant<'a, P: Into<Option<&'a str>>>(variant: &glib::Variant, output_buffer: &mut glib::String, line_prefix: P, flags: GpgSignatureFormatFlags) {
         let line_prefix = line_prefix.into();
         let line_prefix = line_prefix.to_glib_none();
@@ -45,105 +31,19 @@ impl GpgVerifyResult {
     }
 }
 
-/// Trait containing all `GpgVerifyResult` methods.
-///
-/// # Implementors
-///
-/// [`GpgVerifyResult`](struct.GpgVerifyResult.html)
 pub trait GpgVerifyResultExt {
-    /// Counts all the signatures in `self`.
-    ///
-    /// # Returns
-    ///
-    /// signature count
     fn count_all(&self) -> u32;
 
-    /// Counts only the valid signatures in `self`.
-    ///
-    /// # Returns
-    ///
-    /// valid signature count
     fn count_valid(&self) -> u32;
 
-    /// Appends a brief, human-readable description of the GPG signature at
-    /// `signature_index` in `self` to the `output_buffer`. The description
-    /// spans multiple lines. A `line_prefix` string, if given, will precede
-    /// each line of the description.
-    ///
-    /// The `flags` argument is reserved for future variations to the description
-    /// format. Currently must be 0.
-    ///
-    /// It is a programmer error to request an invalid `signature_index`. Use
-    /// `GpgVerifyResultExt::count_all` to find the number of signatures in
-    /// `self`.
-    /// ## `signature_index`
-    /// which signature to describe
-    /// ## `output_buffer`
-    /// a `glib::String` to hold the description
-    /// ## `line_prefix`
-    /// optional line prefix string
-    /// ## `flags`
-    /// flags to adjust the description format
     fn describe<'a, P: Into<Option<&'a str>>>(&self, signature_index: u32, output_buffer: &mut glib::String, line_prefix: P, flags: GpgSignatureFormatFlags);
 
     //fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 26 }) -> Option<glib::Variant>;
 
-    /// Builds a `glib::Variant` tuple of all available attributes for the GPG signature
-    /// at `signature_index` in `self`.
-    ///
-    /// The child values in the returned `glib::Variant` tuple are ordered to match the
-    /// `GpgSignatureAttr` enumeration, which means the enum values can be
-    /// used as index values in functions like `glib::Variant::get_child`. See the
-    /// `GpgSignatureAttr` description for the `glib::VariantType` of each
-    /// available attribute.
-    ///
-    /// `<note>`
-    ///  `<para>`
-    ///  The `GpgSignatureAttr` enumeration may be extended in the future
-    ///  with new attributes, which would affect the `glib::Variant` tuple returned by
-    ///  this function. While the position and type of current child values in
-    ///  the `glib::Variant` tuple will not change, to avoid backward-compatibility
-    ///  issues `<emphasis>`please do not depend on the tuple's overall size or
-    ///  type signature`</emphasis>`.
-    ///  `</para>`
-    /// `</note>`
-    ///
-    /// It is a programmer error to request an invalid `signature_index`. Use
-    /// `GpgVerifyResultExt::count_all` to find the number of signatures in
-    /// `self`.
-    /// ## `signature_index`
-    /// which signature to get attributes from
-    ///
-    /// # Returns
-    ///
-    /// a new, floating, `glib::Variant` tuple
     fn get_all(&self, signature_index: u32) -> Option<glib::Variant>;
 
-    /// Searches `self` for a signature signed by `key_id`. If a match is found,
-    /// the function returns `true` and sets `out_signature_index` so that further
-    /// signature details can be obtained through `GpgVerifyResultExt::get`.
-    /// If no match is found, the function returns `false` and leaves
-    /// `out_signature_index` unchanged.
-    /// ## `key_id`
-    /// a GPG key ID or fingerprint
-    /// ## `out_signature_index`
-    /// return location for the index of the signature
-    ///  signed by `key_id`, or `None`
-    ///
-    /// # Returns
-    ///
-    /// `true` on success, `false` on failure
     fn lookup(&self, key_id: &str) -> Option<u32>;
 
-    /// Checks if the result contains at least one signature from the
-    /// trusted keyring. You can call this function immediately after
-    /// `RepoExt::verify_summary` or `RepoExt::verify_commit_ext` -
-    /// it will handle the `None` `self` and filled `error` too.
-    ///
-    /// # Returns
-    ///
-    /// `true` if `self` was not `None` and had at least one
-    /// signature from trusted keyring, otherwise `false`
     fn require_valid_signature(&self) -> Result<(), Error>;
 }
 

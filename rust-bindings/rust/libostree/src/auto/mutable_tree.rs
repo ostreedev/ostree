@@ -21,28 +21,12 @@ glib_wrapper! {
 }
 
 impl MutableTree {
-    ///
-    /// # Returns
-    ///
-    /// A new tree
     pub fn new() -> MutableTree {
         unsafe {
             from_glib_full(ffi::ostree_mutable_tree_new())
         }
     }
 
-    /// Creates a new OstreeMutableTree with the contents taken from the given repo
-    /// and checksums. The data will be loaded from the repo lazily as needed.
-    /// ## `repo`
-    /// The repo which contains the objects refered by the checksums.
-    /// ## `contents_checksum`
-    /// dirtree checksum
-    /// ## `metadata_checksum`
-    /// dirmeta checksum
-    ///
-    /// # Returns
-    ///
-    /// A new tree
     pub fn new_from_checksum(repo: &Repo, contents_checksum: &str, metadata_checksum: &str) -> MutableTree {
         unsafe {
             from_glib_full(ffi::ostree_mutable_tree_new_from_checksum(repo.to_glib_none().0, contents_checksum.to_glib_none().0, metadata_checksum.to_glib_none().0))
@@ -56,49 +40,14 @@ impl Default for MutableTree {
     }
 }
 
-/// Trait containing all `MutableTree` methods.
-///
-/// # Implementors
-///
-/// [`MutableTree`](struct.MutableTree.html)
 pub trait MutableTreeExt {
-    /// In some cases, a tree may be in a "lazy" state that loads
-    /// data in the background; if an error occurred during a non-throwing
-    /// API call, it will have been cached. This function checks for a
-    /// cached error. The tree remains in error state.
-    ///
-    /// Feature: `v2018_7`
-    ///
-    ///
-    /// # Returns
-    ///
-    /// `TRUE` on success
     #[cfg(any(feature = "v2018_7", feature = "dox"))]
     fn check_error(&self) -> Result<(), Error>;
 
-    /// Returns the subdirectory of self with filename `name`, creating an empty one
-    /// it if it doesn't exist.
-    /// ## `name`
-    /// Name of subdirectory of self to retrieve/creates
-    /// ## `out_subdir`
-    /// the subdirectory
     fn ensure_dir(&self, name: &str) -> Result<MutableTree, Error>;
 
     //fn ensure_parent_dirs(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, metadata_checksum: &str) -> Result<MutableTree, Error>;
 
-    /// Merges `self` with the tree given by `contents_checksum` and
-    /// `metadata_checksum`, but only if it's possible without writing new objects to
-    /// the `repo`. We can do this if either `self` is empty, the tree given by
-    /// `contents_checksum` is empty or if both trees already have the same
-    /// `contents_checksum`.
-    ///
-    /// # Returns
-    ///
-    /// `true` if merge was successful, `false` if it was not possible.
-    ///
-    /// This function enables optimisations when composing trees. The provided
-    /// checksums are not loaded or checked when this function is called. Instead
-    /// the contents will be loaded only when needed.
     fn fill_empty_from_dirtree(&self, repo: &Repo, contents_checksum: &str, metadata_checksum: &str) -> bool;
 
     fn get_contents_checksum(&self) -> Option<String>;
