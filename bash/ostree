@@ -24,12 +24,6 @@
 #  - Structured option arguments (e.g. --foo KEY=VALUE) are not parsed.
 #
 #  - Static deltas could likely be completed. (e.g. ostree static-delta delete [TAB])
-#
-#  - The "--repo PATH" option needs to come after the subcommand or it
-#    won't be picked up for completion of subsequent options.
-#      i.e. ostree commit --repo PATH ...   <-- works
-#           ostree --repo PATH commit ...   <-- does not work
-#    (Possibly an easy fix.)
 
 
 # Finds the position of the first non-flag word.
@@ -183,9 +177,16 @@ __ostree_subcommands() {
 
 # This handles "ostree [TAB]" (without a subcommand).
 _ostree_ostree() {
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
     case "$cur" in
         -*)
-            COMPREPLY=( $( compgen -W "$main_boolean_options" -- "$cur" ) )
+            COMPREPLY=( $( compgen -W "$main_options" -- "$cur" ) )
             ;;
         *)
             COMPREPLY=( $( compgen -W "$commands" -- "$cur" ) )
@@ -1752,6 +1753,14 @@ _ostree() {
         --help -h
         --verbose -v
         --version
+    "
+    local main_options_with_args="
+        --repo
+    "
+    local main_options_with_args_glob=$( __ostree_to_extglob "$main_options_with_args" )
+    local main_options="
+        $main_boolean_options
+        $main_options_with_args
     "
 
     COMPREPLY=()
