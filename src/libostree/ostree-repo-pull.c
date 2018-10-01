@@ -150,6 +150,7 @@ typedef struct {
 
   gboolean          timestamp_check; /* Verify commit timestamps */
   int               maxdepth;
+  guint64           max_metadata_size;
   guint64           start_time;
 
   gboolean          is_mirror;
@@ -2193,7 +2194,7 @@ start_fetch (OtPullData *pull_data,
   if (expected_max_size_p)
     expected_max_size = *expected_max_size_p;
   else if (OSTREE_OBJECT_TYPE_IS_META (objtype))
-    expected_max_size = OSTREE_MAX_METADATA_SIZE;
+    expected_max_size = pull_data->max_metadata_size;
   else
     expected_max_size = 0;
 
@@ -3488,6 +3489,7 @@ initiate_request (OtPullData                 *pull_data,
  *   * require-static-deltas (b): Require static deltas
  *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
  *   * timestamp-check (b): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
+ *   * metadata-size-restriction (t): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
  *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
  *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
  *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
@@ -3543,6 +3545,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
    */
   const char *the_ref_to_fetch = NULL;
 
+  /* Default */
+  pull_data->max_metadata_size = OSTREE_MAX_METADATA_SIZE;
+
   if (options)
     {
       int flags_i = OSTREE_REPO_PULL_FLAGS_NONE;
@@ -3570,6 +3575,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
       (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
       (void) g_variant_lookup (options, "timestamp-check", "b", &pull_data->timestamp_check);
+      (void) g_variant_lookup (options, "max-metadata-size", "t", &pull_data->max_metadata_size);
       (void) g_variant_lookup (options, "append-user-agent", "s", &pull_data->append_user_agent);
       opt_n_network_retries_set =
         g_variant_lookup (options, "n-network-retries", "u", &pull_data->n_network_retries);

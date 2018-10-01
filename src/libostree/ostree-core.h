@@ -31,18 +31,18 @@ G_BEGIN_DECLS
 
 /**
  * OSTREE_MAX_METADATA_SIZE:
- * 
- * Maximum permitted size in bytes of metadata objects.  This is an
- * arbitrary number, but really, no one should be putting humongous
- * data in metadata.
+ *
+ * Default limit for maximum permitted size in bytes of metadata objects fetched
+ * over HTTP (including repo/config files, refs, and commit/dirtree/dirmeta
+ * objects). This is an arbitrary number intended to mitigate disk space
+ * exhaustion attacks.
  */
 #define OSTREE_MAX_METADATA_SIZE (10 * 1024 * 1024)
 
 /**
  * OSTREE_MAX_METADATA_WARN_SIZE:
- * 
- * Objects committed above this size will be allowed, but a warning
- * will be emitted.
+ *
+ * This variable is no longer meaningful, it is kept only for compatibility.
  */
 #define OSTREE_MAX_METADATA_WARN_SIZE (7 * 1024 * 1024)
 
