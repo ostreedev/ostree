@@ -430,6 +430,54 @@ test_devino_cache_xattrs (void)
   g_assert_cmpint (stats.content_objects_written, ==, 1);
 }
 
+/* https://github.com/ostreedev/ostree/issues/1721
+ * We should be able to commit large metadata objects now.
+ */
+static void
+test_big_metadata (void)
+{
+  g_autoptr(GError) error = NULL;
+  gboolean ret = FALSE;
+
+  g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
+
+  /* init as bare-user-only so we run everywhere */
+  ret = ot_test_run_libtest ("setup_test_repository bare-user-only", &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_path);
+  ret = ostree_repo_open (repo, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autoptr(GFile) object_to_commit = NULL;
+  ret = ostree_repo_read_commit (repo, "test2", &object_to_commit, NULL, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new ();
+  ret = ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, NULL,
+                                              NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  const size_t len = 20 * 1024 * 1024;
+  g_assert_cmpint (len, >, OSTREE_MAX_METADATA_SIZE);
+  g_autofree char *large_buf = g_malloc (len);
+  memset (large_buf, 0x42, len);
+  g_autoptr(GVariantBuilder) builder =
+    g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+  g_autofree char *commit_checksum = NULL;
+  g_variant_builder_add (builder, "{sv}", "large-value",
+                         g_variant_new_fixed_array ((GVariantType*)"y",
+                                                    large_buf, len, sizeof (char)));
+  ret = ostree_repo_write_commit (repo, NULL, NULL, NULL, g_variant_builder_end (builder),
+                                  OSTREE_REPO_FILE (object_to_commit), &commit_checksum, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+}
+
 int main (int argc, char **argv)
 {
   g_autoptr(GError) error = NULL;
@@ -447,6 +495,7 @@ int main (int argc, char **argv)
   g_test_add_func ("/xattrs-devino-cache", test_devino_cache_xattrs);
   g_test_add_func ("/break-hardlink", test_break_hardlink);
   g_test_add_func ("/remotename", test_validate_remotename);
+  g_test_add_func ("/big-metadata", test_big_metadata);
 
   return g_test_run();
  out:

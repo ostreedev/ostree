@@ -1336,18 +1336,6 @@ write_metadata_object (OstreeRepo         *self,
   gsize len;
   const guint8 *bufp = g_bytes_get_data (buf, &len);
 
-  /* Do the size warning here, to avoid warning for already extant metadata */
-  if (G_UNLIKELY (len > OSTREE_MAX_METADATA_WARN_SIZE))
-    {
-      g_autofree char *metasize = g_format_size (len);
-      g_autofree char *warnsize = g_format_size (OSTREE_MAX_METADATA_WARN_SIZE);
-      g_autofree char *maxsize = g_format_size (OSTREE_MAX_METADATA_SIZE);
-      g_warning ("metadata object %s is %s, which is larger than the warning threshold of %s." \
-                 "  The hard limit on metadata size is %s.  Put large content in the tree itself, not in metadata.",
-                 actual_checksum,
-                 metasize, warnsize, maxsize);
-    }
-
   /* Write the metadata to a temporary file */
   g_auto(GLnxTmpfile) tmpf = { 0, };
   if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
@@ -2278,25 +2266,6 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   return TRUE;
 }
 
-/* These limits were introduced since in some cases we may be processing
- * malicious metadata, and we want to make disk space exhaustion attacks harder.
- */
-static gboolean
-metadata_size_valid (OstreeObjectType objtype,
-                     gsize len,
-                     GError **error)
-{
-  if (G_UNLIKELY (len > OSTREE_MAX_METADATA_SIZE))
-    {
-      g_autofree char *input_bytes = g_format_size (len);
-      g_autofree char *max_bytes = g_format_size (OSTREE_MAX_METADATA_SIZE);
-      return glnx_throw (error, "Metadata object of type '%s' is %s; maximum metadata size is %s",
-                         ostree_object_type_to_string (objtype), input_bytes, max_bytes);
-    }
-
-  return TRUE;
-}
-
 /**
  * ostree_repo_write_metadata:
  * @self: Repo
@@ -2349,9 +2318,6 @@ ostree_repo_write_metadata (OstreeRepo         *self,
       normalized = g_variant_get_normal_form (object);
     }
 
-  if (!metadata_size_valid (objtype, g_variant_get_size (normalized), error))
-    return FALSE;
-
   /* For untrusted objects, verify their structure here */
   if (expected_checksum)
     {
@@ -2389,9 +2355,6 @@ ostree_repo_write_metadata_stream_trusted (OstreeRepo        *self,
                                            GCancellable      *cancellable,
                                            GError           **error)
 {
-  if (length > 0 && !metadata_size_valid (objtype, length, error))
-    return FALSE;
-
   /* This is all pretty ridiculous, but we're keeping this API for backwards
    * compatibility, it doesn't really need to be fast.
    */
