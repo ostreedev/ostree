@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <stdio.h>
+#include <err.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -628,10 +629,7 @@ rofs_parse_opt (void *data, const char *arg, int key,
         {
           basefd = openat (AT_FDCWD, arg, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOCTTY);
           if (basefd == -1)
-            {
-              perror ("openat");
-              exit (EXIT_FAILURE);
-            }
+            err (1, "opening rootfs %s", arg);
           return 0;
         }
       else
