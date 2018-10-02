@@ -16,6 +16,7 @@ use glib::Error;
 // re-exports
 mod auto;
 pub use auto::*;
+pub use auto::functions::*;
 
 mod repo;
 

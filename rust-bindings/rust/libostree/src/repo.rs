@@ -12,6 +12,7 @@ use std::ptr;
 
 unsafe extern "C" fn read_variant_table(_key: glib_ffi::gpointer, value: glib_ffi::gpointer, hash_set: glib_ffi::gpointer) {
     let value: glib::Variant = from_glib_none(value as *const glib_ffi::GVariant);
+    // TODO: this set is degenerate because g_variant_hash for my Variants is always 0
     let set: &mut HashSet<glib::Variant> = &mut *(hash_set as *mut HashSet<glib::Variant>);
     set.insert(value);
 }
