@@ -83,11 +83,6 @@ Boston, MA 02111-1307, USA.
             USB mounts use signed per-repo and per-commit metadata instead of
             summary signatures.
         </para>
-        <para>
-            This command relies on the summary file in the source repo, so you
-            may want to run <command>ostree summary -u</command> before running
-            this command.
-        </para>
     </refsect1>
 
     <refsect1>
