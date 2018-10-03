@@ -22,12 +22,12 @@ DefaultDependencies=no
 ConditionKernelCommandLine=ostree
 OnFailure=emergency.target
 Conflicts=umount.target
-After=-.mount
+# Run after core mounts
+After=-.mount var.mount
 After=systemd-remount-fs.service
+# But we run *before* most other core bootup services that need write access to /etc and /var
 Before=local-fs.target umount.target
-# Other early boot units that need to write to /var
 Before=systemd-random-seed.service plymouth-read-write.service systemd-journal-flush.service
-# tmpfiles.d usually needs write access to a few places
 Before=systemd-tmpfiles-setup.service
 
 [Service]

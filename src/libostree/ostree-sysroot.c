@@ -227,6 +227,33 @@ ostree_sysroot_new_default (void)
 }
 
 /**
+ * ostree_sysroot_set_mount_namespace_in_use:
+ *
+ * If this function is invoked, then libostree will assume that
+ * a private Linux mount namespace has been created by the process.
+ * The primary use case for this is to have e.g. /sysroot mounted
+ * read-only by default.
+ *
+ * If this function has been called, then when a function which requires
+ * writable access is invoked, libostree will automatically remount as writable
+ * any mount points on which it operates.  This currently is just `/sysroot` and
+ * `/boot`.
+ *
+ * If you invoke this function, it must be before ostree_sysroot_load(); it may
+ * be invoked before or after ostree_sysroot_initialize().
+ *
+ * Since: 2019.7
+ */
+void
+ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot  *self)
+{
+  /* Must be before we're loaded, as otherwise we'd have to close/reopen all our
+     fds, e.g. the repo */
+  g_return_if_fail (self->loadstate < OSTREE_SYSROOT_LOAD_STATE_LOADED);
+  self->mount_namespace_in_use = TRUE;
+}
+
+/**
  * ostree_sysroot_get_path:
  * @self:
  *
@@ -238,6 +265,7 @@ ostree_sysroot_get_path (OstreeSysroot  *self)
   return self->path;
 }
 
+/* Open a directory file descriptor for the sysroot if we haven't yet */
 static gboolean
 ensure_sysroot_fd (OstreeSysroot          *self,
                    GError                **error)
@@ -251,13 +279,51 @@ ensure_sysroot_fd (OstreeSysroot          *self,
   return TRUE;
 }
 
+/* Remount /sysroot read-write if necessary */
+gboolean
+_ostree_sysroot_ensure_writable (OstreeSysroot      *self,
+                                 GError            **error)
+{
+  /* Do nothing if no mount namespace is in use */
+  if (!self->mount_namespace_in_use)
+    return TRUE;
+
+  /* If a mount namespace is in use, ensure we're initialized */
+  if (!ostree_sysroot_initialize (self, error))
+    return FALSE;
+
+  /* If we aren't operating on a booted system, then we don't
+   * do anything with mounts.
+   */
+  if (!self->root_is_ostree_booted)
+    return TRUE;
+
+  /* Check if /sysroot is a read-only mountpoint */
+  struct statvfs stvfsbuf;
+  if (statvfs ("/sysroot", &stvfsbuf) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs(/sysroot)");
+  if ((stvfsbuf.f_flag & ST_RDONLY) == 0)
+    return TRUE;
+
+  /* OK, let's remount writable. */
+  if (mount ("/sysroot", "/sysroot", NULL, MS_REMOUNT | MS_RELATIME, "") < 0)
+    return glnx_throw_errno_prefix (error, "Remounting /sysroot read-write");
+
+  /* Reopen our fd */
+  glnx_close_fd (&self->sysroot_fd);
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /**
  * ostree_sysroot_get_fd:
  * @self: Sysroot
  *
- * Access a file descriptor that refers to the root directory of this
- * sysroot.  ostree_sysroot_load() must have been invoked prior to
- * calling this function.
+ * Access a file descriptor that refers to the root directory of this sysroot.
+ * ostree_sysroot_initialize() (or ostree_sysroot_load()) must have been invoked
+ * prior to calling this function.
  *
  * Returns: A file descriptor valid for the lifetime of @self
  */
@@ -266,6 +332,22 @@ ostree_sysroot_get_fd (OstreeSysroot *self)
 {
   g_return_val_if_fail (self->sysroot_fd != -1, -1);
   return self->sysroot_fd;
+}
+
+/**
+ * ostree_sysroot_is_booted:
+ * @self: Sysroot
+ *
+ * Can only be invoked after `ostree_sysroot_initialize()`.
+ * 
+ * Returns: %TRUE iff the sysroot points to a booted deployment
+ * Since: 2019.7
+ */
+gboolean
+ostree_sysroot_is_booted (OstreeSysroot *self)
+{
+  g_return_val_if_fail (self->loadstate >= OSTREE_SYSROOT_LOAD_STATE_INIT, FALSE);
+  return self->root_is_ostree_booted;
 }
 
 gboolean
@@ -798,6 +880,57 @@ ensure_repo (OstreeSysroot  *self,
   return TRUE;
 }
 
+/**
+ * ostree_sysroot_initialize:
+ * @self: sysroot
+ *
+ * Subset of ostree_sysroot_load(); performs basic initialization. Notably, one
+ * can invoke `ostree_sysroot_get_fd()` after calling this function.
+ *
+ * It is not necessary to call this function if ostree_sysroot_load() is
+ * invoked.
+ *
+ * Since: 2019.7
+ */
+gboolean
+ostree_sysroot_initialize (OstreeSysroot  *self,
+                           GError        **error)
+{
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+
+  if (self->loadstate < OSTREE_SYSROOT_LOAD_STATE_INIT)
+    {
+      /* Gather some global state; first if we have the global ostree-booted flag;
+       * we'll use it to sanity check that we found a booted deployment for example.
+       * Second, we also find out whether sysroot == /.
+       */
+      if (!glnx_fstatat_allow_noent (AT_FDCWD, "/run/ostree-booted", NULL, 0, error))
+        return FALSE;
+      const gboolean ostree_booted = (errno == 0);
+
+      { struct stat root_stbuf;
+        if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
+          return FALSE;
+        self->root_device = root_stbuf.st_dev;
+        self->root_inode = root_stbuf.st_ino;
+      }
+
+      struct stat self_stbuf;
+      if (!glnx_fstatat (AT_FDCWD, gs_file_get_path_cached (self->path), &self_stbuf, 0, error))
+        return FALSE;
+
+      const gboolean root_is_sysroot =
+        (self->root_device == self_stbuf.st_dev &&
+         self->root_inode == self_stbuf.st_ino);
+
+      self->root_is_ostree_booted = (ostree_booted && root_is_sysroot);
+      self->loadstate = OSTREE_SYSROOT_LOAD_STATE_INIT;
+    }
+
+  return TRUE;
+}
+
 /* Reload the staged deployment from the file in /run */
 gboolean
 _ostree_sysroot_reload_staged (OstreeSysroot *self,
@@ -870,7 +1003,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  if (!ensure_sysroot_fd (self, error))
+  if (!ostree_sysroot_initialize (self, error))
     return FALSE;
 
   /* Here we also lazily initialize the repository.  We didn't do this
@@ -879,34 +1012,6 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
    */
   if (!ensure_repo (self, error))
     return FALSE;
-
-  /* Gather some global state; first if we have the global ostree-booted flag;
-   * we'll use it to sanity check that we found a booted deployment for example.
-   * Second, we also find out whether sysroot == /.
-   */
-  if (!self->loaded)
-    {
-      if (!glnx_fstatat_allow_noent (AT_FDCWD, "/run/ostree-booted", NULL, 0, error))
-        return FALSE;
-      const gboolean ostree_booted = (errno == 0);
-
-      { struct stat root_stbuf;
-        if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
-          return FALSE;
-        self->root_device = root_stbuf.st_dev;
-        self->root_inode = root_stbuf.st_ino;
-      }
-
-      struct stat self_stbuf;
-      if (!glnx_fstat (self->sysroot_fd, &self_stbuf, error))
-        return FALSE;
-
-      const gboolean root_is_sysroot =
-        (self->root_device == self_stbuf.st_dev &&
-         self->root_inode == self_stbuf.st_ino);
-
-      self->root_is_ostree_booted = (ostree_booted && root_is_sysroot);
-    }
 
   int bootversion = 0;
   if (!read_current_bootversion (self, &bootversion, cancellable, error))
@@ -990,8 +1095,8 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
       ostree_deployment_set_index (deployment, i);
     }
 
-  /* Determine whether we're "physical" or not, the first time we initialize */
-  if (!self->loaded)
+  /* Determine whether we're "physical" or not, the first time we load deployments */
+  if (self->loadstate < OSTREE_SYSROOT_LOAD_STATE_LOADED)
     {
       /* If we have a booted deployment, the sysroot is / and we're definitely
        * not physical.
@@ -1009,13 +1114,14 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
             self->is_physical = TRUE;
         }
       /* Otherwise, the default is FALSE */
+
+      self->loadstate = OSTREE_SYSROOT_LOAD_STATE_LOADED;
     }
 
   self->bootversion = bootversion;
   self->subbootversion = subbootversion;
   self->deployments = deployments;
   deployments = NULL; /* Transfer ownership */
-  self->loaded = TRUE;
   self->loaded_ts = stbuf.st_mtim;
 
   if (out_changed)
@@ -1044,7 +1150,7 @@ ostree_sysroot_get_subbootversion (OstreeSysroot   *self)
 OstreeDeployment *
 ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
 {
-  g_return_val_if_fail (self->loaded, NULL);
+  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
 
   return self->booted_deployment;
 }
@@ -1060,7 +1166,7 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
 OstreeDeployment *
 ostree_sysroot_get_staged_deployment (OstreeSysroot       *self)
 {
-  g_return_val_if_fail (self->loaded, NULL);
+  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
 
   return self->staged_deployment;
 }
@@ -1074,7 +1180,7 @@ ostree_sysroot_get_staged_deployment (OstreeSysroot       *self)
 GPtrArray *
 ostree_sysroot_get_deployments (OstreeSysroot  *self)
 {
-  g_return_val_if_fail (self->loaded, NULL);
+  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
 
   GPtrArray *copy = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
   for (guint i = 0; i < self->deployments->len; i++)
@@ -1163,8 +1269,8 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
  * @self: Sysroot
  *
  * This function is a variant of ostree_sysroot_get_repo() that cannot fail, and
- * returns a cached repository. Can only be called after ostree_sysroot_load()
- * has been invoked successfully.
+ * returns a cached repository. Can only be called after ostree_sysroot_initialize()
+ * or ostree_sysroot_load() has been invoked successfully.
  *
  * Returns: (transfer none): The OSTree repository in sysroot @self.
  *
@@ -1173,7 +1279,7 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
 OstreeRepo *
 ostree_sysroot_repo (OstreeSysroot *self)
 {
-  g_return_val_if_fail (self->loaded, NULL);
+  g_return_val_if_fail (self->loadstate >= OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
   g_assert (self->repo);
   return self->repo;
 }
@@ -1368,6 +1474,10 @@ ostree_sysroot_lock (OstreeSysroot     *self,
 {
   if (!ensure_sysroot_fd (self, error))
     return FALSE;
+
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
   return glnx_make_lock_file (self->sysroot_fd, OSTREE_SYSROOT_LOCKFILE,
                               LOCK_EX, &self->lock, error);
 }
@@ -1391,12 +1501,14 @@ ostree_sysroot_try_lock (OstreeSysroot         *self,
                          gboolean              *out_acquired,
                          GError               **error)
 {
-  g_autoptr(GError) local_error = NULL;
-
   if (!ensure_sysroot_fd (self, error))
     return FALSE;
 
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
   /* Note use of LOCK_NB */
+  g_autoptr(GError) local_error = NULL;
   if (!glnx_make_lock_file (self->sysroot_fd, OSTREE_SYSROOT_LOCKFILE,
                             LOCK_EX | LOCK_NB, &self->lock, &local_error))
     {
@@ -1509,7 +1621,7 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
                             GCancellable        *cancellable,
                             GError             **error)
 {
-  if (!ensure_sysroot_fd (self, error))
+  if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
 
   const char *deploydir = glnx_strjoina ("ostree/deploy/", osname);

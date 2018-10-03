@@ -499,6 +499,7 @@ ostree_sepolicy_get_type
 OstreeSysroot
 ostree_sysroot_new
 ostree_sysroot_new_default
+ostree_sysroot_initialize
 ostree_sysroot_get_path
 ostree_sysroot_load
 ostree_sysroot_load_if_changed
@@ -508,6 +509,8 @@ ostree_sysroot_lock_async
 ostree_sysroot_lock_finish
 ostree_sysroot_unlock
 ostree_sysroot_unload
+ostree_sysroot_set_mount_namespace_in_use
+ostree_sysroot_is_booted
 ostree_sysroot_get_fd
 ostree_sysroot_ensure_initialized
 ostree_sysroot_get_bootversion

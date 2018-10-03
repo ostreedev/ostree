@@ -455,6 +455,9 @@ ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
   OstreeRepo *repo = ostree_sysroot_repo (sysroot);
   const guint depth = 0; /* Historical default */
 
+  if (!_ostree_sysroot_ensure_writable (sysroot, error))
+    return FALSE;
+
   /* Hold an exclusive lock by default across gathering refs and doing
    * the prune.
    */
@@ -535,7 +538,10 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
                                   GError                    **error)
 {
   g_return_val_if_fail (OSTREE_IS_SYSROOT (self), FALSE);
-  g_return_val_if_fail (self->loaded, FALSE);
+  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, FALSE);
+
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
 
   if (!cleanup_other_bootversions (self, cancellable, error))
     return glnx_prefix_error (error, "Cleaning bootversions");

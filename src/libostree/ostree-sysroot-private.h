@@ -40,6 +40,12 @@ typedef enum {
   OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH = 1 << 3,
 } OstreeSysrootDebugFlags;
 
+typedef enum {
+      OSTREE_SYSROOT_LOAD_STATE_NONE, /* ostree_sysroot_new() was called */
+      OSTREE_SYSROOT_LOAD_STATE_INIT, /* We've loaded basic sysroot state and have an fd */
+      OSTREE_SYSROOT_LOAD_STATE_LOADED, /* We've loaded all of the deployments */
+} OstreeSysrootLoadState;
+
 /**
  * OstreeSysroot:
  * Internal struct
@@ -51,7 +57,8 @@ struct OstreeSysroot {
   int sysroot_fd;
   GLnxLockFile lock;
 
-  gboolean loaded;
+  OstreeSysrootLoadState loadstate;
+  gboolean mount_namespace_in_use; /* TRUE if caller has told us they used CLONE_NEWNS */
   gboolean root_is_ostree_booted; /* TRUE if sysroot is / and we are booted via ostree */
   /* The device/inode for /, used to detect booted deployment */
   dev_t root_device;
@@ -78,6 +85,10 @@ struct OstreeSysroot {
 #define _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED "/run/ostree/staged-deployment-locked"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_DIR "/run/ostree/deployment-state/"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT "unlocked-development"
+
+gboolean
+_ostree_sysroot_ensure_writable (OstreeSysroot      *self,
+                                 GError            **error);
 
 void
 _ostree_sysroot_emit_journal_msg (OstreeSysroot  *self,

@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/param.h>
 #include <sys/mount.h>
@@ -37,10 +38,14 @@
 #include <err.h>
 #include <errno.h>
 
+#include <glib.h>
+
 #include "ostree-mount-util.h"
+#include "glnx-backport-autocleanups.h"
 
 static void
-do_remount (const char *target)
+do_remount (const char *target,
+            bool        writable)
 {
   struct stat stbuf;
   if (lstat (target, &stbuf) < 0)
@@ -54,20 +59,41 @@ do_remount (const char *target)
   struct statvfs stvfsbuf;
   if (statvfs (target, &stvfsbuf) == -1)
     return;
-  /* If no read-only flag, skip it */
-  if ((stvfsbuf.f_flag & ST_RDONLY) == 0)
+
+  const bool currently_writable = ((stvfsbuf.f_flag & ST_RDONLY) == 0);
+  if (writable == currently_writable)
     return;
-  /* It's a mounted, read-only fs; remount it */
-  if (mount (target, target, NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+
+  int mnt_flags = MS_REMOUNT | MS_SILENT;
+  if (!writable)
+    mnt_flags |= MS_RDONLY;
+  if (mount (target, target, NULL, mnt_flags, NULL) < 0)
     {
       /* Also ignore EINVAL - if the target isn't a mountpoint
        * already, then assume things are OK.
        */
-      if (errno != EINVAL)
-        err (EXIT_FAILURE, "failed to remount %s", target);
+      if (errno != EINVAL)  
+        err (EXIT_FAILURE, "failed to remount(%s) %s", writable ? "rw" : "ro", target);
+      else
+        return;
     }
-  else
-    printf ("Remounted: %s\n", target);
+
+  printf ("Remounted %s: %s\n", writable ? "rw" : "ro", target);
+}
+
+static bool
+sysroot_is_configured_ro (void)
+{
+  struct stat stbuf;
+  static const char config_path[] = "/ostree/repo/config";
+  if (stat (config_path, &stbuf) != 0)
+    return false;
+
+  g_autoptr(GKeyFile) keyfile = g_key_file_new ();
+  if (!g_key_file_load_from_file (keyfile, config_path, 0, NULL))
+    return false;
+
+  return g_key_file_get_boolean (keyfile, "sysroot", "readonly", NULL);
 }
 
 int
@@ -95,8 +121,38 @@ main(int argc, char *argv[])
       exit (EXIT_SUCCESS);
     }
 
-  do_remount ("/sysroot");
-  do_remount ("/var");
+  /* Query the repository configuration - this is an operating system builder
+   * choice.
+   * */
+  const bool sysroot_readonly = sysroot_is_configured_ro ();
+
+  /* Mount the sysroot read-only if we're configured to do so.
+   * Note we only get here if / is already writable.
+   */
+  do_remount ("/sysroot", !sysroot_readonly);
+
+  if (sysroot_readonly)
+    {
+      /* Now, /etc is not normally a bind mount, but remounting the
+       * sysroot above made it read-only since it's on the same filesystem.
+       * Make it a self-bind mount, so we can then mount it read-write.
+       */
+      if (mount ("/etc", "/etc", NULL, MS_BIND, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make /etc a bind mount");
+      do_remount ("/etc", true);
+    }
+
+  /* If /var was created as as an OSTree default bind mount (instead of being a separate filesystem)
+    * then remounting the root mount read-only also remounted it.
+    * So just like /etc, we need to make it read-write by default.
+    * If it was a separate filesystem, we expect it to be writable anyways,
+    * so it doesn't hurt to remount it if so.
+    *
+    * And if we started out with a writable system root, then we need
+    * to ensure that the /var bind mount created by the systemd generator
+    * is writable too.
+    */
+  do_remount ("/var", true);
 
   exit (EXIT_SUCCESS);
 }
