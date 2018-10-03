@@ -21,25 +21,21 @@ fn main() {
 
     println!("sha256: {}", checksum);
 
-    let objs = repo.traverse_commit_manual(checksum.as_str(), -1, None).unwrap();
+    let objs = repo.traverse_commit(checksum.as_str(), -1, None).unwrap();
 
     for obj in objs {
-        let (name, obj_type) = libostree::object_name_deserialize(&obj);
-        println!("  {}", libostree::object_to_string(name.as_str(), obj_type).unwrap());
+        //let (name, obj_type) = libostree::object_name_deserialize(&obj);
+        println!("  {}", obj.name());
 
-        let (stream, size) = repo.load_object_stream(obj_type, name.as_str(), None).unwrap();
+        let (stream, size) = repo.load_object_stream(obj.object_type(), obj.checksum(), None).unwrap();
         println!("  bytes: {}", size);
 
-        if obj_type == libostree::ObjectType::File {
-            let mut file = File::create("./object.file").unwrap();
-            let mut read = 1;
-            let mut buffer = [0 as u8; 4096];
-            while read != 0 {
-                read = stream.read(buffer.as_mut(), None).unwrap();
-                file.write(&buffer[0 .. read]);
-            }
+        let mut file = File::create(obj.name()).unwrap();
+        let mut read = 1;
+        let mut buffer = [0 as u8; 4096];
+        while read != 0 {
+            read = stream.read(buffer.as_mut(), None).unwrap();
+            file.write(&buffer[0 .. read]).unwrap();
         }
-
-        //println!("{:?}", obj.type_());
     }
 }

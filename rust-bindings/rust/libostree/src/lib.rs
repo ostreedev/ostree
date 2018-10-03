@@ -20,6 +20,9 @@ pub use auto::functions::*;
 
 mod repo;
 
+mod object_name;
+pub use object_name::ObjectName;
+
 // public modules
 pub mod prelude {
     pub use auto::traits::*;
