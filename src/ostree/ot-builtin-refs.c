@@ -146,8 +146,10 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
   /* If we're doing aliasing, we need the full list of aliases mostly to allow
    * replacing existing aliases.
+   * If we are deleting a ref, we want to make sure that it doesn't have
+   * any corresponding aliases.
    */
-  if (opt_alias)
+  if (opt_alias || opt_delete)
     {
       if (!ostree_repo_list_refs_ext (repo, NULL, &ref_aliases,
                                       OSTREE_REPO_LIST_REFS_EXT_ALIASES,
@@ -245,7 +247,18 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
           if (!ostree_parse_refspec (refspec, &remote, &ref, error))
             goto out;
-          
+
+          /* Look for alias if it exists for a ref we want to delete */
+          GLNX_HASH_TABLE_FOREACH_KV (ref_aliases, const char *,
+                                      ref_alias, const char *, value)
+            {
+              if (!strcmp (ref, value))
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Ref '%s' has an active alias: '%s'", ref, ref_alias);
+                  goto out;
+                }
+            }
           if (!ostree_repo_set_ref_immediate (repo, remote, ref, NULL,
                                               cancellable, error))
             goto out;
