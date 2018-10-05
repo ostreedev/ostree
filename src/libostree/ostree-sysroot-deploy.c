@@ -49,9 +49,10 @@
 #include "libglnx.h"
 
 #ifdef HAVE_LIBSYSTEMD
-#define OSTREE_VARRELABEL_ID          SD_ID128_MAKE(da,67,9b,08,ac,d3,45,04,b7,89,d9,6f,81,8e,a7,81)
-#define OSTREE_CONFIGMERGE_ID         SD_ID128_MAKE(d3,86,3b,ae,c1,3e,44,49,ab,03,84,68,4a,8a,f3,a7)
-#define OSTREE_DEPLOYMENT_COMPLETE_ID SD_ID128_MAKE(dd,44,0e,3e,54,90,83,b6,3d,0e,fc,7d,c1,52,55,f1)
+#define OSTREE_VARRELABEL_ID            SD_ID128_MAKE(da,67,9b,08,ac,d3,45,04,b7,89,d9,6f,81,8e,a7,81)
+#define OSTREE_CONFIGMERGE_ID           SD_ID128_MAKE(d3,86,3b,ae,c1,3e,44,49,ab,03,84,68,4a,8a,f3,a7)
+#define OSTREE_DEPLOYMENT_COMPLETE_ID   SD_ID128_MAKE(dd,44,0e,3e,54,90,83,b6,3d,0e,fc,7d,c1,52,55,f1)
+#define OSTREE_DEPLOYMENT_FINALIZING_ID SD_ID128_MAKE(e8,64,6c,d6,3d,ff,46,25,b7,79,09,a8,e7,a4,09,94)
 #endif
 
 /*
@@ -2861,6 +2862,21 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
    */
   if (!self->staged_deployment)
     return TRUE;
+
+  /* Notice we send this *after* the trivial `return TRUE` above; this msg implies we've
+   * committed to finalizing the deployment. */
+#ifdef HAVE_LIBSYSTEMD
+    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR,
+                     SD_ID128_FORMAT_VAL(OSTREE_DEPLOYMENT_FINALIZING_ID),
+                     "MESSAGE=Finalizing staged deployment",
+                     "OSTREE_OSNAME=%s",
+                     ostree_deployment_get_osname (self->staged_deployment),
+                     "OSTREE_CHECKSUM=%s",
+                     ostree_deployment_get_csum (self->staged_deployment),
+                     "OSTREE_DEPLOYSERIAL=%u",
+                     ostree_deployment_get_deployserial (self->staged_deployment),
+                     NULL);
+#endif
 
   g_assert (self->staged_deployment_data);
 
