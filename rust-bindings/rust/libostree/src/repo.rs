@@ -8,6 +8,7 @@ use glib::translate::*;
 use glib_ffi;
 use std::collections::HashSet;
 use std::ptr;
+use std::path::Path;
 use ObjectName;
 
 unsafe extern "C" fn read_variant_table(_key: glib_ffi::gpointer, value: glib_ffi::gpointer, hash_set: glib_ffi::gpointer) {
@@ -27,7 +28,7 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_ffi::GHashTable) -> Has
 
 
 pub trait RepoExtManual {
-    fn new_for_str(path: &str) -> Repo;
+    fn new_for_path<P: AsRef<Path>>(path: P) -> Repo;
     fn traverse_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(
         &self,
         commit_checksum: &str,
@@ -36,8 +37,8 @@ pub trait RepoExtManual {
 }
 
 impl<O: IsA<Repo> + IsA<glib::Object> + Clone + 'static> RepoExtManual for O {
-    fn new_for_str(path: &str) -> Repo {
-        Repo::new(&gio::File::new_for_path(path))
+    fn new_for_path<P: AsRef<Path>>(path: P) -> Repo {
+        Repo::new(&gio::File::new_for_path(path.as_ref()))
     }
 
     fn traverse_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(

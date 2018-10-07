@@ -8,7 +8,7 @@ use gio::prelude::*;
 use libostree::prelude::*;
 
 fn main() {
-    let repo = libostree::Repo::new_for_str("../../../repo-bare");
+    let repo = libostree::Repo::new_for_path("../../../repo-bare");
 
     //let result = repo.create(libostree::RepoMode::Archive, Option::None);
     //result.expect("we did not expect this to fail :O");
