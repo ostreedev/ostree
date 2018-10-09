@@ -5,6 +5,9 @@
 use ffi;
 use glib::translate::*;
 
+/// Formatting flags for `GpgVerifyResultExt::describe`. Currently
+/// there's only one possible output format, but this enumeration allows
+/// for future variations.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 pub enum GpgSignatureFormatFlags {
@@ -35,6 +38,8 @@ impl FromGlib<ffi::OstreeGpgSignatureFormatFlags> for GpgSignatureFormatFlags {
     }
 }
 
+/// Enumeration for core object types; `ObjectType::File` is for
+/// content, the other types are metadata.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 pub enum ObjectType {
@@ -155,6 +160,8 @@ impl FromGlib<ffi::OstreeRepoCheckoutOverwriteMode> for RepoCheckoutOverwriteMod
     }
 }
 
+/// See the documentation of `Repo` for more information about the
+/// possible modes.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 pub enum RepoMode {
@@ -230,6 +237,7 @@ impl FromGlib<ffi::OstreeRepoPruneFlags> for RepoPruneFlags {
     }
 }
 
+/// The remote change operation.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 pub enum RepoRemoteChange {
@@ -299,6 +307,7 @@ impl FromGlib<ffi::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
     }
 }
 
+/// Parameters controlling optimization of static deltas.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 pub enum StaticDeltaGenerateOpt {

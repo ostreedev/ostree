@@ -25,13 +25,26 @@ glib_wrapper! {
     }
 }
 
+/// Trait containing all `RepoFile` methods.
+///
+/// # Implementors
+///
+/// [`RepoFile`](struct.RepoFile.html)
 pub trait RepoFileExt {
     fn ensure_resolved(&self) -> Result<(), Error>;
 
     fn get_checksum(&self) -> Option<String>;
 
+    ///
+    /// # Returns
+    ///
+    /// Repository
     fn get_repo(&self) -> Option<Repo>;
 
+    ///
+    /// # Returns
+    ///
+    /// The root directory for the commit referenced by this file
     fn get_root(&self) -> Option<RepoFile>;
 
     fn tree_get_contents(&self) -> Option<glib::Variant>;
