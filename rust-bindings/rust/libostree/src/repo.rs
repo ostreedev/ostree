@@ -34,11 +34,13 @@ pub trait RepoExtManual {
         maxdepth: i32,
         cancellable: P
     ) -> Result<HashSet<ObjectName>, Error>;
+
     fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
         cancellable: Q
     ) -> Result<HashMap<String, String>, Error>;
+
     fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
