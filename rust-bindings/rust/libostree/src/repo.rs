@@ -28,6 +28,27 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_ffi::GHashTable) -> Has
 
 pub trait RepoExtManual {
     fn new_for_path<P: AsRef<Path>>(path: P) -> Repo;
+
+    /// Create a new set `out_reachable` containing all objects reachable
+    /// from `commit_checksum`, traversing `maxdepth` parent commits.
+    /// ## `commit_checksum`
+    /// ASCII SHA256 checksum
+    /// ## `maxdepth`
+    /// Traverse this many parent commits, -1 for unlimited
+    /// ## `out_reachable`
+    /// Set of reachable objects
+    /// ## `cancellable`
+    /// Cancellable
+    /// Create a new set `out_reachable` containing all objects reachable
+    /// from `commit_checksum`, traversing `maxdepth` parent commits.
+    /// ## `commit_checksum`
+    /// ASCII SHA256 checksum
+    /// ## `maxdepth`
+    /// Traverse this many parent commits, -1 for unlimited
+    /// ## `out_reachable`
+    /// Set of reachable objects
+    /// ## `cancellable`
+    /// Cancellable
     fn traverse_commit<'a, P: Into<Option<&'a gio::Cancellable>>>(
         &self,
         commit_checksum: &str,
@@ -35,12 +56,72 @@ pub trait RepoExtManual {
         cancellable: P
     ) -> Result<HashSet<ObjectName>, Error>;
 
+    /// If `refspec_prefix` is `None`, list all local and remote refspecs,
+    /// with their current values in `out_all_refs`. Otherwise, only list
+    /// refspecs which have `refspec_prefix` as a prefix.
+    ///
+    /// `out_all_refs` will be returned as a mapping from refspecs (including the
+    /// remote name) to checksums. If `refspec_prefix` is non-`None`, it will be
+    /// removed as a prefix from the hash table keys.
+    /// ## `refspec_prefix`
+    /// Only list refs which match this prefix
+    /// ## `out_all_refs`
+    ///
+    ///  Mapping from refspec to checksum
+    /// ## `cancellable`
+    /// Cancellable
+    /// If `refspec_prefix` is `None`, list all local and remote refspecs,
+    /// with their current values in `out_all_refs`. Otherwise, only list
+    /// refspecs which have `refspec_prefix` as a prefix.
+    ///
+    /// `out_all_refs` will be returned as a mapping from refspecs (including the
+    /// remote name) to checksums. If `refspec_prefix` is non-`None`, it will be
+    /// removed as a prefix from the hash table keys.
+    /// ## `refspec_prefix`
+    /// Only list refs which match this prefix
+    /// ## `out_all_refs`
+    ///
+    ///  Mapping from refspec to checksum
+    /// ## `cancellable`
+    /// Cancellable
     fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
         cancellable: Q
     ) -> Result<HashMap<String, String>, Error>;
 
+    /// If `refspec_prefix` is `None`, list all local and remote refspecs,
+    /// with their current values in `out_all_refs`. Otherwise, only list
+    /// refspecs which have `refspec_prefix` as a prefix.
+    ///
+    /// `out_all_refs` will be returned as a mapping from refspecs (including the
+    /// remote name) to checksums. Differently from `RepoExt::list_refs`, the
+    /// `refspec_prefix` will not be removed from the refspecs in the hash table.
+    /// ## `refspec_prefix`
+    /// Only list refs which match this prefix
+    /// ## `out_all_refs`
+    ///
+    ///  Mapping from refspec to checksum
+    /// ## `flags`
+    /// Options controlling listing behavior
+    /// ## `cancellable`
+    /// Cancellable
+    /// If `refspec_prefix` is `None`, list all local and remote refspecs,
+    /// with their current values in `out_all_refs`. Otherwise, only list
+    /// refspecs which have `refspec_prefix` as a prefix.
+    ///
+    /// `out_all_refs` will be returned as a mapping from refspecs (including the
+    /// remote name) to checksums. Differently from `RepoExt::list_refs`, the
+    /// `refspec_prefix` will not be removed from the refspecs in the hash table.
+    /// ## `refspec_prefix`
+    /// Only list refs which match this prefix
+    /// ## `out_all_refs`
+    ///
+    ///  Mapping from refspec to checksum
+    /// ## `flags`
+    /// Options controlling listing behavior
+    /// ## `cancellable`
+    /// Cancellable
     fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
