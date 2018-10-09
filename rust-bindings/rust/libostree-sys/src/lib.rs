@@ -248,28 +248,6 @@ impl ::std::fmt::Debug for OstreeBootloaderGrub2 {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeBootloaderInterface {
-    pub g_iface: gobject::GTypeInterface,
-    pub query: Option<unsafe extern "C" fn(*mut OstreeBootloader, *mut gboolean, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
-    pub get_name: Option<unsafe extern "C" fn(*mut OstreeBootloader) -> *const c_char>,
-    pub write_config: Option<unsafe extern "C" fn(*mut OstreeBootloader, c_int, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
-    pub is_atomic: Option<unsafe extern "C" fn(*mut OstreeBootloader) -> gboolean>,
-}
-
-impl ::std::fmt::Debug for OstreeBootloaderInterface {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeBootloaderInterface @ {:?}", self as *const _))
-         .field("g_iface", &self.g_iface)
-         .field("query", &self.query)
-         .field("get_name", &self.get_name)
-         .field("write_config", &self.write_config)
-         .field("is_atomic", &self.is_atomic)
-         .finish()
-    }
-}
-
-#[repr(C)]
 pub struct OstreeBootloaderSyslinux(c_void);
 
 impl ::std::fmt::Debug for OstreeBootloaderSyslinux {
@@ -290,61 +268,11 @@ impl ::std::fmt::Debug for OstreeBootloaderUboot {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeChecksumInputStreamClass {
-    pub parent_class: gio::GFilterInputStreamClass,
-    pub _g_reserved1: Option<unsafe extern "C" fn()>,
-    pub _g_reserved2: Option<unsafe extern "C" fn()>,
-    pub _g_reserved3: Option<unsafe extern "C" fn()>,
-    pub _g_reserved4: Option<unsafe extern "C" fn()>,
-    pub _g_reserved5: Option<unsafe extern "C" fn()>,
-}
-
-impl ::std::fmt::Debug for OstreeChecksumInputStreamClass {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeChecksumInputStreamClass @ {:?}", self as *const _))
-         .field("parent_class", &self.parent_class)
-         .field("_g_reserved1", &self._g_reserved1)
-         .field("_g_reserved2", &self._g_reserved2)
-         .field("_g_reserved3", &self._g_reserved3)
-         .field("_g_reserved4", &self._g_reserved4)
-         .field("_g_reserved5", &self._g_reserved5)
-         .finish()
-    }
-}
-
-#[repr(C)]
 pub struct OstreeChecksumInputStreamPrivate(c_void);
 
 impl ::std::fmt::Debug for OstreeChecksumInputStreamPrivate {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeChecksumInputStreamPrivate @ {:?}", self as *const _))
-         .finish()
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeCmdPrivateVTable {
-    pub ostree_system_generator: Option<unsafe extern "C" fn(*const c_char, *const c_char, *const c_char, *const c_char, *mut *mut glib::GError) -> gboolean>,
-    pub ostree_generate_grub2_config: Option<unsafe extern "C" fn(*mut OstreeSysroot, c_int, c_int, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
-    pub ostree_static_delta_dump: Option<unsafe extern "C" fn(*mut OstreeRepo, *const c_char, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
-    pub ostree_static_delta_query_exists: Option<unsafe extern "C" fn(*mut OstreeRepo, *const c_char, *mut gboolean, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
-    pub ostree_static_delta_delete: Option<unsafe extern "C" fn(*mut OstreeRepo, *const c_char, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
-    pub ostree_repo_verify_bindings: Option<unsafe extern "C" fn(*const c_char, *const c_char, *mut glib::GVariant, *mut *mut glib::GError) -> gboolean>,
-    pub ostree_finalize_staged: Option<unsafe extern "C" fn(*mut OstreeSysroot, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
-}
-
-impl ::std::fmt::Debug for OstreeCmdPrivateVTable {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeCmdPrivateVTable @ {:?}", self as *const _))
-         .field("ostree_system_generator", &self.ostree_system_generator)
-         .field("ostree_generate_grub2_config", &self.ostree_generate_grub2_config)
-         .field("ostree_static_delta_dump", &self.ostree_static_delta_dump)
-         .field("ostree_static_delta_query_exists", &self.ostree_static_delta_query_exists)
-         .field("ostree_static_delta_delete", &self.ostree_static_delta_delete)
-         .field("ostree_repo_verify_bindings", &self.ostree_repo_verify_bindings)
-         .field("ostree_finalize_staged", &self.ostree_finalize_staged)
          .finish()
     }
 }
@@ -425,45 +353,6 @@ impl ::std::fmt::Debug for OstreeGpgVerifier {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeLibarchiveInputStream {
-    pub parent_instance: gio::GInputStream,
-    pub priv_: *mut OstreeLibarchiveInputStreamPrivate,
-}
-
-impl ::std::fmt::Debug for OstreeLibarchiveInputStream {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeLibarchiveInputStream @ {:?}", self as *const _))
-         .field("parent_instance", &self.parent_instance)
-         .finish()
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeLibarchiveInputStreamClass {
-    pub parent_class: gio::GInputStreamClass,
-    pub _g_reserved1: Option<unsafe extern "C" fn()>,
-    pub _g_reserved2: Option<unsafe extern "C" fn()>,
-    pub _g_reserved3: Option<unsafe extern "C" fn()>,
-    pub _g_reserved4: Option<unsafe extern "C" fn()>,
-    pub _g_reserved5: Option<unsafe extern "C" fn()>,
-}
-
-impl ::std::fmt::Debug for OstreeLibarchiveInputStreamClass {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeLibarchiveInputStreamClass @ {:?}", self as *const _))
-         .field("parent_class", &self.parent_class)
-         .field("_g_reserved1", &self._g_reserved1)
-         .field("_g_reserved2", &self._g_reserved2)
-         .field("_g_reserved3", &self._g_reserved3)
-         .field("_g_reserved4", &self._g_reserved4)
-         .field("_g_reserved5", &self._g_reserved5)
-         .finish()
-    }
-}
-
-#[repr(C)]
 pub struct OstreeLibarchiveInputStreamPrivate(c_void);
 
 impl ::std::fmt::Debug for OstreeLibarchiveInputStreamPrivate {
@@ -484,39 +373,11 @@ impl ::std::fmt::Debug for OstreeLzmaCompressor {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeLzmaCompressorClass {
-    pub parent_class: gobject::GObjectClass,
-}
-
-impl ::std::fmt::Debug for OstreeLzmaCompressorClass {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeLzmaCompressorClass @ {:?}", self as *const _))
-         .field("parent_class", &self.parent_class)
-         .finish()
-    }
-}
-
-#[repr(C)]
 pub struct OstreeLzmaDecompressor(c_void);
 
 impl ::std::fmt::Debug for OstreeLzmaDecompressor {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeLzmaDecompressor @ {:?}", self as *const _))
-         .finish()
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeLzmaDecompressorClass {
-    pub parent_class: gobject::GObjectClass,
-}
-
-impl ::std::fmt::Debug for OstreeLzmaDecompressorClass {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeLzmaDecompressorClass @ {:?}", self as *const _))
-         .field("parent_class", &self.parent_class)
          .finish()
     }
 }
@@ -700,20 +561,6 @@ impl ::std::fmt::Debug for OstreeRepoFileEnumerator {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct OstreeRepoFileEnumeratorClass {
-    pub parent_class: gio::GFileEnumeratorClass,
-}
-
-impl ::std::fmt::Debug for OstreeRepoFileEnumeratorClass {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFileEnumeratorClass @ {:?}", self as *const _))
-         .field("parent_class", &self.parent_class)
-         .finish()
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct OstreeRepoFinderAvahiClass {
     pub parent_class: gobject::GObjectClass,
 }
@@ -878,32 +725,6 @@ impl ::std::fmt::Debug for OstreeRepoTransactionStats {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct OstreeRollsumMatches {
-    pub from_rollsums: *mut glib::GHashTable,
-    pub to_rollsums: *mut glib::GHashTable,
-    pub crcmatches: c_uint,
-    pub bufmatches: c_uint,
-    pub total: c_uint,
-    pub match_size: u64,
-    pub matches: *mut glib::GPtrArray,
-}
-
-impl ::std::fmt::Debug for OstreeRollsumMatches {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRollsumMatches @ {:?}", self as *const _))
-         .field("from_rollsums", &self.from_rollsums)
-         .field("to_rollsums", &self.to_rollsums)
-         .field("crcmatches", &self.crcmatches)
-         .field("bufmatches", &self.bufmatches)
-         .field("total", &self.total)
-         .field("match_size", &self.match_size)
-         .field("matches", &self.matches)
-         .finish()
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct OstreeSysrootWriteDeploymentsOpts {
     pub do_postclean: gboolean,
     pub unused_bools: [gboolean; 7],
@@ -959,21 +780,6 @@ pub struct OstreeBootconfigParser(c_void);
 impl ::std::fmt::Debug for OstreeBootconfigParser {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeBootconfigParser @ {:?}", self as *const _))
-         .finish()
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeChecksumInputStream {
-    pub parent_instance: gio::GFilterInputStream,
-    pub priv_: *mut OstreeChecksumInputStreamPrivate,
-}
-
-impl ::std::fmt::Debug for OstreeChecksumInputStream {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeChecksumInputStream @ {:?}", self as *const _))
-         .field("parent_instance", &self.parent_instance)
          .finish()
     }
 }
@@ -1252,7 +1058,7 @@ extern "C" {
     // OstreeChecksumInputStream
     //=========================================================================
     pub fn ostree_checksum_input_stream_get_type() -> GType;
-    pub fn ostree_checksum_input_stream_new(stream: *mut gio::GInputStream, checksum: *mut glib::GChecksum) -> *mut OstreeChecksumInputStream;
+    //pub fn ostree_checksum_input_stream_new(stream: *mut gio::GInputStream, checksum: *mut glib::GChecksum) -> /*Ignored*/*mut OstreeChecksumInputStream;
 
     //=========================================================================
     // OstreeDeployment
@@ -1635,7 +1441,7 @@ extern "C" {
     pub fn ostree_checksum_inplace_to_bytes(checksum: *const c_char, buf: *mut u8);
     pub fn ostree_checksum_to_bytes(checksum: *const c_char) -> *mut [u8; 32];
     pub fn ostree_checksum_to_bytes_v(checksum: *const c_char) -> *mut glib::GVariant;
-    pub fn ostree_cmd__private__() -> *const OstreeCmdPrivateVTable;
+    //pub fn ostree_cmd__private__() -> /*Ignored*/*const OstreeCmdPrivateVTable;
     pub fn ostree_cmp_checksum_bytes(a: *const u8, b: *const u8) -> c_int;
     pub fn ostree_commit_get_content_checksum(commit_variant: *mut glib::GVariant) -> *mut c_char;
     pub fn ostree_commit_get_parent(commit_variant: *mut glib::GVariant) -> *mut c_char;
