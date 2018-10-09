@@ -10,10 +10,12 @@ use libostree::prelude::*;
 fn main() {
     let repo = libostree::Repo::new_for_path("../../../repo-bare");
 
-    //let result = repo.create(libostree::RepoMode::Archive, Option::None);
-    //result.expect("we did not expect this to fail :O");
-
     repo.open(None).expect("should have opened");
+
+    let refs = repo.list_refs(None, None).unwrap();
+    for (refspec, checksum) in refs {
+        println!("  {} = {}", refspec, checksum);
+    }
 
     let (file, checksum) = repo.read_commit("test", None).unwrap();
 

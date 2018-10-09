@@ -1,4 +1,4 @@
-use auto::Repo;
+use auto::{Repo, RepoListRefsExtFlags};
 use ffi;
 use gio;
 use glib;
@@ -6,7 +6,7 @@ use glib::Error;
 use glib::IsA;
 use glib::translate::*;
 use glib_ffi;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::ptr;
 use std::path::Path;
 use ObjectName;
@@ -32,7 +32,19 @@ pub trait RepoExtManual {
         &self,
         commit_checksum: &str,
         maxdepth: i32,
-        cancellable: P) -> Result<HashSet<ObjectName>, Error>;
+        cancellable: P
+    ) -> Result<HashSet<ObjectName>, Error>;
+    fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
+        &self,
+        refspec_prefix: P,
+        cancellable: Q
+    ) -> Result<HashMap<String, String>, Error>;
+    fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
+        &self,
+        refspec_prefix: P,
+        flags: RepoListRefsExtFlags,
+        cancellable: Q
+    ) -> Result<HashMap<String, String>, Error>;
 }
 
 impl<O: IsA<Repo> + IsA<glib::Object> + Clone + 'static> RepoExtManual for O {
@@ -57,7 +69,61 @@ impl<O: IsA<Repo> + IsA<glib::Object> + Clone + 'static> RepoExtManual for O {
                 cancellable.into().to_glib_none().0,
                 &mut error,
             );
-            if error.is_null() { Ok(from_glib_container_variant_set(hashtable)) } else { Err(from_glib_full(error)) }
+            if error.is_null() {
+                Ok(from_glib_container_variant_set(hashtable))
+            } else {
+                Err(from_glib_full(error))
+            }
+        }
+    }
+
+    fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
+        &self,
+        refspec_prefix: P,
+        cancellable: Q
+    ) -> Result<HashMap<String, String>, Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let mut hashtable = ptr::null_mut();
+            let _ = ffi::ostree_repo_list_refs(
+                self.to_glib_none().0,
+                refspec_prefix.into().to_glib_none().0,
+                &mut hashtable,
+                cancellable.into().to_glib_none().0,
+                &mut error,
+            );
+
+            if error.is_null() {
+                Ok(FromGlibPtrContainer::from_glib_container(hashtable))
+            } else {
+                Err(from_glib_full(error))
+            }
+        }
+    }
+
+    fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
+        &self,
+        refspec_prefix: P,
+        flags: RepoListRefsExtFlags,
+        cancellable: Q
+    ) -> Result<HashMap<String, String>, Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let mut hashtable = ptr::null_mut();
+            let _ = ffi::ostree_repo_list_refs_ext(
+                self.to_glib_none().0,
+                refspec_prefix.into().to_glib_none().0,
+                &mut hashtable,
+                flags.to_glib(),
+                cancellable.into().to_glib_none().0,
+                &mut error,
+            );
+
+            if error.is_null() {
+                Ok(FromGlibPtrContainer::from_glib_container(hashtable))
+            } else {
+                Err(from_glib_full(error))
+            }
         }
     }
 }

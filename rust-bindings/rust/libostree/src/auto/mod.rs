@@ -59,6 +59,7 @@ pub use self::enums::StaticDeltaGenerateOpt;
 mod flags;
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 pub use self::flags::RepoCommitState;
+pub use self::flags::RepoListRefsExtFlags;
 pub use self::flags::RepoPullFlags;
 pub use self::flags::SePolicyRestoreconFlags;
 
