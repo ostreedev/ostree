@@ -14,7 +14,7 @@ use ObjectName;
 unsafe extern "C" fn read_variant_table(_key: glib_ffi::gpointer, value: glib_ffi::gpointer, hash_set: glib_ffi::gpointer) {
     let value: glib::Variant = from_glib_none(value as *const glib_ffi::GVariant);
     let set: &mut HashSet<ObjectName> = &mut *(hash_set as *mut HashSet<ObjectName>);
-    set.insert(ObjectName::new(value));
+    set.insert(ObjectName::new_from_variant(value));
 }
 
 

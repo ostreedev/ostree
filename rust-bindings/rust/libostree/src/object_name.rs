@@ -1,15 +1,14 @@
 use ffi;
-use functions::object_name_deserialize;
+use functions::{object_name_deserialize, object_name_serialize, object_to_string};
 use glib;
-use glib_ffi;
 use glib::translate::*;
+use glib_ffi;
 use ObjectType;
 use std::fmt::Display;
 use std::fmt::Error;
 use std::fmt::Formatter;
 use std::hash::Hash;
 use std::hash::Hasher;
-use functions::object_to_string;
 
 fn hash_object_name(v: &glib::Variant) -> u32 {
     unsafe { ffi::ostree_hash_object_name(v.to_glib_none().0 as glib_ffi::gconstpointer) }
@@ -23,12 +22,22 @@ pub struct ObjectName {
 }
 
 impl ObjectName {
-    pub fn new(variant: glib::Variant) -> ObjectName {
+    pub fn new_from_variant(variant: glib::Variant) -> ObjectName {
         let deserialize = object_name_deserialize(&variant);
         ObjectName {
             variant,
             checksum: deserialize.0,
             object_type: deserialize.1,
+        }
+    }
+
+    pub fn new<S: Into<String>>(checksum: S, object_type: ObjectType) -> ObjectName {
+        let checksum = checksum.into();
+        let variant = object_name_serialize(checksum.as_str(), object_type).unwrap();
+        ObjectName {
+            variant,
+            checksum,
+            object_type,
         }
     }
 
