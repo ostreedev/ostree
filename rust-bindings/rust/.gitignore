@@ -1,4 +1,5 @@
 /.idea
+/tools
 /*/target
 **/*.rs.bk
 
