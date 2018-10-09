@@ -28,6 +28,7 @@ generate = [
     "OSTree.SePolicy",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
+    "OSTree.RepoListRefsExtFlags",
 
     #"OSTree.RepoPruneOptions",
     #"OSTree.RepoExportArchiveOptions",

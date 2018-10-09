@@ -32,6 +32,30 @@ impl FromGlib<ffi::OstreeRepoCommitState> for RepoCommitState {
 }
 
 bitflags! {
+    pub struct RepoListRefsExtFlags: u32 {
+        const NONE = 0;
+        const ALIASES = 1;
+        const EXCLUDE_REMOTES = 2;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoListRefsExtFlags {
+    type GlibType = ffi::OstreeRepoListRefsExtFlags;
+
+    fn to_glib(&self) -> ffi::OstreeRepoListRefsExtFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ffi::OstreeRepoListRefsExtFlags> for RepoListRefsExtFlags {
+    fn from_glib(value: ffi::OstreeRepoListRefsExtFlags) -> RepoListRefsExtFlags {
+        RepoListRefsExtFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
     pub struct RepoPullFlags: u32 {
         const NONE = 0;
         const MIRROR = 1;

@@ -178,7 +178,7 @@ pub trait RepoExt {
     fn is_writable(&self) -> Result<(), Error>;
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error>;
+    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error>;
 
     //fn list_commit_objects_starting_with<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 181 }/TypeId { ns_id: 2, id: 181 }, cancellable: P) -> Result<(), Error>;
 
@@ -186,7 +186,7 @@ pub trait RepoExt {
 
     //fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: Q) -> Result<(), Error>;
 
-    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error>;
+    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error>;
 
     //fn list_static_delta_names<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error>;
 
@@ -610,7 +610,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
     }
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error> {
+    //fn list_collection_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, match_collection_id: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, flags: RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_collection_refs() }
     //}
 
@@ -626,7 +626,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
     //    unsafe { TODO: call ffi::ostree_repo_list_refs() }
     //}
 
-    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: /*Ignored*/RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error> {
+    //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_refs_ext() }
     //}
 
