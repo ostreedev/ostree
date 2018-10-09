@@ -8,5 +8,17 @@ external_libraries = [
    "GObject",
    "Gio",
 ]
+ignore = [
+    "OSTree.BootloaderInterface",
+    "OSTree.ChecksumInputStream",
+    "OSTree.ChecksumInputStreamClass",
+    "OSTree.CmdPrivateVTable",
+    "OSTree.LibarchiveInputStream",
+    "OSTree.LibarchiveInputStreamClass",
+    "OSTree.LzmaCompressorClass",
+    "OSTree.LzmaDecompressorClass",
+    "OSTree.RepoFileEnumeratorClass",
+    "OSTree.RollsumMatches",
+]
 
 girs_dir = "../gir-files"
