@@ -192,6 +192,11 @@ done
 ${CMD_PREFIX} ostree --repo=repo refs -A > refs.txt
 assert_file_has_content_literal refs.txt 'exampleos/x86_64/stable/server -> exampleos/x86_64/27/server'
 
+# Test that we don't delete a ref having aliases
+if ${CMD_PREFIX} ostree --repo=repo refs --delete exampleos/x86_64/27/server; then
+    assert_not_reached "refs --delete unexpectedly succeeded in deleting a ref containing alias!"
+fi
+
 ${CMD_PREFIX} ostree --repo=repo summary -u
 
 echo "ok ref symlink"
