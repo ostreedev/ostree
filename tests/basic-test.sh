@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((83 + ${extra_basic_tests:-0}))"
+echo "1..$((84 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -693,6 +693,21 @@ for v in bin link; do
     assert_file_has_content err.txt 'error:.*File exists'
 done
 echo "ok checkout union identical conflicts"
+
+cd ${test_tmpdir}
+rm files -rf && mkdir files
+touch files/anemptyfile
+touch files/anotheremptyfile
+$CMD_PREFIX ostree --repo=repo commit --consume -b tree-with-empty-files --tree=dir=files
+$CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} -z tree-with-empty-files tree-with-empty-files
+if files_are_hardlinked tree-with-empty-files/an{,other}emptyfile; then
+    fatal "--force-copy-zerosized failed"
+fi
+rm tree-with-empty-files -rf
+$CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} tree-with-empty-files tree-with-empty-files
+assert_files_hardlinked tree-with-empty-files/an{,other}emptyfile
+rm tree-with-empty-files -rf
+echo "ok checkout --force-copy-zerosized"
 
 cd ${test_tmpdir}
 rm files -rf && mkdir files
