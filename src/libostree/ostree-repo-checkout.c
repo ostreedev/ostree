@@ -196,6 +196,7 @@ static gboolean
 create_file_copy_from_input_at (OstreeRepo     *repo,
                                 OstreeRepoCheckoutAtOptions  *options,
                                 CheckoutState  *state,
+                                const char     *checksum,
                                 GFileInfo      *file_info,
                                 GVariant       *xattrs,
                                 GInputStream   *input,
@@ -358,8 +359,35 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
           replace_mode = GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST;
           break;
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
-          /* We don't support copying in union identical */
-          g_assert_not_reached ();
+          {
+            replace_mode = GLNX_LINK_TMPFILE_NOREPLACE;
+            struct stat dest_stbuf;
+            if (!glnx_fstatat_allow_noent (destination_dfd, destination_name, &dest_stbuf,
+                                           AT_SYMLINK_NOFOLLOW, error))
+              return FALSE;
+            if (errno == 0)
+              {
+                /* We do a checksum comparison; see also equivalent code in
+                 * checkout_file_hardlink().
+                 */
+                OstreeChecksumFlags flags = 0;
+                if (repo->disable_xattrs)
+                  flags |= OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS;
+
+                g_autofree char *actual_checksum = NULL;
+                if (!ostree_checksum_file_at (destination_dfd, destination_name,
+                                              &dest_stbuf, OSTREE_OBJECT_TYPE_FILE,
+                                              flags, &actual_checksum, cancellable, error))
+                  return FALSE;
+
+                if (g_str_equal (checksum, actual_checksum))
+                  return TRUE;
+
+                /* Otherwise, fall through and do the link, we should
+                 * get EEXIST.
+                 */
+              }
+          }
           break;
         }
 
@@ -773,7 +801,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                   cancellable, error))
         return FALSE;
 
-      if (!create_file_copy_from_input_at (repo, options, state, source_info, xattrs, input,
+      if (!create_file_copy_from_input_at (repo, options, state, checksum, source_info, xattrs, input,
                                            destination_dfd, destination_name,
                                            cancellable, error))
         return glnx_prefix_error (error, "Copy checkout of %s to %s", checksum, destination_name);
