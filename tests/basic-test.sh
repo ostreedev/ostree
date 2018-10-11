@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((84 + ${extra_basic_tests:-0}))"
+echo "1..$((85 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -708,6 +708,20 @@ $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} tree-with-empty-files
 assert_files_hardlinked tree-with-empty-files/an{,other}emptyfile
 rm tree-with-empty-files -rf
 echo "ok checkout --force-copy-zerosized"
+
+# These should merge, they're identical
+$CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-empty-files tree-with-empty-files
+$CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-empty-files tree-with-empty-files
+echo notempty > tree-with-empty-files/anemptyfile.new && mv tree-with-empty-files/anemptyfile{.new,}
+$CMD_PREFIX ostree --repo=repo commit --consume -b tree-with-conflicting-empty-files --tree=dir=tree-with-empty-files
+# Reset back to base
+rm tree-with-empty-files -rf
+$CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-empty-files tree-with-empty-files
+if $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-conflicting-empty-files tree-with-empty-files 2>err.txt; then
+    fatal "--union-identical --force-copy-zerosized unexpectedly succeeded with non-identical files"
+fi
+assert_file_has_content err.txt 'error:.*File exists'
+echo "ok checkout --union-identical --force-copy-zerosized"
 
 cd ${test_tmpdir}
 rm files -rf && mkdir files
