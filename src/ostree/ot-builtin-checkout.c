@@ -45,6 +45,7 @@ static char *opt_from_file;
 static gboolean opt_disable_fsync;
 static gboolean opt_require_hardlinks;
 static gboolean opt_force_copy;
+static gboolean opt_force_copy_zerosized;
 static gboolean opt_bareuseronly_dirs;
 static char *opt_skiplist_file;
 static char *opt_selinux_policy;
@@ -84,6 +85,7 @@ static GOptionEntry options[] = {
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
   { "require-hardlinks", 'H', 0, G_OPTION_ARG_NONE, &opt_require_hardlinks, "Do not fall back to full copies if hardlinking fails", NULL },
+  { "force-copy-zerosized", 'z', 0, G_OPTION_ARG_NONE, &opt_force_copy_zerosized, "Do not hardlink zero-sized files", NULL },
   { "force-copy", 'C', 0, G_OPTION_ARG_NONE, &opt_force_copy, "Never hardlink (but may reflink if available)", NULL },
   { "bareuseronly-dirs", 'M', 0, G_OPTION_ARG_NONE, &opt_bareuseronly_dirs, "Suppress mode bits outside of 0775 for directories (suid, world writable, etc.)", NULL },
   { "skip-list", 0, 0, G_OPTION_ARG_FILENAME, &opt_skiplist_file, "File containing list of files to skip", "PATH" },
@@ -130,7 +132,8 @@ process_one_checkout (OstreeRepo           *repo,
    * convenient infrastructure for testing C APIs with data.
    */
   if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks ||
-      opt_union_add || opt_force_copy || opt_bareuseronly_dirs || opt_union_identical ||
+      opt_union_add || opt_force_copy || opt_force_copy_zerosized ||
+      opt_bareuseronly_dirs || opt_union_identical ||
       opt_skiplist_file || opt_selinux_policy || opt_selinux_prefix)
     {
       OstreeRepoCheckoutAtOptions options = { 0, };
@@ -218,6 +221,7 @@ process_one_checkout (OstreeRepo           *repo,
 
       options.no_copy_fallback = opt_require_hardlinks;
       options.force_copy = opt_force_copy;
+      options.force_copy_zerosized = opt_force_copy_zerosized;
       options.bareuseronly_dirs = opt_bareuseronly_dirs;
 
       if (!ostree_repo_checkout_at (repo, &options,

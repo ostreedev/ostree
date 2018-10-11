@@ -586,6 +586,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   const gboolean is_symlink = (g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK);
   const gboolean is_whiteout = (!is_symlink && options->process_whiteouts &&
                                 g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
+  const gboolean is_reg_zerosized = (!is_symlink && g_file_info_get_size (source_info) == 0);
 
   /* First, see if it's a Docker whiteout,
    * https://github.com/docker/docker/blob/1a714e76a2cb9008cd19609059e9988ff1660b78/pkg/archive/whiteouts.go
@@ -603,6 +604,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
         return FALSE;
 
       need_copy = FALSE;
+    }
+  else if (options->force_copy_zerosized && is_reg_zerosized)
+    {
+      need_copy = TRUE;
     }
   else if (!options->force_copy)
     {
@@ -699,6 +704,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   if (can_cache
       && !is_whiteout
       && !is_symlink
+      && !is_reg_zerosized
       && need_copy
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE
       && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
@@ -762,7 +768,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
        * succeeded at hardlinking above.
        */
       if (options->no_copy_fallback)
-        g_assert (is_bare_user_symlink);
+        g_assert (is_bare_user_symlink || is_reg_zerosized);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
         return FALSE;
