@@ -14,7 +14,7 @@ fn hash_object_name(v: &glib::Variant) -> u32 {
     unsafe { ffi::ostree_hash_object_name(v.to_glib_none().0 as glib_ffi::gconstpointer) }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Eq, Debug)]
 pub struct ObjectName {
     variant: glib::Variant,
     checksum: String,
@@ -64,5 +64,11 @@ impl Display for ObjectName {
 impl Hash for ObjectName {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u32(hash_object_name(&self.variant));
+    }
+}
+
+impl PartialEq for ObjectName {
+    fn eq(&self, other: &ObjectName) -> bool {
+        self.checksum == other.checksum && self.object_type == other.object_type
     }
 }
