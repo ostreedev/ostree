@@ -2,29 +2,35 @@ use auto::{Repo, RepoListRefsExtFlags};
 use ffi;
 use gio;
 use glib;
+use glib::translate::*;
 use glib::Error;
 use glib::IsA;
-use glib::translate::*;
 use glib_ffi;
-use std::collections::{HashSet, HashMap};
-use std::ptr;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::ptr;
 use ObjectName;
 
-unsafe extern "C" fn read_variant_table(_key: glib_ffi::gpointer, value: glib_ffi::gpointer, hash_set: glib_ffi::gpointer) {
+unsafe extern "C" fn read_variant_table(
+    _key: glib_ffi::gpointer,
+    value: glib_ffi::gpointer,
+    hash_set: glib_ffi::gpointer,
+) {
     let value: glib::Variant = from_glib_none(value as *const glib_ffi::GVariant);
     let set: &mut HashSet<ObjectName> = &mut *(hash_set as *mut HashSet<ObjectName>);
     set.insert(ObjectName::new_from_variant(value));
 }
 
-
 unsafe fn from_glib_container_variant_set(ptr: *mut glib_ffi::GHashTable) -> HashSet<ObjectName> {
     let mut set = HashSet::new();
-    glib_ffi::g_hash_table_foreach(ptr, Some(read_variant_table), &mut set as *mut HashSet<ObjectName> as *mut _);
+    glib_ffi::g_hash_table_foreach(
+        ptr,
+        Some(read_variant_table),
+        &mut set as *mut HashSet<ObjectName> as *mut _,
+    );
     glib_ffi::g_hash_table_unref(ptr);
     set
 }
-
 
 pub trait RepoExtManual {
     fn new_for_path<P: AsRef<Path>>(path: P) -> Repo;
@@ -53,7 +59,7 @@ pub trait RepoExtManual {
         &self,
         commit_checksum: &str,
         maxdepth: i32,
-        cancellable: P
+        cancellable: P,
     ) -> Result<HashSet<ObjectName>, Error>;
 
     /// If `refspec_prefix` is `None`, list all local and remote refspecs,
@@ -87,7 +93,7 @@ pub trait RepoExtManual {
     fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
-        cancellable: Q
+        cancellable: Q,
     ) -> Result<HashMap<String, String>, Error>;
 
     /// If `refspec_prefix` is `None`, list all local and remote refspecs,
@@ -126,7 +132,7 @@ pub trait RepoExtManual {
         &self,
         refspec_prefix: P,
         flags: RepoListRefsExtFlags,
-        cancellable: Q
+        cancellable: Q,
     ) -> Result<HashMap<String, String>, Error>;
 }
 
@@ -163,7 +169,7 @@ impl<O: IsA<Repo> + IsA<glib::Object> + Clone + 'static> RepoExtManual for O {
     fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
-        cancellable: Q
+        cancellable: Q,
     ) -> Result<HashMap<String, String>, Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -188,7 +194,7 @@ impl<O: IsA<Repo> + IsA<glib::Object> + Clone + 'static> RepoExtManual for O {
         &self,
         refspec_prefix: P,
         flags: RepoListRefsExtFlags,
-        cancellable: Q
+        cancellable: Q,
     ) -> Result<HashMap<String, String>, Error> {
         unsafe {
             let mut error = ptr::null_mut();

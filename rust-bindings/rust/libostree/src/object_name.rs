@@ -3,12 +3,12 @@ use functions::{object_name_deserialize, object_name_serialize, object_to_string
 use glib;
 use glib::translate::*;
 use glib_ffi;
-use ObjectType;
 use std::fmt::Display;
 use std::fmt::Error;
 use std::fmt::Formatter;
 use std::hash::Hash;
 use std::hash::Hasher;
+use ObjectType;
 
 fn hash_object_name(v: &glib::Variant) -> u32 {
     unsafe { ffi::ostree_hash_object_name(v.to_glib_none().0 as glib_ffi::gconstpointer) }
