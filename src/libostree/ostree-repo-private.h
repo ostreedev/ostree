@@ -149,8 +149,6 @@ struct OstreeRepo {
   dev_t device;
   ino_t inode;
   uid_t owner_uid; /* Cache of repo's owner uid */
-  uid_t target_owner_uid; /* Ensure files are chowned to this uid/gid */
-  gid_t target_owner_gid;
   guint min_free_space_percent; /* See the min-free-space-percent config option */
   guint64 min_free_space_mb; /* See the min-free-space-size config option */
   guint64 reserved_blocks;
