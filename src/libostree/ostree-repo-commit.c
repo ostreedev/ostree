@@ -245,16 +245,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
                              GCancellable      *cancellable,
                              GError           **error)
 {
-  /* We may be writing as root to a non-root-owned repository; if so,
-   * automatically inherit the non-root ownership.
-   */
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE
-      && self->target_owner_uid != -1)
-    {
-      if (fchown (tmpf->fd, self->target_owner_uid, self->target_owner_gid) < 0)
-        return glnx_throw_errno_prefix (error, "fchown");
-    }
-  else if (self->mode == OSTREE_REPO_MODE_BARE)
+  if (self->mode == OSTREE_REPO_MODE_BARE)
     {
       if (TEMP_FAILURE_RETRY (fchown (tmpf->fd, uid, gid)) < 0)
         return glnx_throw_errno_prefix (error, "fchown");
