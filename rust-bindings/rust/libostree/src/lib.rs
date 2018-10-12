@@ -14,6 +14,7 @@ extern crate lazy_static;
 use glib::Error;
 
 // re-exports
+#[cfg_attr(feature = "cargo-clippy", allow(clippy))]
 mod auto;
 pub use auto::functions::*;
 pub use auto::*;
