@@ -3080,16 +3080,6 @@ ostree_repo_open (OstreeRepo    *self,
     return FALSE;
   self->owner_uid = stbuf.st_uid;
 
-  if (stbuf.st_uid != getuid () || stbuf.st_gid != getgid ())
-    {
-      self->target_owner_uid = stbuf.st_uid;
-      self->target_owner_gid = stbuf.st_gid;
-    }
-  else
-    {
-      self->target_owner_uid = self->target_owner_gid = -1;
-    }
-
   if (self->writable)
     {
       /* Always try to recreate the tmpdir to be nice to people
