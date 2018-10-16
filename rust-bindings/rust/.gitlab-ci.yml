@@ -6,8 +6,9 @@ libostree-sys_rust-stable:
   stage: build
   image: rust:latest
   before_script:
+  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
   - apt-get update
-  - apt-get install -y libostree-dev
+  - apt-get install -y -t stretch-backports libostree-dev
   script:
   - cargo build --verbose --package libostree-sys
   - cargo test --verbose --package libostree-sys
@@ -16,8 +17,9 @@ libostree_rust-stable:
   stage: build
   image: rust:latest
   before_script:
+  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
   - apt-get update
-  - apt-get install -y libostree-1-1
+  - apt-get install -y -t stretch-backports libostree-1-1
   script:
   - cargo build --verbose --package libostree
   - cargo test --verbose --package libostree
@@ -26,8 +28,9 @@ libostree-sys_rust-nightly:
   stage: build
   image: rustlang/rust:nightly
   before_script:
+  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
   - apt-get update
-  - apt-get install -y libostree-dev
+  - apt-get install -y -t stretch-backports libostree-dev
   script:
   - cargo build --verbose --package libostree-sys
   - cargo test --verbose --package libostree-sys
@@ -37,8 +40,9 @@ libostree_rust-nightly:
   stage: build
   image: rustlang/rust:nightly
   before_script:
+  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
   - apt-get update
-  - apt-get install -y libostree-1-1
+  - apt-get install -y -t stretch-backports libostree-1-1
   script:
   - cargo build --verbose --package libostree
   - cargo test --verbose --package libostree
