@@ -1,25 +1,22 @@
+image: rust:latest
+
+before_script:
+- echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
+- apt-get update
+- apt-get install -y -t stretch-backports libostree-dev
+
 stages:
 - build
 - package
 
 libostree-sys_rust-stable:
   stage: build
-  image: rust:latest
-  before_script:
-  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
-  - apt-get update
-  - apt-get install -y -t stretch-backports libostree-dev
   script:
   - cargo build --verbose --package libostree-sys
   - cargo test --verbose --package libostree-sys
 
 libostree_rust-stable:
   stage: build
-  image: rust:latest
-  before_script:
-  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
-  - apt-get update
-  - apt-get install -y -t stretch-backports libostree-dev
   script:
   - cargo build --verbose --package libostree
   - cargo test --verbose --package libostree
@@ -27,10 +24,6 @@ libostree_rust-stable:
 libostree-sys_rust-nightly:
   stage: build
   image: rustlang/rust:nightly
-  before_script:
-  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
-  - apt-get update
-  - apt-get install -y -t stretch-backports libostree-dev
   script:
   - cargo build --verbose --package libostree-sys
   - cargo test --verbose --package libostree-sys
@@ -39,10 +32,6 @@ libostree-sys_rust-nightly:
 libostree_rust-nightly:
   stage: build
   image: rustlang/rust:nightly
-  before_script:
-  - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
-  - apt-get update
-  - apt-get install -y -t stretch-backports libostree-dev
   script:
   - cargo build --verbose --package libostree
   - cargo test --verbose --package libostree
@@ -50,12 +39,10 @@ libostree_rust-nightly:
 
 libostree-sys_package:
   stage: package
-  image: rust:latest
   script:
-    - cargo package --manifest-path libostree-sys/Cargo.toml
+    - cargo package --verbose --manifest-path libostree-sys/Cargo.toml
 
 libostree_package:
   stage: package
-  image: rust:latest
   script:
-  - cargo package --manifest-path libostree/Cargo.toml
+  - cargo package --verbose --manifest-path libostree/Cargo.toml
