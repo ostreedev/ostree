@@ -1,0 +1,45 @@
+stages:
+- build
+- package
+
+libostree-sys_rust-stable:
+  stage: build
+  image: rust:latest
+  script:
+  - cargo build --verbose --package libostree-sys
+  - cargo test --verbose --package libostree-sys
+
+libostree_rust-stable:
+  stage: build
+  image: rust:latest
+  script:
+  - cargo build --verbose --package libostree
+  - cargo test --verbose --package libostree
+
+libostree-sys_rust-nightly:
+  stage: build
+  image: rustlang/rust:nightly
+  script:
+  - cargo build --verbose --package libostree-sys
+  - cargo test --verbose --package libostree-sys
+  allow_failure: true
+
+libostree_rust-nightly:
+  stage: build
+  image: rustlang/rust:nightly
+  script:
+  - cargo build --verbose --package libostree
+  - cargo test --verbose --package libostree
+  allow_failure: true
+
+libostree-sys_package:
+  stage: package
+  image: rust:latest
+  script:
+    - cargo package --manifest-path libostree-sys/Cargo.toml
+
+libostree_package:
+  stage: package
+  image: rust:latest
+  script:
+  - cargo package --manifest-path libostree/Cargo.toml
