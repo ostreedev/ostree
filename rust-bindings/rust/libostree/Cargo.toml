@@ -2,6 +2,8 @@
 name = "libostree"
 version = "0.1.0"
 
+documentation = "https://fkrull.gitlab.io/rust-libostree/libostree"
+
 [lib]
 name = "libostree"
 
