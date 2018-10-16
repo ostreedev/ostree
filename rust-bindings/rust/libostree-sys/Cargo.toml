@@ -1,10 +1,13 @@
+[badges.gitlab]
+repository = "https://gitlab.com/fkrull/rust-libostree"
+
 [build-dependencies]
 pkg-config = "0.3.7"
 
 [dependencies]
-gio-sys = "^0.7"
-glib-sys = "^0.7"
-gobject-sys = "^0.7"
+gio-sys = "0.7"
+glib-sys = "0.7"
+gobject-sys = "0.7"
 libc = "0.2"
 
 [dev-dependencies]
@@ -36,7 +39,14 @@ v2018_7 = ["v2018_6"]
 name = "libostree_sys"
 
 [package]
+authors = ["Felix Krull <f_krull@gmx.de>"]
 build = "build.rs"
+categories = ["external-ffi-bindings"]
+description = "FFI bindings to libostree-1"
+keywords = ["ffi", "ostree", "libostree"]
+license = "MIT"
 links = "ostree"
 name = "libostree-sys"
+readme = "README.md"
+repository = "https://gitlab.com/fkrull/rust-libostree"
 version = "0.1.0"
