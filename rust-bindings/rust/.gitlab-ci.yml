@@ -7,7 +7,7 @@ before_script:
 
 stages:
 - build
-#- package
+- publish
 
 libostree-sys:
   stage: build
@@ -49,12 +49,20 @@ libostree_nightly:
   - cargo test --verbose --package libostree
   allow_failure: true
 
-#libostree-sys_package:
-#  stage: package
+
+# publish
+publish_libostree-sys:
+  stage: publish
+  before_script:
+  - cargo login $CRATES_IO_TOKEN
+  script:
+    - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml
+  when: manual
+
+#publish_libostree:
+#  stage: publish
+#  before_script:
+#  - cargo login $CRATES_IO_TOKEN
 #  script:
-#    - cargo package --verbose --manifest-path libostree-sys/Cargo.toml
-#
-#libostree_package:
-#  stage: package
-#  script:
-#  - cargo package --verbose --manifest-path libostree/Cargo.toml
+#  - cargo publish --verbose --manifest-path libostree/Cargo.toml
+#  when: manual
