@@ -16,23 +16,11 @@ libostree-sys:
   - cargo build --verbose --package libostree-sys
   - cargo test --verbose --package libostree-sys
 
-libostree-sys_release:
-  stage: build
-  script:
-  - cargo build --verbose --release --package libostree-sys
-  - cargo test --verbose --release --package libostree-sys
-
 libostree:
   stage: build
   script:
   - cargo build --verbose --package libostree
   - cargo test --verbose --package libostree
-
-libostree_release:
-  stage: build
-  script:
-  - cargo build --verbose --release --package libostree
-  - cargo test --verbose --release --package libostree
 
 libostree-sys_nightly:
   stage: build
