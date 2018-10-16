@@ -1,7 +1,5 @@
 /.idea
 /tools
-/*/target
 **/*.rs.bk
-
-/libostree-sys/Cargo.lock
-/libostree/Cargo.lock
+target/
+Cargo.lock
