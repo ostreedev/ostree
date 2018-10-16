@@ -1,5 +1,5 @@
 [badges.gitlab]
-repository = "https://gitlab.com/fkrull/rust-libostree"
+repository = "fkrull/rust-libostree"
 
 [build-dependencies]
 pkg-config = "0.3.7"
@@ -47,6 +47,5 @@ keywords = ["ffi", "ostree", "libostree"]
 license = "MIT"
 links = "ostree"
 name = "libostree-sys"
-readme = "README.md"
 repository = "https://gitlab.com/fkrull/rust-libostree"
-version = "0.1.0"
+version = "0.1.1"
