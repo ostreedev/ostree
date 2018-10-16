@@ -59,8 +59,8 @@ pages:
   artifacts:
     paths:
     - public
-  only:
-  - master
+  #only:
+  #- master
 
 # publish
 publish_libostree-sys:
