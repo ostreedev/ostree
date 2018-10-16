@@ -7,6 +7,7 @@ before_script:
 
 stages:
 - build
+- doc
 - publish
 
 libostree-sys:
@@ -49,6 +50,17 @@ libostree_nightly:
   - cargo test --verbose --package libostree
   allow_failure: true
 
+# docs
+pages:
+  stage: doc
+  script:
+  - cargo doc --verbose --all-features
+  - cp -r target/doc public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
 
 # publish
 publish_libostree-sys:
