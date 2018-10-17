@@ -2,9 +2,9 @@
 name = "libostree"
 version = "0.1.0"
 authors = ["Felix Krull"]
+build = "build.rs"
 
 license = "MIT"
-license-file = "LICENSE"
 description = "Rust bindings for libostree"
 keywords = ["ostree", "libostree"]
 
@@ -30,3 +30,11 @@ libostree-sys = { version = "0.1", path = "../libostree-sys" }
 
 [dev-dependencies]
 tempfile = "3"
+
+[build-dependencies]
+gir = { git = "https://github.com/gtk-rs/gir", optional = true }
+rustdoc-stripper = { version = "0.1", optional = true }
+
+[features]
+dox = ["libostree-sys/dox"]
+lgpl-docs = ["gir", "rustdoc-stripper"]
