@@ -168,6 +168,7 @@ struct OstreeRepo {
   gint lock_timeout_seconds;
   guint64 payload_link_threshold;
   gint fs_support_reflink; /* The underlying filesystem has support for ioctl (FICLONE..) */
+  gchar **repo_finders;
 
   OstreeRepo *parent_repo;
 };

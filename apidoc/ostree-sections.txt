@@ -298,6 +298,7 @@ ostree_repo_get_mode
 ostree_repo_get_min_free_space_bytes
 ostree_repo_get_config
 ostree_repo_get_dfd
+ostree_repo_get_repo_finders
 ostree_repo_hash
 ostree_repo_equal
 ostree_repo_copy_config
