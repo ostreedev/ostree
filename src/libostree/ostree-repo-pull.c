@@ -4999,45 +4999,55 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
   /* Are we using #OstreeRepoFinders provided by the user, or the defaults? */
   if (finders == NULL)
     {
+      guint finder_index = 0;
 #ifdef HAVE_AVAHI
+      guint avahi_index;
       GMainContext *context = g_main_context_get_thread_default ();
       g_autoptr(GError) local_error = NULL;
 #endif  /* HAVE_AVAHI */
 
-      finder_config = OSTREE_REPO_FINDER (ostree_repo_finder_config_new ());
-      finder_mount = OSTREE_REPO_FINDER (ostree_repo_finder_mount_new (NULL));
+      if (g_strv_contains ((const char * const *)self->repo_finders, "config"))
+        default_finders[finder_index++] = finder_config = OSTREE_REPO_FINDER (ostree_repo_finder_config_new ());
+
+      if (g_strv_contains ((const char * const *)self->repo_finders, "mount"))
+        default_finders[finder_index++] = finder_mount = OSTREE_REPO_FINDER (ostree_repo_finder_mount_new (NULL));
+
 #ifdef HAVE_AVAHI
-      finder_avahi = OSTREE_REPO_FINDER (ostree_repo_finder_avahi_new (context));
+      if (g_strv_contains ((const char * const *)self->repo_finders, "lan"))
+        {
+          avahi_index = finder_index;
+          default_finders[finder_index++] = finder_avahi = OSTREE_REPO_FINDER (ostree_repo_finder_avahi_new (context));
+        }
 #endif  /* HAVE_AVAHI */
 
-      default_finders[0] = finder_config;
-      default_finders[1] = finder_mount;
-      default_finders[2] = finder_avahi;
-
+      g_assert (default_finders != NULL);
       finders = default_finders;
 
 #ifdef HAVE_AVAHI
-      ostree_repo_finder_avahi_start (OSTREE_REPO_FINDER_AVAHI (finder_avahi),
-                                      &local_error);
-
-      if (local_error != NULL)
+      if (finder_avahi != NULL)
         {
-          /* See ostree-repo-finder-avahi.c:ostree_repo_finder_avahi_start, we
-           * intentionally throw this so as to distinguish between the Avahi
-           * finder failing because the Avahi daemon wasn't running and
-           * the Avahi finder failing because of some actual error.
-           *
-           * We need to distinguish between g_debug and g_warning here because
-           * unit tests that use this code may set G_DEBUG=fatal-warnings which
-           * would cause client code to abort if a warning were emitted.
-           */
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-            g_debug ("Avahi finder failed under normal operation; removing it: %s", local_error->message);
-          else
-            g_warning ("Avahi finder failed abnormally; removing it: %s", local_error->message);
+          ostree_repo_finder_avahi_start (OSTREE_REPO_FINDER_AVAHI (finder_avahi),
+                                          &local_error);
 
-          default_finders[2] = NULL;
-          g_clear_object (&finder_avahi);
+          if (local_error != NULL)
+            {
+              /* See ostree-repo-finder-avahi.c:ostree_repo_finder_avahi_start, we
+               * intentionally throw this so as to distinguish between the Avahi
+               * finder failing because the Avahi daemon wasn't running and
+               * the Avahi finder failing because of some actual error.
+               *
+               * We need to distinguish between g_debug and g_warning here because
+               * unit tests that use this code may set G_DEBUG=fatal-warnings which
+               * would cause client code to abort if a warning were emitted.
+               */
+              if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+                g_debug ("Avahi finder failed under normal operation; removing it: %s", local_error->message);
+              else
+                g_warning ("Avahi finder failed abnormally; removing it: %s", local_error->message);
+
+              default_finders[avahi_index] = NULL;
+              g_clear_object (&finder_avahi);
+            }
         }
 #endif  /* HAVE_AVAHI */
     }

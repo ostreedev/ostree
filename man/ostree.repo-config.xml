@@ -215,6 +215,20 @@ Boston, MA 02111-1307, USA.
         of -1 means block indefinitely. The default value is 30.
         </para></listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><varname>repo-finders</varname></term>
+        <listitem><para>Semicolon separated default list of finders (sources
+        for refs) to use when pulling. This can be used to disable
+        pulling from mounted filesystems, peers on the local network,
+        or the Internet. However note that it only applies when a set
+        of finders isn't explicitly specified, either by a consumer of
+        libostree API or on the command line. Possible values:
+        <literal>config</literal>, <literal>lan</literal>, and
+        <literal>mount</literal> (or any combination thereof). If
+        unset, this defaults to <literal>config;lan;mount;</literal>.
+        </para></listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 

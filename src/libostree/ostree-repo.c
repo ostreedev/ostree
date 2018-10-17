@@ -1035,6 +1035,7 @@ ostree_repo_finalize (GObject *object)
   g_mutex_clear (&self->cache_lock);
   g_mutex_clear (&self->txn_lock);
   g_free (self->collection_id);
+  g_strfreev (self->repo_finders);
 
   g_clear_pointer (&self->remotes, g_hash_table_destroy);
   g_mutex_clear (&self->remotes_lock);
@@ -2936,6 +2937,40 @@ reload_core_config (OstreeRepo          *self,
       return FALSE;
 
     self->payload_link_threshold = g_ascii_strtoull (payload_threshold, NULL, 10);
+  }
+
+  { g_auto(GStrv) configured_finders = NULL;
+    g_autoptr(GError) local_error = NULL;
+
+    configured_finders = g_key_file_get_string_list (self->config, "core", "repo-finders",
+                                                     NULL, &local_error);
+    if (g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+      g_clear_error (&local_error);
+    else if (local_error != NULL)
+      {
+        g_propagate_error (error, g_steal_pointer (&local_error));
+        return FALSE;
+      }
+
+    if (configured_finders != NULL && *configured_finders == NULL)
+      return glnx_throw (error, "Invalid empty repo-finders configuration");
+
+    for (char **iter = configured_finders; iter && *iter; iter++)
+      {
+        const char *repo_finder = *iter;
+
+        if (strcmp (repo_finder, "config") != 0 &&
+            strcmp (repo_finder, "lan") != 0 &&
+            strcmp (repo_finder, "mount") != 0)
+          return glnx_throw (error, "Invalid configured repo-finder '%s'", repo_finder);
+      }
+
+    /* Fall back to a default set of finders */
+    if (configured_finders == NULL)
+      configured_finders = g_strsplit ("config;lan;mount", ";", -1);
+
+    g_clear_pointer (&self->repo_finders, g_strfreev);
+    self->repo_finders = g_steal_pointer (&configured_finders);
   }
 
   return TRUE;
@@ -5914,4 +5949,23 @@ ostree_repo_set_collection_id (OstreeRepo   *self,
     }
 
   return TRUE;
+}
+
+/**
+ * ostree_repo_get_repo_finders:
+ * @self: an #OstreeRepo
+ *
+ * Get the set of repo finders configured. See the documentation for
+ * the "core.repo-finders" config key.
+ *
+ * Returns: (array zero-terminated=1) (element-type utf8):
+ *    %NULL-terminated array of strings.
+ * Since: 2018.9
+ */
+const gchar * const *
+ostree_repo_get_repo_finders (OstreeRepo *self)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+
+  return (const gchar * const *)self->repo_finders;
 }
