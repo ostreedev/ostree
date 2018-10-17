@@ -7,7 +7,7 @@ before_script:
 
 stages:
 - build
-- doc
+- docs
 - publish
 
 libostree-sys:
@@ -39,10 +39,18 @@ libostree_nightly:
   allow_failure: true
 
 # docs
-pages:
-  stage: doc
+docs:
+  stage: docs
   script:
   - cargo doc --verbose --features dox,lgpl-docs
+  artifacts:
+    paths:
+    - target/doc
+
+# publish
+pages:
+  stage: publish
+  script:
   - cp -r target/doc public
   artifacts:
     paths:
@@ -50,11 +58,10 @@ pages:
   only:
   - master
 
-# publish
 publish_libostree-sys:
   stage: publish
   script:
-    - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --token $CRATES_IO_TOKEN
+  - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --token $CRATES_IO_TOKEN
   when: manual
 
 publish_libostree:
