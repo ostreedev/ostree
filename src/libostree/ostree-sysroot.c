@@ -376,12 +376,11 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
 
   g_autofree char *ostree_bootdir_name = g_strdup_printf ("ostree/boot.%d", bootversion);
   struct stat stbuf;
-  if (fstatat (self->sysroot_fd, ostree_bootdir_name, &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
+  if (!glnx_fstatat_allow_noent (self->sysroot_fd, ostree_bootdir_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno == ENOENT)
     {
-      if (errno == ENOENT)
-        *out_subbootversion = 0;
-      else
-        return glnx_throw_errno (error);
+      *out_subbootversion = 0;
     }
   else
     {
@@ -499,10 +498,10 @@ read_current_bootversion (OstreeSysroot *self,
   int ret_bootversion;
   struct stat stbuf;
 
-  if (fstatat (self->sysroot_fd, "boot/loader", &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
+  if (!glnx_fstatat_allow_noent (self->sysroot_fd, "boot/loader", &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno == ENOENT)
     {
-      if (errno != ENOENT)
-        return glnx_throw_errno (error);
       ret_bootversion = 0;
     }
   else
@@ -976,11 +975,12 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
       /* Otherwise - check for /sysroot which should only exist in a deployment,
        * not in ${sysroot} (a metavariable for the real physical root).
        */
-      else if (fstatat (self->sysroot_fd, "sysroot", &stbuf, 0) < 0)
+      else
         {
-          if (errno != ENOENT)
-            return glnx_throw_errno_prefix (error, "fstatat");
-          self->is_physical = TRUE;
+          if (!glnx_fstatat_allow_noent (self->sysroot_fd, "sysroot", &stbuf, 0, error))
+            return FALSE;
+          if (errno == ENOENT)
+            self->is_physical = TRUE;
         }
       /* Otherwise, the default is FALSE */
     }
