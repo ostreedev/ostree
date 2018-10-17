@@ -45,7 +45,6 @@ categories = ["external-ffi-bindings"]
 description = "FFI bindings to libostree-1"
 keywords = ["ffi", "ostree", "libostree"]
 license = "MIT"
-license-file = "LICENSE"
 links = "ostree-1"
 name = "libostree-sys"
 repository = "https://gitlab.com/fkrull/rust-libostree"
