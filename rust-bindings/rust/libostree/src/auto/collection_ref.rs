@@ -22,21 +22,6 @@ glib_wrapper! {
 }
 
 impl CollectionRef {
-    /// Create a new `CollectionRef` containing (`collection_id`, `ref_name`). If
-    /// `collection_id` is `None`, this is equivalent to a plain ref name string (not a
-    /// refspec; no remote name is included), which can be used for non-P2P
-    /// operations.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `collection_id`
-    /// a collection ID, or `None` for a plain ref
-    /// ## `ref_name`
-    /// a ref name
-    ///
-    /// # Returns
-    ///
-    /// a new `CollectionRef`
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn new<'a, P: Into<Option<&'a str>>>(collection_id: P, ref_name: &str) -> CollectionRef {
         let collection_id = collection_id.into();
@@ -46,14 +31,6 @@ impl CollectionRef {
         }
     }
 
-    /// Create a copy of the given `self`.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    ///
-    /// # Returns
-    ///
-    /// a newly allocated copy of `self`
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn dup(&self) -> Option<CollectionRef> {
         unsafe {
@@ -61,18 +38,6 @@ impl CollectionRef {
         }
     }
 
-    /// Copy an array of `OstreeCollectionRefs`, including deep copies of all its
-    /// elements. `refs` must be `None`-terminated; it may be empty, but must not be
-    /// `None`.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `refs`
-    /// `None`-terminated array of `OstreeCollectionRefs`
-    ///
-    /// # Returns
-    ///
-    /// a newly allocated copy of `refs`
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn dupv(refs: &[&CollectionRef]) -> Vec<CollectionRef> {
         unsafe {
@@ -80,19 +45,6 @@ impl CollectionRef {
         }
     }
 
-    /// Compare `ref1` and `ref2` and return `true` if they have the same collection ID and
-    /// ref name, and `false` otherwise. Both `ref1` and `ref2` must be non-`None`.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `ref1`
-    /// an `CollectionRef`
-    /// ## `ref2`
-    /// another `CollectionRef`
-    ///
-    /// # Returns
-    ///
-    /// `true` if `ref1` and `ref2` are equal, `false` otherwise
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn equal<'a, P: Into<Option<&'a CollectionRef>>>(&self, ref2: P) -> bool {
         unsafe {
@@ -100,13 +52,6 @@ impl CollectionRef {
         }
     }
 
-    /// Free the given array of `refs`, including freeing all its elements. `refs`
-    /// must be `None`-terminated; it may be empty, but must not be `None`.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `refs`
-    /// an array of `OstreeCollectionRefs`
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn freev(refs: &[&CollectionRef]) {
         unsafe {
@@ -114,17 +59,6 @@ impl CollectionRef {
         }
     }
 
-    /// Hash the given `ref_`. This function is suitable for use with `glib::HashTable`.
-    /// `ref_` must be non-`None`.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    /// ## `ref_`
-    /// an `CollectionRef`
-    ///
-    /// # Returns
-    ///
-    /// hash value for `ref_`
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn hash(&self) -> u32 {
         unsafe {

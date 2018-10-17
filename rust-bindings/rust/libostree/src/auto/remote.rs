@@ -21,16 +21,6 @@ glib_wrapper! {
 }
 
 impl Remote {
-    /// Get the human-readable name of the remote. This is what the user configured,
-    /// if the remote was explicitly configured; and will otherwise be a stable,
-    /// arbitrary, string.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    ///
-    /// # Returns
-    ///
-    /// remote’s name
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn get_name(&self) -> Option<String> {
         unsafe {
@@ -38,14 +28,6 @@ impl Remote {
         }
     }
 
-    /// Get the URL from the remote.
-    ///
-    /// Feature: `v2018_6`
-    ///
-    ///
-    /// # Returns
-    ///
-    /// the remote's URL
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn get_url(&self) -> Option<String> {
         unsafe {

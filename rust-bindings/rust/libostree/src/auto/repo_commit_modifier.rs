@@ -28,21 +28,6 @@ impl RepoCommitModifier {
     //    unsafe { TODO: call ffi::ostree_repo_commit_modifier_new() }
     //}
 
-    /// See the documentation for
-    /// `ostree_repo_devino_cache_new()`. This function can
-    /// then be used for later calls to
-    /// `ostree_repo_write_directory_to_mtree()` to optimize commits.
-    ///
-    /// Note if your process has multiple writers, you should use separate
-    /// `OSTreeRepo` instances if you want to also use this API.
-    ///
-    /// This function will add a reference to `cache` without copying - you
-    /// should avoid further mutation of the cache.
-    ///
-    /// Feature: `v2017_13`
-    ///
-    /// ## `cache`
-    /// A hash table caching device,inode to checksums
     #[cfg(any(feature = "v2017_13", feature = "dox"))]
     pub fn set_devino_cache(&self, cache: &RepoDevInoCache) {
         unsafe {
@@ -50,16 +35,6 @@ impl RepoCommitModifier {
         }
     }
 
-    /// If `policy` is non-`None`, use it to look up labels to use for
-    /// "security.selinux" extended attributes.
-    ///
-    /// Note that any policy specified this way operates in addition to any
-    /// extended attributes provided via
-    /// `RepoCommitModifier::set_xattr_callback`. However if both
-    /// specify a value for "security.selinux", then the one from the
-    /// policy wins.
-    /// ## `sepolicy`
-    /// Policy to use for labeling
     pub fn set_sepolicy<'a, P: Into<Option<&'a SePolicy>>>(&self, sepolicy: P) {
         let sepolicy = sepolicy.into();
         let sepolicy = sepolicy.to_glib_none();
