@@ -62,6 +62,10 @@ fn find() -> Result<(), Error> {
         return Ok(())
     }
 
+    if cfg!(feature = "dox") {
+        return Ok(())
+    }
+
     let target = env::var("TARGET").expect("TARGET environment variable doesn't exist");
     let hardcode_shared_libs = target.contains("windows");
 

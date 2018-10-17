@@ -42,7 +42,7 @@ libostree_nightly:
 pages:
   stage: doc
   script:
-  - cargo doc --verbose --all-features
+  - cargo doc --verbose --features dox
   - cp -r target/doc public
   artifacts:
     paths:
