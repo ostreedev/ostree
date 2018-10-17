@@ -42,7 +42,8 @@ libostree_nightly:
 docs:
   stage: docs
   script:
-  - cargo doc --verbose --features dox,lgpl-docs
+  - cd libostree
+  - cargo doc --verbose --features "dox lgpl-docs"
   artifacts:
     paths:
     - target/doc
