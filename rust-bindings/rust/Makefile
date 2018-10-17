@@ -6,27 +6,13 @@ all: generate-libostree-sys generate-libostree
 tools/bin/gir:
 	cargo install --root tools --git https://github.com/gtk-rs/gir.git -- gir
 
-tools/bin/rustdoc-stripper:
-	cargo install --root tools rustdoc-stripper
-
 # gir generate
 gir/%: tools/bin/gir
 	tools/bin/gir -c conf/$*.toml
 
 generate-libostree-sys: gir/libostree-sys
 
-generate-libostree: gir/libostree #update-docs
-
-# docs
-update-docs: tools/bin/gir tools/bin/rustdoc-stripper
-	tools/bin/gir -c conf/libostree.toml -m doc
-	#sed -i \
-	#	-e "s/trait RepoExt::fn list_refs/trait RepoExtManual::fn list_refs/" \
-	#	-e "s/trait RepoExt::fn list_refs_ext/trait RepoExtManual::fn list_refs_ext/" \
-	#	-e "s/trait RepoExt::fn traverse_commit/trait RepoExtManual::fn traverse_commit/" \
-	#	libostree/vendor.md
-	tools/bin/rustdoc-stripper -g -o libostree/vendor.md
-	rm libostree/vendor.md
+generate-libostree: gir/libostree
 
 # gir file management
 update-gir-files: \
