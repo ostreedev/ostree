@@ -15,16 +15,16 @@ gir/%: tools/bin/gir
 
 generate-libostree-sys: gir/libostree-sys
 
-generate-libostree: gir/libostree update-docs
+generate-libostree: gir/libostree #update-docs
 
 # docs
 update-docs: tools/bin/gir tools/bin/rustdoc-stripper
 	tools/bin/gir -c conf/libostree.toml -m doc
-	sed -i \
-		-e "s/trait RepoExt::fn list_refs/trait RepoExtManual::fn list_refs/" \
-		-e "s/trait RepoExt::fn list_refs_ext/trait RepoExtManual::fn list_refs_ext/" \
-		-e "s/trait RepoExt::fn traverse_commit/trait RepoExtManual::fn traverse_commit/" \
-		libostree/vendor.md
+	#sed -i \
+	#	-e "s/trait RepoExt::fn list_refs/trait RepoExtManual::fn list_refs/" \
+	#	-e "s/trait RepoExt::fn list_refs_ext/trait RepoExtManual::fn list_refs_ext/" \
+	#	-e "s/trait RepoExt::fn traverse_commit/trait RepoExtManual::fn traverse_commit/" \
+	#	libostree/vendor.md
 	tools/bin/rustdoc-stripper -g -o libostree/vendor.md
 	rm libostree/vendor.md
 
