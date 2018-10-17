@@ -57,10 +57,8 @@ publish_libostree-sys:
     - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --token $CRATES_IO_TOKEN
   when: manual
 
-#publish_libostree:
-#  stage: publish
-#  before_script:
-#  - cargo login $CRATES_IO_TOKEN
-#  script:
-#  - cargo publish --verbose --manifest-path libostree/Cargo.toml
-#  when: manual
+publish_libostree:
+  stage: publish
+  script:
+  - cargo publish --verbose --manifest-path libostree/Cargo.toml --token $CRATES_IO_TOKEN
+  when: manual
