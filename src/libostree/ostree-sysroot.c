@@ -612,6 +612,10 @@ parse_deployment (OstreeSysroot       *self,
                        error))
     return FALSE;
 
+  g_autofree char *errprefix =
+    g_strdup_printf ("Parsing deployment %i in stateroot '%s'", treebootserial, osname);
+  GLNX_AUTO_PREFIX_ERROR(errprefix, error);
+
   const char *relative_boot_link = boot_link;
   if (*relative_boot_link == '/')
     relative_boot_link++;
