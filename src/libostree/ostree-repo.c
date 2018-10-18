@@ -2967,7 +2967,7 @@ reload_core_config (OstreeRepo          *self,
 
     /* Fall back to a default set of finders */
     if (configured_finders == NULL)
-      configured_finders = g_strsplit ("config;lan;mount", ";", -1);
+      configured_finders = g_strsplit ("config;mount", ";", -1);
 
     g_clear_pointer (&self->repo_finders, g_strfreev);
     self->repo_finders = g_steal_pointer (&configured_finders);

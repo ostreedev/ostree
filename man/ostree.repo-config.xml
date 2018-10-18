@@ -225,8 +225,9 @@ Boston, MA 02111-1307, USA.
         of finders isn't explicitly specified, either by a consumer of
         libostree API or on the command line. Possible values:
         <literal>config</literal>, <literal>lan</literal>, and
-        <literal>mount</literal> (or any combination thereof). If
-        unset, this defaults to <literal>config;lan;mount;</literal>.
+        <literal>mount</literal> (or any combination thereof). If unset, this
+        defaults to <literal>config;mount;</literal> (since the LAN finder is
+        costly).
         </para></listitem>
       </varlistentry>
     </variablelist>
