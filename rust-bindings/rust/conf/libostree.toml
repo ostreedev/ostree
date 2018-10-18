@@ -3,6 +3,7 @@ work_mode = "normal"
 library = "OSTree"
 version = "1.0"
 target_path = "../libostree"
+doc_target_path = "../target/vendor.md"
 deprecate_by_min_version = true
 
 girs_dir = "../gir-files"

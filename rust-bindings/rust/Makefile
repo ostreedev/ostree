@@ -21,6 +21,15 @@ generate-libostree-sys: gir/libostree-sys
 generate-libostree: gir/libostree
 
 
+# -- LGPL docs generation --
+tools/bin/rustdoc-stripper:
+	cargo install --root tools -- rustdoc-stripper
+
+merge-lgpl-docs: tools/bin/gir tools/bin/rustdoc-stripper
+	tools/bin/gir -c conf/libostree.toml -m doc
+	tools/bin/rustdoc-stripper -g -o target/vendor.md
+
+
 # -- gir file management --
 update-gir-files: \
 	remove-gir-files \

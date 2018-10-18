@@ -42,8 +42,9 @@ libostree_nightly:
 docs:
   stage: docs
   script:
+  - make merge-lgpl-docs
   - cd libostree
-  - cargo doc --verbose --features "dox lgpl-docs"
+  - cargo doc --verbose --features dox
   artifacts:
     paths:
     - target/doc
