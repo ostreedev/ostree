@@ -5,7 +5,7 @@ all: generate-libostree-sys generate-libostree
 
 # -- cargo package helpers --
 pre-package:
-	LICENSE libostree-sys/
+	cp LICENSE libostree-sys/
 	cp README.md LICENSE libostree/
 
 
