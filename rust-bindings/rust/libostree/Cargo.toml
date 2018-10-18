@@ -15,6 +15,9 @@ readme = "README.md"
 [package.metadata.docs.rs]
 features = ["dox"]
 
+[badges.gitlab]
+repository = "fkrull/rust-libostree"
+
 [lib]
 name = "libostree"
 
