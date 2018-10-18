@@ -43,6 +43,7 @@ authors = ["Felix Krull"]
 build = "build.rs"
 categories = ["external-ffi-bindings"]
 description = "FFI bindings to libostree-1"
+documentation = "https://fkrull.gitlab.io/rust-libostree/libostree_sys"
 keywords = ["ffi", "ostree", "libostree"]
 license = "MIT"
 links = "ostree-1"

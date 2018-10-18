@@ -8,6 +8,7 @@ license = "MIT"
 description = "Rust bindings for libostree"
 keywords = ["ostree", "libostree"]
 
+documentation = "https://fkrull.gitlab.io/rust-libostree/libostree"
 repository = "https://gitlab.com/fkrull/rust-libostree"
 readme = "README.md"
 
