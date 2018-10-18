@@ -63,12 +63,12 @@ publish_libostree-sys:
   stage: publish
   script:
   - make pre-package
-  - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --token $CRATES_IO_TOKEN
+  - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --allow-dirty --token $CRATES_IO_TOKEN
   when: manual
 
 publish_libostree:
   stage: publish
   script:
   - make pre-package
-  - cargo publish --verbose --manifest-path libostree/Cargo.toml --token $CRATES_IO_TOKEN
+  - cargo publish --verbose --manifest-path libostree/Cargo.toml --allow-dirty --token $CRATES_IO_TOKEN
   when: manual
