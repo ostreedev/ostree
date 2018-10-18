@@ -32,3 +32,4 @@ ExecStart=/usr/lib/ostree/ostree-prepare-root /sysroot
 StandardInput=null
 StandardOutput=syslog
 StandardError=syslog+console
+RemainAfterExit=yes
