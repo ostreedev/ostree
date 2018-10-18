@@ -62,18 +62,19 @@ $ make update-gir-files
 ### Documentation
 The libostree API documentation is not included in the code by default because
 of its LGPL license. This means normal `cargo doc` runs don't include API docs
-for the generated code. Build the crate with the `lgpl-docs` feature to merge
-the API docs into the code:
+for the generated code. Run the `merge-lgpl-docs` Makefile target to include
+the API docs in the source so they can be consumed by `cargo doc`:
 
 ```ShellSession
-$ cd libostree/
-$ cargo doc --features "dox lgpl-docs"
+$ make merge-lgpl-docs
 ```
 
-(The `dox` feature enables all functions etc. regardless of version.) Keep in
-mind that if you build the crate with the `lgpl-docs` feature, it is effectively
-LGPL-licensed and you need to comply with the LGPL requirements (specifically,
-allowing users of your end product to swap out the LGPL'd parts).
+Keep in mind that if you build the crate with the API docs included, it is
+effectively LGPL-licensed and you need to comply with the LGPL requirements
+(specifically, allowing users of your end product to swap out the LGPL'd
+parts).
+
+CI includes the LGPL docs in the documentation build. 
 
 ### Releases
 Releases can be done using the publish_* jobs in the pipeline. There's no
