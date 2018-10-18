@@ -2,11 +2,16 @@ all: generate-libostree-sys generate-libostree
 
 .PHONY: update-gir-files
 
-# tools
+
+# -- cargo package helpers --
+pre-package:
+	cp README.md libostree/
+
+
+# -- gir generation --
 tools/bin/gir:
 	cargo install --root tools --git https://github.com/gtk-rs/gir.git -- gir
 
-# gir generate
 gir/%: tools/bin/gir
 	tools/bin/gir -c conf/$*.toml
 
@@ -14,7 +19,8 @@ generate-libostree-sys: gir/libostree-sys
 
 generate-libostree: gir/libostree
 
-# gir file management
+
+# -- gir file management --
 update-gir-files: \
 	remove-gir-files \
 	gir-files \
