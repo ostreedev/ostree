@@ -1,6 +1,7 @@
 # rust-libostree
 [![pipeline status](https://gitlab.com/fkrull/rust-libostree/badges/master/pipeline.svg)](https://gitlab.com/fkrull/rust-libostree/commits/master)
 [![Crates.io](https://img.shields.io/crates/v/libostree.svg)](https://crates.io/crates/libostree)
+[![master-docs](https://img.shields.io/badge/docs-master-brightgreen.svg)](https://fkrull.gitlab.io/rust-libostree/libostree)
 
 **Rust** bindings for [libostree](https://ostree.readthedocs.io).
 
