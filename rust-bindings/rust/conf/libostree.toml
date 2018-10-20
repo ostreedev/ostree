@@ -10,7 +10,6 @@ girs_dir = "../gir-files"
 
 generate = [
     "OSTree.AsyncProgress",
-    "OSTree.CollectionRef",
     "OSTree.GpgSignatureFormatFlags",
     "OSTree.GpgVerifyResult",
     "OSTree.ObjectType",
@@ -51,6 +50,20 @@ manual = [
 ]
 
 [[object]]
+name = "OSTree.CollectionRef"
+status = "generate"
+    [[object.function]]
+    pattern = "dupv|equal|freev|hash"
+    ignore = true
+
+[[object]]
+name = "OSTree.MutableTree"
+status = "generate"
+    [[object.function]]
+    pattern = "lookup"
+    ignore = true
+
+[[object]]
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
@@ -78,13 +91,6 @@ status = "generate"
 
     [[object.function]]
     pattern = "tree_query_child"
-    ignore = true
-
-[[object]]
-name = "OSTree.MutableTree"
-status = "generate"
-    [[object.function]]
-    pattern = "lookup"
     ignore = true
 
 [[object]]

@@ -6,12 +6,11 @@ use ffi;
 use glib::translate::*;
 use glib_ffi;
 use gobject_ffi;
-use std::hash;
 use std::mem;
 use std::ptr;
 
 glib_wrapper! {
-    #[derive(Debug, PartialOrd, Ord)]
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct CollectionRef(Boxed<ffi::OstreeCollectionRef>);
 
     match fn {
@@ -36,49 +35,5 @@ impl CollectionRef {
         unsafe {
             from_glib_full(ffi::ostree_collection_ref_dup(self.to_glib_none().0))
         }
-    }
-
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn dupv(refs: &[&CollectionRef]) -> Vec<CollectionRef> {
-        unsafe {
-            FromGlibPtrContainer::from_glib_full(ffi::ostree_collection_ref_dupv(refs.to_glib_none().0))
-        }
-    }
-
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    fn equal<'a, P: Into<Option<&'a CollectionRef>>>(&self, ref2: P) -> bool {
-        unsafe {
-            from_glib(ffi::ostree_collection_ref_equal(ToGlibPtr::<*mut ffi::OstreeCollectionRef>::to_glib_none(self).0 as glib_ffi::gconstpointer, ToGlibPtr::<*mut ffi::OstreeCollectionRef>::to_glib_none(ref2).0 as glib_ffi::gconstpointer))
-        }
-    }
-
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn freev(refs: &[&CollectionRef]) {
-        unsafe {
-            ffi::ostree_collection_ref_freev(refs.to_glib_full());
-        }
-    }
-
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    fn hash(&self) -> u32 {
-        unsafe {
-            ffi::ostree_collection_ref_hash(ToGlibPtr::<*mut ffi::OstreeCollectionRef>::to_glib_none(self).0 as glib_ffi::gconstpointer)
-        }
-    }
-}
-
-impl PartialEq for CollectionRef {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.equal(other)
-    }
-}
-
-impl Eq for CollectionRef {}
-
-impl hash::Hash for CollectionRef {
-    #[inline]
-    fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
-        hash::Hash::hash(&self.hash(), state)
     }
 }
