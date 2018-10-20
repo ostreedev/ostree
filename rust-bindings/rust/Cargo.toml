@@ -1,5 +1,63 @@
-[workspace]
-members = [
+[package]
+name = "libostree"
+version = "0.1.1"
+authors = ["Felix Krull"]
+
+license = "MIT"
+description = "Rust bindings for libostree"
+keywords = ["ostree", "libostree"]
+
+documentation = "https://fkrull.gitlab.io/rust-libostree/libostree"
+repository = "https://gitlab.com/fkrull/rust-libostree"
+readme = "README.md"
+
+exclude = [
+    "conf",
+    "gir-files",
     "libostree-sys",
-    "libostree"
+
 ]
+
+[package.metadata.docs.rs]
+features = ["dox"]
+
+[badges.gitlab]
+repository = "fkrull/rust-libostree"
+
+[lib]
+name = "libostree"
+
+[dependencies]
+libc = "0.2"
+bitflags = "1"
+lazy_static = "1.1"
+glib = "0.6"
+gio = "0.5"
+glib-sys = "0.7"
+gobject-sys = "0.7"
+gio-sys = "0.7"
+libostree-sys = { version = "0.1", path = "libostree-sys" }
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+dox = ["libostree-sys/dox"]
+v2014_9 = ["libostree-sys/v2014_9"]
+v2015_7 = ["v2014_9", "libostree-sys/v2015_7"]
+v2017_3 = ["v2015_7", "libostree-sys/v2017_3"]
+v2017_4 = ["v2017_3", "libostree-sys/v2017_4"]
+v2017_6 = ["v2017_4", "libostree-sys/v2017_6"]
+v2017_7 = ["v2017_6", "libostree-sys/v2017_7"]
+v2017_8 = ["v2017_7", "libostree-sys/v2017_8"]
+v2017_9 = ["v2017_8", "libostree-sys/v2017_9"]
+v2017_10 = ["v2017_9", "libostree-sys/v2017_10"]
+v2017_11 = ["v2017_10", "libostree-sys/v2017_11"]
+v2017_12 = ["v2017_11", "libostree-sys/v2017_12"]
+v2017_13 = ["v2017_12", "libostree-sys/v2017_13"]
+v2017_15 = ["v2017_13", "libostree-sys/v2017_15"]
+v2018_2 = ["v2017_15", "libostree-sys/v2018_2"]
+v2018_3 = ["v2018_2", "libostree-sys/v2018_3"]
+v2018_5 = ["v2018_3", "libostree-sys/v2018_5"]
+v2018_6 = ["v2018_5", "libostree-sys/v2018_6"]
+v2018_7 = ["v2018_6", "libostree-sys/v2018_7"]
