@@ -10,40 +10,49 @@ before_script:
 
 stages:
 - build
-- docs
 - publish
 
+# libostree-sys
 libostree-sys:
   stage: build
   script:
-  - cargo build --verbose --manifest-path libostree-sys/Cargo.toml
   - cargo test --verbose --manifest-path libostree-sys/Cargo.toml
-
-libostree:
-  stage: build
-  script:
-  - cargo build --verbose
-  - cargo test --verbose
 
 libostree-sys_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo build --verbose --manifest-path libostree-sys/Cargo.toml
   - cargo test --verbose --manifest-path libostree-sys/Cargo.toml
   allow_failure: true
+
+publish_libostree-sys:
+  stage: publish
+  script:
+  - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --token $CRATES_IO_TOKEN
+  when: manual
+
+# libostree
+libostree:
+  stage: build
+  script:
+  - cargo test --verbose
 
 libostree_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo build --verbose
   - cargo test --verbose
   allow_failure: true
 
+publish_libostree:
+  stage: publish
+  script:
+  - cargo publish --verbose --token $CRATES_IO_TOKEN
+  when: manual
+
 # docs
 docs:
-  stage: docs
+  stage: build
   script:
   - make merge-lgpl-docs
   - cargo doc --verbose --features dox
@@ -51,7 +60,6 @@ docs:
     paths:
     - target/doc
 
-# publish
 pages:
   stage: publish
   script:
@@ -61,15 +69,3 @@ pages:
     - public
   only:
   - master
-
-publish_libostree-sys:
-  stage: publish
-  script:
-  - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --token $CRATES_IO_TOKEN
-  when: manual
-
-publish_libostree:
-  stage: publish
-  script:
-  - cargo publish --verbose --token $CRATES_IO_TOKEN
-  when: manual
