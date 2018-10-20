@@ -10,11 +10,11 @@ pre-package:
 
 
 # -- gir generation --
-tools/bin/gir:
-	cargo install --root tools --git https://github.com/gtk-rs/gir.git -- gir
+target/tools/bin/gir:
+	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git -- gir
 
-gir/%: tools/bin/gir
-	tools/bin/gir -c conf/$*.toml
+gir/%: target/tools/bin/gir
+	target/tools/bin/gir -c conf/$*.toml
 
 generate-libostree-sys: gir/libostree-sys
 
@@ -22,12 +22,12 @@ generate-libostree: gir/libostree
 
 
 # -- LGPL docs generation --
-tools/bin/rustdoc-stripper:
-	cargo install --root tools -- rustdoc-stripper
+target/tools/bin/rustdoc-stripper:
+	cargo install --root target/tools -- rustdoc-stripper
 
-merge-lgpl-docs: tools/bin/gir tools/bin/rustdoc-stripper
-	tools/bin/gir -c conf/libostree.toml -m doc
-	tools/bin/rustdoc-stripper -g -o target/vendor.md
+merge-lgpl-docs: target/tools/bin/gir target/tools/bin/rustdoc-stripper
+	target/tools/bin/gir -c conf/libostree.toml -m doc
+	target/tools/bin/rustdoc-stripper -g -o target/vendor.md
 
 
 # -- gir file management --

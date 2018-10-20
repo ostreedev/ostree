@@ -1,5 +1,4 @@
 /.idea
-/tools
 **/*.rs.bk
 target/
 Cargo.lock
