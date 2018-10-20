@@ -16,19 +16,19 @@ stages:
 libostree-sys:
   stage: build
   script:
-  - cargo test --verbose --manifest-path libostree-sys/Cargo.toml
+  - cargo test --verbose --manifest-path sys/Cargo.toml
 
 libostree-sys_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo test --verbose --manifest-path libostree-sys/Cargo.toml
+  - cargo test --verbose --manifest-path sys/Cargo.toml
   allow_failure: true
 
 publish_libostree-sys:
   stage: publish
   script:
-  - cargo publish --verbose --manifest-path libostree-sys/Cargo.toml --token $CRATES_IO_TOKEN
+  - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
   when: manual
 
 # libostree
