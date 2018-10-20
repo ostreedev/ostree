@@ -50,6 +50,5 @@ links = "ostree-1"
 name = "libostree-sys"
 repository = "https://gitlab.com/fkrull/rust-libostree"
 version = "0.1.5"
-
 [package.metadata.docs.rs]
 features = ["dox"]
