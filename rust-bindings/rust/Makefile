@@ -3,12 +3,6 @@ all: generate-libostree-sys generate-libostree
 .PHONY: update-gir-files
 
 
-# -- cargo package helpers --
-pre-package:
-	cp LICENSE libostree-sys/
-	cp README.md LICENSE libostree/
-
-
 # -- gir generation --
 target/tools/bin/gir:
 	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git -- gir
