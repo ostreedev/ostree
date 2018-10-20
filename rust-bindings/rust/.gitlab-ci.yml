@@ -16,13 +16,13 @@ stages:
 libostree-sys:
   stage: build
   script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml
+  - cargo test --verbose --manifest-path sys/Cargo.toml --all-features
 
 libostree-sys_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml
+  - cargo test --verbose --manifest-path sys/Cargo.toml --all-features
   allow_failure: true
 
 publish_libostree-sys:
@@ -35,13 +35,13 @@ publish_libostree-sys:
 libostree:
   stage: build
   script:
-  - cargo test --verbose
+  - cargo test --verbose  --all-features
 
 libostree_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo test --verbose
+  - cargo test --verbose  --all-features
   allow_failure: true
 
 publish_libostree:
