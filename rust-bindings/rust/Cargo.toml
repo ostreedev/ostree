@@ -12,10 +12,10 @@ repository = "https://gitlab.com/fkrull/rust-libostree"
 readme = "README.md"
 
 exclude = [
-    "conf",
-    "gir-files",
-    "libostree-sys",
-
+    "conf/**",
+    "gir-files/**",
+    "libostree-sys/**",
+    ".gitlab-ci.yml",
 ]
 
 [package.metadata.docs.rs]
