@@ -5020,6 +5020,7 @@ ostree_repo_find_remotes_async (OstreeRepo                     *self,
         }
 #endif  /* HAVE_AVAHI */
 
+      /* self->repo_finders is guaranteed to be non-empty */
       g_assert (default_finders != NULL);
       finders = default_finders;
 
