@@ -113,7 +113,7 @@ gboolean      ostree_repo_set_collection_id (OstreeRepo   *self,
                                              GError      **error);
 
 _OSTREE_PUBLIC
-const gchar * const * ostree_repo_get_repo_finders (OstreeRepo   *self);
+const gchar * const * ostree_repo_get_default_repo_finders (OstreeRepo   *self);
 
 _OSTREE_PUBLIC
 GFile *       ostree_repo_get_path (OstreeRepo  *self);

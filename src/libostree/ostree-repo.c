@@ -2942,7 +2942,7 @@ reload_core_config (OstreeRepo          *self,
   { g_auto(GStrv) configured_finders = NULL;
     g_autoptr(GError) local_error = NULL;
 
-    configured_finders = g_key_file_get_string_list (self->config, "core", "repo-finders",
+    configured_finders = g_key_file_get_string_list (self->config, "core", "default-repo-finders",
                                                      NULL, &local_error);
     if (g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
       g_clear_error (&local_error);
@@ -2953,7 +2953,7 @@ reload_core_config (OstreeRepo          *self,
       }
 
     if (configured_finders != NULL && *configured_finders == NULL)
-      return glnx_throw (error, "Invalid empty repo-finders configuration");
+      return glnx_throw (error, "Invalid empty default-repo-finders configuration");
 
     for (char **iter = configured_finders; iter && *iter; iter++)
       {
@@ -5952,18 +5952,18 @@ ostree_repo_set_collection_id (OstreeRepo   *self,
 }
 
 /**
- * ostree_repo_get_repo_finders:
+ * ostree_repo_get_default_repo_finders:
  * @self: an #OstreeRepo
  *
- * Get the set of repo finders configured. See the documentation for
- * the "core.repo-finders" config key.
+ * Get the set of default repo finders configured. See the documentation for
+ * the "core.default-repo-finders" config key.
  *
  * Returns: (array zero-terminated=1) (element-type utf8):
  *    %NULL-terminated array of strings.
  * Since: 2018.9
  */
 const gchar * const *
-ostree_repo_get_repo_finders (OstreeRepo *self)
+ostree_repo_get_default_repo_finders (OstreeRepo *self)
 {
   g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
 

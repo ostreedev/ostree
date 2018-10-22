@@ -217,7 +217,7 @@ Boston, MA 02111-1307, USA.
       </varlistentry>
 
       <varlistentry>
-        <term><varname>repo-finders</varname></term>
+        <term><varname>default-repo-finders</varname></term>
         <listitem><para>Semicolon separated default list of finders (sources
         for refs) to use when pulling. This can be used to disable
         pulling from mounted filesystems, peers on the local network,
