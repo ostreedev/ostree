@@ -74,6 +74,22 @@ The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
 integration tool uses libostree as a caching system to store and share
 built artifacts.
 
+Language bindings
+----
+
+libostree is accessible via [GObject Introspection](https://gi.readthedocs.io/en/latest/);
+any language which has implemented the GI binding model should work.
+For example, Both [pygobject](https://pygobject.readthedocs.io/en/latest/)
+and [gjs](https://gitlab.gnome.org/GNOME/gjs) are known to work
+and further are actually used in libostree's test suite today.
+
+Some bindings take the approach of using GI as a lower level and
+write higher level manual bindings on top; this is more common
+for statically compiled languages.  Here's a list of such bindings:
+
+ - [ostree-go](https://github.com/ostreedev/ostree-go/)
+ - [rust-libostree](https://gitlab.com/fkrull/rust-libostree/)
+
 Building
 --------
 
