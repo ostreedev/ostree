@@ -27,6 +27,7 @@ echo '1..2'
 
 V=$($CMD_PREFIX ostree --version | \
   python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["libostree"]["Version"])')
+V=${V:1} # trim out the leading v
 
 setup_fake_remote_repo1 "archive" "" \
   --expected-header foo=bar \
