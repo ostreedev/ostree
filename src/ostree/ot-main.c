@@ -354,7 +354,7 @@ ostree_option_context_parse (GOptionContext *context,
        * possible to parse */
       g_auto(GStrv) features = g_strsplit (OSTREE_FEATURES, " ", -1);
       g_print ("%s:\n", PACKAGE_NAME);
-      g_print (" Version: %s\n", PACKAGE_VERSION);
+      g_print (" Version: '%s'\n", PACKAGE_VERSION);
       if (strlen (OSTREE_GITREV) > 0)
         g_print (" Git: %s\n", OSTREE_GITREV);
 #ifdef BUILDOPT_IS_DEVEL_BUILD
