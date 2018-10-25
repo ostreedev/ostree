@@ -161,8 +161,8 @@ release-tarball-embedded:
 dist-then-build: dist
 	rm $(distdir) -rf && tar -xf $(distdir).tar.xz
 	cd $(distdir) && mkdir _build && cd _build && \
-    ../configure --prefix=/usr --libdir=/usr/lib --sysconfdir=/etc && \
-    $(MAKE) && make install DESTDIR=$$(pwd)/_install && \
-  rm -rf $(distdir)
+	  ../configure --prefix=/usr --libdir=/usr/lib --sysconfdir=/etc && \
+	  $(MAKE) && make install DESTDIR=$$(pwd)/_install && \
+	rm -rf $(distdir)
 
 -include $(top_srcdir)/git.mk
