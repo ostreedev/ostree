@@ -47,6 +47,7 @@ tests:
   - ci/ci-commitmessage-submodules.sh
   - ci/build-check.sh
   - ci/ci-release-build.sh
+  - make dist-then-build
 
 artifacts:
   - test-suite.log
