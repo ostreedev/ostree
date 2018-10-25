@@ -155,4 +155,14 @@ release-tarball-embedded:
 	mv ostree-embeddeps-$${GITVERSION}.tar{.tmp,}; \
 	gzip -f ostree-embeddeps-$${GITVERSION}.tar 
 
+# `make dist` + `make`; explicitly not the other
+# parts of distcheck like `make uninstall` since
+# we don't care about that.
+dist-then-build: dist
+	rm $(distdir) -rf && tar -xf $(distdir).tar.xz
+	cd $(distdir) && mkdir _build && cd _build && \
+	  ../configure --prefix=/usr --libdir=/usr/lib --sysconfdir=/etc && \
+	  $(MAKE) && make install DESTDIR=$$(pwd)/_install && \
+	rm -rf $(distdir)
+
 -include $(top_srcdir)/git.mk
