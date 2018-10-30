@@ -221,6 +221,9 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
         {
           if (remote)
             return glnx_throw (error, "Cannot create alias to remote ref: %s", remote);
+          if (!g_hash_table_contains (refs, refspec_prefix))
+            return glnx_throw (error, "Cannot create alias to non-existent ref: %s",
+                               refspec_prefix);
           if (!ostree_repo_set_alias_ref_immediate (repo, remote, ref, refspec_prefix,
                                                     cancellable, error))
             goto out;

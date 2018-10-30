@@ -25,7 +25,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..6'
+echo '1..7'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -207,3 +207,9 @@ if ${CMD_PREFIX} ostree --repo=repo refs -A exampleos/x86_64/27/server --create=
 fi
 assert_file_has_content_literal err.txt 'Cannot create alias to remote ref'
 echo "ok ref no alias remote"
+
+if ${CMD_PREFIX} ostree --repo=repo refs -A --create foobar nonexistent 2>err.txt; then
+    fatal "Created alias to nonexistent ref?"
+fi
+assert_file_has_content_literal err.txt 'Cannot create alias to non-existent ref'
+echo "ok ref no broken alias"
