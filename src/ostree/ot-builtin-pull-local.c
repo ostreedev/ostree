@@ -32,6 +32,7 @@
 #include "otutil.h"
 
 static char *opt_remote;
+static gboolean opt_commit_only;
 static gboolean opt_disable_fsync;
 static gboolean opt_untrusted;
 static gboolean opt_bareuseronly_files;
@@ -46,6 +47,7 @@ static int opt_depth = 0;
  */
 
 static GOptionEntry options[] = {
+  { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Verify checksums of local sources (always enabled for HTTP pulls)", NULL },
@@ -110,6 +112,8 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
     pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
   if (opt_bareuseronly_files)
     pullflags |= OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES;
+  if (opt_commit_only)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY;
 
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
