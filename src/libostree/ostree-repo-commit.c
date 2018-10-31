@@ -4254,15 +4254,29 @@ import_one_object_direct (OstreeRepo    *dest_repo,
         G_IN_SET (src_repo->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER);
       if (src_is_bare_or_bare_user && !OSTREE_OBJECT_TYPE_IS_META(objtype))
         {
-          g_autoptr(GVariant) xattrs = NULL;
+          if (src_repo == OSTREE_REPO_MODE_BARE)
+            {
+              g_autoptr(GVariant) xattrs = NULL;
+              if (!glnx_fd_get_all_xattrs (src_fd, &xattrs,
+                                           cancellable, error))
+                return FALSE;
+              if (!glnx_fd_set_all_xattrs (tmp_dest.fd, xattrs,
+                                           cancellable, error))
+                return FALSE;
+            }
+          else
+            {
+              /* bare-user; we just want ostree.usermeta */
+              g_autoptr(GBytes) bytes =
+                glnx_fgetxattr_bytes (src_fd, "user.ostreemeta", error);
+              if (bytes == NULL)
+                return FALSE;
 
-          if (!glnx_fd_get_all_xattrs (src_fd, &xattrs,
-                                       cancellable, error))
-            return FALSE;
-
-          if (!glnx_fd_set_all_xattrs (tmp_dest.fd, xattrs,
-                                       cancellable, error))
-            return FALSE;
+              if (TEMP_FAILURE_RETRY (fsetxattr (src_fd, "user.ostreemeta",
+                                                 (char*)g_bytes_get_data (bytes, NULL),
+                                                 g_bytes_get_size (bytes), 0)) != 0)
+                return glnx_throw_errno_prefix (error, "fsetxattr");
+            }
         }
 
       if (fchmod (tmp_dest.fd, stbuf.st_mode & ~S_IFMT) != 0)
