@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((85 + ${extra_basic_tests:-0}))"
+echo "1..$((86 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -762,7 +762,19 @@ echo "ok subdir noent"
 
 if ! skip_one_without_user_xattrs; then
     cd ${test_tmpdir}
-    mkdir repo3
+    mkdir repo4
+    ostree_repo_init repo4 --mode=bare-user
+    ${CMD_PREFIX} ostree --repo=repo4 pull-local --commit-metadata-only repo test2
+    csum1=$($OSTREE rev-parse test2)
+    csum2=$(${CMD_PREFIX} ostree --repo=repo4 rev-parse test2)
+    assert_streq "${csum1}" "${csum2}"
+    test -f repo4/state/$csum1.commitpartial
+    echo "ok pull-local --commit-metadata-only"
+    rm -rf repo4
+fi
+
+if ! skip_one_without_user_xattrs; then
+    cd ${test_tmpdir}
     ostree_repo_init repo3 --mode=bare-user
     ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
     ${CMD_PREFIX} ostree --repo=repo3 rev-parse aremote/test2
