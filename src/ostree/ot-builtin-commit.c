@@ -835,6 +835,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       g_print ("Metadata Written: %u\n", stats.metadata_objects_written);
       g_print ("Content Total: %u\n", stats.content_objects_total);
       g_print ("Content Written: %u\n", stats.content_objects_written);
+      g_print ("Content Cache Hits: %u\n", stats.devino_cache_hits);
       g_print ("Content Bytes Written: %" G_GUINT64_FORMAT "\n", stats.content_bytes_written);
     }
   else

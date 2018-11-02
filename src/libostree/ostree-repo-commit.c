@@ -3338,6 +3338,9 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
               if (!glnx_shutil_rm_rf_at (dfd_iter->fd, name, cancellable, error))
                 return FALSE;
             }
+          g_mutex_lock (&self->txn_lock);
+          self->txn.stats.devino_cache_hits++;
+          g_mutex_unlock (&self->txn_lock);
           return TRUE; /* Early return */
         }
     }
@@ -3469,6 +3472,10 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
       if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum,
                                              error))
         return FALSE;
+
+      g_mutex_lock (&self->txn_lock);
+      self->txn.stats.devino_cache_hits++;
+      g_mutex_unlock (&self->txn_lock);
     }
   /* Next fast path - we can "adopt" the file */
   else if (can_adopt)
