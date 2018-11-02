@@ -291,8 +291,9 @@ struct _OstreeRepoTransactionStats {
   guint content_objects_total;
   guint content_objects_written;
   guint64 content_bytes_written;
+  guint devino_cache_hits;
 
-  guint64 padding1;
+  guint   padding1;
   guint64 padding2;
   guint64 padding3;
   guint64 padding4;

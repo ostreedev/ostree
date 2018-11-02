@@ -117,9 +117,10 @@ assert_file_has_content ls.txt "^-006.. ${newuid} ${newgid} .*/baz/cow"
 
 # But --devino-canonical should override that
 $OSTREE commit ${COMMIT_ARGS} --owner-uid ${newuid} --owner-gid ${newgid} \
-        -I -b test2-devino-test --tree=dir=test2-checkout
+        -I -b test2-devino-test --table-output --tree=dir=test2-checkout > out.txt
 $OSTREE ls test2-devino-test /baz/cow > ls.txt
 assert_file_has_content ls.txt "^-006.. ${myuid} ${mygid} .*/baz/cow"
+assert_file_has_content out.txt "Content Cache Hits: [1-9][0-9]*"
 
 $OSTREE refs --delete test2-{linkcheckout,devino}-test
 echo "ok commit with -I"
