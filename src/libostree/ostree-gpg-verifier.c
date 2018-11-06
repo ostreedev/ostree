@@ -304,6 +304,70 @@ _ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self,
   g_ptr_array_add (self->key_ascii_files, g_strdup (path));
 }
 
+/* Check if the file at @path is a directory, and add ascii key files that
+ * exist one level below the directory. If @path does not lead to a directory,
+ * the file is added.
+ */
+void
+_ostree_gpg_verifier_add_key_ascii_files_check_dir (OstreeGpgVerifier *self,
+                                                    const char        *path,
+                                                    GCancellable      *cancellable,
+                                                    GError           **error)
+{
+  GFile *file;
+  GFileType file_type;
+
+  file = g_file_new_for_path (path);
+  file_type = g_file_query_file_type (file, G_FILE_QUERY_INFO_NONE, cancellable);
+
+  if (file_type == G_FILE_TYPE_DIRECTORY)
+    {
+      GFileEnumerator *direnum;
+      g_autofree char *sep = NULL;
+
+      if (!g_str_has_suffix (path, "/"))
+        sep = g_strdup ("/");
+
+      direnum = g_file_enumerate_children (file, OSTREE_GIO_FAST_QUERYINFO,
+                                          G_FILE_QUERY_INFO_NONE, cancellable, error);
+      if (direnum)
+        {
+          while (TRUE)
+            {
+              GFileInfo *child_info;
+              GFile *child;
+              const char *name;
+              guint32 type;
+
+              if (!g_file_enumerator_iterate (direnum, &child_info, &child,
+                                              NULL, error))
+                break;
+              if (child_info == NULL)
+                break;
+
+              name = g_file_info_get_attribute_byte_string (child_info, "standard::name");
+              type = g_file_info_get_attribute_uint32 (child_info, "standard::type");
+
+              if (type == G_FILE_TYPE_REGULAR)
+                {
+                  g_autofree char *child_path = NULL;
+
+                  child_path = g_strjoin (sep, path, name, NULL);
+
+                  _ostree_gpg_verifier_add_key_ascii_file (self, child_path);
+                }
+            }
+        }
+
+      g_object_unref (direnum);
+      g_object_unref (file);
+    }
+  else
+    {
+      _ostree_gpg_verifier_add_key_ascii_file (self, path);
+    }
+}
+
 gboolean
 _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                       GFile               *path,

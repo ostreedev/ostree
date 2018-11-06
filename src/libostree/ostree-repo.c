@@ -5082,6 +5082,8 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
   else if (remote_name != NULL)
     {
       g_autofree char *gpgkeypath = NULL;
+      char **gpgkeypath_list = NULL;
+
       /* Add the remote's keyring file if it exists. */
 
       g_autoptr(OstreeRemote) remote = NULL;
@@ -5105,7 +5107,26 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
         return NULL;
 
       if (gpgkeypath)
-        _ostree_gpg_verifier_add_key_ascii_file (verifier, gpgkeypath);
+        {
+          if (strchr (gpgkeypath, ';'))
+            {
+              gpgkeypath_list = g_strsplit (gpgkeypath, ";", -1);
+            }
+          else
+            {
+              _ostree_gpg_verifier_add_key_ascii_files_check_dir (verifier, gpgkeypath, cancellable, error);
+            }
+        }
+      
+      if (gpgkeypath_list)
+        {
+          for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)
+            {
+              _ostree_gpg_verifier_add_key_ascii_files_check_dir (verifier, *iter, cancellable, error);
+            }
+        }
+
+      g_strfreev (gpgkeypath_list);
     }
 
   if (add_global_keyring_dir)
