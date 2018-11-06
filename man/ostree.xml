@@ -432,6 +432,7 @@ Boston, MA 02111-1307, USA.
 
     <refsect1>
         <title>Examples</title>
+
         <para>
             For specific examples, please see the man page regarding the specific ostree command.  For example:
         </para>
@@ -445,28 +446,32 @@ Boston, MA 02111-1307, USA.
 
         <para>
           OSTree supports signing commits with GPG.  Operations on the system
-	  repository by default use keyring files in
+          repository by default use keyring files in
           <filename>/usr/share/ostree/trusted.gpg.d</filename>.  Any
           public key in a keyring file in that directory will be
           trusted by the client.  No private keys should be present
           in this directory.
         </para>
         <para>
-	  In addition to the system repository, OSTree supports two
-	  other paths.  First, there is a
-	  <literal>gpgkeypath</literal> option for remotes, which must
-	  point to the filename of an ASCII-armored key.
-	</para>
-	<para>Second, there is support for a per-remote
-	    <filename><replaceable>remotename</replaceable>.trustedkeys.gpg</filename>
-	    file stored in the toplevel of the repository (alongside
-	    <filename>objects/</filename> and such). This is
-	    particularly useful when downloading content that may not
-	    be fully trusted (e.g. you want to inspect it but not
-	    deploy it as an OS), or use it for containers.  This file
-	    is written via <command>ostree remote add
-	    --gpg-import</command>.
-	</para>
+          In addition to the system repository, OSTree supports two
+          other paths.  First, there is a
+          <literal>gpgkeypath</literal> option for remotes, which must point
+          to the filename of an ASCII-armored GPG key, or a directory containing
+          ASCII-armored GPG keys to import.  Multiple file and directory paths
+          to import from can be specified, as a comma-separated list of paths.  This option
+          may be specified by using <command>--set</command> in <command>ostree remote add</command>.
+        </para>
+        <para>
+          Second, there is support for a per-remote
+          <filename><replaceable>remotename</replaceable>.trustedkeys.gpg</filename>
+          file stored in the toplevel of the repository (alongside
+          <filename>objects/</filename> and such).  This is
+          particularly useful when downloading content that may not
+          be fully trusted (e.g. you want to inspect it but not
+          deploy it as an OS), or use it for containers.  This file
+          is written via <command>ostree remote add
+          --gpg-import</command>.
+        </para>
     </refsect1>
 
     <refsect1>
