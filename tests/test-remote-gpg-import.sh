@@ -155,11 +155,11 @@ ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/key3.asc R4 $(cat h
 ${OSTREE} pull R4:main >/dev/null
 
 # Test gpgkeypath success with multiple keys to try
-${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/key1.asc;${test_tmpdir}/gpghome/key2.asc;${test_tmpdir}/gpghome/key3.asc" R7 $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/key1.asc,${test_tmpdir}/gpghome/key2.asc,${test_tmpdir}/gpghome/key3.asc" R7 $(cat httpd-address)/ostree/gnomerepo
 ${OSTREE} pull R7:main >/dev/null
 
 # Test gpgkeypath failure with multiple keys but none in keyring (invalid)
-${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/key1.asc;${test_tmpdir}/gpghome/key2.asc" R8 $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/key1.asc,${test_tmpdir}/gpghome/key2.asc" R8 $(cat httpd-address)/ostree/gnomerepo
 if ${OSTREE} pull R8:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with different key"
 fi
@@ -177,36 +177,36 @@ fi
 assert_file_has_content err.txt "GPG: openat.*No such file or directory"
 
 # Test gpgkeypath failure with a directory containing a valid key and a nonexistent key
-${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/;${test_tmpdir}/gpghome/INVALIDKEYPATH.asc" R11 $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/,${test_tmpdir}/gpghome/INVALIDKEYPATH.asc" R11 $(cat httpd-address)/ostree/gnomerepo
 if ${OSTREE} pull R11:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key"
 fi
 assert_file_has_content err.txt "GPG: openat.*No such file or directory"
 
 # Test gpgkeypath success with a directory containing a valid key and an invalid key
-${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/;${test_tmpdir}/gpghome/key1.asc" R14 $(cat httpd-address)/ostree/gnomerepo
-${OSTREE} pull R14:main >/dev/null
+${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/,${test_tmpdir}/gpghome/key1.asc" R12 $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} pull R12:main >/dev/null
 
 # Test gpgkeypath failure with a nonexistent directory and a valid key
-${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/INVALIDKEYDIRPATH/;${test_tmpdir}/gpghome/key3.asc" R12 $(cat httpd-address)/ostree/gnomerepo
-if ${OSTREE} pull R12:main 2>err.txt; then
-    assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key directory"
-fi
-assert_file_has_content err.txt "GPG: openat.*No such file or directory"
-
-# Test gpgkeypath failure with a nonexistent directory and a nonexistent key
-${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/INVALIDKEYDIRPATH/;${test_tmpdir}/gpghome/INVALIDKEYPATH.asc" R13 $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/INVALIDKEYDIRPATH/,${test_tmpdir}/gpghome/key3.asc" R13 $(cat httpd-address)/ostree/gnomerepo
 if ${OSTREE} pull R13:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key directory"
 fi
 assert_file_has_content err.txt "GPG: openat.*No such file or directory"
 
-# Test gpgkeypath success for trailing slash
+# Test gpgkeypath failure with a nonexistent directory and a nonexistent key
+${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/INVALIDKEYDIRPATH/,${test_tmpdir}/gpghome/INVALIDKEYPATH.asc" R14 $(cat httpd-address)/ostree/gnomerepo
+if ${OSTREE} pull R14:main 2>err.txt; then
+    assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key directory"
+fi
+assert_file_has_content err.txt "GPG: openat.*No such file or directory"
+
+# Test gpgkeypath success for no trailing slash in directory path
 ${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome" R15 $(cat httpd-address)/ostree/gnomerepo
 ${OSTREE} pull R15:main >/dev/null
 
-# Test gpgkeypath failure for empty string given with prefixed semicolon
-${OSTREE} remote add --set=gpgkeypath=";${test_tmpdir}/gpghome/key3.asc" R16 $(cat httpd-address)/ostree/gnomerepo
+# Test gpgkeypath failure for empty string given with prefixed separator
+${OSTREE} remote add --set=gpgkeypath=",${test_tmpdir}/gpghome/key3.asc" R16 $(cat httpd-address)/ostree/gnomerepo
 if ${OSTREE} pull R16:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key directory"
 fi

@@ -5108,9 +5108,9 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
 
       if (gpgkeypath)
         {
-          if (strchr (gpgkeypath, ';'))
+          if (strchr (gpgkeypath, ','))
             {
-              gpgkeypath_list = g_strsplit (gpgkeypath, ";", -1);
+              gpgkeypath_list = g_strsplit (gpgkeypath, ",", -1);
             }
           else
             {
