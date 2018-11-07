@@ -205,12 +205,16 @@ assert_file_has_content err.txt "GPG: openat.*No such file or directory"
 ${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome" R15 $(cat httpd-address)/ostree/gnomerepo
 ${OSTREE} pull R15:main >/dev/null
 
-# Test gpgkeypath failure for empty string given with prefixed separator
+# Test gpgkeypath failure with prefixed separator
 ${OSTREE} remote add --set=gpgkeypath=",${test_tmpdir}/gpghome/key3.asc" R16 $(cat httpd-address)/ostree/gnomerepo
 if ${OSTREE} pull R16:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key directory"
 fi
 assert_file_has_content err.txt "GPG: openat.*No such file or directory"
+
+# Test gpgkeypath success with suffixed separator
+${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/key3.asc," R17 $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} pull R17:main >/dev/null
 
 rm repo/refs/remotes/* -rf
 ${OSTREE} prune --refs-only

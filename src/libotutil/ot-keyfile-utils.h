@@ -45,6 +45,15 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
                                    GError       **error);
 
 gboolean
+ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
+                                         const char    *section,
+                                         const char    *key,
+                                         char           separator,
+                                         char         **default_value,
+                                         char        ***out_value,
+                                         GError       **error);
+
+gboolean
 ot_keyfile_copy_group (GKeyFile   *source_keyfile,
                        GKeyFile   *target_keyfile,
                        const char *group_name);
