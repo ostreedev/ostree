@@ -110,21 +110,22 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
                                          char        ***out_value,
                                          GError       **error)
 {
-  gboolean ret = FALSE;
   GError *temp_error = NULL;
   g_autofree char **ret_value = NULL;
 
-  g_return_val_if_fail (keyfile != NULL, ret);
-  g_return_val_if_fail (section != NULL, ret);
-  g_return_val_if_fail (key != NULL, ret);
+  g_return_val_if_fail (keyfile != NULL, FALSE);
+  g_return_val_if_fail (section != NULL, FALSE);
+  g_return_val_if_fail (key != NULL, FALSE);
 
   g_key_file_set_list_separator (keyfile, separator);
 
-  ret_value = g_key_file_get_string_list (keyfile, section, key, NULL, &temp_error);
+  ret_value = g_key_file_get_string_list (keyfile, section,
+                                          key, NULL, &temp_error);
 
   if (temp_error)
     {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+      if (g_error_matches (temp_error, G_KEY_FILE_ERROR,
+                           G_KEY_FILE_ERROR_KEY_NOT_FOUND))
         {
           g_clear_error (&temp_error);
           ret_value = default_value;
@@ -132,14 +133,12 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
       else
         {
           g_propagate_error (error, temp_error);
-          goto out;
+          return FALSE;
         }
     }
 
-  ret = TRUE;
   ot_transfer_out_value (out_value, &ret_value);
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean

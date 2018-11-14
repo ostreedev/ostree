@@ -5109,7 +5109,7 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
         {
           for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)
             {
-              _ostree_gpg_verifier_add_key_ascii_files_check_dir (verifier, *iter, cancellable, error);
+              _ostree_gpg_verifier_add_keyfile_path (verifier, *iter, cancellable, error);
             }
         }
 
