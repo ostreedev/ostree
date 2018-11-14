@@ -304,55 +304,48 @@ _ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self,
   g_ptr_array_add (self->key_ascii_files, g_strdup (path));
 }
 
-/* Add the given @path as an ascii key file. If @path is a directory,
- * add paths to files that exist one level below @path as ascii key files.
+/* Add files that exist one level below the directory at @path as ascii
+ * key files. If @path cannot be opened as a directory, an error is returned.
  */
-void
-_ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier *self,
-                                       const char        *path,
-                                       GCancellable      *cancellable,
-                                       GError           **error)
+gboolean
+_ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
+                                         int                  dfd,
+                                         const char          *path,
+                                         GCancellable        *cancellable,
+                                         GError             **error)
 {
-  g_autoptr(GFile) file = g_file_new_for_path (path);
-  GFileType file_type = g_file_query_file_type (file, G_FILE_QUERY_INFO_NONE, cancellable);
+  g_autofree char *sep = NULL;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-  if (file_type == G_FILE_TYPE_DIRECTORY)
+  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE,
+                                    &dfd_iter, error))
+    return FALSE;
+
+  g_debug ("Adding GPG keyfile dir %s to verifier", path);
+
+  if (!g_str_has_suffix (path, "/"))
+    sep = g_strdup ("/");
+
+  while (TRUE)
     {
-      g_autoptr(GFileEnumerator) direnum = g_file_enumerate_children (file,
-                                                                      OSTREE_GIO_FAST_QUERYINFO,
-                                                                      G_FILE_QUERY_INFO_NONE,
-                                                                      cancellable,
-                                                                      error);
-      g_autoptr(GFileInfo) child_info = NULL;
-      g_autofree char *sep = NULL;
-      GError *temp_error = NULL;
+      struct dirent *dent;
+      g_autofree char *iter_path = NULL;
 
-      if (!g_str_has_suffix (path, "/"))
-        sep = g_strdup ("/");
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
+                                                       cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
 
-      if (direnum)
-        {
-          while ((child_info = g_file_enumerator_next_file (direnum, NULL, &temp_error)) != NULL)
-            {
-              if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_REGULAR)
-                {
-                  const char *name = g_file_info_get_attribute_byte_string (child_info, "standard::name");
-                  g_autofree char *child_path = g_strjoin (sep, path, name, NULL);
+      if (dent->d_type != DT_REG)
+        continue;
 
-                  _ostree_gpg_verifier_add_key_ascii_file (self, child_path);
-                }
-              g_clear_object (&child_info);
-            }
-          if (temp_error)
-            {
-              g_propagate_error (error, temp_error);
-            }
-        }
+      iter_path = g_strjoin (sep, path, dent->d_name, NULL);
+
+      _ostree_gpg_verifier_add_key_ascii_file (self, iter_path);
     }
-  else
-    {
-      _ostree_gpg_verifier_add_key_ascii_file (self, path);
-    }
+
+  return TRUE;
 }
 
 gboolean
@@ -360,7 +353,6 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                       GFile               *path,
                                       GCancellable        *cancellable,
                                       GError             **error)
-
 {
   return _ostree_gpg_verifier_add_keyring_dir_at (self, AT_FDCWD,
                                                   gs_file_get_path_cached (path),
@@ -373,7 +365,6 @@ _ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier   *self,
                                          const char          *path,
                                          GCancellable        *cancellable,
                                          GError             **error)
-
 {
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE,
