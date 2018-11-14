@@ -304,8 +304,36 @@ _ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self,
   g_ptr_array_add (self->key_ascii_files, g_strdup (path));
 }
 
+void
+_ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier   *self,
+                                       const char          *path,
+                                       GCancellable        *cancellable,
+                                       GError             **error)
+{
+  GError *temp_error = NULL;
+  if (!_ostree_gpg_verifier_add_keyfile_dir_at(self, AT_FDCWD, path,
+                                               cancellable, &temp_error))
+    {
+      if (temp_error)
+        {
+          /* If failed due to not being a directory, add the file as an ascii key. */
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY))
+            {
+              g_clear_error (&temp_error);
+
+              _ostree_gpg_verifier_add_key_ascii_file (self, path);
+            }
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+        }
+    }
+}
+
 /* Add files that exist one level below the directory at @path as ascii
- * key files. If @path cannot be opened as a directory, an error is returned.
+ * key files. If @path exists and cannot be opened as a directory,
+ * an error is returned.
  */
 gboolean
 _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
@@ -314,35 +342,40 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
                                          GCancellable        *cancellable,
                                          GError             **error)
 {
-  g_autofree char *sep = NULL;
+  gboolean dir_exist = FALSE;
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE,
-                                    &dfd_iter, error))
+  if (!ot_dfd_iter_init_allow_noent (dfd, path,
+                                    &dfd_iter, &dir_exist, error))
     return FALSE;
 
-  g_debug ("Adding GPG keyfile dir %s to verifier", path);
-
-  if (!g_str_has_suffix (path, "/"))
-    sep = g_strdup ("/");
-
-  while (TRUE)
+  if (dir_exist)
     {
-      struct dirent *dent;
-      g_autofree char *iter_path = NULL;
+      g_autofree char *sep = NULL;
 
-      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
-                                                       cancellable, error))
-        return FALSE;
-      if (dent == NULL)
-        break;
+      g_debug ("Adding GPG keyfile dir %s to verifier", path);
 
-      if (dent->d_type != DT_REG)
-        continue;
+      if (!g_str_has_suffix (path, "/"))
+        sep = g_strdup ("/");
 
-      iter_path = g_strjoin (sep, path, dent->d_name, NULL);
+      while (TRUE)
+        {
+          struct dirent *dent;
+          g_autofree char *iter_path = NULL;
 
-      _ostree_gpg_verifier_add_key_ascii_file (self, iter_path);
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
+                                                          cancellable, error))
+            return FALSE;
+          if (dent == NULL)
+            break;
+
+          if (dent->d_type != DT_REG)
+            continue;
+
+          iter_path = g_strjoin (sep, path, dent->d_name, NULL);
+
+          _ostree_gpg_verifier_add_key_ascii_file (self, iter_path);
+        }
     }
 
   return TRUE;
