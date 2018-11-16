@@ -169,12 +169,12 @@ assert_file_has_content err.txt "GPG signatures found, but none are in trusted k
 ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/ R9 $(cat httpd-address)/ostree/gnomerepo
 ${OSTREE} pull R9:main >/dev/null
 
-# # Test gpgkeypath failure with nonexistent directory
-# ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/INVALIDKEYDIRPATH/ R10 $(cat httpd-address)/ostree/gnomerepo
-# if ${OSTREE} pull R10:main 2>err.txt; then
-#     assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key directory"
-# fi
-# assert_file_has_content err.txt "GPG.*No such file or directory"
+# Test gpgkeypath failure with nonexistent directory
+${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/INVALIDKEYDIRPATH/ R10 $(cat httpd-address)/ostree/gnomerepo
+if ${OSTREE} pull R10:main 2>err.txt; then
+    assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key directory"
+fi
+assert_file_has_content err.txt "INVALIDKEYDIRPATH.*No such file or directory"
 
 # Test gpgkeypath failure with a directory containing a valid key, and a nonexistent key
 ${OSTREE} remote add --set=gpgkeypath="${test_tmpdir}/gpghome/,${test_tmpdir}/gpghome/INVALIDKEYPATH.asc" R11 $(cat httpd-address)/ostree/gnomerepo
