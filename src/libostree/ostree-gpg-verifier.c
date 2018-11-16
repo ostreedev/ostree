@@ -361,7 +361,6 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
       while (TRUE)
         {
           struct dirent *dent;
-          g_autofree char *iter_path = NULL;
 
           if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
                                                           cancellable, error))
@@ -372,7 +371,7 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
           if (dent->d_type != DT_REG)
             continue;
 
-          iter_path = g_strjoin (sep, path, dent->d_name, NULL);
+          g_autofree char *iter_path = g_strjoin (sep, path, dent->d_name, NULL);
 
           _ostree_gpg_verifier_add_key_ascii_file (self, iter_path);
         }

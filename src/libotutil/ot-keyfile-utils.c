@@ -111,7 +111,6 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
                                          GError       **error)
 {
   GError *temp_error = NULL;
-  g_autofree char **ret_value = NULL;
 
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
@@ -119,8 +118,8 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
 
   g_key_file_set_list_separator (keyfile, separator);
 
-  ret_value = g_key_file_get_string_list (keyfile, section,
-                                          key, NULL, &temp_error);
+  g_autofree char **ret_value = g_key_file_get_string_list (keyfile, section,
+                                                            key, NULL, &temp_error);
 
   if (temp_error)
     {
