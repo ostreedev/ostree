@@ -76,10 +76,10 @@ void _ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self,
                                               const char        *path);
 
 gboolean
-_ostree_gpg_verifier_add_keyfile_path(OstreeGpgVerifier   *self,
-                                      const char          *path,
-                                      GCancellable        *cancellable,
-                                      GError             **error);
+_ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier   *self,
+                                       const char          *path,
+                                       GCancellable        *cancellable,
+                                       GError             **error);
 
 gboolean
 _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
