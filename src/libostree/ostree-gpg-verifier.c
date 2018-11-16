@@ -334,7 +334,7 @@ _ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier   *self,
 }
 
 /* Add files that exist one level below the directory at @path as ascii
- * key files. If @path exists and cannot be opened as a directory,
+ * key files. If @path cannot be opened as a directory,
  * an error is returned.
  */
 gboolean
