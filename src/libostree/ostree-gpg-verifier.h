@@ -82,7 +82,6 @@ _ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier   *self,
                                        GError             **error);
 
 gboolean
-
 _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
                                          int                  dfd,
                                          const char          *path,
