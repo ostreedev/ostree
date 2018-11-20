@@ -110,7 +110,7 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
                                          char        ***out_value,
                                          GError       **error)
 {
-  GError *temp_error = NULL;
+  g_autoptr(GError) temp_error = NULL;
 
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
@@ -131,7 +131,7 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
         }
       else
         {
-          g_propagate_error (error, temp_error);
+          g_propagate_error (error, g_steal_pointer (&temp_error));
           return FALSE;
         }
     }

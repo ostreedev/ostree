@@ -310,24 +310,24 @@ _ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier   *self,
                                        GCancellable        *cancellable,
                                        GError             **error)
 {
-  GError *temp_error = NULL;
-  if (!_ostree_gpg_verifier_add_keyfile_dir_at(self, AT_FDCWD, path,
-                                               cancellable, &temp_error))
+  g_autoptr(GError) temp_error = NULL;
+  if (!_ostree_gpg_verifier_add_keyfile_dir_at (self, AT_FDCWD, path,
+                                                cancellable, &temp_error))
     {
-      if (temp_error)
-        {
-          /* If failed due to not being a directory, add the file as an ascii key. */
-          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY))
-            {
-              g_clear_error (&temp_error);
+      g_assert (temp_error);
 
-              _ostree_gpg_verifier_add_key_ascii_file (self, path);
-            }
-          else
-            {
-              g_propagate_error (error, temp_error);
-              return FALSE;
-            }
+      /* If failed due to not being a directory, add the file as an ascii key. */
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY))
+        {
+          g_clear_error (&temp_error);
+
+          _ostree_gpg_verifier_add_key_ascii_file (self, path);
+        }
+      else
+        {
+          g_propagate_error (error, g_steal_pointer (&temp_error));
+
+          return FALSE;
         }
     }
   return TRUE;
@@ -362,7 +362,7 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
         struct dirent *dent;
 
         if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
-                                                        cancellable, error))
+                                                         cancellable, error))
           return FALSE;
         if (dent == NULL)
           break;
