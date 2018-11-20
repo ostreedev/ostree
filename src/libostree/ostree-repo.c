@@ -5099,17 +5099,11 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
           add_global_keyring_dir = FALSE;
         }
 
-      g_autofree char *gpgkeypath = NULL;
       g_auto(GStrv) gpgkeypath_list = NULL;
 
       if (!ot_keyfile_get_string_as_list (remote->options, remote->group, "gpgkeypath",
-                                          ";,", &gpgkeypath, &gpgkeypath_list, error))
+                                          ";,", &gpgkeypath_list, error))
         return NULL;
-
-      if (gpgkeypath)
-        if (!_ostree_gpg_verifier_add_keyfile_path (verifier, gpgkeypath,
-                                                    cancellable, error))
-          return NULL;
 
       if (gpgkeypath_list)
         for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)

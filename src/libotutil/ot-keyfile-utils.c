@@ -101,21 +101,19 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
   return ret;
 }
 
-/* Read the value of key as a string, and check if the value
- * contains at least one of the separator characters. If the
- * value string contains none of the separators, return the
- * string in out_value and leave out_value_list unchanged.
- * If the value string contains one of the separators and none
- * of the others, read the value string as a list and return the
- * list in out_value_list, leaving out_value unchanged.
- * Return TRUE on success, FALSE on error. */
+/* Read the value of key as a string. If the value string contains
+ * one of the separators and none of the others, read the
+ * string as a NULL-terminated array out_value. If the value string contains
+ * none of the separators, read the string as a single entry into a
+ * NULL-terminated array out_value. If the value string contains multiple of
+ * the separators, an error is given.
+ * Returns TRUE on success, FALSE on error. */
 gboolean
 ot_keyfile_get_string_as_list (GKeyFile      *keyfile,
                                const char    *section,
                                const char    *key,
                                const char    *separators,
-                               char         **out_value,
-                               char        ***out_value_list,
+                               char        ***out_value,
                                GError       **error)
 {
   guint sep_count = 0;
@@ -146,21 +144,22 @@ ot_keyfile_get_string_as_list (GKeyFile      *keyfile,
 
   if (sep_count == 0)
     {
-      ot_transfer_out_value (out_value, &value_str);
+      value_list = g_new (gchar *, 2);
+      value_list[0] = g_steal_pointer(&value_str);
+      value_list[1] = NULL;
     }
   else if (sep_count == 1)
     {
       if (!ot_keyfile_get_string_list_with_default (keyfile, section, key,
                                                     sep, NULL, &value_list, error))
         return FALSE;
-
-      ot_transfer_out_value (out_value_list, &value_list);
     }
   else
     {
       return glnx_throw (error, "key value list contains more than one separator");
     }
 
+  ot_transfer_out_value (out_value, &value_list);
   return TRUE;
 }
 

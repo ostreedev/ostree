@@ -49,7 +49,6 @@ ot_keyfile_get_string_as_list (GKeyFile      *keyfile,
                                const char    *section,
                                const char    *key,
                                const char    *separators,
-                               char         **out_value,
                                char        ***out_value_list,
                                GError       **error);
 
