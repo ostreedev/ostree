@@ -140,23 +140,23 @@ ot_keyfile_get_string_as_list (GKeyFile      *keyfile,
               sep = separators[i];
             }
         }
-    }
 
-  if (sep_count == 0)
-    {
-      value_list = g_new (gchar *, 2);
-      value_list[0] = g_steal_pointer(&value_str);
-      value_list[1] = NULL;
-    }
-  else if (sep_count == 1)
-    {
-      if (!ot_keyfile_get_string_list_with_default (keyfile, section, key,
-                                                    sep, NULL, &value_list, error))
-        return FALSE;
-    }
-  else
-    {
-      return glnx_throw (error, "key value list contains more than one separator");
+      if (sep_count == 0)
+        {
+          value_list = g_new (gchar *, 2);
+          value_list[0] = g_steal_pointer (&value_str);
+          value_list[1] = NULL;
+        }
+      else if (sep_count == 1)
+        {
+          if (!ot_keyfile_get_string_list_with_default (keyfile, section, key,
+                                                        sep, NULL, &value_list, error))
+            return FALSE;
+        }
+      else
+        {
+          return glnx_throw (error, "key value list contains more than one separator");
+        }
     }
 
   ot_transfer_out_value (out_value, &value_list);
