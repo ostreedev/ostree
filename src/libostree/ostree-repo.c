@@ -5106,10 +5106,12 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
         return NULL;
 
       if (gpgkeypath_list)
-        for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)
-          if (!_ostree_gpg_verifier_add_keyfile_path (verifier, *iter,
-                                                      cancellable, error))
-            return NULL;
+        {
+          for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)
+            if (!_ostree_gpg_verifier_add_keyfile_path (verifier, *iter,
+                                                        cancellable, error))
+              return NULL;
+        }
     }
 
   if (add_global_keyring_dir)

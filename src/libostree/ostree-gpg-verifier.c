@@ -350,30 +350,25 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
                                     &dfd_iter, error))
     return FALSE;
 
-    g_autofree char *sep = NULL;
+  g_debug ("Adding GPG keyfile dir %s to verifier", path);
 
-    g_debug ("Adding GPG keyfile dir %s to verifier", path);
+  while (TRUE)
+    {
+      struct dirent *dent;
 
-    if (!g_str_has_suffix (path, "/"))
-      sep = g_strdup ("/");
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
+                                                       cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
 
-    while (TRUE)
-      {
-        struct dirent *dent;
+      if (dent->d_type != DT_REG)
+        continue;
 
-        if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
-                                                         cancellable, error))
-          return FALSE;
-        if (dent == NULL)
-          break;
+      g_autofree char *iter_path = g_build_filename (path, dent->d_name, NULL);
 
-        if (dent->d_type != DT_REG)
-          continue;
-
-        g_autofree char *iter_path = g_strjoin (sep, path, dent->d_name, NULL);
-
-        _ostree_gpg_verifier_add_key_ascii_file (self, iter_path);
-      }
+      _ostree_gpg_verifier_add_key_ascii_file (self, iter_path);
+    }
 
   return TRUE;
 }
