@@ -365,6 +365,8 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
       if (dent->d_type != DT_REG)
         continue;
 
+      /* TODO: Potentially open the files here and have the GPG verifier iterate
+      over the fds. See https://github.com/ostreedev/ostree/pull/1773#discussion_r235421900. */
       g_autofree char *iter_path = g_build_filename (path, dent->d_name, NULL);
 
       _ostree_gpg_verifier_add_key_ascii_file (self, iter_path);
