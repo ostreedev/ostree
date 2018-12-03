@@ -4214,9 +4214,9 @@ ostree_repo_import_object_from (OstreeRepo           *self,
  * @error: Error
  *
  * Copy object named by @objtype and @checksum into @self from the
- * source repository @source.  If both repositories are of the same
- * type and on the same filesystem, this will simply be a fast Unix
- * hard link operation.
+ * source repository @source. If @trusted is %TRUE and both
+ * repositories are of the same type and on the same filesystem,
+ * this will simply be a fast Unix hard link operation.
  *
  * Otherwise, a copy will be performed.
  */
