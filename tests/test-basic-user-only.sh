@@ -23,7 +23,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-setup_test_repository "bare-user-only"
+mode="bare-user-only"
+setup_test_repository "$mode"
 extra_basic_tests=5
 . $(dirname $0)/basic-test.sh
 
