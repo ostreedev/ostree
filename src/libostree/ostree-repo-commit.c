@@ -4101,12 +4101,18 @@ import_is_bareuser_only_conversion (OstreeRepo *src_repo,
     && objtype == OSTREE_OBJECT_TYPE_FILE;
 }
 
-/* Returns TRUE if we can potentially just call link() to copy an object. */
+/* Returns TRUE if we can potentially just call link() to copy an object;
+ * if untrusted the repos must be owned by the same uid.
+ */
 static gboolean
 import_via_reflink_is_possible (OstreeRepo *src_repo,
                                 OstreeRepo *dest_repo,
-                                OstreeObjectType objtype)
+                                OstreeObjectType objtype,
+                                gboolean    trusted)
 {
+  /* Untrusted pulls require matching ownership */
+  if (!trusted && (src_repo->owner_uid != dest_repo->owner_uid))
+    return FALSE;
   /* Equal modes are always compatible, and metadata
    * is identical between all modes.
    */
@@ -4166,13 +4172,6 @@ import_one_object_direct (OstreeRepo    *dest_repo,
   GLNX_AUTO_PREFIX_ERROR (errprefix, error);
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (loose_path_buf, checksum, objtype, dest_repo->mode);
-
-  if (!import_via_reflink_is_possible (src_repo, dest_repo, objtype))
-    {
-      /* If we can't reflink, nothing to do here */
-      *out_was_supported = FALSE;
-      return TRUE;
-    }
 
   /* hardlinks require the owner to match and to be on the same device */
   const gboolean can_hardlink =
@@ -4339,7 +4338,7 @@ _ostree_repo_import_object (OstreeRepo           *self,
    */
   const gboolean is_bareuseronly_conversion =
     import_is_bareuser_only_conversion (source, self, objtype);
-  gboolean try_direct = trusted;
+  gboolean try_direct = TRUE;
 
   /* If we need to do bareuseronly verification, or we're potentially doing a
    * bareuseronly conversion, let's verify those first so we don't complicate
@@ -4379,11 +4378,20 @@ _ostree_repo_import_object (OstreeRepo           *self,
         }
     }
 
-   /* We try to import via reflink/hardlink. If the remote is explicitly not trusted
-   * (i.e.) their checksums may be incorrect, we skip that.
-   */
-  if (try_direct)
+  /* First, let's see if we can import via reflink/hardlink. */
+  if (try_direct && import_via_reflink_is_possible (source, self, objtype, trusted))
     {
+      /* For local repositories, if the untrusted flag is set, we verify the
+       * checksum first. This assumes then that the files are immutable - the
+       * above check verified that the owner uids match.
+       */
+      if (!trusted)
+        {
+          if (!ostree_repo_fsck_object (source, objtype, checksum,
+                                        cancellable, error))
+            return FALSE;
+        }
+
       gboolean direct_was_supported = FALSE;
       if (!import_one_object_direct (self, source, checksum, objtype,
                                      &direct_was_supported,

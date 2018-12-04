@@ -25,7 +25,8 @@ set -euo pipefail
 
 skip_without_user_xattrs
 
-setup_test_repository "bare-user"
+mode="bare-user"
+setup_test_repository "$mode"
 
 extra_basic_tests=6
 . $(dirname $0)/basic-test.sh

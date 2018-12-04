@@ -25,5 +25,6 @@ set -euo pipefail
 
 skip_without_no_selinux_or_relabel
 
-setup_test_repository "bare"
+mode="bare"
+setup_test_repository "$mode"
 . $(dirname $0)/basic-test.sh
