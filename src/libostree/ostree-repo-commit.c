@@ -1624,9 +1624,18 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
     self->txn.max_blocks = bfree - self->reserved_blocks;
   else
     {
-      self->cleanup_stagedir = TRUE;
-      g_mutex_unlock (&self->txn_lock);
-      return throw_min_free_space_error (self, 0, error);
+      self->txn.max_blocks = 0;
+      /* Don't throw_min_free_space_error here; reason being that
+       * this transaction could be just committing metadata objects
+       * which are relatively small in size and we do not really
+       * want to block them via min-free-space-* value. Metadata
+       * objects helps in housekeeping and hence should be kept
+       * out of the strict min-free-space values.
+       *
+       * The main drivers for writing content objects will always honor
+       * the min-free-space value and throw_min_free_space_error in
+       * case of overstepping the number of reserved blocks.
+       */
     }
   g_mutex_unlock (&self->txn_lock);
 
