@@ -45,6 +45,17 @@ echo 'min-free-space-size=1MB' >> repo/config
 ostree --repo=repo pull-local /ostree/repo ${host_commit}
 echo "ok min-free-space-size (success)"
 
+# metadata object write should succeed even if free space is lower than
+# min-free-space value
+rm -rf mnt/repo
+ostree --repo=mnt/repo init --mode=bare-user
+echo 'fsync=false' >> mnt/repo/config
+echo 'min-free-space-size=10MB' >> mnt/repo/config
+if ostree --repo=mnt/repo pull-local --commit-metadata-only /ostree/repo ${host_commit} 2>err.txt; then
+    fatal "could not write metadata objects even when min-free-space value should allow it"
+fi
+echo "ok metadata write even when free space is lower than min-free-space value"
+
 rm -rf mnt/repo
 
 # Test min-free-space-size on deltas
