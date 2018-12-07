@@ -66,7 +66,7 @@ static GOptionEntry options[] = {
    { "bareuseronly-files", 0, 0, G_OPTION_ARG_NONE, &opt_bareuseronly_files, "Reject regular files with mode outside of 0775 (world writable, suid, etc.)", NULL },
    { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
-   { "url", 0, 0, G_OPTION_ARG_STRING, &opt_url, "Pull objects from this URL instead of the one from the remote config", NULL },
+   { "url", 0, 0, G_OPTION_ARG_STRING, &opt_url, "Pull objects from this URL instead of the one from the remote config", "URL" },
    { "http-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_http_headers, "Add NAME=VALUE as HTTP header to all requests", "NAME=VALUE" },
    { "update-frequency", 0, 0, G_OPTION_ARG_INT, &opt_frequency, "Sets the update frequency, in milliseconds (0=1000ms) (default: 0)", "FREQUENCY" },
    { "network-retries", 0, 0, G_OPTION_ARG_INT, &opt_network_retries, "Specifies how many times each download should be retried upon error (default: 5)", "N"},
