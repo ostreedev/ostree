@@ -1,29 +1,3 @@
-# https://fedoraproject.org/wiki/CI/Tests
-branches:
-    - master
-    - auto
-    - try
-
-context: FAH28-insttests
-required: false
-
-# FIXME; temporary workaround
-# https://github.com/ostreedev/ostree/pull/1513#issuecomment-378784162
-host:
-  distro: fedora/28/atomic
-  specs:
-    ram: 4096
-#container:
-#  image: registry.fedoraproject.org/fedora:28
-
-tests:
-  - docker run --device /dev/kvm --rm -v $(pwd):/srv/code:z registry.fedoraproject.org/fedora:28 /bin/sh -c "cd /srv/code && ./ci/fah28-insttests.sh"
-
-artifacts:
-  - tests/installed/artifacts/
-
----
-
 # This suite skips the RPMs and does the build+unit tests in a container
 inherit: false
 branches:
