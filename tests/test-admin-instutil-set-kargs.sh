@@ -33,21 +33,21 @@ ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testo
 ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
 
 ${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAR
-${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAZ FOO=BIF TESTARG=TESTVALUE
+${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAZ FOO=BIF TESTARG=TESTVALUE KEYWORD EMPTYLIST=
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAZ .*FOO=BIF'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
 echo "ok instutil set-kargs (basic)"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --merge FOO=BAR
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAZ .*FOO=BIF .*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
 echo "ok instutil set-kargs --merge"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --merge --replace=FOO=XXX
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=XXX'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
 echo "ok instutil set-kargs --replace"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --merge --append=FOO=BAR --append=APPENDARG=VALAPPEND --append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
