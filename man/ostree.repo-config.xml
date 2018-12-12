@@ -138,7 +138,11 @@ Boston, MA 02111-1307, USA.
           </para>
           <para>
             If <varname>min-free-space-size</varname> is set to a non-zero
-            value, <varname>min-free-space-percent</varname> is ignored.
+            value, <varname>min-free-space-percent</varname> is ignored. Note
+            that, <varname>min-free-space-percent</varname> is not enforced on
+            metadata objects. It is assumed that metadata objects are relatively
+            small in size compared to content objects and thus kept outside the
+            scope of this option.
           </para>
         </listitem>
       </varlistentry>
@@ -156,7 +160,10 @@ Boston, MA 02111-1307, USA.
           <para>
             If this option is set to a non-zero value, and
             <varname>min-free-space-percent</varname> is also set, this option
-            takes priority.
+            takes priority. Note that, <varname>min-free-space-size</varname> is
+            not enforced on metadata objects. It is assumed that metadata objects
+            are relatively small in size compared to content objects and thus kept
+            outside the scope of this option.
           </para>
         </listitem>
       </varlistentry>
