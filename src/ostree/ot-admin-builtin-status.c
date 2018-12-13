@@ -141,10 +141,11 @@ deployment_print_status (OstreeSysroot    *sysroot,
       g_autoptr(GString) output_buffer = g_string_sized_new (256);
       /* Print any digital signatures on this commit. */
 
+      const char *osname = ostree_deployment_get_osname (deployment);
       g_autoptr(GError) local_error = NULL;
       g_autoptr(OstreeGpgVerifyResult) result =
-        ostree_repo_verify_commit_ext (repo, ref, NULL, NULL,
-                                       cancellable, &local_error);
+        ostree_repo_verify_commit_for_remote (repo, ref, osname,
+                                              cancellable, &local_error);
 
       /* G_IO_ERROR_NOT_FOUND just means the commit is not signed. */
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
