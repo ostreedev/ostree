@@ -4643,6 +4643,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_object (&pull_data->cancellable);
   g_clear_pointer (&pull_data->localcache_repos, (GDestroyNotify)g_ptr_array_unref);
   g_clear_object (&pull_data->remote_repo_local);
+  g_free (pull_data->remote_refspec_name);
   g_free (pull_data->remote_name);
   g_free (pull_data->append_user_agent);
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
