@@ -1002,7 +1002,7 @@ ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
     summary_collection_map = NULL;
 
   while (summary_collection_map != NULL &&
-         g_variant_iter_loop (summary_collection_map, "{s@a(s(taya{sv}))}", &summary_collection_id, &summary_refs))
+         g_variant_iter_loop (summary_collection_map, "{&s@a(s(taya{sv}))}", &summary_collection_id, &summary_refs))
     {
       if (!remote_list_collection_refs_process_refs (self, remote_name,
                                                      summary_collection_id, summary_refs,
