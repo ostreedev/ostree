@@ -191,6 +191,7 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
       const char *options;
       const char *kernel;
       const char *initrd;
+      const char *devicetree;
       char *quoted_title = NULL;
       char *uuid = NULL;
       char *quoted_uuid = NULL;
@@ -243,6 +244,15 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
             g_string_append (output, GRUB2_SUFFIX);
           g_string_append_c (output, ' ');
           g_string_append (output, initrd);
+          g_string_append_c (output, '\n');
+        }
+
+      devicetree = ostree_bootconfig_parser_get (config, "devicetree");
+      if (devicetree)
+        {
+          g_string_append (output, "devicetree");
+          g_string_append_c (output, ' ');
+          g_string_append (output, devicetree);
           g_string_append_c (output, '\n');
         }
 

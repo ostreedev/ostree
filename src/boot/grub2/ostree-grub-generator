@@ -33,6 +33,7 @@ read_config()
     initrd=""
     options=""
     linux=""
+    devicetree=""
 
     while read -r line
     do
@@ -47,6 +48,9 @@ read_config()
                 ;;
             "linux")
                 linux=${value}
+                ;;
+            "devicetree")
+                devicetree=${value}
                 ;;
             "options")
                 options=${value}
@@ -73,6 +77,9 @@ populate_menu()
         menu="${menu}\t linux ${boot_prefix}${linux} ${options}\n"
         if [ -n "${initrd}" ] ; then
             menu="${menu}\t initrd ${boot_prefix}${initrd}\n"
+        fi
+        if [ -n "${devicetree}" ] ; then
+            menu="${menu}\t devicetree ${boot_prefix}${devicetree}\n"
         fi
         menu="${menu}}\n\n"
     done
