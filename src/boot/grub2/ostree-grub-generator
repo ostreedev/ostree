@@ -1,11 +1,12 @@
 #!/bin/sh
 
-# The builtin grub.cfg generator.
+# The builtin grub.cfg generator. This script is called by
+# ostree/src/libostree/ostree-bootloader-grub2.c whenever boot loader
+# configuration file needs to be updated on systems which do not use
+# grub2-mkconfig (and thus, the `ostree admin instutil grub2-generate` path).
 #
-# This script is called by ostree/src/libostree/ostree-bootloader-grub2.c whenever
-# boot loader configuration file needs to be updated. It can be used as a template
-# for a custom grub.cfg generator. What to consider when writing a custom grub.cfg
-# generator:
+# It can be used as a template for a custom grub.cfg generator. What to consider
+# when writing a custom grub.cfg generator:
 #
 #   - The populate_menu() function converts boot loader entries as defined by
 #   https://www.freedesktop.org/wiki/Specifications/BootLoaderSpec/ into GRUB2
