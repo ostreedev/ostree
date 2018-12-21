@@ -251,10 +251,6 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
       if (devicetree)
         {
           g_string_append (output, "devicetree");
-          if (is_efi)
-            g_string_append (output, GRUB2_EFI_SUFFIX);
-          else
-            g_string_append (output, GRUB2_SUFFIX);
           g_string_append_c (output, ' ');
           g_string_append (output, devicetree);
           g_string_append_c (output, '\n');
