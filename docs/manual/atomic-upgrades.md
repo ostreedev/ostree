@@ -18,7 +18,7 @@ implements this.
 To begin a simple upgrade, OSTree fetches the contents of the ref from
 the remote server.  Suppose we're tracking a ref named
 `exampleos/buildmaster/x86_64-runtime`.  OSTree fetches the URL
-`http://example.com/repo/refs/exampleos/buildmaster/x86_64-runtime`,
+`http://example.com/repo/refs/heads/exampleos/buildmaster/x86_64-runtime`,
 which contains a SHA256 checksum.  This determines the tree to deploy,
 and `/etc` will be merged from currently booted tree.
 
