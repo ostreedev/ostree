@@ -271,6 +271,22 @@ _ostree_sysroot_rmrf_deployment (OstreeSysroot *self,
     return FALSE;
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, origin_relpath, cancellable, error))
     return FALSE;
+
+  /* Special hack for Fedora's NFS package which is abusing the immutable bit
+   * https://src.fedoraproject.org/rpms/nfs-utils/pull-request/7
+   */
+  {
+    glnx_autofd int nfs_sysconfig_fd = -1;
+    if (!ot_openat_ignore_enoent (deployment_fd, "etc/sysconfig/nfs", &nfs_sysconfig_fd, error))
+      return FALSE;
+    if (nfs_sysconfig_fd != -1)
+      {
+        if (!_ostree_linuxfs_fd_alter_immutable_flag (nfs_sysconfig_fd, FALSE,
+                                                      cancellable, error))
+          return FALSE;
+      }
+  }
+
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deployment_path, cancellable, error))
     return FALSE;
 
