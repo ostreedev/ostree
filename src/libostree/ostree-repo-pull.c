@@ -2948,9 +2948,14 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
   if (gzip)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TRANSFER_GZIP;
 
-  { gboolean http2 = TRUE;
+  { gboolean http2_default = TRUE;
+#ifndef BUILDOPT_HTTP2
+    http2_default = FALSE;
+#endif
+    gboolean http2;
+
     if (!ostree_repo_get_remote_boolean_option (self, remote_name,
-                                                "http2", TRUE,
+                                                "http2", http2_default,
                                                 &http2, error))
       goto out;
     if (!http2)
