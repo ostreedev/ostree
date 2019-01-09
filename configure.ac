@@ -141,7 +141,7 @@ AS_HELP_STRING([--disable-http2],
   [Disable use of http2 (default: no)]),,
   [enable_http2=yes])
 AS_IF([test x$enable_http2 != xno ], [
-  AC_DEFINE([BUILDOPT_HTTP2], 1, [Define if we enable http2])
+  AC_DEFINE([BUILDOPT_HTTP2], 1, [Define if we enable http2 by default])
 ], [
   OSTREE_FEATURES="$OSTREE_FEATURES no-http2"
 ])
