@@ -437,3 +437,29 @@ ot_gpgme_new_ctx (const char *homedir,
 
   return g_steal_pointer (&context);
 }
+
+void
+ot_gpgme_kill_agent (const char *homedir)
+{
+  g_return_if_fail (homedir != NULL);
+
+  /* Run gpg-connect-agent killagent /bye */
+  g_autoptr(GError) local_error = NULL;
+  g_autoptr(GSubprocess) proc = g_subprocess_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE,
+                                                 &local_error,
+                                                 "gpg-connect-agent",
+                                                 "--homedir",
+                                                 homedir,
+                                                 "killagent",
+                                                 "/bye",
+                                                 NULL);
+  if (proc == NULL) {
+    g_debug ("Spawning gpg-connect-agent failed: %s", local_error->message);
+    return;
+  }
+  if (!g_subprocess_wait_check (proc, NULL, &local_error)) {
+    g_debug ("Killing GPG agent with gpg-connect-agent failed: %s",
+             local_error->message);
+    return;
+  }
+}
