@@ -46,4 +46,6 @@ gpgme_data_t ot_gpgme_data_output (GOutputStream *output_stream);
 gpgme_ctx_t ot_gpgme_new_ctx (const char *homedir,
                               GError    **error);
 
+void ot_gpgme_kill_agent (const char *homedir);
+
 G_END_DECLS
