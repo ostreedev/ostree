@@ -87,6 +87,7 @@ verify_result_finalized_cb (gpointer data,
    *     finalize() method, but I didn't want this keyring hack
    *     bleeding into multiple classes. */
 
+  ot_gpgme_kill_agent (tmp_dir);
   (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
 }
 
