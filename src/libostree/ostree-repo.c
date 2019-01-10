@@ -1761,6 +1761,7 @@ impl_repo_remote_replace (OstreeRepo     *self,
           g_propagate_error (error, g_steal_pointer (&local_error));
           return FALSE;
         }
+      g_clear_error (&local_error);
       if (!impl_repo_remote_add (self, sysroot, FALSE, name, url, options,
                                  cancellable, error))
         return FALSE;
