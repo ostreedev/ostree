@@ -3,11 +3,11 @@ dnl If doing a final release, remember to follow the instructions to
 dnl update libostree-released.sym from libostree-devel.sym, and update the checksum
 dnl in test-symbols.sh, and also set is_release_build=yes below.  Then make
 dnl another post-release commit to bump the version, and set is_release_build=no.
-m4_define([year_version], [2018])
-m4_define([release_version], [10])
+m4_define([year_version], [2019])
+m4_define([release_version], [1])
 m4_define([package_version], [year_version.release_version])
 AC_INIT([libostree], [package_version], [walters@verbum.org])
-is_release_build=no
+is_release_build=yes
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
