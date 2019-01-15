@@ -32,7 +32,7 @@ version of
  - Support for parallel installing more than just 2 bootable roots
  - Binary history on the server side (and client)
  - Introspectable shared library API for build and deployment systems
- - Flexible support for multiple branches and repositories, supporting 
+ - Flexible support for multiple branches and repositories, supporting
    projects like [flatpak](https://github.com/flatpak/flatpak) which
    use libostree for applications, rather than hosts.
 
@@ -73,6 +73,9 @@ system for GNOME.
 The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
 integration tool uses libostree as a caching system to store and share
 built artifacts.
+
+[Liri OS](https://liri.io/download/silverblue/) has the option to install
+their distribution using ostree.
 
 Language bindings
 ----
