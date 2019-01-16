@@ -4287,7 +4287,7 @@ import_one_object_direct (OstreeRepo    *dest_repo,
               if (bytes == NULL)
                 return FALSE;
 
-              if (TEMP_FAILURE_RETRY (fsetxattr (src_fd, "user.ostreemeta",
+              if (TEMP_FAILURE_RETRY (fsetxattr (tmp_dest.fd, "user.ostreemeta",
                                                  (char*)g_bytes_get_data (bytes, NULL),
                                                  g_bytes_get_size (bytes), 0)) != 0)
                 return glnx_throw_errno_prefix (error, "fsetxattr");
