@@ -4279,8 +4279,18 @@ import_one_object_direct (OstreeRepo    *dest_repo,
                                            cancellable, error))
                 return FALSE;
             }
+          else if (dest_repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+            {
+              /* Nothing; this is the "bareuser-only conversion case",
+               * we don't need to set any xattrs in the dest repo.
+               */
+            }
           else
             {
+              /* And this case must be bare-user → bare-user */
+              g_assert (src_repo->mode == OSTREE_REPO_MODE_BARE_USER);
+              g_assert (src_repo->mode == dest_repo->mode);
+
               /* bare-user; we just want ostree.usermeta */
               g_autoptr(GBytes) bytes =
                 glnx_fgetxattr_bytes (src_fd, "user.ostreemeta", error);
