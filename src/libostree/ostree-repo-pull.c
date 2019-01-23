@@ -1530,25 +1530,77 @@ _ostree_repo_verify_bindings (const char  *collection_id,
                               GError     **error)
 {
   g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
+  g_autoptr(GVariant) collection_refs_binding = NULL;
   g_autofree const char **refs = NULL;
+  gboolean need_ref_binding = FALSE;
+
+  collection_refs_binding = g_variant_lookup_value (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_REFS_BINDING,
+                                                    G_VARIANT_TYPE("a(ss)"));
+
+  if (collection_refs_binding)
+    {
+      if (collection_id != NULL || ref_name != NULL)
+        {
+          GVariantIter iter;
+          g_autoptr(GString) colrefs_dump = g_string_new (NULL);
+          const char *collection_id_binding = NULL;
+          const char *ref_binding = NULL;
+          gboolean found_match = FALSE;
+
+          g_variant_iter_init (&iter, collection_refs_binding);
+          while (g_variant_iter_next (&iter, "(&s&s)", &collection_id_binding, &ref_binding))
+            {
+              if ((collection_id == NULL || g_str_equal (collection_id_binding, collection_id)) &&
+                  (ref_name == NULL || g_str_equal (ref_binding, ref_name)))
+                {
+                  found_match = TRUE;
+                  break;
+                }
+              if (colrefs_dump->len > 0)
+                g_string_append (colrefs_dump, ", ");
+              g_string_append_printf (colrefs_dump, "(‘%s’, ‘%s’)", collection_id_binding, ref_binding);
+            }
+
+          if (!found_match)
+            return glnx_throw (error, "Commit has no requested collection–ref (‘%s’, ‘%s’) in collection-ref binding metadata: [%s].",
+                               collection_id ? collection_id : "*", ref_name ? ref_name : "*", colrefs_dump->str);
+        }
+    }
+  else if (collection_id != NULL)
+    {
+      const char *collection_id_binding = NULL;
+
+      if (!g_variant_lookup (metadata,
+                             OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
+                             "&s",
+                             &collection_id_binding))
+        return glnx_throw (error,
+                           "Expected commit metadata to have collection ID "
+                           "binding information, found none");
+
+      if (!g_str_equal (collection_id_binding, collection_id))
+        return glnx_throw (error,
+                           "Commit has collection ID ‘%s’ in collection binding "
+                           "metadata, while the remote it came from has "
+                           "collection ID ‘%s’",
+                           collection_id_binding, collection_id);
+
+      /* If collection-id is set, we also need a ref binding in the commit */
+      need_ref_binding = TRUE;
+    }
+
   if (!g_variant_lookup (metadata,
                          OSTREE_COMMIT_META_KEY_REF_BINDING,
                          "^a&s",
                          &refs))
     {
-      /* Early return here - if the remote collection ID is NULL, then
-       * we certainly will not verify the collection binding in the
-       * commit.
-       */
-      if (collection_id == NULL)
-        return TRUE;
-
-      return glnx_throw (error,
-                         "Expected commit metadata to have ref "
-                         "binding information, found none");
+      if (need_ref_binding)
+        return glnx_throw (error,
+                           "Expected commit metadata to have ref "
+                           "binding information, found none");
     }
 
-  if (ref_name != NULL)
+  if (refs != NULL && ref_name != NULL)
     {
       if (!g_strv_contains ((const char *const *) refs, ref_name))
         {
@@ -1577,24 +1629,6 @@ _ostree_repo_verify_bindings (const char  *collection_id,
                              "in ref binding metadata (%s)",
                              ref_name, refs_str);
         }
-    }
-
-  if (collection_id != NULL)
-    {
-      const char *collection_id_binding;
-      if (!g_variant_lookup (metadata,
-                             OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
-                             "&s",
-                             &collection_id_binding))
-        return glnx_throw (error,
-                           "Expected commit metadata to have collection ID "
-                           "binding information, found none");
-      if (!g_str_equal (collection_id_binding, collection_id))
-        return glnx_throw (error,
-                           "Commit has collection ID ‘%s’ in collection binding "
-                           "metadata, while the remote it came from has "
-                           "collection ID ‘%s’",
-                           collection_id_binding, collection_id);
     }
 
   return TRUE;
