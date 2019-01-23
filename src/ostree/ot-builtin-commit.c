@@ -41,6 +41,7 @@ static char *opt_parent;
 static gboolean opt_orphan;
 static gboolean opt_no_bindings;
 static char **opt_bind_refs;
+static char **opt_bind_collection_refs;
 static char *opt_branch;
 static char *opt_statoverride_file;
 static char *opt_skiplist_file;
@@ -96,6 +97,7 @@ static GOptionEntry options[] = {
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
   { "no-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_no_bindings, "Do not write any ref bindings", NULL },
   { "bind-ref", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_bind_refs, "Add a ref to ref binding commit metadata", "BRANCH" },
+  { "bind-collection-ref", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_bind_collection_refs, "Add a collection–ref binding to commit metadata", "COLLECTION-ID:BRANCH" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-metadata", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_variants, "Add a key/value pair to metadata, where the KEY is a string, an VALUE is g_variant_parse() formatted", "KEY=VALUE" },
@@ -302,6 +304,46 @@ commit_editor (OstreeRepo     *repo,
   return TRUE;
 }
 
+/* Split a string in @collection_ref of the form `$collection_id:$ref_name` and return the parts as @collection_id_out and @ref_out. If @collection_ref can’t be parsed, return an error. */
+static gboolean
+split_collection_ref_pair (const char *collection_ref,
+                           char **collection_id_out,
+                           char **ref_out,
+                           GError **error)
+{
+  const char *colon = strchr (collection_ref, ':');
+  g_autofree char *collection_id = NULL;
+  gsize collection_id_len;
+
+  if (colon == NULL)
+    return glnx_throw (error, "Missing ‘:‘ in COLLECTION-ID:BRANCH binding ‘%s‘", collection_ref);
+
+  collection_id_len = colon - collection_ref;
+  if (collection_id_len == 0)
+    return glnx_throw (error, "Empty COLLECTION-ID in COLLECTION-ID:BRANCH binding ‘%s‘", collection_ref);
+
+  colon++;
+  if (*colon == 0)
+    return glnx_throw (error, "Empty BRANCH in COLLECTION-ID:BRANCH binding ‘%s‘", collection_ref);
+
+
+  collection_id = g_strndup (collection_ref, collection_id_len);
+
+  if (!ostree_validate_collection_id (collection_id, error))
+    return FALSE;
+
+  if (!ostree_validate_rev (colon, error))
+    return FALSE;
+
+  if (collection_id_out)
+    *collection_id_out = g_steal_pointer (&collection_id);
+
+  if (ref_out)
+    *ref_out = g_strdup (colon);
+
+  return TRUE;
+}
+
 static gboolean
 parse_keyvalue_strings (GVariantBuilder   *builder,
                         char             **strings,
@@ -331,19 +373,6 @@ parse_keyvalue_strings (GVariantBuilder   *builder,
   return TRUE;
 }
 
-static void
-add_collection_binding (OstreeRepo       *repo,
-                        GVariantBuilder  *metadata_builder)
-{
-  const char *collection_id = ostree_repo_get_collection_id (repo);
-
-  if (collection_id == NULL)
-    return;
-
-  g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
-                         g_variant_new_variant (g_variant_new_string (collection_id)));
-}
-
 static int
 compare_strings (gconstpointer a, gconstpointer b)
 {
@@ -351,6 +380,97 @@ compare_strings (gconstpointer a, gconstpointer b)
   const char **sb = (const char **)b;
 
   return strcmp (*sa, *sb);
+}
+
+static int
+compare_collection_ref (gconstpointer ref1p,  gconstpointer ref2p)
+{
+  const OstreeCollectionRef *ref1 = *(const OstreeCollectionRef **)ref1p;
+  const OstreeCollectionRef *ref2 = *(const OstreeCollectionRef **)ref2p;
+  int res;
+
+  res = strcmp (ref1->collection_id, ref2->collection_id);
+  if (res != 0)
+    return res;
+  return strcmp (ref1->ref_name, ref2->ref_name);
+}
+
+/*
+ * This adds the the `ostree.collection-refs-binding` if --bind-collection-ref was specified, or
+ * if --branch was specified and the target repo has a collection ID set. It also adds the
+ * backwards compat `ostree.collection-binding` if there was any binding. This can only encode
+ * one collection ID, so we need to pick one of possibly multiple. If there is a collection ID
+ * set on the repo we pick that one, otherwise we pick the one specified in the first
+ * --bind-collecion-ref option.
+ */
+static void
+add_collection_binding (OstreeRepo       *repo,
+                        GVariantBuilder  *metadata_builder)
+{
+  const char *collection_id = ostree_repo_get_collection_id (repo);
+  g_autoptr(GPtrArray) collection_refs = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_collection_ref_free);
+  OstreeCollectionRef *main_collection_ref = NULL; /* owned by collection_refs array */
+  OstreeCollectionRef *fallback_collection_ref = NULL; /* owned by collection_refs array */
+  gsize i;
+
+  if (opt_branch && collection_id)
+    {
+      main_collection_ref = ostree_collection_ref_new (collection_id, opt_branch);
+      fallback_collection_ref = main_collection_ref;
+      g_ptr_array_add (collection_refs, main_collection_ref);
+    }
+
+  if (opt_bind_collection_refs != NULL)
+    {
+      for (i = 0; opt_bind_collection_refs[i] != NULL; i++)
+        {
+          g_autofree char *collection_binding = NULL;
+          g_autofree char *ref_binding = NULL;
+          g_autoptr(OstreeCollectionRef) collection_ref_binding = NULL;
+
+          if (!split_collection_ref_pair (opt_bind_collection_refs[i],
+                                          &collection_binding, &ref_binding, NULL))
+            {
+              /* This shouldn't happen because we verified the args early */
+              g_assert_not_reached ();
+            }
+
+          collection_ref_binding = ostree_collection_ref_new (collection_binding, ref_binding);
+
+          /* Default to first arg for fallback single-binding key */
+          if (fallback_collection_ref == NULL)
+            fallback_collection_ref = collection_ref_binding;
+          g_ptr_array_add (collection_refs, g_steal_pointer (&collection_ref_binding));
+        }
+
+    }
+  g_ptr_array_sort (collection_refs, compare_collection_ref);
+
+  if (collection_refs->len > 0)
+    {
+      g_autoptr(GVariantBuilder) builder = g_variant_builder_new (G_VARIANT_TYPE ("a(ss)"));
+      OstreeCollectionRef *last_collection_ref_binding = NULL;
+
+      for (i = 0; i < collection_refs->len; i++)
+        {
+          OstreeCollectionRef *collection_ref_binding = g_ptr_array_index (collection_refs, i);
+
+          /* Avoid duplicates */
+          if (last_collection_ref_binding != NULL &&
+              ostree_collection_ref_equal (last_collection_ref_binding, collection_ref_binding))
+            continue;
+
+          g_variant_builder_add (builder, "(ss)", collection_ref_binding->collection_id, collection_ref_binding->ref_name);
+          last_collection_ref_binding = collection_ref_binding;
+        }
+
+      g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COMMIT_META_KEY_COLLECTION_REFS_BINDING,
+                             g_variant_new_variant (g_variant_builder_end (builder)));
+    }
+
+  if (fallback_collection_ref != NULL)
+    g_variant_builder_add (metadata_builder, "{s@v}", OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
+                           g_variant_new_variant (g_variant_new_string (fallback_collection_ref->collection_id)));
 }
 
 static void
@@ -362,7 +482,11 @@ add_ref_binding (GVariantBuilder *metadata_builder)
   if (opt_branch != NULL)
     g_ptr_array_add (refs, opt_branch);
   for (char **iter = opt_bind_refs; iter != NULL && *iter != NULL; ++iter)
-    g_ptr_array_add (refs, *iter);
+    {
+      /* Avoid duplicates */
+      if (g_strcmp0 (opt_branch, *iter) != 0)
+        g_ptr_array_add (refs, *iter);
+    }
   g_ptr_array_sort (refs, compare_strings);
   g_autoptr(GVariant) refs_v = g_variant_new_strv ((const char *const *)refs->pdata,
                                                    refs->len);
@@ -382,9 +506,11 @@ fill_bindings (OstreeRepo    *repo,
   add_ref_binding (metadata_builder);
 
   /* Allow the collection ID to be overridden using
-   * --add-metadata-string=ostree.collection-binding=blah */
+   * --add-metadata-string=ostree.collection-binding=blah or
+   * --add-metadata-string=ostree.collection-refs-binding=blah */
   if (metadata == NULL ||
-      !g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING, "*", NULL))
+      (!g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING, "*", NULL) &&
+       !g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_REFS_BINDING, "*", NULL)))
     add_collection_binding (repo, metadata_builder);
 
   *out_metadata = g_variant_ref_sink (g_variant_builder_end (metadata_builder));
@@ -445,6 +571,29 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "A branch must be specified with --branch, or use --orphan");
       goto out;
+    }
+
+  if (opt_bind_collection_refs)
+    {
+      if (opt_bind_refs)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Only one of --bind-ref and --bind-collection-ref can be specified");
+          goto out;
+        }
+
+      /* For backwards compat, also set the same plain ref bindings */
+      opt_bind_refs = g_new0 (char *, g_strv_length (opt_bind_collection_refs) + 1);
+      for (gsize i = 0, out_i = 0; opt_bind_collection_refs[i] != NULL; i++)
+        {
+          g_autofree char *ref_binding = NULL;
+          if (!split_collection_ref_pair (opt_bind_collection_refs[i],
+                                          NULL, &ref_binding, error))
+            goto out;
+
+          if (!g_strv_contains ((const char * const *)opt_bind_refs, ref_binding))
+            opt_bind_refs[out_i++] = g_steal_pointer (&ref_binding);
+        }
     }
 
   if (opt_parent)
