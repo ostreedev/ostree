@@ -58,12 +58,7 @@ assert_file_has_content summary "^map: {}$"
 
 echo "ok 1 update summary"
 
-# Test again, but with collections enabled in the repository (if supported).
-if ! ostree --version | grep -q -e '- experimental'; then
-    echo "ok 2 # skip No experimental API is compiled in"
-    exit 0
-fi
-
+# Test again, but with collections enabled in the repository.
 cd ${test_tmpdir}
 rm -rf repo
 ostree_repo_init repo --collection-id org.example.Collection1
