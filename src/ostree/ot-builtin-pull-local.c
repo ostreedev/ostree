@@ -32,6 +32,7 @@
 #include "otutil.h"
 
 static char *opt_remote;
+static char *opt_collection_id;
 static gboolean opt_commit_only;
 static gboolean opt_disable_fsync;
 static gboolean opt_untrusted;
@@ -56,6 +57,7 @@ static GOptionEntry options[] = {
   { "gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify, "GPG verify commits (must specify --remote)", NULL },
   { "gpg-verify-summary", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify_summary, "GPG verify summary (must specify --remote)", NULL },
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
+  { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id, "Pull from this collection ID", "COLLECTION-ID" },
   { NULL }
 };
 
@@ -129,20 +131,36 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
       if (!ostree_repo_open (src_repo, cancellable, error))
         goto out;
 
-      /* FIXME: This should grow support for pulling refs from refs/mirrors on
-       * a local repository, using ostree_repo_list_collection_refs(). */
-      if (!ostree_repo_list_refs (src_repo, NULL, &refs_to_clone,
-                                  cancellable, error))
-        goto out;
+      if (opt_collection_id)
+        {
+          if (!ostree_repo_list_collection_refs (src_repo, opt_collection_id,
+                                                 &refs_to_clone,
+                                                 OSTREE_REPO_LIST_REFS_EXT_NONE,
+                                                 cancellable, error))
+            goto out;
+        }
+      else
+        {
+          if (!ostree_repo_list_refs (src_repo, NULL, &refs_to_clone,
+                                      cancellable, error))
+            goto out;
+        }
 
       { GHashTableIter hashiter;
         gpointer hkey, hvalue;
-        
+
         g_hash_table_iter_init (&hashiter, refs_to_clone);
         while (g_hash_table_iter_next (&hashiter, &hkey, &hvalue))
-          g_ptr_array_add (refs_to_fetch, g_strdup (hkey));
+          {
+            if (opt_collection_id)
+              {
+                OstreeCollectionRef *key = hkey;
+                g_ptr_array_add (refs_to_fetch, g_strdup (key->ref_name));
+              }
+            else
+              g_ptr_array_add (refs_to_fetch, g_strdup (hkey));
+          }
       }
-      g_ptr_array_add (refs_to_fetch, NULL);
     }
   else
     {
@@ -153,7 +171,6 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
           
           g_ptr_array_add (refs_to_fetch, (char*)ref);
         }
-      g_ptr_array_add (refs_to_fetch, NULL);
     }
 
   { GVariantBuilder builder;
@@ -166,8 +183,21 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
 
     g_variant_builder_add (&builder, "{s@v}", "flags",
                            g_variant_new_variant (g_variant_new_int32 (pullflags)));
-    g_variant_builder_add (&builder, "{s@v}", "refs",
-                           g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch->pdata, -1)));
+    if (opt_collection_id)
+      {
+        GVariantBuilder refs_builder;
+        g_variant_builder_init (&refs_builder, G_VARIANT_TYPE ("a(sss)"));
+
+        for (i = 0; i < refs_to_fetch->len; i++)
+          g_variant_builder_add (&refs_builder, "(sss)",
+                                 opt_collection_id, g_ptr_array_index (refs_to_fetch, i), "");
+
+        g_variant_builder_add (&builder, "{s@v}", "collection-refs",
+                               g_variant_new_variant (g_variant_builder_end (&refs_builder)));
+      }
+    else
+      g_variant_builder_add (&builder, "{s@v}", "refs",
+                             g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch->pdata, refs_to_fetch->len)));
     if (opt_remote)
       g_variant_builder_add (&builder, "{s@v}", "override-remote-name",
                              g_variant_new_variant (g_variant_new_string (opt_remote)));
