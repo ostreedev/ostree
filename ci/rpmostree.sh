@@ -45,7 +45,7 @@ make -j 8 check
 # Basic sanity test of rpm-ostree+new ostree by restarting rpm-ostreed
 if ! make vmsync; then
     ssh -o User=root vmcheck 'journalctl --no-pager | tail -1000'
-    fatal "vmsync failed"
+    echo "vmsync failed"; exit 1
 fi
 # Now run tests; just a subset ⊂ for now to avoid CI overload
 make vmcheck TESTS="layering-basic-1 layering-basic-2"
