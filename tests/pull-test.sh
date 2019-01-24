@@ -368,7 +368,7 @@ repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${delta_target} >dry-run-pull.txt
 # Compression can vary, so we support 400-699
-delta_dry_run_regexp='Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9] bytes, 455 bytes total uncompressed'
+delta_dry_run_regexp='Delta update: 0/1 parts, 0 bytes/[456][0-9][0-9].bytes, 455.bytes total uncompressed'
 assert_file_has_content dry-run-pull.txt "${delta_dry_run_regexp}"
 rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_streq "${prev_rev}" "${rev}"
