@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..6'
+echo '1..7'
 
 cd ${test_tmpdir}
 
@@ -36,6 +36,13 @@ do_commit() {
     pushd files
     ${CMD_PREFIX} ostree --repo="../${repo}" commit -s "Test ${repo} commit for branch ${branch}" -b "${branch}" --gpg-homedir="${TEST_GPG_KEYHOME}" --gpg-sign="${TEST_GPG_KEYID_1}" "$@" > "../${branch}-checksum"
     popd
+}
+
+do_reset() {
+    local repo=$1
+    shift 1
+
+    ${CMD_PREFIX} ostree --repo="${repo}" reset "$@"
 }
 
 do_summary() {
@@ -100,7 +107,7 @@ join_until_dashes() {
     done
 }
 
-# Join all coll-ref args after first -- with ", "
+# Join all collection-ref args after first -- with ", "
 join_after_dashes() {
     local SEP=""
     while (( "$#" )); do
@@ -170,7 +177,7 @@ do_local_pull() {
     local branch=$3
     shift 3
 
-    if ${CMD_PREFIX} ostree "--repo=${repo}" pull-local "${remote_repo}" "${branch}"
+    if ${CMD_PREFIX} ostree "--repo=${repo}" pull-local "$@" "${remote_repo}" "${branch}"
     then return 0
     else return 1
     fi
@@ -323,3 +330,22 @@ then
 fi
 
 echo "ok 6 pull refs from local repos"
+
+mkdir whatever
+ostree_repo_init whatever --collection-id=org.example.Whatever
+
+do_reset collection-repo --create --collection-id=org.example.Whatever colref1 colref1
+do_reset collection-repo --create --collection-id=org.example.Whatever notcolref2 colref2
+do_reset collection-repo --create --collection-id=org.example.Whatever colref2 colref2
+do_summary collection-repo
+
+do_local_pull whatever collection-repo colref1 --collection-id=org.example.Whatever
+# We renamed colref2 in the whatever collection
+do_local_pull whatever collection-repo notcolref2 --collection-id=org.example.Whatever
+# Make sure we can't poll the non-bound name
+if do_local_pull whatever collection-repo colref2 --collection-id=org.example.Whatever
+then
+    assert_not_reached "pulling a bound commit via the wrong ref should fail"
+fi
+
+echo "ok 7 pull refs using other collection id"
