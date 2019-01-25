@@ -1846,7 +1846,7 @@ scan_commit_object (OtPullData                 *pull_data,
    */
   g_autofree char *remote_collection_id = NULL;
   remote_collection_id = get_remote_repo_collection_id (pull_data);
-  if (!_ostree_repo_verify_bindings (remote_collection_id,
+  if (!_ostree_repo_verify_bindings ((ref != NULL && ref->collection_id) ? ref->collection_id : remote_collection_id,
                                      (ref != NULL) ? ref->ref_name : NULL,
                                      commit, error))
     return glnx_prefix_error (error, "Commit %s", checksum);
