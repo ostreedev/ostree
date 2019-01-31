@@ -396,7 +396,7 @@ compare_collection_ref (gconstpointer ref1p,  gconstpointer ref2p)
 }
 
 /*
- * This adds the the `ostree.collection-refs-binding` if --bind-collection-ref was specified, or
+ * This adds the `ostree.collection-refs-binding` if --bind-collection-ref was specified, or
  * if --branch was specified and the target repo has a collection ID set. It also adds the
  * backwards compat `ostree.collection-binding` if there was any binding. This can only encode
  * one collection ID, so we need to pick one of possibly multiple. If there is a collection ID
