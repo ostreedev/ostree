@@ -3504,7 +3504,7 @@ initiate_request (OtPullData                 *pull_data,
  *   * append-user-agent (s): Additional string to append to the user agent
  *   * n-network-retries (u): Number of times to retry each download on receiving
  *     a transient network error, such as a socket timeout; default is 5, 0
- *     means return errors without retrying
+ *     means return errors without retrying. Since: 2018.6
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -4950,7 +4950,7 @@ static void find_remotes_cb (GObject      *obj,
  *   provided.
  *   * `n-network-retries` (`u`): Number of times to retry each download on
  *   receiving a transient network error, such as a socket timeout; default is
- *   5, 0 means return errors without retrying.
+ *   5, 0 means return errors without retrying. Since: 2018.6
  *
  * @finders must be a non-empty %NULL-terminated array of the #OstreeRepoFinder
  * instances to use, or %NULL to use the system default set of finders, which
@@ -5795,6 +5795,9 @@ copy_option (GVariantDict       *master_options,
  *   * `update-frequency` (`u`): Frequency to call the async progress callback in
  *     milliseconds, if any; only values higher than 0 are valid
  *   * `append-user-agent` (`s`): Additional string to append to the user agent
+ *   * `n-network-retries` (`u`): Number of times to retry each download on receiving
+ *     a transient network error, such as a socket timeout; default is 5, 0
+ *     means return errors without retrying. Since: 2018.6
  *
  * Since: 2018.6
  */
