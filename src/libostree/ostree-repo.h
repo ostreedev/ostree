@@ -166,7 +166,7 @@ gboolean      ostree_repo_remote_delete (OstreeRepo     *self,
  * @OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS: Like above, but do nothing if the remote exists
  * @OSTREE_REPO_REMOTE_CHANGE_DELETE: Delete a remote
  * @OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS: Delete a remote, do nothing if the remote does not exist
- * @OSTREE_REPO_REMOTE_CHANGE_REPLACE: Add or replace a remote (Since: 2019.1)
+ * @OSTREE_REPO_REMOTE_CHANGE_REPLACE: Add or replace a remote (Since: 2019.2)
  */
 typedef enum {
   OSTREE_REPO_REMOTE_CHANGE_ADD,
