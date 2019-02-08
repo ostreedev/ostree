@@ -331,6 +331,40 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
                                      &collection_id))
                 collection_id = NULL;
 
+              g_autoptr(GVariant) collection_refs_binding = NULL;
+              collection_refs_binding = g_variant_lookup_value (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_REFS_BINDING,
+                                                                G_VARIANT_TYPE("a(ss)"));
+                if (collection_refs_binding)
+                  {
+                    GVariantIter iter;
+                    const char *collection_id_binding = NULL;
+                    const char *ref_binding = NULL;
+
+                    g_variant_iter_init (&iter, collection_refs_binding);
+                    while (g_variant_iter_next (&iter, "(&s&s)", &collection_id_binding, &ref_binding))
+                      {
+                        const OstreeCollectionRef collection_ref = { (char *) collection_id_binding, (char *) ref_binding };
+                        g_autofree char *checksum_for_ref = NULL;
+
+                        if (!ostree_repo_resolve_collection_ref (repo, &collection_ref,
+                                                                 TRUE,
+                                                                 OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                                                 &checksum_for_ref,
+                                                                 cancellable,
+                                                                 error))
+                          return FALSE;
+
+                        if (checksum_for_ref == NULL)
+                          return glnx_throw (error,
+                                             "Collection–ref (%s, %s) in collection-refs bindings for commit %s does not exist",
+                                             collection_id_binding, ref_binding, checksum);
+                        else if (g_strcmp0 (checksum_for_ref, checksum) != 0)
+                          return glnx_throw (error,
+                                             "Collection–ref (%s, %s) in collection-refs bindings for commit %s does not resolve to that commit",
+                                             collection_id_binding, ref_binding, checksum);
+                      }
+                  }
+
               g_autofree const char **refs = NULL;
               if (g_variant_lookup (metadata,
                                     OSTREE_COMMIT_META_KEY_REF_BINDING,
