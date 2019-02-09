@@ -22,8 +22,6 @@
 #include "config.h"
 #include <stdlib.h>
 #include <string.h>
-#include <linux/magic.h>
-#include <sys/vfs.h>
 
 #include "libglnx.h"
 #include "libostreetest.h"
