@@ -271,9 +271,29 @@ typedef enum {
  * This is most useful in concert with `OSTREE_COMMIT_META_KEY_REF_BINDING`,
  * as it more strongly binds the commit to the repository and branch.
  *
+ * If you want to bind to multiple collections IDs, use %OSTREE_COMMIT_META_KEY_COLLECTION_REFS_BINDING instead.
+ *
  * Since: 2018.6
  */
 #define OSTREE_COMMIT_META_KEY_COLLECTION_BINDING "ostree.collection-binding"
+
+/*
+ * OSTREE_COMMIT_META_KEY_COLLECTION_REFS_BINDING:
+ *
+ * GVariant type `a(ss)`.  If this is added to a commit, ostree_repo_pull()
+ * will enforce that the commit matches both the collection ID and the
+ * branch name that was pulled from. The first string is the collection ID, and
+ * the second is the ref.
+ *
+ * This is like a combination of `ostree.collection-binding` and `ostree.ref-binding`
+ * but supports multiple collections and maintains the binding between collection IDs and refs.
+ *
+ * If both `ostree.collection-binding` and `ostree.collection-refs-binding` are set, then
+ * new versions of OSTree will only verify the later; and older versions will only verify the former.
+ *
+ * Since: 2019.2
+ */
+#define OSTREE_COMMIT_META_KEY_COLLECTION_REFS_BINDING "ostree.collection-refs-binding"
 
 _OSTREE_PUBLIC
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
