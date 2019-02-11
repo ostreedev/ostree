@@ -55,7 +55,7 @@ ${CMD_PREFIX} ostree --repo=ostree-srv/repo static-delta generate ${remote_ref}
 ${CMD_PREFIX} ostree --repo=ostree-srv/repo summary -u
 ${CMD_PREFIX} ostree --repo=repo pull origin ${remote_ref}@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${remote_ref} >dry-run-pull.txt
-assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts, 0 bytes/[45][0-9].[0-9] kB, 1.[678] MB total uncompressed'
+assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts, 0 bytes/[45][0-9].[0-9][  ]kB, 1.[678][  ]MB total uncompressed'
 ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin ${remote_ref}
 final_rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:${remote_ref})
 assert_streq "${rev}" "${final_rev}"
