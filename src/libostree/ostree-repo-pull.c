@@ -115,6 +115,7 @@ typedef struct {
   GHashTable       *summary_deltas_checksums;
   GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */
   GHashTable       *gpg_verified_commits; /* Set<checksum> of commits that have been verified */
+  GHashTable       *ref_keyring_map; /* Maps OstreeCollectionRef to keyring remote name */
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
@@ -260,12 +261,13 @@ static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           GError                    **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
 static gboolean
-gpg_verify_unwritten_commit (OtPullData         *pull_data,
-                             const char         *checksum,
-                             GVariant           *commit,
-                             GVariant           *detached_metadata,
-                             GCancellable       *cancellable,
-                             GError            **error);
+gpg_verify_unwritten_commit (OtPullData                 *pull_data,
+                             const char                 *checksum,
+                             GVariant                   *commit,
+                             GVariant                   *detached_metadata,
+                             const OstreeCollectionRef  *ref,
+                             GCancellable               *cancellable,
+                             GError                    **error);
 
 
 static gboolean
@@ -1307,7 +1309,7 @@ meta_fetch_on_complete (GObject           *object,
            */
           GVariant *detached_data = g_hash_table_lookup (pull_data->fetched_detached_metadata, checksum);
           if (!gpg_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
-                                            pull_data->cancellable, error))
+                                            fetch_data->requested_ref, pull_data->cancellable, error))
             goto out;
 
           if (!ostree_repo_mark_commit_partial (pull_data->repo, checksum, TRUE, error))
@@ -1462,23 +1464,32 @@ process_verify_result (OtPullData            *pull_data,
 }
 
 static gboolean
-gpg_verify_unwritten_commit (OtPullData         *pull_data,
-                             const char         *checksum,
-                             GVariant           *commit,
-                             GVariant           *detached_metadata,
-                             GCancellable       *cancellable,
-                             GError            **error)
+gpg_verify_unwritten_commit (OtPullData                 *pull_data,
+                             const char                 *checksum,
+                             GVariant                   *commit,
+                             GVariant                   *detached_metadata,
+                             const OstreeCollectionRef  *ref,
+                             GCancellable               *cancellable,
+                             GError                    **error)
 {
   if (pull_data->gpg_verify)
     {
+      const char *keyring_remote = NULL;
+
       /* Shouldn't happen, but see comment in process_verify_result() */
       if (g_hash_table_contains (pull_data->gpg_verified_commits, checksum))
         return TRUE;
 
+      if (ref != NULL)
+        keyring_remote = g_hash_table_lookup (pull_data->ref_keyring_map, ref);
+      if (keyring_remote == NULL)
+        keyring_remote = pull_data->remote_name;
+
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
       g_autoptr(OstreeGpgVerifyResult) result =
         _ostree_repo_gpg_verify_with_metadata (pull_data->repo, signed_data,
-                                               detached_metadata, pull_data->remote_name,
+                                               detached_metadata,
+                                               keyring_remote,
                                                NULL, NULL, cancellable, error);
       if (!process_verify_result (pull_data, checksum, result, error))
         return FALSE;
@@ -1788,10 +1799,16 @@ scan_commit_object (OtPullData                 *pull_data,
       !g_hash_table_contains (pull_data->gpg_verified_commits, checksum))
     {
       g_autoptr(OstreeGpgVerifyResult) result = NULL;
+      const char *keyring_remote = NULL;
+
+      if (ref != NULL)
+        keyring_remote = g_hash_table_lookup (pull_data->ref_keyring_map, ref);
+      if (keyring_remote == NULL)
+        keyring_remote = pull_data->remote_name;
 
       result = ostree_repo_verify_commit_for_remote (pull_data->repo,
                                                      checksum,
-                                                     pull_data->remote_name,
+                                                     keyring_remote,
                                                      cancellable,
                                                      error);
       if (!process_verify_result (pull_data, checksum, result, error))
@@ -2385,7 +2402,7 @@ process_one_static_delta (OtPullData                 *pull_data,
           g_autoptr(GVariant) detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
 
           if (!gpg_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
-                                            cancellable, error))
+                                            ref, cancellable, error))
             return FALSE;
 
           if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
@@ -3505,6 +3522,14 @@ initiate_request (OtPullData                 *pull_data,
  *   * n-network-retries (u): Number of times to retry each download on receiving
  *     a transient network error, such as a socket timeout; default is 5, 0
  *     means return errors without retrying. Since: 2018.6
+ *   * ref-keyring-map (a(sss)): Array of (collection ID, ref name, keyring
+ *     remote name) tuples specifying which remote's keyring should be used when
+ *     doing GPG verification of each collection-ref. This is useful to prevent a
+ *     remote from serving malicious updates to refs which did not originate from
+ *     it. This can be a subset or superset of the refs being pulled; any ref
+ *     not being pulled will be ignored and any ref without a keyring remote
+ *     will be verified with the keyring of the remote being pulled from.
+ *     Since: 2019.2
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -3539,12 +3564,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean opt_gpg_verify_summary_set = FALSE;
   gboolean opt_collection_refs_set = FALSE;
   gboolean opt_n_network_retries_set = FALSE;
+  gboolean opt_ref_keyring_map_set = FALSE;
   const char *main_collection_id = NULL;
   const char *url_override = NULL;
   gboolean inherit_transaction = FALSE;
   g_autoptr(GHashTable) updated_requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   int i;
   g_autofree char **opt_localcache_repos = NULL;
+  g_autoptr(GVariantIter) ref_keyring_map_iter = NULL;
   /* If refs or collection-refs has exactly one value, this will point to that
    * value, otherwise NULL. Used for logging.
    */
@@ -3584,6 +3611,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "append-user-agent", "s", &pull_data->append_user_agent);
       opt_n_network_retries_set =
         g_variant_lookup (options, "n-network-retries", "u", &pull_data->n_network_retries);
+      opt_ref_keyring_map_set =
+	g_variant_lookup (options, "ref-keyring-map", "a(sss)", &ref_keyring_map_iter);
 
       if (pull_data->remote_refspec_name != NULL)
         pull_data->remote_name = g_strdup (pull_data->remote_refspec_name);
@@ -3644,6 +3673,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                            (GDestroyNotify)g_free);
   pull_data->gpg_verified_commits = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                            (GDestroyNotify)g_free, NULL);
+  pull_data->ref_keyring_map = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
+                                                      (GDestroyNotify)ostree_collection_ref_free, (GDestroyNotify)g_free);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->fetched_detached_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -4373,6 +4404,30 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
     }
 
+  if (opt_ref_keyring_map_set)
+    {
+      const gchar *collection_id, *ref_name, *keyring_remote_name;
+
+      while (g_variant_iter_loop (ref_keyring_map_iter, "(&s&s&s)", &collection_id, &ref_name, &keyring_remote_name))
+        {
+          g_autoptr(OstreeCollectionRef) c_r = NULL;
+
+          if (!ostree_validate_collection_id (collection_id, error))
+            goto out;
+          if (!ostree_validate_rev (ref_name, error))
+            goto out;
+          if (!ostree_validate_remote_name (keyring_remote_name, error))
+            goto out;
+
+          c_r = ostree_collection_ref_new (collection_id, ref_name);
+          if (!g_hash_table_contains (requested_refs_to_fetch, c_r))
+            continue;
+          g_hash_table_insert (pull_data->ref_keyring_map,
+                               g_steal_pointer (&c_r),
+                               g_strdup (keyring_remote_name));
+        }
+    }
+
   /* Create the state directory here - it's new with the commitpartial code,
    * and may not exist in older repositories.
    */
@@ -4664,6 +4719,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->ref_original_commits, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->gpg_verified_commits, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->ref_keyring_map, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
@@ -5798,6 +5854,14 @@ copy_option (GVariantDict       *master_options,
  *   * `n-network-retries` (`u`): Number of times to retry each download on receiving
  *     a transient network error, such as a socket timeout; default is 5, 0
  *     means return errors without retrying. Since: 2018.6
+ *   * `ref-keyring-map` (`a(sss)`): Array of (collection ID, ref name, keyring
+ *     remote name) tuples specifying which remote's keyring should be used when
+ *     doing GPG verification of each collection-ref. This is useful to prevent a
+ *     remote from serving malicious updates to refs which did not originate from
+ *     it. This can be a subset or superset of the refs being pulled; any ref
+ *     not being pulled will be ignored and any ref without a keyring remote
+ *     will be verified with the keyring of the remote being pulled from.
+ *     Since: 2019.2
  *
  * Since: 2018.6
  */
@@ -5918,6 +5982,7 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
       copy_option (&options_dict, &local_options_dict, "update-frequency", G_VARIANT_TYPE ("u"));
       copy_option (&options_dict, &local_options_dict, "append-user-agent", G_VARIANT_TYPE ("s"));
       copy_option (&options_dict, &local_options_dict, "n-network-retries", G_VARIANT_TYPE ("u"));
+      copy_option (&options_dict, &local_options_dict, "ref-keyring-map", G_VARIANT_TYPE ("a(sss)"));
 
       local_options = g_variant_dict_end (&local_options_dict);
 
