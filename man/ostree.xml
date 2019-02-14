@@ -129,6 +129,15 @@ Boston, MA 02111-1307, USA.
                     Produce debug level output.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--version</option></term>
+
+                <listitem><para>
+                    Print version information, including the features enabled
+                    at compile time, and exit.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
