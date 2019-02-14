@@ -102,6 +102,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-deploy-etcmerge-cornercases.sh \
 	tests/test-admin-deploy-uboot.sh \
 	tests/test-admin-deploy-grub2.sh \
+	tests/test-admin-deploy-none.sh \
 	tests/test-admin-deploy-bootid-gc.sh \
 	tests/test-admin-instutil-set-kargs.sh \
 	tests/test-admin-upgrade-not-backwards.sh \

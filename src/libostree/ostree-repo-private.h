@@ -169,6 +169,7 @@ struct OstreeRepo {
   guint64 payload_link_threshold;
   gint fs_support_reflink; /* The underlying filesystem has support for ioctl (FICLONE..) */
   gchar **repo_finders;
+  gchar *bootloader; /* Configure which bootloader to use. */
 
   OstreeRepo *parent_repo;
 };

@@ -355,6 +355,11 @@ setup_os_boot_grub2() {
     esac
 }
 
+setup_os_boot_configured_bootloader() {
+    bootloader_keyval=$1
+    ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo config set ${bootloader_keyval}
+}
+
 setup_os_repository () {
     mode=$1
     shift
@@ -447,6 +452,9 @@ EOF
             ;;
         *grub2*)
         setup_os_boot_grub2 "${bootmode}"
+            ;;
+        sysroot\.bootloader*)
+        setup_os_boot_configured_bootloader "${bootmode}"
             ;;
     esac
 
