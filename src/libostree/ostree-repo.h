@@ -116,6 +116,9 @@ _OSTREE_PUBLIC
 const gchar * const * ostree_repo_get_default_repo_finders (OstreeRepo   *self);
 
 _OSTREE_PUBLIC
+const gchar * ostree_repo_get_bootloader (OstreeRepo   *self);
+
+_OSTREE_PUBLIC
 GFile *       ostree_repo_get_path (OstreeRepo  *self);
 
 _OSTREE_PUBLIC

@@ -109,22 +109,22 @@ Boston, MA 02111-1307, USA.
         ensure files are on stable storage when performing operations
         such as commits, pulls, and checkouts.  Defaults to
         <literal>true</literal>.</para>
-	<para>
-	  If you disable fsync, OSTree will no longer be robust
-	  against kernel crashes or power loss.
-	</para>
-	<para>
-	  You might choose to disable this for local development
-	  repositories, under the assumption they can be recreated from
-	  source.  Similarly, you could disable for a mirror where you could
-	  re-pull.
-	</para>
-	<para>
-	  For the system repository, you might choose to disable fsync
-	  if you have uninterruptable power supplies and a well tested
-	  kernel.
-	</para>
-	</listitem>
+        <para>
+          If you disable fsync, OSTree will no longer be robust
+          against kernel crashes or power loss.
+        </para>
+        <para>
+          You might choose to disable this for local development
+          repositories, under the assumption they can be recreated from
+          source.  Similarly, you could disable for a mirror where you could
+          re-pull.
+        </para>
+        <para>
+          For the system repository, you might choose to disable fsync
+          if you have uninterruptable power supplies and a well tested
+          kernel.
+        </para>
+        </listitem>
       </varlistentry>
 
       <varlistentry>
@@ -327,6 +327,42 @@ Boston, MA 02111-1307, USA.
       <varlistentry>
         <term><varname>unconfigured-state</varname></term>
         <listitem><para>If set, pulls from this remote will fail with the configured text.  This is intended for OS vendors which have a subscription process to access content.</para></listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title>[sysroot] Section Options</title>
+
+    <para>
+      Options for the sysroot, which contains the OSTree repository,
+      deployments, and stateroots.  The following entries are defined:
+    </para>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><varname>bootloader</varname></term>
+        <listitem><para>Configure the bootloader that OSTree uses when
+        deploying the sysroot.  This may take the values
+        <literal>bootloader=none</literal> or <literal>bootloader=auto</literal>.
+        Default is <literal>auto</literal>.
+        </para>
+        <para>
+          If <literal>none</literal>, then OSTree will generate only BLS (Boot
+          Loader Specification) fragments in <literal>sysroot/boot/loader/entries/</literal>
+          for the deployment.
+        </para>
+        <para>
+          If <literal>auto</literal>, then in addition to generating BLS
+          fragments, OSTree will dynamically check for the existence of grub2,
+          uboot, and syslinux bootloaders.  If one of the bootloaders is found,
+          then OSTree will generate a config for the bootloader found.  For
+          example, <literal>grub2-mkconfig</literal> is run for the grub2 case.
+        </para>
+        </listitem>
       </varlistentry>
 
     </variablelist>
