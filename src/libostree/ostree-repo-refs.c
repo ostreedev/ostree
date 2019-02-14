@@ -537,7 +537,30 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
                                          cancellable, error))
     return FALSE;
 
-  const char *ret_contents = g_hash_table_lookup (refs, ref);
+  g_autofree char *ret_contents = g_strdup (g_hash_table_lookup (refs, ref));
+
+  /* Check for refs in the current transaction that haven't been written to
+   * disk, to match the behavior of ostree_repo_resolve_rev() */
+  if (ret_contents == NULL && self->in_transaction)
+    {
+      g_mutex_lock (&self->txn_lock);
+      if (self->txn.collection_refs)
+        ret_contents = g_strdup (g_hash_table_lookup (self->txn.collection_refs, ref));
+      g_mutex_unlock (&self->txn_lock);
+    }
+
+  /* Check for refs in the parent repo */
+  if (ret_contents == NULL && self->parent_repo != NULL)
+    {
+      if (!ostree_repo_resolve_collection_ref (self->parent_repo,
+                                               ref,
+                                               TRUE,
+                                               flags,
+                                               &ret_contents,
+                                               cancellable,
+                                               error))
+        return FALSE;
+    }
 
   if (ret_contents == NULL && !allow_noent)
     {
@@ -548,7 +571,7 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
     }
 
   if (out_rev != NULL)
-    *out_rev = g_strdup (ret_contents);
+    *out_rev = g_steal_pointer (&ret_contents);
   return TRUE;
 }
 
