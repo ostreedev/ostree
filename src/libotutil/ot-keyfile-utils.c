@@ -101,20 +101,19 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
   return ret;
 }
 
-/* Read the value of key as a string. If the value string contains
- * one of the separators and none of the others, read the
- * string as a NULL-terminated array out_value. If the value string contains
- * none of the separators, read the string as a single entry into a
- * NULL-terminated array out_value. If the value string contains multiple of
- * the separators, an error is given.
+/* Read the value of key as a string.  If the value string contains
+ * zero or one of the separators and none of the others, read the
+ * string as a NULL-terminated array out_value.  If the value string
+ * contains multiple of the separators, give an error.
+ * 
  * Returns TRUE on success, FALSE on error. */
 gboolean
-ot_keyfile_get_string_as_list (GKeyFile      *keyfile,
-                               const char    *section,
-                               const char    *key,
-                               const char    *separators,
-                               char        ***out_value,
-                               GError       **error)
+ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,
+                                                  const char    *section,
+                                                  const char    *key,
+                                                  const char    *separators,
+                                                  char        ***out_value,
+                                                  GError       **error)
 {
   guint sep_count = 0;
   gchar sep = '\0';

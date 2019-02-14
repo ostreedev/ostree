@@ -5186,8 +5186,12 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
 
       g_auto(GStrv) gpgkeypath_list = NULL;
 
-      if (!ot_keyfile_get_string_as_list (remote->options, remote->group, "gpgkeypath",
-                                          ";,", &gpgkeypath_list, error))
+      if (!ot_keyfile_get_string_list_with_separator_choice (remote->options,
+                                                             remote->group,
+                                                             "gpgkeypath",
+                                                             ";,",
+                                                             &gpgkeypath_list,
+                                                             error))
         return NULL;
 
       if (gpgkeypath_list)
