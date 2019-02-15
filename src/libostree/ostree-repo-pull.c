@@ -5665,10 +5665,11 @@ find_remotes_cb (GObject      *obj,
 
           if (n_latest_refs == 0)
             {
-              g_debug ("%s: Omitting remote ‘%s’ from results as none of its refs are new enough.",
+              /* Here we used to remove the result from the final set, but
+               * let's leave it in since the result providing the latest might
+               * have bad signatures or another failure */
+              g_debug ("%s: Remote ‘%s’ does not have the latest rev of ony ref; leaving in results as a fallback.",
                        G_STRFUNC, result->remote->name);
-              ostree_repo_finder_result_free (g_steal_pointer (&g_ptr_array_index (results, i)));
-              continue;
             }
         }
 
