@@ -725,16 +725,25 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 GCancellable                  *cancellable,
                                 GError                       **error)
 {
-  g_autofree char *from = NULL;
-  g_autofree char *to = NULL;
-  if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
-    return FALSE;
-
-  g_autofree char *superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
-
   glnx_autofd int superblock_fd = -1;
-  if (!glnx_openat_rdonly (self->repo_dir_fd, superblock_path, TRUE, &superblock_fd, error))
-    return FALSE;
+
+  if (strchr (delta_id, '/'))
+    {
+      if (!glnx_openat_rdonly (AT_FDCWD, delta_id, TRUE, &superblock_fd, error))
+        return FALSE;
+    }
+  else
+    {
+      g_autofree char *from = NULL;
+      g_autofree char *to = NULL;
+      if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
+        return FALSE;
+
+      g_autofree char *superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
+      if (!glnx_openat_rdonly (self->repo_dir_fd, superblock_path, TRUE, &superblock_fd, error))
+        return FALSE;
+    }
+
   g_autoptr(GVariant) delta_superblock = NULL;
   if (!ot_variant_read_fd (superblock_fd, 0,
                            (GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
@@ -742,6 +751,26 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
     return FALSE;
 
   g_print ("Delta: %s\n", delta_id);
+  g_autoptr(GVariant) from_commit_v = NULL;
+  g_variant_get_child (delta_superblock, 2, "@ay", &from_commit_v);
+  g_autofree char *from_commit = NULL;
+  if (g_variant_n_children (from_commit_v) > 0)
+    {
+      if (!ostree_checksum_bytes_peek_validate (from_commit_v, error))
+        return FALSE;
+      from_commit = ostree_checksum_from_bytes_v (from_commit_v);
+      g_print ("From: %s\n", from_commit);
+    }
+  else
+    {
+      g_print ("From <scratch>\n");
+    }
+  g_autoptr(GVariant) to_commit_v = NULL;
+  g_variant_get_child (delta_superblock, 3, "@ay", &to_commit_v);
+  if (!ostree_checksum_bytes_peek_validate (to_commit_v, error))
+    return FALSE;
+  g_autofree char *to_commit = ostree_checksum_from_bytes_v (to_commit_v);
+  g_print ("To: %s\n", to_commit);
 
   gboolean swap_endian = FALSE;
   OstreeDeltaEndianness endianness;
@@ -777,6 +806,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
 
     g_print ("Endianness: %s\n", endianness_description);
   }
+
   guint64 ts;
   g_variant_get_child (delta_superblock, 1, "t", &ts);
   g_print ("Timestamp: %" G_GUINT64_FORMAT "\n", GUINT64_FROM_BE (ts));
@@ -821,7 +851,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
 
   for (guint i = 0; i < n_parts; i++)
     {
-      if (!show_one_part (self, swap_endian, from, to, meta_entries, i,
+      if (!show_one_part (self, swap_endian, from_commit, to_commit, meta_entries, i,
                           &total_size, &total_usize,
                           cancellable, error))
         return FALSE;
