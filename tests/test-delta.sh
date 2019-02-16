@@ -135,6 +135,8 @@ rm temp-repo -rf
 echo 'ok generate'
 
 ${CMD_PREFIX} ostree --repo=repo static-delta show ${origrev}-${newrev} > show.txt
+assert_file_has_content show.txt "From: ${origrev}"
+assert_file_has_content show.txt "To: ${newrev}"
 assert_file_has_content show.txt 'Endianness: \(little\|big\)'
 
 echo 'ok show'
