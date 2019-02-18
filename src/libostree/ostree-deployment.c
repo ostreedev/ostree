@@ -39,6 +39,12 @@ ostree_deployment_get_bootcsum (OstreeDeployment *self)
   return self->bootcsum;
 }
 
+int
+ostree_deployment_get_bootsize (OstreeDeployment *self)
+{
+  return self->bootsize;
+}
+
 /*
  * ostree_deployment_get_osname:
  * @self: Deployemnt
@@ -156,6 +162,13 @@ _ostree_deployment_set_bootcsum (OstreeDeployment *self,
 {
   g_free (self->bootcsum);
   self->bootcsum = g_strdup (bootcsum);
+}
+
+void
+_ostree_deployment_set_bootsize (OstreeDeployment *self,
+                                 int bootsize)
+{
+  self->bootsize = bootsize;
 }
 
 /**

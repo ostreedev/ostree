@@ -67,6 +67,8 @@ const char *ostree_deployment_get_csum (OstreeDeployment *self);
 _OSTREE_PUBLIC
 const char *ostree_deployment_get_bootcsum (OstreeDeployment *self);
 _OSTREE_PUBLIC
+int ostree_deployment_get_bootsize (OstreeDeployment *self);
+_OSTREE_PUBLIC
 int ostree_deployment_get_bootserial (OstreeDeployment *self);
 _OSTREE_PUBLIC
 OstreeBootconfigParser *ostree_deployment_get_bootconfig (OstreeDeployment *self);
