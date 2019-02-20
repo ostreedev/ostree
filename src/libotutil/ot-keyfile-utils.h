@@ -45,6 +45,14 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
                                    GError       **error);
 
 gboolean
+ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
+                                                  const char    *section,
+                                                  const char    *value,
+                                                  const char    *default_value,
+                                                  char         **out_value,
+                                                  GError       **error);
+
+gboolean
 ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,
                                                   const char    *section,
                                                   const char    *key,

@@ -79,7 +79,6 @@ test_get_value_with_default (void)
   /* Avoid that g_return_val_if_fail causes the test to fail.  */
   always_fatal_mask = g_log_set_always_fatal (0);
 
-
   g_assert_false (ot_keyfile_get_value_with_default (g_keyfile,
                                                      NULL,
                                                      "value_foo",
@@ -124,11 +123,75 @@ test_get_value_with_default (void)
   g_clear_pointer (&out, g_free);
 
   g_assert_false (ot_keyfile_get_value_with_default (g_keyfile,
-                                                       "a_fake_section",
-                                                       "a_value_true",
-                                                       "no value",
-                                                       &out,
-                                                       &error));
+                                                     "a_fake_section",
+                                                     "a_value_true",
+                                                     "no value",
+                                                     &out,
+                                                     &error));
+  g_clear_error (&error);
+  g_clear_pointer (&out, g_free);
+}
+
+static void
+test_get_value_with_default_group_optional (void)
+{
+  g_autoptr(GError) error = NULL;
+  g_autofree char *out = NULL;
+  GLogLevelFlags always_fatal_mask;
+  const char *section = "section";
+
+/* Avoid that g_return_val_if_fail causes the test to fail.  */
+  always_fatal_mask = g_log_set_always_fatal (0);
+
+  g_assert_false (ot_keyfile_get_value_with_default_group_optional (g_keyfile,
+                                                                    NULL,
+                                                                    "value_foo",
+                                                                    "none",
+                                                                    &out,
+                                                                    &error));
+  g_clear_pointer (&out, g_free);
+  g_assert_false (ot_keyfile_get_value_with_default_group_optional (g_keyfile,
+                                                                    section,
+                                                                    NULL,
+                                                                    "none",
+                                                                    &out,
+                                                                    &error));
+  g_clear_pointer (&out, g_free);
+  g_assert_false (ot_keyfile_get_value_with_default_group_optional (g_keyfile,
+                                                                    section,
+                                                                    NULL,
+                                                                    "something",
+                                                                    &out,
+                                                                    &error));
+  g_clear_pointer (&out, g_free);
+
+  /* Restore the old mask.  */
+  g_log_set_always_fatal (always_fatal_mask);
+
+  g_assert (ot_keyfile_get_value_with_default_group_optional (g_keyfile,
+                                                              section,
+                                                              "value_foo",
+                                                              "none",
+                                                              &out,
+                                                              &error));
+  g_assert_cmpstr (out, ==, "foo");
+  g_clear_pointer (&out, g_free);
+
+  g_assert (ot_keyfile_get_value_with_default_group_optional (g_keyfile,
+                                                              section,
+                                                              "a_not_existing_value",
+                                                              "correct",
+                                                              &out,
+                                                              &error));
+  g_assert_cmpstr (out, ==, "correct");
+  g_clear_pointer (&out, g_free);
+
+  g_assert (ot_keyfile_get_value_with_default_group_optional (g_keyfile,
+                                                              "an_optional_section",
+                                                              "a_value_true",
+                                                              "no value",
+                                                              &out,
+                                                              &error));
   g_clear_error (&error);
   g_clear_pointer (&out, g_free);
 }
@@ -191,6 +254,7 @@ int main (int argc, char **argv)
 
   g_test_add_func ("/keyfile-utils/get-boolean-with-default", test_get_boolean_with_default);
   g_test_add_func ("/keyfile-utils/get-value-with-default", test_get_value_with_default);
+  g_test_add_func ("/keyfile-utils/get-value-with-default-group-optional", test_get_value_with_default_group_optional);
   g_test_add_func ("/keyfile-utils/copy-group", test_copy_group);
 
   ret = g_test_run();

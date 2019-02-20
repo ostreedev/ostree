@@ -101,6 +101,42 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
   return ret;
 }
 
+gboolean
+ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
+                                                  const char    *section,
+                                                  const char    *value,
+                                                  const char    *default_value,
+                                                  char         **out_value,
+                                                  GError       **error)
+{
+  gboolean ret = FALSE;
+  GError *local_error = NULL;
+  g_autofree char *ret_value = NULL;
+
+  g_return_val_if_fail (keyfile != NULL, ret);
+  g_return_val_if_fail (section != NULL, ret);
+  g_return_val_if_fail (value != NULL, ret);
+
+  if (!ot_keyfile_get_value_with_default (keyfile, section, value, default_value, &ret_value, &local_error))
+    {
+      if (g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+          ret_value = g_strdup (default_value);
+        }
+      else
+        {
+          g_propagate_error (error, local_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value(out_value, &ret_value);
+ out:
+  return ret;
+}
+
 /* Read the value of key as a string.  If the value string contains
  * zero or one of the separators and none of the others, read the
  * string as a NULL-terminated array out_value.  If the value string
