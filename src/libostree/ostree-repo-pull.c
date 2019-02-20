@@ -1483,7 +1483,7 @@ gpg_verify_unwritten_commit (OtPullData                 *pull_data,
       if (ref != NULL)
         keyring_remote = g_hash_table_lookup (pull_data->ref_keyring_map, ref);
       if (keyring_remote == NULL)
-	keyring_remote = pull_data->remote_name;
+        keyring_remote = pull_data->remote_name;
 
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
       g_autoptr(OstreeGpgVerifyResult) result =
@@ -1804,7 +1804,7 @@ scan_commit_object (OtPullData                 *pull_data,
       if (ref != NULL)
         keyring_remote = g_hash_table_lookup (pull_data->ref_keyring_map, ref);
       if (keyring_remote == NULL)
-	keyring_remote = pull_data->remote_name;
+        keyring_remote = pull_data->remote_name;
 
       result = ostree_repo_verify_commit_for_remote (pull_data->repo,
                                                      checksum,
@@ -4412,7 +4412,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         {
           g_autoptr(OstreeCollectionRef) c_r = NULL;
 
+          if (!ostree_validate_collection_id (collection_id, error))
+            goto out;
           if (!ostree_validate_rev (ref_name, error))
+            goto out;
+          if (!ostree_validate_remote_name (keyring_remote_name, error))
             goto out;
 
           c_r = ostree_collection_ref_new (collection_id, ref_name);
