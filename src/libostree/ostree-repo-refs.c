@@ -525,23 +525,17 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
                                     GCancellable                  *cancellable,
                                     GError                       **error)
 {
+  g_autofree char *ret_contents = NULL;
+
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
   g_return_val_if_fail (ref != NULL, FALSE);
   g_return_val_if_fail (ref->collection_id != NULL && ref->ref_name != NULL, FALSE);
   g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
-  if (!ostree_repo_list_collection_refs (self, ref->collection_id, &refs,
-                                         OSTREE_REPO_LIST_REFS_EXT_NONE,
-                                         cancellable, error))
-    return FALSE;
-
-  g_autofree char *ret_contents = g_strdup (g_hash_table_lookup (refs, ref));
-
-  /* Check for refs in the current transaction that haven't been written to
-   * disk, to match the behavior of ostree_repo_resolve_rev() */
-  if (ret_contents == NULL && self->in_transaction)
+  /* Check for the ref in the current transaction in case it hasn't been
+   * written to disk, to match the behavior of ostree_repo_resolve_rev() */
+  if (self->in_transaction)
     {
       g_mutex_lock (&self->txn_lock);
       if (self->txn.collection_refs)
@@ -549,7 +543,19 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
       g_mutex_unlock (&self->txn_lock);
     }
 
-  /* Check for refs in the parent repo */
+  /* Check for the ref on disk in the repo */
+  if (ret_contents == NULL)
+    {
+      g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+      if (!ostree_repo_list_collection_refs (self, ref->collection_id, &refs,
+                                             OSTREE_REPO_LIST_REFS_EXT_NONE,
+                                             cancellable, error))
+        return FALSE;
+
+      ret_contents = g_strdup (g_hash_table_lookup (refs, ref));
+    }
+
+  /* Check for the ref in the parent repo */
   if (ret_contents == NULL && self->parent_repo != NULL)
     {
       if (!ostree_repo_resolve_collection_ref (self->parent_repo,
