@@ -499,11 +499,13 @@ gboolean      ostree_repo_list_refs (OstreeRepo       *self,
  * @OSTREE_REPO_LIST_REFS_EXT_NONE: No flags.
  * @OSTREE_REPO_LIST_REFS_EXT_ALIASES: Only list aliases.  Since: 2017.10
  * @OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES: Exclude remote refs.  Since: 2017.11
+ * @OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS: Exclude mirrored refs.  Since: 2019.2
  */
 typedef enum {
   OSTREE_REPO_LIST_REFS_EXT_NONE = 0,
   OSTREE_REPO_LIST_REFS_EXT_ALIASES = (1 << 0),
   OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES = (1 << 1),
+  OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS = (1 << 2),
 } OstreeRepoListRefsExtFlags;
 
 _OSTREE_PUBLIC
