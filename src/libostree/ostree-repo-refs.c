@@ -1247,7 +1247,9 @@ _ostree_repo_update_collection_refs (OstreeRepo        *self,
  * (ostree_repo_get_collection_id()).
  *
  * If you want to exclude refs from `refs/remotes`, use
- * %OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES in @flags.
+ * %OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES in @flags. Similarly use
+ * %OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS to exclude refs from
+ * `refs/mirrors`.
  *
  * Returns: %TRUE on success, %FALSE otherwise
  * Since: 2018.6
@@ -1269,9 +1271,12 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
   if (match_collection_id != NULL && !ostree_validate_collection_id (match_collection_id, error))
     return FALSE;
 
-  const gchar *refs_dirs[] = { "refs/mirrors", "refs/remotes", NULL };
-  if (flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES)
-    refs_dirs[1] = NULL;
+  g_autoptr(GPtrArray) refs_dirs = g_ptr_array_new ();
+  if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS))
+    g_ptr_array_add (refs_dirs, "refs/mirrors");
+  if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES))
+    g_ptr_array_add (refs_dirs, "refs/remotes");
+  g_ptr_array_add (refs_dirs, NULL);
 
   g_autoptr(GHashTable) ret_all_refs = NULL;
 
@@ -1301,7 +1306,7 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
 
   g_string_truncate (base_path, 0);
 
-  for (const char **iter = refs_dirs; iter && *iter; iter++)
+  for (const char **iter = (const char **)refs_dirs->pdata; iter && *iter; iter++)
     {
       const char *refs_dir = *iter;
       gboolean refs_dir_exists = FALSE;
