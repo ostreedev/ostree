@@ -465,9 +465,11 @@ gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
 /**
  * OstreeRepoResolveRevExtFlags:
  * @OSTREE_REPO_RESOLVE_REV_EXT_NONE: No flags.
+ * @OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY: Exclude remote and mirrored refs. Since: 2019.2
  */
 typedef enum {
   OSTREE_REPO_RESOLVE_REV_EXT_NONE = 0,
+  OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY = (1 << 0),
 } OstreeRepoResolveRevExtFlags;
 
 _OSTREE_PUBLIC
