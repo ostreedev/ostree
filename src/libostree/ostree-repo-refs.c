@@ -479,6 +479,9 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
  * the parameter @out_rev. Differently from ostree_repo_resolve_rev(),
  * this will not fall back to searching through remote repos if a
  * local ref is specified but not found.
+ *
+ * The flag %OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY is implied so
+ * using it has no effect.
  */
 gboolean
 ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
@@ -511,7 +514,9 @@ ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
  * the given @ref cannot be found, a %G_IO_ERROR_NOT_FOUND error will be
  * returned.
  *
- * There are currently no @flags which affect the behaviour of this function.
+ * If you want to check only local refs not remote or mirrored ones, use the
+ * flag %OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY. This is analogous to using
+ * ostree_repo_resolve_rev_ext() but for collection-refs.
  *
  * Returns: %TRUE on success, %FALSE on failure
  * Since: 2018.6
@@ -535,21 +540,32 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
 
   /* Check for the ref in the current transaction in case it hasn't been
    * written to disk, to match the behavior of ostree_repo_resolve_rev() */
-  if (self->in_transaction)
+  if (self->in_transaction && self->txn.collection_refs)
     {
-      g_mutex_lock (&self->txn_lock);
-      if (self->txn.collection_refs)
-        ret_contents = g_strdup (g_hash_table_lookup (self->txn.collection_refs, ref));
-      g_mutex_unlock (&self->txn_lock);
+      const char *repo_collection_id = ostree_repo_get_collection_id (self);
+      /* If the collection ID doesn't match it's a remote ref */
+      if (!(flags & OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY) ||
+          repo_collection_id == NULL || g_strcmp0 (repo_collection_id, ref->collection_id) == 0)
+        {
+          g_mutex_lock (&self->txn_lock);
+          ret_contents = g_strdup (g_hash_table_lookup (self->txn.collection_refs, ref));
+          g_mutex_unlock (&self->txn_lock);
+        }
     }
 
   /* Check for the ref on disk in the repo */
   if (ret_contents == NULL)
     {
       g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+      OstreeRepoListRefsExtFlags list_refs_flags;
+
+      if (flags & OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY)
+        list_refs_flags = OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES | OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS;
+      else
+        list_refs_flags = OSTREE_REPO_LIST_REFS_EXT_NONE;
+
       if (!ostree_repo_list_collection_refs (self, ref->collection_id, &refs,
-                                             OSTREE_REPO_LIST_REFS_EXT_NONE,
-                                             cancellable, error))
+                                             list_refs_flags, cancellable, error))
         return FALSE;
 
       ret_contents = g_strdup (g_hash_table_lookup (refs, ref));
