@@ -514,7 +514,7 @@ ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
  * the given @ref cannot be found, a %G_IO_ERROR_NOT_FOUND error will be
  * returned.
  *
- * If you want to check only local refs not remote or mirrored ones, use the
+ * If you want to check only local refs, not remote or mirrored ones, use the
  * flag %OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY. This is analogous to using
  * ostree_repo_resolve_rev_ext() but for collection-refs.
  *
