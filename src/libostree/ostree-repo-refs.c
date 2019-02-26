@@ -540,17 +540,21 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
 
   /* Check for the ref in the current transaction in case it hasn't been
    * written to disk, to match the behavior of ostree_repo_resolve_rev() */
-  if (self->in_transaction && self->txn.collection_refs)
+  if (self->in_transaction)
     {
-      const char *repo_collection_id = ostree_repo_get_collection_id (self);
-      /* If the collection ID doesn't match it's a remote ref */
-      if (!(flags & OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY) ||
-          repo_collection_id == NULL || g_strcmp0 (repo_collection_id, ref->collection_id) == 0)
+      g_mutex_lock (&self->txn_lock);
+      if (self->txn.collection_refs)
         {
-          g_mutex_lock (&self->txn_lock);
-          ret_contents = g_strdup (g_hash_table_lookup (self->txn.collection_refs, ref));
-          g_mutex_unlock (&self->txn_lock);
-        }
+          const char *repo_collection_id = ostree_repo_get_collection_id (self);
+          /* If the collection ID doesn't match it's a remote ref */
+          if (!(flags & OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY) ||
+              repo_collection_id == NULL ||
+              g_strcmp0 (repo_collection_id, ref->collection_id) == 0)
+            {
+              ret_contents = g_strdup (g_hash_table_lookup (self->txn.collection_refs, ref));
+            }
+         }
+      g_mutex_unlock (&self->txn_lock);
     }
 
   /* Check for the ref on disk in the repo */
