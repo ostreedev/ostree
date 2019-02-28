@@ -51,19 +51,19 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree config get</command> <arg choice="req">SECTIONNAME.KEYNAME</arg>
+                <command>ostree config get</command> <arg choice="req">GROUPNAME.KEYNAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree config get</command> <arg choice="req"> --group=GROUPNAME</arg> <arg choice="req"> KEYNAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
-                <command>ostree config set</command> <arg choice="req">SECTIONNAME.KEYNAME</arg> <arg choice="req">VALUE</arg>
+                <command>ostree config set</command> <arg choice="req">GROUPNAME.KEYNAME</arg> <arg choice="req">VALUE</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree config set</command> <arg choice="req"> --group=GROUPNAME</arg> <arg choice="req"> KEYNAME</arg> <arg choice="req">VALUE</arg>
             </cmdsynopsis>
             <cmdsynopsis>
-                <command>ostree config unset</command> <arg choice="req">SECTIONNAME.KEYNAME</arg>
+                <command>ostree config unset</command> <arg choice="req">GROUPNAME.KEYNAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree config unset</command> <arg choice="req"> --group=GROUPNAME</arg> <arg choice="req"> KEYNAME</arg>
@@ -77,8 +77,6 @@ Boston, MA 02111-1307, USA.
             <listitem><para>
                 <command>ostree config get</command> displays the value of
                 <arg choice="plain">KEYNAME</arg> in the group <arg choice="plain">GROUPNAME</arg>
-                (or <arg choice="plain">SECTIONNAME</arg> depending on the
-                syntax used).
             </para></listitem>
             <listitem><para>
                 <command>ostree config set</command> sets the value of
