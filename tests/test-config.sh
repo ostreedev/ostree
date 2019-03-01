@@ -34,7 +34,7 @@ ${CMD_PREFIX} ostree config --repo=repo get --group=core repo_version >> list.tx
 ${CMD_PREFIX} ostree config --repo=repo get --group='remote "flathub"' 'xa.title' >> list.txt
 ${CMD_PREFIX} ostree config --repo=repo get --group='remote "flathub"' 'xa.title-is-set' >> list.txt
 ${CMD_PREFIX} ostree config --repo=repo get --group='remote "org.mozilla.FirefoxRepo"' url >> list.txt
-${CMD_PREFIX}  cat list.txt
+${CMD_PREFIX} cat list.txt
 
 assert_file_has_content list.txt "bare"
 assert_file_has_content list.txt "1"
