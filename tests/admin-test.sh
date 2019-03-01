@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((25 + ${extra_admin_tests:-0}))"
+echo "1..$((26 + ${extra_admin_tests:-0}))"
 
 function validate_bootloader() {
     cd ${test_tmpdir};
@@ -279,6 +279,16 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf 'consol
 validate_bootloader
 
 echo "ok upgrade with multiple kernel args"
+
+os_repository_new_commit
+${CMD_PREFIX} ostree admin upgrade --os=testos
+assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 ${version} (ostree:testos)$"
+os_repository_new_commit 0 0 testos/buildmaster/x86_64-runtime 42
+${CMD_PREFIX} ostree admin upgrade --os=testos
+assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 (ostree:testos)$"
+
+echo "ok no duplicate version strings in title"
+
 
 # Test upgrade with and without --override-commit
 # See https://github.com/GNOME/ostree/pull/147
