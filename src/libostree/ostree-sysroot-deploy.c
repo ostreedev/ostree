@@ -1739,7 +1739,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
    *     (specifically, it looks for the substring "(ostree"), so further
    *     changes to the title format may require updating that backend. */
   g_autoptr(GString) title_key = g_string_new (val);
-  if (deployment_version && *deployment_version)
+  if (deployment_version && *deployment_version && !strstr (val, deployment_version))
     {
       g_string_append_c (title_key, ' ');
       g_string_append (title_key, deployment_version);
