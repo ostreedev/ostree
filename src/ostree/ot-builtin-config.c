@@ -71,6 +71,7 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autofree char *section = NULL;
   g_autofree char *key = NULL;
   g_autoptr(GKeyFile) config = NULL;
+  int correct_argc;
 
   context = g_option_context_new ("(get KEY|set KEY VALUE|unset KEY)");
 
@@ -84,6 +85,17 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
     }
 
   op = argv[1];
+
+  if (!strcmp (op, "set"))
+    correct_argc = 4;
+  else
+    correct_argc = 3;
+
+  if (argc > correct_argc)
+    {
+      ot_util_usage_error (context, "Too many arguments given", error);
+      return FALSE;
+    }
 
   if (!strcmp (op, "set"))
     {

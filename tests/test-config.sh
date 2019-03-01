@@ -41,6 +41,12 @@ assert_file_has_content list.txt "1"
 assert_file_has_content list.txt "Flathub"
 assert_file_has_content list.txt "true"
 assert_file_has_content list.txt "http://example.com/ostree/repo/"
+
+# Check that it errors out if too many arguments are given
+if ${CMD_PREFIX} ostree config --repo=repo get --group=core lock-timeout-secs extra 2>err.txt; then
+    assert_not_reached "ostree config get should error out if too many arguments are given"
+fi
+assert_file_has_content err.txt "error: Too many arguments given"
 echo "ok config get"
 
 ${CMD_PREFIX} ostree config --repo=repo set core.mode bare-user-only
@@ -52,6 +58,12 @@ assert_file_has_content repo/config "bare-user-only"
 assert_file_has_content repo/config "Nightly Flathub"
 assert_file_has_content repo/config "false"
 assert_file_has_content repo/config "http://example.com/ostree/"
+
+# Check that it errors out if too many arguments are given
+if ${CMD_PREFIX} ostree config --repo=repo set --group=core lock-timeout-secs 120 extra 2>err.txt; then
+    assert_not_reached "ostree config set should error out if too many arguments are given"
+fi
+assert_file_has_content err.txt "error: Too many arguments given"
 echo "ok config set"
 
 # Check that "ostree config unset" works
@@ -76,4 +88,10 @@ ${CMD_PREFIX} ostree config --repo=repo unset --group='remote "aoeuhtns"' 'xa.ti
 # Check that the key doesn't need to exist
 ${CMD_PREFIX} ostree config --repo=repo set --group='remote "aoeuhtns"' 'xa.title-is-set' 'false'
 ${CMD_PREFIX} ostree config --repo=repo unset --group='remote "aoeuhtns"' 'xa.title'
+
+# Check that it errors out if too many arguments are given
+if ${CMD_PREFIX} ostree config --repo=repo unset core.lock-timeout-secs extra 2>err.txt; then
+    assert_not_reached "ostree config unset should error out if too many arguments are given"
+fi
+assert_file_has_content err.txt "error: Too many arguments given"
 echo "ok config unset"
