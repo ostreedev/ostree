@@ -763,7 +763,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
     }
   else
     {
-      g_print ("From scratch: true\n");
+      g_print ("From <scratch>\n");
     }
   g_autoptr(GVariant) to_commit_v = NULL;
   g_variant_get_child (delta_superblock, 3, "@ay", &to_commit_v);
