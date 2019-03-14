@@ -54,13 +54,15 @@ _ostree_bootloader_get_name (OstreeBootloader  *self)
 gboolean
 _ostree_bootloader_write_config (OstreeBootloader  *self,
                             int            bootversion,
+                            GPtrArray     *new_deployments,
                             GCancellable  *cancellable,
                             GError       **error)
 {
   g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
 
-  return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion, 
-                                                       cancellable, error);
+  return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion,
+                                                           new_deployments,
+                                                           cancellable, error);
 }
 
 gboolean

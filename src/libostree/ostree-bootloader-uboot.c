@@ -158,10 +158,11 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
 }
 
 static gboolean
-_ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
-                                  int                    bootversion,
-                                  GCancellable          *cancellable,
-                                  GError               **error)
+_ostree_bootloader_uboot_write_config (OstreeBootloader *bootloader,
+                                       int               bootversion,
+                                       GPtrArray        *new_deployments,
+                                       GCancellable     *cancellable,
+                                       GError          **error)
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
 
