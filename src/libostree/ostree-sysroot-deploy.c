@@ -2122,7 +2122,8 @@ write_deployments_bootswap (OstreeSysroot     *self,
   if (bootloader)
     {
       if (!_ostree_bootloader_write_config (bootloader, new_bootversion,
-                                            cancellable, error))
+                                            new_deployments, cancellable,
+                                            error))
         return glnx_prefix_error (error, "Bootloader write config");
     }
 

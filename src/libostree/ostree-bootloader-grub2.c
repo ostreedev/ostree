@@ -332,6 +332,7 @@ grub2_child_setup (gpointer user_data)
 static gboolean
 _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
                                        int                    bootversion,
+                                       GPtrArray             *new_deployments,
                                        GCancellable          *cancellable,
                                        GError               **error)
 {
@@ -357,15 +358,11 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   if (use_system_grub2_mkconfig && ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
       && g_file_has_parent (self->sysroot->path, NULL))
     {
-      g_autoptr(GPtrArray) deployments = NULL;
       OstreeDeployment *tool_deployment;
       g_autoptr(GFile) tool_deployment_root = NULL;
 
-      deployments = ostree_sysroot_get_deployments (self->sysroot);
-
-      g_assert_cmpint (deployments->len, >, 0);
-
-      tool_deployment = deployments->pdata[0];
+      g_assert_cmpint (new_deployments->len, >, 0);
+      tool_deployment = new_deployments->pdata[0];
 
       /* Sadly we have to execute code to generate the bootloader configuration.
        * If we're in a booted deployment, we just don't chroot.
@@ -379,6 +376,8 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
       tool_deployment_root = ostree_sysroot_get_deployment_directory (self->sysroot, tool_deployment);
       grub2_mkconfig_chroot = g_file_get_path (tool_deployment_root);
     }
+
+  g_debug ("Using grub2-mkconfig chroot: %s\n", grub2_mkconfig_chroot);
 
   g_autoptr(GFile) new_config_path = NULL;
   g_autoptr(GFile) config_path_efi_dir = NULL;
