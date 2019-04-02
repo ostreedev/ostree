@@ -61,7 +61,7 @@ set_up_repo_with_collection_id
 
 # fsck at this point should succeed
 ${CMD_PREFIX} ostree fsck --repo=repo > fsck
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 # Drop the commit the ref points to, and drop the original ref so that fsck doesn’t prematurely fail on that.
 find repo/objects -name '*.commit' -delete -print | wc -l > commitcount
@@ -73,8 +73,8 @@ rm repo/refs/heads/ref1
 if ${CMD_PREFIX} ostree fsck --repo=repo > fsck; then
     assert_not_reached "fsck unexpectedly succeeded after deleting commit!"
 fi
-assert_file_has_content fsck "^Validating refs...$"
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 echo "ok 1 fsck-collections"
 
@@ -84,8 +84,8 @@ set_up_repo_with_collection_id
 rm -rf repo/refs/mirrors
 
 ${CMD_PREFIX} ostree fsck --repo=repo > fsck
-assert_file_has_content fsck "^Validating refs...$"
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 echo "ok 2 fsck-collections in old repository"
 
@@ -101,7 +101,7 @@ if ${CMD_PREFIX} ostree fsck --repo=repo --verify-bindings > fsck 2> fsck-error;
     assert_not_reached "fsck unexpectedly succeeded after adding unbound ref!"
 fi
 assert_file_has_content fsck-error "Commit has no requested ref ‘new-ref’ in ref binding metadata (‘ref1’)"
-assert_file_has_content fsck "^Validating refs...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
 
 echo "ok 3 fsck detects missing ref bindings"
 
@@ -114,8 +114,8 @@ if ${CMD_PREFIX} ostree fsck --repo=repo --verify-bindings > fsck 2> fsck-error;
     assert_not_reached "fsck unexpectedly succeeded after adding unbound ref!"
 fi
 assert_file_has_content fsck-error "Commit has no requested ref ‘new-ref’ in ref binding metadata (‘ref1’)"
-assert_file_has_content fsck "^Validating refs...$"
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 echo "ok 4 fsck detects missing collection–ref bindings"
 
@@ -127,9 +127,9 @@ ${CMD_PREFIX} ostree --repo=repo refs --collections --create=org.example.Collect
 if ${CMD_PREFIX} ostree fsck --repo=repo --verify-bindings > fsck 2> fsck-error; then
     assert_not_reached "fsck unexpectedly succeeded after adding unbound ref!"
 fi
-assert_file_has_content fsck-error "Commit has collection ID ‘org.example.Collection’ in collection binding metadata, while the remote it came from has collection ID ‘org.example.Collection2’"
-assert_file_has_content fsck "^Validating refs...$"
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck-error "Commit has collection ID ‘org\.example\.Collection’ in collection binding metadata, while the remote it came from has collection ID ‘org\.example\.Collection2’"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 echo "ok 5 fsck detects missing collection–ref bindings"
 
@@ -139,7 +139,7 @@ ${CMD_PREFIX} ostree --repo=repo refs --delete ref1
 
 # fsck at this point should succeed
 ${CMD_PREFIX} ostree fsck --repo=repo > fsck
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 echo "ok 6 fsck ignores unreferenced ref bindings"
 
@@ -147,9 +147,9 @@ echo "ok 6 fsck ignores unreferenced ref bindings"
 if ${CMD_PREFIX} ostree fsck --repo=repo --verify-back-refs > fsck 2> fsck-error; then
     assert_not_reached "fsck unexpectedly succeeded after adding unbound ref!"
 fi
-assert_file_has_content fsck-error "Collection–ref (org.example.Collection, ref1) in bindings for commit .* does not exist"
-assert_file_has_content fsck "^Validating refs...$"
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck-error "Collection–ref (org\.example\.Collection, ref1) in bindings for commit .* does not exist"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 echo "ok 7 fsck ignores unreferenced ref bindings"
 
@@ -161,7 +161,7 @@ set_up_repo_without_collection_id
 
 # fsck at this point should succeed
 ${CMD_PREFIX} ostree fsck --repo=repo --verify-bindings > fsck
-assert_file_has_content fsck "^Validating refs in collections...$"
+assert_file_has_content fsck "^Validating refs in collections\.\.\.$"
 
 # Drop the commit the ref points to, and drop the original ref so that fsck doesn’t prematurely fail on that.
 find repo/objects -name '*.commit' -delete -print | wc -l > commitcount
@@ -173,7 +173,7 @@ rm repo/refs/heads/ref3
 if ${CMD_PREFIX} ostree fsck --repo=repo --verify-bindings > fsck; then
     assert_not_reached "fsck unexpectedly succeeded after deleting commit!"
 fi
-assert_file_has_content fsck "^Validating refs...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
 
 echo "ok 8 fsck-collections"
 
@@ -187,7 +187,7 @@ if ${CMD_PREFIX} ostree fsck --repo=repo --verify-bindings > fsck 2> fsck-error;
     assert_not_reached "fsck unexpectedly succeeded after adding unbound ref!"
 fi
 assert_file_has_content fsck-error "Commit has no requested ref ‘new-ref’ in ref binding metadata (‘ref3’, ‘ref4’)"
-assert_file_has_content fsck "^Validating refs...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
 
 echo "ok 9 fsck detects missing ref bindings"
 
@@ -197,7 +197,7 @@ ${CMD_PREFIX} ostree --repo=repo refs --delete ref3
 
 # fsck at this point should succeed
 ${CMD_PREFIX} ostree fsck --repo=repo > fsck
-assert_file_has_content fsck "^Validating refs...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
 
 echo "ok 10 fsck ignores unreferenced ref bindings"
 
@@ -206,6 +206,6 @@ if ${CMD_PREFIX} ostree fsck --repo=repo --verify-back-refs > fsck 2> fsck-error
     assert_not_reached "fsck unexpectedly succeeded after adding unbound ref!"
 fi
 assert_file_has_content fsck-error "Ref ‘ref3’ in bindings for commit .* does not exist"
-assert_file_has_content fsck "^Validating refs...$"
+assert_file_has_content fsck "^Validating refs\.\.\.$"
 
 echo "ok 11 fsck ignores unreferenced ref bindings"

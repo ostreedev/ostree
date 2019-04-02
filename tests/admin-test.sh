@@ -60,7 +60,7 @@ validate_bootloader
 echo "ok deploy command"
 
 ${CMD_PREFIX} ostree admin --print-current-dir > curdir
-assert_file_has_content curdir ^`pwd`/sysroot/ostree/deploy/testos/deploy/${rev}.0$
+assert_file_has_content curdir ^`pwd`/sysroot/ostree/deploy/testos/deploy/${rev}\.0$
 
 echo "ok --print-current-dir"
 
@@ -239,7 +239,7 @@ cp ${originfile} saved-origin
 ${CMD_PREFIX} ostree admin set-origin --index=0 bacon --set=gpg-verify=false http://tasty.com
 assert_file_has_content "${originfile}" "bacon:testos/buildmaster/x86_64-runtime"
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote list -u > remotes.txt
-assert_file_has_content remotes.txt 'bacon.*http://tasty.com'
+assert_file_has_content remotes.txt 'bacon.*http://tasty\.com'
 cp saved-origin ${originfile}
 validate_bootloader
 

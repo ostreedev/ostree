@@ -35,7 +35,7 @@ ostree --repo=repo commit --selinux-policy / -b rootfs --link-checkout-speedup -
 ostree --repo=repo ls rootfs /usr/bin/systemd >ls.txt
 assert_file_has_content ls.txt '^-007.. 0 0 .*/usr/bin/systemd'
 ostree --repo=repo ls -X rootfs /usr/lib/dbus-daemon-helper >ls.txt
-assert_file_has_content ls.txt '^-007.. 0 81 .*security.selinux.*/usr/lib/dbus-daemon-helper'
-assert_not_file_has_content ls.txt 'user.ostreemeta'
+assert_file_has_content ls.txt '^-007.. 0 81 .*security\.selinux.*/usr/lib/dbus-daemon-helper'
+assert_not_file_has_content ls.txt 'user\.ostreemeta'
 echo "ok bare-user link-checkout-speedup with modified xattrs maintains uids"
 date

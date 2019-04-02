@@ -40,7 +40,7 @@ assert_file_has_content list.txt "bare"
 assert_file_has_content list.txt "1"
 assert_file_has_content list.txt "Flathub"
 assert_file_has_content list.txt "true"
-assert_file_has_content list.txt "http://example.com/ostree/repo/"
+assert_file_has_content list.txt "http://example\.com/ostree/repo/"
 
 # Check that it errors out if too many arguments are given
 if ${CMD_PREFIX} ostree config --repo=repo get --group=core lock-timeout-secs extra 2>err.txt; then
@@ -57,7 +57,7 @@ ${CMD_PREFIX} ostree config --repo=repo set --group='remote "org.mozilla.Firefox
 assert_file_has_content repo/config "bare-user-only"
 assert_file_has_content repo/config "Nightly Flathub"
 assert_file_has_content repo/config "false"
-assert_file_has_content repo/config "http://example.com/ostree/"
+assert_file_has_content repo/config "http://example\.com/ostree/"
 
 # Check that it errors out if too many arguments are given
 if ${CMD_PREFIX} ostree config --repo=repo set --group=core lock-timeout-secs 120 extra 2>err.txt; then

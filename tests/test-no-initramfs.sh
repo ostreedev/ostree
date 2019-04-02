@@ -83,7 +83,7 @@ do
     ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
 
     assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'init='
-    assert_file_has_content sysroot/boot/"$(get_key_from_bootloader_conf sysroot/boot/loader/entries/ostree-2-testos.conf 'devicetree')" "my .dtb file"
+    assert_file_has_content sysroot/boot/"$(get_key_from_bootloader_conf sysroot/boot/loader/entries/ostree-2-testos.conf 'devicetree')" "my \.dtb file"
     assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'initrd'
 
     echo "ok switching from initramfs to no initramfs sysroot with devicetree layout=$layout"

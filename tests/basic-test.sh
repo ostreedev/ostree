@@ -245,7 +245,7 @@ EOF
 $OSTREE commit ${COMMIT_ARGS} -b branch-with-commitmsg -F commitmsg.txt -s 'a message' $test_tmpdir/checkout-test2-4
 $OSTREE log branch-with-commitmsg > log.txt
 assert_file_has_content log.txt '^ *This is a long$'
-assert_file_has_content log.txt '^ *Build-Host:.*example.com$'
+assert_file_has_content log.txt '^ *Build-Host:.*example\.com$'
 assert_file_has_content log.txt '^ *Crunchy-With.*true$'
 $OSTREE refs --delete branch-with-commitmsg
 echo "ok commit body file"

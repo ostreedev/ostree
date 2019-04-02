@@ -56,9 +56,9 @@ ${CMD_PREFIX} ostree --repo=local-repo create-usb dest-mount1 org.example.Collec
 
 assert_has_dir dest-mount1/.ostree/repo
 ${CMD_PREFIX} ostree --repo=dest-mount1/.ostree/repo refs --collections > dest-refs
-assert_file_has_content dest-refs "^(org.example.Collection1, test-1)$"
-assert_file_has_content dest-refs "^(org.example.Collection1, test-2)$"
-assert_not_file_has_content dest-refs "^(org.example.Collection1, test-3)$"
+assert_file_has_content dest-refs "^(org\.example\.Collection1, test-1)$"
+assert_file_has_content dest-refs "^(org\.example\.Collection1, test-2)$"
+assert_not_file_has_content dest-refs "^(org\.example\.Collection1, test-3)$"
 assert_has_file dest-mount1/.ostree/repo/summary
 
 echo "ok 1 simple usb"
@@ -83,7 +83,7 @@ ${CMD_PREFIX} ostree --repo=local-repo create-usb --destination-repo some-dest d
 assert_has_dir "dest-mount3/some-dest"
 assert_symlink_has_content "dest-mount3/.ostree/repos.d/00-generated" "/some-dest$"
 ${CMD_PREFIX} ostree --repo=dest-mount3/.ostree/repos.d/00-generated refs --collections > dest-refs
-assert_file_has_content dest-refs "^(org.example.Collection1, test-1)$"
+assert_file_has_content dest-refs "^(org\.example\.Collection1, test-1)$"
 assert_has_file dest-mount3/.ostree/repos.d/00-generated/summary
 
 echo "ok 3 usb in non-standard location"
@@ -93,13 +93,13 @@ ${CMD_PREFIX} ostree --repo=local-repo create-usb --destination-repo some-dest d
 assert_has_dir "dest-mount3/some-dest"
 assert_symlink_has_content "dest-mount3/.ostree/repos.d/00-generated" "/some-dest$"
 ${CMD_PREFIX} ostree --repo=dest-mount3/.ostree/repos.d/00-generated refs --collections > dest-refs
-assert_file_has_content dest-refs "^(org.example.Collection1, test-1)$"
-assert_file_has_content dest-refs "^(org.example.Collection1, test-2)$"
-assert_file_has_content dest-refs "^(org.example.Collection1, test-3)$"
+assert_file_has_content dest-refs "^(org\.example\.Collection1, test-1)$"
+assert_file_has_content dest-refs "^(org\.example\.Collection1, test-2)$"
+assert_file_has_content dest-refs "^(org\.example\.Collection1, test-3)$"
 ${CMD_PREFIX} ostree --repo=dest-mount3/.ostree/repos.d/00-generated summary -v > dest-summary
-assert_file_has_content dest-summary "(org.example.Collection1, test-1)$"
-assert_file_has_content dest-summary "(org.example.Collection1, test-2)$"
-assert_file_has_content dest-summary "(org.example.Collection1, test-3)$"
+assert_file_has_content dest-summary "(org\.example\.Collection1, test-1)$"
+assert_file_has_content dest-summary "(org\.example\.Collection1, test-2)$"
+assert_file_has_content dest-summary "(org\.example\.Collection1, test-3)$"
 
 echo "ok 4 adding ref to an existing usb"
 
@@ -109,7 +109,7 @@ ostree_repo_init finder-repo
 ${CMD_PREFIX} ostree --repo=finder-repo remote add remote1 file://$(pwd)/just-needed-for-the-keyring --collection-id org.example.Collection1 --gpg-import="${test_tmpdir}/gpghome/key1.asc"
 
 ${test_builddir}/repo-finder-mount finder-repo dest-mount1 org.example.Collection1 test-1 org.example.Collection1 test-2 &> out
-assert_file_has_content out "^0 .*_2Fdest-mount1_2F.ostree_2Frepo_remote1.trustedkeys.gpg org.example.Collection1 test-1 $(ostree --repo=repo show test-1)$"
-assert_file_has_content out "^0 .*_2Fdest-mount1_2F.ostree_2Frepo_remote1.trustedkeys.gpg org.example.Collection1 test-2 $(ostree --repo=repo show test-2)$"
+assert_file_has_content out "^0 .*_2Fdest-mount1_2F\.ostree_2Frepo_remote1\.trustedkeys\.gpg org\.example\.Collection1 test-1 $(ostree --repo=repo show test-1)$"
+assert_file_has_content out "^0 .*_2Fdest-mount1_2F\.ostree_2Frepo_remote1\.trustedkeys\.gpg org\.example\.Collection1 test-2 $(ostree --repo=repo show test-2)$"
 
 echo "ok 5 find from usb repo"

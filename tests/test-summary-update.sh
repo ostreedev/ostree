@@ -90,12 +90,12 @@ assert_file_has_content summary "^map: {}$"
 
 # Check the ostree-metadata ref has also been created with the same content and appropriate bindings.
 ${CMD_PREFIX} ostree --repo=repo refs --collections > refs
-assert_file_has_content refs "^(org.example.Collection1, ostree-metadata)$"
+assert_file_has_content refs "^(org\.example\.Collection1, ostree-metadata)$"
 
 ${CMD_PREFIX} ostree --repo=repo show ostree-metadata --raw > metadata
 assert_file_has_content metadata "'map': <@a{sv} {}>"
-assert_file_has_content metadata "'ostree.ref-binding': <\['ostree-metadata'\]>"
-assert_file_has_content metadata "'ostree.collection-binding': <'org.example.Collection1'>"
+assert_file_has_content metadata "'ostree\.ref-binding': <\['ostree-metadata'\]>"
+assert_file_has_content metadata "'ostree\.collection-binding': <'org\.example\.Collection1'>"
 
 # There should be 5 commits in the ostree-metadata branch, since we’ve updated the summary 5 times.
 ${CMD_PREFIX} ostree --repo=repo log ostree-metadata | grep 'commit ' | wc -l > commit-count

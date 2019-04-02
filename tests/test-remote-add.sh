@@ -51,18 +51,18 @@ $OSTREE remote list > list.txt
 assert_file_has_content list.txt "origin"
 assert_file_has_content list.txt "another"
 assert_file_has_content list.txt "another-noexist"
-assert_not_file_has_content list.txt "http://example.com/ostree/gnome"
-assert_not_file_has_content list.txt "http://another.com/repo"
-assert_not_file_has_content list.txt "http://another-noexist.example.com/anotherrepo"
+assert_not_file_has_content list.txt "http://example\.com/ostree/gnome"
+assert_not_file_has_content list.txt "http://another\.com/repo"
+assert_not_file_has_content list.txt "http://another-noexist\.example\.com/anotherrepo"
 echo "ok remote list"
 
 $OSTREE remote list --show-urls > list.txt
 assert_file_has_content list.txt "origin"
 assert_file_has_content list.txt "another"
 assert_file_has_content list.txt "another-noexist"
-assert_file_has_content list.txt "http://example.com/ostree/gnome"
-assert_file_has_content list.txt "http://another.com/repo"
-assert_file_has_content list.txt "http://another-noexist.example.com/anotherrepo"
+assert_file_has_content list.txt "http://example\.com/ostree/gnome"
+assert_file_has_content list.txt "http://another\.com/repo"
+assert_file_has_content list.txt "http://another-noexist\.example\.com/anotherrepo"
 echo "ok remote list with urls"
 
 cd ${test_tmpdir}
@@ -116,5 +116,5 @@ echo "ok remote add fail --if-not-exists and --force"
 # Overwrite with --force
 $OSTREE remote add --force another http://another.example.com/anotherrepo
 $OSTREE remote list --show-urls > list.txt
-assert_file_has_content list.txt "^another \+http://another.example.com/anotherrepo$"
+assert_file_has_content list.txt "^another \+http://another\.example\.com/anotherrepo$"
 echo "ok remote add --force"

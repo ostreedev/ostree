@@ -101,9 +101,9 @@ for fs_type in ext4 vfat; do
 
     assert_has_dir "${usb_mount}"/.ostree/repo
     ${CMD_PREFIX} ostree --repo="${usb_mount}"/.ostree/repo refs --collections > dest-refs
-    assert_file_has_content dest-refs "^(org.example.Collection1, test-1)$"
-    assert_file_has_content dest-refs "^(org.example.Collection1, test-2)$"
-    assert_not_file_has_content dest-refs "^(org.example.Collection1, test-3)$"
+    assert_file_has_content dest-refs "^(org\.example\.Collection1, test-1)$"
+    assert_file_has_content dest-refs "^(org\.example\.Collection1, test-2)$"
+    assert_not_file_has_content dest-refs "^(org\.example\.Collection1, test-3)$"
     assert_has_file "${usb_mount}"/.ostree/repo/summary
 
     # Pull into a second local repository (theoretically, a separate computer).
@@ -112,15 +112,15 @@ for fs_type in ext4 vfat; do
     ${CMD_PREFIX} ostree --repo=peer-repo_$fs_type remote add remote1 file://just-here-for-the-keyring --collection-id org.example.Collection1 --gpg-import="${test_tmpdir}/gpghome/key1.asc"
 
     ${CMD_PREFIX} ostree --repo=peer-repo_$fs_type find-remotes --finders=mount org.example.Collection1 test-1 > find-results
-    assert_not_file_has_content find-results "^No results.$"
+    assert_not_file_has_content find-results "^No results\.$"
     assert_file_has_content find-results "^Result 0: file://${usb_mount}"
-    assert_file_has_content find-results "(org.example.Collection1, test-1) = $(cat ref1-checksum)$"
+    assert_file_has_content find-results "(org\.example\.Collection1, test-1) = $(cat ref1-checksum)$"
 
     ${CMD_PREFIX} ostree --repo=peer-repo_$fs_type find-remotes --finders=mount --pull org.example.Collection1 test-1 > pull-results
-    assert_file_has_content pull-results "^Pulled 1/1 refs successfully.$"
+    assert_file_has_content pull-results "^Pulled 1/1 refs successfully\.$"
 
     ${CMD_PREFIX} ostree --repo=peer-repo_$fs_type refs --collections > refs
-    assert_file_has_content refs "^(org.example.Collection1, test-1)$"
+    assert_file_has_content refs "^(org\.example\.Collection1, test-1)$"
 
     ${SUDO} umount "${MOUNT_INTEGRATION_DEV}"
 
