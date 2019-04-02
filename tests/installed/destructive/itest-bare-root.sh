@@ -27,7 +27,7 @@ ostree fsck
 ostree ls -X testref ${victim_symlink} > ls.txt
 assert_file_has_content ls.txt 'security\.biometric'
 ostree ls -X ${host_refspec} ${victim_symlink} > ls.txt
-assert_not_file_has_content ls.txt security\.biometric
+assert_not_file_has_content ls.txt 'security\.biometric'
 ostree ls -X testref usr/bin > ls.txt
 assert_file_has_content ls.txt 'security\.crunchy'
 
