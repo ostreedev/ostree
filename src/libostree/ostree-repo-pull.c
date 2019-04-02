@@ -3034,7 +3034,7 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                         &http_proxy, error))
       goto out;
 
-    if (http_proxy != NULL)
+    if (http_proxy != NULL && http_proxy[0] != '\0')
       _ostree_fetcher_set_proxy (fetcher, http_proxy);
   }
 
