@@ -46,11 +46,11 @@ assert_file_has_content refscount "^5$"
 ${CMD_PREFIX} ostree --repo=repo refs > refs
 assert_file_has_content refs "^test\-1$"
 assert_file_has_content refs "^test\-5$"
-assert_not_file_has_content refs "org.example.Collection"
+assert_not_file_has_content refs "org\.example\.Collection"
 
 ${CMD_PREFIX} ostree --repo=repo refs --collections > refs
-assert_file_has_content refs "^(org.example.Collection, test-1)$"
-assert_file_has_content refs "^(org.example.Collection, test-5)$"
+assert_file_has_content refs "^(org\.example\.Collection, test-1)$"
+assert_file_has_content refs "^(org\.example\.Collection, test-5)$"
 
 # Similarly, the collection IDs should only be listed when filtering if --collections is passed.
 ${CMD_PREFIX} ostree --repo=repo refs --list org.example.Collection | wc -l > refscount
@@ -102,8 +102,8 @@ assert_file_has_content refs "^ctest$"
 assert_not_file_has_content refs "^ctest-mirror$"
 
 ${CMD_PREFIX} ostree --repo=repo refs --collections > refs
-assert_file_has_content refs "^(org.example.Collection, ctest)$"
-assert_file_has_content refs "^(org.example.NewCollection, ctest-mirror)$"
+assert_file_has_content refs "^(org\.example\.Collection, ctest)$"
+assert_file_has_content refs "^(org\.example\.NewCollection, ctest-mirror)$"
 
 # Remote refs should be listed if they have collection IDs
 
@@ -116,13 +116,13 @@ ${CMD_PREFIX} ostree --repo=repo remote add --no-gpg-verify --collection-id org.
 ${CMD_PREFIX} ostree --repo=repo pull collection-repo-remote rcommit
 
 ${CMD_PREFIX} ostree --repo=repo refs --collections > refs
-assert_file_has_content refs "^(org.example.RemoteCollection, rcommit)$"
+assert_file_has_content refs "^(org\.example\.RemoteCollection, rcommit)$"
 
 ${CMD_PREFIX} ostree --repo=repo refs --collections org.example.RemoteCollection > refs
-assert_file_has_content refs "^(org.example.RemoteCollection, rcommit)$"
+assert_file_has_content refs "^(org\.example\.RemoteCollection, rcommit)$"
 
 ${CMD_PREFIX} ostree --repo=repo refs --collections org.example.NonexistentID > refs
-assert_not_file_has_content refs "^(org.example.RemoteCollection, rcommit)$"
+assert_not_file_has_content refs "^(org\.example\.RemoteCollection, rcommit)$"
 
 cd ${test_tmpdir}
 mkdir no-collection-repo
@@ -147,8 +147,8 @@ ${CMD_PREFIX} ostree --repo=repo refs --collections
 rm -rf repo/refs/mirrors
 ${CMD_PREFIX} ostree --repo=repo refs --collections --create=org.example.NewCollection:ctest-mirror ctest
 ${CMD_PREFIX} ostree --repo=repo refs --collections > refs
-assert_file_has_content refs "^(org.example.Collection, ctest)$"
-assert_file_has_content refs "^(org.example.NewCollection, ctest-mirror)$"
+assert_file_has_content refs "^(org\.example\.Collection, ctest)$"
+assert_file_has_content refs "^(org\.example\.NewCollection, ctest-mirror)$"
 
 rm -rf repo/refs/mirrors
 ${CMD_PREFIX} ostree refs --repo=repo --collections --delete org.example.NonexistentCollection

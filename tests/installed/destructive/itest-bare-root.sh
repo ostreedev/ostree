@@ -25,17 +25,17 @@ setfattr -n security.crunchy -v withketchup co/usr/bin
 csum=$(ostree commit -b testref --link-checkout-speedup --tree=dir=co)
 ostree fsck
 ostree ls -X testref ${victim_symlink} > ls.txt
-assert_file_has_content ls.txt 'security.biometric'
+assert_file_has_content ls.txt 'security\.biometric'
 ostree ls -X ${host_refspec} ${victim_symlink} > ls.txt
-assert_not_file_has_content ls.txt security.biometric
+assert_not_file_has_content ls.txt security\.biometric
 ostree ls -X testref usr/bin > ls.txt
-assert_file_has_content ls.txt 'security.crunchy'
+assert_file_has_content ls.txt 'security\.crunchy'
 
 ostree checkout -H testref co-testref
 getfattr -n security.biometric co-testref/${victim_symlink} > xattr.txt
-assert_file_has_content xattr.txt 'security.biometric="iris"'
+assert_file_has_content xattr.txt 'security\.biometric="iris"'
 getfattr -n security.crunchy co-testref/usr/bin > xattr.txt
-assert_file_has_content xattr.txt 'security.crunchy="withketchup"'
+assert_file_has_content xattr.txt 'security\.crunchy="withketchup"'
 
 rm co -rf
 rm co-testref -rf

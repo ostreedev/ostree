@@ -43,19 +43,19 @@ done
 ${CMD_PREFIX} ostree --repo=repo summary --update
 
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
-assert_file_has_content summary "(org.example.Collection, test-1)$"
-assert_file_has_content summary "(org.example.Collection, test-2)$"
-assert_file_has_content summary "(org.example.Collection, test-3)$"
-assert_file_has_content summary "(org.example.Collection, test-4)$"
-assert_file_has_content summary "(org.example.Collection, test-5)$"
-assert_file_has_content summary "^Collection ID (ostree\.summary\.collection-id): org.example.Collection$"
+assert_file_has_content summary "(org\.example\.Collection, test-1)$"
+assert_file_has_content summary "(org\.example\.Collection, test-2)$"
+assert_file_has_content summary "(org\.example\.Collection, test-3)$"
+assert_file_has_content summary "(org\.example\.Collection, test-4)$"
+assert_file_has_content summary "(org\.example\.Collection, test-5)$"
+assert_file_has_content summary "^Collection ID (ostree\.summary\.collection-id): org\.example\.Collection$"
 
 # Test that mirrored branches are listed too.
 ${CMD_PREFIX} ostree --repo=repo refs --collections --create=org.example.OtherCollection:test-1-mirror test-1
 ${CMD_PREFIX} ostree --repo=repo summary --update
 
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
-assert_file_has_content summary "(org.example.OtherCollection, test-1-mirror)$"
+assert_file_has_content summary "(org\.example\.OtherCollection, test-1-mirror)$"
 
 # Test that remote refs are listed, but only if they have collection IDs
 cd ${test_tmpdir}
@@ -68,7 +68,7 @@ ${CMD_PREFIX} ostree --repo=repo pull collection-repo-remote rcommit
 ${CMD_PREFIX} ostree --repo=repo summary --update
 
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
-assert_file_has_content summary "(org.example.RemoteCollection, rcommit)$"
+assert_file_has_content summary "(org\.example\.RemoteCollection, rcommit)$"
 
 cd ${test_tmpdir}
 mkdir no-collection-repo

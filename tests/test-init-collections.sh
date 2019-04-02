@@ -30,6 +30,6 @@ cd ${test_tmpdir}
 # Check that initialising a repository with a collection ID results in the ID being in the config.
 mkdir repo
 ostree_repo_init repo --collection-id org.example.Collection
-assert_file_has_content repo/config "^collection-id=org.example.Collection$"
+assert_file_has_content repo/config "^collection-id=org\.example\.Collection$"
 
 echo "ok init-collections"

@@ -146,7 +146,7 @@ assert_file_has_content summary.txt "* main"
 assert_file_has_content summary.txt "* other"
 assert_file_has_content summary.txt "* yet-another"
 assert_file_has_content summary.txt "found 1 signature"
-assert_file_has_content summary.txt "Good signature from \"Ostree Tester <test@test.com>\""
+assert_file_has_content summary.txt "Good signature from \"Ostree Tester <test@test\.com>\""
 grep static-deltas summary.txt > static-deltas.txt
 assert_file_has_content static-deltas.txt \
   $(${OSTREE} --repo=repo rev-parse origin:main)

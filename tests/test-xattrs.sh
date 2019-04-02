@@ -42,8 +42,8 @@ echo "ok commit with xattrs"
 
 ${CMD_PREFIX} ostree --repo=repo checkout test2 test2-checkout2
 getfattr -m . test2-checkout2/firstfile > attrs
-assert_file_has_content attrs '^user.ostree-test'
-assert_file_has_content attrs '^user.test0'
+assert_file_has_content attrs '^user\.ostree-test'
+assert_file_has_content attrs '^user\.test0'
 getfattr -n user.ostree-test --only-values test2-checkout2/firstfile > v0
 assert_file_has_content v0 '^testvalue$'
 getfattr -n user.test0 --only-values test2-checkout2/firstfile > v1

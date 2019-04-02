@@ -60,8 +60,8 @@ assert_file_has_content refs "^os-remote:os/amd64/master$"
 
 ${CMD_PREFIX} ostree --repo=local refs --collections > refs
 cat refs | wc -l > refscount
-assert_file_has_content refs "^(org.example.AppsCollection, app1)$"
-assert_file_has_content refs "^(org.example.OsCollection, os/amd64/master)$"
+assert_file_has_content refs "^(org\.example\.AppsCollection, app1)$"
+assert_file_has_content refs "^(org\.example\.OsCollection, os/amd64/master)$"
 assert_file_has_content refscount "^2$"
 
 # Create a local mirror repository where we pull the branches *in mirror mode* from the two remotes.
@@ -80,8 +80,8 @@ ls -1 local-mirror/refs/remotes | wc -l > remotescount
 assert_file_has_content remotescount "^0$"
 
 ${CMD_PREFIX} ostree --repo=local-mirror refs --collections > refs
-assert_file_has_content refs "^(org.example.AppsCollection, app1)$"
-assert_file_has_content refs "^(org.example.OsCollection, os/amd64/master)$"
+assert_file_has_content refs "^(org\.example\.AppsCollection, app1)$"
+assert_file_has_content refs "^(org\.example\.OsCollection, os/amd64/master)$"
 
 assert_file_has_content local-mirror/refs/mirrors/org.example.AppsCollection/app1 "^$(cat app1-checksum)$"
 assert_file_has_content local-mirror/refs/mirrors/org.example.OsCollection/os/amd64/master "^$(cat os-checksum)$"
@@ -90,69 +90,69 @@ for repo in local local-mirror; do
     # Try finding an update for an existing branch.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config org.example.AppsCollection app1 > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/apps-collection$"
-    assert_file_has_content find "^ - Keyring: apps-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.AppsCollection, app1) = $(cat app1-checksum)$"
-    assert_file_has_content find "^1/1 refs were found.$"
-    assert_not_file_has_content find "^No results.$"
+    assert_file_has_content find "^ - Keyring: apps-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.AppsCollection, app1) = $(cat app1-checksum)$"
+    assert_file_has_content find "^1/1 refs were found\.$"
+    assert_not_file_has_content find "^No results\.$"
 
     # Find several updates for several existing branches.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config org.example.AppsCollection app1 org.example.OsCollection os/amd64/master > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/apps-collection$"
-    assert_file_has_content find "^ - Keyring: apps-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.AppsCollection, app1) = $(cat app1-checksum)$"
+    assert_file_has_content find "^ - Keyring: apps-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.AppsCollection, app1) = $(cat app1-checksum)$"
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/os-collection$"
-    assert_file_has_content find "^ - Keyring: os-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum)$"
-    assert_file_has_content find "^2/2 refs were found.$"
-    assert_not_file_has_content find "^No results.$"
+    assert_file_has_content find "^ - Keyring: os-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.OsCollection, os/amd64/master) = $(cat os-checksum)$"
+    assert_file_has_content find "^2/2 refs were found\.$"
+    assert_not_file_has_content find "^No results\.$"
 
     # Find some updates and a new branch.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config org.example.AppsCollection app1 org.example.AppsCollection app2 org.example.OsCollection os/amd64/master > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/apps-collection$"
-    assert_file_has_content find "^ - Keyring: apps-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.AppsCollection, app1) = $(cat app1-checksum)$"
-    assert_file_has_content find "^    - (org.example.AppsCollection, app2) = $(cat app2-checksum)$"
+    assert_file_has_content find "^ - Keyring: apps-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.AppsCollection, app1) = $(cat app1-checksum)$"
+    assert_file_has_content find "^    - (org\.example\.AppsCollection, app2) = $(cat app2-checksum)$"
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/os-collection$"
-    assert_file_has_content find "^ - Keyring: os-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum)$"
-    assert_file_has_content find "^3/3 refs were found.$"
-    assert_not_file_has_content find "^No results.$"
+    assert_file_has_content find "^ - Keyring: os-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.OsCollection, os/amd64/master) = $(cat os-checksum)$"
+    assert_file_has_content find "^3/3 refs were found\.$"
+    assert_not_file_has_content find "^No results\.$"
 
     # Find an update and a non-existent branch.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config org.example.AppsCollection app1 org.example.AppsCollection not-an-app > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/apps-collection$"
-    assert_file_has_content find "^ - Keyring: apps-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.AppsCollection, not-an-app) = (not found)$"
-    assert_file_has_content find "^    - (org.example.AppsCollection, app1) = $(cat app1-checksum)$"
+    assert_file_has_content find "^ - Keyring: apps-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.AppsCollection, not-an-app) = (not found)$"
+    assert_file_has_content find "^    - (org\.example\.AppsCollection, app1) = $(cat app1-checksum)$"
     assert_file_has_content find "^Refs not found in any remote:$"
-    assert_file_has_content find "^ - (org.example.AppsCollection, not-an-app)$"
-    assert_file_has_content find "^1/2 refs were found.$"
-    assert_not_file_has_content find "^No results.$"
+    assert_file_has_content find "^ - (org\.example\.AppsCollection, not-an-app)$"
+    assert_file_has_content find "^1/2 refs were found\.$"
+    assert_not_file_has_content find "^No results\.$"
 
     # Do all the above, but pull this time.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config --pull org.example.AppsCollection app1 > pull || true
-    assert_file_has_content pull "^1/1 refs were found.$"
-    assert_file_has_content pull "^Pulled 1/1 refs successfully.$"
+    assert_file_has_content pull "^1/1 refs were found\.$"
+    assert_file_has_content pull "^Pulled 1/1 refs successfully\.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo app1 $(cat app1-checksum)
 
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config --pull org.example.AppsCollection app1 org.example.OsCollection os/amd64/master > pull
-    assert_file_has_content pull "^2/2 refs were found.$"
-    assert_file_has_content pull "^Pulled 2/2 refs successfully.$"
+    assert_file_has_content pull "^2/2 refs were found\.$"
+    assert_file_has_content pull "^Pulled 2/2 refs successfully\.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo app1 $(cat app1-checksum)
     assert_ref $repo os/amd64/master $(cat os-checksum)
 
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config --pull org.example.AppsCollection app1 org.example.AppsCollection app2 org.example.OsCollection os/amd64/master > pull
-    assert_file_has_content pull "^3/3 refs were found.$"
-    assert_file_has_content pull "^Pulled 3/3 refs successfully.$"
+    assert_file_has_content pull "^3/3 refs were found\.$"
+    assert_file_has_content pull "^Pulled 3/3 refs successfully\.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo app1 $(cat app1-checksum)
     assert_ref $repo app2 $(cat app2-checksum)
     assert_ref $repo os/amd64/master $(cat os-checksum)
 
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config --pull org.example.AppsCollection app1 org.example.AppsCollection not-an-app > pull
-    assert_file_has_content pull "^1/2 refs were found.$"
+    assert_file_has_content pull "^1/2 refs were found\.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo app1 $(cat app1-checksum)
     assert_not_ref $repo not-an-app
@@ -168,15 +168,15 @@ for repo in local-mirror; do
     # Try finding an update for that branch.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config org.example.OsCollection os/amd64/master > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/os-collection$"
-    assert_file_has_content find "^ - Keyring: os-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum-2)$"
-    assert_file_has_content find "^1/1 refs were found.$"
-    assert_not_file_has_content find "^No results.$"
+    assert_file_has_content find "^ - Keyring: os-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.OsCollection, os/amd64/master) = $(cat os-checksum-2)$"
+    assert_file_has_content find "^1/1 refs were found\.$"
+    assert_not_file_has_content find "^No results\.$"
 
     # Pull it.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config --pull org.example.OsCollection os/amd64/master > pull || true
-    assert_file_has_content pull "^1/1 refs were found.$"
-    assert_file_has_content pull "^Pulled 1/1 refs successfully.$"
+    assert_file_has_content pull "^1/1 refs were found\.$"
+    assert_file_has_content pull "^Pulled 1/1 refs successfully\.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo os/amd64/master $(cat os-checksum-2)
 
@@ -195,18 +195,18 @@ for repo in local; do
     # Try finding an update for that branch.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config org.example.OsCollection os/amd64/master > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/os-collection$"
-    assert_file_has_content find "^ - Keyring: os-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum-2)$"
+    assert_file_has_content find "^ - Keyring: os-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.OsCollection, os/amd64/master) = $(cat os-checksum-2)$"
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/local-mirror$"
-    assert_file_has_content find "^ - Keyring: os-remote-local-mirror.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum-2)$"
-    assert_file_has_content find "^1/1 refs were found.$"
-    assert_not_file_has_content find "^No results.$"
+    assert_file_has_content find "^ - Keyring: os-remote-local-mirror\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.OsCollection, os/amd64/master) = $(cat os-checksum-2)$"
+    assert_file_has_content find "^1/1 refs were found\.$"
+    assert_not_file_has_content find "^No results\.$"
 
     # Pull it.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config --pull org.example.OsCollection os/amd64/master > pull || true
-    assert_file_has_content pull "^1/1 refs were found.$"
-    assert_file_has_content pull "^Pulled 1/1 refs successfully.$"
+    assert_file_has_content pull "^1/1 refs were found\.$"
+    assert_file_has_content pull "^Pulled 1/1 refs successfully\.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo os/amd64/master $(cat os-checksum-2)
 done
@@ -222,15 +222,15 @@ for repo in local; do
     # Try finding an update for that branch.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config org.example.OsCollection os/amd64/master > find
     assert_file_has_content find "^Result [0-9]\+: file://$(pwd)/os-collection$"
-    assert_file_has_content find "^ - Keyring: os-remote.trustedkeys.gpg$"
-    assert_file_has_content find "^    - (org.example.OsCollection, os/amd64/master) = $(cat os-checksum-3)$"
-    assert_file_has_content find "^1/1 refs were found.$"
-    assert_not_file_has_content find "^No results.$"
+    assert_file_has_content find "^ - Keyring: os-remote\.trustedkeys\.gpg$"
+    assert_file_has_content find "^    - (org\.example\.OsCollection, os/amd64/master) = $(cat os-checksum-3)$"
+    assert_file_has_content find "^1/1 refs were found\.$"
+    assert_not_file_has_content find "^No results\.$"
 
     # Pull it.
     ${CMD_PREFIX} ostree --repo=$repo find-remotes --finders=config --pull org.example.OsCollection os/amd64/master > pull || true
-    assert_file_has_content pull "^1/1 refs were found.$"
-    assert_file_has_content pull "^Pulled 1/1 refs successfully.$"
+    assert_file_has_content pull "^1/1 refs were found\.$"
+    assert_file_has_content pull "^Pulled 1/1 refs successfully\.$"
     assert_not_file_has_content pull "Failed to pull some refs from the remotes"
     assert_ref $repo os/amd64/master $(cat os-checksum-3)
 done
