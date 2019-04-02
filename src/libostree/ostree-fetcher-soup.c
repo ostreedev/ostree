@@ -645,7 +645,7 @@ _ostree_fetcher_constructed (GObject *object)
     }
 
   http_proxy = g_getenv ("http_proxy");
-  if (http_proxy != NULL)
+  if (http_proxy != NULL && http_proxy[0] != '\0')
     _ostree_fetcher_set_proxy (self, http_proxy);
 
   /* FIXME Maybe implement GInitableIface and use g_thread_try_new()
@@ -711,7 +711,7 @@ _ostree_fetcher_set_proxy (OstreeFetcher *self,
   SoupURI *proxy_uri;
 
   g_return_if_fail (OSTREE_IS_FETCHER (self));
-  g_return_if_fail (http_proxy != NULL);
+  g_return_if_fail (http_proxy != NULL && http_proxy[0] != '\0');
 
   proxy_uri = soup_uri_new (http_proxy);
 
