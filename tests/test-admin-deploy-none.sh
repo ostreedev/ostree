@@ -37,7 +37,8 @@ setup_os_repository "archive" "sysroot.bootloader none"
 ${CMD_PREFIX} ostree pull-local --repo=sysroot/ostree/repo --remote testos testos-repo testos/buildmaster/x86_64-runtime
 # Test that configuring sysroot.bootloader="none" is a workaround for previous
 # grub2 bootloader issue (see https://github.com/ostreedev/ostree/issues/1774)
-mkdir -p sysroot/boot/grub2 && touch sysroot/boot/grub2/grub.cfg
+mkdir -p sysroot/boot/grub2
+touch sysroot/boot/grub2/grub.cfg
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os testos testos/buildmaster/x86_64-runtime > out.txt
 assert_file_has_content out.txt "Bootloader updated.*"
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.* root=LABEL=MOO'
