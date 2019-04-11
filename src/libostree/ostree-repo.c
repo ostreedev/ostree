@@ -1036,6 +1036,7 @@ ostree_repo_finalize (GObject *object)
   g_mutex_clear (&self->txn_lock);
   g_free (self->collection_id);
   g_strfreev (self->repo_finders);
+  g_free (self->bootloader);
 
   g_clear_pointer (&self->remotes, g_hash_table_destroy);
   g_mutex_clear (&self->remotes_lock);
@@ -3133,6 +3134,7 @@ reload_sysroot_config (OstreeRepo          *self,
     if (!(g_str_equal (bootloader, "auto") || g_str_equal (bootloader, "none")))
       return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
 
+    g_free (self->bootloader);
     self->bootloader = g_steal_pointer (&bootloader);
   }
 
