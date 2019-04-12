@@ -48,7 +48,7 @@ NULL=
 # Typical values for ci_distro=ubuntu: xenial, trusty
 # Typical values for ci_distro=debian: sid, jessie
 # Typical values for ci_distro=fedora might be 25, rawhide
-: "${ci_suite:=jessie}"
+: "${ci_suite:=stretch}"
 
 # ci_configopts: Additional arguments for configure
 : "${ci_configopts:=}"

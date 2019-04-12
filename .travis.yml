@@ -4,8 +4,8 @@ sudo: required
 
 env:
   - ci_distro=ubuntu ci_suite=trusty ci_test=no  # TODO: use libcurl on this
-  - ci_docker=debian:jessie-slim ci_distro=debian ci_suite=jessie
-  - ci_docker=debian:jessie-slim ci_distro=debian ci_suite=jessie ci_configopts="--with-curl"
+  - ci_docker=debian:stretch-slim ci_distro=debian ci_suite=stretch
+  - ci_docker=debian:stretch-slim ci_distro=debian ci_suite=stretch ci_configopts="--with-curl"
   - ci_docker=debian:stretch-slim ci_distro=debian ci_suite=stretch ci_test=no  # TODO gpgme flake https://github.com/ostreedev/ostree/pull/664#issuecomment-276033383
   - ci_docker=ubuntu:xenial ci_distro=ubuntu ci_suite=xenial
 
