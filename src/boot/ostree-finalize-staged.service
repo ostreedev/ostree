@@ -24,8 +24,8 @@ ConditionPathExists=/run/ostree-booted
 DefaultDependencies=no
 
 RequiresMountsFor=/sysroot
-After=basic.target
-Before=multi-user.target final.target
+After=local-fs.target
+Before=basic.target final.target
 Conflicts=final.target
 
 [Service]
