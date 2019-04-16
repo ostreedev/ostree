@@ -2880,7 +2880,10 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
    * service when a staged deployment is created.
    */
   if (!self->staged_deployment)
-    return TRUE;
+    {
+      ot_journal_print (LOG_INFO, "No deployment staged for finalization");
+      return TRUE;
+    }
 
   /* Notice we send this *after* the trivial `return TRUE` above; this msg implies we've
    * committed to finalizing the deployment. */
