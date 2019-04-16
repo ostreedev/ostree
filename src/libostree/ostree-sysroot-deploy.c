@@ -447,14 +447,12 @@ merge_configuration_from (OstreeSysroot    *sysroot,
   { g_autofree char *msg =
       g_strdup_printf ("Copying /etc changes: %u modified, %u removed, %u added",
                        modified->len, removed->len, added->len);
-#ifdef HAVE_LIBSYSTEMD
-    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_CONFIGMERGE_ID),
+    ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_CONFIGMERGE_ID),
                      "MESSAGE=%s", msg,
                      "ETC_N_MODIFIED=%u", modified->len,
                      "ETC_N_REMOVED=%u", removed->len,
                      "ETC_N_ADDED=%u", added->len,
                      NULL);
-#endif
     _ostree_sysroot_emit_journal_msg (sysroot, msg);
   }
 
@@ -701,11 +699,9 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
     {
       { g_autofree char *msg =
           g_strdup_printf ("Relabeling /var (no stamp file '%s' found)", selabeled);
-#ifdef HAVE_LIBSYSTEMD
-        sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_VARRELABEL_ID),
+        ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_VARRELABEL_ID),
                          "MESSAGE=%s", msg,
                          NULL);
-#endif
         _ostree_sysroot_emit_journal_msg (sysroot, msg);
       }
 
@@ -2387,8 +2383,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                        (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
                        requires_new_bootversion ? "yes" : "no",
                        new_deployments->len - self->deployments->len);
-#ifdef HAVE_LIBSYSTEMD
-    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_DEPLOYMENT_COMPLETE_ID),
+    ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_DEPLOYMENT_COMPLETE_ID),
                      "MESSAGE=%s", msg,
                      "OSTREE_BOOTLOADER=%s", bootloader ? _ostree_bootloader_get_name (bootloader) : "none",
                      "OSTREE_BOOTLOADER_CONFIG=%s", bootloader_config,
@@ -2399,7 +2394,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                      "OSTREE_SYNCFS_BOOT_MSEC=%" G_GUINT64_FORMAT, syncstats.boot_syncfs_msec,
                      "OSTREE_SYNCFS_EXTRA_MSEC=%" G_GUINT64_FORMAT, syncstats.extra_syncfs_msec,
                      NULL);
-#endif
     _ostree_sysroot_emit_journal_msg (self, msg);
   }
 
@@ -2891,8 +2885,7 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
 
   /* Notice we send this *after* the trivial `return TRUE` above; this msg implies we've
    * committed to finalizing the deployment. */
-#ifdef HAVE_LIBSYSTEMD
-    sd_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR,
+    ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR,
                      SD_ID128_FORMAT_VAL(OSTREE_DEPLOYMENT_FINALIZING_ID),
                      "MESSAGE=Finalizing staged deployment",
                      "OSTREE_OSNAME=%s",
@@ -2902,7 +2895,6 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
                      "OSTREE_DEPLOYSERIAL=%u",
                      ostree_deployment_get_deployserial (self->staged_deployment),
                      NULL);
-#endif
 
   g_assert (self->staged_deployment_data);
 

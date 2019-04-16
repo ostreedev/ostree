@@ -44,6 +44,14 @@
     }                                                      \
   } G_STMT_END;
 
+#ifdef HAVE_LIBSYSTEMD
+#define ot_journal_send(...) sd_journal_send(__VA_ARGS__)
+#define ot_journal_print(...) sd_journal_print(__VA_ARGS__)
+#else
+#define ot_journal_send(...) {}
+#define ot_journal_print(...) {}
+#endif
+
 #include <ot-keyfile-utils.h>
 #include <ot-gio-utils.h>
 #include <ot-fs-utils.h>
