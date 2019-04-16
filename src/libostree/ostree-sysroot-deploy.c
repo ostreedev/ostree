@@ -2885,6 +2885,17 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
       return TRUE;
     }
 
+  /* Check if finalization is locked. */
+  if (!glnx_fstatat_allow_noent (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED,
+                                 NULL, 0, error))
+    return FALSE;
+  if (errno == 0)
+    {
+      ot_journal_print (LOG_INFO, "Not finalizing; found "
+                                  _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED);
+      return TRUE;
+    }
+
   /* Notice we send this *after* the trivial `return TRUE` above; this msg implies we've
    * committed to finalizing the deployment. */
     ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR,
