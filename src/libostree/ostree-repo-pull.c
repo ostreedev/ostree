@@ -4655,7 +4655,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_autofree char *formatted_xferred = g_format_size (bytes_transferred);
       g_string_append_printf (msg, "\ntransfer: secs: %u size: %s", n_seconds, formatted_xferred);
 
-      sd_journal_send ("MESSAGE=%s", msg->str,
+      ot_journal_send ("MESSAGE=%s", msg->str,
                        "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_MESSAGE_FETCH_COMPLETE_ID),
                        "OSTREE_REMOTE=%s", pull_data->remote_name,
                        "OSTREE_GPG=%s", gpg_verify_state,

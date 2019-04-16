@@ -163,18 +163,16 @@ _ostree_fetcher_journal_failure (const char *remote_name,
                                  const char *url,
                                  const char *msg)
 {
-#ifdef HAVE_LIBSYSTEMD
   /* Sanity - we don't want to log this when doing local/file pulls */
   if (!remote_name)
     return;
-  sd_journal_send ("MESSAGE=libostree HTTP error from remote %s for <%s>: %s",
+  ot_journal_send ("MESSAGE=libostree HTTP error from remote %s for <%s>: %s",
                    remote_name, url, msg,
                    "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_HTTP_FAILURE_ID),
                    "OSTREE_REMOTE=%s", remote_name,
                    "OSTREE_URL=%s", url,
                    "PRIORITY=%i", LOG_ERR,
                    NULL);
-#endif
 }
 
 /* Check whether a particular operation should be retried. This is entirely
