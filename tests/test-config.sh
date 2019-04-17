@@ -76,7 +76,9 @@ assert_not_file_has_content repo/config "lock-timeout-secs="
 if ${CMD_PREFIX} ostree config --repo=repo get core.lock-timeout-secs 2>err.txt; then
     assert_not_reached "ostree config get should not work after unsetting a key"
 fi
-assert_file_has_content err.txt "error: Key file does not have key “lock-timeout-secs” in group “core”"
+# Check for any character where quotation marks would be as they appear differently in the Fedora and Debian
+# test suites (“” and '' respectively). See: https://github.com/ostreedev/ostree/pull/1839
+assert_file_has_content err.txt "error: Key file does not have key .lock-timeout-secs. in group .core."
 
 # Check that it's idempotent
 ${CMD_PREFIX} ostree config --repo=repo unset core.lock-timeout-secs
