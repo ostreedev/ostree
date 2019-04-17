@@ -85,6 +85,7 @@ resolve_deploy_path (const char * root_mountpoint)
                    "MESSAGE_ID=" SD_ID128_FORMAT_STR,
                    SD_ID128_FORMAT_VAL(OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG),
                    "DEPLOYMENT_PATH=%s", resolved_path,
+                   "DEPLOYMENT_DEVICE=%u", stbuf.st_dev,
                    "DEPLOYMENT_INODE=%u", stbuf.st_ino,
                    NULL);
 #endif

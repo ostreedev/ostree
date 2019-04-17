@@ -59,7 +59,7 @@ ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) -Isrc/switchroot
 
 if BUILDOPT_SYSTEMD
 ostree_prepare_root_CPPFLAGS += -DHAVE_SYSTEMD=1
-ostree_prepare_root_LDADD = $(LIBSYSTEMD_LIBS)
+ostree_prepare_root_LDADD = $(AM_LDFLAGS) $(LIBSYSTEMD_LIBS)
 endif
 
 # This is the "new mode" of using a generator for /var; see
