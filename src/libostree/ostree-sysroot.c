@@ -1699,6 +1699,22 @@ clone_deployment (OstreeSysroot  *sysroot,
   return TRUE;
 }
 
+/* Do `mkdir()` followed by `chmod()` immediately afterwards to ensure `umask()` isn't
+ * masking permissions where we don't want it to. Thus we avoid calling `umask()`, which
+ * would affect the whole process. */
+static gboolean mkdir_unmasked (int                   dfd,
+                                const char           *path,
+                                int                   mode,
+                                GCancellable         *cancellable,
+                                GError              **error)
+{
+  if (!glnx_shutil_mkdir_p_at (dfd, path, mode, cancellable, error))
+    return FALSE;
+  if (fchmodat (dfd, path, mode, 0) < 0)
+    return glnx_throw_errno_prefix (error, "chmod(%s)", path);
+  return TRUE;
+}
+
 /**
  * ostree_sysroot_deployment_unlock:
  * @self: Sysroot
@@ -1768,9 +1784,9 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
          * directly for hotfixes.  The ostree-prepare-root.c helper
          * is also set up to detect and mount these.
          */
-        if (!glnx_shutil_mkdir_p_at (deployment_dfd, ".usr-ovl-upper", 0755, cancellable, error))
+        if (!mkdir_unmasked (deployment_dfd, ".usr-ovl-upper", 0755, cancellable, error))
           return FALSE;
-        if (!glnx_shutil_mkdir_p_at (deployment_dfd, ".usr-ovl-work", 0755, cancellable, error))
+        if (!mkdir_unmasked (deployment_dfd, ".usr-ovl-work", 0755, cancellable, error))
           return FALSE;
         ovl_options = hotfix_ovl_options;
       }
@@ -1796,10 +1812,10 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
         }
 
         development_ovl_upper = glnx_strjoina (development_ovldir, "/upper");
-        if (!glnx_shutil_mkdir_p_at (AT_FDCWD, development_ovl_upper, 0755, cancellable, error))
+        if (!mkdir_unmasked (AT_FDCWD, development_ovl_upper, 0755, cancellable, error))
           return FALSE;
         development_ovl_work = glnx_strjoina (development_ovldir, "/work");
-        if (!glnx_shutil_mkdir_p_at (AT_FDCWD, development_ovl_work, 0755, cancellable, error))
+        if (!mkdir_unmasked (AT_FDCWD, development_ovl_work, 0755, cancellable, error))
           return FALSE;
         ovl_options = glnx_strjoina ("lowerdir=usr,upperdir=", development_ovl_upper,
                                      ",workdir=", development_ovl_work);
