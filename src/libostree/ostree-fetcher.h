@@ -62,6 +62,12 @@ typedef enum {
   OSTREE_FETCHER_REQUEST_LINKABLE = (1 << 2),
 } OstreeFetcherRequestFlags;
 
+typedef enum {
+  OSTREE_FETCHER_HTTP_1_0 = (1 << 0),
+  OSTREE_FETCHER_HTTP_1_1 = (1 << 1),
+  OSTREE_FETCHER_HTTP_2_0 = (1 << 2),
+} OstreeFetcherHTTPVersions;
+
 void
 _ostree_fetcher_uri_free (OstreeFetcherURI *uri);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeFetcherURI, _ostree_fetcher_uri_free)
@@ -149,6 +155,9 @@ gboolean _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
                                                    GBytes       **out_buf,
                                                    GError       **error);
 
+OstreeFetcherHTTPVersions _ostree_fetcher_get_http_versions (OstreeFetcher *self);
+
+char **_ostree_fetcher_get_journal_info (OstreeFetcher *self);
 
 G_END_DECLS
 

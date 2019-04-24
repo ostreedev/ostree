@@ -1304,3 +1304,17 @@ _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 
   return ret;
 }
+
+
+OstreeFetcherHTTPVersions
+_ostree_fetcher_get_http_versions (OstreeFetcher *self)
+{
+  return 0;
+}
+
+char **
+_ostree_fetcher_get_journal_info (OstreeFetcher *self)
+{
+  /* I'm doing the libcurl implementation first */
+  return NULL;
+}
