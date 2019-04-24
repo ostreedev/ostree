@@ -542,6 +542,13 @@ LIBOSTREE_2018.9 {
   ostree_repo_get_default_repo_finders;
 } LIBOSTREE_2018.7;
 
+/* No new symbols in 2019.1 */
+
+LIBOSTREE_2019.2 {
+  ostree_repo_get_bootloader;
+} LIBOSTREE_2018.9;
+
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
