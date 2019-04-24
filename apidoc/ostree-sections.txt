@@ -293,6 +293,7 @@ ostree_repo_is_system
 ostree_repo_is_writable
 ostree_repo_create_at
 ostree_repo_create
+ostree_repo_get_bootloader
 ostree_repo_get_path
 ostree_repo_get_mode
 ostree_repo_get_min_free_space_bytes
