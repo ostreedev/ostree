@@ -231,6 +231,8 @@ _ostree_fetcher_http_status_code_to_io_error (guint status_code)
     case 410:  /* SOUP_STATUS_GONE */
       return G_IO_ERROR_NOT_FOUND;
     case 408:  /* SOUP_STATUS_REQUEST_TIMEOUT */
+    case 503:  /* SOUP_STATUS_SERVICE_UNAVAILABLE */
+    case 504:  /* SOUP_STATUS_GATEWAY_TIMEOUT */
       return G_IO_ERROR_TIMED_OUT;
     default:
       return G_IO_ERROR_FAILED;

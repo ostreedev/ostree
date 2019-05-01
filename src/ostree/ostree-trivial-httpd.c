@@ -47,12 +47,15 @@ static int opt_random_500s_percentage;
 static int opt_random_500s_max = 100;
 static int opt_random_408s_percentage;
 static int opt_random_408s_max = 100;
+static int opt_random_503s_percentage;
+static int opt_random_503s_max = 100;
 static gint opt_port = 0;
 static gchar **opt_expected_cookies;
 static gchar **opt_expected_headers;
 
 static guint emitted_random_500s_count = 0;
 static guint emitted_random_408s_count = 0;
+static guint emitted_random_503s_count = 0;
 
 typedef struct {
   int root_dfd;
@@ -73,6 +76,8 @@ static GOptionEntry options[] = {
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
   { "random-500s", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_percentage, "Generate random HTTP 500 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
   { "random-500s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_max, "Limit HTTP 500 errors to MAX (default 100)", "MAX" },
+  { "random-503s", 0, 0, G_OPTION_ARG_INT, &opt_random_503s_percentage, "Generate random HTTP 503 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
+  { "random-503s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_503s_max, "Limit HTTP 503 errors to MAX (default 100)", "MAX" },
   { "random-408s", 0, 0, G_OPTION_ARG_INT, &opt_random_408s_percentage, "Generate random HTTP 408 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
   { "random-408s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_408s_max, "Limit HTTP 408 errors to MAX (default 100)", "MAX" },
   { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here (use - for stdout)", "PATH" },
@@ -302,6 +307,14 @@ do_get (OtTrivialHttpd    *self,
     {
       emitted_random_408s_count++;
       soup_message_set_status (msg, SOUP_STATUS_REQUEST_TIMEOUT);
+      goto out;
+    }
+  else if (opt_random_503s_percentage > 0 &&
+      emitted_random_503s_count < opt_random_503s_max &&
+      g_random_int_range (0, 100) < opt_random_503s_percentage)
+    {
+      emitted_random_503s_count++;
+      soup_message_set_status (msg, SOUP_STATUS_SERVICE_UNAVAILABLE);
       goto out;
     }
 

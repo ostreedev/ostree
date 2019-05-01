@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..4"
+echo "1..7"
 
 COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 
@@ -98,3 +98,55 @@ ${CMD_PREFIX} ostree --repo=repo rev-parse main
 
 popd
 echo "ok big number of retries with one 408"
+
+# Sanity check with no network retries and 503s given, pull should fail.
+rm ostree-srv httpd repo -rf
+setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}" --random-503s=99
+
+pushd ${test_tmpdir}
+ostree_repo_init repo --mode=archive
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+assert_fail ${CMD_PREFIX} ostree --repo=repo pull --mirror origin --network-retries=0 main 2>err.txt
+assert_file_has_content err.txt "\(503.*Service Unavailable\)\|\(HTTP 503\)"
+
+popd
+echo "ok no retries after a 503"
+
+# Test pulling a repo which gives error 503 (service unavailable) a lot of the time.
+rm ostree-srv httpd repo -rf
+setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}" --random-503s=50
+
+pushd ${test_tmpdir}
+ostree_repo_init repo --mode=archive
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+for x in $(seq 40); do
+    if ${CMD_PREFIX} ostree --repo=repo pull --mirror origin --network-retries=2 main 2>err.txt; then
+       echo "Success on iteration ${x}"
+       break;
+    fi
+    assert_file_has_content err.txt "\(503.*Service Unavailable\)\|\(HTTP 503\)"
+done
+
+${CMD_PREFIX} ostree --repo=repo fsck
+${CMD_PREFIX} ostree --repo=repo rev-parse main
+
+popd
+echo "ok repeated pull after 503s"
+
+# Test pulling a repo that gives 503s a lot of the time, with many network retries.
+rm ostree-srv httpd repo -rf
+setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}" --random-503s=50
+
+pushd ${test_tmpdir}
+ostree_repo_init repo --mode=archive
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+
+# Using 8 network retries gives error rate of <0.5%, when --random-503s=50
+${CMD_PREFIX} ostree --repo=repo pull --mirror origin --network-retries=8 main
+echo "Success with big number of network retries"
+
+${CMD_PREFIX} ostree --repo=repo fsck
+${CMD_PREFIX} ostree --repo=repo rev-parse main
+
+popd
+echo "ok big number of retries with one 503"
