@@ -83,8 +83,9 @@ After these steps, systemd switches root.
 
 If you are not using dracut or systemd, using OSTree should still be
 possible, but you will have to write the integration code. See the
-existing sources in [src/switchroot](/src/switchroot) as a reference,
-as well as [src/switchroot/switchroot.sh](/src/switchroot/switchroot.sh).
+existing sources in
+[src/switchroot](https://github.com/ostreedev/ostree/tree/master/src/switchroot)
+as a reference.
 
 Patches to support other initramfs technologies and init systems, if
 sufficiently clean, will likely be accepted upstream.
