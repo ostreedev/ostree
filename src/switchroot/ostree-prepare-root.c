@@ -62,15 +62,27 @@
 static bool running_as_pid1;
 
 static char*
-resolve_deploy_path (const char * root_mountpoint)
+resolve_deploy_path (const char * root_mountpoint, bool * readonly_root)
 {
   char destpath[PATH_MAX];
   struct stat stbuf;
-  char *ostree_target, *deploy_path;
+  char *ostree_target, *deploy_path, *deploy_mode;
 
   ostree_target = read_proc_cmdline_ostree ();
   if (!ostree_target)
     errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
+
+  if (strlen(ostree_target) > 3 && strcmp(":ro", ostree_target + strlen(ostree_target) - 3) == 0)
+    {
+      *readonly_root = true;
+      deploy_mode = "Read-Only";
+      ostree_target[strlen(ostree_target) - 3] = 0;
+    }
+  else
+    {
+      *readonly_root = false;
+      deploy_mode = "Read-Write";
+    }
 
   snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target);
   if (lstat (destpath, &stbuf) < 0)
@@ -91,6 +103,7 @@ resolve_deploy_path (const char * root_mountpoint)
                    "DEPLOYMENT_PATH=%s", resolved_path,
                    "DEPLOYMENT_DEVICE=%u", stbuf.st_dev,
                    "DEPLOYMENT_INODE=%u", stbuf.st_ino,
+                   "DEPLOYMENT_MODE=%s", deploy_mode,
                    NULL);
 #endif
   return deploy_path;
@@ -140,9 +153,10 @@ main(int argc, char *argv[])
     }
 
   const char *root_mountpoint = realpath (root_arg, NULL);
+  bool readonly_root = false;
   if (root_mountpoint == NULL)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
-  char *deploy_path = resolve_deploy_path (root_mountpoint);
+  char *deploy_path = resolve_deploy_path (root_mountpoint, &readonly_root);
 
   if (we_mounted_proc)
     {
@@ -218,7 +232,7 @@ main(int argc, char *argv[])
       if (mount ("overlay", "usr", "overlay", 0, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
-  else
+  else if (!readonly_root)
     {
       /* Otherwise, a read-only bind mount for /usr */
       if (mount ("usr", "usr", NULL, MS_BIND, NULL) < 0)
@@ -273,6 +287,40 @@ main(int argc, char *argv[])
 
       if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
+    }
+
+  if (readonly_root)
+    {
+      /* Create overlayfs for /etc and /var:
+       *
+       * 1. Pre-mount tmpfs on /tmp
+       * 2. Create /tmp/run/{etc,var}-ovl-{upper,work}
+       * 3. Mount overlayfs
+       */
+      if (mount("tmpfs", "tmp/", "tmpfs", 0, NULL))
+        err (EXIT_FAILURE, "failed to mount tmpfs to 'tmp'");
+      if (mkdir ("tmp/run", 0755) < 0)
+        err (EXIT_FAILURE, "failed to create 'tmp/run'");
+
+      if (mkdir ("tmp/run/etc-ovl-upper", 0755) < 0)
+        err (EXIT_FAILURE, "failed to create 'tmp/run/etc-ovl-upper'");
+      if (mkdir ("tmp/run/etc-ovl-work", 0755) < 0)
+        err (EXIT_FAILURE, "failed to create 'tmp/run/etc-ovl-work'");
+      const char etc_ovl_options[] = "lowerdir=etc,upperdir=tmp/run/etc-ovl-upper,workdir=tmp/run/etc-ovl-work";
+      if (mount ("overlay", "etc", "overlay", 0, etc_ovl_options) < 0)
+        err (EXIT_FAILURE, "failed to mount overlay for etc");
+
+      if (mkdir ("tmp/run/var-ovl-upper", 0755) < 0)
+        err (EXIT_FAILURE, "failed to create 'tmp/run/var-ovl-upper'");
+      if (mkdir ("tmp/run/var-ovl-work", 0755) < 0)
+        err (EXIT_FAILURE, "failed to create 'tmp/run/var-ovl-work'");
+      const char var_ovl_options[] = "lowerdir=var,upperdir=tmp/run/var-ovl-upper,workdir=tmp/run/var-ovl-work";
+      if (mount ("overlay", "var", "overlay", 0, var_ovl_options) < 0)
+        err (EXIT_FAILURE, "failed to mount overlay for var");
+
+      /* Setting sysroot as RDONLY, though systemd will remount rw if fstab is not consistent */
+      if (mount (".", ".", NULL, MS_REMOUNT | MS_RDONLY, NULL) < 0)
+        err (EXIT_FAILURE, "failed to remount RDONLY sysroot");
     }
 
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
