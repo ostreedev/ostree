@@ -91,7 +91,7 @@ Patches to support other initramfs technologies and init systems, if
 sufficiently clean, will likely be accepted upstream.
 
 A further specific note regarding `sysvinit`: OSTree used to support
-recording device files such the `/dev/initctl` FIFO, but no longer
+recording device files such as the `/dev/initctl` FIFO, but no longer
 does.  It's recommended to just patch your initramfs to create this at
 boot.
 
