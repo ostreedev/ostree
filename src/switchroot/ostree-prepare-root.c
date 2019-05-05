@@ -182,7 +182,7 @@ main(int argc, char *argv[])
     mount_var = true;
 
   /* Link to the deployment's /var */
-  if (mount_var && mount ("../../var", "var", NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+  if (mount_var && mount ("../../var", "var", NULL, MS_BIND, NULL) < 0)
     err (EXIT_FAILURE, "failed to bind mount ../../var to var");
 
   char srcpath[PATH_MAX];
