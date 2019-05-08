@@ -219,9 +219,9 @@ _ostree_fetcher_should_retry_request (const GError *error,
 }
 
 /* Convert a HTTP status code representing an error from libsoup or libcurl to
- * a #GIOError. This will return %G_IO_ERROR_FAILED if the status code is
+ * a #GIOErrorEnum. This will return %G_IO_ERROR_FAILED if the status code is
  * unknown or otherwise unhandled. */
-GIOError
+GIOErrorEnum
 _ostree_fetcher_http_status_code_to_io_error (guint status_code)
 {
   switch (status_code)
