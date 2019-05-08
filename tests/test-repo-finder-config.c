@@ -308,7 +308,6 @@ static void
 test_repo_finder_config_find_remotes (Fixture       *fixture,
                                       gconstpointer  test_data)
 {
-  g_autoptr(OstreeRepoFinder) finder = NULL;
   g_autoptr(GMainContext) context = NULL;
   g_autoptr(GAsyncResult) result = NULL;
   g_auto(OstreeRepoFinderResultv) results = NULL;
