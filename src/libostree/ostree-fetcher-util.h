@@ -78,7 +78,7 @@ void _ostree_fetcher_journal_failure (const char *remote_name,
 gboolean _ostree_fetcher_should_retry_request (const GError *error,
                                                guint         n_retries_remaining);
 
-GIOError _ostree_fetcher_http_status_code_to_io_error (guint status_code);
+GIOErrorEnum _ostree_fetcher_http_status_code_to_io_error (guint status_code);
 
 G_END_DECLS
 
