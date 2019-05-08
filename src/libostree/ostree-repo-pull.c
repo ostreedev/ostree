@@ -2868,7 +2868,7 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
   if (prev_fd < 0)
     return TRUE; /* Note early return */
 
-  g_autoptr(GBytes) old_sig_contents = glnx_fd_readall_bytes (prev_fd, cancellable, error);
+  g_autoptr(GBytes) old_sig_contents = ot_fd_readall_or_mmap (prev_fd, 0, error);
   if (!old_sig_contents)
     return FALSE;
 
