@@ -2,7 +2,7 @@
 // from gir-files (https://github.com/gtk-rs/gir-files @ ???)
 // DO NOT EDIT
 
-extern crate libostree_sys;
+extern crate ostree_sys;
 extern crate shell_words;
 extern crate tempdir;
 use std::env;
@@ -11,7 +11,7 @@ use std::path::Path;
 use std::mem::{align_of, size_of};
 use std::process::Command;
 use std::str;
-use libostree_sys::*;
+use ostree_sys::*;
 
 static PACKAGES: &[&str] = &["ostree-1"];
 

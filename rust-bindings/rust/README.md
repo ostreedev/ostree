@@ -41,7 +41,7 @@ features = ["v2018_7"]
 ```
 
 ## Developing
-The `libostree` and `libostree-sys` crates can be built and tested using regular
+The `libostree` and `ostree-sys` crates can be built and tested using regular
 Cargo commands.
 
 ### Generated code
@@ -50,7 +50,7 @@ Most code is generated based on the gir files using the
 the included Makefile:
 
 ```ShellSession
-$ make gir/libostree gir/libostree-sys
+$ make gir/libostree gir/ostree-sys
 ```
 
 Run the following command to update the bundled gir files:

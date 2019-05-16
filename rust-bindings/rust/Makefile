@@ -1,4 +1,4 @@
-all: gir/libostree gir/libostree-sys
+all: gir/libostree gir/ostree-sys
 
 .PHONY: update-gir-files
 

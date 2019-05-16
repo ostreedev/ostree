@@ -36,18 +36,18 @@ v2018_6 = ["v2018_5"]
 v2018_7 = ["v2018_6"]
 
 [lib]
-name = "libostree_sys"
+name = "ostree_sys"
 
 [package]
 authors = ["Felix Krull"]
 build = "build.rs"
 categories = ["external-ffi-bindings"]
 description = "FFI bindings to libostree-1"
-documentation = "https://fkrull.gitlab.io/ostree-rs/libostree_sys"
+documentation = "https://fkrull.gitlab.io/ostree-rs/ostree_sys"
 keywords = ["ffi", "ostree", "libostree"]
 license = "MIT"
 links = "ostree-1"
-name = "libostree-sys"
+name = "ostree-sys"
 repository = "https://gitlab.com/fkrull/ostree-rs"
 version = "0.2.0"
 [package.metadata.docs.rs]
