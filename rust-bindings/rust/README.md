@@ -1,7 +1,7 @@
 # ostree-rs
 [![pipeline status](https://gitlab.com/fkrull/ostree-rs/badges/master/pipeline.svg)](https://gitlab.com/fkrull/ostree-rs/commits/master)
-[![Crates.io](https://img.shields.io/crates/v/libostree.svg)](https://crates.io/crates/libostree)
-[![master-docs](https://img.shields.io/badge/docs-master-brightgreen.svg)](https://fkrull.gitlab.io/ostree-rs/libostree)
+[![Crates.io](https://img.shields.io/crates/v/ostree.svg)](https://crates.io/crates/ostree)
+[![master-docs](https://img.shields.io/badge/docs-master-brightgreen.svg)](https://fkrull.gitlab.io/ostree-rs/ostree)
 
 **Rust** bindings for [libostree](https://ostree.readthedocs.io).
 
@@ -16,7 +16,7 @@ but I simply turned on what I needed and left the rest for later.
 ## Using
 
 ### Requirements
-The `libostree` crate requires libostree and the libostree development headers.
+The `ostree` crate requires libostree and the libostree development headers.
 On Debian/Ubuntu, they can be installed with:
 
 ```ShellSession
@@ -28,20 +28,20 @@ To use the crate, add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-libostree = "0.1"
+ostree = "0.2"
 ```
 
 To use features from later libostree versions, you need to specify the release
 version as well:
 
 ```toml
-[dependencies.libostree]
-version = "0.1"
+[dependencies.ostree]
+version = "0.2"
 features = ["v2018_7"]
 ```
 
 ## Developing
-The `libostree` and `ostree-sys` crates can be built and tested using regular
+The `ostree` and `ostree-sys` crates can be built and tested using regular
 Cargo commands.
 
 ### Generated code
@@ -50,7 +50,7 @@ Most code is generated based on the gir files using the
 the included Makefile:
 
 ```ShellSession
-$ make gir/libostree gir/ostree-sys
+$ make gir/ostree gir/ostree-sys
 ```
 
 Run the following command to update the bundled gir files:
@@ -81,7 +81,7 @@ Releases can be done using the publish_* jobs in the pipeline. There's no
 versioning helper yet so version bumps need to be done manually.
 
 ## License
-The libostree crate is licensed under the MIT license. See the LICENSE file for
+The `ostree` crate is licensed under the MIT license. See the LICENSE file for
 details.
 
 libostree itself is licensed under the LGPL2+. See its
