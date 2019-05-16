@@ -49,6 +49,6 @@ license = "MIT"
 links = "ostree-1"
 name = "libostree-sys"
 repository = "https://gitlab.com/fkrull/ostree-rs"
-version = "0.1.5"
+version = "0.2.0"
 [package.metadata.docs.rs]
 features = ["dox"]

@@ -19,6 +19,10 @@ ignore = [
     "OSTree.LzmaDecompressorClass",
     "OSTree.RepoFileEnumeratorClass",
     "OSTree.RollsumMatches",
+    "OSTree.RELEASE_VERSION",
+    "OSTree.VERSION",
+    "OSTree.VERSION_S",
+    "OSTree.YEAR_VERSION",
 ]
 
 girs_dir = "../gir-files"

@@ -127,7 +127,6 @@ pub const OSTREE_FILEMETA_GVARIANT_STRING: *const c_char = b"(uuua(ayay))\0" as 
 pub const OSTREE_MAX_METADATA_SIZE: c_int = 10485760;
 pub const OSTREE_MAX_METADATA_WARN_SIZE: c_int = 7340032;
 pub const OSTREE_ORIGIN_TRANSIENT_GROUP: *const c_char = b"libostree-transient\0" as *const u8 as *const c_char;
-pub const OSTREE_RELEASE_VERSION: c_int = 8;
 pub const OSTREE_REPO_METADATA_REF: *const c_char = b"ostree-metadata\0" as *const u8 as *const c_char;
 pub const OSTREE_SHA256_DIGEST_LEN: c_int = 32;
 pub const OSTREE_SHA256_STRING_LEN: c_int = 64;
@@ -135,9 +134,6 @@ pub const OSTREE_SUMMARY_GVARIANT_STRING: *const c_char = b"(a(s(taya{sv}))a{sv}
 pub const OSTREE_SUMMARY_SIG_GVARIANT_STRING: *const c_char = b"a{sv}\0" as *const u8 as *const c_char;
 pub const OSTREE_TIMESTAMP: c_int = 0;
 pub const OSTREE_TREE_GVARIANT_STRING: *const c_char = b"(a(say)a(sayay))\0" as *const u8 as *const c_char;
-pub const OSTREE_VERSION: c_double = 2018.800000;
-pub const OSTREE_VERSION_S: *const c_char = b"2018.8\0" as *const u8 as *const c_char;
-pub const OSTREE_YEAR_VERSION: c_int = 2018;
 
 // Flags
 pub type OstreeChecksumFlags = c_uint;

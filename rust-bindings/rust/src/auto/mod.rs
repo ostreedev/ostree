@@ -88,8 +88,6 @@ pub use self::constants::REPO_METADATA_REF;
 pub use self::constants::SUMMARY_GVARIANT_STRING;
 pub use self::constants::SUMMARY_SIG_GVARIANT_STRING;
 pub use self::constants::TREE_GVARIANT_STRING;
-#[cfg(any(feature = "v2017_4", feature = "dox"))]
-pub use self::constants::VERSION_S;
 
 #[doc(hidden)]
 pub mod traits {

@@ -99,3 +99,7 @@ status = "generate"
     [[object.function]]
     pattern = "cmp_checksum_bytes|checksum_inplace_to_bytes"
     ignore = true
+
+    [[object.constant]]
+    pattern = "VERSION|VERSION_S|YEAR_VERSION|RELEASE_VERSION"
+    ignore = true

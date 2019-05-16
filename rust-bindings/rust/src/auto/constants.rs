@@ -55,7 +55,3 @@ lazy_static! {
 lazy_static! {
     pub static ref TREE_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_TREE_GVARIANT_STRING).to_str().unwrap()};
 }
-#[cfg(any(feature = "v2017_4", feature = "dox"))]
-lazy_static! {
-    pub static ref VERSION_S: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_VERSION_S).to_str().unwrap()};
-}

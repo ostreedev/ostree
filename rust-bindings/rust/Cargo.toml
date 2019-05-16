@@ -1,6 +1,6 @@
 [package]
 name = "libostree"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Felix Krull"]
 
 license = "MIT"
@@ -36,7 +36,7 @@ gio = "0.5"
 glib-sys = "0.7"
 gobject-sys = "0.7"
 gio-sys = "0.7"
-libostree-sys = { version = "0.1", path = "sys" }
+libostree-sys = { version = "0.2", path = "sys" }
 
 [dev-dependencies]
 tempfile = "3"
