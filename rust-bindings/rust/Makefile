@@ -5,7 +5,7 @@ all: generate-libostree-sys generate-libostree
 
 # -- gir generation --
 target/tools/bin/gir:
-	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git -- gir
+	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git --rev ffda6f9 -- gir
 
 gir/%: target/tools/bin/gir
 	target/tools/bin/gir -c conf/$*.toml
