@@ -7,8 +7,8 @@ license = "MIT"
 description = "Rust bindings for libostree"
 keywords = ["ostree", "libostree"]
 
-documentation = "https://fkrull.gitlab.io/rust-libostree/libostree"
-repository = "https://gitlab.com/fkrull/rust-libostree"
+documentation = "https://fkrull.gitlab.io/ostree-rs/libostree"
+repository = "https://gitlab.com/fkrull/ostree-rs"
 readme = "README.md"
 
 exclude = [
@@ -22,7 +22,7 @@ exclude = [
 features = ["dox"]
 
 [badges.gitlab]
-repository = "fkrull/rust-libostree"
+repository = "fkrull/ostree-rs"
 
 [lib]
 name = "libostree"

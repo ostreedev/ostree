@@ -1,7 +1,7 @@
-# rust-libostree
-[![pipeline status](https://gitlab.com/fkrull/rust-libostree/badges/master/pipeline.svg)](https://gitlab.com/fkrull/rust-libostree/commits/master)
+# ostree-rs
+[![pipeline status](https://gitlab.com/fkrull/ostree-rs/badges/master/pipeline.svg)](https://gitlab.com/fkrull/ostree-rs/commits/master)
 [![Crates.io](https://img.shields.io/crates/v/libostree.svg)](https://crates.io/crates/libostree)
-[![master-docs](https://img.shields.io/badge/docs-master-brightgreen.svg)](https://fkrull.gitlab.io/rust-libostree/libostree)
+[![master-docs](https://img.shields.io/badge/docs-master-brightgreen.svg)](https://fkrull.gitlab.io/ostree-rs/libostree)
 
 **Rust** bindings for [libostree](https://ostree.readthedocs.io).
 
@@ -32,7 +32,7 @@ libostree = "0.1"
 ```
 
 To use features from later libostree versions, you need to specify the release
-version as well: 
+version as well:
 
 ```toml
 [dependencies.libostree]
@@ -42,7 +42,7 @@ features = ["v2018_7"]
 
 ## Developing
 The `libostree` and `libostree-sys` crates can be built and tested using regular
-Cargo commands. 
+Cargo commands.
 
 ### Generated code
 Most code is generated based on the gir files using the
@@ -74,7 +74,7 @@ effectively LGPL-licensed and you need to comply with the LGPL requirements
 (specifically, allowing users of your end product to swap out the LGPL'd
 parts).
 
-CI includes the LGPL docs in the documentation build. 
+CI includes the LGPL docs in the documentation build.
 
 ### Releases
 Releases can be done using the publish_* jobs in the pipeline. There's no
