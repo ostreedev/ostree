@@ -50,7 +50,7 @@ Most code is generated based on the gir files using the
 the included Makefile:
 
 ```ShellSession
-$ make generate-libostree-sys generate-libostree
+$ make gir/libostree gir/libostree-sys
 ```
 
 Run the following command to update the bundled gir files:

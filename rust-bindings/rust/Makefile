@@ -1,4 +1,4 @@
-all: generate-libostree-sys generate-libostree
+all: gir/libostree gir/libostree-sys
 
 .PHONY: update-gir-files
 
@@ -9,10 +9,6 @@ target/tools/bin/gir:
 
 gir/%: target/tools/bin/gir
 	target/tools/bin/gir -c conf/$*.toml
-
-generate-libostree-sys: gir/libostree-sys
-
-generate-libostree: gir/libostree
 
 
 # -- LGPL docs generation --
