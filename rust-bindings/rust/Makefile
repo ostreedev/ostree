@@ -1,4 +1,4 @@
-all: gir/libostree gir/ostree-sys
+all: gir/ostree gir/ostree-sys
 
 .PHONY: update-gir-files
 
@@ -16,7 +16,7 @@ target/tools/bin/rustdoc-stripper:
 	cargo install --root target/tools -- rustdoc-stripper
 
 merge-lgpl-docs: target/tools/bin/gir target/tools/bin/rustdoc-stripper
-	target/tools/bin/gir -c conf/libostree.toml -m doc
+	target/tools/bin/gir -c conf/ostree.toml -m doc
 	target/tools/bin/rustdoc-stripper -g -o target/vendor.md
 
 

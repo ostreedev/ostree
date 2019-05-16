@@ -31,20 +31,20 @@ publish_ostree-sys:
   - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
   when: manual
 
-# libostree
-libostree:
+# ostree
+ostree:
   stage: build
   script:
   - cargo test --verbose  --all-features
 
-libostree_nightly:
+ostree_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
   - cargo test --verbose  --all-features
   allow_failure: true
 
-publish_libostree:
+publish_ostree:
   stage: publish
   script:
   - cargo publish --verbose --token $CRATES_IO_TOKEN

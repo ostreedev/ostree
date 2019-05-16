@@ -1,5 +1,5 @@
 [package]
-name = "libostree"
+name = "ostree"
 version = "0.2.0"
 authors = ["Felix Krull"]
 
@@ -7,7 +7,7 @@ license = "MIT"
 description = "Rust bindings for libostree"
 keywords = ["ostree", "libostree"]
 
-documentation = "https://fkrull.gitlab.io/ostree-rs/libostree"
+documentation = "https://fkrull.gitlab.io/ostree-rs/ostree"
 repository = "https://gitlab.com/fkrull/ostree-rs"
 readme = "README.md"
 
@@ -25,7 +25,7 @@ features = ["dox"]
 repository = "fkrull/ostree-rs"
 
 [lib]
-name = "libostree"
+name = "ostree"
 
 [dependencies]
 libc = "0.2"

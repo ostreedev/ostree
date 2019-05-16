@@ -1,17 +1,17 @@
 extern crate gio;
 extern crate glib;
-extern crate libostree;
+extern crate ostree;
 extern crate tempfile;
 
 use glib::prelude::*;
-use libostree::prelude::*;
+use ostree::prelude::*;
 use std::fs;
 use std::io;
 use std::io::Write;
 
-fn create_repo(repodir: &tempfile::TempDir) -> Result<libostree::Repo, glib::Error> {
-    let repo = libostree::Repo::new_for_path(repodir.path());
-    repo.create(libostree::RepoMode::Archive, None)?;
+fn create_repo(repodir: &tempfile::TempDir) -> Result<ostree::Repo, glib::Error> {
+    let repo = ostree::Repo::new_for_path(repodir.path());
+    repo.create(ostree::RepoMode::Archive, None)?;
     Ok(repo)
 }
 
@@ -23,17 +23,17 @@ fn create_test_file(treedir: &tempfile::TempDir) -> Result<(), io::Error> {
 
 fn create_mtree(
     treedir: &tempfile::TempDir,
-    repo: &libostree::Repo,
-) -> Result<libostree::MutableTree, glib::Error> {
+    repo: &ostree::Repo,
+) -> Result<ostree::MutableTree, glib::Error> {
     let gfile = gio::File::new_for_path(treedir.path());
-    let mtree = libostree::MutableTree::new();
+    let mtree = ostree::MutableTree::new();
     repo.write_directory_to_mtree(&gfile, &mtree, None, None)?;
     Ok(mtree)
 }
 
 fn commit_mtree(
-    repo: &libostree::Repo,
-    mtree: &libostree::MutableTree,
+    repo: &ostree::Repo,
+    mtree: &ostree::MutableTree,
 ) -> Result<String, glib::Error> {
     repo.prepare_transaction(None)?;
     let repo_file = repo.write_mtree(mtree, None)?.downcast().unwrap();
@@ -43,8 +43,8 @@ fn commit_mtree(
     Ok(checksum)
 }
 
-fn open_repo(repodir: &tempfile::TempDir) -> Result<libostree::Repo, glib::Error> {
-    let repo = libostree::Repo::new_for_path(repodir.path());
+fn open_repo(repodir: &tempfile::TempDir) -> Result<ostree::Repo, glib::Error> {
+    let repo = ostree::Repo::new_for_path(repodir.path());
     repo.open(None)?;
     Ok(repo)
 }
