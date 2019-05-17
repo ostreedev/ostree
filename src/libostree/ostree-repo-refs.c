@@ -482,6 +482,8 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
  *
  * The flag %OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY is implied so
  * using it has no effect.
+ *
+ * Since: 2016.7
  */
 gboolean
 ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
@@ -856,6 +858,8 @@ ostree_repo_list_refs (OstreeRepo       *self,
  * @out_all_refs will be returned as a mapping from refspecs (including the
  * remote name) to checksums. Differently from ostree_repo_list_refs(), the
  * @refspec_prefix will not be removed from the refspecs in the hash table.
+ *
+ * Since: 2016.4
  */
 gboolean
 ostree_repo_list_refs_ext (OstreeRepo                 *self,

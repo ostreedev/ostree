@@ -2065,6 +2065,8 @@ ostree_repo_set_ref_immediate (OstreeRepo *self,
  * @error: GError
  *
  * Like ostree_repo_set_ref_immediate(), but creates an alias.
+ *
+ * Since: 2017.10
  */
 gboolean
 ostree_repo_set_alias_ref_immediate (OstreeRepo *self,

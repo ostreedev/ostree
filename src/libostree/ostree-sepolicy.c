@@ -351,7 +351,7 @@ initable_init (GInitable     *initable,
 
           if (g_str_has_prefix (line, selinuxtype_prefix))
             {
-              policytype = g_strstrip (g_strdup (line + strlen (selinuxtype_prefix))); 
+              policytype = g_strstrip (g_strdup (line + strlen (selinuxtype_prefix)));
               policy_root = g_file_get_child (etc_selinux_dir, policytype);
             }
           else if (g_str_has_prefix (line, selinux_prefix))
@@ -430,6 +430,8 @@ ostree_sepolicy_new (GFile         *path,
  * @error: Error
  *
  * Returns: (transfer full): An accessor object for SELinux policy in root located at @rootfs_dfd
+ *
+ * Since: 2017.4
  */
 OstreeSePolicy*
 ostree_sepolicy_new_at (int         rootfs_dfd,
@@ -472,6 +474,8 @@ ostree_sepolicy_get_name (OstreeSePolicy *self)
  * @self:
  *
  * Returns: (transfer none): Checksum of current policy
+ *
+ * Since: 2016.5
  */
 const char *
 ostree_sepolicy_get_csum (OstreeSePolicy *self)

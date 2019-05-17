@@ -1063,7 +1063,7 @@ content_fetch_on_write_complete (GObject        *object,
 static void
 content_fetch_on_complete (GObject        *object,
                            GAsyncResult   *result,
-                           gpointer        user_data) 
+                           gpointer        user_data)
 {
   OstreeFetcher *fetcher = (OstreeFetcher *)object;
   FetchObjectData *fetch_data = user_data;
@@ -1167,7 +1167,7 @@ on_metadata_written (GObject           *object,
   g_autofree guchar *csum = NULL;
   g_autofree char *stringified_object = NULL;
 
-  if (!ostree_repo_write_metadata_finish ((OstreeRepo*)object, result, 
+  if (!ostree_repo_write_metadata_finish ((OstreeRepo*)object, result,
                                           &csum, error))
     goto out;
 
@@ -6103,6 +6103,8 @@ ostree_repo_pull_from_remotes_finish (OstreeRepo    *self,
  *   means return errors without retrying
  *
  * Returns: %TRUE on success, %FALSE on failure
+ *
+ * Since: 2016.6
  */
 gboolean
 ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,

@@ -473,6 +473,8 @@ ostree_repo_prune (OstreeRepo        *self,
  * statistics on objects that would be deleted, without actually deleting them.
  *
  * Locking: exclusive
+ *
+ * Since: 2017.1
  */
 gboolean
 ostree_repo_prune_from_reachable (OstreeRepo        *self,

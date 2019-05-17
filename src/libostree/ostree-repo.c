@@ -786,6 +786,8 @@ _ostree_repo_remote_name_is_file (const char *remote_name)
  * option name.  If an error is returned, @out_value will be set to %NULL.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
+ *
+ * Since: 2016.5
  */
 gboolean
 ostree_repo_get_remote_option (OstreeRepo  *self,
@@ -864,6 +866,8 @@ ostree_repo_get_remote_option (OstreeRepo  *self,
  * to %NULL.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
+ *
+ * Since: 2016.5
  */
 gboolean
 ostree_repo_get_remote_list_option (OstreeRepo   *self,
@@ -939,6 +943,8 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
  * error is returned, @out_value will be set to %FALSE.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
+ *
+ * Since: 2016.5
  */
 gboolean
 ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
@@ -1255,6 +1261,8 @@ repo_open_at_take_fd (int *dfd,
  * already extant repository.  If you want to create one, use ostree_repo_create_at().
  *
  * Returns: (transfer full): An accessor object for an OSTree repository located at @dfd + @path
+ *
+ * Since: 2017.10
  */
 OstreeRepo*
 ostree_repo_open_at (int           dfd,
@@ -2570,6 +2578,8 @@ ostree_repo_create (OstreeRepo     *self,
  *   - collection-id: s: Set as collection ID in repo/config (Since 2017.9)
  *
  * Returns: (transfer full): A new OSTree repository reference
+ *
+ * Since: 2017.10
  */
 OstreeRepo *
 ostree_repo_create_at (int             dfd,
@@ -3149,6 +3159,8 @@ reload_sysroot_config (OstreeRepo          *self,
  *
  * By default, an #OstreeRepo will cache the remote configuration and its
  * own repo/config data.  This API can be used to reload it.
+ *
+ * Since: 2017.2
  */
 gboolean
 ostree_repo_reload_config (OstreeRepo          *self,
@@ -3313,6 +3325,8 @@ ostree_repo_set_disable_fsync (OstreeRepo    *self,
  * per-remote summary caches. Setting this manually is useful when
  * doing operations on a system repo as a user because you don't have
  * write permissions in the repo, where the cache is normally stored.
+ *
+ * Since: 2016.5
  */
 gboolean
 ostree_repo_set_cache_dir (OstreeRepo    *self,
@@ -3394,6 +3408,7 @@ ostree_repo_get_path (OstreeRepo  *self)
  * repository (to see whether a ref was written).
  *
  * Returns: File descriptor for repository root - owned by @self
+ * Since: 2016.4
  */
 int
 ostree_repo_get_dfd (OstreeRepo  *self)
@@ -4334,6 +4349,8 @@ ostree_repo_import_object_from (OstreeRepo           *self,
  * this will simply be a fast Unix hard link operation.
  *
  * Otherwise, a copy will be performed.
+ *
+ * Since: 2016.5
  */
 gboolean
 ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
@@ -5431,6 +5448,8 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
  * configured for @remote.
  *
  * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
+ *
+ * Since: 2016.14
  */
 OstreeGpgVerifyResult *
 ostree_repo_verify_commit_for_remote (OstreeRepo    *self,
@@ -5466,6 +5485,8 @@ ostree_repo_verify_commit_for_remote (OstreeRepo    *self,
  * the verifications using GPG keys in the keyrings of all remotes.
  *
  * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
+ *
+ * Since: 2016.6
  */
 OstreeGpgVerifyResult *
 ostree_repo_gpg_verify_data (OstreeRepo    *self,

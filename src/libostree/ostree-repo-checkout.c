@@ -771,7 +771,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
        */
       g_mutex_lock (&repo->cache_lock);
       {
-        gpointer key = GUINT_TO_POINTER ((g_ascii_xdigit_value (checksum[0]) << 4) + 
+        gpointer key = GUINT_TO_POINTER ((g_ascii_xdigit_value (checksum[0]) << 4) +
                                          g_ascii_xdigit_value (checksum[1]));
         if (repo->updated_uncompressed_dirs == NULL)
           repo->updated_uncompressed_dirs = g_hash_table_new (NULL, NULL);
@@ -1321,6 +1321,8 @@ ostree_repo_checkout_tree_at (OstreeRepo                        *self,
  * Note in addition that unlike ostree_repo_checkout_tree(), the
  * default is not to use the repository-internal uncompressed objects
  * cache.
+ *
+ * Since: 2016.8
  */
 gboolean
 ostree_repo_checkout_at (OstreeRepo                        *self,
@@ -1391,6 +1393,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
  *
  * Note that cache does *not* have its refcount incremented - the lifetime of
  * @cache must be equal to or greater than that of @opts.
+ *
+ * Since: 2017.13
  */
 void
 ostree_repo_checkout_at_options_set_devino (OstreeRepoCheckoutAtOptions *opts,
@@ -1418,7 +1422,7 @@ devino_equal (gconstpointer   a,
 
 /**
  * ostree_repo_devino_cache_new:
- * 
+ *
  * OSTree has support for pairing ostree_repo_checkout_tree_at() using
  * hardlinks in combination with a later
  * ostree_repo_write_directory_to_mtree() using a (normally modified)

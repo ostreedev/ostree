@@ -161,6 +161,11 @@ typedef enum {
   OSTREE_GPG_ERROR_MISSING_KEY,
 } OstreeGpgError;
 
+/**
+ * ostree_gpg_error_quark:
+ *
+ * Since: 2017.10
+ */
 _OSTREE_PUBLIC
 GQuark ostree_gpg_error_quark (void);
 #define OSTREE_GPG_ERROR (ostree_gpg_error_quark ())
