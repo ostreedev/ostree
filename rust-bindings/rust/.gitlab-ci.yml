@@ -16,13 +16,13 @@ stages:
 ostree-sys:
   stage: build
   script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml --all-features
+  - cargo test --verbose --manifest-path sys/Cargo.toml --features "v2018_9" #--all-features
 
 ostree-sys_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml --all-features
+  - cargo test --verbose --manifest-path sys/Cargo.toml --features "v2018_9" #--all-features
   allow_failure: true
 
 publish_ostree-sys:
