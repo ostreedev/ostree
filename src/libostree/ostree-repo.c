@@ -3466,7 +3466,7 @@ ostree_repo_get_mode (OstreeRepo  *self)
 }
 
 /**
- * ostree_repo_get_min_free_space:
+ * ostree_repo_get_min_free_space_bytes:
  * @self: Repo
  * @out_reserved_bytes: (out): Location to store the result
  * @error: Return location for a #GError
@@ -3576,7 +3576,7 @@ list_loose_objects_at (OstreeRepo             *self,
           if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
               continue;
 
-          /* commit checksum does not match "starting with", do not add to array */     
+          /* commit checksum does not match "starting with", do not add to array */
           if (!g_str_has_prefix (buf, commit_starting_with))
             continue;
         }
@@ -4446,7 +4446,7 @@ ostree_repo_load_variant (OstreeRepo       *self,
  */
 gboolean
 ostree_repo_load_commit (OstreeRepo            *self,
-                         const char            *checksum, 
+                         const char            *checksum,
                          GVariant             **out_variant,
                          OstreeRepoCommitState *out_state,
                          GError               **error)
@@ -6098,10 +6098,10 @@ ostree_repo_get_default_repo_finders (OstreeRepo *self)
 /**
  * ostree_repo_get_bootloader:
  * @self: an #OstreeRepo
- * 
+ *
  * Get the bootloader configured. See the documentation for the
  * "sysroot.bootloader" config key.
- * 
+ *
  * Returns: bootloader configuration for the sysroot
  * Since: 2019.2
  */
