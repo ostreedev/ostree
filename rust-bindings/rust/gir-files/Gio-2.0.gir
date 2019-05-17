@@ -1978,7 +1978,7 @@ create_action_group (void)
           <parameter name="entries" transfer-ownership="none">
             <doc xml:space="preserve">a pointer to
           the first item in an array of #GActionEntry structs</doc>
-            <array length="1" zero-terminated="0" c:type="GActionEntry*">
+            <array length="1" zero-terminated="0" c:type="const GActionEntry*">
               <type name="ActionEntry"/>
             </array>
           </parameter>
@@ -2557,7 +2557,7 @@ the application.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">
    a list of content types.</doc>
-          <array c:type="char**">
+          <array c:type="const char**">
             <type name="utf8"/>
           </array>
         </return-value>
@@ -2972,7 +2972,7 @@ the application.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">
    a list of content types.</doc>
-          <array c:type="char**">
+          <array c:type="const char**">
             <type name="utf8"/>
           </array>
         </return-value>
@@ -3556,7 +3556,7 @@ no display name is available.</doc>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve">
    a list of content types.</doc>
-            <array c:type="char**">
+            <array c:type="const char**">
               <type name="utf8"/>
             </array>
           </return-value>
@@ -4562,7 +4562,7 @@ the options with g_variant_dict_lookup():
           <parameter name="entries" transfer-ownership="none">
             <doc xml:space="preserve">a
           %NULL-terminated list of #GOptionEntrys</doc>
-            <array c:type="GOptionEntry*">
+            <array c:type="const GOptionEntry*">
               <type name="GLib.OptionEntry"/>
             </array>
           </parameter>
@@ -6062,7 +6062,7 @@ in the value of a single environment variable.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">
     the environment strings, or %NULL if they were not sent</doc>
-          <array c:type="gchar**">
+          <array c:type="const gchar* const*">
             <type name="filename"/>
           </array>
         </return-value>
@@ -6424,6 +6424,9 @@ situation.</doc>
       </member>
       <member name="anonymous_supported" value="16" c:identifier="G_ASK_PASSWORD_ANONYMOUS_SUPPORTED" glib:nick="anonymous-supported">
         <doc xml:space="preserve">operation supports anonymous users.</doc>
+      </member>
+      <member name="tcrypt" value="32" c:identifier="G_ASK_PASSWORD_TCRYPT" glib:nick="tcrypt">
+        <doc xml:space="preserve">operation takes TCRYPT parameters (Since: 2.58)</doc>
       </member>
     </bitfield>
     <interface name="AsyncInitable" c:symbol-prefix="async_initable" c:type="GAsyncInitable" version="2.22" glib:type-name="GAsyncInitable" glib:get-type="g_async_initable_get_type" glib:type-struct="AsyncInitableIface">
@@ -9907,7 +9910,7 @@ If a filter consumes an incoming message the message is not
 dispatched anywhere else - not even the standard dispatch machinery
 (that API such as g_dbus_connection_signal_subscribe() and
 g_dbus_connection_send_message_with_reply() relies on) will see the
-message. Similary, if a filter consumes an outgoing message, the
+message. Similarly, if a filter consumes an outgoing message, the
 message will not be sent to the other peer.
 
 If @user_data_free_func is non-%NULL, it will be called (in the
@@ -10373,7 +10376,7 @@ version.</doc>
         </parameters>
       </method>
       <method name="close_sync" c:identifier="g_dbus_connection_close_sync" version="2.26" throws="1">
-        <doc xml:space="preserve">Synchronously closees @connection. The calling thread is blocked
+        <doc xml:space="preserve">Synchronously closes @connection. The calling thread is blocked
 until this is done. See g_dbus_connection_close() for the
 asynchronous version of this method and more details about what it
 does.</doc>
@@ -11745,7 +11748,7 @@ exists.</doc>
           </parameter>
           <parameter name="entries" transfer-ownership="none">
             <doc xml:space="preserve">A pointer to @num_entries #GDBusErrorEntry struct items.</doc>
-            <array length="3" zero-terminated="0" c:type="GDBusErrorEntry*">
+            <array length="3" zero-terminated="0" c:type="const GDBusErrorEntry*">
               <type name="DBusErrorEntry" c:type="GDBusErrorEntry"/>
             </array>
           </parameter>
@@ -12932,7 +12935,10 @@ on a #GDBusConnection.</doc>
       <constructor name="new_from_blob" c:identifier="g_dbus_message_new_from_blob" version="2.26" throws="1">
         <doc xml:space="preserve">Creates a new #GDBusMessage from the data stored at @blob. The byte
 order that the message was in can be retrieved using
-g_dbus_message_get_byte_order().</doc>
+g_dbus_message_get_byte_order().
+
+If the @blob cannot be parsed, contains invalid fields, or contains invalid
+headers, %G_IO_ERROR_INVALID_ARGUMENT will be returned.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">A new #GDBusMessage or %NULL if @error is set. Free with
 g_object_unref().</doc>
@@ -12940,7 +12946,7 @@ g_object_unref().</doc>
         </return-value>
         <parameters>
           <parameter name="blob" transfer-ownership="none">
-            <doc xml:space="preserve">A blob represent a binary D-Bus message.</doc>
+            <doc xml:space="preserve">A blob representing a binary D-Bus message.</doc>
             <array length="1" zero-terminated="0" c:type="guchar*">
               <type name="guint8"/>
             </array>
@@ -13012,7 +13018,7 @@ determine the size).</doc>
         </return-value>
         <parameters>
           <parameter name="blob" transfer-ownership="none">
-            <doc xml:space="preserve">A blob represent a binary D-Bus message.</doc>
+            <doc xml:space="preserve">A blob representing a binary D-Bus message.</doc>
             <array length="1" zero-terminated="0" c:type="guchar*">
               <type name="guint8"/>
             </array>
@@ -13123,8 +13129,11 @@ empty. Do not free, it is owned by @message.</doc>
         </parameters>
       </method>
       <method name="get_header" c:identifier="g_dbus_message_get_header" version="2.26">
-        <doc xml:space="preserve">Gets a header field on @message.</doc>
-        <return-value transfer-ownership="full">
+        <doc xml:space="preserve">Gets a header field on @message.
+
+The caller is responsible for checking the type of the returned #GVariant
+matches what is expected.</doc>
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">A #GVariant with the value if the header was found, %NULL
 otherwise. Do not free, it is owned by @message.</doc>
           <type name="GLib.Variant" c:type="GVariant*"/>
@@ -15539,7 +15548,7 @@ that @manager was constructed in.</doc>
             <type name="DBusProxy"/>
           </parameter>
           <parameter name="changed_properties" transfer-ownership="none">
-            <doc xml:space="preserve">A #GVariant containing the properties that changed.</doc>
+            <doc xml:space="preserve">A #GVariant containing the properties that changed (type: `a{sv}`).</doc>
             <type name="GLib.Variant"/>
           </parameter>
           <parameter name="invalidated_properties" transfer-ownership="none">
@@ -17262,7 +17271,7 @@ This signal corresponds to the
         </return-value>
         <parameters>
           <parameter name="changed_properties" transfer-ownership="none">
-            <doc xml:space="preserve">A #GVariant containing the properties that changed</doc>
+            <doc xml:space="preserve">A #GVariant containing the properties that changed (type: `a{sv}`)</doc>
             <type name="GLib.Variant"/>
           </parameter>
           <parameter name="invalidated_properties" transfer-ownership="none">
@@ -17891,6 +17900,10 @@ case.</doc>
     <constant name="DESKTOP_APP_INFO_LOOKUP_EXTENSION_POINT_NAME" value="gio-desktop-app-info-lookup" c:type="G_DESKTOP_APP_INFO_LOOKUP_EXTENSION_POINT_NAME">
       <doc xml:space="preserve">Extension point for default handler to URI association. See
 [Extending GIO][extending-gio].</doc>
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
+    <constant name="DRIVE_IDENTIFIER_KIND_UNIX_DEVICE" value="unix-device" c:type="G_DRIVE_IDENTIFIER_KIND_UNIX_DEVICE" version="2.58">
+      <doc xml:space="preserve">The string used to obtain a Unix device path with g_drive_get_identifier().</doc>
       <type name="utf8" c:type="gchar*"/>
     </constant>
     <class name="DataInputStream" c:symbol-prefix="data_input_stream" c:type="GDataInputStream" parent="BufferedInputStream" glib:type-name="GDataInputStream" glib:get-type="g_data_input_stream_get_type" glib:type-struct="DataInputStreamClass">
@@ -19701,8 +19714,9 @@ prefix-to-subdirectory mapping that is described in the
 [Menu Spec](http://standards.freedesktop.org/menu-spec/latest/)
 (i.e. a desktop id of kde-foo.desktop will match
 `/usr/share/applications/kde/foo.desktop`).</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">a new #GDesktopAppInfo, or %NULL if no desktop file with that id</doc>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">a new #GDesktopAppInfo, or %NULL if no desktop
+    file with that id exists.</doc>
           <type name="DesktopAppInfo" c:type="GDesktopAppInfo*"/>
         </return-value>
         <parameters>
@@ -19714,7 +19728,7 @@ prefix-to-subdirectory mapping that is described in the
       </constructor>
       <constructor name="new_from_filename" c:identifier="g_desktop_app_info_new_from_filename">
         <doc xml:space="preserve">Creates a new #GDesktopAppInfo.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a new #GDesktopAppInfo or %NULL on error.</doc>
           <type name="DesktopAppInfo" c:type="GDesktopAppInfo*"/>
         </return-value>
@@ -19728,7 +19742,7 @@ prefix-to-subdirectory mapping that is described in the
       </constructor>
       <constructor name="new_from_keyfile" c:identifier="g_desktop_app_info_new_from_keyfile" version="2.18">
         <doc xml:space="preserve">Creates a new #GDesktopAppInfo.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a new #GDesktopAppInfo or %NULL on error.</doc>
           <type name="DesktopAppInfo" c:type="GDesktopAppInfo*"/>
         </return-value>
@@ -20078,11 +20092,12 @@ but is intended primarily for operating system components that
 launch applications.  Ordinary applications should use
 g_app_info_launch_uris().
 
-If the application is launched via traditional UNIX fork()/exec()
-then @spawn_flags, @user_setup and @user_setup_data are used for the
-call to g_spawn_async().  Additionally, @pid_callback (with
-@pid_callback_data) will be called to inform about the PID of the
-created process.
+If the application is launched via GSpawn, then @spawn_flags, @user_setup
+and @user_setup_data are used for the call to g_spawn_async().
+Additionally, @pid_callback (with @pid_callback_data) will be called to
+inform about the PID of the created process. See g_spawn_async_with_pipes()
+for information on certain parameter conditions that can enable an
+optimized posix_spawn() codepath to be used.
 
 If application launching occurs via some other mechanism (eg: D-Bus
 activation) then @spawn_flags, @user_setup, @user_setup_data,
@@ -20129,6 +20144,67 @@ activation) then @spawn_flags, @user_setup, @user_setup_data,
           </parameter>
         </parameters>
       </method>
+      <method name="launch_uris_as_manager_with_fds" c:identifier="g_desktop_app_info_launch_uris_as_manager_with_fds" version="2.58" throws="1">
+        <doc xml:space="preserve">Equivalent to g_desktop_app_info_launch_uris_as_manager() but allows
+you to pass in file descriptors for the stdin, stdout and stderr streams
+of the launched process.
+
+If application launching occurs via some non-spawn mechanism (e.g. D-Bus
+activation) then @stdin_fd, @stdout_fd and @stderr_fd are ignored.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE on successful launch, %FALSE otherwise.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="appinfo" transfer-ownership="none">
+            <doc xml:space="preserve">a #GDesktopAppInfo</doc>
+            <type name="DesktopAppInfo" c:type="GDesktopAppInfo*"/>
+          </instance-parameter>
+          <parameter name="uris" transfer-ownership="none">
+            <doc xml:space="preserve">List of URIs</doc>
+            <type name="GLib.List" c:type="GList*">
+              <type name="utf8"/>
+            </type>
+          </parameter>
+          <parameter name="launch_context" transfer-ownership="none" nullable="1" allow-none="1">
+            <doc xml:space="preserve">a #GAppLaunchContext</doc>
+            <type name="AppLaunchContext" c:type="GAppLaunchContext*"/>
+          </parameter>
+          <parameter name="spawn_flags" transfer-ownership="none">
+            <doc xml:space="preserve">#GSpawnFlags, used for each process</doc>
+            <type name="GLib.SpawnFlags" c:type="GSpawnFlags"/>
+          </parameter>
+          <parameter name="user_setup" transfer-ownership="none" nullable="1" allow-none="1" scope="async" closure="4">
+            <doc xml:space="preserve">a #GSpawnChildSetupFunc, used once
+    for each process.</doc>
+            <type name="GLib.SpawnChildSetupFunc" c:type="GSpawnChildSetupFunc"/>
+          </parameter>
+          <parameter name="user_setup_data" transfer-ownership="none" nullable="1" allow-none="1" closure="3">
+            <doc xml:space="preserve">User data for @user_setup</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+          <parameter name="pid_callback" transfer-ownership="none" nullable="1" allow-none="1" scope="call" closure="6">
+            <doc xml:space="preserve">Callback for child processes</doc>
+            <type name="DesktopAppLaunchCallback" c:type="GDesktopAppLaunchCallback"/>
+          </parameter>
+          <parameter name="pid_callback_data" transfer-ownership="none" nullable="1" allow-none="1" closure="5">
+            <doc xml:space="preserve">User data for @callback</doc>
+            <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+          <parameter name="stdin_fd" transfer-ownership="none">
+            <doc xml:space="preserve">file descriptor to use for child's stdin, or -1</doc>
+            <type name="gint" c:type="gint"/>
+          </parameter>
+          <parameter name="stdout_fd" transfer-ownership="none">
+            <doc xml:space="preserve">file descriptor to use for child's stdout, or -1</doc>
+            <type name="gint" c:type="gint"/>
+          </parameter>
+          <parameter name="stderr_fd" transfer-ownership="none">
+            <doc xml:space="preserve">file descriptor to use for child's stderr, or -1</doc>
+            <type name="gint" c:type="gint"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="list_actions" c:identifier="g_desktop_app_info_list_actions" version="2.38">
         <doc xml:space="preserve">Returns the list of "additional application actions" supported on the
 desktop file, as per the desktop file specification.
@@ -20137,7 +20213,7 @@ As per the specification, this is the list of actions that are
 explicitly listed in the "Actions" key of the [Desktop Entry] group.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">a list of strings, always non-%NULL</doc>
-          <array c:type="gchar**">
+          <array c:type="const gchar* const*">
             <type name="utf8"/>
           </array>
         </return-value>
@@ -20521,10 +20597,12 @@ themselves.</doc>
         </parameters>
       </virtual-method>
       <virtual-method name="get_identifier" invoker="get_identifier">
-        <doc xml:space="preserve">Gets the identifier of the given kind for @drive.</doc>
-        <return-value transfer-ownership="full">
+        <doc xml:space="preserve">Gets the identifier of the given kind for @drive. The only
+identifier currently available is
+#G_DRIVE_IDENTIFIER_KIND_UNIX_DEVICE.</doc>
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a newly allocated string containing the
-    requested identfier, or %NULL if the #GDrive
+    requested identifier, or %NULL if the #GDrive
     doesn't have this kind of identifier.</doc>
           <type name="utf8" c:type="char*"/>
         </return-value>
@@ -20555,7 +20633,7 @@ themselves.</doc>
       </virtual-method>
       <virtual-method name="get_sort_key" invoker="get_sort_key" version="2.32">
         <doc xml:space="preserve">Gets the sort key for @drive, if any.</doc>
-        <return-value transfer-ownership="none">
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">Sorting key for @drive or %NULL if no such key is available.</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -21051,10 +21129,12 @@ themselves.</doc>
         </parameters>
       </method>
       <method name="get_identifier" c:identifier="g_drive_get_identifier">
-        <doc xml:space="preserve">Gets the identifier of the given kind for @drive.</doc>
-        <return-value transfer-ownership="full">
+        <doc xml:space="preserve">Gets the identifier of the given kind for @drive. The only
+identifier currently available is
+#G_DRIVE_IDENTIFIER_KIND_UNIX_DEVICE.</doc>
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a newly allocated string containing the
-    requested identfier, or %NULL if the #GDrive
+    requested identifier, or %NULL if the #GDrive
     doesn't have this kind of identifier.</doc>
           <type name="utf8" c:type="char*"/>
         </return-value>
@@ -21085,7 +21165,7 @@ themselves.</doc>
       </method>
       <method name="get_sort_key" c:identifier="g_drive_get_sort_key" version="2.32">
         <doc xml:space="preserve">Gets the sort key for @drive, if any.</doc>
-        <return-value transfer-ownership="none">
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">Sorting key for @drive or %NULL if no such key is available.</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -21664,9 +21744,9 @@ been pressed.</doc>
       </field>
       <field name="get_identifier">
         <callback name="get_identifier">
-          <return-value transfer-ownership="full">
+          <return-value transfer-ownership="full" nullable="1">
             <doc xml:space="preserve">a newly allocated string containing the
-    requested identfier, or %NULL if the #GDrive
+    requested identifier, or %NULL if the #GDrive
     doesn't have this kind of identifier.</doc>
             <type name="utf8" c:type="char*"/>
           </return-value>
@@ -21928,7 +22008,7 @@ been pressed.</doc>
       </field>
       <field name="get_sort_key">
         <callback name="get_sort_key">
-          <return-value transfer-ownership="none">
+          <return-value transfer-ownership="none" nullable="1">
             <doc xml:space="preserve">Sorting key for @drive or %NULL if no such key is available.</doc>
             <type name="utf8" c:type="const gchar*"/>
           </return-value>
@@ -22040,7 +22120,7 @@ CA DNs. You should unref each element with g_byte_array_unref() and then
 the free the list with g_list_free().</doc>
           <type name="GLib.List" c:type="GList*">
             <array name="GLib.ByteArray">
-              <type name="gpointer" c:type="gpointer"/>
+              <type name="guint8" c:type="guint8"/>
             </array>
           </type>
         </return-value>
@@ -23926,7 +24006,8 @@ This attribute is only available for UNIX file systems. Corresponding
     <constant name="FILE_ATTRIBUTE_UNIX_IS_MOUNTPOINT" value="unix::is-mountpoint" c:type="G_FILE_ATTRIBUTE_UNIX_IS_MOUNTPOINT">
       <doc xml:space="preserve">A key in the "unix" namespace for checking if the file represents a
 UNIX mount point. This attribute is %TRUE if the file is a UNIX mount
-point. This attribute is only available for UNIX file systems.
+point. Since 2.58, `/` is considered to be a mount point.
+This attribute is only available for UNIX file systems.
 Corresponding #GFileAttributeType is %G_FILE_ATTRIBUTE_TYPE_BOOLEAN.</doc>
       <type name="utf8" c:type="gchar*"/>
     </constant>
@@ -24725,6 +24806,11 @@ g_unlink().</doc>
 the actual file or directory represented by the #GFile; see
 g_file_copy() if attempting to copy a file.
 
+g_file_dup() is useful when a second handle is needed to the same underlying
+file, for use in a separate thread (#GFile is not thread-safe). For use
+within the same thread, use g_object_ref() to increment the existing object&#x2019;s
+reference count.
+
 This call does no blocking I/O.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">a new #GFile that is a duplicate
@@ -25268,7 +25354,7 @@ This call does no blocking I/O.</doc>
       <virtual-method name="is_native" invoker="is_native">
         <doc xml:space="preserve">Checks to see if a file is native to the platform.
 
-A native file s one expressed in the platform-native filename format,
+A native file is one expressed in the platform-native filename format,
 e.g. "C:\Windows" or "/usr/bin/". This does not mean the file is local,
 as it might be on a locally mounted remote filesystem.
 
@@ -27759,6 +27845,11 @@ g_unlink().</doc>
 the actual file or directory represented by the #GFile; see
 g_file_copy() if attempting to copy a file.
 
+g_file_dup() is useful when a second handle is needed to the same underlying
+file, for use in a separate thread (#GFile is not thread-safe). For use
+within the same thread, use g_object_ref() to increment the existing object&#x2019;s
+reference count.
+
 This call does no blocking I/O.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">a new #GFile that is a duplicate
@@ -28413,7 +28504,7 @@ This call does no blocking I/O.</doc>
       <method name="is_native" c:identifier="g_file_is_native">
         <doc xml:space="preserve">Checks to see if a file is native to the platform.
 
-A native file s one expressed in the platform-native filename format,
+A native file is one expressed in the platform-native filename format,
 e.g. "C:\Windows" or "/usr/bin/". This does not mean the file is local,
 as it might be on a locally mounted remote filesystem.
 
@@ -30075,7 +30166,7 @@ changed the next time it is saved over.</doc>
           </instance-parameter>
           <parameter name="contents" transfer-ownership="none">
             <doc xml:space="preserve">a string containing the new contents for @file</doc>
-            <array length="1" zero-terminated="0" c:type="char*">
+            <array length="1" zero-terminated="0" c:type="const char*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -30138,7 +30229,7 @@ contents (without copying) for the duration of the call.</doc>
           </instance-parameter>
           <parameter name="contents" transfer-ownership="none">
             <doc xml:space="preserve">string of contents to replace the file with</doc>
-            <array length="1" zero-terminated="0" c:type="char*">
+            <array length="1" zero-terminated="0" c:type="const char*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -36001,7 +36092,7 @@ types for the given @name_space, or %NULL on error.</doc>
       </method>
       <method name="set_attribute" c:identifier="g_file_info_set_attribute">
         <doc xml:space="preserve">Sets the @attribute to contain the given value, if possible. To unset the
-attribute, use %G_ATTRIBUTE_TYPE_INVALID for @type.</doc>
+attribute, use %G_FILE_ATTRIBUTE_TYPE_INVALID for @type.</doc>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -39537,8 +39628,8 @@ in the following two cases
   native, the returned string is the result of g_file_get_uri()
   (such as `sftp://path/to/my%20icon.png`).
 
-- If @icon is a #GThemedIcon with exactly one name, the encoding is
-   simply the name (such as `network-server`).</doc>
+- If @icon is a #GThemedIcon with exactly one name and no fallbacks,
+  the encoding is simply the name (such as `network-server`).</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">An allocated NUL-terminated UTF8 string or
 %NULL if @icon can't be serialized. Use g_free() to free.</doc>
@@ -39608,8 +39699,8 @@ in the following two cases
   native, the returned string is the result of g_file_get_uri()
   (such as `sftp://path/to/my%20icon.png`).
 
-- If @icon is a #GThemedIcon with exactly one name, the encoding is
-   simply the name (such as `network-server`).</doc>
+- If @icon is a #GThemedIcon with exactly one name and no fallbacks,
+  the encoding is simply the name (such as `network-server`).</doc>
         <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">An allocated NUL-terminated UTF8 string or
 %NULL if @icon can't be serialized. Use g_free() to free.</doc>
@@ -39759,7 +39850,7 @@ for @family.
         <parameters>
           <parameter name="bytes" transfer-ownership="none">
             <doc xml:space="preserve">raw address data</doc>
-            <array zero-terminated="0" c:type="guint8*">
+            <array zero-terminated="0" c:type="const guint8*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -45221,8 +45312,9 @@ the home directory, or the root of the volume).</doc>
 
 This is a convenience method for getting the #GVolume and then
 using that object to get the #GDrive.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">a #GDrive or %NULL if @mount is not associated with a volume or a drive.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">a #GDrive or %NULL if @mount is not
+     associated with a volume or a drive.
      The returned object should be unreffed with
      g_object_unref() when no longer needed.</doc>
           <type name="Drive" c:type="GDrive*"/>
@@ -45281,7 +45373,7 @@ using that object to get the #GDrive.</doc>
       </virtual-method>
       <virtual-method name="get_sort_key" invoker="get_sort_key" version="2.32">
         <doc xml:space="preserve">Gets the sort key for @mount, if any.</doc>
-        <return-value transfer-ownership="none">
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">Sorting key for @mount or %NULL if no such key is available.</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -45312,8 +45404,9 @@ using that object to get the #GDrive.</doc>
 the file system UUID for the mount in question and should be
 considered an opaque string. Returns %NULL if there is no UUID
 available.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">the UUID for @mount or %NULL if no UUID can be computed.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">the UUID for @mount or %NULL if no UUID
+    can be computed.
     The returned string should be freed with g_free()
     when no longer needed.</doc>
           <type name="utf8" c:type="char*"/>
@@ -45327,8 +45420,9 @@ available.</doc>
       </virtual-method>
       <virtual-method name="get_volume" invoker="get_volume">
         <doc xml:space="preserve">Gets the volume for the @mount.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">a #GVolume or %NULL if @mount is not associated with a volume.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">a #GVolume or %NULL if @mount is not
+     associated with a volume.
      The returned object should be unreffed with
      g_object_unref() when no longer needed.</doc>
           <type name="Volume" c:type="GVolume*"/>
@@ -45769,8 +45863,9 @@ the home directory, or the root of the volume).</doc>
 
 This is a convenience method for getting the #GVolume and then
 using that object to get the #GDrive.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">a #GDrive or %NULL if @mount is not associated with a volume or a drive.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">a #GDrive or %NULL if @mount is not
+     associated with a volume or a drive.
      The returned object should be unreffed with
      g_object_unref() when no longer needed.</doc>
           <type name="Drive" c:type="GDrive*"/>
@@ -45829,7 +45924,7 @@ using that object to get the #GDrive.</doc>
       </method>
       <method name="get_sort_key" c:identifier="g_mount_get_sort_key" version="2.32">
         <doc xml:space="preserve">Gets the sort key for @mount, if any.</doc>
-        <return-value transfer-ownership="none">
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">Sorting key for @mount or %NULL if no such key is available.</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -45860,8 +45955,9 @@ using that object to get the #GDrive.</doc>
 the file system UUID for the mount in question and should be
 considered an opaque string. Returns %NULL if there is no UUID
 available.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">the UUID for @mount or %NULL if no UUID can be computed.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">the UUID for @mount or %NULL if no UUID
+    can be computed.
     The returned string should be freed with g_free()
     when no longer needed.</doc>
           <type name="utf8" c:type="char*"/>
@@ -45875,8 +45971,9 @@ available.</doc>
       </method>
       <method name="get_volume" c:identifier="g_mount_get_volume">
         <doc xml:space="preserve">Gets the volume for the @mount.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">a #GVolume or %NULL if @mount is not associated with a volume.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">a #GVolume or %NULL if @mount is not
+     associated with a volume.
      The returned object should be unreffed with
      g_object_unref() when no longer needed.</doc>
           <type name="Volume" c:type="GVolume*"/>
@@ -46317,8 +46414,9 @@ finalized.</doc>
       </field>
       <field name="get_uuid">
         <callback name="get_uuid">
-          <return-value transfer-ownership="full">
-            <doc xml:space="preserve">the UUID for @mount or %NULL if no UUID can be computed.
+          <return-value transfer-ownership="full" nullable="1">
+            <doc xml:space="preserve">the UUID for @mount or %NULL if no UUID
+    can be computed.
     The returned string should be freed with g_free()
     when no longer needed.</doc>
             <type name="utf8" c:type="char*"/>
@@ -46333,8 +46431,9 @@ finalized.</doc>
       </field>
       <field name="get_volume">
         <callback name="get_volume">
-          <return-value transfer-ownership="full">
-            <doc xml:space="preserve">a #GVolume or %NULL if @mount is not associated with a volume.
+          <return-value transfer-ownership="full" nullable="1">
+            <doc xml:space="preserve">a #GVolume or %NULL if @mount is not
+     associated with a volume.
      The returned object should be unreffed with
      g_object_unref() when no longer needed.</doc>
             <type name="Volume" c:type="GVolume*"/>
@@ -46349,8 +46448,9 @@ finalized.</doc>
       </field>
       <field name="get_drive">
         <callback name="get_drive">
-          <return-value transfer-ownership="full">
-            <doc xml:space="preserve">a #GDrive or %NULL if @mount is not associated with a volume or a drive.
+          <return-value transfer-ownership="full" nullable="1">
+            <doc xml:space="preserve">a #GDrive or %NULL if @mount is not
+     associated with a volume or a drive.
      The returned object should be unreffed with
      g_object_unref() when no longer needed.</doc>
             <type name="Drive" c:type="GDrive*"/>
@@ -46748,7 +46848,7 @@ finalized.</doc>
       </field>
       <field name="get_sort_key">
         <callback name="get_sort_key">
-          <return-value transfer-ownership="none">
+          <return-value transfer-ownership="none" nullable="1">
             <doc xml:space="preserve">Sorting key for @mount or %NULL if no such key is available.</doc>
             <type name="utf8" c:type="const gchar*"/>
           </return-value>
@@ -46798,7 +46898,13 @@ Users should instantiate a subclass of this that implements all the
 various callbacks to show the required dialogs, such as
 #GtkMountOperation. If no user interaction is desired (for example
 when automounting filesystems at login time), usually %NULL can be
-passed, see each method taking a #GMountOperation for details.</doc>
+passed, see each method taking a #GMountOperation for details.
+
+The term &#x2018;TCRYPT&#x2019; is used to mean &#x2018;compatible with TrueCrypt and VeraCrypt&#x2019;.
+[TrueCrypt](https://en.wikipedia.org/wiki/TrueCrypt) is a discontinued system for
+encrypting file containers, partitions or whole disks, typically used with Windows.
+[VeraCrypt](https://www.veracrypt.fr/) is a maintained fork of TrueCrypt with various
+improvements and auditing fixes.</doc>
       <constructor name="new" c:identifier="g_mount_operation_new">
         <doc xml:space="preserve">Creates a new mount operation.</doc>
         <return-value transfer-ownership="full">
@@ -46850,7 +46956,7 @@ passed, see each method taking a #GMountOperation for details.</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
           <parameter name="choices" transfer-ownership="none">
-            <array c:type="char*">
+            <array c:type="const char**">
               <type name="utf8"/>
             </array>
           </parameter>
@@ -46889,7 +46995,7 @@ passed, see each method taking a #GMountOperation for details.</doc>
             </array>
           </parameter>
           <parameter name="choices" transfer-ownership="none">
-            <array c:type="gchar*">
+            <array c:type="const gchar**">
               <type name="utf8"/>
             </array>
           </parameter>
@@ -46955,6 +47061,34 @@ the choice's list, or %0.</doc>
           </instance-parameter>
         </parameters>
       </method>
+      <method name="get_is_tcrypt_hidden_volume" c:identifier="g_mount_operation_get_is_tcrypt_hidden_volume" version="2.58">
+        <doc xml:space="preserve">Check to see whether the mount operation is being used
+for a TCRYPT hidden volume.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE if mount operation is for hidden volume.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="op" transfer-ownership="none">
+            <doc xml:space="preserve">a #GMountOperation.</doc>
+            <type name="MountOperation" c:type="GMountOperation*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_is_tcrypt_system_volume" c:identifier="g_mount_operation_get_is_tcrypt_system_volume" version="2.58">
+        <doc xml:space="preserve">Check to see whether the mount operation is being used
+for a TCRYPT system volume.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE if mount operation is for system volume.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="op" transfer-ownership="none">
+            <doc xml:space="preserve">a #GMountOperation.</doc>
+            <type name="MountOperation" c:type="GMountOperation*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
       <method name="get_password" c:identifier="g_mount_operation_get_password">
         <doc xml:space="preserve">Gets a password from the mount operation.</doc>
         <return-value transfer-ownership="none">
@@ -46973,6 +47107,19 @@ the choice's list, or %0.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">a #GPasswordSave flag.</doc>
           <type name="PasswordSave" c:type="GPasswordSave"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="op" transfer-ownership="none">
+            <doc xml:space="preserve">a #GMountOperation.</doc>
+            <type name="MountOperation" c:type="GMountOperation*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_pim" c:identifier="g_mount_operation_get_pim" version="2.58">
+        <doc xml:space="preserve">Gets a PIM from the mount operation.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">The VeraCrypt PIM within @op.</doc>
+          <type name="guint" c:type="guint"/>
         </return-value>
         <parameters>
           <instance-parameter name="op" transfer-ownership="none">
@@ -47058,6 +47205,38 @@ the choice's list, or %0.</doc>
           </parameter>
         </parameters>
       </method>
+      <method name="set_is_tcrypt_hidden_volume" c:identifier="g_mount_operation_set_is_tcrypt_hidden_volume" version="2.58">
+        <doc xml:space="preserve">Sets the mount operation to use a hidden volume if @hidden_volume is %TRUE.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="op" transfer-ownership="none">
+            <doc xml:space="preserve">a #GMountOperation.</doc>
+            <type name="MountOperation" c:type="GMountOperation*"/>
+          </instance-parameter>
+          <parameter name="hidden_volume" transfer-ownership="none">
+            <doc xml:space="preserve">boolean value.</doc>
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_is_tcrypt_system_volume" c:identifier="g_mount_operation_set_is_tcrypt_system_volume" version="2.58">
+        <doc xml:space="preserve">Sets the mount operation to use a system volume if @system_volume is %TRUE.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="op" transfer-ownership="none">
+            <doc xml:space="preserve">a #GMountOperation.</doc>
+            <type name="MountOperation" c:type="GMountOperation*"/>
+          </instance-parameter>
+          <parameter name="system_volume" transfer-ownership="none">
+            <doc xml:space="preserve">boolean value.</doc>
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="set_password" c:identifier="g_mount_operation_set_password">
         <doc xml:space="preserve">Sets the mount operation's password to @password.</doc>
         <return-value transfer-ownership="none">
@@ -47090,6 +47269,22 @@ the choice's list, or %0.</doc>
           </parameter>
         </parameters>
       </method>
+      <method name="set_pim" c:identifier="g_mount_operation_set_pim" version="2.58">
+        <doc xml:space="preserve">Sets the mount operation's PIM to @pim.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="op" transfer-ownership="none">
+            <doc xml:space="preserve">a #GMountOperation.</doc>
+            <type name="MountOperation" c:type="GMountOperation*"/>
+          </instance-parameter>
+          <parameter name="pim" transfer-ownership="none">
+            <doc xml:space="preserve">an unsigned integer.</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="set_username" c:identifier="g_mount_operation_set_username">
         <doc xml:space="preserve">Sets the user name within @op to @username.</doc>
         <return-value transfer-ownership="none">
@@ -47119,6 +47314,19 @@ mount operation. See the #GMountOperation::ask-question signal.</doc>
         <doc xml:space="preserve">The domain to use for the mount operation.</doc>
         <type name="utf8" c:type="gchar*"/>
       </property>
+      <property name="is-tcrypt-hidden-volume" version="2.58" writable="1" transfer-ownership="none">
+        <doc xml:space="preserve">Whether the device to be unlocked is a TCRYPT hidden volume.
+See https://www.veracrypt.fr/en/Hidden%20Volume.html.</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="is-tcrypt-system-volume" version="2.58" writable="1" transfer-ownership="none">
+        <doc xml:space="preserve">Whether the device to be unlocked is a TCRYPT system volume.
+In this context, a system volume is a volume with a bootloader
+and operating system installed. This is only supported for Windows
+operating systems. For further documentation, see
+https://www.veracrypt.fr/en/System%20Encryption.html.</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
       <property name="password" writable="1" transfer-ownership="none">
         <doc xml:space="preserve">The password that is used for authentication when carrying out
 the mount operation.</doc>
@@ -47127,6 +47335,11 @@ the mount operation.</doc>
       <property name="password-save" writable="1" transfer-ownership="none">
         <doc xml:space="preserve">Determines if and how the password information should be saved.</doc>
         <type name="PasswordSave"/>
+      </property>
+      <property name="pim" version="2.58" writable="1" transfer-ownership="none">
+        <doc xml:space="preserve">The VeraCrypt PIM value, when unlocking a VeraCrypt volume. See
+https://www.veracrypt.fr/en/Personal%20Iterations%20Multiplier%20(PIM).html.</doc>
+        <type name="guint" c:type="guint"/>
       </property>
       <property name="username" writable="1" transfer-ownership="none">
         <doc xml:space="preserve">The user name that is used for authentication when carrying out
@@ -47328,7 +47541,7 @@ primary text in a #GtkMessageDialog.</doc>
               <type name="utf8" c:type="const char*"/>
             </parameter>
             <parameter name="choices" transfer-ownership="none">
-              <array c:type="char*">
+              <array c:type="const char**">
                 <type name="utf8"/>
               </array>
             </parameter>
@@ -47382,7 +47595,7 @@ primary text in a #GtkMessageDialog.</doc>
               </array>
             </parameter>
             <parameter name="choices" transfer-ownership="none">
-              <array c:type="gchar*">
+              <array c:type="const gchar**">
                 <type name="utf8"/>
               </array>
             </parameter>
@@ -54107,7 +54320,9 @@ to register it with g_resources_register().
 
 Note: @data must be backed by memory that is at least pointer aligned.
 Otherwise this function will internally create a copy of the memory since
-GLib 2.56, or in older versions fail and exit the process.</doc>
+GLib 2.56, or in older versions fail and exit the process.
+
+If @data is empty or corrupt, %G_RESOURCE_ERROR_INTERNAL will be returned.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">a new #GResource, or %NULL on error</doc>
           <type name="Resource" c:type="GResource*"/>
@@ -54303,7 +54518,12 @@ thread.</doc>
 you to query it for data.
 
 If you want to use this resource in the global resource namespace you need
-to register it with g_resources_register().</doc>
+to register it with g_resources_register().
+
+If @filename is empty or the data in it is corrupt,
+%G_RESOURCE_ERROR_INTERNAL will be returned. If @filename doesn&#x2019;t exist, or
+there is an error in reading it, an error from g_mapped_file_new() will be
+returned.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">a new #GResource, or %NULL on error</doc>
           <type name="Resource" c:type="GResource*"/>
@@ -55924,8 +56144,7 @@ The list is exactly the list of strings for which it is not an error
 to call g_settings_get_child().
 
 For GSettings objects that are lists, this value can change at any
-time and you should connect to the "children-changed" signal to watch
-for those changes.  Note that there is a race condition here: you may
+time. Note that there is a race condition here: you may
 request a child after listing it only for it to have been destroyed
 in the meantime.  For this reason, g_settings_get_child() may return
 %NULL even for a child that was listed by this function.
@@ -56285,7 +56504,7 @@ having an array of strings type in the schema for @settings.</doc>
           </parameter>
           <parameter name="value" transfer-ownership="none" nullable="1" allow-none="1">
             <doc xml:space="preserve">the value to set it to, or %NULL</doc>
-            <array c:type="gchar**">
+            <array c:type="const gchar* const*">
               <type name="utf8" c:type="gchar*"/>
             </array>
           </parameter>
@@ -56582,7 +56801,7 @@ g_free().  You should not attempt to free or unref the contents of
           <parameter name="keys" direction="out" caller-allocates="0" transfer-ownership="container">
             <doc xml:space="preserve">the
        location to save the relative keys</doc>
-            <array c:type="gchar***">
+            <array c:type="const gchar***">
               <type name="utf8" c:type="gchar**"/>
             </array>
           </parameter>
@@ -56853,7 +57072,7 @@ keys that were changed) but this is not strictly required.</doc>
           </parameter>
           <parameter name="items" transfer-ownership="none">
             <doc xml:space="preserve">the %NULL-terminated list of changed keys</doc>
-            <array c:type="gchar**">
+            <array c:type="const gchar* const*">
               <type name="utf8" c:type="gchar*"/>
             </array>
           </parameter>
@@ -57745,6 +57964,9 @@ in crashes or inconsistent behaviour in the case of a corrupted file.
 Generally, you should set @trusted to %TRUE for files installed by the
 system and to %FALSE for files in the home directory.
 
+In either case, an empty file or some types of corruption in the file will
+result in %G_FILE_ERROR_INVAL being returned.
+
 If @parent is non-%NULL then there are two effects.
 
 First, if g_settings_schema_source_lookup() is called with the
@@ -57902,7 +58124,8 @@ See also #GtkAction.</doc>
       <constructor name="new" c:identifier="g_simple_action_new" version="2.28">
         <doc xml:space="preserve">Creates a new action.
 
-The created action is stateless.  See g_simple_action_new_stateful().</doc>
+The created action is stateless. See g_simple_action_new_stateful() to create
+an action that has state.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">a new #GSimpleAction</doc>
           <type name="SimpleAction" c:type="GSimpleAction*"/>
@@ -57913,7 +58136,8 @@ The created action is stateless.  See g_simple_action_new_stateful().</doc>
             <type name="utf8" c:type="const gchar*"/>
           </parameter>
           <parameter name="parameter_type" transfer-ownership="none" nullable="1" allow-none="1">
-            <doc xml:space="preserve">the type of parameter to the activate function</doc>
+            <doc xml:space="preserve">the type of parameter that will be passed to
+  handlers for the #GSimpleAction::activate signal, or %NULL for no parameter</doc>
             <type name="GLib.VariantType" c:type="const GVariantType*"/>
           </parameter>
         </parameters>
@@ -57921,10 +58145,10 @@ The created action is stateless.  See g_simple_action_new_stateful().</doc>
       <constructor name="new_stateful" c:identifier="g_simple_action_new_stateful" version="2.28">
         <doc xml:space="preserve">Creates a new stateful action.
 
-@state is the initial state of the action.  All future state values
-must have the same #GVariantType as the initial state.
+All future state values must have the same #GVariantType as the initial
+@state.
 
-If the @state GVariant is floating, it is consumed.</doc>
+If the @state #GVariant is floating, it is consumed.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">a new #GSimpleAction</doc>
           <type name="SimpleAction" c:type="GSimpleAction*"/>
@@ -57935,7 +58159,8 @@ If the @state GVariant is floating, it is consumed.</doc>
             <type name="utf8" c:type="const gchar*"/>
           </parameter>
           <parameter name="parameter_type" transfer-ownership="none" nullable="1" allow-none="1">
-            <doc xml:space="preserve">the type of the parameter to the activate function</doc>
+            <doc xml:space="preserve">the type of the parameter that will be passed to
+  handlers for the #GSimpleAction::activate signal, or %NULL for no parameter</doc>
             <type name="GLib.VariantType" c:type="const GVariantType*"/>
           </parameter>
           <parameter name="state" transfer-ownership="none">
@@ -58039,8 +58264,9 @@ action is stateless.</doc>
       <glib:signal name="activate" when="last" version="2.28">
         <doc xml:space="preserve">Indicates that the action was just activated.
 
-@parameter will always be of the expected type.  In the event that
-an incorrect type was given, no signal will be emitted.
+@parameter will always be of the expected type, i.e. the parameter type
+specified when the action was created. If an incorrect type is given when
+activating the action, this signal is not emitted.
 
 Since GLib 2.40, if no handler is connected to this signal then the
 default behaviour for boolean-stated actions with a %NULL parameter
@@ -58054,7 +58280,8 @@ of #GSimpleAction to connect only one handler or the other.</doc>
         </return-value>
         <parameters>
           <parameter name="parameter" transfer-ownership="none" nullable="1" allow-none="1">
-            <doc xml:space="preserve">the parameter to the activation</doc>
+            <doc xml:space="preserve">the parameter to the activation, or %NULL if it has
+  no parameter</doc>
             <type name="GLib.Variant"/>
           </parameter>
         </parameters>
@@ -58063,8 +58290,10 @@ of #GSimpleAction to connect only one handler or the other.</doc>
         <doc xml:space="preserve">Indicates that the action just received a request to change its
 state.
 
-@value will always be of the correct state type.  In the event that
-an incorrect type was given, no signal will be emitted.
+@value will always be of the correct state type, i.e. the type of the
+initial state passed to g_simple_action_new_stateful(). If an incorrect
+type is given when requesting to change the state, this signal is not
+emitted.
 
 If no handler is connected to this signal then the default
 behaviour is to call g_simple_action_set_state() to set the state
@@ -58129,7 +58358,7 @@ and adding them to the action group.</doc>
           <parameter name="entries" transfer-ownership="none">
             <doc xml:space="preserve">a pointer to the first item in
           an array of #GActionEntry structs</doc>
-            <array length="1" zero-terminated="0" c:type="GActionEntry*">
+            <array length="1" zero-terminated="0" c:type="const GActionEntry*">
               <type name="ActionEntry" c:type="GActionEntry"/>
             </array>
           </parameter>
@@ -60433,7 +60662,7 @@ on error</doc>
           <parameter name="buffer" transfer-ownership="none">
             <doc xml:space="preserve">the buffer
     containing the data to send.</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -60620,7 +60849,7 @@ on error</doc>
           <parameter name="buffer" transfer-ownership="none">
             <doc xml:space="preserve">the buffer
     containing the data to send.</doc>
-            <array length="2" zero-terminated="0" c:type="gchar*">
+            <array length="2" zero-terminated="0" c:type="const gchar*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -60651,7 +60880,7 @@ on error</doc>
           <parameter name="buffer" transfer-ownership="none">
             <doc xml:space="preserve">the buffer
     containing the data to send.</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -63299,9 +63528,16 @@ if available.)</doc>
 of server sockets and helps you accept sockets from any of the
 socket, either sync or async.
 
+Add addresses and ports to listen on using g_socket_listener_add_address()
+and g_socket_listener_add_inet_port(). These will be listened on until
+g_socket_listener_close() is called. Dropping your final reference to the
+#GSocketListener will not cause g_socket_listener_close() to be called
+implicitly, as some references to the #GSocketListener may be held
+internally.
+
 If you want to implement a network server, also look at #GSocketService
-and #GThreadedSocketService which are subclass of #GSocketListener
-that makes this even easier.</doc>
+and #GThreadedSocketService which are subclasses of #GSocketListener
+that make this even easier.</doc>
       <constructor name="new" c:identifier="g_socket_listener_new" version="2.22">
         <doc xml:space="preserve">Creates a new #GSocketListener with no sockets to listen for.
 New listeners can be added with e.g. g_socket_listener_add_address()
@@ -63519,7 +63755,11 @@ If successful and @effective_address is non-%NULL then it will
 be set to the address that the binding actually occurred at.  This
 is helpful for determining the port number that was used for when
 requesting a binding to port 0 (ie: "any port").  This address, if
-requested, belongs to the caller and must be freed.</doc>
+requested, belongs to the caller and must be freed.
+
+Call g_socket_listener_close() to stop listening on @address; this will not
+be done automatically when you drop your final reference to @listener, as
+references may be held internally.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE on success, %FALSE on error.</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -63585,7 +63825,11 @@ supported) on the specified port on all interfaces.
 @source_object will be passed out in the various calls
 to accept to identify this particular source, which is
 useful if you're listening on multiple addresses and do
-different things depending on what address is connected to.</doc>
+different things depending on what address is connected to.
+
+Call g_socket_listener_close() to stop listening on @port; this will not
+be done automatically when you drop your final reference to @listener, as
+references may be held internally.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE on success, %FALSE on error.</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -64410,7 +64654,7 @@ The argument list is expected to be %NULL-terminated.</doc>
         <parameters>
           <parameter name="argv" transfer-ownership="none">
             <doc xml:space="preserve">commandline arguments for the subprocess</doc>
-            <array c:type="gchar**">
+            <array c:type="const gchar* const*">
               <type name="filename"/>
             </array>
           </parameter>
@@ -65353,7 +65597,7 @@ On Windows, they should be in UTF-8.</doc>
           </instance-parameter>
           <parameter name="argv" transfer-ownership="none">
             <doc xml:space="preserve">Command line arguments</doc>
-            <array c:type="gchar**">
+            <array c:type="const gchar* const*">
               <type name="filename"/>
             </array>
           </parameter>
@@ -65545,7 +65789,7 @@ function in the
 where it was created (waiting until the next iteration of the main
 loop first, if necessary). The caller will pass the #GTask back to
 the operation's finish function (as a #GAsyncResult), and you can
-can use g_task_propagate_pointer() or the like to extract the
+use g_task_propagate_pointer() or the like to extract the
 return value.
 
 Here is an example for using GTask as a GAsyncResult:
@@ -67912,7 +68156,7 @@ as appropriate.)</doc>
 This property and the #GTlsCertificate:certificate-pem property
 represent the same data, just in different forms.</doc>
         <array name="GLib.ByteArray">
-          <type name="gpointer" c:type="gpointer"/>
+          <type name="guint8" c:type="guint8"/>
         </array>
       </property>
       <property name="certificate-pem" version="2.28" writable="1" construct-only="1" transfer-ownership="none">
@@ -67939,7 +68183,7 @@ PKCS#8 format is supported since 2.32; earlier releases only
 support PKCS#1. You can use the `openssl rsa`
 tool to convert PKCS#8 keys to PKCS#1.</doc>
         <array name="GLib.ByteArray">
-          <type name="gpointer" c:type="gpointer"/>
+          <type name="guint8" c:type="guint8"/>
         </array>
       </property>
       <property name="private-key-pem" version="2.28" readable="0" writable="1" construct-only="1" transfer-ownership="none">
@@ -68126,7 +68370,7 @@ CA DNs. You should unref each element with g_byte_array_unref() and then
 the free the list with g_list_free().</doc>
           <type name="GLib.List" c:type="GList*">
             <array name="GLib.ByteArray">
-              <type name="gpointer" c:type="gpointer"/>
+              <type name="guint8" c:type="guint8"/>
             </array>
           </type>
         </return-value>
@@ -68202,14 +68446,19 @@ performing %G_TLS_CERTIFICATE_BAD_IDENTITY validation, if enabled.</doc>
         </parameters>
       </method>
       <method name="set_use_ssl3" c:identifier="g_tls_client_connection_set_use_ssl3" version="2.28" deprecated="1" deprecated-version="2.56">
-        <doc xml:space="preserve">If @use_ssl3 is %TRUE, this forces @conn to use the lowest-supported
-TLS protocol version rather than trying to properly negotiate the
-highest mutually-supported protocol version with the peer. This can
-be used when talking to broken TLS servers that exhibit protocol
-version intolerance.
+        <doc xml:space="preserve">Since 2.42.1, if @use_ssl3 is %TRUE, this forces @conn to use the
+lowest-supported TLS protocol version rather than trying to properly
+negotiate the highest mutually-supported protocol version with the
+peer. Be aware that SSL 3.0 is generally disabled by the
+#GTlsBackend, so the lowest-supported protocol version is probably
+not SSL 3.0.
 
-Be aware that SSL 3.0 is generally disabled by the #GTlsBackend, so
-the lowest-supported protocol version is probably not SSL 3.0.</doc>
+Since 2.58, this may additionally cause an RFC 7507 fallback SCSV to
+be sent to the server, causing modern TLS servers to immediately
+terminate the connection. You should generally only use this function
+if you need to connect to broken servers that exhibit TLS protocol
+version intolerance, and when an initial attempt to connect to a
+server normally has already failed.</doc>
         <doc-deprecated xml:space="preserve">SSL 3.0 is insecure, and this function does not
 generally enable or disable it, despite its name.</doc-deprecated>
         <return-value transfer-ownership="none">
@@ -68276,14 +68525,7 @@ virtual hosts.</doc>
       <property name="use-ssl3" version="2.28" deprecated="1" deprecated-version="2.56" writable="1" construct="1" transfer-ownership="none">
         <doc xml:space="preserve">If %TRUE, forces the connection to use a fallback version of TLS
 or SSL, rather than trying to negotiate the best version of TLS
-to use. This can be used when talking to servers that don't
-implement version negotiation correctly and therefore refuse to
-handshake at all with a modern TLS handshake.
-
-Despite the property name, the fallback version is usually not
-SSL 3.0, because SSL 3.0 is generally disabled by the #GTlsBackend.
-#GTlsClientConnection will use the next-highest available version
-as the fallback version.</doc>
+to use. See g_tls_client_connection_set_use_ssl3().</doc>
         <doc-deprecated xml:space="preserve">SSL 3.0 is insecure, and this property does not
 generally enable or disable it, despite its name.</doc-deprecated>
         <type name="gboolean" c:type="gboolean"/>
@@ -68362,7 +68604,10 @@ Likewise, on the server side, although a handshake is necessary at
 the beginning of the communication, you do not need to call this
 function explicitly unless you want clearer error reporting.
 However, you may call g_tls_connection_handshake() later on to
-renegotiate parameters (encryption methods, etc) with the client.
+rehandshake, if TLS 1.2 or older is in use. With TLS 1.3, the
+behavior is undefined but guaranteed to be reasonable and
+nondestructive, so most older code should be expected to continue to
+work without changes.
 
 #GTlsConnection::accept_certificate may be emitted during the
 handshake.</doc>
@@ -68589,7 +68834,10 @@ Likewise, on the server side, although a handshake is necessary at
 the beginning of the communication, you do not need to call this
 function explicitly unless you want clearer error reporting.
 However, you may call g_tls_connection_handshake() later on to
-renegotiate parameters (encryption methods, etc) with the client.
+rehandshake, if TLS 1.2 or older is in use. With TLS 1.3, the
+behavior is undefined but guaranteed to be reasonable and
+nondestructive, so most older code should be expected to continue to
+work without changes.
 
 #GTlsConnection::accept_certificate may be emitted during the
 handshake.</doc>
@@ -68734,7 +68982,8 @@ should occur for this connection.</doc>
         </parameters>
       </method>
       <method name="set_rehandshake_mode" c:identifier="g_tls_connection_set_rehandshake_mode" version="2.28">
-        <doc xml:space="preserve">Sets how @conn behaves with respect to rehandshaking requests.
+        <doc xml:space="preserve">Sets how @conn behaves with respect to rehandshaking requests, when
+TLS 1.2 or older is in use.
 
 %G_TLS_REHANDSHAKE_NEVER means that it will never agree to
 rehandshake after the initial handshake is complete. (For a client,
@@ -71398,7 +71647,7 @@ considered part of the password in this case.)</doc>
           </instance-parameter>
           <parameter name="value" transfer-ownership="none">
             <doc xml:space="preserve">the new password value</doc>
-            <array length="1" zero-terminated="0" c:type="guchar*">
+            <array length="1" zero-terminated="0" c:type="const guchar*">
               <type name="guint8" c:type="guchar"/>
             </array>
           </parameter>
@@ -71961,7 +72210,7 @@ If @n_fds is -1 then @fds must be terminated with -1.</doc>
         <parameters>
           <parameter name="fds" transfer-ownership="none">
             <doc xml:space="preserve">the initial list of file descriptors</doc>
-            <array length="1" zero-terminated="0" c:type="gint*">
+            <array length="1" zero-terminated="0" c:type="const gint*">
               <type name="gint" c:type="gint"/>
             </array>
           </parameter>
@@ -72059,7 +72308,7 @@ descriptors contained in @list, an empty array is returned.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">an array of file
     descriptors</doc>
-          <array length="0" zero-terminated="0" c:type="gint*">
+          <array length="0" zero-terminated="0" c:type="const gint*">
             <type name="gint" c:type="gint"/>
           </array>
         </return-value>
@@ -72876,7 +73125,7 @@ use g_unix_socket_address_new_abstract().</doc>
         <parameters>
           <parameter name="path" transfer-ownership="none">
             <doc xml:space="preserve">the abstract name</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="gchar"/>
             </array>
           </parameter>
@@ -72925,7 +73174,7 @@ its listening socket.</doc>
         <parameters>
           <parameter name="path" transfer-ownership="none">
             <doc xml:space="preserve">the name</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="gchar"/>
             </array>
           </parameter>
@@ -73021,7 +73270,7 @@ abstract addresses.</doc-deprecated>
       </property>
       <property name="path-as-array" writable="1" construct-only="1" transfer-ownership="none">
         <array name="GLib.ByteArray">
-          <type name="gpointer" c:type="gpointer"/>
+          <type name="guint8" c:type="guint8"/>
         </array>
       </property>
       <field name="parent_instance">
@@ -73086,8 +73335,9 @@ file chooser can use this information to show `network` volumes under
 a "Network" heading and `device` volumes under a "Devices" heading.</doc>
       <type name="utf8" c:type="gchar*"/>
     </constant>
-    <constant name="VOLUME_IDENTIFIER_KIND_HAL_UDI" value="hal-udi" c:type="G_VOLUME_IDENTIFIER_KIND_HAL_UDI">
+    <constant name="VOLUME_IDENTIFIER_KIND_HAL_UDI" value="hal-udi" c:type="G_VOLUME_IDENTIFIER_KIND_HAL_UDI" deprecated="1" deprecated-version="2.58">
       <doc xml:space="preserve">The string used to obtain a Hal UDI with g_volume_get_identifier().</doc>
+      <doc-deprecated xml:space="preserve">Do not use, HAL is deprecated.</doc-deprecated>
       <type name="utf8" c:type="gchar*"/>
     </constant>
     <constant name="VOLUME_IDENTIFIER_KIND_LABEL" value="label" c:type="G_VOLUME_IDENTIFIER_KIND_LABEL">
@@ -73823,7 +74073,7 @@ allows to obtain an 'identifier' for the volume. There can be
 different kinds of identifiers, such as Hal UDIs, filesystem labels,
 traditional Unix devices (e.g. `/dev/sda2`), UUIDs. GIO uses predefined
 strings as names for the different kinds of identifiers:
-#G_VOLUME_IDENTIFIER_KIND_HAL_UDI, #G_VOLUME_IDENTIFIER_KIND_LABEL, etc.
+#G_VOLUME_IDENTIFIER_KIND_UUID, #G_VOLUME_IDENTIFIER_KIND_LABEL, etc.
 Use g_volume_get_identifier() to obtain an identifier for a volume.
 
 
@@ -74029,7 +74279,7 @@ g_mount_is_shadowed() for more details.</doc>
       </virtual-method>
       <virtual-method name="get_drive" invoker="get_drive">
         <doc xml:space="preserve">Gets the drive for the @volume.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a #GDrive or %NULL if @volume is not
     associated with a drive. The returned object should be unreffed
     with g_object_unref() when no longer needed.</doc>
@@ -74061,9 +74311,9 @@ g_mount_is_shadowed() for more details.</doc>
         <doc xml:space="preserve">Gets the identifier of the given kind for @volume.
 See the [introduction][volume-identifier] for more
 information about volume identifiers.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a newly allocated string containing the
-    requested identfier, or %NULL if the #GVolume
+    requested identifier, or %NULL if the #GVolume
     doesn't have this kind of identifier</doc>
           <type name="utf8" c:type="char*"/>
         </return-value>
@@ -74080,7 +74330,7 @@ information about volume identifiers.</doc>
       </virtual-method>
       <virtual-method name="get_mount" invoker="get_mount">
         <doc xml:space="preserve">Gets the mount for the @volume.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a #GMount or %NULL if @volume isn't mounted.
     The returned object should be unreffed with g_object_unref()
     when no longer needed.</doc>
@@ -74109,7 +74359,7 @@ information about volume identifiers.</doc>
       </virtual-method>
       <virtual-method name="get_sort_key" invoker="get_sort_key" version="2.32">
         <doc xml:space="preserve">Gets the sort key for @volume, if any.</doc>
-        <return-value transfer-ownership="none">
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">Sorting key for @volume or %NULL if no such key is available</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -74140,8 +74390,9 @@ information about volume identifiers.</doc>
 the file system UUID for the volume in question and should be
 considered an opaque string. Returns %NULL if there is no UUID
 available.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">the UUID for @volume or %NULL if no UUID can be computed.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">the UUID for @volume or %NULL if no UUID
+    can be computed.
     The returned string should be freed with g_free()
     when no longer needed.</doc>
           <type name="utf8" c:type="char*"/>
@@ -74420,7 +74671,7 @@ g_mount_is_shadowed() for more details.</doc>
       </method>
       <method name="get_drive" c:identifier="g_volume_get_drive">
         <doc xml:space="preserve">Gets the drive for the @volume.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a #GDrive or %NULL if @volume is not
     associated with a drive. The returned object should be unreffed
     with g_object_unref() when no longer needed.</doc>
@@ -74452,9 +74703,9 @@ g_mount_is_shadowed() for more details.</doc>
         <doc xml:space="preserve">Gets the identifier of the given kind for @volume.
 See the [introduction][volume-identifier] for more
 information about volume identifiers.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a newly allocated string containing the
-    requested identfier, or %NULL if the #GVolume
+    requested identifier, or %NULL if the #GVolume
     doesn't have this kind of identifier</doc>
           <type name="utf8" c:type="char*"/>
         </return-value>
@@ -74471,7 +74722,7 @@ information about volume identifiers.</doc>
       </method>
       <method name="get_mount" c:identifier="g_volume_get_mount">
         <doc xml:space="preserve">Gets the mount for the @volume.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a #GMount or %NULL if @volume isn't mounted.
     The returned object should be unreffed with g_object_unref()
     when no longer needed.</doc>
@@ -74500,7 +74751,7 @@ information about volume identifiers.</doc>
       </method>
       <method name="get_sort_key" c:identifier="g_volume_get_sort_key" version="2.32">
         <doc xml:space="preserve">Gets the sort key for @volume, if any.</doc>
-        <return-value transfer-ownership="none">
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">Sorting key for @volume or %NULL if no such key is available</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -74531,8 +74782,9 @@ information about volume identifiers.</doc>
 the file system UUID for the volume in question and should be
 considered an opaque string. Returns %NULL if there is no UUID
 available.</doc>
-        <return-value transfer-ownership="full">
-          <doc xml:space="preserve">the UUID for @volume or %NULL if no UUID can be computed.
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">the UUID for @volume or %NULL if no UUID
+    can be computed.
     The returned string should be freed with g_free()
     when no longer needed.</doc>
           <type name="utf8" c:type="char*"/>
@@ -74692,8 +74944,9 @@ release them so the object can be finalized.</doc>
       </field>
       <field name="get_uuid">
         <callback name="get_uuid">
-          <return-value transfer-ownership="full">
-            <doc xml:space="preserve">the UUID for @volume or %NULL if no UUID can be computed.
+          <return-value transfer-ownership="full" nullable="1">
+            <doc xml:space="preserve">the UUID for @volume or %NULL if no UUID
+    can be computed.
     The returned string should be freed with g_free()
     when no longer needed.</doc>
             <type name="utf8" c:type="char*"/>
@@ -74708,7 +74961,7 @@ release them so the object can be finalized.</doc>
       </field>
       <field name="get_drive">
         <callback name="get_drive">
-          <return-value transfer-ownership="full">
+          <return-value transfer-ownership="full" nullable="1">
             <doc xml:space="preserve">a #GDrive or %NULL if @volume is not
     associated with a drive. The returned object should be unreffed
     with g_object_unref() when no longer needed.</doc>
@@ -74724,7 +74977,7 @@ release them so the object can be finalized.</doc>
       </field>
       <field name="get_mount">
         <callback name="get_mount">
-          <return-value transfer-ownership="full">
+          <return-value transfer-ownership="full" nullable="1">
             <doc xml:space="preserve">a #GMount or %NULL if @volume isn't mounted.
     The returned object should be unreffed with g_object_unref()
     when no longer needed.</doc>
@@ -74866,9 +75119,9 @@ release them so the object can be finalized.</doc>
       </field>
       <field name="get_identifier">
         <callback name="get_identifier">
-          <return-value transfer-ownership="full">
+          <return-value transfer-ownership="full" nullable="1">
             <doc xml:space="preserve">a newly allocated string containing the
-    requested identfier, or %NULL if the #GVolume
+    requested identifier, or %NULL if the #GVolume
     doesn't have this kind of identifier</doc>
             <type name="utf8" c:type="char*"/>
           </return-value>
@@ -74984,7 +75237,7 @@ release them so the object can be finalized.</doc>
       </field>
       <field name="get_sort_key">
         <callback name="get_sort_key">
-          <return-value transfer-ownership="none">
+          <return-value transfer-ownership="none" nullable="1">
             <doc xml:space="preserve">Sorting key for @volume or %NULL if no such key is available</doc>
             <type name="utf8" c:type="const gchar*"/>
           </return-value>
@@ -75034,7 +75287,7 @@ it in its g_mount_get_volume() implementation. The caller must
 also listen for the "removed" signal on the returned object
 and give up its reference when handling that signal
 
-Similary, if implementing g_volume_monitor_adopt_orphan_mount(),
+Similarly, if implementing g_volume_monitor_adopt_orphan_mount(),
 the implementor must take a reference to @mount and return it in
 its g_volume_get_mount() implemented. Also, the implementor must
 listen for the "unmounted" signal on @mount and give up its
@@ -76966,8 +77219,8 @@ specification for more on the generic icon name.</doc>
     <function name="content_type_get_mime_type" c:identifier="g_content_type_get_mime_type">
       <doc xml:space="preserve">Gets the mime type for the content type, if one is registered.</doc>
       <return-value transfer-ownership="full" nullable="1">
-        <doc xml:space="preserve">the registered mime type for the given @type,
-    or %NULL if unknown.</doc>
+        <doc xml:space="preserve">the registered mime type for the
+    given @type, or %NULL if unknown; free with g_free().</doc>
         <type name="utf8" c:type="gchar*"/>
       </return-value>
       <parameters>
@@ -77008,7 +77261,7 @@ on the other argument.</doc>
         </parameter>
         <parameter name="data" transfer-ownership="none" nullable="1" allow-none="1">
           <doc xml:space="preserve">a stream of data, or %NULL</doc>
-          <array length="2" zero-terminated="0" c:type="guchar*">
+          <array length="2" zero-terminated="0" c:type="const guchar*">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -77404,7 +77657,7 @@ exists.</doc>
         </parameter>
         <parameter name="entries" transfer-ownership="none">
           <doc xml:space="preserve">A pointer to @num_entries #GDBusErrorEntry struct items.</doc>
-          <array length="3" zero-terminated="0" c:type="GDBusErrorEntry*">
+          <array length="3" zero-terminated="0" c:type="const GDBusErrorEntry*">
             <type name="DBusErrorEntry" c:type="GDBusErrorEntry"/>
           </array>
         </parameter>
@@ -78442,7 +78695,12 @@ specified protocol.</doc>
 you to query it for data.
 
 If you want to use this resource in the global resource namespace you need
-to register it with g_resources_register().</doc>
+to register it with g_resources_register().
+
+If @filename is empty or the data in it is corrupt,
+%G_RESOURCE_ERROR_INTERNAL will be returned. If @filename doesn&#x2019;t exist, or
+there is an error in reading it, an error from g_mapped_file_new() will be
+returned.</doc>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve">a new #GResource, or %NULL on error</doc>
         <type name="Resource" c:type="GResource*"/>
@@ -78966,6 +79224,24 @@ if the mounts have changed since with g_unix_mounts_changed_since().</doc>
       <parameters>
         <parameter name="mount_entry" transfer-ownership="none">
           <doc xml:space="preserve">input #GUnixMountEntry to get the mount path for.</doc>
+          <type name="UnixMountEntry" c:type="GUnixMountEntry*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="unix_mount_get_options" c:identifier="g_unix_mount_get_options" version="2.58">
+      <doc xml:space="preserve">Gets a comma-separated list of mount options for the unix mount. For example,
+`rw,relatime,seclabel,data=ordered`.
+
+This is similar to g_unix_mount_point_get_options(), but it takes
+a #GUnixMountEntry as an argument.</doc>
+      <return-value transfer-ownership="none" nullable="1">
+        <doc xml:space="preserve">a string containing the options, or %NULL if not
+available.</doc>
+        <type name="utf8" c:type="const char*"/>
+      </return-value>
+      <parameters>
+        <parameter name="mount_entry" transfer-ownership="none">
+          <doc xml:space="preserve">a #GUnixMountEntry.</doc>
           <type name="UnixMountEntry" c:type="GUnixMountEntry*"/>
         </parameter>
       </parameters>

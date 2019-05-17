@@ -5,6 +5,8 @@ version = "1.0"
 target_path = ".."
 doc_target_path = "../target/vendor.md"
 deprecate_by_min_version = true
+single_version_file = true
+generate_display_trait = true
 
 girs_dir = "../gir-files"
 

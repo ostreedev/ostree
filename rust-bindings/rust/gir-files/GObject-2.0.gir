@@ -2461,7 +2461,9 @@ converts between #GValue and native C types. The GObject
 library provides the #GCClosure type for this purpose. Bindings for
 other languages need marshallers which convert between #GValues
 and suitable representations in the runtime of the language in
-order to use functions written in that languages as callbacks.
+order to use functions written in that language as callbacks. Use
+g_closure_set_marshal() to set the marshaller on such a custom
+closure implementation.
 
 Within GObject, closures play an important role in the
 implementation of signals. When a signal is registered, the
@@ -2760,7 +2762,7 @@ been invalidated before).</doc>
             <doc xml:space="preserve">an array of
                #GValues holding the arguments on which to
                invoke the callback of @closure</doc>
-            <array length="1" zero-terminated="0" c:type="GValue*">
+            <array length="1" zero-terminated="0" c:type="const GValue*">
               <type name="Value" c:type="GValue"/>
             </array>
           </parameter>
@@ -2976,7 +2978,7 @@ closure, then the closure will be destroyed and freed.</doc>
           <doc xml:space="preserve">an array of
  #GValues holding the arguments on which to invoke the
  callback of @closure</doc>
-          <array length="2" zero-terminated="0" c:type="GValue*">
+          <array length="2" zero-terminated="0" c:type="const GValue*">
             <type name="Value" c:type="GValue"/>
           </array>
         </parameter>
@@ -3357,7 +3359,7 @@ zeros before this function is called.</doc>
     <class name="Object" c:symbol-prefix="object" c:type="GObject" glib:type-name="GObject" glib:get-type="g_object_get_type" glib:type-struct="ObjectClass">
       <doc xml:space="preserve">All the fields in the GObject structure are private
 to the #GObject implementation and should never be accessed directly.</doc>
-      <constructor name="new" c:identifier="g_object_new" shadowed-by="new_with_properties" introspectable="0">
+      <constructor name="new" c:identifier="g_object_new" introspectable="0">
         <doc xml:space="preserve">Creates a new instance of a #GObject subtype and sets its properties.
 
 Construction parameters (see #G_PARAM_CONSTRUCT, #G_PARAM_CONSTRUCT_ONLY)
@@ -3408,7 +3410,7 @@ which are not explicitly specified are set to their default values.</doc>
           </parameter>
         </parameters>
       </constructor>
-      <constructor name="new_with_properties" c:identifier="g_object_new_with_properties" shadows="new" version="2.54">
+      <constructor name="new_with_properties" c:identifier="g_object_new_with_properties" version="2.54" introspectable="0">
         <doc xml:space="preserve">Creates a new instance of a #GObject subtype and sets its properties using
 the provided arrays. Both arrays must have exactly @n_properties elements,
 and the names and values correspond by index.
@@ -3432,7 +3434,7 @@ which are not explicitly specified are set to their default values.</doc>
           <parameter name="names" transfer-ownership="none">
             <doc xml:space="preserve">the names of each property to be set</doc>
             <array length="1" zero-terminated="0" c:type="const char**">
-              <type name="utf8" c:type="char"/>
+              <type name="utf8" c:type="char*"/>
             </array>
           </parameter>
           <parameter name="values" transfer-ownership="none">
@@ -4267,7 +4269,7 @@ properties are passed in.</doc>
           <parameter name="names" transfer-ownership="none">
             <doc xml:space="preserve">the names of each property to get</doc>
             <array length="0" zero-terminated="0" c:type="const gchar**">
-              <type name="utf8" c:type="gchar"/>
+              <type name="utf8" c:type="gchar*"/>
             </array>
           </parameter>
           <parameter name="values" transfer-ownership="none">
@@ -4753,7 +4755,7 @@ properties are passed in.</doc>
           <parameter name="names" transfer-ownership="none">
             <doc xml:space="preserve">the names of each property to be set</doc>
             <array length="0" zero-terminated="0" c:type="const gchar**">
-              <type name="utf8" c:type="gchar"/>
+              <type name="utf8" c:type="gchar*"/>
             </array>
           </parameter>
           <parameter name="values" transfer-ownership="none">
@@ -4955,11 +4957,17 @@ Use #GWeakRef if thread-safety is required.</doc>
         <type name="GLib.Data" c:type="GData*"/>
       </field>
       <glib:signal name="notify" when="first" no-recurse="1" detailed="1" action="1" no-hooks="1">
-        <doc xml:space="preserve">The notify signal is emitted on an object when one of its
-properties has been changed. Note that getting this signal
-doesn't guarantee that the value of the property has actually
-changed, it may also be emitted when the setter for the property
-is called to reinstate the previous value.
+        <doc xml:space="preserve">The notify signal is emitted on an object when one of its properties has
+its value set through g_object_set_property(), g_object_set(), et al.
+
+Note that getting this signal doesn&#x2019;t itself guarantee that the value of
+the property has actually changed. When it is emitted is determined by the
+derived GObject class. If the implementor did not create the property with
+%G_PARAM_EXPLICIT_NOTIFY, then any call to g_object_set_property() results
+in ::notify being emitted, even if the new value is the same as the old.
+If they did pass %G_PARAM_EXPLICIT_NOTIFY, then this signal is emitted only
+when they explicitly call g_object_notify() or g_object_notify_by_pspec(),
+and common practice is to do that only when the value has actually changed.
 
 This signal is typically used to obtain change notification for a
 single property, by specifying the property name as a detail in the
@@ -4970,7 +4978,7 @@ g_signal_connect (text_view-&gt;buffer, "notify::paste-target-list",
                   text_view)
 ]|
 It is important to note that you must use
-[canonical][canonical-parameter-name] parameter names as
+[canonical parameter names][canonical-parameter-names] as
 detail strings for the notify signal.</doc>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -6535,7 +6543,13 @@ g_param_type_register_static().</doc>
       </field>
     </class>
     <class name="ParamSpecVariant" c:symbol-prefix="param_spec_variant" c:type="GParamSpecVariant" version="2.26" parent="ParamSpec" glib:type-name="GParamVariant" glib:get-type="intern" glib:fundamental="1">
-      <doc xml:space="preserve">A #GParamSpec derived structure that contains the meta data for #GVariant properties.</doc>
+      <doc xml:space="preserve">A #GParamSpec derived structure that contains the meta data for #GVariant properties.
+
+When comparing values with g_param_values_cmp(), scalar values with the same
+type will be compared with g_variant_compare(). Other non-%NULL variants will
+be checked for equality with g_variant_equal(), and their sort order is
+otherwise undefined. %NULL is ordered before non-%NULL variants. Two %NULL
+values compare equal.</doc>
       <field name="parent_instance">
         <doc xml:space="preserve">private #GParamSpec portion</doc>
         <type name="ParamSpec" c:type="GParamSpec"/>
@@ -6632,7 +6646,7 @@ You may not attach these to signals created with the #G_SIGNAL_NO_HOOKS flag.</d
         <parameter name="param_values" transfer-ownership="none">
           <doc xml:space="preserve">the instance on which
  the signal was emitted, followed by the parameters of the emission.</doc>
-          <array length="1" zero-terminated="0" c:type="GValue*">
+          <array length="1" zero-terminated="0" c:type="const GValue*">
             <type name="Value" c:type="GValue"/>
           </array>
         </parameter>
@@ -6762,7 +6776,7 @@ filled in by the g_signal_query() function.</doc>
  [param_types param_names,]
  gpointer     data2);
  ]|</doc>
-        <array length="5" zero-terminated="0" c:type="GType*">
+        <array length="5" zero-terminated="0" c:type="const GType*">
           <type name="GType" c:type="GType"/>
         </array>
       </field>
@@ -6855,7 +6869,7 @@ of a toggle reference changes. See g_object_add_toggle_ref().</doc>
       <field name="g_type" readable="0" private="1">
         <type name="GType" c:type="GType"/>
       </field>
-      <method name="add_private" c:identifier="g_type_class_add_private" version="2.4">
+      <method name="add_private" c:identifier="g_type_class_add_private" version="2.4" deprecated="1" deprecated-version="2.58">
         <doc xml:space="preserve">Registers a private structure for an instantiatable type.
 
 When an object is allocated, the private structures for
@@ -6918,6 +6932,8 @@ my_object_get_some_field (MyObject *my_object)
   return priv-&gt;some_field;
 }
 ]|</doc>
+        <doc-deprecated xml:space="preserve">Use the G_ADD_PRIVATE() macro with the `G_DEFINE_*`
+  family of macros to add instance private data to a type</doc-deprecated>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -8526,7 +8542,7 @@ Get the contents of a %G_TYPE_CHAR #GValue.</doc>
       </method>
       <method name="get_variant" c:identifier="g_value_get_variant" version="2.26">
         <doc xml:space="preserve">Get the contents of a variant #GValue.</doc>
-        <return-value transfer-ownership="full" nullable="1">
+        <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">variant contents of @value (may be %NULL)</doc>
           <type name="GLib.Variant" c:type="GVariant*"/>
         </return-value>
@@ -10703,7 +10719,7 @@ pointer casts.</doc>
       <parameters>
         <parameter name="object_ptr" transfer-ownership="none">
           <doc xml:space="preserve">a pointer to a #GObject reference</doc>
-          <type name="Object" c:type="volatile GObject**"/>
+          <type name="Object" c:type="GObject**"/>
         </parameter>
       </parameters>
     </function>
@@ -12058,7 +12074,7 @@ g_signal_override_class_handler().</doc>
           <doc xml:space="preserve">the argument list of the signal emission.
  The first element in the array is a #GValue for the instance the signal
  is being emitted on. The rest are any arguments to be passed to the signal.</doc>
-          <array zero-terminated="0" c:type="GValue*">
+          <array zero-terminated="0" c:type="const GValue*">
             <type name="Value" c:type="GValue"/>
           </array>
         </parameter>
@@ -12317,7 +12333,7 @@ connected, in contrast to g_signal_emit() and g_signal_emit_valist().</doc>
           <doc xml:space="preserve">argument list for the signal emission.
  The first element in the array is a #GValue for the instance the signal
  is being emitted on. The rest are any arguments to be passed to the signal.</doc>
-          <array zero-terminated="0" c:type="GValue*">
+          <array zero-terminated="0" c:type="const GValue*">
             <type name="Value" c:type="GValue"/>
           </array>
         </parameter>
@@ -12804,7 +12820,7 @@ the marshaller for this signal.</doc>
       <doc xml:space="preserve">Creates a new signal. (This is usually done in the class initializer.)
 
 This is a variant of g_signal_new() that takes a C callback instead
-off a class offset for the signal's class handler. This function
+of a class offset for the signal's class handler. This function
 doesn't need a function pointer exposed in the class structure of
 an object definition, instead the function pointer is passed
 directly and can be overriden by derived classes with

@@ -36,6 +36,9 @@ the g_spawn functions.</doc>
 particular string. A GQuark value of zero is associated to %NULL.</doc>
       <type name="guint32" c:type="guint32"/>
     </alias>
+    <alias name="RefString" c:type="GRefString">
+      <type name="gchar" c:type="char"/>
+    </alias>
     <alias name="Strv" c:type="GStrv">
       <doc xml:space="preserve">A typedef alias for gchar**. This is mostly useful when used together with
 g_auto().</doc>
@@ -171,7 +174,15 @@ functions.</doc>
         </parameters>
       </function>
       <function name="insert_vals" c:identifier="g_array_insert_vals" introspectable="0">
-        <doc xml:space="preserve">Inserts @len elements into a #GArray at the given index.</doc>
+        <doc xml:space="preserve">Inserts @len elements into a #GArray at the given index.
+
+If @index_ is greater than the array&#x2019;s current length, the array is expanded.
+The elements between the old end of the array and the newly inserted elements
+will be initialised to zero if the array was configured to clear elements;
+otherwise their values will be undefined.
+
+@data may be %NULL if (and only if) @len is zero. If @len is zero, this
+function is a no-op.</doc>
         <return-value>
           <doc xml:space="preserve">the #GArray</doc>
           <array name="GLib.Array" c:type="GArray*">
@@ -189,7 +200,7 @@ functions.</doc>
             <doc xml:space="preserve">the index to place the elements at</doc>
             <type name="guint" c:type="guint"/>
           </parameter>
-          <parameter name="data" transfer-ownership="none">
+          <parameter name="data" transfer-ownership="none" nullable="1" allow-none="1">
             <doc xml:space="preserve">a pointer to the elements to insert</doc>
             <type name="gpointer" c:type="gconstpointer"/>
           </parameter>
@@ -227,6 +238,9 @@ functions.</doc>
       <function name="prepend_vals" c:identifier="g_array_prepend_vals" introspectable="0">
         <doc xml:space="preserve">Adds @len elements onto the start of the array.
 
+@data may be %NULL if (and only if) @len is zero. If @len is zero, this
+function is a no-op.
+
 This operation is slower than g_array_append_vals() since the
 existing elements in the array have to be moved to make space for
 the new elements.</doc>
@@ -243,12 +257,12 @@ the new elements.</doc>
               <type name="gpointer" c:type="gpointer"/>
             </array>
           </parameter>
-          <parameter name="data" transfer-ownership="none">
+          <parameter name="data" transfer-ownership="none" nullable="1" allow-none="1">
             <doc xml:space="preserve">a pointer to the elements to prepend to the start of the array</doc>
             <type name="gpointer" c:type="gconstpointer"/>
           </parameter>
           <parameter name="len" transfer-ownership="none">
-            <doc xml:space="preserve">the number of elements to prepend</doc>
+            <doc xml:space="preserve">the number of elements to prepend, which may be zero</doc>
             <type name="guint" c:type="guint"/>
           </parameter>
         </parameters>
@@ -1205,8 +1219,8 @@ In the event the URI cannot be found, -1 is returned and
         </parameters>
       </method>
       <method name="get_app_info" c:identifier="g_bookmark_file_get_app_info" version="2.12" throws="1">
-        <doc xml:space="preserve">Gets the registration informations of @app_name for the bookmark for
-@uri.  See g_bookmark_file_set_app_info() for more informations about
+        <doc xml:space="preserve">Gets the registration information of @app_name for the bookmark for
+@uri.  See g_bookmark_file_set_app_info() for more information about
 the returned data.
 
 The string returned in @app_exec must be freed.
@@ -1583,7 +1597,7 @@ structure.  If the object cannot be created then @error is set to a
           <parameter name="data" transfer-ownership="none">
             <doc xml:space="preserve">desktop bookmarks
    loaded in memory</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -1597,7 +1611,7 @@ structure.  If the object cannot be created then @error is set to a
         <doc xml:space="preserve">This function looks for a desktop bookmark file named @file in the
 paths returned from g_get_user_data_dir() and g_get_system_data_dirs(),
 loads the file into @bookmark and returns the file's full path in
-@full_path.  If the file could not be loaded then an %error is
+@full_path.  If the file could not be loaded then @error is
 set to either a #GFileError or #GBookmarkFileError.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE if a key file could be loaded, %FALSE otherwise</doc>
@@ -1864,7 +1878,7 @@ If @uri cannot be found then an item for it is created.</doc>
           <parameter name="groups" transfer-ownership="none" nullable="1" allow-none="1">
             <doc xml:space="preserve">an array of
    group names, or %NULL to remove all groups</doc>
-            <array length="2" zero-terminated="0" c:type="gchar**">
+            <array length="2" zero-terminated="0" c:type="const gchar**">
               <type name="utf8"/>
             </array>
           </parameter>
@@ -2587,10 +2601,17 @@ been called to indicate that the bytes is no longer in use.
       <method name="compare" c:identifier="g_bytes_compare" version="2.32">
         <doc xml:space="preserve">Compares the two #GBytes values.
 
-This function can be used to sort GBytes instances in lexographical order.</doc>
+This function can be used to sort GBytes instances in lexicographical order.
+
+If @bytes1 and @bytes2 have different length but the shorter one is a
+prefix of the longer one then the shorter one is considered to be less than
+the longer one. Otherwise the first byte where both differ is used for
+comparison. If @bytes1 has a smaller value at that position it is
+considered less, otherwise greater than @bytes2.</doc>
         <return-value transfer-ownership="none">
-          <doc xml:space="preserve">a negative value if bytes2 is lesser, a positive value if bytes2 is
-         greater, and zero if bytes2 is equal to bytes1</doc>
+          <doc xml:space="preserve">a negative value if @bytes1 is less than @bytes2, a positive value
+         if @bytes1 is greater than @bytes2, and zero if @bytes1 is equal to
+         @bytes2</doc>
           <type name="gint" c:type="gint"/>
         </return-value>
         <parameters>
@@ -2879,9 +2900,11 @@ no longer be updated with g_checksum_update().</doc>
           </instance-parameter>
           <parameter name="buffer" transfer-ownership="none">
             <doc xml:space="preserve">output buffer</doc>
-            <type name="guint8" c:type="guint8*"/>
+            <array length="1" zero-terminated="0" c:type="guint8*">
+              <type name="guint8" c:type="guint8"/>
+            </array>
           </parameter>
-          <parameter name="digest_len" transfer-ownership="none">
+          <parameter name="digest_len" direction="inout" caller-allocates="0" transfer-ownership="full">
             <doc xml:space="preserve">an inout parameter. The caller initializes it to the size of @buffer.
   After the call it contains the length of the digest.</doc>
             <type name="gsize" c:type="gsize*"/>
@@ -2934,7 +2957,7 @@ not have been called on @checksum.</doc>
           </instance-parameter>
           <parameter name="data" transfer-ownership="none">
             <doc xml:space="preserve">buffer used to compute the checksum</doc>
-            <array length="1" zero-terminated="0" c:type="guchar*">
+            <array length="1" zero-terminated="0" c:type="const guchar*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -3962,7 +3985,10 @@ the user's current timezone.
 
 To set the value of a date to the current day, you could write:
 |[&lt;!-- language="C" --&gt;
- g_date_set_time_t (date, time (NULL));
+ time_t now = time (NULL);
+ if (now == (time_t) -1)
+   // handle the error
+ g_date_set_time_t (date, now);
 ]|</doc>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -5138,6 +5164,19 @@ including the fractional part.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">the number of seconds</doc>
           <type name="gdouble" c:type="gdouble"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="datetime" transfer-ownership="none">
+            <doc xml:space="preserve">a #GDateTime</doc>
+            <type name="DateTime" c:type="GDateTime*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_timezone" c:identifier="g_date_time_get_timezone" version="2.58">
+        <doc xml:space="preserve">Get the time zone for this @datetime.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">the time zone</doc>
+          <type name="TimeZone" c:type="GTimeZone*"/>
         </return-value>
         <parameters>
           <instance-parameter name="datetime" transfer-ownership="none">
@@ -6984,6 +7023,45 @@ without calling the key and value destroy functions.</doc>
           </parameter>
         </parameters>
       </function>
+      <function name="steal_extended" c:identifier="g_hash_table_steal_extended" version="2.58">
+        <doc xml:space="preserve">Looks up a key in the #GHashTable, stealing the original key and the
+associated value and returning %TRUE if the key was found. If the key was
+not found, %FALSE is returned.
+
+If found, the stolen key and value are removed from the hash table without
+calling the key and value destroy functions, and ownership is transferred to
+the caller of this method; as with g_hash_table_steal().
+
+You can pass %NULL for @lookup_key, provided the hash and equal functions
+of @hash_table are %NULL-safe.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE if the key was found in the #GHashTable</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="hash_table" transfer-ownership="none">
+            <doc xml:space="preserve">a #GHashTable</doc>
+            <type name="GLib.HashTable" c:type="GHashTable*">
+              <type name="gpointer" c:type="gpointer"/>
+              <type name="gpointer" c:type="gpointer"/>
+            </type>
+          </parameter>
+          <parameter name="lookup_key" transfer-ownership="none" nullable="1" allow-none="1">
+            <doc xml:space="preserve">the key to look up</doc>
+            <type name="gpointer" c:type="gconstpointer"/>
+          </parameter>
+          <parameter name="stolen_key" direction="out" caller-allocates="0" transfer-ownership="full" nullable="1" optional="1" allow-none="1">
+            <doc xml:space="preserve">return location for the
+   original key</doc>
+            <type name="gpointer" c:type="gpointer*"/>
+          </parameter>
+          <parameter name="stolen_value" direction="out" caller-allocates="0" transfer-ownership="full" nullable="1" optional="1" allow-none="1">
+            <doc xml:space="preserve">return location
+   for the value associated with the key</doc>
+            <type name="gpointer" c:type="gpointer*"/>
+          </parameter>
+        </parameters>
+      </function>
       <function name="unref" c:identifier="g_hash_table_unref" version="2.10">
         <doc xml:space="preserve">Atomically decrements the reference count of @hash_table by one.
 If the reference count drops to 0, all keys and values will be
@@ -7199,9 +7277,11 @@ no longer be updated with g_checksum_update().</doc>
           </instance-parameter>
           <parameter name="buffer" transfer-ownership="none">
             <doc xml:space="preserve">output buffer</doc>
-            <type name="guint8" c:type="guint8*"/>
+            <array length="1" zero-terminated="0" c:type="guint8*">
+              <type name="guint8" c:type="guint8"/>
+            </array>
           </parameter>
-          <parameter name="digest_len" transfer-ownership="none">
+          <parameter name="digest_len" direction="inout" caller-allocates="0" transfer-ownership="full">
             <doc xml:space="preserve">an inout parameter. The caller initializes it to the
   size of @buffer. After the call it contains the length of the digest</doc>
             <type name="gsize" c:type="gsize*"/>
@@ -7275,7 +7355,7 @@ g_hmac_get_digest() must not have been called on @hmac.</doc>
           </instance-parameter>
           <parameter name="data" transfer-ownership="none">
             <doc xml:space="preserve">buffer used to compute the checksum</doc>
-            <array length="1" zero-terminated="0" c:type="guchar*">
+            <array length="1" zero-terminated="0" c:type="const guchar*">
               <type name="guint8" c:type="guchar"/>
             </array>
           </parameter>
@@ -7314,7 +7394,7 @@ Support for %G_CHECKSUM_SHA384 was added in GLib 2.52.</doc>
           </parameter>
           <parameter name="key" transfer-ownership="none">
             <doc xml:space="preserve">the key for the HMAC</doc>
-            <array length="2" zero-terminated="0" c:type="guchar*">
+            <array length="2" zero-terminated="0" c:type="const guchar*">
               <type name="guint8" c:type="guchar"/>
             </array>
           </parameter>
@@ -8838,7 +8918,7 @@ cases described in the documentation for g_io_channel_set_encoding ().</doc>
           </instance-parameter>
           <parameter name="buf" transfer-ownership="none">
             <doc xml:space="preserve">a buffer to write data from</doc>
-            <array zero-terminated="0" c:type="gchar*">
+            <array zero-terminated="0" c:type="const gchar*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -10050,7 +10130,7 @@ file, a %G_FILE_ERROR is returned. If there is a problem parsing the file, a
           </parameter>
           <parameter name="search_dirs" transfer-ownership="none">
             <doc xml:space="preserve">%NULL-terminated array of directories to search</doc>
-            <array c:type="gchar**">
+            <array c:type="const gchar**">
               <type name="filename"/>
             </array>
           </parameter>
@@ -10490,7 +10570,7 @@ it is created.</doc>
           <parameter name="list" transfer-ownership="none">
             <doc xml:space="preserve">a %NULL-terminated array of locale string values</doc>
             <array length="4" zero-terminated="1" c:type="const gchar* const*">
-              <type name="utf8" c:type="gchar"/>
+              <type name="utf8" c:type="gchar*"/>
             </array>
           </parameter>
           <parameter name="length" transfer-ownership="none">
@@ -10885,8 +10965,10 @@ a copy of each list element, in addition to copying the list
 container itself.
 
 @func, as a #GCopyFunc, takes two arguments, the data to be copied
-and a @user_data pointer. It's safe to pass %NULL as user_data,
-if the copy function takes only one argument.
+and a @user_data pointer. On common processor architectures, it's safe to
+pass %NULL as @user_data if the copy function takes only one argument. You
+may get compiler warnings from this though if compiling with GCC&#x2019;s
+`-Wcast-function-type` warning.
 
 For instance, if @list holds a list of GObjects, you can do:
 |[&lt;!-- language="C" --&gt;
@@ -11691,7 +11773,7 @@ chained and fall back to simpler handlers in case of failure.</doc>
         </parameter>
         <parameter name="fields" transfer-ownership="none">
           <doc xml:space="preserve">fields forming the message</doc>
-          <array length="2" zero-terminated="0" c:type="GLogField*">
+          <array length="2" zero-terminated="0" c:type="const GLogField*">
             <type name="LogField" c:type="GLogField"/>
           </array>
         </parameter>
@@ -11783,7 +11865,7 @@ linked against at application run time.</doc>
       <doc xml:space="preserve">The minimum value which can be held in a #gint8.</doc>
       <type name="gint8" c:type="gint8"/>
     </constant>
-    <constant name="MINOR_VERSION" value="56" c:type="GLIB_MINOR_VERSION">
+    <constant name="MINOR_VERSION" value="58" c:type="GLIB_MINOR_VERSION">
       <doc xml:space="preserve">The minor version number of the GLib library.
 
 Like #gtk_minor_version, but from the headers used at
@@ -12316,12 +12398,13 @@ the result is zero, free the context and free all associated memory.</doc>
           </instance-parameter>
         </parameters>
       </method>
-      <method name="wait" c:identifier="g_main_context_wait">
+      <method name="wait" c:identifier="g_main_context_wait" deprecated="1" deprecated-version="2.58">
         <doc xml:space="preserve">Tries to become the owner of the specified context,
 as with g_main_context_acquire(). But if another thread
 is the owner, atomically drop @mutex and wait on @cond until
 that owner releases ownership or until @cond is signaled, then
 try again (once) to become the owner.</doc>
+        <doc-deprecated xml:space="preserve">Use g_main_context_is_owner() and separate locking instead.</doc-deprecated>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE if the operation succeeded, and
   this thread is now the owner of @context.</doc>
@@ -15348,7 +15431,7 @@ which have been added to a #GOptionContext.</doc>
       <method name="ref" c:identifier="g_option_group_ref" version="2.44">
         <doc xml:space="preserve">Increments the reference count of @group by one.</doc>
         <return-value transfer-ownership="full">
-          <doc xml:space="preserve">a #GoptionGroup</doc>
+          <doc xml:space="preserve">a #GOptionGroup</doc>
           <type name="OptionGroup" c:type="GOptionGroup*"/>
         </return-value>
         <parameters>
@@ -16048,7 +16131,8 @@ pointer was not found.</doc>
         <doc xml:space="preserve">Removes the pointer at the given index from the pointer array.
 The following elements are moved down one place. If @array has
 a non-%NULL #GDestroyNotify function it is called for the removed
-element.</doc>
+element. If so, the return value from this function will potentially point
+to freed memory (depending on the #GDestroyNotify implementation).</doc>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">the pointer which was removed</doc>
           <type name="gpointer" c:type="gpointer"/>
@@ -16071,7 +16155,9 @@ element.</doc>
 The last element in the array is used to fill in the space, so
 this function does not preserve the order of the array. But it
 is faster than g_ptr_array_remove_index(). If @array has a non-%NULL
-#GDestroyNotify function it is called for the removed element.</doc>
+#GDestroyNotify function it is called for the removed element. If so, the
+return value from this function will potentially point to freed memory
+(depending on the #GDestroyNotify implementation).</doc>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">the pointer which was removed</doc>
           <type name="gpointer" c:type="gpointer"/>
@@ -16230,6 +16316,52 @@ This is guaranteed to be a stable sort since version 2.32.</doc>
           <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
             <doc xml:space="preserve">data to pass to @compare_func</doc>
             <type name="gpointer" c:type="gpointer"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="steal_index" c:identifier="g_ptr_array_steal_index" version="2.58" introspectable="0">
+        <doc xml:space="preserve">Removes the pointer at the given index from the pointer array.
+The following elements are moved down one place. The #GDestroyNotify for
+@array is *not* called on the removed element; ownership is transferred to
+the caller of this function.</doc>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">the pointer which was removed</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </return-value>
+        <parameters>
+          <parameter name="array" transfer-ownership="none">
+            <doc xml:space="preserve">a #GPtrArray</doc>
+            <array name="GLib.PtrArray" c:type="GPtrArray*">
+              <type name="gpointer" c:type="gpointer"/>
+            </array>
+          </parameter>
+          <parameter name="index_" transfer-ownership="none">
+            <doc xml:space="preserve">the index of the pointer to steal</doc>
+            <type name="guint" c:type="guint"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="steal_index_fast" c:identifier="g_ptr_array_steal_index_fast" version="2.58" introspectable="0">
+        <doc xml:space="preserve">Removes the pointer at the given index from the pointer array.
+The last element in the array is used to fill in the space, so
+this function does not preserve the order of the array. But it
+is faster than g_ptr_array_steal_index(). The #GDestroyNotify for @array is
+*not* called on the removed element; ownership is transferred to the caller
+of this function.</doc>
+        <return-value transfer-ownership="full" nullable="1">
+          <doc xml:space="preserve">the pointer which was removed</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </return-value>
+        <parameters>
+          <parameter name="array" transfer-ownership="none">
+            <doc xml:space="preserve">a #GPtrArray</doc>
+            <array name="GLib.PtrArray" c:type="GPtrArray*">
+              <type name="gpointer" c:type="gpointer"/>
+            </array>
+          </parameter>
+          <parameter name="index_" transfer-ownership="none">
+            <doc xml:space="preserve">the index of the pointer to steal</doc>
+            <type name="guint" c:type="guint"/>
           </parameter>
         </parameters>
       </function>
@@ -17727,10 +17859,12 @@ the string passed to g_regex_new().</doc>
         </parameters>
       </method>
       <method name="match" c:identifier="g_regex_match" version="2.14">
-        <doc xml:space="preserve">Scans for a match in string for the pattern in @regex.
+        <doc xml:space="preserve">Scans for a match in @string for the pattern in @regex.
 The @match_options are combined with the match options specified
 when the @regex structure was created, letting you have more
 flexibility in reusing #GRegex structures.
+
+Unless %G_REGEX_RAW is specified in the options, @string must be valid UTF-8.
 
 A #GMatchInfo structure, used to get information on the match,
 is stored in @match_info if not %NULL. Note that if @match_info
@@ -17830,7 +17964,7 @@ freeing or modifying @string then the behaviour is undefined.</doc>
       </method>
       <method name="match_all_full" c:identifier="g_regex_match_all_full" version="2.14" throws="1">
         <doc xml:space="preserve">Using the standard algorithm for regular expression matching only
-the longest match in the string is retrieved, it is not possible
+the longest match in the @string is retrieved, it is not possible
 to obtain all the available matches. For instance matching
 "&lt;a&gt; &lt;b&gt; &lt;c&gt;" against the pattern "&lt;.*&gt;"
 you get "&lt;a&gt; &lt;b&gt; &lt;c&gt;".
@@ -17856,6 +17990,8 @@ Setting @start_position differs from just passing over a shortened
 string and setting #G_REGEX_MATCH_NOTBOL in the case of a pattern
 that begins with any kind of lookbehind assertion, such as "\b".
 
+Unless %G_REGEX_RAW is specified in the options, @string must be valid UTF-8.
+
 A #GMatchInfo structure, used to get information on the match, is
 stored in @match_info if not %NULL. Note that if @match_info is
 not %NULL then it is created even if the function returns %FALSE,
@@ -17876,12 +18012,12 @@ freeing or modifying @string then the behaviour is undefined.</doc>
           </instance-parameter>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">the string to scan for matches</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="utf8" c:type="gchar"/>
             </array>
           </parameter>
           <parameter name="string_len" transfer-ownership="none">
-            <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+            <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
             <type name="gssize" c:type="gssize"/>
           </parameter>
           <parameter name="start_position" transfer-ownership="none">
@@ -17900,7 +18036,7 @@ freeing or modifying @string then the behaviour is undefined.</doc>
         </parameters>
       </method>
       <method name="match_full" c:identifier="g_regex_match_full" version="2.14" throws="1">
-        <doc xml:space="preserve">Scans for a match in string for the pattern in @regex.
+        <doc xml:space="preserve">Scans for a match in @string for the pattern in @regex.
 The @match_options are combined with the match options specified
 when the @regex structure was created, letting you have more
 flexibility in reusing #GRegex structures.
@@ -17908,6 +18044,8 @@ flexibility in reusing #GRegex structures.
 Setting @start_position differs from just passing over a shortened
 string and setting #G_REGEX_MATCH_NOTBOL in the case of a pattern
 that begins with any kind of lookbehind assertion, such as "\b".
+
+Unless %G_REGEX_RAW is specified in the options, @string must be valid UTF-8.
 
 A #GMatchInfo structure, used to get information on the match, is
 stored in @match_info if not %NULL. Note that if @match_info is
@@ -17960,12 +18098,12 @@ print_uppercase_words (const gchar *string)
           </instance-parameter>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">the string to scan for matches</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="utf8" c:type="gchar"/>
             </array>
           </parameter>
           <parameter name="string_len" transfer-ownership="none">
-            <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+            <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
             <type name="gssize" c:type="gssize"/>
           </parameter>
           <parameter name="start_position" transfer-ownership="none">
@@ -18034,12 +18172,12 @@ begins with any kind of lookbehind assertion, such as "\b".</doc>
           </instance-parameter>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">the string to perform matches against</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="utf8" c:type="gchar"/>
             </array>
           </parameter>
           <parameter name="string_len" transfer-ownership="none">
-            <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+            <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
             <type name="gssize" c:type="gssize"/>
           </parameter>
           <parameter name="start_position" transfer-ownership="none">
@@ -18113,12 +18251,12 @@ g_hash_table_destroy (h);
           </instance-parameter>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">string to perform matches against</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="utf8" c:type="gchar"/>
             </array>
           </parameter>
           <parameter name="string_len" transfer-ownership="none">
-            <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+            <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
             <type name="gssize" c:type="gssize"/>
           </parameter>
           <parameter name="start_position" transfer-ownership="none">
@@ -18159,12 +18297,12 @@ assertion, such as "\b".</doc>
           </instance-parameter>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">the string to perform matches against</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="utf8" c:type="gchar"/>
             </array>
           </parameter>
           <parameter name="string_len" transfer-ownership="none">
-            <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+            <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
             <type name="gssize" c:type="gssize"/>
           </parameter>
           <parameter name="start_position" transfer-ownership="none">
@@ -18257,12 +18395,12 @@ it using g_strfreev()</doc>
           </instance-parameter>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">the string to split with the pattern</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="utf8" c:type="gchar"/>
             </array>
           </parameter>
           <parameter name="string_len" transfer-ownership="none">
-            <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+            <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
             <type name="gssize" c:type="gssize"/>
           </parameter>
           <parameter name="start_position" transfer-ownership="none">
@@ -18360,12 +18498,12 @@ in @length.</doc>
         <parameters>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">the string to escape</doc>
-            <array length="1" zero-terminated="0" c:type="gchar*">
+            <array length="1" zero-terminated="0" c:type="const gchar*">
               <type name="utf8" c:type="gchar"/>
             </array>
           </parameter>
           <parameter name="length" transfer-ownership="none">
-            <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+            <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
             <type name="gint" c:type="gint"/>
           </parameter>
         </parameters>
@@ -19045,9 +19183,11 @@ to copy the data as well.</doc>
 In contrast with g_slist_copy(), this function uses @func to make a copy of
 each list element, in addition to copying the list container itself.
 
-@func, as a #GCopyFunc, takes two arguments, the data to be copied and a user
-pointer. It's safe to pass #NULL as user_data, if the copy function takes only
-one argument.
+@func, as a #GCopyFunc, takes two arguments, the data to be copied
+and a @user_data pointer. On common processor architectures, it's safe to
+pass %NULL as @user_data if the copy function takes only one argument. You
+may get compiler warnings from this though if compiling with GCC&#x2019;s
+`-Wcast-function-type` warning.
 
 For instance, if @list holds a list of GObjects, you can do:
 |[&lt;!-- language="C" --&gt;
@@ -19059,7 +19199,7 @@ And, to entirely free the new list, you could do:
 g_slist_free_full (another_list, g_object_unref);
 ]|</doc>
         <return-value>
-          <doc xml:space="preserve">a full copy of @list, use #g_slist_free_full to free it</doc>
+          <doc xml:space="preserve">a full copy of @list, use g_slist_free_full() to free it</doc>
           <type name="GLib.SList" c:type="GSList*">
             <type name="gpointer" c:type="gpointer"/>
           </type>
@@ -20505,14 +20645,14 @@ when comparing the length to zero.</doc>
         </parameters>
       </method>
       <method name="insert_sorted" c:identifier="g_sequence_insert_sorted" version="2.14" introspectable="0">
-        <doc xml:space="preserve">Inserts @data into @sequence using @func to determine the new
+        <doc xml:space="preserve">Inserts @data into @seq using @cmp_func to determine the new
 position. The sequence must already be sorted according to @cmp_func;
 otherwise the new position of @data is undefined.
 
-@cmp_func is called with two items of the @seq and @user_data.
+@cmp_func is called with two items of the @seq, and @cmp_data.
 It should return 0 if the items are equal, a negative value
 if the first item comes before the second, and a positive value
-if the second  item comes before the first.
+if the second item comes before the first.
 
 Note that when adding a large amount of data to a #GSequence,
 it is more efficient to do unsorted insertions and then call
@@ -20550,11 +20690,6 @@ It should return 0 if the iterators are equal, a negative
 value if the first iterator comes before the second, and a
 positive value if the second iterator comes before the first.
 
-It is called with two iterators pointing into @seq. It should
-return 0 if the iterators are equal, a negative value if the
-first iterator comes before the second, and a positive value
-if the second iterator comes before the first.
-
 Note that when adding a large amount of data to a #GSequence,
 it is more efficient to do unsorted insertions and then call
 g_sequence_sort() or g_sequence_sort_iter().</doc>
@@ -20576,7 +20711,7 @@ g_sequence_sort() or g_sequence_sort_iter().</doc>
             <type name="SequenceIterCompareFunc" c:type="GSequenceIterCompareFunc"/>
           </parameter>
           <parameter name="cmp_data" transfer-ownership="none" nullable="1" allow-none="1">
-            <doc xml:space="preserve">user data passed to @cmp_func</doc>
+            <doc xml:space="preserve">user data passed to @iter_cmp</doc>
             <type name="gpointer" c:type="gpointer"/>
           </parameter>
         </parameters>
@@ -20605,7 +20740,7 @@ item is equal, it is not guaranteed that it is the first which is
 returned. In that case, you can use g_sequence_iter_next() and
 g_sequence_iter_prev() to get others.
 
-@cmp_func is called with two items of the @seq and @user_data.
+@cmp_func is called with two items of the @seq, and @cmp_data.
 It should return 0 if the items are equal, a negative value if
 the first item comes before the second, and a positive value if
 the second item comes before the first.
@@ -20650,7 +20785,7 @@ This function will fail if the data contained in the sequence is
 unsorted.</doc>
         <return-value transfer-ownership="none" nullable="1">
           <doc xml:space="preserve">an #GSequenceIter pointing to the position of
-    the first item found equal to @data according to @cmp_func
+    the first item found equal to @data according to @iter_cmp
     and @cmp_data, or %NULL if no such item exists</doc>
           <type name="SequenceIter" c:type="GSequenceIter*"/>
         </return-value>
@@ -20694,7 +20829,7 @@ unsorted.</doc>
         <doc xml:space="preserve">Returns an iterator pointing to the position where @data would
 be inserted according to @cmp_func and @cmp_data.
 
-@cmp_func is called with two items of the @seq and @user_data.
+@cmp_func is called with two items of the @seq, and @cmp_data.
 It should return 0 if the items are equal, a negative value if
 the first item comes before the second, and a positive value if
 the second item comes before the first.
@@ -20794,7 +20929,7 @@ if the second comes before the first.</doc>
       </method>
       <method name="sort_iter" c:identifier="g_sequence_sort_iter" version="2.14" introspectable="0">
         <doc xml:space="preserve">Like g_sequence_sort(), but uses a #GSequenceIterCompareFunc instead
-of a GCompareDataFunc as the compare function
+of a #GCompareDataFunc as the compare function
 
 @cmp_func is called with two iterators pointing into @seq. It should
 return 0 if the iterators are equal, a negative value if the first
@@ -20895,13 +21030,13 @@ sequences.</doc>
         </parameters>
       </function>
       <function name="move_range" c:identifier="g_sequence_move_range" version="2.14">
-        <doc xml:space="preserve">Inserts the (@begin, @end) range at the destination pointed to by ptr.
+        <doc xml:space="preserve">Inserts the (@begin, @end) range at the destination pointed to by @dest.
 The @begin and @end iters must point into the same sequence. It is
 allowed for @dest to point to a different sequence than the one pointed
 into by @begin and @end.
 
-If @dest is NULL, the range indicated by @begin and @end is
-removed from the sequence. If @dest iter points to a place within
+If @dest is %NULL, the range indicated by @begin and @end is
+removed from the sequence. If @dest points to a place within
 the (@begin, @end) range, the range does not move.</doc>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -21013,12 +21148,13 @@ function is called on the existing data that @iter pointed to.</doc>
         </parameters>
       </function>
       <function name="sort_changed" c:identifier="g_sequence_sort_changed" version="2.14" introspectable="0">
-        <doc xml:space="preserve">Moves the data pointed to a new position as indicated by @cmp_func. This
+        <doc xml:space="preserve">Moves the data pointed to by @iter to a new position as indicated by
+@cmp_func. This
 function should be called for items in a sequence already sorted according
 to @cmp_func whenever some aspect of an item changes so that @cmp_func
 may return different values for that item.
 
-@cmp_func is called with two items of the @seq and @user_data.
+@cmp_func is called with two items of the @seq, and @cmp_data.
 It should return 0 if the items are equal, a negative value if
 the first item comes before the second, and a positive value if
 the second item comes before the first.</doc>
@@ -21045,7 +21181,8 @@ the second item comes before the first.</doc>
 a #GSequenceIterCompareFunc instead of a #GCompareDataFunc as
 the compare function.
 
-@iter_cmp is called with two iterators pointing into @seq. It should
+@iter_cmp is called with two iterators pointing into the #GSequence that
+@iter points into. It should
 return 0 if the iterators are equal, a negative value if the first
 iterator comes before the second, and a positive value if the second
 iterator comes before the first.</doc>
@@ -21516,7 +21653,12 @@ g_get_current_time().</doc>
         <doc xml:space="preserve">Returns the numeric ID for a particular source. The ID of a source
 is a positive integer which is unique within a particular main loop
 context. The reverse
-mapping from ID to source is done by g_main_context_find_source_by_id().</doc>
+mapping from ID to source is done by g_main_context_find_source_by_id().
+
+You can only call this function while the source is associated to a
+#GMainContext instance; calling this function before g_source_attach()
+or after g_source_destroy() yields undefined behavior. The ID returned
+is unique within the #GMainContext instance passed to g_source_attach().</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">the ID (greater than 0) for the source</doc>
           <type name="guint" c:type="guint"/>
@@ -21809,7 +21951,8 @@ called from the source's dispatch function.
 
 The exact type of @func depends on the type of source; ie. you
 should not count on @func being called with @data as its first
-parameter.
+parameter. Cast @func with G_SOURCE_FUNC() to avoid warnings about
+incompatible function types.
 
 See [memory management of sources][mainloop-memory-management] for details
 on how to handle memory management of @data.
@@ -22161,7 +22304,11 @@ which cannot be used here for dependency reasons.</doc>
     </callback>
     <callback name="SourceFunc" c:type="GSourceFunc">
       <doc xml:space="preserve">Specifies the type of function passed to g_timeout_add(),
-g_timeout_add_full(), g_idle_add(), and g_idle_add_full().</doc>
+g_timeout_add_full(), g_idle_add(), and g_idle_add_full().
+
+When calling g_source_set_callback(), you may need to cast a function of a
+different type to this type. Use G_SOURCE_FUNC() to avoid warnings about
+incompatible function types.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">%FALSE if the source should be removed. #G_SOURCE_CONTINUE and
 #G_SOURCE_REMOVE are more memorable names for the return value.</doc>
@@ -24127,7 +24274,9 @@ UNIX system call.
 
 GLib is attempting to unify around the use of 64bit integers to
 represent microsecond-precision time. As such, this type will be
-removed from a future version of GLib.</doc>
+removed from a future version of GLib. A consequence of using `glong` for
+`tv_sec` is that on 32-bit systems `GTimeVal` is subject to the year 2038
+problem.</doc>
       <field name="tv_sec" writable="1">
         <doc xml:space="preserve">seconds</doc>
         <type name="glong" c:type="glong"/>
@@ -24176,10 +24325,12 @@ Use g_date_time_format() or g_strdup_printf() if a different
 variation of ISO 8601 format is required.
 
 If @time_ represents a date which is too large to fit into a `struct tm`,
-%NULL will be returned. This is platform dependent, but it is safe to assume
-years up to 3000 are supported. The return value of g_time_val_to_iso8601()
-has been nullable since GLib 2.54; before then, GLib would crash under the
-same conditions.</doc>
+%NULL will be returned. This is platform dependent. Note also that since
+`GTimeVal` stores the number of seconds as a `glong`, on 32-bit systems it
+is subject to the year 2038 problem.
+
+The return value of g_time_val_to_iso8601() has been nullable since GLib
+2.54; before then, GLib would crash under the same conditions.</doc>
         <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a newly allocated string containing an ISO 8601 date,
    or %NULL if @time_ was too large</doc>
@@ -24199,7 +24350,9 @@ to a #GTimeVal and puts it into @time_.
 @iso_date must include year, month, day, hours, minutes, and
 seconds. It can optionally include fractions of a second and a time
 zone indicator. (In the absence of any time zone indication, the
-timestamp is assumed to be in local time.)</doc>
+timestamp is assumed to be in local time.)
+
+Any leading or trailing space in @iso_date is ignored.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE if the conversion was successful.</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -24309,6 +24462,23 @@ when you are done with it.</doc>
           <type name="TimeZone" c:type="GTimeZone*"/>
         </return-value>
       </constructor>
+      <constructor name="new_offset" c:identifier="g_time_zone_new_offset" version="2.58">
+        <doc xml:space="preserve">Creates a #GTimeZone corresponding to the given constant offset from UTC,
+in seconds.
+
+This is equivalent to calling g_time_zone_new() with a string in the form
+`[+|-]hh[:mm[:ss]]`.</doc>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve">a timezone at the given offset from UTC</doc>
+          <type name="TimeZone" c:type="GTimeZone*"/>
+        </return-value>
+        <parameters>
+          <parameter name="seconds" transfer-ownership="none">
+            <doc xml:space="preserve">offset to UTC, in seconds</doc>
+            <type name="gint32" c:type="gint32"/>
+          </parameter>
+        </parameters>
+      </constructor>
       <constructor name="new_utc" c:identifier="g_time_zone_new_utc" version="2.26">
         <doc xml:space="preserve">Creates a #GTimeZone corresponding to UTC.
 
@@ -24416,6 +24586,26 @@ is in effect.</doc>
             <doc xml:space="preserve">an interval within the timezone</doc>
             <type name="gint" c:type="gint"/>
           </parameter>
+        </parameters>
+      </method>
+      <method name="get_identifier" c:identifier="g_time_zone_get_identifier" version="2.58">
+        <doc xml:space="preserve">Get the identifier of this #GTimeZone, as passed to g_time_zone_new().
+If the identifier passed at construction time was not recognised, `UTC` will
+be returned. If it was %NULL, the identifier of the local timezone at
+construction time will be returned.
+
+The identifier will be returned in the same format as provided at
+construction time: if provided as a time offset, that will be returned by
+this function.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">identifier for this timezone</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="tz" transfer-ownership="none">
+            <doc xml:space="preserve">a #GTimeZone</doc>
+            <type name="TimeZone" c:type="GTimeZone*"/>
+          </instance-parameter>
         </parameters>
       </method>
       <method name="get_offset" c:identifier="g_time_zone_get_offset" version="2.26">
@@ -25873,6 +26063,27 @@ See [Unicode Standard Annex #24: Script names](http://www.unicode.org/reports/tr
       <member name="zanabazar_square" value="141" c:identifier="G_UNICODE_SCRIPT_ZANABAZAR_SQUARE">
         <doc xml:space="preserve">Zanabazar Square. Since: 2.54</doc>
       </member>
+      <member name="dogra" value="142" c:identifier="G_UNICODE_SCRIPT_DOGRA">
+        <doc xml:space="preserve">Dogra. Since: 2.58</doc>
+      </member>
+      <member name="gunjala_gondi" value="143" c:identifier="G_UNICODE_SCRIPT_GUNJALA_GONDI">
+        <doc xml:space="preserve">Gunjala Gondi. Since: 2.58</doc>
+      </member>
+      <member name="hanifi_rohingya" value="144" c:identifier="G_UNICODE_SCRIPT_HANIFI_ROHINGYA">
+        <doc xml:space="preserve">Hanifi Rohingya. Since: 2.58</doc>
+      </member>
+      <member name="makasar" value="145" c:identifier="G_UNICODE_SCRIPT_MAKASAR">
+        <doc xml:space="preserve">Makasar. Since: 2.58</doc>
+      </member>
+      <member name="medefaidrin" value="146" c:identifier="G_UNICODE_SCRIPT_MEDEFAIDRIN">
+        <doc xml:space="preserve">Medefaidrin. Since: 2.58</doc>
+      </member>
+      <member name="old_sogdian" value="147" c:identifier="G_UNICODE_SCRIPT_OLD_SOGDIAN">
+        <doc xml:space="preserve">Old Sogdian. Since: 2.58</doc>
+      </member>
+      <member name="sogdian" value="148" c:identifier="G_UNICODE_SCRIPT_SOGDIAN">
+        <doc xml:space="preserve">Sogdian. Since: 2.58</doc>
+      </member>
     </enumeration>
     <enumeration name="UnicodeType" c:type="GUnicodeType">
       <doc xml:space="preserve">These are the possible character classifications from the
@@ -26360,7 +26571,7 @@ new instance takes ownership of them as if via g_variant_ref_sink().</doc>
           <parameter name="children" transfer-ownership="none" nullable="1" allow-none="1">
             <doc xml:space="preserve">an array of
            #GVariant pointers, the children</doc>
-            <array length="2" zero-terminated="0" c:type="GVariant**">
+            <array length="2" zero-terminated="0" c:type="GVariant* const*">
               <type name="Variant" c:type="GVariant*"/>
             </array>
           </parameter>
@@ -26392,7 +26603,7 @@ new instance takes ownership of them as if via g_variant_ref_sink().</doc>
         <parameters>
           <parameter name="value" transfer-ownership="none">
             <doc xml:space="preserve">a #guint8 value</doc>
-            <type name="guint8" c:type="guchar"/>
+            <type name="guint8" c:type="guint8"/>
           </parameter>
         </parameters>
       </constructor>
@@ -26411,7 +26622,7 @@ the array.</doc>
           <parameter name="string" transfer-ownership="none">
             <doc xml:space="preserve">a normal
          nul-terminated string in no particular encoding</doc>
-            <array c:type="gchar*">
+            <array c:type="const gchar*">
               <type name="guint8"/>
             </array>
           </parameter>
@@ -26429,7 +26640,7 @@ If @length is -1 then @strv is %NULL-terminated.</doc>
         <parameters>
           <parameter name="strv" transfer-ownership="none">
             <doc xml:space="preserve">an array of strings</doc>
-            <array length="1" zero-terminated="0" c:type="gchar**">
+            <array length="1" zero-terminated="0" c:type="const gchar* const*">
               <type name="utf8" c:type="gchar*"/>
             </array>
           </parameter>
@@ -26705,7 +26916,7 @@ If @length is -1 then @strv is %NULL-terminated.</doc>
         <parameters>
           <parameter name="strv" transfer-ownership="none">
             <doc xml:space="preserve">an array of strings</doc>
-            <array length="1" zero-terminated="0" c:type="gchar**">
+            <array length="1" zero-terminated="0" c:type="const gchar* const*">
               <type name="utf8"/>
             </array>
           </parameter>
@@ -26866,7 +27077,7 @@ If @length is -1 then @strv is %NULL-terminated.</doc>
         <parameters>
           <parameter name="strv" transfer-ownership="none">
             <doc xml:space="preserve">an array of strings</doc>
-            <array length="1" zero-terminated="0" c:type="gchar**">
+            <array length="1" zero-terminated="0" c:type="const gchar* const*">
               <type name="utf8"/>
             </array>
           </parameter>
@@ -26916,7 +27127,7 @@ new instance takes ownership of them as if via g_variant_ref_sink().</doc>
         <parameters>
           <parameter name="children" transfer-ownership="none">
             <doc xml:space="preserve">the items to make the tuple out of</doc>
-            <array length="1" zero-terminated="0" c:type="GVariant**">
+            <array length="1" zero-terminated="0" c:type="GVariant* const*">
               <type name="Variant" c:type="GVariant*"/>
             </array>
           </parameter>
@@ -27353,8 +27564,8 @@ other than %G_VARIANT_TYPE_BOOLEAN.</doc>
 It is an error to call this function with a @value of any type
 other than %G_VARIANT_TYPE_BYTE.</doc>
         <return-value transfer-ownership="none">
-          <doc xml:space="preserve">a #guchar</doc>
-          <type name="guint8" c:type="guchar"/>
+          <doc xml:space="preserve">a #guint8</doc>
+          <type name="guint8" c:type="guint8"/>
         </return-value>
         <parameters>
           <instance-parameter name="value" transfer-ownership="none">
@@ -27385,7 +27596,7 @@ The return value remains valid as long as @value exists.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">
          the constant string</doc>
-          <array c:type="gchar*">
+          <array c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </return-value>
@@ -27409,7 +27620,7 @@ For an empty array, @length will be set to 0 and a pointer to a
 %NULL pointer will be returned.</doc>
         <return-value transfer-ownership="container">
           <doc xml:space="preserve">an array of constant strings</doc>
-          <array length="0" zero-terminated="0" c:type="gchar**">
+          <array length="0" zero-terminated="0" c:type="const gchar**">
             <type name="utf8"/>
           </array>
         </return-value>
@@ -27467,6 +27678,11 @@ in the container.  See g_variant_n_children().
 
 The returned value is never floating.  You should free it with
 g_variant_unref() when you're done with it.
+
+There may be implementation specific restrictions on deeply nested values,
+which would result in the unit tuple being returned as the child value,
+instead of further nested children. #GVariant is guaranteed to handle
+nesting up to at least 64 levels.
 
 This function is O(1).</doc>
         <return-value transfer-ownership="full">
@@ -27569,7 +27785,7 @@ as an array of the given C type, with @element_size set to the size
 the appropriate type:
 - %G_VARIANT_TYPE_INT16 (etc.): #gint16 (etc.)
 - %G_VARIANT_TYPE_BOOLEAN: #guchar (not #gboolean!)
-- %G_VARIANT_TYPE_BYTE: #guchar
+- %G_VARIANT_TYPE_BYTE: #guint8
 - %G_VARIANT_TYPE_HANDLE: #guint32
 - %G_VARIANT_TYPE_DOUBLE: #gdouble
 
@@ -27732,7 +27948,7 @@ For an empty array, @length will be set to 0 and a pointer to a
 %NULL pointer will be returned.</doc>
         <return-value transfer-ownership="container">
           <doc xml:space="preserve">an array of constant strings</doc>
-          <array length="0" zero-terminated="1" c:type="gchar**">
+          <array length="0" zero-terminated="1" c:type="const gchar**">
             <type name="utf8"/>
           </array>
         </return-value>
@@ -27814,7 +28030,7 @@ For an empty array, @length will be set to 0 and a pointer to a
 %NULL pointer will be returned.</doc>
         <return-value transfer-ownership="container">
           <doc xml:space="preserve">an array of constant strings</doc>
-          <array length="0" zero-terminated="1" c:type="gchar**">
+          <array length="0" zero-terminated="1" c:type="const gchar**">
             <type name="utf8"/>
           </array>
         </return-value>
@@ -28035,7 +28251,10 @@ check.
 
 If @value is found to be in normal form then it will be marked as
 being trusted.  If the value was already marked as being trusted then
-this function will immediately return %TRUE.</doc>
+this function will immediately return %TRUE.
+
+There may be implementation specific restrictions on deeply nested values.
+GVariant is guaranteed to handle nesting up to at least 64 levels.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE if @value is in normal form</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -28370,10 +28589,10 @@ drops to 0, the memory used by the variant is freed.</doc>
 should ensure that a string is a valid D-Bus object path before
 passing it to g_variant_new_object_path().
 
-A valid object path starts with '/' followed by zero or more
-sequences of characters separated by '/' characters.  Each sequence
-must contain only the characters "[A-Z][a-z][0-9]_".  No sequence
-(including the one following the final '/' character) may be empty.</doc>
+A valid object path starts with `/` followed by zero or more
+sequences of characters separated by `/` characters.  Each sequence
+must contain only the characters `[A-Z][a-z][0-9]_`.  No sequence
+(including the one following the final `/` character) may be empty.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE if @string is a D-Bus object path</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -29740,7 +29959,10 @@ The valid basic type strings are "b", "y", "n", "q", "i", "u", "x", "t",
 
 The above definition is recursive to arbitrary depth. "aaaaai" and
 "(ui(nq((y)))s)" are both valid type strings, as is
-"a(aa(ui)(qna{ya(yd)}))".
+"a(aa(ui)(qna{ya(yd)}))". In order to not hit memory limits, #GVariant
+imposes a limit on recursion depth of 65 nested containers. This is the
+limit in the D-Bus specification (64) plus one to allow a #GDBusMessage to
+be nested in a top-level tuple.
 
 The meaning of each of the characters is as follows:
 - `b`: the type string of %G_VARIANT_TYPE_BOOLEAN; a boolean value.
@@ -29896,7 +30118,7 @@ Since 2.24</doc>
         <parameters>
           <parameter name="items" transfer-ownership="none">
             <doc xml:space="preserve">an array of #GVariantTypes, one for each item</doc>
-            <array length="1" zero-terminated="0" c:type="GVariantType**">
+            <array length="1" zero-terminated="0" c:type="const GVariantType* const*">
               <type name="VariantType" c:type="GVariantType*"/>
             </array>
           </parameter>
@@ -31488,6 +31710,179 @@ This call acts as a full compiler and hardware memory barrier.</doc>
         </parameter>
       </parameters>
     </function>
+    <function name="atomic_rc_box_acquire" c:identifier="g_atomic_rc_box_acquire" version="2.58">
+      <doc xml:space="preserve">Atomically acquires a reference on the data pointed by @mem_block.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the data,
+  with its reference count increased</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="none">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_rc_box_alloc" c:identifier="g_atomic_rc_box_alloc" version="2.58">
+      <doc xml:space="preserve">Allocates @block_size bytes of memory, and adds atomic
+reference counting semantics to it.
+
+The data will be freed when its reference count drops to
+zero.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the allocated memory</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="block_size" transfer-ownership="none">
+          <doc xml:space="preserve">the size of the allocation, must be greater than 0</doc>
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_rc_box_alloc0" c:identifier="g_atomic_rc_box_alloc0" version="2.58">
+      <doc xml:space="preserve">Allocates @block_size bytes of memory, and adds atomic
+referenc counting semantics to it.
+
+The contents of the returned data is set to zero.
+
+The data will be freed when its reference count drops to
+zero.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the allocated memory</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="block_size" transfer-ownership="none">
+          <doc xml:space="preserve">the size of the allocation, must be greater than 0</doc>
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_rc_box_dup" c:identifier="g_atomic_rc_box_dup" version="2.58">
+      <doc xml:space="preserve">Allocates a new block of data with atomit reference counting
+semantics, and copies @block_size bytes of @mem_block
+into it.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the allocated
+  memory</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="block_size" transfer-ownership="none">
+          <doc xml:space="preserve">the number of bytes to copy, must be greater than 0</doc>
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+        <parameter name="mem_block" transfer-ownership="none">
+          <doc xml:space="preserve">the memory to copy</doc>
+          <type name="gpointer" c:type="gconstpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_rc_box_get_size" c:identifier="g_atomic_rc_box_get_size" version="2.58">
+      <doc xml:space="preserve">Retrieves the size of the reference counted data pointed by @mem_block.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">the size of the data, in bytes</doc>
+        <type name="gsize" c:type="gsize"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="none">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_rc_box_release" c:identifier="g_atomic_rc_box_release" version="2.58">
+      <doc xml:space="preserve">Atomically releases a reference on the data pointed by @mem_block.
+
+If the reference was the last one, it will free the
+resources allocated for @mem_block.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="full">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_rc_box_release_full" c:identifier="g_atomic_rc_box_release_full" version="2.58">
+      <doc xml:space="preserve">Atomically releases a reference on the data pointed by @mem_block.
+
+If the reference was the last one, it will call @clear_func
+to clear the contents of @mem_block, and then will free the
+resources allocated for @mem_block.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="full">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+        <parameter name="clear_func" transfer-ownership="none" scope="async">
+          <doc xml:space="preserve">a function to call when clearing the data</doc>
+          <type name="DestroyNotify" c:type="GDestroyNotify"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_ref_count_compare" c:identifier="g_atomic_ref_count_compare" version="2.58">
+      <doc xml:space="preserve">Atomically compares the current value of @arc with @val.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">%TRUE if the reference count is the same
+  as the given value</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="arc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of an atomic reference count variable</doc>
+          <type name="gint" c:type="gatomicrefcount*"/>
+        </parameter>
+        <parameter name="val" transfer-ownership="none">
+          <doc xml:space="preserve">the value to compare</doc>
+          <type name="gint" c:type="gint"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_ref_count_dec" c:identifier="g_atomic_ref_count_dec" version="2.58">
+      <doc xml:space="preserve">Atomically decreases the reference count.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">%TRUE if the reference count reached 0, and %FALSE otherwise</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="arc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of an atomic reference count variable</doc>
+          <type name="gint" c:type="gatomicrefcount*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_ref_count_inc" c:identifier="g_atomic_ref_count_inc" version="2.58">
+      <doc xml:space="preserve">Atomically increases the reference count.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="arc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of an atomic reference count variable</doc>
+          <type name="gint" c:type="gatomicrefcount*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="atomic_ref_count_init" c:identifier="g_atomic_ref_count_init" version="2.58">
+      <doc xml:space="preserve">Atomically initializes a reference count variable.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="arc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of an atomic reference count variable</doc>
+          <type name="gint" c:type="gatomicrefcount*"/>
+        </parameter>
+      </parameters>
+    </function>
     <function name="base64_decode" c:identifier="g_base64_decode" version="2.12">
       <doc xml:space="preserve">Decode a sequence of Base-64 encoded text into binary data.  Note
 that the returned binary data is not necessarily zero-terminated,
@@ -31550,7 +31945,7 @@ state).</doc>
       <parameters>
         <parameter name="in" transfer-ownership="none">
           <doc xml:space="preserve">binary input data</doc>
-          <array length="1" zero-terminated="0" c:type="gchar*">
+          <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -31586,7 +31981,7 @@ representation.</doc>
       <parameters>
         <parameter name="data" transfer-ownership="none">
           <doc xml:space="preserve">the binary data to encode</doc>
-          <array length="1" zero-terminated="0" c:type="guchar*">
+          <array length="1" zero-terminated="0" c:type="const guchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -31656,7 +32051,7 @@ or certain other protocols.</doc>
       <parameters>
         <parameter name="in" transfer-ownership="none">
           <doc xml:space="preserve">the binary data to encode</doc>
-          <array length="1" zero-terminated="0" c:type="guchar*">
+          <array length="1" zero-terminated="0" c:type="const guchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -32078,6 +32473,38 @@ thread.</doc>
         </parameter>
       </parameters>
     </function>
+    <function name="canonicalize_filename" c:identifier="g_canonicalize_filename" version="2.58">
+      <doc xml:space="preserve">Gets the canonical file name from @filename. All triple slashes are turned into
+single slashes, and all `..` and `.`s resolved against @relative_to.
+
+Symlinks are not followed, and the returned path is guaranteed to be absolute.
+
+If @filename is an absolute path, @relative_to is ignored. Otherwise,
+@relative_to will be prepended to @filename to make it absolute. @relative_to
+must be an absolute path, or %NULL. If @relative_to is %NULL, it'll fallback
+to g_get_current_dir().
+
+This function never fails, and will canonicalize file paths even if they don't
+exist.
+
+No file system I/O is done.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a newly allocated string with the
+canonical file path</doc>
+        <type name="filename" c:type="gchar*"/>
+      </return-value>
+      <parameters>
+        <parameter name="filename" transfer-ownership="none">
+          <doc xml:space="preserve">the name of the file</doc>
+          <type name="filename" c:type="const gchar*"/>
+        </parameter>
+        <parameter name="relative_to" transfer-ownership="none" nullable="1" allow-none="1">
+          <doc xml:space="preserve">the relative directory, or %NULL
+to use the current working directory</doc>
+          <type name="filename" c:type="const gchar*"/>
+        </parameter>
+      </parameters>
+    </function>
     <function name="chdir" c:identifier="g_chdir" version="2.8">
       <doc xml:space="preserve">A wrapper for the POSIX chdir() function. The function changes the
 current directory of the process to @path.
@@ -32329,7 +32756,11 @@ Otherwise, the variable is destroyed using @destroy and the
 pointer is set to %NULL.
 
 A macro is also included that allows this function to be used without
-pointer casts.</doc>
+pointer casts. This will mask any warnings about incompatible function types
+or calling conventions, so you must ensure that your @destroy function is
+compatible with being called as `GDestroyNotify` using the standard calling
+convention for the platform that GLib was compiled for; otherwise the program
+will experience undefined behaviour.</doc>
       <return-value transfer-ownership="none">
         <type name="none" c:type="void"/>
       </return-value>
@@ -32404,7 +32835,7 @@ The hexadecimal string returned will be in lower case.</doc>
         </parameter>
         <parameter name="data" transfer-ownership="none">
           <doc xml:space="preserve">binary blob to compute the digest of</doc>
-          <array length="2" zero-terminated="0" c:type="guchar*">
+          <array length="2" zero-terminated="0" c:type="const guchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -32482,7 +32913,7 @@ The hexadecimal string returned will be in lower case.</doc>
         </parameter>
         <parameter name="key" transfer-ownership="none">
           <doc xml:space="preserve">the key to use in the HMAC</doc>
-          <array length="2" zero-terminated="0" c:type="guchar*">
+          <array length="2" zero-terminated="0" c:type="const guchar*">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -32492,7 +32923,7 @@ The hexadecimal string returned will be in lower case.</doc>
         </parameter>
         <parameter name="data" transfer-ownership="none">
           <doc xml:space="preserve">binary blob to compute the HMAC of</doc>
-          <array length="4" zero-terminated="0" c:type="guchar*">
+          <array length="4" zero-terminated="0" c:type="const guchar*">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -32519,7 +32950,7 @@ The hexadecimal string returned will be in lower case.</doc>
         </parameter>
         <parameter name="key" transfer-ownership="none">
           <doc xml:space="preserve">the key to use in the HMAC</doc>
-          <array length="2" zero-terminated="0" c:type="guchar*">
+          <array length="2" zero-terminated="0" c:type="const guchar*">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -32565,7 +32996,7 @@ well) on many platforms.  Consider using g_str_to_ascii() instead.</doc>
         <parameter name="str" transfer-ownership="none">
           <doc xml:space="preserve">
                 the string to convert.</doc>
-          <array length="1" zero-terminated="0" c:type="gchar*">
+          <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -32638,7 +33069,7 @@ could combine with the base character.)</doc>
         <parameter name="str" transfer-ownership="none">
           <doc xml:space="preserve">
                the string to convert.</doc>
-          <array length="1" zero-terminated="0" c:type="gchar*">
+          <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -32713,7 +33144,7 @@ unrepresentable characters, use g_convert_with_fallback().</doc>
         <parameter name="str" transfer-ownership="none">
           <doc xml:space="preserve">
                 the string to convert.</doc>
-          <array length="1" zero-terminated="0" c:type="gchar*">
+          <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -33883,6 +34314,17 @@ file which is then renamed to the final name. Notes:
   lists, metadata etc. may be lost. If @filename is a symbolic link,
   the link itself will be replaced, not the linked file.
 
+- On UNIX, if @filename already exists and is non-empty, and if the system
+  supports it (via a journalling filesystem or equivalent), the fsync()
+  call (or equivalent) will be used to ensure atomic replacement: @filename
+  will contain either its old contents or @contents, even in the face of
+  system power loss, the disk being unsafely removed, etc.
+
+- On UNIX, if @filename does not already exist or is empty, there is a
+  possibility that system power loss etc. after calling this function will
+  leave @filename empty or full of NUL bytes, depending on the underlying
+  filesystem.
+
 - On Windows renaming a file will not remove an existing file with the
   new name, so on Windows there is a race condition between the existing
   file being removed and the temporary file being renamed.
@@ -33909,7 +34351,7 @@ to 7 characters to @filename.</doc>
         </parameter>
         <parameter name="contents" transfer-ownership="none">
           <doc xml:space="preserve">string to write to the file</doc>
-          <array length="2" zero-terminated="0" c:type="gchar*">
+          <array length="2" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -34441,8 +34883,12 @@ on a system might be in any random encoding or just gibberish.</doc>
         <type name="gboolean" c:type="gboolean"/>
       </return-value>
       <parameters>
-        <parameter name="charsets" transfer-ownership="none">
-          <type name="utf8" c:type="const gchar***"/>
+        <parameter name="filename_charsets" direction="out" caller-allocates="0" transfer-ownership="none">
+          <doc xml:space="preserve">
+   return location for the %NULL-terminated list of encoding names</doc>
+          <array c:type="const gchar***">
+            <type name="utf8" c:type="gchar**"/>
+          </array>
         </parameter>
       </parameters>
     </function>
@@ -34507,10 +34953,35 @@ user.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">a %NULL-terminated array of strings owned by GLib
    that must not be modified or freed.</doc>
-        <array c:type="gchar**">
+        <array c:type="const gchar* const*">
           <type name="utf8"/>
         </array>
       </return-value>
+    </function>
+    <function name="get_language_names_with_category" c:identifier="g_get_language_names_with_category" version="2.58">
+      <doc xml:space="preserve">Computes a list of applicable locale names with a locale category name,
+which can be used to construct the fallback locale-dependent filenames
+or search paths. The returned list is sorted from most desirable to
+least desirable and always contains the default locale "C".
+
+This function consults the environment variables `LANGUAGE`, `LC_ALL`,
+@category_name, and `LANG` to find the list of locales specified by the
+user.
+
+g_get_language_names() returns g_get_language_names_with_category("LC_MESSAGES").</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">a %NULL-terminated array of strings owned by GLib
+   that must not be modified or freed.</doc>
+        <array c:type="const gchar* const*">
+          <type name="utf8"/>
+        </array>
+      </return-value>
+      <parameters>
+        <parameter name="category_name" transfer-ownership="none">
+          <doc xml:space="preserve">a locale category name</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </parameter>
+      </parameters>
     </function>
     <function name="get_locale_variants" c:identifier="g_get_locale_variants" version="2.28">
       <doc xml:space="preserve">Returns a list of derived variants of @locale, which can be used to
@@ -34627,7 +35098,7 @@ to anyone using the computer.</doc>
         <doc xml:space="preserve">
     a %NULL-terminated array of strings owned by GLib that must not be
     modified or freed.</doc>
-        <array c:type="gchar**">
+        <array c:type="const gchar* const*">
           <type name="filename"/>
         </array>
       </return-value>
@@ -34668,7 +35139,7 @@ this function is called.</doc>
         <doc xml:space="preserve">
     a %NULL-terminated array of strings owned by GLib that must not be
     modified or freed.</doc>
-        <array c:type="gchar**">
+        <array c:type="const gchar* const*">
           <type name="filename"/>
         </array>
       </return-value>
@@ -35121,6 +35592,45 @@ without calling the key and value destroy functions.</doc>
             <type name="gpointer" c:type="gpointer"/>
             <type name="gpointer" c:type="gpointer"/>
           </type>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="hash_table_steal_extended" c:identifier="g_hash_table_steal_extended" moved-to="HashTable.steal_extended" version="2.58">
+      <doc xml:space="preserve">Looks up a key in the #GHashTable, stealing the original key and the
+associated value and returning %TRUE if the key was found. If the key was
+not found, %FALSE is returned.
+
+If found, the stolen key and value are removed from the hash table without
+calling the key and value destroy functions, and ownership is transferred to
+the caller of this method; as with g_hash_table_steal().
+
+You can pass %NULL for @lookup_key, provided the hash and equal functions
+of @hash_table are %NULL-safe.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">%TRUE if the key was found in the #GHashTable</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="hash_table" transfer-ownership="none">
+          <doc xml:space="preserve">a #GHashTable</doc>
+          <type name="GLib.HashTable" c:type="GHashTable*">
+            <type name="gpointer" c:type="gpointer"/>
+            <type name="gpointer" c:type="gpointer"/>
+          </type>
+        </parameter>
+        <parameter name="lookup_key" transfer-ownership="none" nullable="1" allow-none="1">
+          <doc xml:space="preserve">the key to look up</doc>
+          <type name="gpointer" c:type="gconstpointer"/>
+        </parameter>
+        <parameter name="stolen_key" direction="out" caller-allocates="0" transfer-ownership="full" nullable="1" optional="1" allow-none="1">
+          <doc xml:space="preserve">return location for the
+   original key</doc>
+          <type name="gpointer" c:type="gpointer*"/>
+        </parameter>
+        <parameter name="stolen_value" direction="out" caller-allocates="0" transfer-ownership="full" nullable="1" optional="1" allow-none="1">
+          <doc xml:space="preserve">return location
+   for the value associated with the key</doc>
+          <type name="gpointer" c:type="gpointer*"/>
         </parameter>
       </parameters>
     </function>
@@ -35807,7 +36317,7 @@ may contain embedded nul characters.</doc>
           <doc xml:space="preserve">a string in the
                 encoding of the current locale. On Windows
                 this means the system codepage.</doc>
-          <array length="1" zero-terminated="0" c:type="gchar*">
+          <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -35839,8 +36349,9 @@ may contain embedded nul characters.</doc>
     <function name="log" c:identifier="g_log" introspectable="0">
       <doc xml:space="preserve">Logs an error or debugging message.
 
-If the log level has been set as fatal, the abort()
-function is called to terminate the program.
+If the log level has been set as fatal, G_BREAKPOINT() is called
+to terminate the program. See the documentation for G_BREAKPOINT() for
+details of the debugging options this provides.
 
 If g_log_default_handler() is used as the log handler function, a new-line
 character will automatically be appended to @..., and need not be entered
@@ -35877,7 +36388,7 @@ for the default</doc>
 allows to install an alternate default log handler.
 This is used if no log handler has been set for the particular log
 domain and log level combination. It outputs the message to stderr
-or stdout and if the log level is fatal it calls abort(). It automatically
+or stdout and if the log level is fatal it calls G_BREAKPOINT(). It automatically
 prints a new-line character after the message, so one does not need to be
 manually included in @message.
 
@@ -36001,7 +36512,12 @@ This has no effect on structured log messages (using g_log_structured() or
 g_log_structured_array()). To change the fatal behaviour for specific log
 messages, programs must install a custom log writer function using
 g_log_set_writer_func(). See
-[Using Structured Logging][using-structured-logging].</doc>
+[Using Structured Logging][using-structured-logging].
+
+This function is mostly intended to be used with
+%G_LOG_LEVEL_CRITICAL.  You should typically not set
+%G_LOG_LEVEL_WARNING, %G_LOG_LEVEL_MESSAGE, %G_LOG_LEVEL_INFO or
+%G_LOG_LEVEL_DEBUG as fatal except inside of test programs.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">the old fatal mask for the log domain</doc>
         <type name="LogLevelFlags" c:type="GLogLevelFlags"/>
@@ -36144,7 +36660,7 @@ There can only be one writer function. It is an error to set more than one.</doc
       <doc xml:space="preserve">Log a message with structured data. The message will be passed through to
 the log writer set by the application using g_log_set_writer_func(). If the
 message is fatal (i.e. its log level is %G_LOG_LEVEL_ERROR), the program will
-be aborted at the end of this function. If the log writer returns
+be aborted by calling G_BREAKPOINT() at the end of this function. If the log writer returns
 %G_LOG_WRITER_UNHANDLED (failure), no other fallback writers will be tried.
 See the documentation for #GLogWriterFunc for information on chaining
 writers.
@@ -36262,7 +36778,7 @@ This assumes that @log_level is already present in @fields (typically as the
         <parameter name="fields" transfer-ownership="none">
           <doc xml:space="preserve">key&#x2013;value pairs of structured data to add
    to the log message</doc>
-          <array length="2" zero-terminated="0" c:type="GLogField*">
+          <array length="2" zero-terminated="0" c:type="const GLogField*">
             <type name="LogField" c:type="GLogField"/>
           </array>
         </parameter>
@@ -36364,7 +36880,7 @@ messages unless their log domain (or `all`) is listed in the space-separated
         <parameter name="fields" transfer-ownership="none">
           <doc xml:space="preserve">key&#x2013;value pairs of structured data forming
    the log message</doc>
-          <array length="2" zero-terminated="0" c:type="GLogField*">
+          <array length="2" zero-terminated="0" c:type="const GLogField*">
             <type name="LogField" c:type="GLogField"/>
           </array>
         </parameter>
@@ -36402,7 +36918,7 @@ UTF-8.</doc>
         <parameter name="fields" transfer-ownership="none">
           <doc xml:space="preserve">key&#x2013;value pairs of structured data forming
    the log message</doc>
-          <array length="2" zero-terminated="0" c:type="GLogField*">
+          <array length="2" zero-terminated="0" c:type="const GLogField*">
             <type name="LogField" c:type="GLogField"/>
           </array>
         </parameter>
@@ -36461,7 +36977,7 @@ defined, but will always return %G_LOG_WRITER_UNHANDLED.</doc>
         <parameter name="fields" transfer-ownership="none">
           <doc xml:space="preserve">key&#x2013;value pairs of structured data forming
    the log message</doc>
-          <array length="2" zero-terminated="0" c:type="GLogField*">
+          <array length="2" zero-terminated="0" c:type="const GLogField*">
             <type name="LogField" c:type="GLogField"/>
           </array>
         </parameter>
@@ -36501,7 +37017,7 @@ This is suitable for use as a #GLogWriterFunc.</doc>
         <parameter name="fields" transfer-ownership="none">
           <doc xml:space="preserve">key&#x2013;value pairs of structured data forming
    the log message</doc>
-          <array length="2" zero-terminated="0" c:type="GLogField*">
+          <array length="2" zero-terminated="0" c:type="const GLogField*">
             <type name="LogField" c:type="GLogField"/>
           </array>
         </parameter>
@@ -36533,8 +37049,9 @@ messages.</doc>
     <function name="logv" c:identifier="g_logv" introspectable="0">
       <doc xml:space="preserve">Logs an error or debugging message.
 
-If the log level has been set as fatal, the abort()
-function is called to terminate the program.
+If the log level has been set as fatal, G_BREAKPOINT() is called
+to terminate the program. See the documentation for G_BREAKPOINT() for
+details of the debugging options this provides.
 
 If g_log_default_handler() is used as the log handler function, a new-line
 character will automatically be appended to @..., and need not be entered
@@ -37324,7 +37841,7 @@ commas, or %NULL.</doc>
         <parameter name="keys" transfer-ownership="none">
           <doc xml:space="preserve">pointer to an array of #GDebugKey which associate
     strings with bit flags.</doc>
-          <array length="2" zero-terminated="0" c:type="GDebugKey*">
+          <array length="2" zero-terminated="0" c:type="const GDebugKey*">
             <type name="DebugKey" c:type="GDebugKey"/>
           </array>
         </parameter>
@@ -38000,6 +38517,124 @@ by the g_random_* functions, to @seed.</doc>
         </parameter>
       </parameters>
     </function>
+    <function name="rc_box_acquire" c:identifier="g_rc_box_acquire" version="2.58">
+      <doc xml:space="preserve">Acquires a reference on the data pointed by @mem_block.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the data,
+  with its reference count increased</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="none">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rc_box_alloc" c:identifier="g_rc_box_alloc" version="2.58">
+      <doc xml:space="preserve">Allocates @block_size bytes of memory, and adds reference
+counting semantics to it.
+
+The data will be freed when its reference count drops to
+zero.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the allocated memory</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="block_size" transfer-ownership="none">
+          <doc xml:space="preserve">the size of the allocation, must be greater than 0</doc>
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rc_box_alloc0" c:identifier="g_rc_box_alloc0" version="2.58">
+      <doc xml:space="preserve">Allocates @block_size bytes of memory, and adds reference
+counting semantics to it.
+
+The contents of the returned data is set to zero.
+
+The data will be freed when its reference count drops to
+zero.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the allocated memory</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="block_size" transfer-ownership="none">
+          <doc xml:space="preserve">the size of the allocation, must be greater than 0</doc>
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rc_box_dup" c:identifier="g_rc_box_dup" version="2.58">
+      <doc xml:space="preserve">Allocates a new block of data with reference counting
+semantics, and copies @block_size bytes of @mem_block
+into it.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">a pointer to the allocated
+  memory</doc>
+        <type name="gpointer" c:type="gpointer"/>
+      </return-value>
+      <parameters>
+        <parameter name="block_size" transfer-ownership="none">
+          <doc xml:space="preserve">the number of bytes to copy, must be greater than 0</doc>
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+        <parameter name="mem_block" transfer-ownership="none">
+          <doc xml:space="preserve">the memory to copy</doc>
+          <type name="gpointer" c:type="gconstpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rc_box_get_size" c:identifier="g_rc_box_get_size" version="2.58">
+      <doc xml:space="preserve">Retrieves the size of the reference counted data pointed by @mem_block.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">the size of the data, in bytes</doc>
+        <type name="gsize" c:type="gsize"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="none">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rc_box_release" c:identifier="g_rc_box_release" version="2.58">
+      <doc xml:space="preserve">Releases a reference on the data pointed by @mem_block.
+
+If the reference was the last one, it will free the
+resources allocated for @mem_block.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="full">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="rc_box_release_full" c:identifier="g_rc_box_release_full" version="2.58">
+      <doc xml:space="preserve">Releases a reference on the data pointed by @mem_block.
+
+If the reference was the last one, it will call @clear_func
+to clear the contents of @mem_block, and then will free the
+resources allocated for @mem_block.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="mem_block" transfer-ownership="full">
+          <doc xml:space="preserve">a pointer to reference counted data</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+        <parameter name="clear_func" transfer-ownership="none" scope="async">
+          <doc xml:space="preserve">a function to call when clearing the data</doc>
+          <type name="DestroyNotify" c:type="GDestroyNotify"/>
+        </parameter>
+      </parameters>
+    </function>
     <function name="realloc" c:identifier="g_realloc">
       <doc xml:space="preserve">Reallocates the memory pointed to by @mem, so that it now has space for
 @n_bytes bytes of memory. It returns the new address of the memory, which may
@@ -38040,6 +38675,154 @@ but care is taken to detect possible overflow during multiplication.</doc>
         <parameter name="n_block_bytes" transfer-ownership="none">
           <doc xml:space="preserve">the size of each block in bytes</doc>
           <type name="gsize" c:type="gsize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_count_compare" c:identifier="g_ref_count_compare" version="2.58">
+      <doc xml:space="preserve">Compares the current value of @rc with @val.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">%TRUE if the reference count is the same
+  as the given value</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="rc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of a reference count variable</doc>
+          <type name="gint" c:type="grefcount*"/>
+        </parameter>
+        <parameter name="val" transfer-ownership="none">
+          <doc xml:space="preserve">the value to compare</doc>
+          <type name="gint" c:type="gint"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_count_dec" c:identifier="g_ref_count_dec" version="2.58">
+      <doc xml:space="preserve">Decreases the reference count.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">%TRUE if the reference count reached 0, and %FALSE otherwise</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="rc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of a reference count variable</doc>
+          <type name="gint" c:type="grefcount*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_count_inc" c:identifier="g_ref_count_inc" version="2.58">
+      <doc xml:space="preserve">Increases the reference count.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="rc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of a reference count variable</doc>
+          <type name="gint" c:type="grefcount*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_count_init" c:identifier="g_ref_count_init" version="2.58">
+      <doc xml:space="preserve">Initializes a reference count variable.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="rc" transfer-ownership="none">
+          <doc xml:space="preserve">the address of a reference count variable</doc>
+          <type name="gint" c:type="grefcount*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_string_acquire" c:identifier="g_ref_string_acquire" version="2.58">
+      <doc xml:space="preserve">Acquires a reference on a string.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">the given string, with its reference count increased</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+      <parameters>
+        <parameter name="str" transfer-ownership="none">
+          <doc xml:space="preserve">a reference counted string</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_string_length" c:identifier="g_ref_string_length" version="2.58">
+      <doc xml:space="preserve">Retrieves the length of @str.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">the length of the given string, in bytes</doc>
+        <type name="gsize" c:type="gsize"/>
+      </return-value>
+      <parameters>
+        <parameter name="str" transfer-ownership="none">
+          <doc xml:space="preserve">a reference counted string</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_string_new" c:identifier="g_ref_string_new" version="2.58">
+      <doc xml:space="preserve">Creates a new reference counted string and copies the contents of @str
+into it.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">the newly created reference counted string</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+      <parameters>
+        <parameter name="str" transfer-ownership="none">
+          <doc xml:space="preserve">a NUL-terminated string</doc>
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_string_new_intern" c:identifier="g_ref_string_new_intern" version="2.58">
+      <doc xml:space="preserve">Creates a new reference counted string and copies the content of @str
+into it.
+
+If you call this function multiple times with the same @str, or with
+the same contents of @str, it will return a new reference, instead of
+creating a new string.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">the newly created reference
+  counted string, or a new reference to an existing string</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+      <parameters>
+        <parameter name="str" transfer-ownership="none">
+          <doc xml:space="preserve">a NUL-terminated string</doc>
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_string_new_len" c:identifier="g_ref_string_new_len" version="2.58">
+      <doc xml:space="preserve">Creates a new reference counted string and copies the contents of @str
+into it, up to @len bytes.
+
+Since this function does not stop at nul bytes, it is the caller's
+responsibility to ensure that @str has at least @len addressable bytes.</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">the newly created reference counted string</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+      <parameters>
+        <parameter name="str" transfer-ownership="none">
+          <doc xml:space="preserve">a string</doc>
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+        <parameter name="len" transfer-ownership="none">
+          <doc xml:space="preserve">length of @str to use, or -1 if @str is nul-terminated</doc>
+          <type name="gssize" c:type="gssize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="ref_string_release" c:identifier="g_ref_string_release" version="2.58">
+      <doc xml:space="preserve">Releases a reference on a string; if it was the last reference, the
+resources allocated by the string are freed as well.</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="str" transfer-ownership="none">
+          <doc xml:space="preserve">a reference counted string</doc>
+          <type name="utf8" c:type="char*"/>
         </parameter>
       </parameters>
     </function>
@@ -38110,12 +38893,12 @@ in @length.</doc>
       <parameters>
         <parameter name="string" transfer-ownership="none">
           <doc xml:space="preserve">the string to escape</doc>
-          <array length="1" zero-terminated="0" c:type="gchar*">
+          <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="utf8" c:type="gchar"/>
           </array>
         </parameter>
         <parameter name="length" transfer-ownership="none">
-          <doc xml:space="preserve">the length of @string, or -1 if @string is nul-terminated</doc>
+          <doc xml:space="preserve">the length of @string, in bytes, or -1 if @string is nul-terminated</doc>
           <type name="gint" c:type="gint"/>
         </parameter>
       </parameters>
@@ -38307,13 +39090,13 @@ sequences.</doc>
       </parameters>
     </function>
     <function name="sequence_move_range" c:identifier="g_sequence_move_range" moved-to="Sequence.move_range" version="2.14">
-      <doc xml:space="preserve">Inserts the (@begin, @end) range at the destination pointed to by ptr.
+      <doc xml:space="preserve">Inserts the (@begin, @end) range at the destination pointed to by @dest.
 The @begin and @end iters must point into the same sequence. It is
 allowed for @dest to point to a different sequence than the one pointed
 into by @begin and @end.
 
-If @dest is NULL, the range indicated by @begin and @end is
-removed from the sequence. If @dest iter points to a place within
+If @dest is %NULL, the range indicated by @begin and @end is
+removed from the sequence. If @dest points to a place within
 the (@begin, @end) range, the range does not move.</doc>
       <return-value transfer-ownership="none">
         <type name="none" c:type="void"/>
@@ -39061,6 +39844,76 @@ are different concepts on Windows.</doc>
         </parameter>
       </parameters>
     </function>
+    <function name="spawn_async_with_fds" c:identifier="g_spawn_async_with_fds" version="2.58" throws="1">
+      <doc xml:space="preserve">Identical to g_spawn_async_with_pipes() but instead of
+creating pipes for the stdin/stdout/stderr, you can pass existing
+file descriptors into this function through the @stdin_fd,
+@stdout_fd and @stderr_fd parameters. The following @flags
+also have their behaviour slightly tweaked as a result:
+
+%G_SPAWN_STDOUT_TO_DEV_NULL means that the child's standard output
+will be discarded, instead of going to the same location as the parent's
+standard output. If you use this flag, @standard_output must be -1.
+%G_SPAWN_STDERR_TO_DEV_NULL means that the child's standard error
+will be discarded, instead of going to the same location as the parent's
+standard error. If you use this flag, @standard_error must be -1.
+%G_SPAWN_CHILD_INHERITS_STDIN means that the child will inherit the parent's
+standard input (by default, the child's standard input is attached to
+/dev/null). If you use this flag, @standard_input must be -1.
+
+It is valid to pass the same fd in multiple parameters (e.g. you can pass
+a single fd for both stdout and stderr).</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">%TRUE on success, %FALSE if an error was set</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="working_directory" transfer-ownership="none" nullable="1" allow-none="1">
+          <doc xml:space="preserve">child's current working directory, or %NULL to inherit parent's, in the GLib file name encoding</doc>
+          <type name="filename" c:type="const gchar*"/>
+        </parameter>
+        <parameter name="argv" transfer-ownership="none">
+          <doc xml:space="preserve">child's argument vector, in the GLib file name encoding</doc>
+          <array c:type="gchar**">
+            <type name="utf8" c:type="gchar*"/>
+          </array>
+        </parameter>
+        <parameter name="envp" transfer-ownership="none" nullable="1" allow-none="1">
+          <doc xml:space="preserve">child's environment, or %NULL to inherit parent's, in the GLib file name encoding</doc>
+          <array c:type="gchar**">
+            <type name="utf8" c:type="gchar*"/>
+          </array>
+        </parameter>
+        <parameter name="flags" transfer-ownership="none">
+          <doc xml:space="preserve">flags from #GSpawnFlags</doc>
+          <type name="SpawnFlags" c:type="GSpawnFlags"/>
+        </parameter>
+        <parameter name="child_setup" transfer-ownership="none" nullable="1" allow-none="1" scope="async" closure="5">
+          <doc xml:space="preserve">function to run in the child just before exec()</doc>
+          <type name="SpawnChildSetupFunc" c:type="GSpawnChildSetupFunc"/>
+        </parameter>
+        <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+          <doc xml:space="preserve">user data for @child_setup</doc>
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+        <parameter name="child_pid" direction="out" caller-allocates="0" transfer-ownership="full" optional="1" allow-none="1">
+          <doc xml:space="preserve">return location for child process ID, or %NULL</doc>
+          <type name="Pid" c:type="GPid*"/>
+        </parameter>
+        <parameter name="stdin_fd" transfer-ownership="none">
+          <doc xml:space="preserve">file descriptor to use for child's stdin, or -1</doc>
+          <type name="gint" c:type="gint"/>
+        </parameter>
+        <parameter name="stdout_fd" transfer-ownership="none">
+          <doc xml:space="preserve">file descriptor to use for child's stdout, or -1</doc>
+          <type name="gint" c:type="gint"/>
+        </parameter>
+        <parameter name="stderr_fd" transfer-ownership="none">
+          <doc xml:space="preserve">file descriptor to use for child's stderr, or -1</doc>
+          <type name="gint" c:type="gint"/>
+        </parameter>
+      </parameters>
+    </function>
     <function name="spawn_async_with_pipes" c:identifier="g_spawn_async_with_pipes" throws="1">
       <doc xml:space="preserve">Executes a child program asynchronously (your program will not
 block waiting for the child to exit). The child program is
@@ -39130,10 +39983,11 @@ the %SIGCHLD signal manually. On Windows, calling g_spawn_close_pid()
 is equivalent to calling CloseHandle() on the process handle returned
 in @child_pid). See g_child_watch_add().
 
-%G_SPAWN_LEAVE_DESCRIPTORS_OPEN means that the parent's open file
-descriptors will be inherited by the child; otherwise all descriptors
-except stdin/stdout/stderr will be closed before calling exec() in
-the child. %G_SPAWN_SEARCH_PATH means that @argv[0] need not be an
+Open UNIX file descriptors marked as `FD_CLOEXEC` will be automatically
+closed in the child process. %G_SPAWN_LEAVE_DESCRIPTORS_OPEN means that
+other open file descriptors will be inherited by the child; otherwise all
+descriptors except stdin/stdout/stderr will be closed before calling exec()
+in the child. %G_SPAWN_SEARCH_PATH means that @argv[0] need not be an
 absolute path, it will be looked for in the `PATH` environment
 variable. %G_SPAWN_SEARCH_PATH_FROM_ENVP means need not be an
 absolute path, it will be looked for in the `PATH` variable from
@@ -39207,6 +40061,21 @@ and @standard_error will not be filled with valid values.
 
 If @child_pid is not %NULL and an error does not occur then the returned
 process reference must be closed using g_spawn_close_pid().
+
+On modern UNIX platforms, GLib can use an efficient process launching
+codepath driven internally by posix_spawn(). This has the advantage of
+avoiding the fork-time performance costs of cloning the parent process
+address space, and avoiding associated memory overcommit checks that are
+not relevant in the context of immediately executing a distinct process.
+This optimized codepath will be used provided that the following conditions
+are met:
+
+1. %G_SPAWN_DO_NOT_REAP_CHILD is set
+2. %G_SPAWN_LEAVE_DESCRIPTORS_OPEN is set
+3. %G_SPAWN_SEARCH_PATH_FROM_ENVP is not set
+4. @working_directory is %NULL
+5. @child_setup is %NULL
+6. The program is of a recognised binary format, or has a shebang. Otherwise, GLib will have to execute the program through the shell, which is not done using the optimized codepath.
 
 If you are writing a GTK+ application, and the program you are spawning is a
 graphical application too, then to ensure that the spawned program opens its
@@ -39544,9 +40413,9 @@ if they are equal. It can be passed to g_hash_table_new() as the
 @key_equal_func parameter, when using non-%NULL strings as keys in a
 #GHashTable.
 
-Note that this function is primarily meant as a hash table comparison
-function. For a general-purpose, %NULL-safe string comparison function,
-see g_strcmp0().</doc>
+This function is typically used for hash table comparisons, but can be used
+for general purpose comparisons of non-%NULL strings. For a %NULL-safe string
+comparison function, see g_strcmp0().</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">%TRUE if the two keys match</doc>
         <type name="gboolean" c:type="gboolean"/>
@@ -39690,12 +40559,12 @@ change by version or even by runtime environment.
 If the source language of @str is known, it can used to improve the
 accuracy of the translation by passing it as @from_locale.  It should
 be a valid POSIX locale string (of the form
-"language[_territory][.codeset][@modifier]").
+`language[_territory][.codeset][@modifier]`).
 
 If @from_locale is %NULL then the current locale is used.
 
 If you want to do translation for no specific locale, and you want it
-to be done independently of the currently locale, specify "C" for
+to be done independently of the currently locale, specify `"C"` for
 @from_locale.</doc>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve">a string in plain ASCII</doc>
@@ -40628,7 +41497,7 @@ point in some locales, causing unexpected results.</doc>
     </function>
     <function name="strv_length" c:identifier="g_strv_length" version="2.6">
       <doc xml:space="preserve">Returns the length of the given %NULL-terminated
-string array @str_array.</doc>
+string array @str_array. @str_array must not be %NULL.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">length of @str_array.</doc>
         <type name="guint" c:type="guint"/>
@@ -41093,7 +41962,13 @@ So far, the following arguments are understood:
 
   `no-undefined`: Avoid tests for undefined behaviour
 
-- `--debug-log`: Debug test logging output.</doc>
+- `--debug-log`: Debug test logging output.
+
+Since 2.58, if tests are compiled with `G_DISABLE_ASSERT` defined,
+g_test_init() will print an error and exit. This is to prevent no-op tests
+from being executed, as g_assert() is commonly (erroneously) used in unit
+tests, and is a no-op when compiled with `G_DISABLE_ASSERT`. Ensure your
+tests are compiled without `G_DISABLE_ASSERT` defined.</doc>
       <return-value transfer-ownership="none">
         <type name="none" c:type="void"/>
       </return-value>
@@ -41350,11 +42225,13 @@ on the order that tests are run in. If you need to ensure that some
 particular code runs before or after a given test case, use
 g_test_add(), which lets you specify setup and teardown functions.
 
-If all tests are skipped, this function will return 0 if
-producing TAP output, or 77 (treated as "skip test" by Automake) otherwise.</doc>
+If all tests are skipped or marked as incomplete (expected failures),
+this function will return 0 if producing TAP output, or 77 (treated
+as "skip test" by Automake) otherwise.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">0 on success, 1 on failure (assuming it returns at all),
-  0 or 77 if all tests were skipped with g_test_skip()</doc>
+  0 or 77 if all tests were skipped with g_test_skip() and/or
+  g_test_incomplete()</doc>
         <type name="gint" c:type="int"/>
       </return-value>
     </function>
@@ -41744,7 +42621,9 @@ to a #GTimeVal and puts it into @time_.
 @iso_date must include year, month, day, hours, minutes, and
 seconds. It can optionally include fractions of a second and a time
 zone indicator. (In the absence of any time zone indication, the
-timestamp is assumed to be in local time.)</doc>
+timestamp is assumed to be in local time.)
+
+Any leading or trailing space in @iso_date is ignored.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">%TRUE if the conversion was successful.</doc>
         <type name="gboolean" c:type="gboolean"/>
@@ -41832,7 +42711,7 @@ the callback will be invoked in whichever thread is running that main
 context. You can do these steps manually if you need greater control or to
 use a custom main context.
 
-The interval given in terms of monotonic time, not wall clock time.
+The interval given is in terms of monotonic time, not wall clock time.
 See g_get_monotonic_time().</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">the ID (greater than 0) of the event source.</doc>
@@ -41997,7 +42876,7 @@ executed.
 The scheduling granularity/accuracy of this timeout source will be
 in seconds.
 
-The interval given in terms of monotonic time, not wall clock time.
+The interval given is in terms of monotonic time, not wall clock time.
 See g_get_monotonic_time().</doc>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve">the newly-created timeout source</doc>
@@ -44091,7 +44970,7 @@ doing anything else with it.</doc>
       <parameters>
         <parameter name="str" transfer-ownership="none">
           <doc xml:space="preserve">a pointer to character data</doc>
-          <array length="1" zero-terminated="0" c:type="gchar*">
+          <array length="1" zero-terminated="0" c:type="const gchar*">
             <type name="guint8"/>
           </array>
         </parameter>
@@ -44142,10 +45021,10 @@ as per the aforementioned RFC.</doc>
 should ensure that a string is a valid D-Bus object path before
 passing it to g_variant_new_object_path().
 
-A valid object path starts with '/' followed by zero or more
-sequences of characters separated by '/' characters.  Each sequence
-must contain only the characters "[A-Z][a-z][0-9]_".  No sequence
-(including the one following the final '/' character) may be empty.</doc>
+A valid object path starts with `/` followed by zero or more
+sequences of characters separated by `/` characters.  Each sequence
+must contain only the characters `[A-Z][a-z][0-9]_`.  No sequence
+(including the one following the final `/` character) may be empty.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">%TRUE if @string is a D-Bus object path</doc>
         <type name="gboolean" c:type="gboolean"/>

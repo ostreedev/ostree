@@ -1,6 +1,6 @@
 all: gir/ostree gir/ostree-sys
 
-.PHONY: update-gir-files
+.PHONY: update-gir-files remove-gir-files merge-lgpl-docs
 
 
 # -- gir generation --
