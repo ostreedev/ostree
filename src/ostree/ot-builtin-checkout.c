@@ -30,7 +30,6 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
-#include "ot-tool-util.h"
 
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;

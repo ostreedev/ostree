@@ -22,7 +22,6 @@
 #include "config.h"
 
 #include "otutil.h"
-#include "ot-tool-util.h"
 
 #include "ot-main.h"
 #include "ot-remote-builtins.h"

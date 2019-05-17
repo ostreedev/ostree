@@ -25,7 +25,6 @@
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ostree.h"
-#include "ot-tool-util.h"
 #include "otutil.h"
 
 #include <unistd.h>

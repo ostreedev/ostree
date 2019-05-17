@@ -28,7 +28,6 @@
 #include "ot-editor.h"
 #include "ostree.h"
 #include "otutil.h"
-#include "ot-tool-util.h"
 #include "parse-datetime.h"
 #include "ostree-repo-private.h"
 #include "ostree-libarchive-private.h"
