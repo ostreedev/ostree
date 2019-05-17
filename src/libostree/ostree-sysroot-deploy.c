@@ -2170,6 +2170,8 @@ write_deployments_finish (OstreeSysroot *self,
  * ostree_sysroot_cleanup() at some point after the transaction, or specify
  * `do_postclean` in @opts.  Skipping the post-transaction cleanup is useful
  * if for example you want to control pruning of the repository.
+ *
+ * Since: 2017.4
  */
 gboolean
 ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
@@ -2756,6 +2758,8 @@ _ostree_sysroot_deserialize_deployment_from_variant (GVariant *v,
  *
  * Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
  * shutdown time.
+ *
+ * Since: 2018.5
  */
 gboolean
 ostree_sysroot_stage_tree (OstreeSysroot     *self,

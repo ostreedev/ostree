@@ -485,6 +485,8 @@ _ostree_raw_file_to_archive_stream (GInputStream       *input,
  *
  * Convert from a "bare" file representation into an
  * OSTREE_OBJECT_TYPE_FILE stream suitable for ostree pull.
+ *
+ * Since: 2016.6
  */
 gboolean
 ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
@@ -581,7 +583,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
  * @input_length: Length of stream
  * @trusted: If %TRUE, assume the content has been validated
  * @out_input: (out): The raw file content stream
- * @out_file_info: (out): Normal metadata 
+ * @out_file_info: (out): Normal metadata
  * @out_xattrs: (out): Extended attributes
  * @cancellable: Cancellable
  * @error: Error
@@ -680,7 +682,7 @@ ostree_content_stream_parse (gboolean                compressed,
  * @path: Subpath
  * @trusted: If %TRUE, assume the content has been validated
  * @out_input: (out): The raw file content stream
- * @out_file_info: (out): Normal metadata 
+ * @out_file_info: (out): Normal metadata
  * @out_xattrs: (out): Extended attributes
  * @cancellable: Cancellable
  * @error: Error
@@ -730,7 +732,7 @@ ostree_content_file_parse_at (gboolean                compressed,
  * @content_path: Path to file containing content
  * @trusted: If %TRUE, assume the content has been validated
  * @out_input: (out): The raw file content stream
- * @out_file_info: (out): Normal metadata 
+ * @out_file_info: (out): Normal metadata
  * @out_xattrs: (out): Extended attributes
  * @cancellable: Cancellable
  * @error: Error
@@ -1068,7 +1070,7 @@ checksum_file_async_data_free (gpointer datap)
   g_free (data->csum);
   g_free (data);
 }
-  
+
 /**
  * ostree_checksum_file_async:
  * @f: File path
@@ -1098,7 +1100,7 @@ ostree_checksum_file_async (GFile                 *f,
 
   res = g_simple_async_result_new (G_OBJECT (f), callback, user_data, ostree_checksum_file_async);
   g_simple_async_result_set_op_res_gpointer (res, data, (GDestroyNotify)checksum_file_async_data_free);
-  
+
   g_simple_async_result_run_in_thread (res, checksum_file_async_thread, io_priority, cancellable);
   g_object_unref (res);
 }
@@ -1323,7 +1325,7 @@ ostree_hash_object_name (gconstpointer a)
   const char *checksum;
   OstreeObjectType objtype;
   gint objtype_int;
-  
+
   ostree_object_name_deserialize (variant, &checksum, &objtype);
   objtype_int = (gint) objtype;
   return g_str_hash (checksum) + g_int_hash (&objtype_int);
@@ -1472,6 +1474,8 @@ ostree_checksum_to_bytes_v (const char *checksum)
  * @checksum: An ASCII checksum
  *
  * Returns: (transfer full) (array fixed-size=32): Binary version of @checksum.
+ *
+ * Since: 2016.8
  */
 guchar *
 ostree_checksum_b64_to_bytes (const char *checksum)
@@ -1571,6 +1575,8 @@ ostree_checksum_from_bytes_v (GVariant *csum_v)
  *
  * The "modified" term refers to the fact that instead of '/', the '_'
  * character is used.
+ *
+ * Since: 2016.8
  */
 char *
 ostree_checksum_b64_from_bytes (const guchar *csum)
@@ -1849,7 +1855,7 @@ _ostree_get_relative_static_delta_path (const char *from,
       g_string_append_c (ret, '/');
       g_string_append (ret, target);
     }
-  
+
   return g_string_free (ret, FALSE);
 }
 
@@ -2174,7 +2180,7 @@ _ostree_verify_metadata_object (OstreeObjectType objtype,
  * ostree_validate_structureof_commit:
  * @commit: A commit object, %OSTREE_OBJECT_TYPE_COMMIT
  * @error: Error
- * 
+ *
  * Use this to validate the basic structure of @commit, independent of
  * any other objects it references.
  *
@@ -2214,7 +2220,7 @@ ostree_validate_structureof_commit (GVariant      *commit,
  * ostree_validate_structureof_dirtree:
  * @dirtree: A dirtree object, %OSTREE_OBJECT_TYPE_DIR_TREE
  * @error: Error
- * 
+ *
  * Use this to validate the basic structure of @dirtree, independent of
  * any other objects it references.
  *
@@ -2326,7 +2332,7 @@ ostree_validate_structureof_file_mode (guint32            mode,
  * ostree_validate_structureof_dirmeta:
  * @dirmeta: A dirmeta object, %OSTREE_OBJECT_TYPE_DIR_META
  * @error: Error
- * 
+ *
  * Use this to validate the basic structure of @dirmeta.
  *
  * Returns: %TRUE if @dirmeta is structurally valid
@@ -2340,7 +2346,7 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
   if (!validate_variant (dirmeta, OSTREE_DIRMETA_GVARIANT_FORMAT, error))
     return FALSE;
 
-  g_variant_get_child (dirmeta, 2, "u", &mode); 
+  g_variant_get_child (dirmeta, 2, "u", &mode);
   mode = GUINT32_FROM_BE (mode);
 
   if (!S_ISDIR (mode))
@@ -2395,6 +2401,8 @@ ostree_commit_get_timestamp (GVariant  *commit_variant)
  * root "dirmeta" checksum (both in binary form, not hexadecimal).
  *
  * Returns: (nullable): A SHA-256 hex string, or %NULL if @commit_variant is not well-formed
+ *
+ * Since: 2018.2
  */
 gchar *
 ostree_commit_get_content_checksum (GVariant *commit_variant)
@@ -2513,6 +2521,8 @@ _ostree_get_default_sysroot_path (void)
  * @required_release: Release version required
  *
  * Returns: %TRUE if current libostree has at least the requested version, %FALSE otherwise
+ *
+ * Since: 2017.4
  */
 gboolean
 ostree_check_version (guint required_year, guint required_release)

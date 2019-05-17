@@ -331,6 +331,8 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
  * @error: a #GError
  *
  * Remove the file or subdirectory named @name from the mutable tree @self.
+ *
+ * Since: 2018.9
  */
 gboolean
 ostree_mutable_tree_remove (OstreeMutableTree *self,
@@ -494,6 +496,8 @@ const char empty_tree_csum[] = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb3373876
  * This function enables optimisations when composing trees.  The provided
  * checksums are not loaded or checked when this function is called.  Instead
  * the contents will be loaded only when needed.
+ *
+ * Since: 2018.7
  */
 gboolean
 ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
@@ -585,7 +589,7 @@ ostree_mutable_tree_walk (OstreeMutableTree     *self,
 /**
  * ostree_mutable_tree_get_subdirs:
  * @self:
- * 
+ *
  * Returns: (transfer none) (element-type utf8 OstreeMutableTree): All children directories
  */
 GHashTable *
@@ -598,7 +602,7 @@ ostree_mutable_tree_get_subdirs (OstreeMutableTree *self)
 /**
  * ostree_mutable_tree_get_files:
  * @self:
- * 
+ *
  * Returns: (transfer none) (element-type utf8 utf8): All children files (the value is a checksum)
  */
 GHashTable *
@@ -654,6 +658,8 @@ ostree_mutable_tree_new (void)
  * and checksums.  The data will be loaded from the repo lazily as needed.
  *
  * Returns: (transfer full): A new tree
+ *
+ * Since: 2018.7
  */
 OstreeMutableTree *
 ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,

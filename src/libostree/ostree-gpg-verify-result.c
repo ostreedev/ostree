@@ -695,6 +695,8 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
  *
  * Returns: %TRUE if @result was not %NULL and had at least one
  * signature from trusted keyring, otherwise %FALSE
+ *
+ * Since: 2016.6
  */
 gboolean
 ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,

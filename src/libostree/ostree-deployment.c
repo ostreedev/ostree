@@ -302,6 +302,11 @@ ostree_deployment_get_origin_relpath (OstreeDeployment *self)
                           ostree_deployment_get_deployserial (self));
 }
 
+/**
+ * ostree_deployment_unlocked_state_to_string:
+ *
+ * Since: 2016.4
+ */
 const char *
 ostree_deployment_unlocked_state_to_string (OstreeDeploymentUnlockedState state)
 {
@@ -317,6 +322,11 @@ ostree_deployment_unlocked_state_to_string (OstreeDeploymentUnlockedState state)
   g_assert_not_reached ();
 }
 
+/**
+ * ostree_deployment_get_unlocked:
+ *
+ * Since: 2016.4
+ */
 OstreeDeploymentUnlockedState
 ostree_deployment_get_unlocked (OstreeDeployment *self)
 {

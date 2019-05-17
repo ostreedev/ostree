@@ -855,6 +855,11 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
   return TRUE;
 }
 
+/**
+ * ostree_sysroot_load_if_changed:
+ *
+ * Since: 2016.4
+ */
 gboolean
 ostree_sysroot_load_if_changed (OstreeSysroot  *self,
                                 gboolean       *out_changed,
@@ -1033,6 +1038,8 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
  * @self: Sysroot
  *
  * Returns: (transfer none): The currently staged deployment, or %NULL if none
+ *
+ * Since: 2018.5
  */
 OstreeDeployment *
 ostree_sysroot_get_staged_deployment (OstreeSysroot       *self)
@@ -1144,6 +1151,8 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
  * has been invoked successfully.
  *
  * Returns: (transfer none): The OSTree repository in sysroot @self.
+ *
+ * Since: 2017.7
  */
 OstreeRepo *
 ostree_sysroot_repo (OstreeSysroot *self)
@@ -1475,6 +1484,8 @@ ostree_sysroot_lock_finish (OstreeSysroot         *self,
  * Initialize the directory structure for an "osname", which is a
  * group of operating system deployments, with a shared `/var`.  One
  * is required for generating a deployment.
+ *
+ * Since: 2016.4
  */
 gboolean
 ostree_sysroot_init_osname (OstreeSysroot       *self,
@@ -1729,6 +1740,8 @@ static gboolean mkdir_unmasked (int                   dfd,
  *
  * The `OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX` state is persistent
  * across reboots.
+ *
+ * Since: 2016.4
  */
 gboolean
 ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
