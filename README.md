@@ -91,7 +91,7 @@ write higher level manual bindings on top; this is more common
 for statically compiled languages.  Here's a list of such bindings:
 
  - [ostree-go](https://github.com/ostreedev/ostree-go/)
- - [rust-libostree](https://gitlab.com/fkrull/rust-libostree/)
+ - [ostree-rs](https://gitlab.com/fkrull/ostree-rs/)
 
 Building
 --------
