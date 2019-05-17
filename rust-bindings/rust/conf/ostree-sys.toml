@@ -9,6 +9,7 @@ external_libraries = [
    "Gio",
 ]
 ignore = [
+    # private API (not in installed headers)
     "OSTree.BootloaderInterface",
     "OSTree.ChecksumInputStream",
     "OSTree.ChecksumInputStreamClass",
@@ -19,6 +20,8 @@ ignore = [
     "OSTree.LzmaDecompressorClass",
     "OSTree.RepoFileEnumeratorClass",
     "OSTree.RollsumMatches",
+
+    # version-dependent constants
     "OSTree.RELEASE_VERSION",
     "OSTree.VERSION",
     "OSTree.VERSION_S",
