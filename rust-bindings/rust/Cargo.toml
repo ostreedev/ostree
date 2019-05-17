@@ -1,6 +1,6 @@
 [package]
 name = "ostree"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Felix Krull"]
 
 license = "MIT"
@@ -36,7 +36,7 @@ gio = "0.5"
 glib-sys = "0.7"
 gobject-sys = "0.7"
 gio-sys = "0.7"
-ostree-sys = { version = "0.2", path = "sys" }
+ostree-sys = { version = "0.3", path = "sys" }
 
 [dev-dependencies]
 tempfile = "3"

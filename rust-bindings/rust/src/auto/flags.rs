@@ -36,6 +36,7 @@ bitflags! {
         const NONE = 0;
         const ALIASES = 1;
         const EXCLUDE_REMOTES = 2;
+        const EXCLUDE_MIRRORS = 4;
     }
 }
 
@@ -79,6 +80,29 @@ impl ToGlib for RepoPullFlags {
 impl FromGlib<ffi::OstreeRepoPullFlags> for RepoPullFlags {
     fn from_glib(value: ffi::OstreeRepoPullFlags) -> RepoPullFlags {
         RepoPullFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
+    pub struct RepoResolveRevExtFlags: u32 {
+        const NONE = 0;
+        const LOCAL_ONLY = 1;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoResolveRevExtFlags {
+    type GlibType = ffi::OstreeRepoResolveRevExtFlags;
+
+    fn to_glib(&self) -> ffi::OstreeRepoResolveRevExtFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ffi::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
+    fn from_glib(value: ffi::OstreeRepoResolveRevExtFlags) -> RepoResolveRevExtFlags {
+        RepoResolveRevExtFlags::from_bits_truncate(value)
     }
 }
 

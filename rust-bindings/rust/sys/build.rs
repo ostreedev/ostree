@@ -16,7 +16,11 @@ fn main() {
 fn find() -> Result<(), Error> {
     let package_name = "ostree-1";
     let shared_libs = ["ostree-1"];
-    let version = if cfg!(feature = "v2018_7") {
+    let version = if cfg!(feature = "v2019_2") {
+        "2019.2"
+    } else if cfg!(feature = "v2018_9") {
+        "2018.9"
+    } else if cfg!(feature = "v2018_7") {
         "2018.7"
     } else if cfg!(feature = "v2018_6") {
         "2018.6"
@@ -48,6 +52,22 @@ fn find() -> Result<(), Error> {
         "2017.4"
     } else if cfg!(feature = "v2017_3") {
         "2017.3"
+    } else if cfg!(feature = "v2017_2") {
+        "2017.2"
+    } else if cfg!(feature = "v2017_1") {
+        "2017.1"
+    } else if cfg!(feature = "v2016_14") {
+        "2016.14"
+    } else if cfg!(feature = "v2016_8") {
+        "2016.8"
+    } else if cfg!(feature = "v2016_7") {
+        "2016.7"
+    } else if cfg!(feature = "v2016_6") {
+        "2016.6"
+    } else if cfg!(feature = "v2016_5") {
+        "2016.5"
+    } else if cfg!(feature = "v2016_4") {
+        "2016.4"
     } else if cfg!(feature = "v2015_7") {
         "2015.7"
     } else {

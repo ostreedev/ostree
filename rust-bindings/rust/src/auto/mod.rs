@@ -53,7 +53,6 @@ pub use self::enums::RepoCheckoutOverwriteMode;
 pub use self::enums::RepoMode;
 pub use self::enums::RepoPruneFlags;
 pub use self::enums::RepoRemoteChange;
-pub use self::enums::RepoResolveRevExtFlags;
 pub use self::enums::StaticDeltaGenerateOpt;
 
 mod flags;
@@ -61,6 +60,7 @@ mod flags;
 pub use self::flags::RepoCommitState;
 pub use self::flags::RepoListRefsExtFlags;
 pub use self::flags::RepoPullFlags;
+pub use self::flags::RepoResolveRevExtFlags;
 pub use self::flags::SePolicyRestoreconFlags;
 
 pub mod functions;
@@ -81,6 +81,8 @@ pub use self::constants::COMMIT_META_KEY_SOURCE_TITLE;
 pub use self::constants::COMMIT_META_KEY_VERSION;
 pub use self::constants::DIRMETA_GVARIANT_STRING;
 pub use self::constants::FILEMETA_GVARIANT_STRING;
+#[cfg(any(feature = "v2018_9", feature = "dox"))]
+pub use self::constants::META_KEY_DEPLOY_COLLECTION_ID;
 #[cfg(any(feature = "v2018_3", feature = "dox"))]
 pub use self::constants::ORIGIN_TRANSIENT_GROUP;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]

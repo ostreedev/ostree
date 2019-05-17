@@ -35,6 +35,7 @@ impl SePolicy {
         }
     }
 
+    #[cfg(any(feature = "v2017_4", feature = "dox"))]
     pub fn new_at<'a, P: Into<Option<&'a gio::Cancellable>>>(rootfs_dfd: i32, cancellable: P) -> Result<SePolicy, Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -51,6 +52,7 @@ impl SePolicy {
 }
 
 pub trait SePolicyExt {
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_csum(&self) -> Option<String>;
 
     fn get_label<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, relpath: &str, unix_mode: u32, cancellable: P) -> Result<String, Error>;
@@ -67,6 +69,7 @@ pub trait SePolicyExt {
 }
 
 impl<O: IsA<SePolicy> + IsA<glib::object::Object>> SePolicyExt for O {
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_csum(&self) -> Option<String> {
         unsafe {
             from_glib_none(ffi::ostree_sepolicy_get_csum(self.to_glib_none().0))

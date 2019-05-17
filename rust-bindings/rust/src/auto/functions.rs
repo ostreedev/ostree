@@ -24,12 +24,14 @@ pub fn break_hardlink<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path:
     }
 }
 
+#[cfg(any(feature = "v2017_4", feature = "dox"))]
 pub fn check_version(required_year: u32, required_release: u32) -> bool {
     unsafe {
         from_glib(ffi::ostree_check_version(required_year, required_release))
     }
 }
 
+//#[cfg(any(feature = "v2016_8", feature = "dox"))]
 //pub fn checksum_b64_from_bytes(csum: /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32) -> Option<String> {
 //    unsafe { TODO: call ffi::ostree_checksum_b64_from_bytes() }
 //}
@@ -42,6 +44,7 @@ pub fn check_version(required_year: u32, required_release: u32) -> bool {
 //    unsafe { TODO: call ffi::ostree_checksum_b64_inplace_to_bytes() }
 //}
 
+//#[cfg(any(feature = "v2016_8", feature = "dox"))]
 //pub fn checksum_b64_to_bytes(checksum: &str) -> /*Unknown conversion*//*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32 {
 //    unsafe { TODO: call ffi::ostree_checksum_b64_to_bytes() }
 //}
@@ -99,6 +102,7 @@ pub fn checksum_to_bytes_v(checksum: &str) -> Option<glib::Variant> {
 //    unsafe { TODO: call ffi::ostree_cmd__private__() }
 //}
 
+#[cfg(any(feature = "v2018_2", feature = "dox"))]
 pub fn commit_get_content_checksum(commit_variant: &glib::Variant) -> Option<String> {
     unsafe {
         from_glib_full(ffi::ostree_commit_get_content_checksum(commit_variant.to_glib_none().0))
@@ -168,6 +172,7 @@ pub fn create_directory_metadata<'a, P: Into<Option<&'a glib::Variant>>>(dir_inf
 //    unsafe { TODO: call ffi::ostree_diff_dirs() }
 //}
 
+//#[cfg(any(feature = "v2017_4", feature = "dox"))]
 //pub fn diff_dirs_with_options<'a, 'b, P: IsA<gio::File>, Q: IsA<gio::File>, R: Into<Option<&'a /*Ignored*/DiffDirsOptions>>, S: Into<Option<&'b gio::Cancellable>>>(flags: /*Ignored*/DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 24 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, options: R, cancellable: S) -> Result<(), Error> {
 //    unsafe { TODO: call ffi::ostree_diff_dirs_with_options() }
 //}
@@ -176,6 +181,7 @@ pub fn create_directory_metadata<'a, P: Into<Option<&'a glib::Variant>>>(dir_inf
 //    unsafe { TODO: call ffi::ostree_diff_print() }
 //}
 
+//#[cfg(any(feature = "v2017_10", feature = "dox"))]
 //pub fn gpg_error_quark() -> /*Ignored*/glib::Quark {
 //    unsafe { TODO: call ffi::ostree_gpg_error_quark() }
 //}
@@ -240,6 +246,7 @@ pub fn parse_refspec(refspec: &str) -> Result<(Option<String>, String), Error> {
     }
 }
 
+#[cfg(any(feature = "v2016_6", feature = "dox"))]
 pub fn raw_file_to_archive_z2_stream<'a, 'b, P: IsA<gio::InputStream>, Q: Into<Option<&'a glib::Variant>>, R: Into<Option<&'b gio::Cancellable>>>(input: &P, file_info: &gio::FileInfo, xattrs: Q, cancellable: R) -> Result<gio::InputStream, Error> {
     let xattrs = xattrs.into();
     let xattrs = xattrs.to_glib_none();

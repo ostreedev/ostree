@@ -21,6 +21,7 @@ use RepoMode;
 use RepoPruneFlags;
 use RepoPullFlags;
 use RepoRemoteChange;
+#[cfg(any(feature = "v2016_7", feature = "dox"))]
 use RepoResolveRevExtFlags;
 use RepoTransactionStats;
 use StaticDeltaGenerateOpt;
@@ -69,6 +70,7 @@ impl Repo {
         }
     }
 
+    #[cfg(any(feature = "v2017_10", feature = "dox"))]
     pub fn create_at<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path: &str, mode: RepoMode, options: &glib::Variant, cancellable: P) -> Result<Repo, Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -79,6 +81,7 @@ impl Repo {
         }
     }
 
+    #[cfg(any(feature = "v2017_10", feature = "dox"))]
     pub fn open_at<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path: &str, cancellable: P) -> Result<Repo, Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -115,6 +118,7 @@ pub trait RepoExt {
 
     fn append_gpg_signature<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, signature_bytes: &glib::Bytes, cancellable: P) -> Result<(), Error>;
 
+    //#[cfg(any(feature = "v2016_8", feature = "dox"))]
     //fn checkout_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutAtOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error>;
 
     fn checkout_gc<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
@@ -139,14 +143,24 @@ pub trait RepoExt {
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
     fn fsck_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, sha256: &str, cancellable: P) -> Result<(), Error>;
 
+    #[cfg(any(feature = "v2019_2", feature = "dox"))]
+    fn get_bootloader(&self) -> Option<String>;
+
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn get_collection_id(&self) -> Option<String>;
 
     fn get_config(&self) -> Option<glib::KeyFile>;
 
+    #[cfg(any(feature = "v2018_9", feature = "dox"))]
+    fn get_default_repo_finders(&self) -> Vec<String>;
+
+    #[cfg(any(feature = "v2016_4", feature = "dox"))]
     fn get_dfd(&self) -> i32;
 
     fn get_disable_fsync(&self) -> bool;
+
+    #[cfg(any(feature = "v2018_9", feature = "dox"))]
+    fn get_min_free_space_bytes(&self) -> Result<u64, Error>;
 
     fn get_mode(&self) -> RepoMode;
 
@@ -154,12 +168,16 @@ pub trait RepoExt {
 
     fn get_path(&self) -> Option<gio::File>;
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool) -> Result<bool, Error>;
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_remote_list_option(&self, remote_name: &str, option_name: &str) -> Result<Vec<String>, Error>;
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_remote_option<'a, P: Into<Option<&'a str>>>(&self, remote_name: &str, option_name: &str, default_value: P) -> Result<String, Error>;
 
+    #[cfg(any(feature = "v2016_6", feature = "dox"))]
     fn gpg_verify_data<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: IsA<gio::File> + 'b, R: Into<Option<&'b Q>>, S: IsA<gio::File> + 'c, T: Into<Option<&'c S>>, U: Into<Option<&'d gio::Cancellable>>>(&self, remote_name: P, data: &glib::Bytes, signatures: &glib::Bytes, keyringdir: R, extra_keyring: T, cancellable: U) -> Result<GpgVerifyResult, Error>;
 
     fn has_object<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<bool, Error>;
@@ -171,6 +189,7 @@ pub trait RepoExt {
 
     fn import_object_from<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, cancellable: P) -> Result<(), Error>;
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn import_object_from_with_trust<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: P) -> Result<(), Error>;
 
     fn is_system(&self) -> bool;
@@ -186,6 +205,7 @@ pub trait RepoExt {
 
     //fn list_refs<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, cancellable: Q) -> Result<(), Error>;
 
+    //#[cfg(any(feature = "v2016_4", feature = "dox"))]
     //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error>;
 
     //fn list_static_delta_names<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: P) -> Result<(), Error>;
@@ -210,6 +230,7 @@ pub trait RepoExt {
 
     fn prune<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, flags: RepoPruneFlags, depth: i32, cancellable: P) -> Result<(i32, i32, u64), Error>;
 
+    //#[cfg(any(feature = "v2017_1", feature = "dox"))]
     //fn prune_from_reachable<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P) -> Result<(i32, i32, u64), Error>;
 
     fn prune_static_deltas<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, commit: P, cancellable: Q) -> Result<(), Error>;
@@ -228,6 +249,7 @@ pub trait RepoExt {
 
     fn regenerate_summary<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, additional_metadata: P, cancellable: Q) -> Result<(), Error>;
 
+    #[cfg(any(feature = "v2017_2", feature = "dox"))]
     fn reload_config<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
     fn remote_add<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, url: &str, options: P, cancellable: Q) -> Result<(), Error>;
@@ -238,6 +260,7 @@ pub trait RepoExt {
 
     fn remote_fetch_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, name: &str, cancellable: P) -> Result<(glib::Bytes, glib::Bytes), Error>;
 
+    #[cfg(any(feature = "v2016_6", feature = "dox"))]
     fn remote_fetch_summary_with_options<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, options: P, cancellable: Q) -> Result<(glib::Bytes, glib::Bytes), Error>;
 
     fn remote_get_gpg_verify(&self, name: &str) -> Result<bool, Error>;
@@ -261,12 +284,15 @@ pub trait RepoExt {
 
     fn resolve_rev(&self, refspec: &str, allow_noent: bool) -> Result<String, Error>;
 
+    #[cfg(any(feature = "v2016_7", feature = "dox"))]
     fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: RepoResolveRevExtFlags) -> Result<String, Error>;
 
     fn scan_hardlinks<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
 
+    #[cfg(any(feature = "v2017_10", feature = "dox"))]
     fn set_alias_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, target: Q, cancellable: R) -> Result<(), Error>;
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn set_cache_dir<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error>;
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -308,6 +334,7 @@ pub trait RepoExt {
 
     fn verify_commit_ext<'a, 'b, 'c, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>, R: IsA<gio::File> + 'b, S: Into<Option<&'b R>>, T: Into<Option<&'c gio::Cancellable>>>(&self, commit_checksum: &str, keyringdir: Q, extra_keyring: S, cancellable: T) -> Result<GpgVerifyResult, Error>;
 
+    #[cfg(any(feature = "v2016_14", feature = "dox"))]
     fn verify_commit_for_remote<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, remote_name: &str, cancellable: P) -> Result<GpgVerifyResult, Error>;
 
     fn verify_summary<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, remote_name: &str, summary: &glib::Bytes, signatures: &glib::Bytes, cancellable: P) -> Result<GpgVerifyResult, Error>;
@@ -378,6 +405,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    //#[cfg(any(feature = "v2016_8", feature = "dox"))]
     //fn checkout_at<'a, 'b, P: Into<Option<&'a /*Ignored*/RepoCheckoutAtOptions>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, options: P, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_checkout_at() }
     //}
@@ -465,6 +493,13 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2019_2", feature = "dox"))]
+    fn get_bootloader(&self) -> Option<String> {
+        unsafe {
+            from_glib_none(ffi::ostree_repo_get_bootloader(self.to_glib_none().0))
+        }
+    }
+
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn get_collection_id(&self) -> Option<String> {
         unsafe {
@@ -478,6 +513,14 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2018_9", feature = "dox"))]
+    fn get_default_repo_finders(&self) -> Vec<String> {
+        unsafe {
+            FromGlibPtrContainer::from_glib_none(ffi::ostree_repo_get_default_repo_finders(self.to_glib_none().0))
+        }
+    }
+
+    #[cfg(any(feature = "v2016_4", feature = "dox"))]
     fn get_dfd(&self) -> i32 {
         unsafe {
             ffi::ostree_repo_get_dfd(self.to_glib_none().0)
@@ -487,6 +530,16 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
     fn get_disable_fsync(&self) -> bool {
         unsafe {
             from_glib(ffi::ostree_repo_get_disable_fsync(self.to_glib_none().0))
+        }
+    }
+
+    #[cfg(any(feature = "v2018_9", feature = "dox"))]
+    fn get_min_free_space_bytes(&self) -> Result<u64, Error> {
+        unsafe {
+            let mut out_reserved_bytes = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_get_min_free_space_bytes(self.to_glib_none().0, &mut out_reserved_bytes, &mut error);
+            if error.is_null() { Ok(out_reserved_bytes) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -508,6 +561,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool) -> Result<bool, Error> {
         unsafe {
             let mut out_value = mem::uninitialized();
@@ -517,6 +571,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_remote_list_option(&self, remote_name: &str, option_name: &str) -> Result<Vec<String>, Error> {
         unsafe {
             let mut out_value = ptr::null_mut();
@@ -526,6 +581,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn get_remote_option<'a, P: Into<Option<&'a str>>>(&self, remote_name: &str, option_name: &str, default_value: P) -> Result<String, Error> {
         let default_value = default_value.into();
         let default_value = default_value.to_glib_none();
@@ -537,6 +593,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_6", feature = "dox"))]
     fn gpg_verify_data<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: IsA<gio::File> + 'b, R: Into<Option<&'b Q>>, S: IsA<gio::File> + 'c, T: Into<Option<&'c S>>, U: Into<Option<&'d gio::Cancellable>>>(&self, remote_name: P, data: &glib::Bytes, signatures: &glib::Bytes, keyringdir: R, extra_keyring: T, cancellable: U) -> Result<GpgVerifyResult, Error> {
         let remote_name = remote_name.into();
         let remote_name = remote_name.to_glib_none();
@@ -585,6 +642,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn import_object_from_with_trust<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: P) -> Result<(), Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -626,6 +684,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
     //    unsafe { TODO: call ffi::ostree_repo_list_refs() }
     //}
 
+    //#[cfg(any(feature = "v2016_4", feature = "dox"))]
     //fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, refspec_prefix: P, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: RepoListRefsExtFlags, cancellable: Q) -> Result<(), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_list_refs_ext() }
     //}
@@ -731,6 +790,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    //#[cfg(any(feature = "v2017_1", feature = "dox"))]
     //fn prune_from_reachable<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P) -> Result<(i32, i32, u64), Error> {
     //    unsafe { TODO: call ffi::ostree_repo_prune_from_reachable() }
     //}
@@ -829,6 +889,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2017_2", feature = "dox"))]
     fn reload_config<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -887,6 +948,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_6", feature = "dox"))]
     fn remote_fetch_summary_with_options<'a, 'b, P: Into<Option<&'a glib::Variant>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, options: P, cancellable: Q) -> Result<(glib::Bytes, glib::Bytes), Error> {
         let options = options.into();
         let options = options.to_glib_none();
@@ -977,6 +1039,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_7", feature = "dox"))]
     fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: RepoResolveRevExtFlags) -> Result<String, Error> {
         unsafe {
             let mut out_rev = ptr::null_mut();
@@ -996,6 +1059,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2017_10", feature = "dox"))]
     fn set_alias_ref_immediate<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b str>>, R: Into<Option<&'c gio::Cancellable>>>(&self, remote: P, ref_: &str, target: Q, cancellable: R) -> Result<(), Error> {
         let remote = remote.into();
         let remote = remote.to_glib_none();
@@ -1010,6 +1074,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_5", feature = "dox"))]
     fn set_cache_dir<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();
@@ -1183,6 +1248,7 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_14", feature = "dox"))]
     fn verify_commit_for_remote<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, commit_checksum: &str, remote_name: &str, cancellable: P) -> Result<GpgVerifyResult, Error> {
         let cancellable = cancellable.into();
         let cancellable = cancellable.to_glib_none();

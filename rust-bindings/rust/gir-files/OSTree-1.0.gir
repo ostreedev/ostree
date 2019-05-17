@@ -550,8 +550,8 @@ Any watchers of the #OstreeAsyncProgress will be notified of the change if
           </parameters>
         </callback>
       </field>
-      <field name="write_config">
-        <callback name="write_config" throws="1">
+      <field name="write_config" introspectable="0">
+        <callback name="write_config" introspectable="0" throws="1">
           <return-value transfer-ownership="none">
             <type name="gboolean" c:type="gboolean"/>
           </return-value>
@@ -561,6 +561,11 @@ Any watchers of the #OstreeAsyncProgress will be notified of the change if
             </parameter>
             <parameter name="bootversion" transfer-ownership="none">
               <type name="gint" c:type="int"/>
+            </parameter>
+            <parameter name="new_deployments" transfer-ownership="none">
+              <array name="GLib.PtrArray" c:type="GPtrArray*">
+                <type name="gpointer" c:type="gpointer"/>
+              </array>
             </parameter>
             <parameter name="cancellable" transfer-ownership="none">
               <type name="Gio.Cancellable" c:type="GCancellable*"/>
@@ -1120,7 +1125,8 @@ that should have been under an explicit group.</doc>
         </parameters>
       </function>
       <function name="unlocked_state_to_string"
-                c:identifier="ostree_deployment_unlocked_state_to_string">
+                c:identifier="ostree_deployment_unlocked_state_to_string"
+                version="2016.4">
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const char*"/>
         </return-value>
@@ -1264,7 +1270,8 @@ or concatenate it with the full ostree_sysroot_get_path().</doc>
         </parameters>
       </method>
       <method name="get_unlocked"
-              c:identifier="ostree_deployment_get_unlocked">
+              c:identifier="ostree_deployment_get_unlocked"
+              version="2016.4">
         <return-value transfer-ownership="none">
           <type name="DeploymentUnlockedState"
                 c:type="OstreeDeploymentUnlockedState"/>
@@ -1790,6 +1797,7 @@ If no match is found, the function returns %FALSE and leaves
       </method>
       <method name="require_valid_signature"
               c:identifier="ostree_gpg_verify_result_require_valid_signature"
+              version="2016.6"
               throws="1">
         <doc xml:space="preserve">Checks if the result contains at least one signature from the
 trusted keyring.  You can call this function immediately after
@@ -1885,17 +1893,38 @@ signature from trusted keyring, otherwise %FALSE</doc>
     <constant name="MAX_METADATA_SIZE"
               value="10485760"
               c:type="OSTREE_MAX_METADATA_SIZE">
-      <doc xml:space="preserve">Maximum permitted size in bytes of metadata objects.  This is an
-arbitrary number, but really, no one should be putting humongous
-data in metadata.</doc>
+      <doc xml:space="preserve">Default limit for maximum permitted size in bytes of metadata objects fetched
+over HTTP (including repo/config files, refs, and commit/dirtree/dirmeta
+objects). This is an arbitrary number intended to mitigate disk space
+exhaustion attacks.</doc>
       <type name="gint" c:type="gint"/>
     </constant>
     <constant name="MAX_METADATA_WARN_SIZE"
               value="7340032"
               c:type="OSTREE_MAX_METADATA_WARN_SIZE">
-      <doc xml:space="preserve">Objects committed above this size will be allowed, but a warning
-will be emitted.</doc>
+      <doc xml:space="preserve">This variable is no longer meaningful, it is kept only for compatibility.</doc>
       <type name="gint" c:type="gint"/>
+    </constant>
+    <constant name="META_KEY_DEPLOY_COLLECTION_ID"
+              value="ostree.deploy-collection-id"
+              c:type="OSTREE_META_KEY_DEPLOY_COLLECTION_ID"
+              version="2018.9">
+      <doc xml:space="preserve">GVariant type `s`. This key can be used in the repo metadata which is stored
+in OSTREE_REPO_METADATA_REF as well as in the summary. The semantics of this
+are that the remote repository wants clients to update their remote config
+to add this collection ID (clients can't do P2P operations involving a
+remote without a collection ID configured on it, even if one is configured
+on the server side). Clients must never change or remove a collection ID
+already set in their remote config.
+
+Currently, OSTree does not implement changing a remote config based on this
+key, but it may do so in a later release, and until then clients such as
+Flatpak may implement it.
+
+This is a replacement for the similar metadata key implemented by flatpak,
+`xa.collection-id`, which is now deprecated as clients which supported it had
+bugs with their P2P implementations.</doc>
+      <type name="utf8" c:type="gchar*"/>
     </constant>
     <class name="MutableTree"
            c:symbol-prefix="mutable_tree"
@@ -1912,7 +1941,8 @@ will be emitted.</doc>
         </return-value>
       </constructor>
       <constructor name="new_from_checksum"
-                   c:identifier="ostree_mutable_tree_new_from_checksum">
+                   c:identifier="ostree_mutable_tree_new_from_checksum"
+                   version="2018.7">
         <doc xml:space="preserve">Creates a new OstreeMutableTree with the contents taken from the given repo
 and checksums.  The data will be loaded from the repo lazily as needed.</doc>
         <return-value transfer-ownership="full">
@@ -2012,7 +2042,8 @@ exist.</doc>
         </parameters>
       </method>
       <method name="fill_empty_from_dirtree"
-              c:identifier="ostree_mutable_tree_fill_empty_from_dirtree">
+              c:identifier="ostree_mutable_tree_fill_empty_from_dirtree"
+              version="2018.7">
         <doc xml:space="preserve">Merges @self with the tree given by @contents_checksum and
 @metadata_checksum, but only if it's possible without writing new objects to
 the @repo.  We can do this if either @self is empty, the tree given by
@@ -2110,6 +2141,29 @@ the contents will be loaded only when needed.</doc>
           </parameter>
           <parameter name="out_subdir" transfer-ownership="none">
             <type name="MutableTree" c:type="OstreeMutableTree**"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="remove"
+              c:identifier="ostree_mutable_tree_remove"
+              version="2018.9"
+              throws="1">
+        <doc xml:space="preserve">Remove the file or subdirectory named @name from the mutable tree @self.</doc>
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">Tree</doc>
+            <type name="MutableTree" c:type="OstreeMutableTree*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve">Name of file or subdirectory to remove</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+          <parameter name="allow_noent" transfer-ownership="none">
+            <doc xml:space="preserve">If @FALSE, an error will be thrown if @name does not exist in the tree</doc>
+            <type name="gboolean" c:type="gboolean"/>
           </parameter>
         </parameters>
       </method>
@@ -2250,7 +2304,7 @@ content, the other types are metadata.</doc>
       </member>
     </enumeration>
     <constant name="RELEASE_VERSION"
-              value="8"
+              value="3"
               c:type="OSTREE_RELEASE_VERSION"
               version="2017.4">
       <doc xml:space="preserve">ostree release version component (e.g. 2 if %OSTREE_VERSION is 2017.2)</doc>
@@ -2395,6 +2449,7 @@ instead of assuming "/".</doc>
       </constructor>
       <function name="create_at"
                 c:identifier="ostree_repo_create_at"
+                version="2017.10"
                 throws="1">
         <doc xml:space="preserve">This is a file-descriptor relative version of ostree_repo_create().
 Create the underlying structure on disk for the repository, and call
@@ -2453,7 +2508,10 @@ The @options dict may contain:
           </parameter>
         </parameters>
       </function>
-      <function name="open_at" c:identifier="ostree_repo_open_at" throws="1">
+      <function name="open_at"
+                c:identifier="ostree_repo_open_at"
+                version="2017.10"
+                throws="1">
         <doc xml:space="preserve">This combines ostree_repo_new() (but using fd-relative access) with
 ostree_repo_open().  Use this when you know you should be operating on an
 already extant repository.  If you want to create one, use ostree_repo_create_at().</doc>
@@ -2648,6 +2706,7 @@ transaction will do nothing and return successfully.</doc>
       </method>
       <method name="checkout_at"
               c:identifier="ostree_repo_checkout_at"
+              version="2016.8"
               throws="1">
         <doc xml:space="preserve">Similar to ostree_repo_checkout_tree(), but uses directory-relative
 paths for the destination, uses a new `OstreeRepoCheckoutAtOptions`,
@@ -3026,7 +3085,7 @@ The following @options are currently defined:
   provided.
   * `n-network-retries` (`u`): Number of times to retry each download on
   receiving a transient network error, such as a socket timeout; default is
-  5, 0 means return errors without retrying.
+  5, 0 means return errors without retrying. Since: 2018.6
 
 @finders must be a non-empty %NULL-terminated array of the #OstreeRepoFinder
 instances to use, or %NULL to use the system default set of finders, which
@@ -3154,6 +3213,22 @@ traverse metadata objects for example.</doc>
           </parameter>
         </parameters>
       </method>
+      <method name="get_bootloader"
+              c:identifier="ostree_repo_get_bootloader"
+              version="2019.2">
+        <doc xml:space="preserve">Get the bootloader configured. See the documentation for the
+"sysroot.bootloader" config key.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">bootloader configuration for the sysroot</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">an #OstreeRepo</doc>
+            <type name="Repo" c:type="OstreeRepo*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
       <method name="get_collection_id"
               c:identifier="ostree_repo_get_collection_id"
               version="2018.6">
@@ -3180,7 +3255,28 @@ traverse metadata objects for example.</doc>
           </instance-parameter>
         </parameters>
       </method>
-      <method name="get_dfd" c:identifier="ostree_repo_get_dfd">
+      <method name="get_default_repo_finders"
+              c:identifier="ostree_repo_get_default_repo_finders"
+              version="2018.9">
+        <doc xml:space="preserve">Get the set of default repo finders configured. See the documentation for
+the "core.default-repo-finders" config key.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">
+   %NULL-terminated array of strings.</doc>
+          <array c:type="gchar**">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">an #OstreeRepo</doc>
+            <type name="Repo" c:type="OstreeRepo*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_dfd"
+              c:identifier="ostree_repo_get_dfd"
+              version="2016.4">
         <doc xml:space="preserve">In some cases it's useful for applications to access the repository
 directly; for example, writing content into `repo/tmp` ensures it's
 on the same filesystem.  Another case is detecting the mtime on the
@@ -3208,6 +3304,29 @@ repository (to see whether a ref was written).</doc>
             <doc xml:space="preserve">An #OstreeRepo</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_min_free_space_bytes"
+              c:identifier="ostree_repo_get_min_free_space_bytes"
+              version="2018.9"
+              throws="1">
+        <doc xml:space="preserve">It can be used to query the value (in bytes) of min-free-space-* config option.</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE on success, %FALSE otherwise.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">Repo</doc>
+            <type name="Repo" c:type="OstreeRepo*"/>
+          </instance-parameter>
+          <parameter name="out_reserved_bytes"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <doc xml:space="preserve">Location to store the result</doc>
+            <type name="guint64" c:type="guint64*"/>
+          </parameter>
         </parameters>
       </method>
       <method name="get_mode" c:identifier="ostree_repo_get_mode">
@@ -3251,6 +3370,7 @@ that API. In general, you should avoid use of this API.</doc>
       </method>
       <method name="get_remote_boolean_option"
               c:identifier="ostree_repo_get_remote_boolean_option"
+              version="2016.5"
               throws="1">
         <doc xml:space="preserve">OSTree remotes are represented by keyfile groups, formatted like:
 `[remote "remotename"]`. This function returns a value named @option_name
@@ -3289,6 +3409,7 @@ error is returned, @out_value will be set to %FALSE.</doc>
       </method>
       <method name="get_remote_list_option"
               c:identifier="ostree_repo_get_remote_list_option"
+              version="2016.5"
               throws="1">
         <doc xml:space="preserve">OSTree remotes are represented by keyfile groups, formatted like:
 `[remote "remotename"]`. This function returns a value named @option_name
@@ -3327,6 +3448,7 @@ to %NULL.</doc>
       </method>
       <method name="get_remote_option"
               c:identifier="ostree_repo_get_remote_option"
+              version="2016.5"
               throws="1">
         <doc xml:space="preserve">OSTree remotes are represented by keyfile groups, formatted like:
 `[remote "remotename"]`. This function returns a value named @option_name
@@ -3367,6 +3489,7 @@ option name.  If an error is returned, @out_value will be set to %NULL.</doc>
       </method>
       <method name="gpg_verify_data"
               c:identifier="ostree_repo_gpg_verify_data"
+              version="2016.6"
               throws="1">
         <doc xml:space="preserve">Verify @signatures for @data using GPG keys in the keyring for
 @remote_name, and return an #OstreeGpgVerifyResult.
@@ -3563,11 +3686,12 @@ Otherwise, a copy will be performed.</doc>
       </method>
       <method name="import_object_from_with_trust"
               c:identifier="ostree_repo_import_object_from_with_trust"
+              version="2016.5"
               throws="1">
         <doc xml:space="preserve">Copy object named by @objtype and @checksum into @self from the
-source repository @source.  If both repositories are of the same
-type and on the same filesystem, this will simply be a fast Unix
-hard link operation.
+source repository @source. If @trusted is %TRUE and both
+repositories are of the same type and on the same filesystem,
+this will simply be a fast Unix hard link operation.
 
 Otherwise, a copy will be performed.</doc>
         <return-value transfer-ownership="none">
@@ -3646,7 +3770,9 @@ collection ID is configured for the repository
 (ostree_repo_get_collection_id()).
 
 If you want to exclude refs from `refs/remotes`, use
-%OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES in @flags.</doc>
+%OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES in @flags. Similarly use
+%OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS to exclude refs from
+`refs/mirrors`.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE on success, %FALSE otherwise</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -3812,6 +3938,7 @@ removed as a prefix from the hash table keys.</doc>
       </method>
       <method name="list_refs_ext"
               c:identifier="ostree_repo_list_refs_ext"
+              version="2016.4"
               throws="1">
         <doc xml:space="preserve">If @refspec_prefix is %NULL, list all local and remote refspecs,
 with their current values in @out_all_refs.  Otherwise, only list
@@ -4245,6 +4372,7 @@ Locking: exclusive</doc>
       </method>
       <method name="prune_from_reachable"
               c:identifier="ostree_repo_prune_from_reachable"
+              version="2017.1"
               throws="1">
         <doc xml:space="preserve">Delete content from the repository.  This function is the "backend"
 half of the higher level ostree_repo_prune().  To use this function,
@@ -4425,7 +4553,18 @@ The following @options are currently defined:
   * `subdirs` (`as`): Pull just these subdirectories
   * `update-frequency` (`u`): Frequency to call the async progress callback in
     milliseconds, if any; only values higher than 0 are valid
-  * `append-user-agent` (`s`): Additional string to append to the user agent</doc>
+  * `append-user-agent` (`s`): Additional string to append to the user agent
+  * `n-network-retries` (`u`): Number of times to retry each download on receiving
+    a transient network error, such as a socket timeout; default is 5, 0
+    means return errors without retrying. Since: 2018.6
+  * `ref-keyring-map` (`a(sss)`): Array of (collection ID, ref name, keyring
+    remote name) tuples specifying which remote's keyring should be used when
+    doing GPG verification of each collection-ref. This is useful to prevent a
+    remote from serving malicious updates to refs which did not originate from
+    it. This can be a subset or superset of the refs being pulled; any ref
+    not being pulled will be ignored and any ref without a keyring remote
+    will be verified with the keyring of the remote being pulled from.
+    Since: 2019.2</doc>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -4573,6 +4712,7 @@ The following are currently defined:
   * require-static-deltas (b): Require static deltas
   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
   * timestamp-check (b): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
+  * metadata-size-restriction (t): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
   * inherit-transaction (b): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
@@ -4582,7 +4722,15 @@ The following are currently defined:
   * append-user-agent (s): Additional string to append to the user agent
   * n-network-retries (u): Number of times to retry each download on receiving
     a transient network error, such as a socket timeout; default is 5, 0
-    means return errors without retrying</doc>
+    means return errors without retrying. Since: 2018.6
+  * ref-keyring-map (a(sss)): Array of (collection ID, ref name, keyring
+    remote name) tuples specifying which remote's keyring should be used when
+    doing GPG verification of each collection-ref. This is useful to prevent a
+    remote from serving malicious updates to refs which did not originate from
+    it. This can be a subset or superset of the refs being pulled; any ref
+    not being pulled will be ignored and any ref without a keyring remote
+    will be verified with the keyring of the remote being pulled from.
+    Since: 2019.2</doc>
         <return-value transfer-ownership="none">
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
@@ -4772,6 +4920,7 @@ Locking: exclusive</doc>
       </method>
       <method name="reload_config"
               c:identifier="ostree_repo_reload_config"
+              version="2017.2"
               throws="1">
         <doc xml:space="preserve">By default, an #OstreeRepo will cache the remote configuration and its
 own repo/config data.  This API can be used to reload it.</doc>
@@ -4969,6 +5118,7 @@ with #OSTREE_SUMMARY_GVARIANT_FORMAT as the format string.</doc>
       </method>
       <method name="remote_fetch_summary_with_options"
               c:identifier="ostree_repo_remote_fetch_summary_with_options"
+              version="2016.6"
               throws="1">
         <doc xml:space="preserve">Like ostree_repo_remote_fetch_summary(), but supports an extensible set of flags.
 The following are currently defined:
@@ -5288,7 +5438,9 @@ returned and @out_rev will be set to %NULL. If @allow_noent is %FALSE and
 the given @ref cannot be found, a %G_IO_ERROR_NOT_FOUND error will be
 returned.
 
-There are currently no @flags which affect the behaviour of this function.</doc>
+If you want to check only local refs, not remote or mirrored ones, use the
+flag %OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY. This is analogous to using
+ostree_repo_resolve_rev_ext() but for collection-refs.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE on success, %FALSE on failure</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -5402,11 +5554,15 @@ find the given refspec in local.</doc>
       </method>
       <method name="resolve_rev_ext"
               c:identifier="ostree_repo_resolve_rev_ext"
+              version="2016.7"
               throws="1">
         <doc xml:space="preserve">Look up the given refspec, returning the checksum it references in
 the parameter @out_rev. Differently from ostree_repo_resolve_rev(),
 this will not fall back to searching through remote repos if a
-local ref is specified but not found.</doc>
+local ref is specified but not found.
+
+The flag %OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY is implied so
+using it has no effect.</doc>
         <return-value transfer-ownership="none">
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
@@ -5476,6 +5632,7 @@ Multithreading: This function is *not* MT safe.</doc>
       </method>
       <method name="set_alias_ref_immediate"
               c:identifier="ostree_repo_set_alias_ref_immediate"
+              version="2017.10"
               throws="1">
         <doc xml:space="preserve">Like ostree_repo_set_ref_immediate(), but creates an alias.</doc>
         <return-value transfer-ownership="none">
@@ -5515,6 +5672,7 @@ Multithreading: This function is *not* MT safe.</doc>
       </method>
       <method name="set_cache_dir"
               c:identifier="ostree_repo_set_cache_dir"
+              version="2016.5"
               throws="1">
         <doc xml:space="preserve">Set a custom location for the cache directory used for e.g.
 per-remote summary caches. Setting this manually is useful when
@@ -6201,6 +6359,7 @@ checksum @commit_checksum.</doc>
       </method>
       <method name="verify_commit_for_remote"
               c:identifier="ostree_repo_verify_commit_for_remote"
+              version="2016.14"
               throws="1">
         <doc xml:space="preserve">Read GPG signature(s) on the commit named by the ASCII checksum
 @commit_checksum and return detailed results, based on the keyring
@@ -7056,8 +7215,11 @@ ostree_repo_checkout_tree() and ostree_repo_checkout_tree_at().</doc>
       <field name="bareuseronly_dirs" writable="1">
         <type name="gboolean" c:type="gboolean"/>
       </field>
+      <field name="force_copy_zerosized" writable="1">
+        <type name="gboolean" c:type="gboolean"/>
+      </field>
       <field name="unused_bools" writable="1">
-        <array zero-terminated="0" c:type="gboolean" fixed-size="5">
+        <array zero-terminated="0" c:type="gboolean" fixed-size="4">
           <type name="gboolean" c:type="gboolean"/>
         </array>
       </field>
@@ -7090,7 +7252,8 @@ ostree_repo_checkout_tree() and ostree_repo_checkout_tree_at().</doc>
         <type name="utf8" c:type="const char*"/>
       </field>
       <method name="set_devino"
-              c:identifier="ostree_repo_checkout_at_options_set_devino">
+              c:identifier="ostree_repo_checkout_at_options_set_devino"
+              version="2017.13">
         <doc xml:space="preserve">This function simply assigns @cache to the `devino_to_csum_cache` member of
 @opts; it's only useful for introspection.
 
@@ -8863,6 +9026,11 @@ Note that enabling pathname translation will always override the setting for
               c:identifier="OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES">
         <doc xml:space="preserve">Exclude remote refs.  Since: 2017.11</doc>
       </member>
+      <member name="exclude_mirrors"
+              value="4"
+              c:identifier="OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS">
+        <doc xml:space="preserve">Exclude mirrored refs.  Since: 2019.2</doc>
+      </member>
     </bitfield>
     <enumeration name="RepoMode" c:type="OstreeRepoMode">
       <doc xml:space="preserve">See the documentation of #OstreeRepo for more information about the
@@ -8984,15 +9152,25 @@ possible modes.</doc>
               c:identifier="OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS">
         <doc xml:space="preserve">Delete a remote, do nothing if the remote does not exist</doc>
       </member>
+      <member name="replace"
+              value="4"
+              c:identifier="OSTREE_REPO_REMOTE_CHANGE_REPLACE">
+        <doc xml:space="preserve">Add or replace a remote (Since: 2019.2)</doc>
+      </member>
     </enumeration>
-    <enumeration name="RepoResolveRevExtFlags"
-                 c:type="OstreeRepoResolveRevExtFlags">
-      <member name="repo_resolve_rev_ext_none"
+    <bitfield name="RepoResolveRevExtFlags"
+              c:type="OstreeRepoResolveRevExtFlags">
+      <member name="none"
               value="0"
               c:identifier="OSTREE_REPO_RESOLVE_REV_EXT_NONE">
         <doc xml:space="preserve">No flags.</doc>
       </member>
-    </enumeration>
+      <member name="local_only"
+              value="1"
+              c:identifier="OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY">
+        <doc xml:space="preserve">Exclude remote and mirrored refs. Since: 2019.2</doc>
+      </member>
+    </bitfield>
     <record name="RepoTransactionStats"
             c:type="OstreeRepoTransactionStats"
             glib:type-name="OstreeRepoTransactionStats"
@@ -9025,9 +9203,12 @@ were written to the repository in this transaction.</doc>
 in bytes, counting only content objects.</doc>
         <type name="guint64" c:type="guint64"/>
       </field>
+      <field name="devino_cache_hits" writable="1">
+        <type name="guint" c:type="guint"/>
+      </field>
       <field name="padding1" writable="1">
         <doc xml:space="preserve">reserved</doc>
-        <type name="guint64" c:type="guint64"/>
+        <type name="guint" c:type="guint"/>
       </field>
       <field name="padding2" writable="1">
         <doc xml:space="preserve">reserved</doc>
@@ -9123,6 +9304,7 @@ in bytes, counting only content objects.</doc>
       </constructor>
       <constructor name="new_at"
                    c:identifier="ostree_sepolicy_new_at"
+                   version="2017.4"
                    throws="1">
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">An accessor object for SELinux policy in root located at @rootfs_dfd</doc>
@@ -9158,7 +9340,9 @@ in bytes, counting only content objects.</doc>
           </parameter>
         </parameters>
       </function>
-      <method name="get_csum" c:identifier="ostree_sepolicy_get_csum">
+      <method name="get_csum"
+              c:identifier="ostree_sepolicy_get_csum"
+              version="2016.5">
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">Checksum of current policy</doc>
           <type name="utf8" c:type="const char*"/>
@@ -9626,6 +9810,7 @@ the staged deployment (as it's not in the bootloader entries).</doc>
       </method>
       <method name="deployment_unlock"
               c:identifier="ostree_sysroot_deployment_unlock"
+              version="2016.4"
               throws="1">
         <doc xml:space="preserve">Configure the target deployment @deployment such that it
 is writable.  There are multiple modes, essentially differing
@@ -9838,7 +10023,8 @@ the first one in the current deployment list which matches osname.</doc>
         </parameters>
       </method>
       <method name="get_staged_deployment"
-              c:identifier="ostree_sysroot_get_staged_deployment">
+              c:identifier="ostree_sysroot_get_staged_deployment"
+              version="2018.5">
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">The currently staged deployment, or %NULL if none</doc>
           <type name="Deployment" c:type="OstreeDeployment*"/>
@@ -9863,6 +10049,7 @@ the first one in the current deployment list which matches osname.</doc>
       </method>
       <method name="init_osname"
               c:identifier="ostree_sysroot_init_osname"
+              version="2016.4"
               throws="1">
         <doc xml:space="preserve">Initialize the directory structure for an "osname", which is a
 group of operating system deployments, with a shared `/var`.  One
@@ -9910,6 +10097,7 @@ rootfs @self.</doc>
       </method>
       <method name="load_if_changed"
               c:identifier="ostree_sysroot_load_if_changed"
+              version="2016.4"
               throws="1">
         <return-value transfer-ownership="none">
           <type name="gboolean" c:type="gboolean"/>
@@ -10081,7 +10269,7 @@ we're not looking at the booted deployment.</doc>
           </parameter>
         </parameters>
       </method>
-      <method name="repo" c:identifier="ostree_sysroot_repo">
+      <method name="repo" c:identifier="ostree_sysroot_repo" version="2017.7">
         <doc xml:space="preserve">This function is a variant of ostree_sysroot_get_repo() that cannot fail, and
 returns a cached repository. Can only be called after ostree_sysroot_load()
 has been invoked successfully.</doc>
@@ -10163,6 +10351,7 @@ later, instead.</doc>
       </method>
       <method name="stage_tree"
               c:identifier="ostree_sysroot_stage_tree"
+              version="2018.5"
               throws="1">
         <doc xml:space="preserve">Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
 shutdown time.</doc>
@@ -10312,6 +10501,7 @@ version will perform post-deployment cleanup by default.</doc>
       </method>
       <method name="write_deployments_with_options"
               c:identifier="ostree_sysroot_write_deployments_with_options"
+              version="2017.4"
               throws="1">
         <doc xml:space="preserve">Assuming @new_deployments have already been deployed in place on disk via
 ostree_sysroot_deploy_tree(), atomically update bootloader configuration. By
@@ -10820,14 +11010,14 @@ users who had been using zero before.</doc>
             disguised="1">
     </record>
     <constant name="VERSION"
-              value="2018.800000"
+              value="2019.300000"
               c:type="OSTREE_VERSION"
               version="2017.4">
       <doc xml:space="preserve">ostree version.</doc>
       <type name="gdouble" c:type="gdouble"/>
     </constant>
     <constant name="VERSION_S"
-              value="2018.8"
+              value="2019.3"
               c:type="OSTREE_VERSION_S"
               version="2017.4">
       <doc xml:space="preserve">ostree version, encoded as a string, useful for printing and
@@ -10835,7 +11025,7 @@ concatenation.</doc>
       <type name="utf8" c:type="gchar*"/>
     </constant>
     <constant name="YEAR_VERSION"
-              value="2018"
+              value="2019"
               c:type="OSTREE_YEAR_VERSION"
               version="2017.4">
       <doc xml:space="preserve">ostree year version component (e.g. 2017 if %OSTREE_VERSION is 2017.2)</doc>
@@ -10883,7 +11073,9 @@ care of synchronization.</doc>
         </parameter>
       </parameters>
     </function>
-    <function name="check_version" c:identifier="ostree_check_version">
+    <function name="check_version"
+              c:identifier="ostree_check_version"
+              version="2017.4">
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">%TRUE if current libostree has at least the requested version, %FALSE otherwise</doc>
         <type name="gboolean" c:type="gboolean"/>
@@ -10900,7 +11092,8 @@ care of synchronization.</doc>
       </parameters>
     </function>
     <function name="checksum_b64_from_bytes"
-              c:identifier="ostree_checksum_b64_from_bytes">
+              c:identifier="ostree_checksum_b64_from_bytes"
+              version="2016.8">
       <return-value transfer-ownership="full">
         <doc xml:space="preserve">Modified base64 encoding of @csum
 
@@ -10960,7 +11153,8 @@ character is used.</doc>
       </parameters>
     </function>
     <function name="checksum_b64_to_bytes"
-              c:identifier="ostree_checksum_b64_to_bytes">
+              c:identifier="ostree_checksum_b64_to_bytes"
+              version="2016.8">
       <return-value transfer-ownership="full">
         <doc xml:space="preserve">Binary version of @checksum.</doc>
         <array zero-terminated="0" c:type="guchar*" fixed-size="32">
@@ -11411,7 +11605,8 @@ must be %NULL-terminated; it may be empty, but must not be %NULL.</doc>
       </parameters>
     </function>
     <function name="commit_get_content_checksum"
-              c:identifier="ostree_commit_get_content_checksum">
+              c:identifier="ostree_commit_get_content_checksum"
+              version="2018.2">
       <doc xml:space="preserve">There are use cases where one wants a checksum just of the content of a
 commit. OSTree commits by default capture the current timestamp, and may have
 additional metadata, which means that re-committing identical content
@@ -11687,6 +11882,7 @@ sets of #OstreeDiffItem in @modified, @removed, and @added.</doc>
     </function>
     <function name="diff_dirs_with_options"
               c:identifier="ostree_diff_dirs_with_options"
+              version="2017.4"
               throws="1">
       <doc xml:space="preserve">Compute the difference between directory @a and @b as 3 separate
 sets of #OstreeDiffItem in @modified, @removed, and @added.</doc>
@@ -11774,7 +11970,9 @@ sets of #OstreeDiffItem in @modified, @removed, and @added.</doc>
         </parameter>
       </parameters>
     </function>
-    <function name="gpg_error_quark" c:identifier="ostree_gpg_error_quark">
+    <function name="gpg_error_quark"
+              c:identifier="ostree_gpg_error_quark"
+              version="2017.10">
       <return-value transfer-ownership="none">
         <type name="GLib.Quark" c:type="GQuark"/>
       </return-value>
@@ -11960,6 +12158,7 @@ will be `gnome-ostree/buildmaster`. In both cases, %TRUE will be returned.</doc>
     </function>
     <function name="raw_file_to_archive_z2_stream"
               c:identifier="ostree_raw_file_to_archive_z2_stream"
+              version="2016.6"
               throws="1">
       <doc xml:space="preserve">Convert from a "bare" file representation into an
 OSTREE_OBJECT_TYPE_FILE stream suitable for ostree pull.</doc>

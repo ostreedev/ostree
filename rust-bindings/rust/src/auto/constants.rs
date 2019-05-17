@@ -38,6 +38,10 @@ lazy_static! {
 lazy_static! {
     pub static ref FILEMETA_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_FILEMETA_GVARIANT_STRING).to_str().unwrap()};
 }
+#[cfg(any(feature = "v2018_9", feature = "dox"))]
+lazy_static! {
+    pub static ref META_KEY_DEPLOY_COLLECTION_ID: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_META_KEY_DEPLOY_COLLECTION_ID).to_str().unwrap()};
+}
 #[cfg(any(feature = "v2018_3", feature = "dox"))]
 lazy_static! {
     pub static ref ORIGIN_TRANSIENT_GROUP: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_ORIGIN_TRANSIENT_GROUP).to_str().unwrap()};

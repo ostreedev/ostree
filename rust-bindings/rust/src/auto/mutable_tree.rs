@@ -3,6 +3,7 @@
 // DO NOT EDIT
 
 use Error;
+#[cfg(any(feature = "v2018_7", feature = "dox"))]
 use Repo;
 use ffi;
 use glib::object::IsA;
@@ -27,6 +28,7 @@ impl MutableTree {
         }
     }
 
+    #[cfg(any(feature = "v2018_7", feature = "dox"))]
     pub fn new_from_checksum(repo: &Repo, contents_checksum: &str, metadata_checksum: &str) -> MutableTree {
         unsafe {
             from_glib_full(ffi::ostree_mutable_tree_new_from_checksum(repo.to_glib_none().0, contents_checksum.to_glib_none().0, metadata_checksum.to_glib_none().0))
@@ -48,6 +50,7 @@ pub trait MutableTreeExt {
 
     //fn ensure_parent_dirs(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, metadata_checksum: &str) -> Result<MutableTree, Error>;
 
+    #[cfg(any(feature = "v2018_7", feature = "dox"))]
     fn fill_empty_from_dirtree(&self, repo: &Repo, contents_checksum: &str, metadata_checksum: &str) -> bool;
 
     fn get_contents_checksum(&self) -> Option<String>;
@@ -57,6 +60,9 @@ pub trait MutableTreeExt {
     fn get_metadata_checksum(&self) -> Option<String>;
 
     //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 37 };
+
+    #[cfg(any(feature = "v2018_9", feature = "dox"))]
+    fn remove(&self, name: &str, allow_noent: bool) -> Result<(), Error>;
 
     fn replace_file(&self, name: &str, checksum: &str) -> Result<(), Error>;
 
@@ -90,6 +96,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
     //    unsafe { TODO: call ffi::ostree_mutable_tree_ensure_parent_dirs() }
     //}
 
+    #[cfg(any(feature = "v2018_7", feature = "dox"))]
     fn fill_empty_from_dirtree(&self, repo: &Repo, contents_checksum: &str, metadata_checksum: &str) -> bool {
         unsafe {
             from_glib(ffi::ostree_mutable_tree_fill_empty_from_dirtree(self.to_glib_none().0, repo.to_glib_none().0, contents_checksum.to_glib_none().0, metadata_checksum.to_glib_none().0))
@@ -115,6 +122,15 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
     //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 37 } {
     //    unsafe { TODO: call ffi::ostree_mutable_tree_get_subdirs() }
     //}
+
+    #[cfg(any(feature = "v2018_9", feature = "dox"))]
+    fn remove(&self, name: &str, allow_noent: bool) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_mutable_tree_remove(self.to_glib_none().0, name.to_glib_none().0, allow_noent.to_glib(), &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     fn replace_file(&self, name: &str, checksum: &str) -> Result<(), Error> {
         unsafe {

@@ -2,6 +2,7 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
+#[cfg(any(feature = "v2016_6", feature = "dox"))]
 use Error;
 use GpgSignatureFormatFlags;
 use ffi;
@@ -44,6 +45,7 @@ pub trait GpgVerifyResultExt {
 
     fn lookup(&self, key_id: &str) -> Option<u32>;
 
+    #[cfg(any(feature = "v2016_6", feature = "dox"))]
     fn require_valid_signature(&self) -> Result<(), Error>;
 }
 
@@ -86,6 +88,7 @@ impl<O: IsA<GpgVerifyResult>> GpgVerifyResultExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_6", feature = "dox"))]
     fn require_valid_signature(&self) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();

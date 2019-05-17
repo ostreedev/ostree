@@ -237,6 +237,7 @@ pub enum RepoRemoteChange {
     AddIfNotExists,
     Delete,
     DeleteIfExists,
+    Replace,
     #[doc(hidden)]
     __Unknown(i32),
 }
@@ -251,6 +252,7 @@ impl ToGlib for RepoRemoteChange {
             RepoRemoteChange::AddIfNotExists => ffi::OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
             RepoRemoteChange::Delete => ffi::OSTREE_REPO_REMOTE_CHANGE_DELETE,
             RepoRemoteChange::DeleteIfExists => ffi::OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
+            RepoRemoteChange::Replace => ffi::OSTREE_REPO_REMOTE_CHANGE_REPLACE,
             RepoRemoteChange::__Unknown(value) => value
         }
     }
@@ -264,37 +266,8 @@ impl FromGlib<ffi::OstreeRepoRemoteChange> for RepoRemoteChange {
             1 => RepoRemoteChange::AddIfNotExists,
             2 => RepoRemoteChange::Delete,
             3 => RepoRemoteChange::DeleteIfExists,
+            4 => RepoRemoteChange::Replace,
             value => RepoRemoteChange::__Unknown(value),
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[derive(Clone, Copy)]
-pub enum RepoResolveRevExtFlags {
-    RepoResolveRevExtNone,
-    #[doc(hidden)]
-    __Unknown(i32),
-}
-
-#[doc(hidden)]
-impl ToGlib for RepoResolveRevExtFlags {
-    type GlibType = ffi::OstreeRepoResolveRevExtFlags;
-
-    fn to_glib(&self) -> ffi::OstreeRepoResolveRevExtFlags {
-        match *self {
-            RepoResolveRevExtFlags::RepoResolveRevExtNone => ffi::OSTREE_REPO_RESOLVE_REV_EXT_NONE,
-            RepoResolveRevExtFlags::__Unknown(value) => value
-        }
-    }
-}
-
-#[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
-    fn from_glib(value: ffi::OstreeRepoResolveRevExtFlags) -> Self {
-        match value {
-            0 => RepoResolveRevExtFlags::RepoResolveRevExtNone,
-            value => RepoResolveRevExtFlags::__Unknown(value),
         }
     }
 }
