@@ -2048,9 +2048,9 @@ ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
  * ostree_repo_remote_gpg_import:
  * @self: Self
  * @name: name of a remote
- * @source_stream: (allow-none): a #GInputStream, or %NULL
- * @key_ids: (array zero-terminated=1) (element-type utf8) (allow-none): a %NULL-terminated array of GPG key IDs, or %NULL
- * @out_imported: (allow-none): return location for the number of imported
+ * @source_stream: (nullable): a #GInputStream, or %NULL
+ * @key_ids: (array zero-terminated=1) (element-type utf8) (nullable): a %NULL-terminated array of GPG key IDs, or %NULL
+ * @out_imported: (out) (optional): return location for the number of imported
  *                              keys, or %NULL
  * @cancellable: a #GCancellable
  * @error: a #GError
@@ -2385,6 +2385,12 @@ ostree_repo_mode_to_string (OstreeRepoMode   mode,
   return TRUE;
 }
 
+/**
+ * ostree_repo_mode_from_string:
+ * @mode: a repo mode as a string
+ * @out_mode: (out): the corresponding #OstreeRepoMode
+ * @error: a #GError if the string is not a valid mode
+ */
 gboolean
 ostree_repo_mode_from_string (const char      *mode,
                               OstreeRepoMode  *out_mode,
