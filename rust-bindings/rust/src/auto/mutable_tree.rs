@@ -61,6 +61,8 @@ pub trait MutableTreeExt {
 
     //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 37 };
 
+    fn lookup(&self, name: &str) -> Result<(String, MutableTree), Error>;
+
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
     fn remove(&self, name: &str, allow_noent: bool) -> Result<(), Error>;
 
@@ -122,6 +124,16 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
     //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 37 } {
     //    unsafe { TODO: call ffi::ostree_mutable_tree_get_subdirs() }
     //}
+
+    fn lookup(&self, name: &str) -> Result<(String, MutableTree), Error> {
+        unsafe {
+            let mut out_file_checksum = ptr::null_mut();
+            let mut out_subdir = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_mutable_tree_lookup(self.to_glib_none().0, name.to_glib_none().0, &mut out_file_checksum, &mut out_subdir, &mut error);
+            if error.is_null() { Ok((from_glib_full(out_file_checksum), from_glib_full(out_subdir))) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
     fn remove(&self, name: &str, allow_noent: bool) -> Result<(), Error> {

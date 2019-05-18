@@ -81,6 +81,15 @@ impl Repo {
         }
     }
 
+    pub fn mode_from_string(mode: &str) -> Result<RepoMode, Error> {
+        unsafe {
+            let mut out_mode = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_mode_from_string(mode.to_glib_none().0, &mut out_mode, &mut error);
+            if error.is_null() { Ok(from_glib(out_mode)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     pub fn open_at<'a, P: Into<Option<&'a gio::Cancellable>>>(dfd: i32, path: &str, cancellable: P) -> Result<Repo, Error> {
         let cancellable = cancellable.into();
@@ -268,6 +277,8 @@ pub trait RepoExt {
     fn remote_get_gpg_verify_summary(&self, name: &str) -> Result<bool, Error>;
 
     fn remote_get_url(&self, name: &str) -> Result<String, Error>;
+
+    fn remote_gpg_import<'a, 'b, P: IsA<gio::InputStream> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, source_stream: Q, key_ids: &[&str], cancellable: R) -> Result<u32, Error>;
 
     fn remote_list(&self) -> Vec<String>;
 
@@ -987,6 +998,19 @@ impl<O: IsA<Repo> + IsA<glib::object::Object>> RepoExt for O {
             let mut error = ptr::null_mut();
             let _ = ffi::ostree_repo_remote_get_url(self.to_glib_none().0, name.to_glib_none().0, &mut out_url, &mut error);
             if error.is_null() { Ok(from_glib_full(out_url)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    fn remote_gpg_import<'a, 'b, P: IsA<gio::InputStream> + 'a, Q: Into<Option<&'a P>>, R: Into<Option<&'b gio::Cancellable>>>(&self, name: &str, source_stream: Q, key_ids: &[&str], cancellable: R) -> Result<u32, Error> {
+        let source_stream = source_stream.into();
+        let source_stream = source_stream.to_glib_none();
+        let cancellable = cancellable.into();
+        let cancellable = cancellable.to_glib_none();
+        unsafe {
+            let mut out_imported = mem::uninitialized();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_remote_gpg_import(self.to_glib_none().0, name.to_glib_none().0, source_stream.0, key_ids.to_glib_none().0, &mut out_imported, cancellable.0, &mut error);
+            if error.is_null() { Ok(out_imported) } else { Err(from_glib_full(error)) }
         }
     }
 

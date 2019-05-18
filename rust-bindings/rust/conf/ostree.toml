@@ -14,6 +14,7 @@ generate = [
     "OSTree.AsyncProgress",
     "OSTree.GpgSignatureFormatFlags",
     "OSTree.GpgVerifyResult",
+    "OSTree.MutableTree",
     "OSTree.ObjectType",
     "OSTree.Remote",
     "OSTree.RepoCheckoutMode",
@@ -21,6 +22,7 @@ generate = [
     "OSTree.RepoCommitModifier",
     "OSTree.RepoCommitState",
     "OSTree.RepoDevInoCache",
+    "OSTree.RepoListRefsExtFlags",
     "OSTree.RepoMode",
     "OSTree.RepoPruneFlags",
     "OSTree.RepoPullFlags",
@@ -30,7 +32,6 @@ generate = [
     "OSTree.SePolicy",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
-    "OSTree.RepoListRefsExtFlags",
 
     #"OSTree.RepoPruneOptions",
     #"OSTree.RepoExportArchiveOptions",
@@ -65,25 +66,16 @@ status = "manual"
     ignore = true
 
 [[object]]
-name = "OSTree.MutableTree"
-status = "generate"
-    [[object.function]]
-    pattern = "lookup"
-    ignore = true
-
-[[object]]
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
+    # not sure what's wrong with this method; might be a gir issue
+    name = "write_metadata_async"
+    ignore = true
+
+    [[object.function]]
+    # async generates bad code for now; revisit with newer gir
     pattern = ".+_async"
-    ignore = true
-
-    [[object.function]]
-    pattern = "mode_from_string"
-    ignore = true
-
-    [[object.function]]
-    pattern = "remote_gpg_import"
     ignore = true
 
 [[object]]

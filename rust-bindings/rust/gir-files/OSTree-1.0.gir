@@ -2122,15 +2122,25 @@ the contents will be loaded only when needed.</doc>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">Tree</doc>
             <type name="MutableTree" c:type="OstreeMutableTree*"/>
           </instance-parameter>
           <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve">name</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
-          <parameter name="out_file_checksum" transfer-ownership="none">
+          <parameter name="out_file_checksum"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <doc xml:space="preserve">checksum</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
-          <parameter name="out_subdir" transfer-ownership="none">
+          <parameter name="out_subdir"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <doc xml:space="preserve">subdirectory</doc>
             <type name="MutableTree" c:type="OstreeMutableTree**"/>
           </parameter>
         </parameters>
@@ -2492,9 +2502,14 @@ The @options dict may contain:
         </return-value>
         <parameters>
           <parameter name="mode" transfer-ownership="none">
+            <doc xml:space="preserve">a repo mode as a string</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
-          <parameter name="out_mode" transfer-ownership="none">
+          <parameter name="out_mode"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <doc xml:space="preserve">the corresponding #OstreeRepoMode</doc>
             <type name="RepoMode" c:type="OstreeRepoMode*"/>
           </parameter>
         </parameters>
@@ -5298,8 +5313,10 @@ from the remote named @name.</doc>
             </array>
           </parameter>
           <parameter name="out_imported"
-                     transfer-ownership="none"
-                     nullable="1"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
                      allow-none="1">
             <doc xml:space="preserve">return location for the number of imported
                              keys, or %NULL</doc>
