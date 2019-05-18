@@ -27,11 +27,6 @@ pub use self::se_policy::SePolicy;
 pub use self::se_policy::SePolicyExt;
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
-mod collection_ref;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-pub use self::collection_ref::CollectionRef;
-
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod remote;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::remote::Remote;

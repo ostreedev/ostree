@@ -995,17 +995,11 @@ ref name, and %FALSE otherwise. Both @ref1 and @ref2 must be non-%NULL.</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
-          <parameter name="ref1"
-                     transfer-ownership="none"
-                     nullable="1"
-                     allow-none="1">
+          <parameter name="ref1" transfer-ownership="none">
             <doc xml:space="preserve">an #OstreeCollectionRef</doc>
             <type name="gpointer" c:type="gconstpointer"/>
           </parameter>
-          <parameter name="ref2"
-                     transfer-ownership="none"
-                     nullable="1"
-                     allow-none="1">
+          <parameter name="ref2" transfer-ownership="none">
             <doc xml:space="preserve">another #OstreeCollectionRef</doc>
             <type name="gpointer" c:type="gconstpointer"/>
           </parameter>
@@ -1038,10 +1032,7 @@ must be %NULL-terminated; it may be empty, but must not be %NULL.</doc>
           <type name="guint" c:type="guint"/>
         </return-value>
         <parameters>
-          <parameter name="ref"
-                     transfer-ownership="none"
-                     nullable="1"
-                     allow-none="1">
+          <parameter name="ref" transfer-ownership="none">
             <doc xml:space="preserve">an #OstreeCollectionRef</doc>
             <type name="gpointer" c:type="gconstpointer"/>
           </parameter>
@@ -11550,17 +11541,11 @@ ref name, and %FALSE otherwise. Both @ref1 and @ref2 must be non-%NULL.</doc>
         <type name="gboolean" c:type="gboolean"/>
       </return-value>
       <parameters>
-        <parameter name="ref1"
-                   transfer-ownership="none"
-                   nullable="1"
-                   allow-none="1">
+        <parameter name="ref1" transfer-ownership="none">
           <doc xml:space="preserve">an #OstreeCollectionRef</doc>
           <type name="gpointer" c:type="gconstpointer"/>
         </parameter>
-        <parameter name="ref2"
-                   transfer-ownership="none"
-                   nullable="1"
-                   allow-none="1">
+        <parameter name="ref2" transfer-ownership="none">
           <doc xml:space="preserve">another #OstreeCollectionRef</doc>
           <type name="gpointer" c:type="gconstpointer"/>
         </parameter>
@@ -11595,10 +11580,7 @@ must be %NULL-terminated; it may be empty, but must not be %NULL.</doc>
         <type name="guint" c:type="guint"/>
       </return-value>
       <parameters>
-        <parameter name="ref"
-                   transfer-ownership="none"
-                   nullable="1"
-                   allow-none="1">
+        <parameter name="ref" transfer-ownership="none">
           <doc xml:space="preserve">an #OstreeCollectionRef</doc>
           <type name="gpointer" c:type="gconstpointer"/>
         </parameter>

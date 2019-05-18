@@ -14,18 +14,22 @@ extern crate lazy_static;
 use glib::Error;
 
 // re-exports
-#[cfg_attr(feature = "cargo-clippy", allow(clippy))]
 mod auto;
-pub use auto::functions::*;
-pub use auto::*;
+pub use crate::auto::functions::*;
+pub use crate::auto::*;
 
 mod repo;
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+mod collection_ref;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use crate::collection_ref::CollectionRef;
+
 mod object_name;
-pub use object_name::ObjectName;
+pub use crate::object_name::ObjectName;
 
 // public modules
 pub mod prelude {
-    pub use auto::traits::*;
-    pub use repo::RepoExtManual;
+    pub use crate::auto::traits::*;
+    pub use crate::repo::RepoExtManual;
 }

@@ -53,9 +53,15 @@ manual = [
 
 [[object]]
 name = "OSTree.CollectionRef"
-status = "generate"
+status = "manual"
     [[object.function]]
-    pattern = "dupv|equal|freev|hash"
+    # helper functions for NULL-terminated arrays
+    pattern = "dupv|freev"
+    ignore = true
+
+    [[object.function]]
+    # we get this for free?
+    name = "dup"
     ignore = true
 
 [[object]]
