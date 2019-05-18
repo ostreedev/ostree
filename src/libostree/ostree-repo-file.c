@@ -292,6 +292,13 @@ ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
   return TRUE;
 }
 
+/**
+ * ostree_repo_file_get_xattrs:
+ * @self: #OstreeRepoFile
+ * @out_xattrs: (out) (optional): the extended attributes
+ * @cancellable: Cancellable
+ * @error: Error
+ */
 gboolean
 ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
                              GVariant       **out_xattrs,
@@ -724,6 +731,13 @@ query_child_info_dir (OstreeRepo               *repo,
   return TRUE;
 }
 
+/**
+ * ostree_repo_file_tree_find_child:
+ * @self: #OstreeRepoFile
+ * @name: name of the child
+ * @is_dir: (out caller-allocates):
+ * @out_container: (out):
+ */
 int
 ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
                                     const char      *name,
@@ -769,6 +783,16 @@ ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
   return i;
 }
 
+/**
+ * ostree_repo_file_tree_query_child:
+ * @self: #OstreeRepoFile
+ * @n:
+ * @attributes:
+ * @flags:
+ * @out_info: (out):
+ * @cancellable: Cancellable
+ * @error: Error
+ */
 gboolean
 ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                     int              n,

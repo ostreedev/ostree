@@ -401,6 +401,14 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
   return TRUE;
 }
 
+/**
+ * ostree_mutable_tree_lookup:
+ * @self: Tree
+ * @name: name
+ * @out_file_checksum: (out) (transfer full): checksum
+ * @out_subdir: (out) (transfer full): subdirectory
+ * @error: a #GError
+ */
 gboolean
 ostree_mutable_tree_lookup (OstreeMutableTree   *self,
                             const char          *name,
