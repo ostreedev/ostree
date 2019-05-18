@@ -1,4 +1,6 @@
-use auto::{Repo, RepoListRefsExtFlags};
+use crate::auto::Repo;
+#[cfg(any(feature = "v2016_4", feature = "dox"))]
+use crate::auto::RepoListRefsExtFlags;
 use ffi;
 use gio;
 use glib;
@@ -48,6 +50,7 @@ pub trait RepoExtManual {
         cancellable: Q,
     ) -> Result<HashMap<String, String>, Error>;
 
+    #[cfg(any(feature = "v2016_4", feature = "dox"))]
     fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
@@ -110,6 +113,7 @@ impl<O: IsA<Repo> + IsA<glib::Object> + Clone + 'static> RepoExtManual for O {
         }
     }
 
+    #[cfg(any(feature = "v2016_4", feature = "dox"))]
     fn list_refs_ext<'a, 'b, P: Into<Option<&'a str>>, Q: Into<Option<&'b gio::Cancellable>>>(
         &self,
         refspec_prefix: P,
