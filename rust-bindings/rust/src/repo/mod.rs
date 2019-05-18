@@ -140,3 +140,6 @@ impl<O: IsA<Repo> + IsA<glib::Object> + Clone + 'static> RepoExtManual for O {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
