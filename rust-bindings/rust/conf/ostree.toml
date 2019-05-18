@@ -56,13 +56,14 @@ manual = [
 [[object]]
 name = "OSTree.CollectionRef"
 status = "manual"
+    # for reference: the settings used to generate the hand-tuned implementation
     [[object.function]]
     # helper functions for NULL-terminated arrays
     pattern = "dupv|freev"
     ignore = true
 
     [[object.function]]
-    # we get this for free?
+    # we get this for free, I think?
     name = "dup"
     ignore = true
 
@@ -75,7 +76,7 @@ status = "generate"
     ignore = true
 
     [[object.function]]
-    # async generates bad code for now; revisit with newer gir
+    # async generates bad code (for now?); revisit with newer gir
     pattern = ".+_async"
     ignore = true
 
@@ -83,9 +84,11 @@ status = "generate"
 name = "OSTree.*"
 status = "generate"
     [[object.function]]
+    # both too low-level to be generated safely
     pattern = "cmp_checksum_bytes|checksum_inplace_to_bytes"
     ignore = true
 
     [[object.constant]]
+    # version-dependent constants
     pattern = "VERSION|VERSION_S|YEAR_VERSION|RELEASE_VERSION"
     ignore = true
