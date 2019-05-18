@@ -72,3 +72,38 @@ impl PartialEq for ObjectName {
         self.checksum == other.checksum && self.object_type == other.object_type
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_stringify_object_name() {
+        let object_name = ObjectName::new("abcdef123456", ObjectType::DirTree);
+        let stringified = format!("{}", object_name);
+        assert_eq!(stringified, "abcdef123456.dirtree");
+    }
+
+    #[test]
+    fn same_values_should_be_equal() {
+        let a = ObjectName::new("abc123", ObjectType::File);
+        let b = ObjectName::new("abc123", ObjectType::File);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn different_values_should_not_be_equal() {
+        let a = ObjectName::new("abc123", ObjectType::Commit);
+        let b = ObjectName::new("abc123", ObjectType::File);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn should_create_object_name_from_variant() {
+        let object_name = ObjectName::new("123456", ObjectType::CommitMeta);
+        let from_variant = ObjectName::new_from_variant(object_name.variant.clone());
+        assert_eq!(object_name, from_variant);
+        assert_eq!("123456", from_variant.checksum());
+        assert_eq!(ObjectType::CommitMeta, from_variant.object_type());
+    }
+}
