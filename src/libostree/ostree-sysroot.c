@@ -857,6 +857,10 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
 
 /**
  * ostree_sysroot_load_if_changed:
+ * @self: #OstreeSysroot
+ * @out_changed: (out caller-allocates):
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Since: 2016.4
  */
