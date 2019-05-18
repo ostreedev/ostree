@@ -20,7 +20,8 @@ glib_wrapper! {
 
 impl CollectionRef {
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn new<'a, P: Into<Option<&'a str>>>(collection_id: P, ref_name: &str) -> CollectionRef {
+    // CHANGE: return type CollectionRef to Option<CollectionRef>
+    pub fn new<'a, P: Into<Option<&'a str>>>(collection_id: P, ref_name: &str) -> Option<CollectionRef> {
         let collection_id = collection_id.into();
         let collection_id = collection_id.to_glib_none();
         unsafe {
@@ -60,3 +61,6 @@ impl hash::Hash for CollectionRef {
         hash::Hash::hash(&self.hash(), state)
     }
 }
+
+#[cfg(test)]
+mod tests;

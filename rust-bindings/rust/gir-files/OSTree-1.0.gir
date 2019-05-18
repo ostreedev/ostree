@@ -917,7 +917,7 @@ indicating a ref name which is not globally unique.</doc>
 @collection_id is %NULL, this is equivalent to a plain ref name string (not a
 refspec; no remote name is included), which can be used for non-P2P
 operations.</doc>
-        <return-value transfer-ownership="full">
+        <return-value transfer-ownership="full" nullable="1">
           <doc xml:space="preserve">a new #OstreeCollectionRef</doc>
           <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
         </return-value>
