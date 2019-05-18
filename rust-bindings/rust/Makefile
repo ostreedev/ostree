@@ -13,7 +13,7 @@ gir/%: target/tools/bin/gir
 
 # -- LGPL docs generation --
 target/tools/bin/rustdoc-stripper:
-	cargo install --root target/tools -- rustdoc-stripper
+	cargo install --root target/tools --version 0.1.5 -- rustdoc-stripper
 
 merge-lgpl-docs: target/tools/bin/gir target/tools/bin/rustdoc-stripper
 	target/tools/bin/gir -c conf/ostree.toml -m doc
