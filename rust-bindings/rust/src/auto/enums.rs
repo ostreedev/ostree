@@ -7,6 +7,42 @@ use glib::translate::*;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+pub enum DeploymentUnlockedState {
+    None,
+    Development,
+    Hotfix,
+    #[doc(hidden)]
+    __Unknown(i32),
+}
+
+#[doc(hidden)]
+impl ToGlib for DeploymentUnlockedState {
+    type GlibType = ffi::OstreeDeploymentUnlockedState;
+
+    fn to_glib(&self) -> ffi::OstreeDeploymentUnlockedState {
+        match *self {
+            DeploymentUnlockedState::None => ffi::OSTREE_DEPLOYMENT_UNLOCKED_NONE,
+            DeploymentUnlockedState::Development => ffi::OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT,
+            DeploymentUnlockedState::Hotfix => ffi::OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX,
+            DeploymentUnlockedState::__Unknown(value) => value
+        }
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ffi::OstreeDeploymentUnlockedState> for DeploymentUnlockedState {
+    fn from_glib(value: ffi::OstreeDeploymentUnlockedState) -> Self {
+        match value {
+            0 => DeploymentUnlockedState::None,
+            1 => DeploymentUnlockedState::Development,
+            2 => DeploymentUnlockedState::Hotfix,
+            value => DeploymentUnlockedState::__Unknown(value),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy)]
 pub enum GpgSignatureFormatFlags {
     GpgSignatureFormatDefault,
     #[doc(hidden)]

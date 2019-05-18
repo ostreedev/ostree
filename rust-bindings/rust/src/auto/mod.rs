@@ -6,6 +6,14 @@ mod async_progress;
 pub use self::async_progress::AsyncProgress;
 pub use self::async_progress::AsyncProgressExt;
 
+mod bootconfig_parser;
+pub use self::bootconfig_parser::BootconfigParser;
+pub use self::bootconfig_parser::BootconfigParserExt;
+
+mod deployment;
+pub use self::deployment::Deployment;
+pub use self::deployment::DeploymentExt;
+
 mod gpg_verify_result;
 pub use self::gpg_verify_result::GpgVerifyResult;
 pub use self::gpg_verify_result::GpgVerifyResultExt;
@@ -26,6 +34,14 @@ mod se_policy;
 pub use self::se_policy::SePolicy;
 pub use self::se_policy::SePolicyExt;
 
+mod sysroot;
+pub use self::sysroot::Sysroot;
+pub use self::sysroot::SysrootExt;
+
+mod sysroot_upgrader;
+pub use self::sysroot_upgrader::SysrootUpgrader;
+pub use self::sysroot_upgrader::SysrootUpgraderExt;
+
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod remote;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -41,6 +57,7 @@ mod repo_transaction_stats;
 pub use self::repo_transaction_stats::RepoTransactionStats;
 
 mod enums;
+pub use self::enums::DeploymentUnlockedState;
 pub use self::enums::GpgSignatureFormatFlags;
 pub use self::enums::ObjectType;
 pub use self::enums::RepoCheckoutMode;
@@ -57,6 +74,9 @@ pub use self::flags::RepoListRefsExtFlags;
 pub use self::flags::RepoPullFlags;
 pub use self::flags::RepoResolveRevExtFlags;
 pub use self::flags::SePolicyRestoreconFlags;
+pub use self::flags::SysrootSimpleWriteDeploymentFlags;
+pub use self::flags::SysrootUpgraderFlags;
+pub use self::flags::SysrootUpgraderPullFlags;
 
 pub mod functions;
 
@@ -89,9 +109,13 @@ pub use self::constants::TREE_GVARIANT_STRING;
 #[doc(hidden)]
 pub mod traits {
     pub use super::AsyncProgressExt;
+    pub use super::BootconfigParserExt;
+    pub use super::DeploymentExt;
     pub use super::GpgVerifyResultExt;
     pub use super::MutableTreeExt;
     pub use super::RepoExt;
     pub use super::RepoFileExt;
     pub use super::SePolicyExt;
+    pub use super::SysrootExt;
+    pub use super::SysrootUpgraderExt;
 }

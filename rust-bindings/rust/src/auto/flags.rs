@@ -3,7 +3,14 @@
 // DO NOT EDIT
 
 use ffi;
+use glib::StaticType;
+use glib::Type;
 use glib::translate::*;
+use glib::value::FromValue;
+use glib::value::FromValueOptional;
+use glib::value::SetValue;
+use glib::value::Value;
+use gobject_ffi;
 
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 bitflags! {
@@ -127,6 +134,103 @@ impl ToGlib for SePolicyRestoreconFlags {
 impl FromGlib<ffi::OstreeSePolicyRestoreconFlags> for SePolicyRestoreconFlags {
     fn from_glib(value: ffi::OstreeSePolicyRestoreconFlags) -> SePolicyRestoreconFlags {
         SePolicyRestoreconFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
+    pub struct SysrootSimpleWriteDeploymentFlags: u32 {
+        const NONE = 0;
+        const RETAIN = 1;
+        const NOT_DEFAULT = 2;
+        const NO_CLEAN = 4;
+        const RETAIN_PENDING = 8;
+        const RETAIN_ROLLBACK = 16;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for SysrootSimpleWriteDeploymentFlags {
+    type GlibType = ffi::OstreeSysrootSimpleWriteDeploymentFlags;
+
+    fn to_glib(&self) -> ffi::OstreeSysrootSimpleWriteDeploymentFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ffi::OstreeSysrootSimpleWriteDeploymentFlags> for SysrootSimpleWriteDeploymentFlags {
+    fn from_glib(value: ffi::OstreeSysrootSimpleWriteDeploymentFlags) -> SysrootSimpleWriteDeploymentFlags {
+        SysrootSimpleWriteDeploymentFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
+    pub struct SysrootUpgraderFlags: u32 {
+        const IGNORE_UNCONFIGURED = 2;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for SysrootUpgraderFlags {
+    type GlibType = ffi::OstreeSysrootUpgraderFlags;
+
+    fn to_glib(&self) -> ffi::OstreeSysrootUpgraderFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ffi::OstreeSysrootUpgraderFlags> for SysrootUpgraderFlags {
+    fn from_glib(value: ffi::OstreeSysrootUpgraderFlags) -> SysrootUpgraderFlags {
+        SysrootUpgraderFlags::from_bits_truncate(value)
+    }
+}
+
+impl StaticType for SysrootUpgraderFlags {
+    fn static_type() -> Type {
+        unsafe { from_glib(ffi::ostree_sysroot_upgrader_flags_get_type()) }
+    }
+}
+
+impl<'a> FromValueOptional<'a> for SysrootUpgraderFlags {
+    unsafe fn from_value_optional(value: &Value) -> Option<Self> {
+        Some(FromValue::from_value(value))
+    }
+}
+
+impl<'a> FromValue<'a> for SysrootUpgraderFlags {
+    unsafe fn from_value(value: &Value) -> Self {
+        from_glib(gobject_ffi::g_value_get_flags(value.to_glib_none().0))
+    }
+}
+
+impl SetValue for SysrootUpgraderFlags {
+    unsafe fn set_value(value: &mut Value, this: &Self) {
+        gobject_ffi::g_value_set_flags(value.to_glib_none_mut().0, this.to_glib())
+    }
+}
+
+bitflags! {
+    pub struct SysrootUpgraderPullFlags: u32 {
+        const NONE = 0;
+        const ALLOW_OLDER = 1;
+        const SYNTHETIC = 2;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for SysrootUpgraderPullFlags {
+    type GlibType = ffi::OstreeSysrootUpgraderPullFlags;
+
+    fn to_glib(&self) -> ffi::OstreeSysrootUpgraderPullFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ffi::OstreeSysrootUpgraderPullFlags> for SysrootUpgraderPullFlags {
+    fn from_glib(value: ffi::OstreeSysrootUpgraderPullFlags) -> SysrootUpgraderPullFlags {
+        SysrootUpgraderPullFlags::from_bits_truncate(value)
     }
 }
 

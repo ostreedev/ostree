@@ -10133,15 +10133,20 @@ rootfs @self.</doc>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">#OstreeSysroot</doc>
             <type name="Sysroot" c:type="OstreeSysroot*"/>
           </instance-parameter>
-          <parameter name="out_changed" transfer-ownership="none">
+          <parameter name="out_changed"
+                     direction="out"
+                     caller-allocates="1"
+                     transfer-ownership="none">
             <type name="gboolean" c:type="gboolean*"/>
           </parameter>
           <parameter name="cancellable"
                      transfer-ownership="none"
                      nullable="1"
                      allow-none="1">
+            <doc xml:space="preserve">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>

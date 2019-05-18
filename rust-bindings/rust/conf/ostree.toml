@@ -12,6 +12,9 @@ girs_dir = "../gir-files"
 
 generate = [
     "OSTree.AsyncProgress",
+    "OSTree.BootconfigParser",
+    "OSTree.Deployment",
+    "OSTree.DeploymentUnlockedState",
     "OSTree.GpgSignatureFormatFlags",
     "OSTree.GpgVerifyResult",
     "OSTree.MutableTree",
@@ -33,6 +36,11 @@ generate = [
     "OSTree.SePolicy",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
+    "OSTree.Sysroot",
+    "OSTree.SysrootSimpleWriteDeploymentFlags",
+    "OSTree.SysrootUpgrader",
+    "OSTree.SysrootUpgraderFlags",
+    "OSTree.SysrootUpgraderPullFlags",
 
     #"OSTree.RepoPruneOptions",
     #"OSTree.RepoExportArchiveOptions",
