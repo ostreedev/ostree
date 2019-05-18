@@ -22,6 +22,7 @@ generate = [
     "OSTree.RepoCommitModifier",
     "OSTree.RepoCommitState",
     "OSTree.RepoDevInoCache",
+    "OSTree.RepoFile",
     "OSTree.RepoListRefsExtFlags",
     "OSTree.RepoMode",
     "OSTree.RepoPruneFlags",
@@ -76,21 +77,6 @@ status = "generate"
     [[object.function]]
     # async generates bad code for now; revisit with newer gir
     pattern = ".+_async"
-    ignore = true
-
-[[object]]
-name = "OSTree.RepoFile"
-status = "generate"
-    [[object.function]]
-    pattern = "get_xattrs"
-    ignore = true
-
-    [[object.function]]
-    pattern = "tree_find_child"
-    ignore = true
-
-    [[object.function]]
-    pattern = "tree_query_child"
     ignore = true
 
 [[object]]

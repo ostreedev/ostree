@@ -8049,15 +8049,23 @@ options.  This is used by ostree_repo_export_tree_to_archive().</doc>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">#OstreeRepoFile</doc>
             <type name="RepoFile" c:type="OstreeRepoFile*"/>
           </instance-parameter>
-          <parameter name="out_xattrs" transfer-ownership="none">
+          <parameter name="out_xattrs"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve">the extended attributes</doc>
             <type name="GLib.Variant" c:type="GVariant**"/>
           </parameter>
           <parameter name="cancellable"
                      transfer-ownership="none"
                      nullable="1"
                      allow-none="1">
+            <doc xml:space="preserve">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -8069,15 +8077,23 @@ options.  This is used by ostree_repo_export_tree_to_archive().</doc>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">#OstreeRepoFile</doc>
             <type name="RepoFile" c:type="OstreeRepoFile*"/>
           </instance-parameter>
           <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve">name of the child</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
-          <parameter name="is_dir" transfer-ownership="none">
+          <parameter name="is_dir"
+                     direction="out"
+                     caller-allocates="1"
+                     transfer-ownership="none">
             <type name="gboolean" c:type="gboolean*"/>
           </parameter>
-          <parameter name="out_container" transfer-ownership="none">
+          <parameter name="out_container"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
             <type name="GLib.Variant" c:type="GVariant**"/>
           </parameter>
         </parameters>
@@ -8134,6 +8150,7 @@ options.  This is used by ostree_repo_export_tree_to_archive().</doc>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">#OstreeRepoFile</doc>
             <type name="RepoFile" c:type="OstreeRepoFile*"/>
           </instance-parameter>
           <parameter name="n" transfer-ownership="none">
@@ -8145,13 +8162,17 @@ options.  This is used by ostree_repo_export_tree_to_archive().</doc>
           <parameter name="flags" transfer-ownership="none">
             <type name="Gio.FileQueryInfoFlags" c:type="GFileQueryInfoFlags"/>
           </parameter>
-          <parameter name="out_info" transfer-ownership="none">
+          <parameter name="out_info"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
             <type name="Gio.FileInfo" c:type="GFileInfo**"/>
           </parameter>
           <parameter name="cancellable"
                      transfer-ownership="none"
                      nullable="1"
                      allow-none="1">
+            <doc xml:space="preserve">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
