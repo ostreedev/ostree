@@ -210,25 +210,35 @@ m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
 AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test "x$found_introspection" = xyes)
 
 LIBGPGME_DEPENDENCY="1.1.8"
-
-PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_DEPENDENCY, have_gpgme=yes, [
-    m4_ifdef([AM_PATH_GPGME_PTHREAD], [
-       AM_PATH_GPGME_PTHREAD($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
-    ],[ have_gpgme=no ])
-])
-AS_IF([ test x$have_gpgme = xno ], [
-   AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_DEPENDENCY or later])
-])
-OSTREE_FEATURES="$OSTREE_FEATURES gpgme"
-PKG_CHECK_MODULES(OT_DEP_GPG_ERROR, [gpg-error], [], [
+AC_ARG_WITH(gpgme,
+	    AS_HELP_STRING([--with-gpgme], [Use gpgme @<:@default=yes@:>@]),
+	    [], [with_gpgme=yes])
+AS_IF([test x$with_gpgme != xno], [
+    PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_DEPENDENCY, have_gpgme=yes, [
+        m4_ifdef([AM_PATH_GPGME_PTHREAD], [
+            AM_PATH_GPGME_PTHREAD($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
+        ],[ have_gpgme=no ])
+    ])
+    AS_IF([ test x$have_gpgme = xno ], [
+       AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_DEPENDENCY or later])
+    ])
+    OSTREE_FEATURES="$OSTREE_FEATURES gpgme"
+    PKG_CHECK_MODULES(OT_DEP_GPG_ERROR, [gpg-error], [], [
 dnl This apparently doesn't ship a pkg-config file either, and we need
 dnl to link to it directly.
-    AC_PATH_PROG(GPG_ERROR_CONFIG, [gpg-error-config], [AC_MSG_ERROR([Missing gpg-error-config])])
-    OT_DEP_GPG_ERROR_CFLAGS="$( $GPG_ERROR_CONFIG --cflags )"
-    OT_DEP_GPG_ERROR_LIBS="$( $GPG_ERROR_CONFIG --libs )"
-])
-OT_DEP_GPGME_CFLAGS="${OT_DEP_GPGME_CFLAGS} ${OT_DEP_GPG_ERROR_CFLAGS}"
-OT_DEP_GPGME_LIBS="${OT_DEP_GPGME_LIBS} ${OT_DEP_GPG_ERROR_LIBS}"
+        AC_PATH_PROG(GPG_ERROR_CONFIG, [gpg-error-config], [AC_MSG_ERROR([Missing gpg-error-config])])
+        OT_DEP_GPG_ERROR_CFLAGS="$( $GPG_ERROR_CONFIG --cflags )"
+        OT_DEP_GPG_ERROR_LIBS="$( $GPG_ERROR_CONFIG --libs )"
+    ])
+    OT_DEP_GPGME_CFLAGS="${OT_DEP_GPGME_CFLAGS} ${OT_DEP_GPG_ERROR_CFLAGS}"
+    OT_DEP_GPGME_LIBS="${OT_DEP_GPGME_LIBS} ${OT_DEP_GPG_ERROR_LIBS}"
+    ],
+    [
+    AC_DEFINE([OSTREE_DISABLE_GPGME], 1, [Define to disable internal GPGME support])
+    with_gpgme=no
+    ]
+)
+AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 # What's in RHEL7.2.
