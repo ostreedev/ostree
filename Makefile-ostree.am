@@ -34,7 +34,6 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-export.c \
 	src/ostree/ot-builtin-find-remotes.c \
 	src/ostree/ot-builtin-fsck.c \
-	src/ostree/ot-builtin-gpg-sign.c \
 	src/ostree/ot-builtin-init.c \
 	src/ostree/ot-builtin-pull-local.c \
 	src/ostree/ot-builtin-log.c \
@@ -62,6 +61,12 @@ nodist_ostree_SOURCES = \
 
 if ENABLE_EXPERIMENTAL_API
 ostree_SOURCES += \
+	$(NULL)
+endif
+
+if USE_GPGME
+ostree_SOURCES += \
+	src/ostree/ot-builtin-gpg-sign.c \
 	$(NULL)
 endif
 
@@ -95,12 +100,17 @@ ostree_SOURCES += \
 	src/ostree/ot-remote-builtins.h \
 	src/ostree/ot-remote-builtin-add.c \
 	src/ostree/ot-remote-builtin-delete.c \
-	src/ostree/ot-remote-builtin-gpg-import.c \
 	src/ostree/ot-remote-builtin-list.c \
 	src/ostree/ot-remote-builtin-show-url.c \
 	src/ostree/ot-remote-builtin-refs.c \
 	src/ostree/ot-remote-builtin-summary.c \
 	$(NULL)
+
+if USE_GPGME
+ostree_SOURCES += \
+	src/ostree/ot-remote-builtin-gpg-import.c \
+	$(NULL)
+endif
 
 
 if USE_CURL_OR_SOUP
