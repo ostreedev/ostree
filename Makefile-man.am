@@ -28,7 +28,7 @@ ostree-admin-status.1 ostree-admin-set-origin.1 ostree-admin-switch.1	\
 ostree-admin-undeploy.1 ostree-admin-upgrade.1 ostree-admin-unlock.1	\
 ostree-admin-pin.1 \
 ostree-admin.1 ostree-cat.1 ostree-checkout.1 ostree-checksum.1		\
-ostree-commit.1 ostree-create-usb.1 ostree-export.1 ostree-gpg-sign.1 \
+ostree-commit.1 ostree-create-usb.1 ostree-export.1 \
 ostree-config.1 ostree-diff.1 ostree-find-remotes.1 ostree-fsck.1 \
 ostree-init.1 ostree-log.1 ostree-ls.1 ostree-prune.1 ostree-pull-local.1 \
 ostree-pull.1 ostree-refs.1 ostree-remote.1 ostree-reset.1 \
@@ -43,6 +43,10 @@ endif
 
 if BUILDOPT_FUSE
 man1_files += rofiles-fuse.1
+endif
+
+if USE_GPGME
+man1_files += ostree-gpg-sign.1
 endif
 
 man5_files = ostree.repo.5 ostree.repo-config.5
