@@ -3,7 +3,7 @@
 // DO NOT EDIT
 
 #![allow(non_camel_case_types, non_upper_case_globals, non_snake_case)]
-#![cfg_attr(feature = "cargo-clippy", allow(approx_constant, type_complexity, unreadable_literal))]
+#![allow(clippy::approx_constant, clippy::type_complexity, clippy::unreadable_literal)]
 
 extern crate libc;
 extern crate glib_sys as glib;
@@ -52,9 +52,8 @@ pub const OSTREE_GPG_SIGNATURE_ATTR_USER_NAME: OstreeGpgSignatureAttr = 10;
 pub const OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL: OstreeGpgSignatureAttr = 11;
 pub const OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY: OstreeGpgSignatureAttr = 12;
 
-pub type GpgSignatureFormatFlags = c_int;
-pub const OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT: GpgSignatureFormatFlags = 0;
-pub type OstreeGpgSignatureFormatFlags = GpgSignatureFormatFlags;
+pub type OstreeGpgSignatureFormatFlags = c_int;
+pub const OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT: OstreeGpgSignatureFormatFlags = 0;
 
 pub type OstreeObjectType = c_int;
 pub const OSTREE_OBJECT_TYPE_FILE: OstreeObjectType = 1;
@@ -227,54 +226,29 @@ impl ::std::fmt::Debug for OstreeAsyncProgressClass {
 }
 
 #[repr(C)]
-pub struct OstreeBootloader(c_void);
+pub struct _OstreeBootloader(c_void);
 
-impl ::std::fmt::Debug for OstreeBootloader {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeBootloader @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeBootloader = *mut _OstreeBootloader;
 
 #[repr(C)]
-pub struct OstreeBootloaderGrub2(c_void);
+pub struct _OstreeBootloaderGrub2(c_void);
 
-impl ::std::fmt::Debug for OstreeBootloaderGrub2 {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeBootloaderGrub2 @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeBootloaderGrub2 = *mut _OstreeBootloaderGrub2;
 
 #[repr(C)]
-pub struct OstreeBootloaderSyslinux(c_void);
+pub struct _OstreeBootloaderSyslinux(c_void);
 
-impl ::std::fmt::Debug for OstreeBootloaderSyslinux {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeBootloaderSyslinux @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeBootloaderSyslinux = *mut _OstreeBootloaderSyslinux;
 
 #[repr(C)]
-pub struct OstreeBootloaderUboot(c_void);
+pub struct _OstreeBootloaderUboot(c_void);
 
-impl ::std::fmt::Debug for OstreeBootloaderUboot {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeBootloaderUboot @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeBootloaderUboot = *mut _OstreeBootloaderUboot;
 
 #[repr(C)]
-pub struct OstreeChecksumInputStreamPrivate(c_void);
+pub struct _OstreeChecksumInputStreamPrivate(c_void);
 
-impl ::std::fmt::Debug for OstreeChecksumInputStreamPrivate {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeChecksumInputStreamPrivate @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeChecksumInputStreamPrivate = *mut _OstreeChecksumInputStreamPrivate;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -342,44 +316,24 @@ impl ::std::fmt::Debug for OstreeDiffItem {
 }
 
 #[repr(C)]
-pub struct OstreeGpgVerifier(c_void);
+pub struct _OstreeGpgVerifier(c_void);
 
-impl ::std::fmt::Debug for OstreeGpgVerifier {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeGpgVerifier @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeGpgVerifier = *mut _OstreeGpgVerifier;
 
 #[repr(C)]
-pub struct OstreeLibarchiveInputStreamPrivate(c_void);
+pub struct _OstreeLibarchiveInputStreamPrivate(c_void);
 
-impl ::std::fmt::Debug for OstreeLibarchiveInputStreamPrivate {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeLibarchiveInputStreamPrivate @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeLibarchiveInputStreamPrivate = *mut _OstreeLibarchiveInputStreamPrivate;
 
 #[repr(C)]
-pub struct OstreeLzmaCompressor(c_void);
+pub struct _OstreeLzmaCompressor(c_void);
 
-impl ::std::fmt::Debug for OstreeLzmaCompressor {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeLzmaCompressor @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeLzmaCompressor = *mut _OstreeLzmaCompressor;
 
 #[repr(C)]
-pub struct OstreeLzmaDecompressor(c_void);
+pub struct _OstreeLzmaDecompressor(c_void);
 
-impl ::std::fmt::Debug for OstreeLzmaDecompressor {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeLzmaDecompressor @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeLzmaDecompressor = *mut _OstreeLzmaDecompressor;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -473,8 +427,9 @@ impl ::std::fmt::Debug for OstreeRepoCheckoutAtOptions {
 pub struct OstreeRepoCheckoutOptions {
     pub mode: OstreeRepoCheckoutMode,
     pub overwrite_mode: OstreeRepoCheckoutOverwriteMode,
+    pub enable_uncompressed_cache: c_uint,
     _truncated_record_marker: c_void,
-    // /*Ignored*/field enable_uncompressed_cache has incomplete type
+    // field disable_fsync has incomplete type
 }
 
 impl ::std::fmt::Debug for OstreeRepoCheckoutOptions {
@@ -482,6 +437,7 @@ impl ::std::fmt::Debug for OstreeRepoCheckoutOptions {
         f.debug_struct(&format!("OstreeRepoCheckoutOptions @ {:?}", self as *const _))
          .field("mode", &self.mode)
          .field("overwrite_mode", &self.overwrite_mode)
+         .field("enable_uncompressed_cache", &self.enable_uncompressed_cache)
          .finish()
     }
 }
@@ -525,13 +481,15 @@ impl ::std::fmt::Debug for OstreeRepoDevInoCache {
 
 #[repr(C)]
 pub struct OstreeRepoExportArchiveOptions {
+    pub disable_xattrs: c_uint,
     _truncated_record_marker: c_void,
-    // /*Ignored*/field disable_xattrs has incomplete type
+    // field reserved has incomplete type
 }
 
 impl ::std::fmt::Debug for OstreeRepoExportArchiveOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeRepoExportArchiveOptions @ {:?}", self as *const _))
+         .field("disable_xattrs", &self.disable_xattrs)
          .finish()
     }
 }
@@ -551,14 +509,9 @@ impl ::std::fmt::Debug for OstreeRepoFileClass {
 }
 
 #[repr(C)]
-pub struct OstreeRepoFileEnumerator(c_void);
+pub struct _OstreeRepoFileEnumerator(c_void);
 
-impl ::std::fmt::Debug for OstreeRepoFileEnumerator {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFileEnumerator @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeRepoFileEnumerator = *mut _OstreeRepoFileEnumerator;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -661,13 +614,15 @@ impl ::std::fmt::Debug for OstreeRepoFinderResult {
 
 #[repr(C)]
 pub struct OstreeRepoImportArchiveOptions {
+    pub ignore_unsupported_content: c_uint,
     _truncated_record_marker: c_void,
-    // /*Ignored*/field ignore_unsupported_content has incomplete type
+    // field autocreate_parents has incomplete type
 }
 
 impl ::std::fmt::Debug for OstreeRepoImportArchiveOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeRepoImportArchiveOptions @ {:?}", self as *const _))
+         .field("ignore_unsupported_content", &self.ignore_unsupported_content)
          .finish()
     }
 }
@@ -747,24 +702,14 @@ impl ::std::fmt::Debug for OstreeSysrootWriteDeploymentsOpts {
 }
 
 #[repr(C)]
-pub struct OstreeTlsCertInteraction(c_void);
+pub struct _OstreeTlsCertInteraction(c_void);
 
-impl ::std::fmt::Debug for OstreeTlsCertInteraction {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeTlsCertInteraction @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeTlsCertInteraction = *mut _OstreeTlsCertInteraction;
 
 #[repr(C)]
-pub struct OstreeTlsCertInteractionClass(c_void);
+pub struct _OstreeTlsCertInteractionClass(c_void);
 
-impl ::std::fmt::Debug for OstreeTlsCertInteractionClass {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeTlsCertInteractionClass @ {:?}", self as *const _))
-         .finish()
-    }
-}
+pub type OstreeTlsCertInteractionClass = *mut _OstreeTlsCertInteractionClass;
 
 // Classes
 #[repr(C)]
@@ -1297,15 +1242,15 @@ extern "C" {
     pub fn ostree_repo_write_commit_detached_metadata(self_: *mut OstreeRepo, checksum: *const c_char, metadata: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_commit_with_time(self_: *mut OstreeRepo, parent: *const c_char, subject: *const c_char, body: *const c_char, metadata: *mut glib::GVariant, root: *mut OstreeRepoFile, time: u64, out_commit: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_config(self_: *mut OstreeRepo, new_config: *mut glib::GKeyFile, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_repo_write_content(self_: *mut OstreeRepo, expected_checksum: *const c_char, object_input: *mut gio::GInputStream, length: u64, out_csum: *mut *mut [u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_repo_write_content(self_: *mut OstreeRepo, expected_checksum: *const c_char, object_input: *mut gio::GInputStream, length: u64, out_csum: *mut *mut [*mut u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_content_async(self_: *mut OstreeRepo, expected_checksum: *const c_char, object: *mut gio::GInputStream, length: u64, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
     pub fn ostree_repo_write_content_finish(self_: *mut OstreeRepo, result: *mut gio::GAsyncResult, out_csum: *mut *mut u8, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_content_trusted(self_: *mut OstreeRepo, checksum: *const c_char, object_input: *mut gio::GInputStream, length: u64, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_dfd_to_mtree(self_: *mut OstreeRepo, dfd: c_int, path: *const c_char, mtree: *mut OstreeMutableTree, modifier: *mut OstreeRepoCommitModifier, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_directory_to_mtree(self_: *mut OstreeRepo, dir: *mut gio::GFile, mtree: *mut OstreeMutableTree, modifier: *mut OstreeRepoCommitModifier, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_repo_write_metadata(self_: *mut OstreeRepo, objtype: OstreeObjectType, expected_checksum: *const c_char, object: *mut glib::GVariant, out_csum: *mut *mut [u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_repo_write_metadata(self_: *mut OstreeRepo, objtype: OstreeObjectType, expected_checksum: *const c_char, object: *mut glib::GVariant, out_csum: *mut *mut [*mut u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_metadata_async(self_: *mut OstreeRepo, objtype: OstreeObjectType, expected_checksum: *const c_char, object: *mut glib::GVariant, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
-    pub fn ostree_repo_write_metadata_finish(self_: *mut OstreeRepo, result: *mut gio::GAsyncResult, out_csum: *mut *mut [u8; 32], error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_repo_write_metadata_finish(self_: *mut OstreeRepo, result: *mut gio::GAsyncResult, out_csum: *mut *mut [c_uchar; 32], error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_metadata_stream_trusted(self_: *mut OstreeRepo, objtype: OstreeObjectType, checksum: *const c_char, object_input: *mut gio::GInputStream, length: u64, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_metadata_trusted(self_: *mut OstreeRepo, objtype: OstreeObjectType, checksum: *const c_char, variant: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_mtree(self_: *mut OstreeRepo, mtree: *mut OstreeMutableTree, out_file: *mut *mut gio::GFile, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
@@ -1468,24 +1413,24 @@ extern "C" {
     #[cfg(any(feature = "v2017_4", feature = "dox"))]
     pub fn ostree_check_version(required_year: c_uint, required_release: c_uint) -> gboolean;
     #[cfg(any(feature = "v2016_8", feature = "dox"))]
-    pub fn ostree_checksum_b64_from_bytes(csum: *mut [u8; 32]) -> *mut c_char;
-    pub fn ostree_checksum_b64_inplace_from_bytes(csum: *mut [u8; 32], buf: *mut c_char);
+    pub fn ostree_checksum_b64_from_bytes(csum: *mut [c_uchar; 32]) -> *mut c_char;
+    pub fn ostree_checksum_b64_inplace_from_bytes(csum: *mut [c_uchar; 32], buf: *mut c_char);
     pub fn ostree_checksum_b64_inplace_to_bytes(checksum: *mut [c_char; 32], buf: *mut u8);
     #[cfg(any(feature = "v2016_8", feature = "dox"))]
-    pub fn ostree_checksum_b64_to_bytes(checksum: *const c_char) -> *mut [u8; 32];
-    pub fn ostree_checksum_bytes_peek(bytes: *mut glib::GVariant) -> *mut [u8; 32];
-    pub fn ostree_checksum_bytes_peek_validate(bytes: *mut glib::GVariant, error: *mut *mut glib::GError) -> *mut [u8; 32];
-    pub fn ostree_checksum_file(f: *mut gio::GFile, objtype: OstreeObjectType, out_csum: *mut *mut [u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_checksum_b64_to_bytes(checksum: *const c_char) -> *mut [c_uchar; 32];
+    pub fn ostree_checksum_bytes_peek(bytes: *mut glib::GVariant) -> *mut [c_uchar; 32];
+    pub fn ostree_checksum_bytes_peek_validate(bytes: *mut glib::GVariant, error: *mut *mut glib::GError) -> *mut [c_uchar; 32];
+    pub fn ostree_checksum_file(f: *mut gio::GFile, objtype: OstreeObjectType, out_csum: *mut *mut [*mut u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_checksum_file_async(f: *mut gio::GFile, objtype: OstreeObjectType, io_priority: c_int, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
-    pub fn ostree_checksum_file_async_finish(f: *mut gio::GFile, result: *mut gio::GAsyncResult, out_csum: *mut *mut [u8; 32], error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_checksum_file_async_finish(f: *mut gio::GFile, result: *mut gio::GAsyncResult, out_csum: *mut *mut [*mut u8; 32], error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2017_13", feature = "dox"))]
     pub fn ostree_checksum_file_at(dfd: c_int, path: *const c_char, stbuf: *mut stat, objtype: OstreeObjectType, flags: OstreeChecksumFlags, out_checksum: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_checksum_file_from_input(file_info: *mut gio::GFileInfo, xattrs: *mut glib::GVariant, in_: *mut gio::GInputStream, objtype: OstreeObjectType, out_csum: *mut *mut [u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_checksum_from_bytes(csum: *mut [u8; 32]) -> *mut c_char;
+    pub fn ostree_checksum_file_from_input(file_info: *mut gio::GFileInfo, xattrs: *mut glib::GVariant, in_: *mut gio::GInputStream, objtype: OstreeObjectType, out_csum: *mut *mut [*mut u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_checksum_from_bytes(csum: *mut [c_uchar; 32]) -> *mut c_char;
     pub fn ostree_checksum_from_bytes_v(csum_v: *mut glib::GVariant) -> *mut c_char;
-    pub fn ostree_checksum_inplace_from_bytes(csum: *mut [u8; 32], buf: *mut c_char);
+    pub fn ostree_checksum_inplace_from_bytes(csum: *mut [c_uchar; 32], buf: *mut c_char);
     pub fn ostree_checksum_inplace_to_bytes(checksum: *const c_char, buf: *mut u8);
-    pub fn ostree_checksum_to_bytes(checksum: *const c_char) -> *mut [u8; 32];
+    pub fn ostree_checksum_to_bytes(checksum: *const c_char) -> *mut [c_uchar; 32];
     pub fn ostree_checksum_to_bytes_v(checksum: *const c_char) -> *mut glib::GVariant;
     //pub fn ostree_cmd__private__() -> /*Ignored*/*const OstreeCmdPrivateVTable;
     pub fn ostree_cmp_checksum_bytes(a: *const u8, b: *const u8) -> c_int;
