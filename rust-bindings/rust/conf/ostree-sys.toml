@@ -3,6 +3,7 @@ work_mode = "sys"
 library = "OSTree"
 version = "1.0"
 target_path = "../sys"
+single_version_file = true
 external_libraries = [
    "GLib",
    "GObject",
