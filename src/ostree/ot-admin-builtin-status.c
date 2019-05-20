@@ -35,6 +35,7 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+#ifndef OSTREE_DISABLE_GPGME
 static gboolean
 deployment_get_gpg_verify (OstreeDeployment *deployment,
                            OstreeRepo *repo)
@@ -61,6 +62,7 @@ deployment_get_gpg_verify (OstreeDeployment *deployment,
 
   return gpg_verify;
 }
+#endif /* OSTREE_DISABLE_GPGME */
 
 
 static gboolean
@@ -136,6 +138,7 @@ deployment_print_status (OstreeSysroot    *sysroot,
         g_print ("    `- %s\n", source_title);
     }
 
+#ifndef OSTREE_DISABLE_GPGME
   if (deployment_get_gpg_verify (deployment, repo))
     {
       g_autoptr(GString) output_buffer = g_string_sized_new (256);
@@ -168,6 +171,7 @@ deployment_print_status (OstreeSysroot    *sysroot,
 
       g_print ("%s", output_buffer->str);
     }
+#endif /* OSTREE_DISABLE_GPGME */
 
   return TRUE;
 }

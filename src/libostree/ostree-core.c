@@ -2462,6 +2462,7 @@ _ostree_compare_timestamps (const char   *current_rev,
 }
 
 
+#ifndef OSTREE_DISABLE_GPGME
 GVariant *
 _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                           GBytes     *signature_bytes)
@@ -2487,6 +2488,7 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
 
   return g_variant_dict_end (&metadata_dict);
 }
+#endif /* OSTREE_DISABLE_GPGME */
 
 /**
  * _ostree_get_default_sysroot_path:

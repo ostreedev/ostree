@@ -72,9 +72,11 @@ static OstreeCommand commands[] = {
   { "fsck", OSTREE_BUILTIN_FLAG_NONE,
     ostree_builtin_fsck,
     "Check the repository for consistency" },
+#ifndef OSTREE_DISABLE_GPGME
   { "gpg-sign", OSTREE_BUILTIN_FLAG_NONE,
     ostree_builtin_gpg_sign,
     "Sign a commit" },
+#endif /* OSTREE_DISABLE_GPGME */
   { "init", OSTREE_BUILTIN_FLAG_NO_CHECK,
     ostree_builtin_init,
     "Initialize a new empty repository" },

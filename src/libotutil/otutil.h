@@ -60,6 +60,9 @@
 #include <ot-variant-utils.h>
 #include <ot-variant-builder.h>
 #include <ot-checksum-utils.h>
-#include <ot-gpg-utils.h>
 #include <ot-checksum-instream.h>
 #include <ot-tool-util.h>
+
+#ifndef OSTREE_DISABLE_GPGME
+#include <ot-gpg-utils.h>
+#endif

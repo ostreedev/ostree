@@ -51,7 +51,9 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
   g_autoptr(GBytes) summary_bytes = NULL;
   g_autoptr(GBytes) signature_bytes = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
+#ifndef OSTREE_DISABLE_GPGME
   gboolean gpg_verify_summary;
+#endif
   gboolean ret = FALSE;
 
   context = g_option_context_new ("NAME");
@@ -92,6 +94,7 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
 
   ot_dump_summary_bytes (summary_bytes, flags);
 
+#ifndef OSTREE_DISABLE_GPGME
   if (!ostree_repo_remote_get_gpg_verify_summary (repo, remote_name,
                                                   &gpg_verify_summary,
                                                   error))
@@ -124,6 +127,7 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
       g_print ("\n");
       ostree_print_gpg_verify_result (result);
     }
+#endif /* OSTREE_DISABLE_GPGME */
 
   ret = TRUE;
 out:

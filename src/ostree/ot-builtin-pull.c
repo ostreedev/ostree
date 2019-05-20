@@ -77,6 +77,7 @@ static GOptionEntry options[] = {
    { NULL }
  };
 
+#ifndef OSTREE_DISABLE_GPGME
 static void
 gpg_verify_result_cb (OstreeRepo *repo,
                       const char *checksum,
@@ -93,6 +94,7 @@ gpg_verify_result_cb (OstreeRepo *repo,
 
   glnx_console_lock (console);
 }
+#endif /* OSTREE_DISABLE_GPGME */
 
 static gboolean printed_console_progress;
 
@@ -360,9 +362,11 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
 
     if (console.is_tty)
       {
+#ifndef OSTREE_DISABLE_GPGME
         signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
                                               G_CALLBACK (gpg_verify_result_cb),
                                               &console);
+#endif /* OSTREE_DISABLE_GPGME */
       }
 
     options = g_variant_ref_sink (g_variant_builder_end (&builder));

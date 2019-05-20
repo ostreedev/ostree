@@ -164,6 +164,7 @@ print_object (OstreeRepo          *repo,
     flags |= OSTREE_DUMP_UNSWAPPED;
   ot_dump_object (objtype, checksum, variant, flags);
 
+#ifndef OSTREE_DISABLE_GPGME
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
       g_autoptr(OstreeGpgVerifyResult) result = NULL;
@@ -207,6 +208,7 @@ print_object (OstreeRepo          *repo,
           g_print ("%s", buffer->str);
         }
     }
+#endif /* OSTREE_DISABLE_GPGME */
 
   return TRUE;
 }

@@ -133,10 +133,12 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
                              subkey, g_variant_new_variant (g_variant_new_string (subvalue)));
     }
 
+#ifndef OSTREE_DISABLE_GPGME
   if (opt_no_gpg_verify)
     g_variant_builder_add (optbuilder, "{s@v}",
                            "gpg-verify",
                            g_variant_new_variant (g_variant_new_boolean (FALSE)));
+#endif /* OSTREE_DISABLE_GPGME */
 
   if (opt_collection_id != NULL)
     g_variant_builder_add (optbuilder, "{s@v}", "collection-id",
@@ -157,6 +159,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
                                   cancellable, error))
     goto out;
 
+#ifndef OSTREE_DISABLE_GPGME
   /* This is just a convenience option and is not as flexible as the full
    * "ostree remote gpg-import" command.  It imports all keys from a file,
    * which is likely the most common case.
@@ -183,6 +186,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
       g_print ("Imported %u GPG key%s to remote \"%s\"\n",
                imported, (imported == 1) ? "" : "s", remote_name);
     }
+#endif /* OSTREE_DISABLE_GPGME */
 
   ret = TRUE;
  out:

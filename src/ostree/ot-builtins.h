@@ -41,7 +41,9 @@ BUILTINPROTO(diff);
 BUILTINPROTO(export);
 BUILTINPROTO(find_remotes);
 BUILTINPROTO(create_usb);
+#ifndef OSTREE_DISABLE_GPGME
 BUILTINPROTO(gpg_sign);
+#endif
 BUILTINPROTO(init);
 BUILTINPROTO(log);
 BUILTINPROTO(pull);

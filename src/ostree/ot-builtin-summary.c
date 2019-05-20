@@ -193,6 +193,7 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
       if (!ostree_repo_regenerate_summary (repo, additional_metadata, cancellable, error))
         return FALSE;
 
+#ifndef OSTREE_DISABLE_GPGME
       if (opt_key_ids)
         {
           if (!ostree_repo_add_gpg_signature_summary (repo,
@@ -202,6 +203,7 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
                                                       error))
             return FALSE;
         }
+#endif
     }
   else if (opt_view || opt_raw)
     {
