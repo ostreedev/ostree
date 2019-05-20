@@ -40,9 +40,11 @@ static OstreeCommand remote_subcommands[] = {
   { "list", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_list,
     "List remote repository names" },
+#ifndef OSTREE_DISABLE_GPGME
   { "gpg-import", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_gpg_import,
     "Import GPG keys" },
+#endif /* OSTREE_DISABLE_GPGME */
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
   { "add-cookie", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_add_cookie,

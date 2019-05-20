@@ -139,9 +139,11 @@ G_STATIC_ASSERT(sizeof(OstreeRepoPruneOptions) ==
 typedef struct {
   GObjectClass parent_class;
 
+#ifndef OSTREE_DISABLE_GPGME
   void (*gpg_verify_result) (OstreeRepo *self,
                              const char *checksum,
                              OstreeGpgVerifyResult *result);
+#endif
 } OstreeRepoClass;
 
 enum {
@@ -157,7 +159,9 @@ enum {
   LAST_SIGNAL
 };
 
+#ifndef OSTREE_DISABLE_GPGME
 static guint signals[LAST_SIGNAL] = { 0 };
+#endif
 
 G_DEFINE_TYPE (OstreeRepo, ostree_repo, G_TYPE_OBJECT)
 
@@ -1167,6 +1171,7 @@ ostree_repo_class_init (OstreeRepoClass *klass)
                                                         NULL,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+#ifndef OSTREE_DISABLE_GPGME
   /**
    * OstreeRepo::gpg-verify-result:
    * @self: an #OstreeRepo
@@ -1189,16 +1194,19 @@ ostree_repo_class_init (OstreeRepoClass *klass)
                                              G_TYPE_NONE, 2,
                                              G_TYPE_STRING,
                                              OSTREE_TYPE_GPG_VERIFY_RESULT);
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 static void
 ostree_repo_init (OstreeRepo *self)
 {
-  static gsize gpgme_initialized;
   const GDebugKey test_error_keys[] = {
     { "pre-commit", OSTREE_REPO_TEST_ERROR_PRE_COMMIT },
     { "invalid-cache", OSTREE_REPO_TEST_ERROR_INVALID_CACHE },
   };
+
+#ifndef OSTREE_DISABLE_GPGME
+  static gsize gpgme_initialized;
 
   if (g_once_init_enter (&gpgme_initialized))
     {
@@ -1206,6 +1214,7 @@ ostree_repo_init (OstreeRepo *self)
       gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
       g_once_init_leave (&gpgme_initialized, 1);
     }
+#endif
 
   self->test_error_flags = g_parse_debug_string (g_getenv ("OSTREE_REPO_TEST_ERROR"),
                                                  test_error_keys, G_N_ELEMENTS (test_error_keys));
@@ -2017,8 +2026,17 @@ ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
       return TRUE;
     }
 
- return ostree_repo_get_remote_boolean_option (self, name, "gpg-verify",
+#ifndef OSTREE_DISABLE_GPGME
+  return ostree_repo_get_remote_boolean_option (self, name, "gpg-verify",
                                                TRUE, out_gpg_verify, error);
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "'%s': GPG feature is disabled in a build time",
+               __FUNCTION__);
+  if (out_gpg_verify != NULL)
+    *out_gpg_verify = FALSE;
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -2040,8 +2058,17 @@ ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
                                            gboolean    *out_gpg_verify_summary,
                                            GError     **error)
 {
+#ifndef OSTREE_DISABLE_GPGME
   return ostree_repo_get_remote_boolean_option (self, name, "gpg-verify-summary",
                                                 FALSE, out_gpg_verify_summary, error);
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "'%s': GPG feature is disabled in a build time",
+               __FUNCTION__);
+  if (out_gpg_verify_summary != NULL)
+    *out_gpg_verify_summary = FALSE;
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -2074,6 +2101,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                GCancellable       *cancellable,
                                GError            **error)
 {
+#ifndef OSTREE_DISABLE_GPGME
   OstreeRemote *remote;
   g_auto(gpgme_ctx_t) source_context = NULL;
   g_auto(gpgme_ctx_t) target_context = NULL;
@@ -2313,6 +2341,12 @@ out:
   g_prefix_error (error, "GPG: ");
 
   return ret;
+#else /* OSTREE_DISABLE_GPGME */
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "'%s': GPG feature is disabled in a build time",
+               __FUNCTION__);
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -4904,6 +4938,7 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
                                                   error))
     return FALSE;
 
+#ifndef OSTREE_DISABLE_GPGME
   g_autoptr(GVariant) new_metadata =
     _ostree_detached_metadata_append_gpg_sig (metadata, signature_bytes);
 
@@ -4915,8 +4950,15 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
     return FALSE;
 
   return TRUE;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "'%s': GPG feature is disabled in a build time",
+               __FUNCTION__);
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
+#ifndef OSTREE_DISABLE_GPGME
 static gboolean
 sign_data (OstreeRepo     *self,
            GBytes         *input_data,
@@ -4977,6 +5019,7 @@ sign_data (OstreeRepo     *self,
     *out_signature = g_mapped_file_get_bytes (signature_file);
   return TRUE;
 }
+#endif /* OSTREE_DISABLE_GPGME */
 
 /**
  * ostree_repo_sign_commit:
@@ -4997,6 +5040,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                          GCancellable   *cancellable,
                          GError        **error)
 {
+#ifndef OSTREE_DISABLE_GPGME
   g_autoptr(GBytes) commit_data = NULL;
   g_autoptr(GBytes) signature = NULL;
 
@@ -5060,6 +5104,10 @@ ostree_repo_sign_commit (OstreeRepo     *self,
     return FALSE;
 
   return TRUE;
+#else
+  /* FIXME: Return false until refactoring */
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -5106,6 +5154,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                        GCancellable   *cancellable,
                                        GError        **error)
 {
+#ifndef OSTREE_DISABLE_GPGME
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (self->repo_dir_fd, "summary", TRUE, &fd, error))
     return FALSE;
@@ -5148,8 +5197,15 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
     return FALSE;
 
   return TRUE;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          "'%s': GPG feature is disabled in a build time",
+          __FUNCTION__);
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
+#ifndef OSTREE_DISABLE_GPGME
 /* Special remote for _ostree_repo_gpg_verify_with_metadata() */
 static const char *OSTREE_ALL_REMOTES = "__OSTREE_ALL_REMOTES__";
 
@@ -5383,6 +5439,7 @@ _ostree_repo_verify_commit_internal (OstreeRepo    *self,
                                                 keyringdir, extra_keyring,
                                                 cancellable, error);
 }
+#endif /* OSTREE_DISABLE_GPGME */
 
 /**
  * ostree_repo_verify_commit:
@@ -5406,6 +5463,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                            GCancellable *cancellable,
                            GError      **error)
 {
+#ifndef OSTREE_DISABLE_GPGME
   g_autoptr(OstreeGpgVerifyResult) result = NULL;
 
   result = ostree_repo_verify_commit_ext (self, commit_checksum,
@@ -5415,6 +5473,13 @@ ostree_repo_verify_commit (OstreeRepo   *self,
   if (!ostree_gpg_verify_result_require_valid_signature (result, error))
     return glnx_prefix_error (error, "Commit %s", commit_checksum);
   return TRUE;
+#else
+  /* FIXME: Return false until refactoring */
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          "'%s': GPG feature is disabled in a build time",
+          __FUNCTION__);
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -5439,6 +5504,7 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                GCancellable  *cancellable,
                                GError       **error)
 {
+#ifndef OSTREE_DISABLE_GPGME
   return _ostree_repo_verify_commit_internal (self,
                                               commit_checksum,
                                               NULL,
@@ -5446,6 +5512,12 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                               extra_keyring,
                                               cancellable,
                                               error);
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          "'%s': GPG feature is disabled in a build time",
+          __FUNCTION__);
+  return NULL;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -5471,6 +5543,7 @@ ostree_repo_verify_commit_for_remote (OstreeRepo    *self,
                                       GCancellable  *cancellable,
                                       GError       **error)
 {
+#ifndef OSTREE_DISABLE_GPGME
   return _ostree_repo_verify_commit_internal (self,
                                               commit_checksum,
                                               remote_name,
@@ -5478,6 +5551,12 @@ ostree_repo_verify_commit_for_remote (OstreeRepo    *self,
                                               NULL,
                                               cancellable,
                                               error);
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          "'%s': GPG feature is disabled in a build time",
+          __FUNCTION__);
+  return NULL;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -5515,6 +5594,7 @@ ostree_repo_gpg_verify_data (OstreeRepo    *self,
   g_return_val_if_fail (data != NULL, NULL);
   g_return_val_if_fail (signatures != NULL, NULL);
 
+#ifndef OSTREE_DISABLE_GPGME
   return _ostree_repo_gpg_verify_data_internal (self,
                                                 (remote_name != NULL) ? remote_name : OSTREE_ALL_REMOTES,
                                                 data,
@@ -5523,6 +5603,12 @@ ostree_repo_gpg_verify_data (OstreeRepo    *self,
                                                 extra_keyring,
                                                 cancellable,
                                                 error);
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          "'%s': GPG feature is disabled in a build time",
+          __FUNCTION__);
+  return NULL;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -5557,6 +5643,7 @@ ostree_repo_verify_summary (OstreeRepo    *self,
   signatures_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                                  signatures, FALSE);
 
+#ifndef OSTREE_DISABLE_GPGME
   return _ostree_repo_gpg_verify_with_metadata (self,
                                                 summary,
                                                 signatures_variant,
@@ -5564,6 +5651,12 @@ ostree_repo_verify_summary (OstreeRepo    *self,
                                                 NULL, NULL,
                                                 cancellable,
                                                 error);
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          "'%s': GPG feature is disabled in a build time",
+          __FUNCTION__);
+  return NULL;
+#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /* Add an entry for a @ref ↦ @checksum mapping to an `a(s(t@ay@a{sv}))`

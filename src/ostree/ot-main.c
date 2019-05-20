@@ -491,6 +491,7 @@ ostree_ensure_repo_writable (OstreeRepo *repo,
   return TRUE;
 }
 
+#ifndef OSTREE_DISABLE_GPGME
 void
 ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
 {
@@ -511,6 +512,7 @@ ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
 
   g_print ("%s", buffer->str);
 }
+#endif /* OSTREE_DISABLE_GPGME */
 
 gboolean
 ot_enable_tombstone_commits (OstreeRepo *repo, GError **error)

@@ -332,6 +332,7 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
 gboolean
 _ostree_repo_remote_name_is_file (const char *remote_name);
 
+#ifndef OSTREE_DISABLE_GPGME
 OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
@@ -350,6 +351,7 @@ _ostree_repo_verify_commit_internal (OstreeRepo    *self,
                                      GFile         *extra_keyring,
                                      GCancellable  *cancellable,
                                      GError       **error);
+#endif /* OSTREE_DISABLE_GPGME */
 
 typedef enum {
   _OSTREE_REPO_IMPORT_FLAGS_NONE,
