@@ -2,60 +2,60 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use ffi;
+use ostree_sys;
 use std::ffi::CStr;
 
 lazy_static! {
-    pub static ref COMMIT_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_COMMIT_GVARIANT_STRING).to_str().unwrap()};
+    pub static ref COMMIT_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_GVARIANT_STRING).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 lazy_static! {
-    pub static ref COMMIT_META_KEY_COLLECTION_BINDING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_COMMIT_META_KEY_COLLECTION_BINDING).to_str().unwrap()};
+    pub static ref COMMIT_META_KEY_COLLECTION_BINDING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_META_KEY_COLLECTION_BINDING).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2017_7", feature = "dox"))]
 lazy_static! {
-    pub static ref COMMIT_META_KEY_ENDOFLIFE: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_COMMIT_META_KEY_ENDOFLIFE).to_str().unwrap()};
+    pub static ref COMMIT_META_KEY_ENDOFLIFE: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_META_KEY_ENDOFLIFE).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2017_7", feature = "dox"))]
 lazy_static! {
-    pub static ref COMMIT_META_KEY_ENDOFLIFE_REBASE: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE).to_str().unwrap()};
+    pub static ref COMMIT_META_KEY_ENDOFLIFE_REBASE: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2017_9", feature = "dox"))]
 lazy_static! {
-    pub static ref COMMIT_META_KEY_REF_BINDING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_COMMIT_META_KEY_REF_BINDING).to_str().unwrap()};
+    pub static ref COMMIT_META_KEY_REF_BINDING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_META_KEY_REF_BINDING).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2017_13", feature = "dox"))]
 lazy_static! {
-    pub static ref COMMIT_META_KEY_SOURCE_TITLE: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_COMMIT_META_KEY_SOURCE_TITLE).to_str().unwrap()};
+    pub static ref COMMIT_META_KEY_SOURCE_TITLE: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_META_KEY_SOURCE_TITLE).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2014_9", feature = "dox"))]
 lazy_static! {
-    pub static ref COMMIT_META_KEY_VERSION: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_COMMIT_META_KEY_VERSION).to_str().unwrap()};
+    pub static ref COMMIT_META_KEY_VERSION: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_META_KEY_VERSION).to_str().unwrap()};
 }
 lazy_static! {
-    pub static ref DIRMETA_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_DIRMETA_GVARIANT_STRING).to_str().unwrap()};
+    pub static ref DIRMETA_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_DIRMETA_GVARIANT_STRING).to_str().unwrap()};
 }
 lazy_static! {
-    pub static ref FILEMETA_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_FILEMETA_GVARIANT_STRING).to_str().unwrap()};
+    pub static ref FILEMETA_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_FILEMETA_GVARIANT_STRING).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2018_9", feature = "dox"))]
 lazy_static! {
-    pub static ref META_KEY_DEPLOY_COLLECTION_ID: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_META_KEY_DEPLOY_COLLECTION_ID).to_str().unwrap()};
+    pub static ref META_KEY_DEPLOY_COLLECTION_ID: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_META_KEY_DEPLOY_COLLECTION_ID).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2018_3", feature = "dox"))]
 lazy_static! {
-    pub static ref ORIGIN_TRANSIENT_GROUP: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_ORIGIN_TRANSIENT_GROUP).to_str().unwrap()};
+    pub static ref ORIGIN_TRANSIENT_GROUP: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_ORIGIN_TRANSIENT_GROUP).to_str().unwrap()};
 }
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 lazy_static! {
-    pub static ref REPO_METADATA_REF: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_REPO_METADATA_REF).to_str().unwrap()};
+    pub static ref REPO_METADATA_REF: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_REPO_METADATA_REF).to_str().unwrap()};
 }
 lazy_static! {
-    pub static ref SUMMARY_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_SUMMARY_GVARIANT_STRING).to_str().unwrap()};
+    pub static ref SUMMARY_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_SUMMARY_GVARIANT_STRING).to_str().unwrap()};
 }
 lazy_static! {
-    pub static ref SUMMARY_SIG_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_SUMMARY_SIG_GVARIANT_STRING).to_str().unwrap()};
+    pub static ref SUMMARY_SIG_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_SUMMARY_SIG_GVARIANT_STRING).to_str().unwrap()};
 }
 lazy_static! {
-    pub static ref TREE_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ffi::OSTREE_TREE_GVARIANT_STRING).to_str().unwrap()};
+    pub static ref TREE_GVARIANT_STRING: &'static str = unsafe{CStr::from_ptr(ostree_sys::OSTREE_TREE_GVARIANT_STRING).to_str().unwrap()};
 }

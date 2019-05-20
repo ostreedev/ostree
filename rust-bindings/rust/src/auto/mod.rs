@@ -3,44 +3,37 @@
 // DO NOT EDIT
 
 mod async_progress;
-pub use self::async_progress::AsyncProgress;
+pub use self::async_progress::{AsyncProgress, AsyncProgressClass, NONE_ASYNC_PROGRESS};
 pub use self::async_progress::AsyncProgressExt;
 
 mod bootconfig_parser;
-pub use self::bootconfig_parser::BootconfigParser;
-pub use self::bootconfig_parser::BootconfigParserExt;
+pub use self::bootconfig_parser::{BootconfigParser, BootconfigParserClass};
 
 mod deployment;
-pub use self::deployment::Deployment;
-pub use self::deployment::DeploymentExt;
+pub use self::deployment::{Deployment, DeploymentClass};
 
 mod gpg_verify_result;
-pub use self::gpg_verify_result::GpgVerifyResult;
-pub use self::gpg_verify_result::GpgVerifyResultExt;
+pub use self::gpg_verify_result::{GpgVerifyResult, GpgVerifyResultClass};
 
 mod mutable_tree;
-pub use self::mutable_tree::MutableTree;
+pub use self::mutable_tree::{MutableTree, MutableTreeClass, NONE_MUTABLE_TREE};
 pub use self::mutable_tree::MutableTreeExt;
 
 mod repo;
-pub use self::repo::Repo;
-pub use self::repo::RepoExt;
+pub use self::repo::{Repo, RepoClass};
 
 mod repo_file;
-pub use self::repo_file::RepoFile;
+pub use self::repo_file::{RepoFile, RepoFileClass, NONE_REPO_FILE};
 pub use self::repo_file::RepoFileExt;
 
 mod se_policy;
-pub use self::se_policy::SePolicy;
-pub use self::se_policy::SePolicyExt;
+pub use self::se_policy::{SePolicy, SePolicyClass};
 
 mod sysroot;
-pub use self::sysroot::Sysroot;
-pub use self::sysroot::SysrootExt;
+pub use self::sysroot::{Sysroot, SysrootClass};
 
 mod sysroot_upgrader;
-pub use self::sysroot_upgrader::SysrootUpgrader;
-pub use self::sysroot_upgrader::SysrootUpgraderExt;
+pub use self::sysroot_upgrader::{SysrootUpgrader, SysrootUpgraderClass};
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod remote;
@@ -109,13 +102,6 @@ pub use self::constants::TREE_GVARIANT_STRING;
 #[doc(hidden)]
 pub mod traits {
     pub use super::AsyncProgressExt;
-    pub use super::BootconfigParserExt;
-    pub use super::DeploymentExt;
-    pub use super::GpgVerifyResultExt;
     pub use super::MutableTreeExt;
-    pub use super::RepoExt;
     pub use super::RepoFileExt;
-    pub use super::SePolicyExt;
-    pub use super::SysrootExt;
-    pub use super::SysrootUpgraderExt;
 }

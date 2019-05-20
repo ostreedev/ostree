@@ -2,28 +2,24 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use ffi;
 use glib::translate::*;
-use glib_ffi;
-use gobject_ffi;
-use std::mem;
-use std::ptr;
+use ostree_sys;
 
 glib_wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct RepoDevInoCache(Shared<ffi::OstreeRepoDevInoCache>);
+    pub struct RepoDevInoCache(Shared<ostree_sys::OstreeRepoDevInoCache>);
 
     match fn {
-        ref => |ptr| ffi::ostree_repo_devino_cache_ref(ptr),
-        unref => |ptr| ffi::ostree_repo_devino_cache_unref(ptr),
-        get_type => || ffi::ostree_repo_devino_cache_get_type(),
+        ref => |ptr| ostree_sys::ostree_repo_devino_cache_ref(ptr),
+        unref => |ptr| ostree_sys::ostree_repo_devino_cache_unref(ptr),
+        get_type => || ostree_sys::ostree_repo_devino_cache_get_type(),
     }
 }
 
 impl RepoDevInoCache {
     pub fn new() -> RepoDevInoCache {
         unsafe {
-            from_glib_full(ffi::ostree_repo_devino_cache_new())
+            from_glib_full(ostree_sys::ostree_repo_devino_cache_new())
         }
     }
 }

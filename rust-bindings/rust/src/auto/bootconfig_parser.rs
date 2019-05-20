@@ -3,27 +3,76 @@
 // DO NOT EDIT
 
 use Error;
-use ffi;
 use gio;
+use glib::GString;
 use glib::object::IsA;
 use glib::translate::*;
-use glib_ffi;
-use gobject_ffi;
-use std::mem;
+use ostree_sys;
+use std::fmt;
 use std::ptr;
 
 glib_wrapper! {
-    pub struct BootconfigParser(Object<ffi::OstreeBootconfigParser>);
+    pub struct BootconfigParser(Object<ostree_sys::OstreeBootconfigParser, BootconfigParserClass>);
 
     match fn {
-        get_type => || ffi::ostree_bootconfig_parser_get_type(),
+        get_type => || ostree_sys::ostree_bootconfig_parser_get_type(),
     }
 }
 
 impl BootconfigParser {
     pub fn new() -> BootconfigParser {
         unsafe {
-            from_glib_full(ffi::ostree_bootconfig_parser_new())
+            from_glib_full(ostree_sys::ostree_bootconfig_parser_new())
+        }
+    }
+
+    pub fn clone(&self) -> Option<BootconfigParser> {
+        unsafe {
+            from_glib_full(ostree_sys::ostree_bootconfig_parser_clone(self.to_glib_none().0))
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Option<GString> {
+        unsafe {
+            from_glib_none(ostree_sys::ostree_bootconfig_parser_get(self.to_glib_none().0, key.to_glib_none().0))
+        }
+    }
+
+    pub fn parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, path: &P, cancellable: Option<&Q>) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_bootconfig_parser_parse(self.to_glib_none().0, path.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    pub fn parse_at<P: IsA<gio::Cancellable>>(&self, dfd: i32, path: &str, cancellable: Option<&P>) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_bootconfig_parser_parse_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    pub fn set(&self, key: &str, value: &str) {
+        unsafe {
+            ostree_sys::ostree_bootconfig_parser_set(self.to_glib_none().0, key.to_glib_none().0, value.to_glib_none().0);
+        }
+    }
+
+    pub fn write<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, output: &P, cancellable: Option<&Q>) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_bootconfig_parser_write(self.to_glib_none().0, output.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    pub fn write_at<P: IsA<gio::Cancellable>>(&self, dfd: i32, path: &str, cancellable: Option<&P>) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_bootconfig_parser_write_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 }
@@ -34,78 +83,8 @@ impl Default for BootconfigParser {
     }
 }
 
-pub trait BootconfigParserExt {
-    fn clone(&self) -> Option<BootconfigParser>;
-
-    fn get(&self, key: &str) -> Option<String>;
-
-    fn parse<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, path: &P, cancellable: Q) -> Result<(), Error>;
-
-    fn parse_at<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error>;
-
-    fn set(&self, key: &str, value: &str);
-
-    fn write<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, output: &P, cancellable: Q) -> Result<(), Error>;
-
-    fn write_at<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error>;
-}
-
-impl<O: IsA<BootconfigParser>> BootconfigParserExt for O {
-    fn clone(&self) -> Option<BootconfigParser> {
-        unsafe {
-            from_glib_full(ffi::ostree_bootconfig_parser_clone(self.to_glib_none().0))
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<String> {
-        unsafe {
-            from_glib_none(ffi::ostree_bootconfig_parser_get(self.to_glib_none().0, key.to_glib_none().0))
-        }
-    }
-
-    fn parse<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, path: &P, cancellable: Q) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
-        unsafe {
-            let mut error = ptr::null_mut();
-            let _ = ffi::ostree_bootconfig_parser_parse(self.to_glib_none().0, path.to_glib_none().0, cancellable.0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
-    fn parse_at<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
-        unsafe {
-            let mut error = ptr::null_mut();
-            let _ = ffi::ostree_bootconfig_parser_parse_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
-    fn set(&self, key: &str, value: &str) {
-        unsafe {
-            ffi::ostree_bootconfig_parser_set(self.to_glib_none().0, key.to_glib_none().0, value.to_glib_none().0);
-        }
-    }
-
-    fn write<'a, P: IsA<gio::File>, Q: Into<Option<&'a gio::Cancellable>>>(&self, output: &P, cancellable: Q) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
-        unsafe {
-            let mut error = ptr::null_mut();
-            let _ = ffi::ostree_bootconfig_parser_write(self.to_glib_none().0, output.to_glib_none().0, cancellable.0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
-    fn write_at<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, dfd: i32, path: &str, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
-        unsafe {
-            let mut error = ptr::null_mut();
-            let _ = ffi::ostree_bootconfig_parser_write_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
+impl fmt::Display for BootconfigParser {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "BootconfigParser")
     }
 }

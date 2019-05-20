@@ -2,37 +2,38 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use ffi;
+#[cfg(any(feature = "v2017_6", feature = "dox"))]
 use glib;
-use glib::object::Downcast;
+#[cfg(any(feature = "v2017_6", feature = "dox"))]
+use glib::GString;
+use glib::object::Cast;
 use glib::object::IsA;
 use glib::signal::SignalHandlerId;
-use glib::signal::connect;
+use glib::signal::connect_raw;
 use glib::translate::*;
-use glib_ffi;
-use gobject_ffi;
+use glib_sys;
+use ostree_sys;
 use std::boxed::Box as Box_;
-use std::mem;
+use std::fmt;
 use std::mem::transmute;
-use std::ptr;
 
 glib_wrapper! {
-    pub struct AsyncProgress(Object<ffi::OstreeAsyncProgress, ffi::OstreeAsyncProgressClass>);
+    pub struct AsyncProgress(Object<ostree_sys::OstreeAsyncProgress, ostree_sys::OstreeAsyncProgressClass, AsyncProgressClass>);
 
     match fn {
-        get_type => || ffi::ostree_async_progress_get_type(),
+        get_type => || ostree_sys::ostree_async_progress_get_type(),
     }
 }
 
 impl AsyncProgress {
     pub fn new() -> AsyncProgress {
         unsafe {
-            from_glib_full(ffi::ostree_async_progress_new())
+            from_glib_full(ostree_sys::ostree_async_progress_new())
         }
     }
 
-    //pub fn new_and_connect<P: Into<Option</*Unimplemented*/Fundamental: Pointer>>, Q: Into<Option</*Unimplemented*/Fundamental: Pointer>>>(changed: P, user_data: Q) -> AsyncProgress {
-    //    unsafe { TODO: call ffi::ostree_async_progress_new_and_connect() }
+    //pub fn new_and_connect(changed: /*Unimplemented*/Option<Fundamental: Pointer>, user_data: /*Unimplemented*/Option<Fundamental: Pointer>) -> AsyncProgress {
+    //    unsafe { TODO: call ostree_sys:ostree_async_progress_new_and_connect() }
     //}
 }
 
@@ -42,14 +43,16 @@ impl Default for AsyncProgress {
     }
 }
 
-pub trait AsyncProgressExt {
+pub const NONE_ASYNC_PROGRESS: Option<&AsyncProgress> = None;
+
+pub trait AsyncProgressExt: 'static {
     fn finish(&self);
 
     //#[cfg(any(feature = "v2017_6", feature = "dox"))]
     //fn get(&self, : /*Unknown conversion*//*Unimplemented*/Fundamental: VarArgs);
 
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    fn get_status(&self) -> Option<String>;
+    fn get_status(&self) -> Option<GString>;
 
     fn get_uint(&self, key: &str) -> u32;
 
@@ -62,7 +65,7 @@ pub trait AsyncProgressExt {
     //fn set(&self, : /*Unknown conversion*//*Unimplemented*/Fundamental: VarArgs);
 
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    fn set_status<'a, P: Into<Option<&'a str>>>(&self, status: P);
+    fn set_status(&self, status: Option<&str>);
 
     fn set_uint(&self, key: &str, value: u32);
 
@@ -74,88 +77,92 @@ pub trait AsyncProgressExt {
     fn connect_changed<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId;
 }
 
-impl<O: IsA<AsyncProgress> + IsA<glib::object::Object>> AsyncProgressExt for O {
+impl<O: IsA<AsyncProgress>> AsyncProgressExt for O {
     fn finish(&self) {
         unsafe {
-            ffi::ostree_async_progress_finish(self.to_glib_none().0);
+            ostree_sys::ostree_async_progress_finish(self.as_ref().to_glib_none().0);
         }
     }
 
     //#[cfg(any(feature = "v2017_6", feature = "dox"))]
     //fn get(&self, : /*Unknown conversion*//*Unimplemented*/Fundamental: VarArgs) {
-    //    unsafe { TODO: call ffi::ostree_async_progress_get() }
+    //    unsafe { TODO: call ostree_sys:ostree_async_progress_get() }
     //}
 
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    fn get_status(&self) -> Option<String> {
+    fn get_status(&self) -> Option<GString> {
         unsafe {
-            from_glib_full(ffi::ostree_async_progress_get_status(self.to_glib_none().0))
+            from_glib_full(ostree_sys::ostree_async_progress_get_status(self.as_ref().to_glib_none().0))
         }
     }
 
     fn get_uint(&self, key: &str) -> u32 {
         unsafe {
-            ffi::ostree_async_progress_get_uint(self.to_glib_none().0, key.to_glib_none().0)
+            ostree_sys::ostree_async_progress_get_uint(self.as_ref().to_glib_none().0, key.to_glib_none().0)
         }
     }
 
     fn get_uint64(&self, key: &str) -> u64 {
         unsafe {
-            ffi::ostree_async_progress_get_uint64(self.to_glib_none().0, key.to_glib_none().0)
+            ostree_sys::ostree_async_progress_get_uint64(self.as_ref().to_glib_none().0, key.to_glib_none().0)
         }
     }
 
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
     fn get_variant(&self, key: &str) -> Option<glib::Variant> {
         unsafe {
-            from_glib_full(ffi::ostree_async_progress_get_variant(self.to_glib_none().0, key.to_glib_none().0))
+            from_glib_full(ostree_sys::ostree_async_progress_get_variant(self.as_ref().to_glib_none().0, key.to_glib_none().0))
         }
     }
 
     //#[cfg(any(feature = "v2017_6", feature = "dox"))]
     //fn set(&self, : /*Unknown conversion*//*Unimplemented*/Fundamental: VarArgs) {
-    //    unsafe { TODO: call ffi::ostree_async_progress_set() }
+    //    unsafe { TODO: call ostree_sys:ostree_async_progress_set() }
     //}
 
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    fn set_status<'a, P: Into<Option<&'a str>>>(&self, status: P) {
-        let status = status.into();
-        let status = status.to_glib_none();
+    fn set_status(&self, status: Option<&str>) {
         unsafe {
-            ffi::ostree_async_progress_set_status(self.to_glib_none().0, status.0);
+            ostree_sys::ostree_async_progress_set_status(self.as_ref().to_glib_none().0, status.to_glib_none().0);
         }
     }
 
     fn set_uint(&self, key: &str, value: u32) {
         unsafe {
-            ffi::ostree_async_progress_set_uint(self.to_glib_none().0, key.to_glib_none().0, value);
+            ostree_sys::ostree_async_progress_set_uint(self.as_ref().to_glib_none().0, key.to_glib_none().0, value);
         }
     }
 
     fn set_uint64(&self, key: &str, value: u64) {
         unsafe {
-            ffi::ostree_async_progress_set_uint64(self.to_glib_none().0, key.to_glib_none().0, value);
+            ostree_sys::ostree_async_progress_set_uint64(self.as_ref().to_glib_none().0, key.to_glib_none().0, value);
         }
     }
 
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
     fn set_variant(&self, key: &str, value: &glib::Variant) {
         unsafe {
-            ffi::ostree_async_progress_set_variant(self.to_glib_none().0, key.to_glib_none().0, value.to_glib_none().0);
+            ostree_sys::ostree_async_progress_set_variant(self.as_ref().to_glib_none().0, key.to_glib_none().0, value.to_glib_none().0);
         }
     }
 
     fn connect_changed<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
         unsafe {
-            let f: Box_<Box_<Fn(&Self) + 'static>> = Box_::new(Box_::new(f));
-            connect(self.to_glib_none().0, "changed",
-                transmute(changed_trampoline::<Self> as usize), Box_::into_raw(f) as *mut _)
+            let f: Box_<F> = Box_::new(f);
+            connect_raw(self.as_ptr() as *mut _, b"changed\0".as_ptr() as *const _,
+                Some(transmute(changed_trampoline::<Self, F> as usize)), Box_::into_raw(f))
         }
     }
 }
 
-unsafe extern "C" fn changed_trampoline<P>(this: *mut ffi::OstreeAsyncProgress, f: glib_ffi::gpointer)
+unsafe extern "C" fn changed_trampoline<P, F: Fn(&P) + 'static>(this: *mut ostree_sys::OstreeAsyncProgress, f: glib_sys::gpointer)
 where P: IsA<AsyncProgress> {
-    let f: &&(Fn(&P) + 'static) = transmute(f);
-    f(&AsyncProgress::from_glib_borrow(this).downcast_unchecked())
+    let f: &F = &*(f as *const F);
+    f(&AsyncProgress::from_glib_borrow(this).unsafe_cast())
+}
+
+impl fmt::Display for AsyncProgress {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "AsyncProgress")
+    }
 }

@@ -2,8 +2,9 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use ffi;
 use glib::translate::*;
+use ostree_sys;
+use std::fmt;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
@@ -15,23 +16,34 @@ pub enum DeploymentUnlockedState {
     __Unknown(i32),
 }
 
+impl fmt::Display for DeploymentUnlockedState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "DeploymentUnlockedState::{}", match *self {
+            DeploymentUnlockedState::None => "None",
+            DeploymentUnlockedState::Development => "Development",
+            DeploymentUnlockedState::Hotfix => "Hotfix",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for DeploymentUnlockedState {
-    type GlibType = ffi::OstreeDeploymentUnlockedState;
+    type GlibType = ostree_sys::OstreeDeploymentUnlockedState;
 
-    fn to_glib(&self) -> ffi::OstreeDeploymentUnlockedState {
+    fn to_glib(&self) -> ostree_sys::OstreeDeploymentUnlockedState {
         match *self {
-            DeploymentUnlockedState::None => ffi::OSTREE_DEPLOYMENT_UNLOCKED_NONE,
-            DeploymentUnlockedState::Development => ffi::OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT,
-            DeploymentUnlockedState::Hotfix => ffi::OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX,
+            DeploymentUnlockedState::None => ostree_sys::OSTREE_DEPLOYMENT_UNLOCKED_NONE,
+            DeploymentUnlockedState::Development => ostree_sys::OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT,
+            DeploymentUnlockedState::Hotfix => ostree_sys::OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX,
             DeploymentUnlockedState::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeDeploymentUnlockedState> for DeploymentUnlockedState {
-    fn from_glib(value: ffi::OstreeDeploymentUnlockedState) -> Self {
+impl FromGlib<ostree_sys::OstreeDeploymentUnlockedState> for DeploymentUnlockedState {
+    fn from_glib(value: ostree_sys::OstreeDeploymentUnlockedState) -> Self {
         match value {
             0 => DeploymentUnlockedState::None,
             1 => DeploymentUnlockedState::Development,
@@ -49,21 +61,30 @@ pub enum GpgSignatureFormatFlags {
     __Unknown(i32),
 }
 
+impl fmt::Display for GpgSignatureFormatFlags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "GpgSignatureFormatFlags::{}", match *self {
+            GpgSignatureFormatFlags::GpgSignatureFormatDefault => "GpgSignatureFormatDefault",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for GpgSignatureFormatFlags {
-    type GlibType = ffi::OstreeGpgSignatureFormatFlags;
+    type GlibType = ostree_sys::OstreeGpgSignatureFormatFlags;
 
-    fn to_glib(&self) -> ffi::OstreeGpgSignatureFormatFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeGpgSignatureFormatFlags {
         match *self {
-            GpgSignatureFormatFlags::GpgSignatureFormatDefault => ffi::OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT,
+            GpgSignatureFormatFlags::GpgSignatureFormatDefault => ostree_sys::OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT,
             GpgSignatureFormatFlags::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeGpgSignatureFormatFlags> for GpgSignatureFormatFlags {
-    fn from_glib(value: ffi::OstreeGpgSignatureFormatFlags) -> Self {
+impl FromGlib<ostree_sys::OstreeGpgSignatureFormatFlags> for GpgSignatureFormatFlags {
+    fn from_glib(value: ostree_sys::OstreeGpgSignatureFormatFlags) -> Self {
         match value {
             0 => GpgSignatureFormatFlags::GpgSignatureFormatDefault,
             value => GpgSignatureFormatFlags::__Unknown(value),
@@ -85,27 +106,42 @@ pub enum ObjectType {
     __Unknown(i32),
 }
 
+impl fmt::Display for ObjectType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ObjectType::{}", match *self {
+            ObjectType::File => "File",
+            ObjectType::DirTree => "DirTree",
+            ObjectType::DirMeta => "DirMeta",
+            ObjectType::Commit => "Commit",
+            ObjectType::TombstoneCommit => "TombstoneCommit",
+            ObjectType::CommitMeta => "CommitMeta",
+            ObjectType::PayloadLink => "PayloadLink",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for ObjectType {
-    type GlibType = ffi::OstreeObjectType;
+    type GlibType = ostree_sys::OstreeObjectType;
 
-    fn to_glib(&self) -> ffi::OstreeObjectType {
+    fn to_glib(&self) -> ostree_sys::OstreeObjectType {
         match *self {
-            ObjectType::File => ffi::OSTREE_OBJECT_TYPE_FILE,
-            ObjectType::DirTree => ffi::OSTREE_OBJECT_TYPE_DIR_TREE,
-            ObjectType::DirMeta => ffi::OSTREE_OBJECT_TYPE_DIR_META,
-            ObjectType::Commit => ffi::OSTREE_OBJECT_TYPE_COMMIT,
-            ObjectType::TombstoneCommit => ffi::OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
-            ObjectType::CommitMeta => ffi::OSTREE_OBJECT_TYPE_COMMIT_META,
-            ObjectType::PayloadLink => ffi::OSTREE_OBJECT_TYPE_PAYLOAD_LINK,
+            ObjectType::File => ostree_sys::OSTREE_OBJECT_TYPE_FILE,
+            ObjectType::DirTree => ostree_sys::OSTREE_OBJECT_TYPE_DIR_TREE,
+            ObjectType::DirMeta => ostree_sys::OSTREE_OBJECT_TYPE_DIR_META,
+            ObjectType::Commit => ostree_sys::OSTREE_OBJECT_TYPE_COMMIT,
+            ObjectType::TombstoneCommit => ostree_sys::OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
+            ObjectType::CommitMeta => ostree_sys::OSTREE_OBJECT_TYPE_COMMIT_META,
+            ObjectType::PayloadLink => ostree_sys::OSTREE_OBJECT_TYPE_PAYLOAD_LINK,
             ObjectType::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeObjectType> for ObjectType {
-    fn from_glib(value: ffi::OstreeObjectType) -> Self {
+impl FromGlib<ostree_sys::OstreeObjectType> for ObjectType {
+    fn from_glib(value: ostree_sys::OstreeObjectType) -> Self {
         match value {
             1 => ObjectType::File,
             2 => ObjectType::DirTree,
@@ -128,22 +164,32 @@ pub enum RepoCheckoutMode {
     __Unknown(i32),
 }
 
+impl fmt::Display for RepoCheckoutMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoCheckoutMode::{}", match *self {
+            RepoCheckoutMode::None => "None",
+            RepoCheckoutMode::User => "User",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for RepoCheckoutMode {
-    type GlibType = ffi::OstreeRepoCheckoutMode;
+    type GlibType = ostree_sys::OstreeRepoCheckoutMode;
 
-    fn to_glib(&self) -> ffi::OstreeRepoCheckoutMode {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCheckoutMode {
         match *self {
-            RepoCheckoutMode::None => ffi::OSTREE_REPO_CHECKOUT_MODE_NONE,
-            RepoCheckoutMode::User => ffi::OSTREE_REPO_CHECKOUT_MODE_USER,
+            RepoCheckoutMode::None => ostree_sys::OSTREE_REPO_CHECKOUT_MODE_NONE,
+            RepoCheckoutMode::User => ostree_sys::OSTREE_REPO_CHECKOUT_MODE_USER,
             RepoCheckoutMode::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoCheckoutMode> for RepoCheckoutMode {
-    fn from_glib(value: ffi::OstreeRepoCheckoutMode) -> Self {
+impl FromGlib<ostree_sys::OstreeRepoCheckoutMode> for RepoCheckoutMode {
+    fn from_glib(value: ostree_sys::OstreeRepoCheckoutMode) -> Self {
         match value {
             0 => RepoCheckoutMode::None,
             1 => RepoCheckoutMode::User,
@@ -163,24 +209,36 @@ pub enum RepoCheckoutOverwriteMode {
     __Unknown(i32),
 }
 
+impl fmt::Display for RepoCheckoutOverwriteMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoCheckoutOverwriteMode::{}", match *self {
+            RepoCheckoutOverwriteMode::None => "None",
+            RepoCheckoutOverwriteMode::UnionFiles => "UnionFiles",
+            RepoCheckoutOverwriteMode::AddFiles => "AddFiles",
+            RepoCheckoutOverwriteMode::UnionIdentical => "UnionIdentical",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for RepoCheckoutOverwriteMode {
-    type GlibType = ffi::OstreeRepoCheckoutOverwriteMode;
+    type GlibType = ostree_sys::OstreeRepoCheckoutOverwriteMode;
 
-    fn to_glib(&self) -> ffi::OstreeRepoCheckoutOverwriteMode {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCheckoutOverwriteMode {
         match *self {
-            RepoCheckoutOverwriteMode::None => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_NONE,
-            RepoCheckoutOverwriteMode::UnionFiles => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES,
-            RepoCheckoutOverwriteMode::AddFiles => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES,
-            RepoCheckoutOverwriteMode::UnionIdentical => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL,
+            RepoCheckoutOverwriteMode::None => ostree_sys::OSTREE_REPO_CHECKOUT_OVERWRITE_NONE,
+            RepoCheckoutOverwriteMode::UnionFiles => ostree_sys::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES,
+            RepoCheckoutOverwriteMode::AddFiles => ostree_sys::OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES,
+            RepoCheckoutOverwriteMode::UnionIdentical => ostree_sys::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL,
             RepoCheckoutOverwriteMode::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoCheckoutOverwriteMode> for RepoCheckoutOverwriteMode {
-    fn from_glib(value: ffi::OstreeRepoCheckoutOverwriteMode) -> Self {
+impl FromGlib<ostree_sys::OstreeRepoCheckoutOverwriteMode> for RepoCheckoutOverwriteMode {
+    fn from_glib(value: ostree_sys::OstreeRepoCheckoutOverwriteMode) -> Self {
         match value {
             0 => RepoCheckoutOverwriteMode::None,
             1 => RepoCheckoutOverwriteMode::UnionFiles,
@@ -202,24 +260,36 @@ pub enum RepoMode {
     __Unknown(i32),
 }
 
+impl fmt::Display for RepoMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoMode::{}", match *self {
+            RepoMode::Bare => "Bare",
+            RepoMode::Archive => "Archive",
+            RepoMode::BareUser => "BareUser",
+            RepoMode::BareUserOnly => "BareUserOnly",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for RepoMode {
-    type GlibType = ffi::OstreeRepoMode;
+    type GlibType = ostree_sys::OstreeRepoMode;
 
-    fn to_glib(&self) -> ffi::OstreeRepoMode {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoMode {
         match *self {
-            RepoMode::Bare => ffi::OSTREE_REPO_MODE_BARE,
-            RepoMode::Archive => ffi::OSTREE_REPO_MODE_ARCHIVE,
-            RepoMode::BareUser => ffi::OSTREE_REPO_MODE_BARE_USER,
-            RepoMode::BareUserOnly => ffi::OSTREE_REPO_MODE_BARE_USER_ONLY,
+            RepoMode::Bare => ostree_sys::OSTREE_REPO_MODE_BARE,
+            RepoMode::Archive => ostree_sys::OSTREE_REPO_MODE_ARCHIVE,
+            RepoMode::BareUser => ostree_sys::OSTREE_REPO_MODE_BARE_USER,
+            RepoMode::BareUserOnly => ostree_sys::OSTREE_REPO_MODE_BARE_USER_ONLY,
             RepoMode::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoMode> for RepoMode {
-    fn from_glib(value: ffi::OstreeRepoMode) -> Self {
+impl FromGlib<ostree_sys::OstreeRepoMode> for RepoMode {
+    fn from_glib(value: ostree_sys::OstreeRepoMode) -> Self {
         match value {
             0 => RepoMode::Bare,
             1 => RepoMode::Archive,
@@ -240,23 +310,34 @@ pub enum RepoPruneFlags {
     __Unknown(i32),
 }
 
+impl fmt::Display for RepoPruneFlags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoPruneFlags::{}", match *self {
+            RepoPruneFlags::None => "None",
+            RepoPruneFlags::NoPrune => "NoPrune",
+            RepoPruneFlags::RefsOnly => "RefsOnly",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for RepoPruneFlags {
-    type GlibType = ffi::OstreeRepoPruneFlags;
+    type GlibType = ostree_sys::OstreeRepoPruneFlags;
 
-    fn to_glib(&self) -> ffi::OstreeRepoPruneFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoPruneFlags {
         match *self {
-            RepoPruneFlags::None => ffi::OSTREE_REPO_PRUNE_FLAGS_NONE,
-            RepoPruneFlags::NoPrune => ffi::OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE,
-            RepoPruneFlags::RefsOnly => ffi::OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY,
+            RepoPruneFlags::None => ostree_sys::OSTREE_REPO_PRUNE_FLAGS_NONE,
+            RepoPruneFlags::NoPrune => ostree_sys::OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE,
+            RepoPruneFlags::RefsOnly => ostree_sys::OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY,
             RepoPruneFlags::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoPruneFlags> for RepoPruneFlags {
-    fn from_glib(value: ffi::OstreeRepoPruneFlags) -> Self {
+impl FromGlib<ostree_sys::OstreeRepoPruneFlags> for RepoPruneFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoPruneFlags) -> Self {
         match value {
             0 => RepoPruneFlags::None,
             1 => RepoPruneFlags::NoPrune,
@@ -278,25 +359,38 @@ pub enum RepoRemoteChange {
     __Unknown(i32),
 }
 
+impl fmt::Display for RepoRemoteChange {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoRemoteChange::{}", match *self {
+            RepoRemoteChange::Add => "Add",
+            RepoRemoteChange::AddIfNotExists => "AddIfNotExists",
+            RepoRemoteChange::Delete => "Delete",
+            RepoRemoteChange::DeleteIfExists => "DeleteIfExists",
+            RepoRemoteChange::Replace => "Replace",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for RepoRemoteChange {
-    type GlibType = ffi::OstreeRepoRemoteChange;
+    type GlibType = ostree_sys::OstreeRepoRemoteChange;
 
-    fn to_glib(&self) -> ffi::OstreeRepoRemoteChange {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoRemoteChange {
         match *self {
-            RepoRemoteChange::Add => ffi::OSTREE_REPO_REMOTE_CHANGE_ADD,
-            RepoRemoteChange::AddIfNotExists => ffi::OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
-            RepoRemoteChange::Delete => ffi::OSTREE_REPO_REMOTE_CHANGE_DELETE,
-            RepoRemoteChange::DeleteIfExists => ffi::OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
-            RepoRemoteChange::Replace => ffi::OSTREE_REPO_REMOTE_CHANGE_REPLACE,
+            RepoRemoteChange::Add => ostree_sys::OSTREE_REPO_REMOTE_CHANGE_ADD,
+            RepoRemoteChange::AddIfNotExists => ostree_sys::OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
+            RepoRemoteChange::Delete => ostree_sys::OSTREE_REPO_REMOTE_CHANGE_DELETE,
+            RepoRemoteChange::DeleteIfExists => ostree_sys::OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS,
+            RepoRemoteChange::Replace => ostree_sys::OSTREE_REPO_REMOTE_CHANGE_REPLACE,
             RepoRemoteChange::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoRemoteChange> for RepoRemoteChange {
-    fn from_glib(value: ffi::OstreeRepoRemoteChange) -> Self {
+impl FromGlib<ostree_sys::OstreeRepoRemoteChange> for RepoRemoteChange {
+    fn from_glib(value: ostree_sys::OstreeRepoRemoteChange) -> Self {
         match value {
             0 => RepoRemoteChange::Add,
             1 => RepoRemoteChange::AddIfNotExists,
@@ -317,22 +411,32 @@ pub enum StaticDeltaGenerateOpt {
     __Unknown(i32),
 }
 
+impl fmt::Display for StaticDeltaGenerateOpt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "StaticDeltaGenerateOpt::{}", match *self {
+            StaticDeltaGenerateOpt::Lowlatency => "Lowlatency",
+            StaticDeltaGenerateOpt::Major => "Major",
+            _ => "Unknown",
+        })
+    }
+}
+
 #[doc(hidden)]
 impl ToGlib for StaticDeltaGenerateOpt {
-    type GlibType = ffi::OstreeStaticDeltaGenerateOpt;
+    type GlibType = ostree_sys::OstreeStaticDeltaGenerateOpt;
 
-    fn to_glib(&self) -> ffi::OstreeStaticDeltaGenerateOpt {
+    fn to_glib(&self) -> ostree_sys::OstreeStaticDeltaGenerateOpt {
         match *self {
-            StaticDeltaGenerateOpt::Lowlatency => ffi::OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY,
-            StaticDeltaGenerateOpt::Major => ffi::OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
+            StaticDeltaGenerateOpt::Lowlatency => ostree_sys::OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY,
+            StaticDeltaGenerateOpt::Major => ostree_sys::OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
             StaticDeltaGenerateOpt::__Unknown(value) => value
         }
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeStaticDeltaGenerateOpt> for StaticDeltaGenerateOpt {
-    fn from_glib(value: ffi::OstreeStaticDeltaGenerateOpt) -> Self {
+impl FromGlib<ostree_sys::OstreeStaticDeltaGenerateOpt> for StaticDeltaGenerateOpt {
+    fn from_glib(value: ostree_sys::OstreeStaticDeltaGenerateOpt) -> Self {
         match value {
             0 => StaticDeltaGenerateOpt::Lowlatency,
             1 => StaticDeltaGenerateOpt::Major,

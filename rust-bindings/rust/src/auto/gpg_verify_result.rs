@@ -5,95 +5,77 @@
 #[cfg(any(feature = "v2016_6", feature = "dox"))]
 use Error;
 use GpgSignatureFormatFlags;
-use ffi;
 use glib;
-use glib::object::IsA;
 use glib::translate::*;
-use glib_ffi;
-use gobject_ffi;
+use ostree_sys;
+use std::fmt;
 use std::mem;
+#[cfg(any(feature = "v2016_6", feature = "dox"))]
 use std::ptr;
 
 glib_wrapper! {
-    pub struct GpgVerifyResult(Object<ffi::OstreeGpgVerifyResult>);
+    pub struct GpgVerifyResult(Object<ostree_sys::OstreeGpgVerifyResult, GpgVerifyResultClass>);
 
     match fn {
-        get_type => || ffi::ostree_gpg_verify_result_get_type(),
+        get_type => || ostree_sys::ostree_gpg_verify_result_get_type(),
     }
 }
 
 impl GpgVerifyResult {
-    pub fn describe_variant<'a, P: Into<Option<&'a str>>>(variant: &glib::Variant, output_buffer: &mut glib::String, line_prefix: P, flags: GpgSignatureFormatFlags) {
-        let line_prefix = line_prefix.into();
-        let line_prefix = line_prefix.to_glib_none();
+    pub fn count_all(&self) -> u32 {
         unsafe {
-            ffi::ostree_gpg_verify_result_describe_variant(variant.to_glib_none().0, output_buffer.to_glib_none_mut().0, line_prefix.0, flags.to_glib());
-        }
-    }
-}
-
-pub trait GpgVerifyResultExt {
-    fn count_all(&self) -> u32;
-
-    fn count_valid(&self) -> u32;
-
-    fn describe<'a, P: Into<Option<&'a str>>>(&self, signature_index: u32, output_buffer: &mut glib::String, line_prefix: P, flags: GpgSignatureFormatFlags);
-
-    //fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 26 }) -> Option<glib::Variant>;
-
-    fn get_all(&self, signature_index: u32) -> Option<glib::Variant>;
-
-    fn lookup(&self, key_id: &str) -> Option<u32>;
-
-    #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    fn require_valid_signature(&self) -> Result<(), Error>;
-}
-
-impl<O: IsA<GpgVerifyResult>> GpgVerifyResultExt for O {
-    fn count_all(&self) -> u32 {
-        unsafe {
-            ffi::ostree_gpg_verify_result_count_all(self.to_glib_none().0)
+            ostree_sys::ostree_gpg_verify_result_count_all(self.to_glib_none().0)
         }
     }
 
-    fn count_valid(&self) -> u32 {
+    pub fn count_valid(&self) -> u32 {
         unsafe {
-            ffi::ostree_gpg_verify_result_count_valid(self.to_glib_none().0)
+            ostree_sys::ostree_gpg_verify_result_count_valid(self.to_glib_none().0)
         }
     }
 
-    fn describe<'a, P: Into<Option<&'a str>>>(&self, signature_index: u32, output_buffer: &mut glib::String, line_prefix: P, flags: GpgSignatureFormatFlags) {
-        let line_prefix = line_prefix.into();
-        let line_prefix = line_prefix.to_glib_none();
+    pub fn describe(&self, signature_index: u32, output_buffer: &mut glib::String, line_prefix: Option<&str>, flags: GpgSignatureFormatFlags) {
         unsafe {
-            ffi::ostree_gpg_verify_result_describe(self.to_glib_none().0, signature_index, output_buffer.to_glib_none_mut().0, line_prefix.0, flags.to_glib());
+            ostree_sys::ostree_gpg_verify_result_describe(self.to_glib_none().0, signature_index, output_buffer.to_glib_none_mut().0, line_prefix.to_glib_none().0, flags.to_glib());
         }
     }
 
-    //fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 26 }) -> Option<glib::Variant> {
-    //    unsafe { TODO: call ffi::ostree_gpg_verify_result_get() }
+    //pub fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 26 }) -> Option<glib::Variant> {
+    //    unsafe { TODO: call ostree_sys:ostree_gpg_verify_result_get() }
     //}
 
-    fn get_all(&self, signature_index: u32) -> Option<glib::Variant> {
+    pub fn get_all(&self, signature_index: u32) -> Option<glib::Variant> {
         unsafe {
-            from_glib_full(ffi::ostree_gpg_verify_result_get_all(self.to_glib_none().0, signature_index))
+            from_glib_full(ostree_sys::ostree_gpg_verify_result_get_all(self.to_glib_none().0, signature_index))
         }
     }
 
-    fn lookup(&self, key_id: &str) -> Option<u32> {
+    pub fn lookup(&self, key_id: &str) -> Option<u32> {
         unsafe {
             let mut out_signature_index = mem::uninitialized();
-            let ret = from_glib(ffi::ostree_gpg_verify_result_lookup(self.to_glib_none().0, key_id.to_glib_none().0, &mut out_signature_index));
+            let ret = from_glib(ostree_sys::ostree_gpg_verify_result_lookup(self.to_glib_none().0, key_id.to_glib_none().0, &mut out_signature_index));
             if ret { Some(out_signature_index) } else { None }
         }
     }
 
     #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    fn require_valid_signature(&self) -> Result<(), Error> {
+    pub fn require_valid_signature(&self) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_gpg_verify_result_require_valid_signature(self.to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_gpg_verify_result_require_valid_signature(self.to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
+    }
+
+    pub fn describe_variant(variant: &glib::Variant, output_buffer: &mut glib::String, line_prefix: Option<&str>, flags: GpgSignatureFormatFlags) {
+        unsafe {
+            ostree_sys::ostree_gpg_verify_result_describe_variant(variant.to_glib_none().0, output_buffer.to_glib_none_mut().0, line_prefix.to_glib_none().0, flags.to_glib());
+        }
+    }
+}
+
+impl fmt::Display for GpgVerifyResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "GpgVerifyResult")
     }
 }

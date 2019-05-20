@@ -1,7 +1,7 @@
-extern crate gio_sys as gio_ffi;
-extern crate glib_sys as glib_ffi;
-extern crate gobject_sys as gobject_ffi;
-extern crate ostree_sys as ffi;
+extern crate gio_sys;
+extern crate glib_sys;
+extern crate gobject_sys;
+extern crate ostree_sys;
 #[macro_use]
 extern crate glib;
 extern crate gio;

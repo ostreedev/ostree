@@ -2,36 +2,35 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use ffi;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use glib::GString;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 use glib::translate::*;
-use glib_ffi;
-use gobject_ffi;
-use std::mem;
-use std::ptr;
+use ostree_sys;
 
 glib_wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct Remote(Shared<ffi::OstreeRemote>);
+    pub struct Remote(Shared<ostree_sys::OstreeRemote>);
 
     match fn {
-        ref => |ptr| ffi::ostree_remote_ref(ptr),
-        unref => |ptr| ffi::ostree_remote_unref(ptr),
-        get_type => || ffi::ostree_remote_get_type(),
+        ref => |ptr| ostree_sys::ostree_remote_ref(ptr),
+        unref => |ptr| ostree_sys::ostree_remote_unref(ptr),
+        get_type => || ostree_sys::ostree_remote_get_type(),
     }
 }
 
 impl Remote {
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn get_name(&self) -> Option<String> {
+    pub fn get_name(&self) -> Option<GString> {
         unsafe {
-            from_glib_none(ffi::ostree_remote_get_name(self.to_glib_none().0))
+            from_glib_none(ostree_sys::ostree_remote_get_name(self.to_glib_none().0))
         }
     }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn get_url(&self) -> Option<String> {
+    pub fn get_url(&self) -> Option<GString> {
         unsafe {
-            from_glib_full(ffi::ostree_remote_get_url(self.to_glib_none().0))
+            from_glib_full(ostree_sys::ostree_remote_get_url(self.to_glib_none().0))
         }
     }
 }

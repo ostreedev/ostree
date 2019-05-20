@@ -2,48 +2,64 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
+use Repo;
 #[cfg(any(feature = "v2017_13", feature = "dox"))]
 use RepoDevInoCache;
 use SePolicy;
-use ffi;
+use gio;
+use glib;
+use glib::GString;
 use glib::translate::*;
-use glib_ffi;
-use gobject_ffi;
-use std::mem;
-use std::ptr;
+use ostree_sys;
+use std::boxed::Box as Box_;
 
 glib_wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct RepoCommitModifier(Shared<ffi::OstreeRepoCommitModifier>);
+    pub struct RepoCommitModifier(Shared<ostree_sys::OstreeRepoCommitModifier>);
 
     match fn {
-        ref => |ptr| ffi::ostree_repo_commit_modifier_ref(ptr),
-        unref => |ptr| ffi::ostree_repo_commit_modifier_unref(ptr),
-        get_type => || ffi::ostree_repo_commit_modifier_get_type(),
+        ref => |ptr| ostree_sys::ostree_repo_commit_modifier_ref(ptr),
+        unref => |ptr| ostree_sys::ostree_repo_commit_modifier_unref(ptr),
+        get_type => || ostree_sys::ostree_repo_commit_modifier_get_type(),
     }
 }
 
 impl RepoCommitModifier {
-    //pub fn new<'a, P: Into<Option<&'a /*Unimplemented*/RepoCommitFilter>>>(flags: /*Ignored*/RepoCommitModifierFlags, commit_filter: P, destroy_notify: /*Unknown conversion*//*Unimplemented*/DestroyNotify) -> RepoCommitModifier {
-    //    unsafe { TODO: call ffi::ostree_repo_commit_modifier_new() }
+    //pub fn new(flags: /*Ignored*/RepoCommitModifierFlags, commit_filter: /*Unimplemented*/Fn(&Repo, &str, &gio::FileInfo) -> /*Ignored*/RepoCommitFilterResult, user_data: /*Unimplemented*/Option<Fundamental: Pointer>) -> RepoCommitModifier {
+    //    unsafe { TODO: call ostree_sys:ostree_repo_commit_modifier_new() }
     //}
 
     #[cfg(any(feature = "v2017_13", feature = "dox"))]
     pub fn set_devino_cache(&self, cache: &RepoDevInoCache) {
         unsafe {
-            ffi::ostree_repo_commit_modifier_set_devino_cache(self.to_glib_none().0, cache.to_glib_none().0);
+            ostree_sys::ostree_repo_commit_modifier_set_devino_cache(self.to_glib_none().0, cache.to_glib_none().0);
         }
     }
 
-    pub fn set_sepolicy<'a, P: Into<Option<&'a SePolicy>>>(&self, sepolicy: P) {
-        let sepolicy = sepolicy.into();
-        let sepolicy = sepolicy.to_glib_none();
+    pub fn set_sepolicy(&self, sepolicy: Option<&SePolicy>) {
         unsafe {
-            ffi::ostree_repo_commit_modifier_set_sepolicy(self.to_glib_none().0, sepolicy.0);
+            ostree_sys::ostree_repo_commit_modifier_set_sepolicy(self.to_glib_none().0, sepolicy.to_glib_none().0);
         }
     }
 
-    //pub fn set_xattr_callback(&self, callback: /*Unknown conversion*//*Unimplemented*/RepoCommitModifierXattrCallback, destroy: /*Unknown conversion*//*Unimplemented*/DestroyNotify) {
-    //    unsafe { TODO: call ffi::ostree_repo_commit_modifier_set_xattr_callback() }
-    //}
+    pub fn set_xattr_callback<P: Fn(&Repo, &str, &gio::FileInfo) -> glib::Variant + 'static>(&self, callback: P) {
+        let callback_data: Box_<P> = Box::new(callback);
+        unsafe extern "C" fn callback_func<P: Fn(&Repo, &str, &gio::FileInfo) -> glib::Variant + 'static>(repo: *mut ostree_sys::OstreeRepo, path: *const libc::c_char, file_info: *mut gio_sys::GFileInfo, user_data: glib_sys::gpointer) -> *mut glib_sys::GVariant {
+            let repo = from_glib_borrow(repo);
+            let path: GString = from_glib_borrow(path);
+            let file_info = from_glib_borrow(file_info);
+            let callback: &P = &*(user_data as *mut _);
+            let res = (*callback)(&repo, path.as_str(), &file_info);
+            res.to_glib_full()
+        }
+        let callback = Some(callback_func::<P> as _);
+        unsafe extern "C" fn destroy_func<P: Fn(&Repo, &str, &gio::FileInfo) -> glib::Variant + 'static>(data: glib_sys::gpointer) {
+            let _callback: Box_<P> = Box_::from_raw(data as *mut _);
+        }
+        let destroy_call2 = Some(destroy_func::<P> as _);
+        let super_callback0: Box_<P> = callback_data;
+        unsafe {
+            ostree_sys::ostree_repo_commit_modifier_set_xattr_callback(self.to_glib_none().0, callback, destroy_call2, Box::into_raw(super_callback0) as *mut _);
+        }
+    }
 }

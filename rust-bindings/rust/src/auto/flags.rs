@@ -2,7 +2,6 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use ffi;
 use glib::StaticType;
 use glib::Type;
 use glib::translate::*;
@@ -10,7 +9,8 @@ use glib::value::FromValue;
 use glib::value::FromValueOptional;
 use glib::value::SetValue;
 use glib::value::Value;
-use gobject_ffi;
+use gobject_sys;
+use ostree_sys;
 
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 bitflags! {
@@ -23,17 +23,17 @@ bitflags! {
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 #[doc(hidden)]
 impl ToGlib for RepoCommitState {
-    type GlibType = ffi::OstreeRepoCommitState;
+    type GlibType = ostree_sys::OstreeRepoCommitState;
 
-    fn to_glib(&self) -> ffi::OstreeRepoCommitState {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCommitState {
         self.bits()
     }
 }
 
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoCommitState> for RepoCommitState {
-    fn from_glib(value: ffi::OstreeRepoCommitState) -> RepoCommitState {
+impl FromGlib<ostree_sys::OstreeRepoCommitState> for RepoCommitState {
+    fn from_glib(value: ostree_sys::OstreeRepoCommitState) -> RepoCommitState {
         RepoCommitState::from_bits_truncate(value)
     }
 }
@@ -49,16 +49,16 @@ bitflags! {
 
 #[doc(hidden)]
 impl ToGlib for RepoListRefsExtFlags {
-    type GlibType = ffi::OstreeRepoListRefsExtFlags;
+    type GlibType = ostree_sys::OstreeRepoListRefsExtFlags;
 
-    fn to_glib(&self) -> ffi::OstreeRepoListRefsExtFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoListRefsExtFlags {
         self.bits()
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoListRefsExtFlags> for RepoListRefsExtFlags {
-    fn from_glib(value: ffi::OstreeRepoListRefsExtFlags) -> RepoListRefsExtFlags {
+impl FromGlib<ostree_sys::OstreeRepoListRefsExtFlags> for RepoListRefsExtFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoListRefsExtFlags) -> RepoListRefsExtFlags {
         RepoListRefsExtFlags::from_bits_truncate(value)
     }
 }
@@ -76,16 +76,16 @@ bitflags! {
 
 #[doc(hidden)]
 impl ToGlib for RepoPullFlags {
-    type GlibType = ffi::OstreeRepoPullFlags;
+    type GlibType = ostree_sys::OstreeRepoPullFlags;
 
-    fn to_glib(&self) -> ffi::OstreeRepoPullFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoPullFlags {
         self.bits()
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoPullFlags> for RepoPullFlags {
-    fn from_glib(value: ffi::OstreeRepoPullFlags) -> RepoPullFlags {
+impl FromGlib<ostree_sys::OstreeRepoPullFlags> for RepoPullFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoPullFlags) -> RepoPullFlags {
         RepoPullFlags::from_bits_truncate(value)
     }
 }
@@ -99,16 +99,16 @@ bitflags! {
 
 #[doc(hidden)]
 impl ToGlib for RepoResolveRevExtFlags {
-    type GlibType = ffi::OstreeRepoResolveRevExtFlags;
+    type GlibType = ostree_sys::OstreeRepoResolveRevExtFlags;
 
-    fn to_glib(&self) -> ffi::OstreeRepoResolveRevExtFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeRepoResolveRevExtFlags {
         self.bits()
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
-    fn from_glib(value: ffi::OstreeRepoResolveRevExtFlags) -> RepoResolveRevExtFlags {
+impl FromGlib<ostree_sys::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoResolveRevExtFlags) -> RepoResolveRevExtFlags {
         RepoResolveRevExtFlags::from_bits_truncate(value)
     }
 }
@@ -123,16 +123,16 @@ bitflags! {
 
 #[doc(hidden)]
 impl ToGlib for SePolicyRestoreconFlags {
-    type GlibType = ffi::OstreeSePolicyRestoreconFlags;
+    type GlibType = ostree_sys::OstreeSePolicyRestoreconFlags;
 
-    fn to_glib(&self) -> ffi::OstreeSePolicyRestoreconFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeSePolicyRestoreconFlags {
         self.bits()
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeSePolicyRestoreconFlags> for SePolicyRestoreconFlags {
-    fn from_glib(value: ffi::OstreeSePolicyRestoreconFlags) -> SePolicyRestoreconFlags {
+impl FromGlib<ostree_sys::OstreeSePolicyRestoreconFlags> for SePolicyRestoreconFlags {
+    fn from_glib(value: ostree_sys::OstreeSePolicyRestoreconFlags) -> SePolicyRestoreconFlags {
         SePolicyRestoreconFlags::from_bits_truncate(value)
     }
 }
@@ -150,16 +150,16 @@ bitflags! {
 
 #[doc(hidden)]
 impl ToGlib for SysrootSimpleWriteDeploymentFlags {
-    type GlibType = ffi::OstreeSysrootSimpleWriteDeploymentFlags;
+    type GlibType = ostree_sys::OstreeSysrootSimpleWriteDeploymentFlags;
 
-    fn to_glib(&self) -> ffi::OstreeSysrootSimpleWriteDeploymentFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeSysrootSimpleWriteDeploymentFlags {
         self.bits()
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeSysrootSimpleWriteDeploymentFlags> for SysrootSimpleWriteDeploymentFlags {
-    fn from_glib(value: ffi::OstreeSysrootSimpleWriteDeploymentFlags) -> SysrootSimpleWriteDeploymentFlags {
+impl FromGlib<ostree_sys::OstreeSysrootSimpleWriteDeploymentFlags> for SysrootSimpleWriteDeploymentFlags {
+    fn from_glib(value: ostree_sys::OstreeSysrootSimpleWriteDeploymentFlags) -> SysrootSimpleWriteDeploymentFlags {
         SysrootSimpleWriteDeploymentFlags::from_bits_truncate(value)
     }
 }
@@ -172,23 +172,23 @@ bitflags! {
 
 #[doc(hidden)]
 impl ToGlib for SysrootUpgraderFlags {
-    type GlibType = ffi::OstreeSysrootUpgraderFlags;
+    type GlibType = ostree_sys::OstreeSysrootUpgraderFlags;
 
-    fn to_glib(&self) -> ffi::OstreeSysrootUpgraderFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeSysrootUpgraderFlags {
         self.bits()
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeSysrootUpgraderFlags> for SysrootUpgraderFlags {
-    fn from_glib(value: ffi::OstreeSysrootUpgraderFlags) -> SysrootUpgraderFlags {
+impl FromGlib<ostree_sys::OstreeSysrootUpgraderFlags> for SysrootUpgraderFlags {
+    fn from_glib(value: ostree_sys::OstreeSysrootUpgraderFlags) -> SysrootUpgraderFlags {
         SysrootUpgraderFlags::from_bits_truncate(value)
     }
 }
 
 impl StaticType for SysrootUpgraderFlags {
     fn static_type() -> Type {
-        unsafe { from_glib(ffi::ostree_sysroot_upgrader_flags_get_type()) }
+        unsafe { from_glib(ostree_sys::ostree_sysroot_upgrader_flags_get_type()) }
     }
 }
 
@@ -200,13 +200,13 @@ impl<'a> FromValueOptional<'a> for SysrootUpgraderFlags {
 
 impl<'a> FromValue<'a> for SysrootUpgraderFlags {
     unsafe fn from_value(value: &Value) -> Self {
-        from_glib(gobject_ffi::g_value_get_flags(value.to_glib_none().0))
+        from_glib(gobject_sys::g_value_get_flags(value.to_glib_none().0))
     }
 }
 
 impl SetValue for SysrootUpgraderFlags {
     unsafe fn set_value(value: &mut Value, this: &Self) {
-        gobject_ffi::g_value_set_flags(value.to_glib_none_mut().0, this.to_glib())
+        gobject_sys::g_value_set_flags(value.to_glib_none_mut().0, this.to_glib())
     }
 }
 
@@ -220,16 +220,16 @@ bitflags! {
 
 #[doc(hidden)]
 impl ToGlib for SysrootUpgraderPullFlags {
-    type GlibType = ffi::OstreeSysrootUpgraderPullFlags;
+    type GlibType = ostree_sys::OstreeSysrootUpgraderPullFlags;
 
-    fn to_glib(&self) -> ffi::OstreeSysrootUpgraderPullFlags {
+    fn to_glib(&self) -> ostree_sys::OstreeSysrootUpgraderPullFlags {
         self.bits()
     }
 }
 
 #[doc(hidden)]
-impl FromGlib<ffi::OstreeSysrootUpgraderPullFlags> for SysrootUpgraderPullFlags {
-    fn from_glib(value: ffi::OstreeSysrootUpgraderPullFlags) -> SysrootUpgraderPullFlags {
+impl FromGlib<ostree_sys::OstreeSysrootUpgraderPullFlags> for SysrootUpgraderPullFlags {
+    fn from_glib(value: ostree_sys::OstreeSysrootUpgraderPullFlags) -> SysrootUpgraderPullFlags {
         SysrootUpgraderPullFlags::from_bits_truncate(value)
     }
 }

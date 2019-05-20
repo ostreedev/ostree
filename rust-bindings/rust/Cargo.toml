@@ -31,12 +31,12 @@ name = "ostree"
 libc = "0.2"
 bitflags = "1"
 lazy_static = "1.1"
-glib = "0.6"
-gio = "0.5"
-glib-sys = "0.7"
-gobject-sys = "0.7"
-gio-sys = "0.7"
-ostree-sys = { version = "0.3", path = "sys" }
+glib = "0.7.1"
+gio = "0.6.0"
+glib-sys = "0.8.0"
+gobject-sys = "0.8.0"
+gio-sys = "0.8.0"
+ostree-sys = { version = "0.3.0", path = "sys" }
 
 [dev-dependencies]
 tempfile = "3"

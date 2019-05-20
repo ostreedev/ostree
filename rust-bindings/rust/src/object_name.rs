@@ -1,8 +1,8 @@
-use ffi;
 use functions::{object_name_deserialize, object_name_serialize, object_to_string};
 use glib;
 use glib::translate::*;
-use glib_ffi;
+use glib_sys;
+use ostree_sys;
 use std::fmt::Display;
 use std::fmt::Error;
 use std::fmt::Formatter;
@@ -11,12 +11,13 @@ use std::hash::Hasher;
 use ObjectType;
 
 fn hash_object_name(v: &glib::Variant) -> u32 {
-    unsafe { ffi::ostree_hash_object_name(v.to_glib_none().0 as glib_ffi::gconstpointer) }
+    unsafe { ostree_sys::ostree_hash_object_name(v.to_glib_none().0 as glib_sys::gconstpointer) }
 }
 
 #[derive(Eq, Debug)]
 pub struct ObjectName {
     variant: glib::Variant,
+    // TODO: can I store a GString here?
     checksum: String,
     object_type: ObjectType,
 }
@@ -26,7 +27,7 @@ impl ObjectName {
         let deserialize = object_name_deserialize(&variant);
         ObjectName {
             variant,
-            checksum: deserialize.0,
+            checksum: deserialize.0.into(),
             object_type: deserialize.1,
         }
     }
@@ -49,9 +50,11 @@ impl ObjectName {
         self.object_type
     }
 
+    // TODO: return GString
     pub fn name(&self) -> String {
         object_to_string(self.checksum(), self.object_type())
             .expect("type checks should make this safe")
+            .into()
     }
 }
 

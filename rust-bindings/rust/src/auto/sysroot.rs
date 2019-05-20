@@ -8,508 +8,365 @@ use DeploymentUnlockedState;
 use Error;
 use Repo;
 use SysrootSimpleWriteDeploymentFlags;
-use ffi;
 #[cfg(feature = "futures")]
-use futures_core;
+use futures::future;
 use gio;
-use gio_ffi;
+use gio_sys;
 use glib;
-#[cfg(any(feature = "v2017_10", feature = "dox"))]
-use glib::object::Downcast;
+use glib::GString;
 use glib::object::IsA;
+#[cfg(any(feature = "v2017_10", feature = "dox"))]
+use glib::object::ObjectType as _;
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
 use glib::signal::SignalHandlerId;
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
-use glib::signal::connect;
+use glib::signal::connect_raw;
 use glib::translate::*;
-use glib_ffi;
-use gobject_ffi;
+use glib_sys;
+use gobject_sys;
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
 use libc;
+use ostree_sys;
 use std::boxed::Box as Box_;
+use std::fmt;
 use std::mem;
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
 use std::mem::transmute;
 use std::ptr;
 
 glib_wrapper! {
-    pub struct Sysroot(Object<ffi::OstreeSysroot>);
+    pub struct Sysroot(Object<ostree_sys::OstreeSysroot, SysrootClass>);
 
     match fn {
-        get_type => || ffi::ostree_sysroot_get_type(),
+        get_type => || ostree_sys::ostree_sysroot_get_type(),
     }
 }
 
 impl Sysroot {
-    pub fn new<'a, P: IsA<gio::File> + 'a, Q: Into<Option<&'a P>>>(path: Q) -> Sysroot {
-        let path = path.into();
-        let path = path.to_glib_none();
+    pub fn new<P: IsA<gio::File>>(path: Option<&P>) -> Sysroot {
         unsafe {
-            from_glib_full(ffi::ostree_sysroot_new(path.0))
+            from_glib_full(ostree_sys::ostree_sysroot_new(path.map(|p| p.as_ref()).to_glib_none().0))
         }
     }
 
     pub fn new_default() -> Sysroot {
         unsafe {
-            from_glib_full(ffi::ostree_sysroot_new_default())
+            from_glib_full(ostree_sys::ostree_sysroot_new_default())
         }
     }
 
-    pub fn get_deployment_origin_path<P: IsA<gio::File>>(deployment_path: &P) -> Option<gio::File> {
-        unsafe {
-            from_glib_full(ffi::ostree_sysroot_get_deployment_origin_path(deployment_path.to_glib_none().0))
-        }
-    }
-}
-
-pub trait SysrootExt: Sized {
-    fn cleanup<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
-
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn cleanup_prune_repo<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P) -> Result<(i32, i32, u64), Error>;
-
-    fn deploy_tree<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: Into<Option<&'b glib::KeyFile>>, R: Into<Option<&'c Deployment>>, S: Into<Option<&'d gio::Cancellable>>>(&self, osname: P, revision: &str, origin: Q, provided_merge_deployment: R, override_kernel_argv: &[&str], cancellable: S) -> Result<Deployment, Error>;
-
-    fn deployment_set_kargs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, deployment: &Deployment, new_kargs: &[&str], cancellable: P) -> Result<(), Error>;
-
-    fn deployment_set_mutable<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, deployment: &Deployment, is_mutable: bool, cancellable: P) -> Result<(), Error>;
-
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    fn deployment_set_pinned(&self, deployment: &Deployment, is_pinned: bool) -> Result<(), Error>;
-
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn deployment_unlock<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, deployment: &Deployment, unlocked_state: DeploymentUnlockedState, cancellable: P) -> Result<(), Error>;
-
-    fn ensure_initialized<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
-
-    fn get_booted_deployment(&self) -> Option<Deployment>;
-
-    fn get_bootversion(&self) -> i32;
-
-    fn get_deployment_directory(&self, deployment: &Deployment) -> Option<gio::File>;
-
-    fn get_deployment_dirpath(&self, deployment: &Deployment) -> Option<String>;
-
-    //fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 };
-
-    fn get_fd(&self) -> i32;
-
-    fn get_merge_deployment<'a, P: Into<Option<&'a str>>>(&self, osname: P) -> Option<Deployment>;
-
-    fn get_path(&self) -> Option<gio::File>;
-
-    fn get_repo<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<Repo, Error>;
-
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    fn get_staged_deployment(&self) -> Option<Deployment>;
-
-    fn get_subbootversion(&self) -> i32;
-
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn init_osname<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, osname: &str, cancellable: P) -> Result<(), Error>;
-
-    fn load<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
-
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn load_if_changed<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<bool, Error>;
-
-    fn lock(&self) -> Result<(), Error>;
-
-    fn lock_async<'a, P: Into<Option<&'a gio::Cancellable>>, Q: FnOnce(Result<(), Error>) + Send + 'static>(&self, cancellable: P, callback: Q);
-
-    #[cfg(feature = "futures")]
-    fn lock_async_future(&self) -> Box_<futures_core::Future<Item = (Self, ()), Error = (Self, Error)>>;
-
-    fn origin_new_from_refspec(&self, refspec: &str) -> Option<glib::KeyFile>;
-
-    fn prepare_cleanup<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error>;
-
-    #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    fn query_deployments_for<'a, P: Into<Option<&'a str>>>(&self, osname: P) -> (Deployment, Deployment);
-
-    #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    fn repo(&self) -> Option<Repo>;
-
-    fn simple_write_deployment<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b Deployment>>, R: Into<Option<&'c gio::Cancellable>>>(&self, osname: P, new_deployment: &Deployment, merge_deployment: Q, flags: SysrootSimpleWriteDeploymentFlags, cancellable: R) -> Result<(), Error>;
-
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    fn stage_tree<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: Into<Option<&'b glib::KeyFile>>, R: Into<Option<&'c Deployment>>, S: Into<Option<&'d gio::Cancellable>>>(&self, osname: P, revision: &str, origin: Q, merge_deployment: R, override_kernel_argv: &[&str], cancellable: S) -> Result<Deployment, Error>;
-
-    fn try_lock(&self) -> Result<bool, Error>;
-
-    fn unload(&self);
-
-    fn unlock(&self);
-
-    //fn write_deployments<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, cancellable: P) -> Result<(), Error>;
-
-    //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-    //fn write_deployments_with_options<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: P) -> Result<(), Error>;
-
-    fn write_origin_file<'a, 'b, P: Into<Option<&'a glib::KeyFile>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, deployment: &Deployment, new_origin: P, cancellable: Q) -> Result<(), Error>;
-
-    #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    fn connect_journal_msg<F: Fn(&Self, &str) + 'static>(&self, f: F) -> SignalHandlerId;
-}
-
-impl<O: IsA<Sysroot> + IsA<glib::object::Object> + Clone + 'static> SysrootExt for O {
-    fn cleanup<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn cleanup<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_cleanup(self.to_glib_none().0, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_cleanup(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn cleanup_prune_repo<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: P) -> Result<(i32, i32, u64), Error> {
-    //    unsafe { TODO: call ffi::ostree_sysroot_cleanup_prune_repo() }
+    //pub fn cleanup_prune_repo<P: IsA<gio::Cancellable>>(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: Option<&P>) -> Result<(i32, i32, u64), Error> {
+    //    unsafe { TODO: call ostree_sys:ostree_sysroot_cleanup_prune_repo() }
     //}
 
-    fn deploy_tree<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: Into<Option<&'b glib::KeyFile>>, R: Into<Option<&'c Deployment>>, S: Into<Option<&'d gio::Cancellable>>>(&self, osname: P, revision: &str, origin: Q, provided_merge_deployment: R, override_kernel_argv: &[&str], cancellable: S) -> Result<Deployment, Error> {
-        let osname = osname.into();
-        let osname = osname.to_glib_none();
-        let origin = origin.into();
-        let origin = origin.to_glib_none();
-        let provided_merge_deployment = provided_merge_deployment.into();
-        let provided_merge_deployment = provided_merge_deployment.to_glib_none();
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn deploy_tree<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, provided_merge_deployment: Option<&Deployment>, override_kernel_argv: &[&str], cancellable: Option<&P>) -> Result<Deployment, Error> {
         unsafe {
             let mut out_new_deployment = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_deploy_tree(self.to_glib_none().0, osname.0, revision.to_glib_none().0, origin.0, provided_merge_deployment.0, override_kernel_argv.to_glib_none().0, &mut out_new_deployment, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_deploy_tree(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, provided_merge_deployment.to_glib_none().0, override_kernel_argv.to_glib_none().0, &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn deployment_set_kargs<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, deployment: &Deployment, new_kargs: &[&str], cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn deployment_set_kargs<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, new_kargs: &[&str], cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_deployment_set_kargs(self.to_glib_none().0, deployment.to_glib_none().0, new_kargs.to_glib_none().0, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_deployment_set_kargs(self.to_glib_none().0, deployment.to_glib_none().0, new_kargs.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn deployment_set_mutable<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, deployment: &Deployment, is_mutable: bool, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn deployment_set_mutable<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, is_mutable: bool, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_deployment_set_mutable(self.to_glib_none().0, deployment.to_glib_none().0, is_mutable.to_glib(), cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_deployment_set_mutable(self.to_glib_none().0, deployment.to_glib_none().0, is_mutable.to_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    fn deployment_set_pinned(&self, deployment: &Deployment, is_pinned: bool) -> Result<(), Error> {
+    pub fn deployment_set_pinned(&self, deployment: &Deployment, is_pinned: bool) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_deployment_set_pinned(self.to_glib_none().0, deployment.to_glib_none().0, is_pinned.to_glib(), &mut error);
+            let _ = ostree_sys::ostree_sysroot_deployment_set_pinned(self.to_glib_none().0, deployment.to_glib_none().0, is_pinned.to_glib(), &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn deployment_unlock<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, deployment: &Deployment, unlocked_state: DeploymentUnlockedState, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn deployment_unlock<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, unlocked_state: DeploymentUnlockedState, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_deployment_unlock(self.to_glib_none().0, deployment.to_glib_none().0, unlocked_state.to_glib(), cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_deployment_unlock(self.to_glib_none().0, deployment.to_glib_none().0, unlocked_state.to_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn ensure_initialized<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn ensure_initialized<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_ensure_initialized(self.to_glib_none().0, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_ensure_initialized(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn get_booted_deployment(&self) -> Option<Deployment> {
+    pub fn get_booted_deployment(&self) -> Option<Deployment> {
         unsafe {
-            from_glib_none(ffi::ostree_sysroot_get_booted_deployment(self.to_glib_none().0))
+            from_glib_none(ostree_sys::ostree_sysroot_get_booted_deployment(self.to_glib_none().0))
         }
     }
 
-    fn get_bootversion(&self) -> i32 {
+    pub fn get_bootversion(&self) -> i32 {
         unsafe {
-            ffi::ostree_sysroot_get_bootversion(self.to_glib_none().0)
+            ostree_sys::ostree_sysroot_get_bootversion(self.to_glib_none().0)
         }
     }
 
-    fn get_deployment_directory(&self, deployment: &Deployment) -> Option<gio::File> {
+    pub fn get_deployment_directory(&self, deployment: &Deployment) -> Option<gio::File> {
         unsafe {
-            from_glib_full(ffi::ostree_sysroot_get_deployment_directory(self.to_glib_none().0, deployment.to_glib_none().0))
+            from_glib_full(ostree_sys::ostree_sysroot_get_deployment_directory(self.to_glib_none().0, deployment.to_glib_none().0))
         }
     }
 
-    fn get_deployment_dirpath(&self, deployment: &Deployment) -> Option<String> {
+    pub fn get_deployment_dirpath(&self, deployment: &Deployment) -> Option<GString> {
         unsafe {
-            from_glib_full(ffi::ostree_sysroot_get_deployment_dirpath(self.to_glib_none().0, deployment.to_glib_none().0))
+            from_glib_full(ostree_sys::ostree_sysroot_get_deployment_dirpath(self.to_glib_none().0, deployment.to_glib_none().0))
         }
     }
 
-    //fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 } {
-    //    unsafe { TODO: call ffi::ostree_sysroot_get_deployments() }
+    //pub fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 } {
+    //    unsafe { TODO: call ostree_sys:ostree_sysroot_get_deployments() }
     //}
 
-    fn get_fd(&self) -> i32 {
+    pub fn get_fd(&self) -> i32 {
         unsafe {
-            ffi::ostree_sysroot_get_fd(self.to_glib_none().0)
+            ostree_sys::ostree_sysroot_get_fd(self.to_glib_none().0)
         }
     }
 
-    fn get_merge_deployment<'a, P: Into<Option<&'a str>>>(&self, osname: P) -> Option<Deployment> {
-        let osname = osname.into();
-        let osname = osname.to_glib_none();
+    pub fn get_merge_deployment(&self, osname: Option<&str>) -> Option<Deployment> {
         unsafe {
-            from_glib_full(ffi::ostree_sysroot_get_merge_deployment(self.to_glib_none().0, osname.0))
+            from_glib_full(ostree_sys::ostree_sysroot_get_merge_deployment(self.to_glib_none().0, osname.to_glib_none().0))
         }
     }
 
-    fn get_path(&self) -> Option<gio::File> {
+    pub fn get_path(&self) -> Option<gio::File> {
         unsafe {
-            from_glib_none(ffi::ostree_sysroot_get_path(self.to_glib_none().0))
+            from_glib_none(ostree_sys::ostree_sysroot_get_path(self.to_glib_none().0))
         }
     }
 
-    fn get_repo<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<Repo, Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn get_repo<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<Repo, Error> {
         unsafe {
             let mut out_repo = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_get_repo(self.to_glib_none().0, &mut out_repo, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_get_repo(self.to_glib_none().0, &mut out_repo, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(from_glib_full(out_repo)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    fn get_staged_deployment(&self) -> Option<Deployment> {
+    pub fn get_staged_deployment(&self) -> Option<Deployment> {
         unsafe {
-            from_glib_none(ffi::ostree_sysroot_get_staged_deployment(self.to_glib_none().0))
+            from_glib_none(ostree_sys::ostree_sysroot_get_staged_deployment(self.to_glib_none().0))
         }
     }
 
-    fn get_subbootversion(&self) -> i32 {
+    pub fn get_subbootversion(&self) -> i32 {
         unsafe {
-            ffi::ostree_sysroot_get_subbootversion(self.to_glib_none().0)
+            ostree_sys::ostree_sysroot_get_subbootversion(self.to_glib_none().0)
         }
     }
 
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn init_osname<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, osname: &str, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn init_osname<P: IsA<gio::Cancellable>>(&self, osname: &str, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_init_osname(self.to_glib_none().0, osname.to_glib_none().0, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_init_osname(self.to_glib_none().0, osname.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn load<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn load<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_load(self.to_glib_none().0, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_load(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn load_if_changed<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<bool, Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn load_if_changed<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<bool, Error> {
         unsafe {
             let mut out_changed = mem::uninitialized();
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_load_if_changed(self.to_glib_none().0, &mut out_changed, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_load_if_changed(self.to_glib_none().0, &mut out_changed, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(from_glib(out_changed)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn lock(&self) -> Result<(), Error> {
+    pub fn lock(&self) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_lock(self.to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_lock(self.to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn lock_async<'a, P: Into<Option<&'a gio::Cancellable>>, Q: FnOnce(Result<(), Error>) + Send + 'static>(&self, cancellable: P, callback: Q) {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
-        let user_data: Box<Box<Q>> = Box::new(Box::new(callback));
-        unsafe extern "C" fn lock_async_trampoline<Q: FnOnce(Result<(), Error>) + Send + 'static>(_source_object: *mut gobject_ffi::GObject, res: *mut gio_ffi::GAsyncResult, user_data: glib_ffi::gpointer)
-        {
+    pub fn lock_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result<(), Error>) + Send + 'static>(&self, cancellable: Option<&P>, callback: Q) {
+        let user_data: Box<Q> = Box::new(callback);
+        unsafe extern "C" fn lock_async_trampoline<Q: FnOnce(Result<(), Error>) + Send + 'static>(_source_object: *mut gobject_sys::GObject, res: *mut gio_sys::GAsyncResult, user_data: glib_sys::gpointer) {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_lock_finish(_source_object as *mut _, res, &mut error);
+            let _ = ostree_sys::ostree_sysroot_lock_finish(_source_object as *mut _, res, &mut error);
             let result = if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) };
-            let callback: Box<Box<Q>> = Box::from_raw(user_data as *mut _);
+            let callback: Box<Q> = Box::from_raw(user_data as *mut _);
             callback(result);
         }
         let callback = lock_async_trampoline::<Q>;
         unsafe {
-            ffi::ostree_sysroot_lock_async(self.to_glib_none().0, cancellable.0, Some(callback), Box::into_raw(user_data) as *mut _);
+            ostree_sys::ostree_sysroot_lock_async(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, Some(callback), Box::into_raw(user_data) as *mut _);
         }
     }
 
     #[cfg(feature = "futures")]
-    fn lock_async_future(&self) -> Box_<futures_core::Future<Item = (Self, ()), Error = (Self, Error)>> {
+    pub fn lock_async_future(&self) -> Box_<future::Future<Output = Result<(), Error>> + std::marker::Unpin> {
         use gio::GioFuture;
         use fragile::Fragile;
 
         GioFuture::new(self, move |obj, send| {
             let cancellable = gio::Cancellable::new();
             let send = Fragile::new(send);
-            let obj_clone = Fragile::new(obj.clone());
             obj.lock_async(
-                 Some(&cancellable),
-                 move |res| {
-                     let obj = obj_clone.into_inner();
-                     let res = res.map(|v| (obj.clone(), v)).map_err(|v| (obj.clone(), v));
-                     let _ = send.into_inner().send(res);
-                 },
+                Some(&cancellable),
+                move |res| {
+                    let _ = send.into_inner().send(res);
+                },
             );
 
             cancellable
         })
     }
 
-    fn origin_new_from_refspec(&self, refspec: &str) -> Option<glib::KeyFile> {
+    pub fn origin_new_from_refspec(&self, refspec: &str) -> Option<glib::KeyFile> {
         unsafe {
-            from_glib_full(ffi::ostree_sysroot_origin_new_from_refspec(self.to_glib_none().0, refspec.to_glib_none().0))
+            from_glib_full(ostree_sys::ostree_sysroot_origin_new_from_refspec(self.to_glib_none().0, refspec.to_glib_none().0))
         }
     }
 
-    fn prepare_cleanup<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, cancellable: P) -> Result<(), Error> {
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn prepare_cleanup<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_prepare_cleanup(self.to_glib_none().0, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_prepare_cleanup(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    fn query_deployments_for<'a, P: Into<Option<&'a str>>>(&self, osname: P) -> (Deployment, Deployment) {
-        let osname = osname.into();
-        let osname = osname.to_glib_none();
+    pub fn query_deployments_for(&self, osname: Option<&str>) -> (Deployment, Deployment) {
         unsafe {
             let mut out_pending = ptr::null_mut();
             let mut out_rollback = ptr::null_mut();
-            ffi::ostree_sysroot_query_deployments_for(self.to_glib_none().0, osname.0, &mut out_pending, &mut out_rollback);
+            ostree_sys::ostree_sysroot_query_deployments_for(self.to_glib_none().0, osname.to_glib_none().0, &mut out_pending, &mut out_rollback);
             (from_glib_full(out_pending), from_glib_full(out_rollback))
         }
     }
 
     #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    fn repo(&self) -> Option<Repo> {
+    pub fn repo(&self) -> Option<Repo> {
         unsafe {
-            from_glib_none(ffi::ostree_sysroot_repo(self.to_glib_none().0))
+            from_glib_none(ostree_sys::ostree_sysroot_repo(self.to_glib_none().0))
         }
     }
 
-    fn simple_write_deployment<'a, 'b, 'c, P: Into<Option<&'a str>>, Q: Into<Option<&'b Deployment>>, R: Into<Option<&'c gio::Cancellable>>>(&self, osname: P, new_deployment: &Deployment, merge_deployment: Q, flags: SysrootSimpleWriteDeploymentFlags, cancellable: R) -> Result<(), Error> {
-        let osname = osname.into();
-        let osname = osname.to_glib_none();
-        let merge_deployment = merge_deployment.into();
-        let merge_deployment = merge_deployment.to_glib_none();
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn simple_write_deployment<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, new_deployment: &Deployment, merge_deployment: Option<&Deployment>, flags: SysrootSimpleWriteDeploymentFlags, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_simple_write_deployment(self.to_glib_none().0, osname.0, new_deployment.to_glib_none().0, merge_deployment.0, flags.to_glib(), cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_simple_write_deployment(self.to_glib_none().0, osname.to_glib_none().0, new_deployment.to_glib_none().0, merge_deployment.to_glib_none().0, flags.to_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    fn stage_tree<'a, 'b, 'c, 'd, P: Into<Option<&'a str>>, Q: Into<Option<&'b glib::KeyFile>>, R: Into<Option<&'c Deployment>>, S: Into<Option<&'d gio::Cancellable>>>(&self, osname: P, revision: &str, origin: Q, merge_deployment: R, override_kernel_argv: &[&str], cancellable: S) -> Result<Deployment, Error> {
-        let osname = osname.into();
-        let osname = osname.to_glib_none();
-        let origin = origin.into();
-        let origin = origin.to_glib_none();
-        let merge_deployment = merge_deployment.into();
-        let merge_deployment = merge_deployment.to_glib_none();
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn stage_tree<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, merge_deployment: Option<&Deployment>, override_kernel_argv: &[&str], cancellable: Option<&P>) -> Result<Deployment, Error> {
         unsafe {
             let mut out_new_deployment = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_stage_tree(self.to_glib_none().0, osname.0, revision.to_glib_none().0, origin.0, merge_deployment.0, override_kernel_argv.to_glib_none().0, &mut out_new_deployment, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_stage_tree(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, merge_deployment.to_glib_none().0, override_kernel_argv.to_glib_none().0, &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn try_lock(&self) -> Result<bool, Error> {
+    pub fn try_lock(&self) -> Result<bool, Error> {
         unsafe {
             let mut out_acquired = mem::uninitialized();
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_try_lock(self.to_glib_none().0, &mut out_acquired, &mut error);
+            let _ = ostree_sys::ostree_sysroot_try_lock(self.to_glib_none().0, &mut out_acquired, &mut error);
             if error.is_null() { Ok(from_glib(out_acquired)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    fn unload(&self) {
+    pub fn unload(&self) {
         unsafe {
-            ffi::ostree_sysroot_unload(self.to_glib_none().0);
+            ostree_sys::ostree_sysroot_unload(self.to_glib_none().0);
         }
     }
 
-    fn unlock(&self) {
+    pub fn unlock(&self) {
         unsafe {
-            ffi::ostree_sysroot_unlock(self.to_glib_none().0);
+            ostree_sys::ostree_sysroot_unlock(self.to_glib_none().0);
         }
     }
 
-    //fn write_deployments<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, cancellable: P) -> Result<(), Error> {
-    //    unsafe { TODO: call ffi::ostree_sysroot_write_deployments() }
+    //pub fn write_deployments<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, cancellable: Option<&P>) -> Result<(), Error> {
+    //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments() }
     //}
 
     //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-    //fn write_deployments_with_options<'a, P: Into<Option<&'a gio::Cancellable>>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: P) -> Result<(), Error> {
-    //    unsafe { TODO: call ffi::ostree_sysroot_write_deployments_with_options() }
+    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), Error> {
+    //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments_with_options() }
     //}
 
-    fn write_origin_file<'a, 'b, P: Into<Option<&'a glib::KeyFile>>, Q: Into<Option<&'b gio::Cancellable>>>(&self, deployment: &Deployment, new_origin: P, cancellable: Q) -> Result<(), Error> {
-        let new_origin = new_origin.into();
-        let new_origin = new_origin.to_glib_none();
-        let cancellable = cancellable.into();
-        let cancellable = cancellable.to_glib_none();
+    pub fn write_origin_file<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, new_origin: Option<&glib::KeyFile>, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ffi::ostree_sysroot_write_origin_file(self.to_glib_none().0, deployment.to_glib_none().0, new_origin.0, cancellable.0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_write_origin_file(self.to_glib_none().0, deployment.to_glib_none().0, new_origin.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    fn connect_journal_msg<F: Fn(&Self, &str) + 'static>(&self, f: F) -> SignalHandlerId {
+    pub fn get_deployment_origin_path<P: IsA<gio::File>>(deployment_path: &P) -> Option<gio::File> {
         unsafe {
-            let f: Box_<Box_<Fn(&Self, &str) + 'static>> = Box_::new(Box_::new(f));
-            connect(self.to_glib_none().0, "journal-msg",
-                transmute(journal_msg_trampoline::<Self> as usize), Box_::into_raw(f) as *mut _)
+            from_glib_full(ostree_sys::ostree_sysroot_get_deployment_origin_path(deployment_path.as_ref().to_glib_none().0))
+        }
+    }
+
+    #[cfg(any(feature = "v2017_10", feature = "dox"))]
+    pub fn connect_journal_msg<F: Fn(&Sysroot, &str) + 'static>(&self, f: F) -> SignalHandlerId {
+        unsafe {
+            let f: Box_<F> = Box_::new(f);
+            connect_raw(self.as_ptr() as *mut _, b"journal-msg\0".as_ptr() as *const _,
+                Some(transmute(journal_msg_trampoline::<F> as usize)), Box_::into_raw(f))
         }
     }
 }
 
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
-unsafe extern "C" fn journal_msg_trampoline<P>(this: *mut ffi::OstreeSysroot, msg: *mut libc::c_char, f: glib_ffi::gpointer)
-where P: IsA<Sysroot> {
-    let f: &&(Fn(&P, &str) + 'static) = transmute(f);
-    f(&Sysroot::from_glib_borrow(this).downcast_unchecked(), &String::from_glib_none(msg))
+unsafe extern "C" fn journal_msg_trampoline<F: Fn(&Sysroot, &str) + 'static>(this: *mut ostree_sys::OstreeSysroot, msg: *mut libc::c_char, f: glib_sys::gpointer) {
+    let f: &F = &*(f as *const F);
+    f(&from_glib_borrow(this), &GString::from_glib_borrow(msg))
+}
+
+impl fmt::Display for Sysroot {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Sysroot")
+    }
 }
