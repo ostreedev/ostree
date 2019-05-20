@@ -68,7 +68,6 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-archivez.sh \
 	tests/test-remote-add.sh \
 	tests/test-remote-headers.sh \
-	tests/test-remote-gpg-import.sh \
 	tests/test-commit-sign.sh \
 	tests/test-export.sh \
 	tests/test-help.sh \
@@ -91,7 +90,6 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-pull-localcache.sh \
 	tests/test-local-pull.sh \
 	tests/test-local-pull-depth.sh \
-	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-upgrade-unconfigured.sh \
 	tests/test-admin-upgrade-endoflife.sh \
 	tests/test-admin-upgrade-systemd-update.sh \
@@ -110,7 +108,6 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-pull-deploy-split.sh \
 	tests/test-admin-locking.sh \
 	tests/test-admin-deploy-clean.sh \
-	tests/test-admin-gpg.sh \
 	tests/test-reset-nonlinear.sh \
 	tests/test-oldstyle-partial.sh \
 	tests/test-delta.sh \
@@ -138,6 +135,14 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-pull-collections.sh \
 	tests/test-config.sh \
 	$(NULL)
+
+if USE_GPGME
+_installed_or_uninstalled_test_scripts += \
+	tests/test-remote-gpg-import.sh \
+	tests/test-gpg-signed-commit.sh \
+	tests/test-admin-gpg.sh \
+	$(NULL)
+endif
 
 experimental_test_scripts = \
 	$(NULL)
@@ -200,6 +205,7 @@ dist_test_extra_scripts = \
 	tests/ostree-grub-generator \
 	$(NULL)
 
+if USE_GPGME
 # We can't use nobase_ as we need to strip off the tests/, can't
 # use plain installed_ as we do need the gpghome/ prefix.
 if ENABLE_INSTALLED_TESTS
@@ -216,6 +222,7 @@ dist_gpginsttest_trusted_DATA = tests/gpghome/trusted/pubring.gpg
 gpgvinsttestdir = $(installed_testdir)/gpg-verify-data
 dist_gpgvinsttest_DATA = $(addprefix tests/gpg-verify-data/, \
 	gpg.conf lgpl2 lgpl2.sig pubring.gpg secring.gpg trustdb.gpg)
+endif
 endif
 
 js_installed_tests = \
@@ -245,8 +252,14 @@ endif
 
 _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
-	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
+	tests/test-checksum tests/test-lzma tests/test-rollsum \
 	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo tests/test-include-ostree-h tests/test-kargs
+
+if USE_GPGME
+_installed_or_uninstalled_test_programs += \
+	tests/test-gpg-verify-result \
+	$(NULL)
+endif
 
 if USE_AVAHI
 test_programs += tests/test-repo-finder-avahi
@@ -354,6 +367,7 @@ tests_test_lzma_SOURCES = src/libostree/ostree-lzma-common.c src/libostree/ostre
 tests_test_lzma_CFLAGS = $(TESTS_CFLAGS) $(OT_DEP_LZMA_CFLAGS)
 tests_test_lzma_LDADD = $(TESTS_LDADD) $(OT_DEP_LZMA_LIBS)
 
+if USE_GPGME
 tests_test_gpg_verify_result_SOURCES = \
 	src/libostree/ostree-gpg-verify-result-private.h \
 	tests/test-gpg-verify-result.c
@@ -361,9 +375,13 @@ tests_test_gpg_verify_result_CFLAGS = $(TESTS_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS
 tests_test_gpg_verify_result_LDADD = $(TESTS_LDADD) $(OT_INTERNAL_GPGME_LIBS)
 
 EXTRA_DIST += \
+	tests/gpg-verify-data/README.md \
+	$(NULL)
+endif
+
+EXTRA_DIST += \
 	tests/libostreetest.h \
 	tests/libtest.sh \
-	tests/gpg-verify-data/README.md \
 	$(NULL)
 
 tests/libreaddir-rand.so: Makefile
