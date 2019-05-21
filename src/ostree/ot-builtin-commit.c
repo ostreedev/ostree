@@ -636,11 +636,22 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
             {
               if (!opt_tar_pathname_filter)
                 {
-                  object_to_commit = g_file_new_for_path (tree);
-                  if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, mtree, modifier,
-                                                           opt_tar_autocreate_parents,
-                                                           cancellable, error))
-                    goto out;
+                  if (strcmp (tree, "-") == 0)
+                    {
+                      if (!ostree_repo_write_archive_to_mtree_from_fd (repo, STDIN_FILENO, mtree, modifier,
+                                                                       opt_tar_autocreate_parents,
+                                                                       cancellable, error))
+                        goto out;
+                    }
+                  else
+                    {
+                      object_to_commit = g_file_new_for_path (tree);
+
+                      if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, mtree, modifier,
+                                                               opt_tar_autocreate_parents,
+                                                               cancellable, error))
+                        goto out;
+                    }
                 }
               else
                 {
@@ -666,7 +677,13 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
                       goto out;
                     }
                   opts.translate_pathname_user_data = &tpdata;
-                  g_autoptr(OtAutoArchiveRead) archive = ot_open_archive_read (tree, error);
+
+                  g_autoptr(OtAutoArchiveRead) archive;
+                  if (strcmp (tree, "-") == 0)
+                    archive = ot_open_archive_read_fd (STDIN_FILENO, error);
+                  else
+                    archive = ot_open_archive_read (tree, error);
+
                   if (!archive)
                     goto out;
                   if (!ostree_repo_import_archive_to_mtree (repo, &opts, archive, mtree,
