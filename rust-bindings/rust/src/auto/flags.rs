@@ -12,6 +12,55 @@ use glib::value::Value;
 use gobject_sys;
 use ostree_sys;
 
+#[cfg(any(feature = "v2017_13", feature = "dox"))]
+bitflags! {
+    pub struct ChecksumFlags: u32 {
+        const NONE = 0;
+        const IGNORE_XATTRS = 1;
+    }
+}
+
+#[cfg(any(feature = "v2017_13", feature = "dox"))]
+#[doc(hidden)]
+impl ToGlib for ChecksumFlags {
+    type GlibType = ostree_sys::OstreeChecksumFlags;
+
+    fn to_glib(&self) -> ostree_sys::OstreeChecksumFlags {
+        self.bits()
+    }
+}
+
+#[cfg(any(feature = "v2017_13", feature = "dox"))]
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeChecksumFlags> for ChecksumFlags {
+    fn from_glib(value: ostree_sys::OstreeChecksumFlags) -> ChecksumFlags {
+        ChecksumFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
+    pub struct DiffFlags: u32 {
+        const NONE = 0;
+        const IGNORE_XATTRS = 1;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for DiffFlags {
+    type GlibType = ostree_sys::OstreeDiffFlags;
+
+    fn to_glib(&self) -> ostree_sys::OstreeDiffFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeDiffFlags> for DiffFlags {
+    fn from_glib(value: ostree_sys::OstreeDiffFlags) -> DiffFlags {
+        DiffFlags::from_bits_truncate(value)
+    }
+}
+
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 bitflags! {
     pub struct RepoCommitState: u32 {

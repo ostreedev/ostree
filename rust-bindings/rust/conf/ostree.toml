@@ -13,8 +13,12 @@ girs_dir = "../gir-files"
 generate = [
     "OSTree.AsyncProgress",
     "OSTree.BootconfigParser",
+    "OSTree.ChecksumFlags",
     "OSTree.Deployment",
     "OSTree.DeploymentUnlockedState",
+    "OSTree.DiffFlags",
+    "OSTree.DiffItem",
+    "OSTree.GpgSignatureAttr",
     "OSTree.GpgSignatureFormatFlags",
     "OSTree.GpgVerifyResult",
     "OSTree.MutableTree",
@@ -26,6 +30,7 @@ generate = [
     "OSTree.RepoCommitState",
     "OSTree.RepoDevInoCache",
     "OSTree.RepoFile",
+    "OSTree.RepoFinder",
     "OSTree.RepoListRefsExtFlags",
     "OSTree.RepoMode",
     "OSTree.RepoPruneFlags",
@@ -87,8 +92,19 @@ manual_traits = ["RepoExtManual"]
     ignore = true
 
     [[object.function]]
-    # issue with the return type of content (thinks guchar** is u8)
-    name = "write_content_async"
+    # these async functions generate bad code for different reasons
+    pattern = "write_content_async|pull_from_remotes_async|find_remotes_async"
+    ignore = true
+
+[[object]]
+name = "OSTree.RepoFinderResult"
+status = "generate"
+    [[object.function]]
+    name = "freev"
+    ignore = true
+
+    [[object.function]]
+    name = "dup"
     ignore = true
 
 [[object]]

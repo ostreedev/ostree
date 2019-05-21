@@ -26,6 +26,10 @@ mod repo_file;
 pub use self::repo_file::{RepoFile, RepoFileClass, NONE_REPO_FILE};
 pub use self::repo_file::RepoFileExt;
 
+mod repo_finder;
+pub use self::repo_finder::{RepoFinder, NONE_REPO_FINDER};
+pub use self::repo_finder::RepoFinderExt;
+
 mod se_policy;
 pub use self::se_policy::{SePolicy, SePolicyClass};
 
@@ -40,6 +44,9 @@ mod collection_ref;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::collection_ref::CollectionRef;
 
+mod diff_item;
+pub use self::diff_item::DiffItem;
+
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod remote;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -51,11 +58,17 @@ pub use self::repo_commit_modifier::RepoCommitModifier;
 mod repo_dev_ino_cache;
 pub use self::repo_dev_ino_cache::RepoDevInoCache;
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+mod repo_finder_result;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::repo_finder_result::RepoFinderResult;
+
 mod repo_transaction_stats;
 pub use self::repo_transaction_stats::RepoTransactionStats;
 
 mod enums;
 pub use self::enums::DeploymentUnlockedState;
+pub use self::enums::GpgSignatureAttr;
 pub use self::enums::GpgSignatureFormatFlags;
 pub use self::enums::ObjectType;
 pub use self::enums::RepoCheckoutMode;
@@ -66,6 +79,9 @@ pub use self::enums::RepoRemoteChange;
 pub use self::enums::StaticDeltaGenerateOpt;
 
 mod flags;
+#[cfg(any(feature = "v2017_13", feature = "dox"))]
+pub use self::flags::ChecksumFlags;
+pub use self::flags::DiffFlags;
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 pub use self::flags::RepoCommitState;
 pub use self::flags::RepoListRefsExtFlags;
@@ -109,4 +125,5 @@ pub mod traits {
     pub use super::AsyncProgressExt;
     pub use super::MutableTreeExt;
     pub use super::RepoFileExt;
+    pub use super::RepoFinderExt;
 }

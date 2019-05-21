@@ -163,39 +163,6 @@ impl Repo {
     //    unsafe { TODO: call ostree_sys:ostree_repo_export_tree_to_archive() }
     //}
 
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn find_remotes_async<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>, R: FnOnce(Result</*Ignored*/Vec<RepoFinderResult>, Error>) + Send + 'static>(&self, refs: &[&CollectionRef], options: Option<&glib::Variant>, finders: /*Ignored*/&[RepoFinder], progress: Option<&P>, cancellable: Option<&Q>, callback: R) {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_find_remotes_async() }
-    //}
-
-    //#[cfg(feature = "futures")]
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn find_remotes_async_future<P: IsA<AsyncProgress> + Clone + 'static>(&self, refs: &[&CollectionRef], options: Option<&glib::Variant>, finders: /*Ignored*/&[RepoFinder], progress: Option<&P>) -> Box_<future::Future<Output = Result</*Ignored*/Vec<RepoFinderResult>, Error>> + std::marker::Unpin> {
-        //use gio::GioFuture;
-        //use fragile::Fragile;
-
-        //let refs = refs.clone();
-        //let options = options.map(ToOwned::to_owned);
-        //let finders = finders.clone();
-        //let progress = progress.map(ToOwned::to_owned);
-        //GioFuture::new(self, move |obj, send| {
-        //    let cancellable = gio::Cancellable::new();
-        //    let send = Fragile::new(send);
-        //    obj.find_remotes_async(
-        //        &refs,
-        //        options.as_ref().map(::std::borrow::Borrow::borrow),
-        //        &finders,
-        //        progress.as_ref().map(::std::borrow::Borrow::borrow),
-        //        Some(&cancellable),
-        //        move |res| {
-        //            let _ = send.into_inner().send(res);
-        //        },
-        //    );
-
-        //    cancellable
-        //})
-    //}
-
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
     pub fn fsck_object<P: IsA<gio::Cancellable>>(&self, objtype: ObjectType, sha256: &str, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
@@ -496,37 +463,6 @@ impl Repo {
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
-
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn pull_from_remotes_async<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>, R: FnOnce(Result<(), Error>) + Send + 'static>(&self, results: /*Ignored*/&[&RepoFinderResult], options: Option<&glib::Variant>, progress: Option<&P>, cancellable: Option<&Q>, callback: R) {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_pull_from_remotes_async() }
-    //}
-
-    //#[cfg(feature = "futures")]
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn pull_from_remotes_async_future<P: IsA<AsyncProgress> + Clone + 'static>(&self, results: /*Ignored*/&[&RepoFinderResult], options: Option<&glib::Variant>, progress: Option<&P>) -> Box_<future::Future<Output = Result<(), Error>> + std::marker::Unpin> {
-        //use gio::GioFuture;
-        //use fragile::Fragile;
-
-        //let results = results.clone();
-        //let options = options.map(ToOwned::to_owned);
-        //let progress = progress.map(ToOwned::to_owned);
-        //GioFuture::new(self, move |obj, send| {
-        //    let cancellable = gio::Cancellable::new();
-        //    let send = Fragile::new(send);
-        //    obj.pull_from_remotes_async(
-        //        &results,
-        //        options.as_ref().map(::std::borrow::Borrow::borrow),
-        //        progress.as_ref().map(::std::borrow::Borrow::borrow),
-        //        Some(&cancellable),
-        //        move |res| {
-        //            let _ = send.into_inner().send(res);
-        //        },
-        //    );
-
-        //    cancellable
-        //})
-    //}
 
     pub fn pull_one_dir<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>>(&self, remote_name: &str, dir_to_pull: &str, refs_to_fetch: &[&str], flags: RepoPullFlags, progress: Option<&P>, cancellable: Option<&Q>) -> Result<(), Error> {
         unsafe {

@@ -55,6 +55,93 @@ impl FromGlib<ostree_sys::OstreeDeploymentUnlockedState> for DeploymentUnlockedS
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+pub enum GpgSignatureAttr {
+    Valid,
+    SigExpired,
+    KeyExpired,
+    KeyRevoked,
+    KeyMissing,
+    Fingerprint,
+    Timestamp,
+    ExpTimestamp,
+    PubkeyAlgoName,
+    HashAlgoName,
+    UserName,
+    UserEmail,
+    FingerprintPrimary,
+    #[doc(hidden)]
+    __Unknown(i32),
+}
+
+impl fmt::Display for GpgSignatureAttr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "GpgSignatureAttr::{}", match *self {
+            GpgSignatureAttr::Valid => "Valid",
+            GpgSignatureAttr::SigExpired => "SigExpired",
+            GpgSignatureAttr::KeyExpired => "KeyExpired",
+            GpgSignatureAttr::KeyRevoked => "KeyRevoked",
+            GpgSignatureAttr::KeyMissing => "KeyMissing",
+            GpgSignatureAttr::Fingerprint => "Fingerprint",
+            GpgSignatureAttr::Timestamp => "Timestamp",
+            GpgSignatureAttr::ExpTimestamp => "ExpTimestamp",
+            GpgSignatureAttr::PubkeyAlgoName => "PubkeyAlgoName",
+            GpgSignatureAttr::HashAlgoName => "HashAlgoName",
+            GpgSignatureAttr::UserName => "UserName",
+            GpgSignatureAttr::UserEmail => "UserEmail",
+            GpgSignatureAttr::FingerprintPrimary => "FingerprintPrimary",
+            _ => "Unknown",
+        })
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for GpgSignatureAttr {
+    type GlibType = ostree_sys::OstreeGpgSignatureAttr;
+
+    fn to_glib(&self) -> ostree_sys::OstreeGpgSignatureAttr {
+        match *self {
+            GpgSignatureAttr::Valid => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_VALID,
+            GpgSignatureAttr::SigExpired => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED,
+            GpgSignatureAttr::KeyExpired => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
+            GpgSignatureAttr::KeyRevoked => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED,
+            GpgSignatureAttr::KeyMissing => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING,
+            GpgSignatureAttr::Fingerprint => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT,
+            GpgSignatureAttr::Timestamp => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_TIMESTAMP,
+            GpgSignatureAttr::ExpTimestamp => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_EXP_TIMESTAMP,
+            GpgSignatureAttr::PubkeyAlgoName => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME,
+            GpgSignatureAttr::HashAlgoName => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME,
+            GpgSignatureAttr::UserName => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_USER_NAME,
+            GpgSignatureAttr::UserEmail => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL,
+            GpgSignatureAttr::FingerprintPrimary => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY,
+            GpgSignatureAttr::__Unknown(value) => value
+        }
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeGpgSignatureAttr> for GpgSignatureAttr {
+    fn from_glib(value: ostree_sys::OstreeGpgSignatureAttr) -> Self {
+        match value {
+            0 => GpgSignatureAttr::Valid,
+            1 => GpgSignatureAttr::SigExpired,
+            2 => GpgSignatureAttr::KeyExpired,
+            3 => GpgSignatureAttr::KeyRevoked,
+            4 => GpgSignatureAttr::KeyMissing,
+            5 => GpgSignatureAttr::Fingerprint,
+            6 => GpgSignatureAttr::Timestamp,
+            7 => GpgSignatureAttr::ExpTimestamp,
+            8 => GpgSignatureAttr::PubkeyAlgoName,
+            9 => GpgSignatureAttr::HashAlgoName,
+            10 => GpgSignatureAttr::UserName,
+            11 => GpgSignatureAttr::UserEmail,
+            12 => GpgSignatureAttr::FingerprintPrimary,
+            value => GpgSignatureAttr::__Unknown(value),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy)]
 pub enum GpgSignatureFormatFlags {
     GpgSignatureFormatDefault,
     #[doc(hidden)]
