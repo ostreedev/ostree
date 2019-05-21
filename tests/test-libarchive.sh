@@ -28,7 +28,7 @@ fi
 
 . $(dirname $0)/libtest.sh
 
-echo "1..13"
+echo "1..17"
 
 setup_test_repository "bare"
 
@@ -75,6 +75,16 @@ $OSTREE commit -s "from cpio" -b test-cpio \
   --skip-list=skiplist.txt \
   --tree=tar=foo.cpio
 echo "ok cpio commit"
+cat foo.tar.gz | $OSTREE commit -s "from tar" -b test-tar-stdin \
+  --statoverride=statoverride.txt \
+  --skip-list=skiplist.txt \
+  --tree=tar=-
+echo "ok tar commit from stdin"
+cat foo.cpio | $OSTREE commit -s "from cpio" -b test-cpio-stdin \
+  --statoverride=statoverride.txt \
+  --skip-list=skiplist.txt \
+  --tree=tar=-
+echo "ok cpio commit from stdin"
 
 assert_valid_checkout () {
   ref=$1
@@ -124,6 +134,10 @@ assert_valid_checkout tar
 echo "ok tar contents"
 assert_valid_checkout cpio
 echo "ok cpio contents"
+assert_valid_checkout tar-stdin
+echo "ok tar contents from stdin"
+assert_valid_checkout cpio-stdin
+echo "ok cpio contents from stdin"
 
 cd ${test_tmpdir}
 mkdir multicommit-files
