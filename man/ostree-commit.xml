@@ -102,7 +102,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--tree</option>="dir=PATH" or "tar=TARFILE" or "ref=COMMIT"</term>
 
                 <listitem><para>
-                    Overlay the given argument as a tree.
+                    Overlay the given argument as a tree. When committing an archive, the TARFILE can be specified as <literal>-</literal> to read the archive from standard input.
                 </para></listitem>
             </varlistentry>
 
