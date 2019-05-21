@@ -23,6 +23,7 @@
 #include "libglnx.h"
 #include "otutil.h"
 
+#include <ctype.h>
 #include <string.h>
 
 struct _OstreeKernelArgs {
@@ -652,6 +653,49 @@ ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
   return TRUE;
 }
 
+/* Parse a single KEY=VALUE pair (karg), from a space-separated string of
+ * kargs, args, which is modified in place to terminate parsed kargs. Spaces
+ * are protected by quotation marks ("") around the value. The parsed karg
+ * string is returned in out_arg. A pointer to the remaining string to parse
+ * is returned.
+ *
+ * Based on the implementation in the Linux kernel:
+ * https://github.com/torvalds/linux/blob/8a05452ca460b05c985eadc7b5a4f040f124463e/lib/cmdline.c#L204
+ */
+static char *
+next_arg(char *args,
+         char** out_arg)
+{
+  g_strchomp (args);
+  *out_arg = args;
+  gboolean in_quote = FALSE;
+  gboolean past_quote = FALSE;
+  gboolean past_equals = FALSE;
+  while (*args != '\0')
+    {
+      if (in_quote)
+        {
+          in_quote = *args != '\"';
+          past_quote = TRUE;
+        }
+      else
+        {
+          past_equals = *args == '=' || past_equals;
+          in_quote = past_equals && (*args == '\"') && !past_quote;
+          if (isspace(*args))
+            {
+              *args = '\0';
+              args++;
+              break;
+            }
+        }
+      if (*args == '\0')
+        break;
+      args++;
+    }
+  return args;
+}
+
 /**
  * ostree_kernel_args_parse_append:
  * @kargs: a OstreeKernelArgs instance
@@ -665,19 +709,17 @@ void
 ostree_kernel_args_parse_append (OstreeKernelArgs *kargs,
                                  const char       *options)
 {
-  char **args = NULL;
-  char **iter;
-
   if (!options)
     return;
 
-  args = g_strsplit (options, " ", -1);
-  for (iter = args; *iter; iter++)
+  g_autofree char *args = g_strdup (options);
+  char *args_ptr = args;
+  while (*args_ptr)
     {
-      char *arg = *iter;
+      char *arg = NULL;
+      args_ptr = next_arg (args_ptr, &arg);
       ostree_kernel_args_append (kargs, arg);
     }
-  g_strfreev (args);
 }
 
 /**
