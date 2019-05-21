@@ -81,13 +81,13 @@ status = "generate"
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
-    # not sure what's wrong with this method; might be a gir issue
+    # crashes while generating, not sure what's wrong with this; might be a gir issue
     name = "write_metadata_async"
     ignore = true
 
     [[object.function]]
-    # async generates bad code (for now?); revisit with newer gir
-    pattern = ".+_async"
+    # issue with the return type of content (thinks guchar** is u8)
+    name = "write_content_async"
     ignore = true
 
 [[object]]
