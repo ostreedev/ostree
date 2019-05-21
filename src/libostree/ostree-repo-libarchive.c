@@ -901,6 +901,37 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
 #endif
 }
 
+#ifdef HAVE_LIBARCHIVE
+static gboolean
+write_archive_to_mtree (OstreeRepo                *self,
+                        OtAutoArchiveRead         *archive,
+                        OstreeMutableTree         *mtree,
+                        OstreeRepoCommitModifier  *modifier,
+                        gboolean                   autocreate_parents,
+                        GCancellable              *cancellable,
+                        GError                   **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoImportArchiveOptions opts = { 0, };
+
+  opts.autocreate_parents = !!autocreate_parents;
+
+  if (!ostree_repo_import_archive_to_mtree (self, &opts, archive, mtree, modifier, cancellable, error))
+    goto out;
+
+  if (archive_read_close (archive) != ARCHIVE_OK)
+    {
+      propagate_libarchive_error (error, archive);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  (void)archive_read_close (archive);
+  return ret;
+}
+#endif
+
 /**
  * ostree_repo_write_archive_to_mtree:
  * @self: An #OstreeRepo
@@ -924,31 +955,46 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
                                     GError                   **error)
 {
 #ifdef HAVE_LIBARCHIVE
-  gboolean ret = FALSE;
-  g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0, };
-
-  a = ot_open_archive_read (gs_file_get_path_cached (archive), error);
-  if (!a)
-    goto out;
-  opts.autocreate_parents = !!autocreate_parents;
-
-  if (!ostree_repo_import_archive_to_mtree (self, &opts, a, mtree, modifier, cancellable, error))
-    goto out;
-
-  if (archive_read_close (a) != ARCHIVE_OK)
-    {
-      propagate_libarchive_error (error, a);
-      goto out;
-    }
-
-  ret = TRUE;
- out:
+  g_autoptr(OtAutoArchiveRead) a = ot_open_archive_read (gs_file_get_path_cached (archive), error);
   if (a)
-    {
-      (void)archive_read_close (a);
-    }
-  return ret;
+    return write_archive_to_mtree (self, a, mtree, modifier, autocreate_parents, cancellable, error);
+
+  return FALSE;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree is not compiled with libarchive support");
+  return FALSE;
+#endif
+}
+
+/**
+ * ostree_repo_write_archive_to_mtree_from_fd:
+ * @self: An #OstreeRepo
+ * @fd: A file descriptor to read the archive from
+ * @mtree: The #OstreeMutableTree to write to
+ * @modifier: (allow-none): Optional commit modifier
+ * @autocreate_parents: Autocreate parent directories
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Read an archive from @fd and import it into the repository, writing
+ * its file structure to @mtree.
+ */
+gboolean
+ostree_repo_write_archive_to_mtree_from_fd (OstreeRepo                *self,
+                                            int                        fd,
+                                            OstreeMutableTree         *mtree,
+                                            OstreeRepoCommitModifier  *modifier,
+                                            gboolean                   autocreate_parents,
+                                            GCancellable              *cancellable,
+                                            GError                   **error)
+{
+#ifdef HAVE_LIBARCHIVE
+  g_autoptr(OtAutoArchiveRead) a = ot_open_archive_read_fd (fd, error);
+  if (a)
+    return write_archive_to_mtree (self, a, mtree, modifier, autocreate_parents, cancellable, error);
+
+  return FALSE;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                "This version of ostree is not compiled with libarchive support");

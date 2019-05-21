@@ -737,6 +737,16 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
                                                   GCancellable                 *cancellable,
                                                   GError                      **error);
 
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_write_archive_to_mtree_from_fd (OstreeRepo                *self,
+                                                          int                        fd,
+                                                          OstreeMutableTree         *mtree,
+                                                          OstreeRepoCommitModifier  *modifier,
+                                                          gboolean                   autocreate_parents,
+                                                          GCancellable              *cancellable,
+                                                          GError                   **error);
+
 /**
  * OstreeRepoImportArchiveTranslatePathname:
  * @repo: Repo
