@@ -80,6 +80,7 @@ status = "generate"
 [[object]]
 name = "OSTree.Repo"
 status = "generate"
+manual_traits = ["RepoExtManual"]
     [[object.function]]
     # crashes while generating, not sure what's wrong with this; might be a gir issue
     name = "write_metadata_async"

@@ -22,6 +22,7 @@ pub use crate::auto::*;
 mod object_name;
 mod repo;
 pub use crate::object_name::*;
+pub use crate::repo::*;
 
 // tests
 #[cfg(test)]
