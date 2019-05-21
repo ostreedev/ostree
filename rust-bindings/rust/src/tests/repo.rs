@@ -1,4 +1,4 @@
-use super::*;
+use crate::Repo;
 use crate::RepoMode;
 
 #[test]

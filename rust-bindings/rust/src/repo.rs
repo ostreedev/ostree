@@ -141,6 +141,3 @@ impl<O: IsA<Repo>> RepoExtManual for O {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

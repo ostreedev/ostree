@@ -71,6 +71,3 @@ impl hash::Hash for CollectionRef {
         hash::Hash::hash(&self.hash(), state)
     }
 }
-
-#[cfg(test)]
-mod tests;
