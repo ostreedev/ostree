@@ -19,12 +19,8 @@ pub use crate::auto::functions::*;
 pub use crate::auto::*;
 
 // handwritten code
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-mod collection_ref;
-mod repo;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-pub use crate::collection_ref::*;
 mod object_name;
+mod repo;
 pub use crate::object_name::*;
 
 // tests

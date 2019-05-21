@@ -9,7 +9,7 @@ use glib::GString;
 use glib::StaticType;
 use glib::Value;
 use glib::object::IsA;
-use glib::object::ObjectType as _;
+use glib::object::ObjectType as ObjectType_;
 use glib::translate::*;
 use gobject_sys;
 use ostree_sys;

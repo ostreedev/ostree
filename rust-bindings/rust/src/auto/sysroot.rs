@@ -16,7 +16,7 @@ use glib;
 use glib::GString;
 use glib::object::IsA;
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
-use glib::object::ObjectType as _;
+use glib::object::ObjectType as ObjectType_;
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
 use glib::signal::SignalHandlerId;
 #[cfg(any(feature = "v2017_10", feature = "dox"))]

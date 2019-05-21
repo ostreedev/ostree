@@ -36,6 +36,11 @@ mod sysroot_upgrader;
 pub use self::sysroot_upgrader::{SysrootUpgrader, SysrootUpgraderClass};
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
+mod collection_ref;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::collection_ref::CollectionRef;
+
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod remote;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::remote::Remote;

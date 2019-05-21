@@ -66,8 +66,7 @@ os_tree = "ostree"
 
 [[object]]
 name = "OSTree.CollectionRef"
-status = "manual"
-    # for reference: the settings used to generate the hand-tuned implementation
+status = "generate"
     [[object.function]]
     # helper functions for NULL-terminated arrays
     pattern = "dupv|freev"
