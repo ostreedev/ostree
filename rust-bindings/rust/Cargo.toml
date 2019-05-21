@@ -39,6 +39,7 @@ gio-sys = "0.8.0"
 ostree-sys = { version = "0.3.0", path = "sys" }
 
 [dev-dependencies]
+maplit = "1.0.1"
 tempfile = "3"
 
 [features]
