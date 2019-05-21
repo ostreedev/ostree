@@ -18,6 +18,9 @@ target/tools/bin/rustdoc-stripper:
 
 merge-lgpl-docs: target/tools/bin/gir target/tools/bin/rustdoc-stripper
 	target/tools/bin/gir -c conf/ostree.toml -m doc
+	for sym in list_refs list_refs_ext traverse_commit; do \
+		sed -e "s/<!-- impl Repo::fn $$sym -->/<!-- trait RepoExtManual::fn $$sym -->/" -i target/vendor.md; \
+	done
 	target/tools/bin/rustdoc-stripper -g -o target/vendor.md
 
 
@@ -39,5 +42,5 @@ gir-files:
 	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/master/${@F}
 
 gir-files/OSTree-1.0.gir:
-	echo TODO
+	echo Best to build libostree with all features and use that
 	exit 1
