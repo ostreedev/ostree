@@ -20,12 +20,6 @@ ostree-sys:
   script:
   - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
 
-ostree-sys_nightly:
-  stage: build
-  image: rustlang/rust:nightly
-  script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
-
 publish_ostree-sys:
   stage: publish
   script:
