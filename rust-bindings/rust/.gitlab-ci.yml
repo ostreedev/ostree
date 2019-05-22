@@ -104,6 +104,7 @@ docs:
 pages:
   stage: publish
   image: alpine
+  before_script: []
   script:
   - cp -r target/doc public
   artifacts:
