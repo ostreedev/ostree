@@ -1,3 +1,5 @@
+#![cfg(feature = "v2018_6")]
+
 use crate::CollectionRef;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
