@@ -50,6 +50,7 @@ ostree_default_features:
     - cargo/
     - target/
 
+# canary until Debian Backports gets updated libostree
 ostree_all_features:
   stage: build
   script:
@@ -79,9 +80,19 @@ publish_ostree:
 # docs
 docs:
   stage: build
+  image: rustlang/rust:nightly
+  variables:
+    RUSTDOC_OPTS: >-
+      -Z unstable-options
+      --extern-html-root-url glib_sys=https://gtk-rs.org/docs
+      --extern-html-root-url gobject_sys=https://gtk-rs.org/docs
+      --extern-html-root-url gio_sys=https://gtk-rs.org/docs
+      --extern-html-root-url glib=https://gtk-rs.org/docs
+      --extern-html-root-url gio=https://gtk-rs.org/docs
   script:
   - make merge-lgpl-docs
-  - cargo doc --verbose --features dox
+  - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
+  - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
   cache:
     paths:
     - cargo/
@@ -92,6 +103,7 @@ docs:
 
 pages:
   stage: publish
+  image: alpine
   script:
   - cp -r target/doc public
   artifacts:
