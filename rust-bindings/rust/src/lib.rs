@@ -1,3 +1,5 @@
+#![doc(html_root_url = "https://fkrull.gitlab.io/ostree-rs")]
+
 extern crate gio_sys;
 extern crate glib_sys;
 extern crate gobject_sys;
