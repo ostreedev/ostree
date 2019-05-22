@@ -2,6 +2,8 @@ image: rust:latest
 
 variables:
   CARGO_TARGET_DIR: target
+  # --all-features
+  CURRENT_FEATURES: --features v2018_9
 
 before_script:
 - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
@@ -16,13 +18,13 @@ stages:
 ostree-sys:
   stage: build
   script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml --features "v2018_9" #--all-features
+  - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
 
 ostree-sys_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml --features "v2018_9" #--all-features
+  - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
 
 publish_ostree-sys:
   stage: publish
@@ -34,13 +36,24 @@ publish_ostree-sys:
 ostree:
   stage: build
   script:
-  - cargo test --verbose --features "v2018_9" #--all-features
+  - cargo test --verbose ${CURRENT_FEATURES}
+
+ostree_default_features:
+  stage: build
+  script:
+  - cargo test --verbose
+
+ostree_all_features:
+  stage: build
+  script:
+  - cargo test --verbose --all-features
+  allow_failure: true
 
 ostree_nightly:
   stage: build
   image: rustlang/rust:nightly
   script:
-  - cargo test --verbose --features "v2018_9" #--all-features
+  - cargo test --verbose ${CURRENT_FEATURES}
 
 publish_ostree:
   stage: publish
