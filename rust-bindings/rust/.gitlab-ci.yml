@@ -4,6 +4,7 @@ variables:
   CARGO_TARGET_DIR: target
   # --all-features
   CURRENT_FEATURES: --features v2018_9
+  CARGO_HOME: ${CI_PROJECT_DIR}/cargo
 
 before_script:
 - echo deb http://ftp.debian.org/debian stretch-backports main > /etc/apt/sources.list.d/backports.list
@@ -19,6 +20,10 @@ ostree-sys:
   stage: build
   script:
   - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
+  cache:
+    paths:
+    - cargo/
+    - target/
 
 publish_ostree-sys:
   stage: publish
@@ -31,16 +36,28 @@ ostree:
   stage: build
   script:
   - cargo test --verbose ${CURRENT_FEATURES}
+  cache:
+    paths:
+    - cargo/
+    - target/
 
 ostree_default_features:
   stage: build
   script:
   - cargo test --verbose
+  cache:
+    paths:
+    - cargo/
+    - target/
 
 ostree_all_features:
   stage: build
   script:
   - cargo test --verbose --all-features
+  cache:
+    paths:
+    - cargo/
+    - target/
   allow_failure: true
 
 ostree_nightly:
@@ -48,6 +65,10 @@ ostree_nightly:
   image: rustlang/rust:nightly
   script:
   - cargo test --verbose ${CURRENT_FEATURES}
+  cache:
+    paths:
+    - cargo/
+    - target/
 
 publish_ostree:
   stage: publish
