@@ -82,6 +82,10 @@ docs:
   script:
   - make merge-lgpl-docs
   - cargo doc --verbose --features dox
+  cache:
+    paths:
+    - cargo/
+    - target/
   artifacts:
     paths:
     - target/doc
