@@ -35,9 +35,6 @@ publish_ostree-sys:
 ostree:
   stage: build
   script:
-  - cargo fmt -- --check
-  - cargo check ${CURRENT_FEATURES}
-  - cargo clippy ${CURRENT_FEATURES}
   - cargo test --verbose ${CURRENT_FEATURES}
   cache:
     paths:
