@@ -34,38 +34,12 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> Has
     set
 }
 
-pub trait RepoExtManual {
-    fn new_for_path<P: AsRef<Path>>(path: P) -> Repo;
-
-    fn traverse_commit<P: IsA<gio::Cancellable>>(
-        &self,
-        commit_checksum: &str,
-        maxdepth: i32,
-        cancellable: Option<&P>,
-    ) -> Result<HashSet<ObjectName>, Error>;
-
-    // TODO: return GString?
-    fn list_refs<P: IsA<gio::Cancellable>>(
-        &self,
-        refspec_prefix: Option<&str>,
-        cancellable: Option<&P>,
-    ) -> Result<HashMap<String, String>, Error>;
-
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn list_refs_ext<P: IsA<gio::Cancellable>>(
-        &self,
-        refspec_prefix: Option<&str>,
-        flags: RepoListRefsExtFlags,
-        cancellable: Option<&P>,
-    ) -> Result<HashMap<String, String>, Error>;
-}
-
-impl<O: IsA<Repo>> RepoExtManual for O {
-    fn new_for_path<P: AsRef<Path>>(path: P) -> Repo {
+impl Repo {
+    pub fn new_for_path<P: AsRef<Path>>(path: P) -> Repo {
         Repo::new(&gio::File::new_for_path(path.as_ref()))
     }
 
-    fn traverse_commit<P: IsA<gio::Cancellable>>(
+    pub fn traverse_commit<P: IsA<gio::Cancellable>>(
         &self,
         commit_checksum: &str,
         maxdepth: i32,
@@ -75,7 +49,7 @@ impl<O: IsA<Repo>> RepoExtManual for O {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_traverse_commit(
-                self.as_ref().to_glib_none().0,
+                self.to_glib_none().0,
                 commit_checksum.to_glib_none().0,
                 maxdepth,
                 &mut hashtable,
@@ -90,7 +64,7 @@ impl<O: IsA<Repo>> RepoExtManual for O {
         }
     }
 
-    fn list_refs<P: IsA<gio::Cancellable>>(
+    pub fn list_refs<P: IsA<gio::Cancellable>>(
         &self,
         refspec_prefix: Option<&str>,
         cancellable: Option<&P>,
@@ -99,7 +73,7 @@ impl<O: IsA<Repo>> RepoExtManual for O {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_list_refs(
-                self.as_ref().to_glib_none().0,
+                self.to_glib_none().0,
                 refspec_prefix.to_glib_none().0,
                 &mut hashtable,
                 cancellable.map(|p| p.as_ref()).to_glib_none().0,
@@ -115,7 +89,7 @@ impl<O: IsA<Repo>> RepoExtManual for O {
     }
 
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    fn list_refs_ext<P: IsA<gio::Cancellable>>(
+    pub fn list_refs_ext<P: IsA<gio::Cancellable>>(
         &self,
         refspec_prefix: Option<&str>,
         flags: RepoListRefsExtFlags,
@@ -125,7 +99,7 @@ impl<O: IsA<Repo>> RepoExtManual for O {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_list_refs_ext(
-                self.as_ref().to_glib_none().0,
+                self.to_glib_none().0,
                 refspec_prefix.to_glib_none().0,
                 &mut hashtable,
                 flags.to_glib(),

@@ -35,5 +35,4 @@ mod tests;
 // prelude
 pub mod prelude {
     pub use crate::auto::traits::*;
-    pub use crate::repo::RepoExtManual;
 }
