@@ -26,9 +26,9 @@ check:
   stage: check
   script:
   - rustup component add clippy rustfmt
-  - cargo check
-  - cargo clippy
-  - cargo fmt -- --check
+  - cargo check --all ${CURRENT_FEATURES}
+  - cargo clippy --all ${CURRENT_FEATURES}
+  - cargo fmt --all -- --check
 
 gir:
   stage: check
