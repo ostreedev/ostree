@@ -35,6 +35,7 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> Has
 }
 
 impl Repo {
+    /// Create a new `Repo` object for working with an OSTree repo at the given path.
     pub fn new_for_path<P: AsRef<Path>>(path: P) -> Repo {
         Repo::new(&gio::File::new_for_path(path.as_ref()))
     }
