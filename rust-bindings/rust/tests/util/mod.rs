@@ -1,7 +1,6 @@
 use gio::NONE_CANCELLABLE;
 use glib::prelude::*;
 use glib::GString;
-use ostree::prelude::*;
 use std::path::Path;
 
 #[derive(Debug)]
@@ -23,9 +22,9 @@ impl TestRepo {
         TestRepo { dir, repo }
     }
 
-    pub fn test_commit(&self) -> GString {
+    pub fn test_commit(&self, ref_: &str) -> GString {
         let mtree = create_mtree(&self.repo);
-        commit(&self.repo, &mtree, "test")
+        commit(&self.repo, &mtree, ref_)
     }
 }
 

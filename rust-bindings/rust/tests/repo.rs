@@ -8,8 +8,9 @@ extern crate maplit;
 mod util;
 use util::*;
 
+use gio::prelude::*;
 use gio::NONE_CANCELLABLE;
-use ostree::prelude::*;
+use glib::prelude::*;
 use ostree::{ObjectName, ObjectType};
 
 #[test]
@@ -31,7 +32,7 @@ fn should_commit_content_to_repo_and_list_refs_again() {
 #[test]
 fn should_traverse_commit() {
     let test_repo = TestRepo::new();
-    let checksum = test_repo.test_commit();
+    let checksum = test_repo.test_commit("test");
 
     let objects = test_repo
         .repo
@@ -60,4 +61,41 @@ fn should_traverse_commit() {
         ),
         objects
     );
+}
+
+#[test]
+fn should_checkout_tree() {
+    let test_repo = TestRepo::new();
+    let _ = test_repo.test_commit("test");
+
+    let checkout_dir = tempfile::tempdir().expect("checkout dir");
+    let file = test_repo
+        .repo
+        .read_commit("test", NONE_CANCELLABLE)
+        .expect("read commit")
+        .0
+        .downcast::<ostree::RepoFile>()
+        .expect("RepoFile");
+    let info = file
+        .query_info("*", gio::FileQueryInfoFlags::NONE, NONE_CANCELLABLE)
+        .expect("file info");
+    test_repo
+        .repo
+        .checkout_tree(
+            ostree::RepoCheckoutMode::User,
+            ostree::RepoCheckoutOverwriteMode::None,
+            &gio::File::new_for_path(checkout_dir.path().join("test-checkout")),
+            &file,
+            &info,
+            NONE_CANCELLABLE,
+        )
+        .expect("checkout tree");
+
+    let testfile_path = checkout_dir
+        .path()
+        .join("test-checkout")
+        .join("testdir")
+        .join("testfile");
+    let testfile_contents = std::fs::read_to_string(testfile_path).expect("test file");
+    assert_eq!("test\n", testfile_contents);
 }
