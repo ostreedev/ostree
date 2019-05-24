@@ -52,7 +52,7 @@ Most code is generated based on the gir files using the
 the included Makefile:
 
 ```ShellSession
-$ make gir/ostree gir/ostree-sys
+$ make gir
 ```
 
 Run the following command to update the bundled gir files:

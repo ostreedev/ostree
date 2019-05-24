@@ -1,4 +1,4 @@
-all: gir/ostree gir/ostree-sys
+all: gir
 
 .PHONY: update-gir-files remove-gir-files merge-lgpl-docs
 
@@ -8,8 +8,9 @@ target/tools/bin/gir:
 	#cargo install --root target/tools --git https://github.com/gtk-rs/gir.git --rev fec179c697a03e4aa98c610f7b98fd1b0ceb9344 -- gir
 	cargo install --root target/tools --git https://github.com/fkrull/gir.git --branch fixup-gconstpointer -- gir
 
-gir/%: target/tools/bin/gir
-	target/tools/bin/gir -c conf/$*.toml
+gir: target/tools/bin/gir
+	target/tools/bin/gir -c conf/ostree-sys.toml
+	target/tools/bin/gir -c conf/ostree.toml
 
 
 # -- LGPL docs generation --
