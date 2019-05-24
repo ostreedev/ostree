@@ -35,7 +35,7 @@ impl Deployment {
 
     pub fn equal(&self, bp: &Deployment) -> bool {
         unsafe {
-            from_glib(ostree_sys::ostree_deployment_equal(ToGlibPtr::<*const ostree_sys::OstreeDeployment>::to_glib_none(self).0 as glib_sys::gconstpointer, ToGlibPtr::<*const ostree_sys::OstreeDeployment>::to_glib_none(bp).0 as glib_sys::gconstpointer))
+            from_glib(ostree_sys::ostree_deployment_equal(ToGlibPtr::<*mut ostree_sys::OstreeDeployment>::to_glib_none(self).0 as glib_sys::gconstpointer, ToGlibPtr::<*mut ostree_sys::OstreeDeployment>::to_glib_none(bp).0 as glib_sys::gconstpointer))
         }
     }
 
@@ -140,7 +140,7 @@ impl Deployment {
 
     pub fn hash(&self) -> u32 {
         unsafe {
-            ostree_sys::ostree_deployment_hash(ToGlibPtr::<*const ostree_sys::OstreeDeployment>::to_glib_none(self).0 as glib_sys::gconstpointer)
+            ostree_sys::ostree_deployment_hash(ToGlibPtr::<*mut ostree_sys::OstreeDeployment>::to_glib_none(self).0 as glib_sys::gconstpointer)
         }
     }
 
