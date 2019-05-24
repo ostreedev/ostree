@@ -544,6 +544,15 @@ os_repository_new_commit ()
     cd ${test_tmpdir}
 }
 
+os_tree_write_file ()
+{
+    path=${1}
+    contents="${2}"
+    cd ${test_tmpdir}/osdata
+    echo "${contents}" > ${path}
+    cd ${test_tmpdir}
+}
+
 _have_user_xattrs=''
 have_user_xattrs() {
     assert_has_setfattr

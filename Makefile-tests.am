@@ -98,6 +98,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-deploy-syslinux.sh \
 	tests/test-admin-deploy-2.sh \
 	tests/test-admin-deploy-karg.sh \
+	tests/test-admin-deploy-karg-default.sh \
 	tests/test-admin-deploy-switch.sh \
 	tests/test-admin-deploy-etcmerge-cornercases.sh \
 	tests/test-admin-deploy-uboot.sh \

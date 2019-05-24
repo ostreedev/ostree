@@ -92,6 +92,9 @@ struct OstreeSysroot {
 #define _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS "ostree/initramfs-overlays"
 #define _OSTREE_SYSROOT_INITRAMFS_OVERLAYS "boot/" _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS
 
+#define _OSTREE_SYSROOT_KARGS_HOST "etc/ostree/kargs.d"
+#define _OSTREE_SYSROOT_KARGS_BASE "usr/lib/ostree-boot/kargs.d"
+
 gboolean
 _ostree_sysroot_ensure_writable (OstreeSysroot      *self,
                                  GError            **error);

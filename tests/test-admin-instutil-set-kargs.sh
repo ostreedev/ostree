@@ -27,16 +27,27 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
-echo "1..5"
+echo "1..6"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+# Check we generate kargs from the kargs.d configs from the first deployment.
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'ostree-kargs-generated-from-config.*true'
+
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+echo "rev=${rev}"
+etc=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc
 
 ${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAR
 ${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAZ FOO=BIF TESTARG=TESTVALUE KEYWORD EMPTYLIST=
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAZ .*FOO=BIF'
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
+
+# Check that the configured kargs flags and snippet were written.
+assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'ostree-kargs-generated-from-config.*true'
+assert_file_has_content ${etc}/ostree/kargs.d/4000_ostree_instutil 'FOO=BAZ .*FOO=BIF.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
+
 echo "ok instutil set-kargs (basic)"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --merge FOO=BAR
@@ -67,3 +78,33 @@ for arg in $(cat /proc/cmdline); do
     esac
 done
 echo "ok instutil set-kargs --import-proc-cmdline"
+
+# Configure kargs stored in the ostree commit.
+mkdir -p osdata/usr/lib/ostree-boot/kargs.d
+os_tree_write_file "usr/lib/ostree-boot/kargs.d/4000_FOO" "FOO=USR_1"
+os_tree_write_file "usr/lib/ostree-boot/kargs.d/4001_FOO2" "FOO2=USR_2"
+os_repository_new_commit
+
+# Upgrade to tree with newly-committed kargs files.
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin upgrade --os=testos
+# Sanity check a new boot directory was created after upgrading.
+assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
+
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*FOO=USR_1.*FOO2=USR_2'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'ostree-kargs-generated-from-config.*true'
+
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+echo "rev=${rev}"
+etc=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc
+
+# Check that set-kargs overrides any existing default kargs in /usr/lib/ostree-boot/kargs.d.
+${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAR
+
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*FOO=BAR'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'FOO=USR_1'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'FOO2=USR_2'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'ostree-kargs-generated-from-config.*true'
+assert_file_has_content ${etc}/ostree/kargs.d/4000_ostree_instutil 'FOO=BAR'
+
+echo "ok instutil set-kargs default kargs"
