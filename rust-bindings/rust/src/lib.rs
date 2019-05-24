@@ -1,7 +1,7 @@
-//! # Rust bindings for [libostree](https://ostree.readthedocs.io)
+//! # Rust bindings for **libostree**
 //!
-//! libostree is both a shared library and suite of command line tools that combines
-//! a "git-like" model for committing and downloading bootable filesystem trees,
+//! [libostree](https://ostree.readthedocs.io) is both a shared library and suite of command line
+//! tools that combines a "git-like" model for committing and downloading bootable filesystem trees,
 //! along with a layer for deploying them and managing the bootloader configuration.
 
 #![doc(html_root_url = "https://fkrull.gitlab.io/ostree-rs")]
