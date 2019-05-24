@@ -1,7 +1,7 @@
 image: rust:latest
 
 variables:
-  CARGO_TARGET_DIR: target
+  CARGO_TARGET_DIR: ${CI_PROJECT_DIR}/target
   # --all-features
   CURRENT_FEATURES: --features v2018_9
   CARGO_HOME: ${CI_PROJECT_DIR}/cargo
@@ -11,24 +11,44 @@ before_script:
 - apt-get update
 - apt-get install -y -t stretch-backports cmake libostree-dev
 
+cache:
+  paths:
+  - cargo/
+  - target/
+
 stages:
+- check
 - build
 - publish
+
+# checks
+check:
+  stage: check
+  script:
+  - rustup component add clippy rustfmt
+  - cargo check
+  - cargo clippy
+  - cargo fmt -- --check
+
+gir:
+  stage: check
+  before_script:
+  - rm -f target/tools/bin/gir
+  script:
+  - make gir
+  - git diff -R --exit-code
 
 # ostree-sys
 ostree-sys:
   stage: build
   script:
   - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
-  cache:
-    paths:
-    - cargo/
-    - target/
 
 publish_ostree-sys:
   stage: publish
   script:
   - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
+  cache: {}
   when: manual
 
 # ostree
@@ -36,45 +56,17 @@ ostree:
   stage: build
   script:
   - cargo test --verbose ${CURRENT_FEATURES}
-  cache:
-    paths:
-    - cargo/
-    - target/
 
 ostree_default_features:
   stage: build
   script:
   - cargo test --verbose
-  cache:
-    paths:
-    - cargo/
-    - target/
-
-# canary until Debian Backports gets updated libostree
-ostree_all_features:
-  stage: build
-  script:
-  - cargo test --verbose --all-features
-  cache:
-    paths:
-    - cargo/
-    - target/
-  allow_failure: true
-
-ostree_nightly:
-  stage: build
-  image: rustlang/rust:nightly
-  script:
-  - cargo test --verbose ${CURRENT_FEATURES}
-  cache:
-    paths:
-    - cargo/
-    - target/
 
 publish_ostree:
   stage: publish
   script:
   - cargo publish --verbose --token $CRATES_IO_TOKEN
+  cache: {}
   when: manual
 
 # docs
@@ -90,13 +82,10 @@ docs:
       --extern-html-root-url glib=https://gtk-rs.org/docs
       --extern-html-root-url gio=https://gtk-rs.org/docs
   script:
+  - rm -rf target/doc
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
   - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
-  cache:
-    paths:
-    - cargo/
-    - target/
   artifacts:
     paths:
     - target/doc
@@ -107,6 +96,7 @@ pages:
   before_script: []
   script:
   - cp -r target/doc public
+  cache: {}
   artifacts:
     paths:
     - public
