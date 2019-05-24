@@ -79,6 +79,8 @@ struct OstreeSysroot {
 #define _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED "/run/ostree/staged-deployment-locked"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_DIR "/run/ostree/deployment-state/"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT "unlocked-development"
+#define _OSTREE_SYSROOT_KARGS_HOST "etc/ostree/kargs.d"
+#define _OSTREE_SYSROOT_KARGS_BASE "usr/lib/ostree-boot/kargs.d"
 
 void
 _ostree_sysroot_emit_journal_msg (OstreeSysroot  *self,
