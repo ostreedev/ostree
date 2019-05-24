@@ -99,3 +99,29 @@ fn should_checkout_tree() {
     let testfile_contents = std::fs::read_to_string(testfile_path).expect("test file");
     assert_eq!("test\n", testfile_contents);
 }
+
+// TODO: figure this out and turn it back on
+#[test]
+#[ignore]
+fn should_error_safely_when_passing_empty_file_info_to_checkout_tree() {
+    let test_repo = TestRepo::new();
+    let _ = test_repo.test_commit("test");
+
+    let file = test_repo
+        .repo
+        .read_commit("test", NONE_CANCELLABLE)
+        .expect("read commit")
+        .0
+        .downcast::<ostree::RepoFile>()
+        .expect("RepoFile");
+    let result = test_repo.repo.checkout_tree(
+        ostree::RepoCheckoutMode::User,
+        ostree::RepoCheckoutOverwriteMode::None,
+        &gio::File::new_for_path("/"),
+        &file,
+        &gio::FileInfo::new(),
+        NONE_CANCELLABLE,
+    );
+
+    assert!(result.is_err());
+}
