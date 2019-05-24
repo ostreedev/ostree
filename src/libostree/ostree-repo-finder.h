@@ -111,6 +111,8 @@ GPtrArray *ostree_repo_finder_resolve_all_finish (GAsyncResult  *result,
  * which allow ostree_repo_pull_from_remotes_async() (for example) to prioritise
  * how to pull the refs.
  *
+ * An #OstreeRepoFinderResult is immutable after construction.
+ *
  * The @priority is used as one input of many to ordering functions like
  * ostree_repo_finder_result_compare().
  *
