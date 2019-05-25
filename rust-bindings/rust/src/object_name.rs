@@ -15,6 +15,8 @@ fn hash_object_name(v: &glib::Variant) -> u32 {
     unsafe { ostree_sys::ostree_hash_object_name(v.to_glib_none().0 as glib_sys::gconstpointer) }
 }
 
+/// A reference to an object in an OSTree repo. It contains both a checksum and an
+/// [ObjectType](enum.ObjectType.html) which together identify an object in a repository.
 #[derive(Eq, Debug)]
 pub struct ObjectName {
     variant: glib::Variant,
@@ -23,6 +25,7 @@ pub struct ObjectName {
 }
 
 impl ObjectName {
+    /// Create a new `ObjectName` from a serialized representation.
     pub fn new_from_variant(variant: glib::Variant) -> ObjectName {
         let deserialize = object_name_deserialize(&variant);
         ObjectName {
@@ -32,9 +35,11 @@ impl ObjectName {
         }
     }
 
+    /// Create a new `ObjectName` with the given checksum and `ObjectType`.
     pub fn new<S: Into<GString>>(checksum: S, object_type: ObjectType) -> ObjectName {
         let checksum = checksum.into();
-        let variant = object_name_serialize(checksum.as_str(), object_type).unwrap();
+        let variant = object_name_serialize(checksum.as_str(), object_type)
+            .expect("type checks should make this safe");
         ObjectName {
             variant,
             checksum,
@@ -42,15 +47,18 @@ impl ObjectName {
         }
     }
 
+    /// Return a reference to this `ObjectName`'s checksum string.
     pub fn checksum(&self) -> &str {
         self.checksum.as_str()
     }
 
+    /// Return this `ObjectName`'s `ObjectType`.
     pub fn object_type(&self) -> ObjectType {
         self.object_type
     }
 
-    pub fn name(&self) -> GString {
+    /// Format this `ObjectName` as a string.
+    fn to_string(&self) -> GString {
         object_to_string(self.checksum(), self.object_type())
             .expect("type checks should make this safe")
     }
@@ -58,7 +66,7 @@ impl ObjectName {
 
 impl Display for ObjectName {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f, "{}", self.name())
+        write!(f, "{}", self.to_string())
     }
 }
 
