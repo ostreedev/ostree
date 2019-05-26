@@ -49,7 +49,6 @@ generate = [
 
     #"OSTree.RepoPruneOptions",
     #"OSTree.RepoExportArchiveOptions",
-    #"OSTree.RepoCheckoutOptions",
     #"OSTree.RepoCheckoutAtOptions",
 ]
 
@@ -88,6 +87,11 @@ status = "generate"
     [[object.function]]
     # these all don't generate properly
     pattern = "write_metadata_async|write_content_async|pull_from_remotes_async|find_remotes_async"
+    ignore = true
+
+    [[object.function]]
+    # this is deprecated and supposedly unsafe for GI
+    name = "checkout_tree_at"
     ignore = true
 
 [[object]]

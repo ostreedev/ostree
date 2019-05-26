@@ -117,10 +117,6 @@ impl Repo {
         }
     }
 
-    //pub fn checkout_tree_at<P: IsA<gio::Cancellable>>(&self, options: /*Ignored*/Option<&mut RepoCheckoutOptions>, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Option<&P>) -> Result<(), Error> {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_checkout_tree_at() }
-    //}
-
     pub fn commit_transaction<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<RepoTransactionStats, Error> {
         unsafe {
             let mut out_stats = RepoTransactionStats::uninitialized();
