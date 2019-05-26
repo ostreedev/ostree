@@ -11,6 +11,8 @@ use MutableTree;
 use ObjectType;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 use Remote;
+#[cfg(any(feature = "v2016_8", feature = "dox"))]
+use RepoCheckoutAtOptions;
 use RepoCheckoutMode;
 use RepoCheckoutOverwriteMode;
 use RepoCommitModifier;
@@ -39,6 +41,7 @@ use glib_sys;
 use gobject_sys;
 use libc;
 use ostree_sys;
+use std;
 use std::boxed::Box as Box_;
 use std::fmt;
 use std::mem;
@@ -96,10 +99,14 @@ impl Repo {
         }
     }
 
-    //#[cfg(any(feature = "v2016_8", feature = "dox"))]
-    //pub fn checkout_at<P: IsA<gio::Cancellable>>(&self, options: /*Ignored*/Option<&mut RepoCheckoutAtOptions>, destination_dfd: i32, destination_path: &str, commit: &str, cancellable: Option<&P>) -> Result<(), Error> {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_checkout_at() }
-    //}
+    #[cfg(any(feature = "v2016_8", feature = "dox"))]
+    pub fn checkout_at<P: AsRef<std::path::Path>, Q: IsA<gio::Cancellable>>(&self, options: Option<&RepoCheckoutAtOptions>, destination_dfd: i32, destination_path: P, commit: &str, cancellable: Option<&Q>) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_checkout_at(self.to_glib_none().0, mut_override(options.to_glib_none().0), destination_dfd, destination_path.as_ref().to_glib_none().0, commit.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     pub fn checkout_gc<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {

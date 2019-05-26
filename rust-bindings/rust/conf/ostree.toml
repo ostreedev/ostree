@@ -49,7 +49,6 @@ generate = [
 
     #"OSTree.RepoPruneOptions",
     #"OSTree.RepoExportArchiveOptions",
-    #"OSTree.RepoCheckoutAtOptions",
 ]
 
 manual = [
@@ -63,6 +62,8 @@ manual = [
     "GLib.KeyFile",
     "GLib.String",
     "GLib.Variant",
+
+    "OSTree.RepoCheckoutAtOptions",
 ]
 
 [crate_name_overrides]
@@ -93,6 +94,16 @@ status = "generate"
     # this is deprecated and supposedly unsafe for GI
     name = "checkout_tree_at"
     ignore = true
+
+    [[object.function]]
+    # TODO: see which of these annotations I can upstream
+    name = "checkout_at"
+    [[object.function.parameter]]
+    name = "options"
+    const = true
+    [[object.function.parameter]]
+    name = "destination_path"
+    string_type = "filename"
 
 [[object]]
 name = "OSTree.RepoFinderResult"

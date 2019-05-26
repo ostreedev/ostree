@@ -34,10 +34,12 @@ pub use crate::auto::*;
 mod collection_ref;
 mod object_name;
 mod repo;
+mod repo_checkout_at_options;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use crate::collection_ref::*;
 pub use crate::object_name::*;
 pub use crate::repo::*;
+pub use crate::repo_checkout_at_options::*;
 
 // tests
 #[cfg(test)]

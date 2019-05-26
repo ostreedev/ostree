@@ -41,6 +41,7 @@ ostree-sys = { version = "0.3.0", path = "sys" }
 
 [dev-dependencies]
 maplit = "1.0.1"
+openat = "0.1.17"
 tempfile = "3"
 
 [features]

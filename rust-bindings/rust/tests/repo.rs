@@ -1,5 +1,6 @@
 extern crate gio;
 extern crate glib;
+extern crate openat;
 extern crate ostree;
 extern crate tempfile;
 #[macro_use]
@@ -11,7 +12,10 @@ use util::*;
 use gio::prelude::*;
 use gio::NONE_CANCELLABLE;
 use glib::prelude::*;
-use ostree::{ObjectName, ObjectType};
+use ostree::{
+    ObjectName, ObjectType, RepoCheckoutAtOptions, RepoCheckoutMode, RepoCheckoutOverwriteMode,
+};
+use std::os::unix::io::AsRawFd;
 
 #[test]
 fn should_commit_content_to_repo_and_list_refs_again() {
@@ -91,11 +95,51 @@ fn should_checkout_tree() {
         )
         .expect("checkout tree");
 
-    let testfile_path = checkout_dir
-        .path()
-        .join("test-checkout")
-        .join("testdir")
-        .join("testfile");
-    let testfile_contents = std::fs::read_to_string(testfile_path).expect("test file");
-    assert_eq!("test\n", testfile_contents);
+    assert_test_file(checkout_dir.path());
+}
+
+#[test]
+fn should_checkout_at_with_none_options() {
+    let test_repo = TestRepo::new();
+    let checksum = test_repo.test_commit("test");
+    let checkout_dir = tempfile::tempdir().expect("checkout dir");
+
+    let dirfd = openat::Dir::open(checkout_dir.path()).expect("openat");
+    test_repo
+        .repo
+        .checkout_at(
+            None,
+            dirfd.as_raw_fd(),
+            "test-checkout",
+            &checksum,
+            NONE_CANCELLABLE,
+        )
+        .expect("checkout at");
+
+    assert_test_file(checkout_dir.path());
+}
+
+#[test]
+fn should_checkout_at_with_options() {
+    let test_repo = TestRepo::new();
+    let checksum = test_repo.test_commit("test");
+    let checkout_dir = tempfile::tempdir().expect("checkout dir");
+
+    let dirfd = openat::Dir::open(checkout_dir.path()).expect("openat");
+    test_repo
+        .repo
+        .checkout_at(
+            Some(&RepoCheckoutAtOptions {
+                mode: RepoCheckoutMode::User,
+                overwrite_mode: RepoCheckoutOverwriteMode::UnionIdentical,
+                ..Default::default()
+            }),
+            dirfd.as_raw_fd(),
+            "test-checkout",
+            &checksum,
+            NONE_CANCELLABLE,
+        )
+        .expect("checkout at");
+
+    assert_test_file(checkout_dir.path());
 }

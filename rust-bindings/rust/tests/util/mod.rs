@@ -64,3 +64,12 @@ pub fn commit(repo: &ostree::Repo, mtree: &ostree::MutableTree, ref_: &str) -> G
         .expect("commit transaction");
     checksum
 }
+
+pub fn assert_test_file(checkout: &Path) {
+    let testfile_path = checkout
+        .join("test-checkout")
+        .join("testdir")
+        .join("testfile");
+    let testfile_contents = std::fs::read_to_string(testfile_path).expect("test file");
+    assert_eq!("test\n", testfile_contents);
+}
