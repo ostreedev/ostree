@@ -78,7 +78,7 @@ status = "generate"
     ignore = true
 
     [[object.function]]
-    # we get this for free, I think?
+    # clone() should already be this
     name = "dup"
     ignore = true
 
@@ -86,23 +86,20 @@ status = "generate"
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
-    # crashes while generating, not sure what's wrong with this; might be a gir issue
-    name = "write_metadata_async"
-    ignore = true
-
-    [[object.function]]
-    # these async functions generate bad code for different reasons
-    pattern = "write_content_async|pull_from_remotes_async|find_remotes_async"
+    # these all don't generate properly
+    pattern = "write_metadata_async|write_content_async|pull_from_remotes_async|find_remotes_async"
     ignore = true
 
 [[object]]
 name = "OSTree.RepoFinderResult"
 status = "generate"
     [[object.function]]
+    # array helper function
     name = "freev"
     ignore = true
 
     [[object.function]]
+    # clone() should already be this
     name = "dup"
     ignore = true
 
