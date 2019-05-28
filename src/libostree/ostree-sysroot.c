@@ -1688,12 +1688,12 @@ clone_deployment (OstreeSysroot  *sysroot,
   /* Copy the bootloader config options */
   OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
   g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
-  g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_new ();
-  _ostree_kernel_args_append_argv (kargs, previous_args);
+  g_autoptr(OstreeKernelArgs) kargs = ostree_kernel_args_new ();
+  ostree_kernel_args_append_argv (kargs, previous_args);
 
   /* Deploy the copy */
   g_autoptr(OstreeDeployment) new_deployment = NULL;
-  g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
+  g_auto(GStrv) kargs_strv = ostree_kernel_args_to_strv (kargs);
   if (!ostree_sysroot_deploy_tree (sysroot,
                                    ostree_deployment_get_osname (target_deployment),
                                    ostree_deployment_get_csum (target_deployment),

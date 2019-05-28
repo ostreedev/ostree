@@ -27,8 +27,6 @@
 #include "ostree.h"
 #include "otutil.h"
 
-#include "../libostree/ostree-kernel-args.h"
-
 #include <glib/gi18n.h>
 #include <err.h>
 

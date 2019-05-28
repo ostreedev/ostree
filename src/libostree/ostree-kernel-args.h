@@ -19,41 +19,88 @@
 
 #pragma once
 
-#include "libglnx.h"
+#include <gio/gio.h>
+#include <glib.h>
+#include <glib-object.h>
+#include "ostree-types.h"
 
 G_BEGIN_DECLS
 
 typedef struct _OstreeKernelArgs OstreeKernelArgs;
-void _ostree_kernel_args_free (OstreeKernelArgs *kargs);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeKernelArgs, _ostree_kernel_args_free);
 
-OstreeKernelArgs *_ostree_kernel_args_new (void);
-void _ostree_kernel_args_replace_take (OstreeKernelArgs  *kargs,
-                                       char              *key);
-void _ostree_kernel_args_replace (OstreeKernelArgs  *kargs,
-                                  const char        *key);
-void _ostree_kernel_args_replace_argv (OstreeKernelArgs  *kargs,
+_OSTREE_PUBLIC
+void ostree_kernel_args_free (OstreeKernelArgs *kargs);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeKernelArgs, ostree_kernel_args_free)
+
+GHashTable* _ostree_kernel_arg_get_kargs_table (OstreeKernelArgs *kargs);
+
+GPtrArray* _ostree_kernel_arg_get_key_array (OstreeKernelArgs *kargs);
+
+_OSTREE_PUBLIC
+OstreeKernelArgs *ostree_kernel_args_new (void);
+
+_OSTREE_PUBLIC
+void ostree_kernel_args_cleanup (void *loc);
+
+_OSTREE_PUBLIC
+void ostree_kernel_args_replace_take (OstreeKernelArgs  *kargs,
+                                       char              *arg);
+
+_OSTREE_PUBLIC
+void ostree_kernel_args_replace (OstreeKernelArgs  *kargs,
+                                  const char        *arg);
+
+_OSTREE_PUBLIC
+void ostree_kernel_args_replace_argv (OstreeKernelArgs  *kargs,
                                        char             **argv);
-void _ostree_kernel_args_append (OstreeKernelArgs  *kargs,
-                                 const char     *key);
-void _ostree_kernel_args_append_argv (OstreeKernelArgs  *kargs,
+
+_OSTREE_PUBLIC
+void ostree_kernel_args_append (OstreeKernelArgs  *kargs,
+                                 const char     *arg);
+
+_OSTREE_PUBLIC
+void ostree_kernel_args_append_argv (OstreeKernelArgs  *kargs,
                                       char **argv);
-void _ostree_kernel_args_append_argv_filtered (OstreeKernelArgs  *kargs,
+
+_OSTREE_PUBLIC
+void ostree_kernel_args_append_argv_filtered (OstreeKernelArgs  *kargs,
                                                char **argv,
                                                char **prefixes);
 
-gboolean _ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
+_OSTREE_PUBLIC
+gboolean ostree_kernel_args_new_replace (OstreeKernelArgs *kargs,
+                                          const char       *arg,
+                                          GError          **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_kernel_args_delete (OstreeKernelArgs *kargs,
+                                     const char       *arg,
+                                     GError           **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_kernel_args_delete_key_entry (OstreeKernelArgs *kargs,
+                                               const char       *key,
+                                               GError          **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
                                                   GCancellable     *cancellable,
                                                   GError          **error);
 
-void _ostree_kernel_args_parse_append (OstreeKernelArgs *kargs,
+_OSTREE_PUBLIC
+void ostree_kernel_args_parse_append (OstreeKernelArgs *kargs,
                                        const char *options);
 
-const char *_ostree_kernel_args_get_last_value (OstreeKernelArgs *kargs, const char *key);
+_OSTREE_PUBLIC
+const char *ostree_kernel_args_get_last_value (OstreeKernelArgs *kargs, const char *key);
 
-OstreeKernelArgs * _ostree_kernel_args_from_string (const char *options);
+_OSTREE_PUBLIC
+OstreeKernelArgs * ostree_kernel_args_from_string (const char *options);
 
-char ** _ostree_kernel_args_to_strv (OstreeKernelArgs *kargs);
-char * _ostree_kernel_args_to_string (OstreeKernelArgs *kargs);
+_OSTREE_PUBLIC
+char ** ostree_kernel_args_to_strv (OstreeKernelArgs *kargs);
+
+_OSTREE_PUBLIC
+char * ostree_kernel_args_to_string (OstreeKernelArgs *kargs);
 
 G_END_DECLS

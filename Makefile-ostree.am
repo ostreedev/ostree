@@ -125,7 +125,7 @@ ostree_bin_shared_ldadd = $(AM_LDFLAGS) libglnx.la libotutil.la libostree-1.la \
 	$(OT_INTERNAL_GIO_UNIX_LIBS)
 
 ostree_CFLAGS = $(ostree_bin_shared_cflags)
-ostree_LDADD = $(ostree_bin_shared_ldadd) libbsdiff.la libostree-kernel-args.la $(LIBSYSTEMD_LIBS)
+ostree_LDADD = $(ostree_bin_shared_ldadd) libbsdiff.la $(LIBSYSTEMD_LIBS)
 
 
 if USE_CURL_OR_SOUP

@@ -1759,7 +1759,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
 
   val = ostree_bootconfig_parser_get (bootconfig, "options");
-  g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_from_string (val);
+  g_autoptr(OstreeKernelArgs) kargs = ostree_kernel_args_from_string (val);
 
   if (kernel_layout->initramfs_namever)
     {
@@ -1772,7 +1772,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
       prepare_root_arg = g_strdup_printf ("init=/ostree/boot.%d/%s/%s/%d/usr/lib/ostree/ostree-prepare-root",
                                              new_bootversion, osname, bootcsum,
                                              ostree_deployment_get_bootserial (deployment));
-      _ostree_kernel_args_replace_take (kargs, g_steal_pointer (&prepare_root_arg));
+      ostree_kernel_args_replace_take (kargs, g_steal_pointer (&prepare_root_arg));
     }
 
   if (kernel_layout->devicetree_namever)
@@ -1785,9 +1785,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   g_autofree char *ostree_kernel_arg = g_strdup_printf ("ostree=/ostree/boot.%d/%s/%s/%d",
                                        new_bootversion, osname, bootcsum,
                                        ostree_deployment_get_bootserial (deployment));
-  _ostree_kernel_args_replace_take (kargs, g_steal_pointer (&ostree_kernel_arg));
+  ostree_kernel_args_replace_take (kargs, g_steal_pointer (&ostree_kernel_arg));
 
-  g_autofree char *options_key = _ostree_kernel_args_to_string (kargs);
+  g_autofree char *options_key = ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
 
   glnx_autofd int bootconf_dfd = -1;
@@ -1895,9 +1895,9 @@ get_deployment_nonostree_kargs (OstreeDeployment *deployment)
   /* pick up kernel arguments but filter out ostree= */
   OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
   const char *boot_options = ostree_bootconfig_parser_get (bootconfig, "options");
-  g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_from_string (boot_options);
-  _ostree_kernel_args_replace (kargs, "ostree");
-  return _ostree_kernel_args_to_string (kargs);
+  g_autoptr(OstreeKernelArgs) kargs = ostree_kernel_args_from_string (boot_options);
+  ostree_kernel_args_replace (kargs, "ostree");
+  return ostree_kernel_args_to_string (kargs);
 }
 
 static char*
@@ -2463,9 +2463,9 @@ _ostree_deployment_set_bootconfig_from_kargs (OstreeDeployment *deployment,
    */
   if (override_kernel_argv)
     {
-      g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_new ();
-      _ostree_kernel_args_append_argv (kargs, override_kernel_argv);
-      g_autofree char *new_options = _ostree_kernel_args_to_string (kargs);
+      g_autoptr(OstreeKernelArgs) kargs = ostree_kernel_args_new ();
+      ostree_kernel_args_append_argv (kargs, override_kernel_argv);
+      g_autofree char *new_options = ostree_kernel_args_to_string (kargs);
       ostree_bootconfig_parser_set (bootconfig, "options", new_options);
     }
 }
@@ -3004,9 +3004,9 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
   g_autoptr(OstreeDeployment) new_deployment = ostree_deployment_clone (deployment);
   OstreeBootconfigParser *new_bootconfig = ostree_deployment_get_bootconfig (new_deployment);
 
-  g_autoptr(OstreeKernelArgs) kargs = _ostree_kernel_args_new ();
-  _ostree_kernel_args_append_argv (kargs, new_kargs);
-  g_autofree char *new_options = _ostree_kernel_args_to_string (kargs);
+  g_autoptr(OstreeKernelArgs) kargs = ostree_kernel_args_new ();
+  ostree_kernel_args_append_argv (kargs, new_kargs);
+  g_autofree char *new_options = ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (new_bootconfig, "options", new_options);
 
   g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);

@@ -78,7 +78,6 @@ IGNORE_HFILES= \
 	ostree-fetcher.h \
 	ostree-gpg-verifier.h \
 	ostree-gpg-verify-result-private.h \
-	ostree-kernel-args.h \
 	ostree-libarchive-input-stream.h \
 	ostree-lzma-compressor.h \
 	ostree-lzma-decompressor.h \

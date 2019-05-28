@@ -62,3 +62,4 @@
 #include <ot-checksum-utils.h>
 #include <ot-gpg-utils.h>
 #include <ot-checksum-instream.h>
+#include <ot-tool-util.h>
