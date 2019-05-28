@@ -35,6 +35,7 @@ gir:
   before_script:
   - rm -f target/tools/bin/gir
   script:
+  - rm -rf src/auto/
   - make gir
   - git diff -R --exit-code
 
