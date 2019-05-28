@@ -62,3 +62,55 @@ ot_parse_keyvalue (const char  *keyvalue,
   *out_value = g_strdup (eq + 1);
   return TRUE;
 }
+
+/**
+ * Note: temporarily copied from GLib: https://github.com/GNOME/glib/blob/a419146578a42c760cff684292465b38df855f75/glib/garray.c#L1664
+ * See documentation at: https://developer.gnome.org/glib/stable/glib-Pointer-Arrays.html#g-ptr-array-find-with-equal-func
+ *
+ * ot_ptr_array_find_with_equal_func: (skip)
+ * @haystack: pointer array to be searched
+ * @needle: pointer to look for
+ * @equal_func: (nullable): the function to call for each element, which should
+ *    return %TRUE when the desired element is found; or %NULL to use pointer
+ *    equality
+ * @index_: (optional) (out caller-allocates): return location for the index of
+ *    the element, if found
+ *
+ * Checks whether @needle exists in @haystack, using the given @equal_func.
+ * If the element is found, %TRUE is returned and the element’s index is
+ * returned in @index_ (if non-%NULL). Otherwise, %FALSE is returned and @index_
+ * is undefined. If @needle exists multiple times in @haystack, the index of
+ * the first instance is returned.
+ *
+ * @equal_func is called with the element from the array as its first parameter,
+ * and @needle as its second parameter. If @equal_func is %NULL, pointer
+ * equality is used.
+ *
+ * Returns: %TRUE if @needle is one of the elements of @haystack
+ * Since: 2.54
+ */
+gboolean
+ot_ptr_array_find_with_equal_func (GPtrArray     *haystack,
+                                   gconstpointer  needle,
+                                   GEqualFunc     equal_func,
+                                   guint         *index_)
+{
+  guint i;
+
+  g_return_val_if_fail (haystack != NULL, FALSE);
+
+  if (equal_func == NULL)
+    equal_func = g_direct_equal;
+
+  for (i = 0; i < haystack->len; i++)
+    {
+      if (equal_func (g_ptr_array_index (haystack, i), needle))
+        {
+          if (index_ != NULL)
+            *index_ = i;
+          return TRUE;
+        }
+    }
+
+  return FALSE;
+}

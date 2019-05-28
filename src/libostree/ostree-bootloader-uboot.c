@@ -78,8 +78,8 @@ append_system_uenv (OstreeBootloaderUboot   *self,
   const char *uenv_path = NULL;
   const char *ostree_arg = NULL;
 
-  kargs = _ostree_kernel_args_from_string (bootargs);
-  ostree_arg = _ostree_kernel_args_get_last_value (kargs, "ostree");
+  kargs = ostree_kernel_args_from_string (bootargs);
+  ostree_arg = ostree_kernel_args_get_last_value (kargs, "ostree");
   if (!ostree_arg)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,

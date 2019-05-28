@@ -21,8 +21,6 @@
 
 include Makefile-libostree-defines.am
 
-noinst_LTLIBRARIES += libostree-kernel-args.la
-
 
 if ENABLE_RUST
 bupsplitpath = @abs_top_builddir@/target/@RUST_TARGET_SUBDIR@/libbupsplit_rs.a
@@ -35,13 +33,6 @@ bupsplitpath = libbupsplit.la
 noinst_LTLIBRARIES += libbupsplit.la
 libbupsplit_la_SOURCES = src/libostree/bupsplit.h src/libostree/bupsplit.c
 endif # ENABLE_RUST
-
-libostree_kernel_args_la_SOURCES = \
-	src/libostree/ostree-kernel-args.h \
-	src/libostree/ostree-kernel-args.c \
-	$(NULL)
-libostree_kernel_args_la_CFLAGS = -I$(srcdir)/libglnx $(OT_INTERNAL_GIO_UNIX_CFLAGS)
-libostree_kernel_args_la_LIBADD = $(OT_INTERNAL_GIO_UNIX_LIBS)
 
 lib_LTLIBRARIES += libostree-1.la
 
@@ -147,6 +138,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo-finder-config.c \
 	src/libostree/ostree-repo-finder-mount.c \
 	src/libostree/ostree-repo-finder-override.c \
+	src/libostree/ostree-kernel-args.h \
+	src/libostree/ostree-kernel-args.c \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
@@ -191,7 +184,7 @@ libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) \
 	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern'
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions $(addprefix $(wl_versionscript_arg),$(symbol_files))
-libostree_1_la_LIBADD = libotutil.la libglnx.la libbsdiff.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) \
+libostree_1_la_LIBADD = libotutil.la libglnx.la libbsdiff.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) \
                         $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS) $(OT_DEP_CRYPTO_LIBS)
 # Some change between rust-1.21.0-1.fc27 and rust-1.22.1-1.fc27.x86_64
 if ENABLE_RUST
