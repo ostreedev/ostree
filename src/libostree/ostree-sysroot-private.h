@@ -23,7 +23,6 @@
 
 #include "libglnx.h"
 #include "ostree.h"
-#include "ostree-kernel-args.h"
 #include "ostree-bootloader.h"
 
 G_BEGIN_DECLS

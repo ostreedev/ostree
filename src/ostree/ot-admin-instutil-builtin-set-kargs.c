@@ -26,8 +26,7 @@
 #include "ot-admin-instutil-builtins.h"
 
 #include "otutil.h"
-
-#include "../libostree/ostree-kernel-args.h"
+#include "ostree.h"
 
 static gboolean opt_proc_cmdline;
 static gboolean opt_merge;
@@ -69,14 +68,14 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocat
     }
   first_deployment = deployments->pdata[0];
 
-  kargs = _ostree_kernel_args_new ();
+  kargs = ostree_kernel_args_new ();
 
   /* If they want the current kernel's args, they very likely don't
    * want the ones from the merge.
    */
   if (opt_proc_cmdline)
     {
-      if (!_ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
+      if (!ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
         goto out;
     }
   else if (opt_merge)
@@ -84,24 +83,24 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocat
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (first_deployment);
       g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
 
-      _ostree_kernel_args_append_argv (kargs, previous_args);
+      ostree_kernel_args_append_argv (kargs, previous_args);
     }
 
   if (opt_replace)
     {
-      _ostree_kernel_args_replace_argv (kargs, opt_replace);
+      ostree_kernel_args_replace_argv (kargs, opt_replace);
     }
 
   if (opt_append)
     {
-      _ostree_kernel_args_append_argv (kargs, opt_append);
+      ostree_kernel_args_append_argv (kargs, opt_append);
     }
 
   for (i = 1; i < argc; i++)
-    _ostree_kernel_args_append (kargs, argv[i]);
+    ostree_kernel_args_append (kargs, argv[i]);
 
   {
-    g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
+    g_auto(GStrv) kargs_strv = ostree_kernel_args_to_strv (kargs);
 
     if (!ostree_sysroot_deployment_set_kargs (sysroot, first_deployment,
                                               kargs_strv,

@@ -29,8 +29,6 @@
 #include "ostree.h"
 #include "otutil.h"
 
-#include "../libostree/ostree-kernel-args.h"
-
 #include <glib/gi18n.h>
 
 static gboolean opt_retain;
@@ -133,20 +131,20 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
   g_autoptr(OstreeKernelArgs) kargs = NULL;
   if (opt_kernel_arg_none)
     {
-      kargs = _ostree_kernel_args_new ();
+      kargs = ostree_kernel_args_new ();
     }
   else if (opt_kernel_proc_cmdline)
     {
-      kargs = _ostree_kernel_args_new ();
-      if (!_ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
+      kargs = ostree_kernel_args_new ();
+      if (!ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
         return FALSE;
     }
   else if (merge_deployment && (opt_kernel_argv || opt_kernel_argv_append))
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
       g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
-      kargs = _ostree_kernel_args_new ();
-      _ostree_kernel_args_append_argv (kargs, previous_args);
+      kargs = ostree_kernel_args_new ();
+      ostree_kernel_args_append_argv (kargs, previous_args);
     }
 
   /* Now replace/extend the above set.  Note that if no options are specified,
@@ -156,19 +154,19 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
   if (opt_kernel_argv)
     {
       if (!kargs)
-        kargs = _ostree_kernel_args_new ();
-      _ostree_kernel_args_replace_argv (kargs, opt_kernel_argv);
+        kargs = ostree_kernel_args_new ();
+      ostree_kernel_args_replace_argv (kargs, opt_kernel_argv);
     }
 
   if (opt_kernel_argv_append)
     {
       if (!kargs)
-        kargs = _ostree_kernel_args_new ();
-      _ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
+        kargs = ostree_kernel_args_new ();
+      ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
     }
 
   g_autoptr(OstreeDeployment) new_deployment = NULL;
-  g_auto(GStrv) kargs_strv = kargs ? _ostree_kernel_args_to_strv (kargs) : NULL;
+  g_auto(GStrv) kargs_strv = kargs ? ostree_kernel_args_to_strv (kargs) : NULL;
   if (opt_stage)
     {
       if (opt_retain_pending || opt_retain_rollback)

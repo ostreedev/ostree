@@ -22,3 +22,4 @@ test-repo-finder-avahi
 test-repo-finder-config
 test-repo-finder-mount
 test-rollsum-cli
+test-kargs
