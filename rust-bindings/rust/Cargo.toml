@@ -16,6 +16,7 @@ exclude = [
     "gir-files/**",
     "sys/**",
     ".gitlab-ci.yml",
+    "LICENSE.LGPL*",
 ]
 
 [package.metadata.docs.rs]

@@ -89,3 +89,11 @@ details.
 libostree itself is licensed under the LGPL2+. See its
 [licensing information](https://ostree.readthedocs.io#licensing) for more
 information.
+
+The libostree GIR file (`gir-files/OSTree-1.0.gir`) is derived from the 
+libostree source code and is also licensed under the LGPL2+. A copy of the
+LGPL version 2 is included in the LICENSE.LGPL2 file.
+
+The remaining GIR files (`gir-files/*.gir`) are from the glib project and
+are licensed under the LGPL2.1+. A copy of the LGPL version 2.1 is included
+in the LICENSE.LGPL2.1 file. 
