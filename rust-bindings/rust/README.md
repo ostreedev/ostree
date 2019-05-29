@@ -30,7 +30,7 @@ To use the crate, add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ostree = "0.2"
+ostree = "0.3"
 ```
 
 To use features from later libostree versions, you need to specify the release
@@ -38,7 +38,7 @@ version as well:
 
 ```toml
 [dependencies.ostree]
-version = "0.2"
+version = "0.3"
 features = ["v2018_7"]
 ```
 
@@ -61,6 +61,9 @@ Run the following command to update the bundled gir files:
 $ make update-gir-files
 ```
 
+The `OSTree-1.0.gir` file needs to be updated manually, either from a recent
+Debian package (`libostree-dev`) or by building from source.
+
 ### Documentation
 The libostree API documentation is not included in the code by default because
 of its LGPL license. This means normal `cargo doc` runs don't include API docs
@@ -71,7 +74,7 @@ the API docs in the source so they can be consumed by `cargo doc`:
 $ make merge-lgpl-docs
 ```
 
-Keep in mind that if you build the crate with the API docs included, it is
+Keep in mind that if you build the crate with the API docs included, it's
 effectively LGPL-licensed and you need to comply with the LGPL requirements
 (specifically, allowing users of your end product to swap out the LGPL'd
 parts).
@@ -81,6 +84,12 @@ CI includes the LGPL docs in the documentation build.
 ### Releases
 Releases can be done using the publish_* jobs in the pipeline. There's no
 versioning helper yet so version bumps need to be done manually.
+
+The version needs to be changed in the following places (if applicable):
+* in `sys/Cargo.toml` for the -sys crate version
+* in the `ostree-sys =` dependency in `Cargo.toml`
+* in `Cargo.toml` for the main crate version
+* in `README.md` in the *Installing* section in case of major version bumps
 
 ## License
 The `ostree` crate is licensed under the MIT license. See the LICENSE file for
