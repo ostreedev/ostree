@@ -31,7 +31,7 @@ check:
   script:
   - rustup component add clippy rustfmt
   - cargo fmt --all -- --check
-  - cargo clippy --all ${CURRENT_FEATURES}
+  - cargo clippy --all ${CURRENT_FEATURES} -- -D warnings
 
 gir:
   stage: check
