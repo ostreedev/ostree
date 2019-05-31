@@ -1,11 +1,15 @@
-use glib::translate::{Stash, ToGlib, ToGlibPtr};
+use glib::translate::{FromGlibPtrNone, Stash, ToGlib, ToGlibPtr};
+use glib_sys::gpointer;
 use libc::c_char;
-use ostree_sys::OstreeRepoCheckoutAtOptions;
-use std::path::PathBuf;
+use ostree_sys::{OstreeRepo, OstreeRepoCheckoutAtOptions, OstreeRepoCheckoutFilterResult};
+use std::path::{Path, PathBuf};
+use {Repo, RepoCheckoutFilterResult};
 use {RepoCheckoutMode, RepoCheckoutOverwriteMode};
 use {RepoDevInoCache, SePolicy};
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+pub type RepoCheckoutFilter =
+    Option<Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>>;
+
 pub struct RepoCheckoutAtOptions {
     pub mode: RepoCheckoutMode,
     pub overwrite_mode: RepoCheckoutOverwriteMode,
@@ -18,9 +22,8 @@ pub struct RepoCheckoutAtOptions {
     pub force_copy_zerosized: bool,
     pub subpath: Option<PathBuf>,
     pub devino_to_csum_cache: Option<RepoDevInoCache>,
-    // TODO: those thingamajigs
-    // pub filter: OstreeRepoCheckoutFilter,
-    // pub filter_user_data: gpointer,
+    // TODO: might be interesting to turn this into a type parameter
+    pub filter: RepoCheckoutFilter,
     pub sepolicy: Option<SePolicy>,
     pub sepolicy_prefix: Option<String>,
 }
@@ -39,6 +42,7 @@ impl Default for RepoCheckoutAtOptions {
             force_copy_zerosized: false,
             subpath: None,
             devino_to_csum_cache: None,
+            filter: None,
             sepolicy: None,
             sepolicy_prefix: None,
         }
@@ -46,6 +50,21 @@ impl Default for RepoCheckoutAtOptions {
 }
 
 type StringStash<'a, T> = Stash<'a, *const c_char, Option<T>>;
+
+unsafe extern "C" fn filter_trampoline(
+    repo: *mut OstreeRepo,
+    path: *const c_char,
+    stat: *mut libc::stat,
+    user_data: gpointer,
+) -> OstreeRepoCheckoutFilterResult {
+    // TODO: handle unwinding
+    let closure =
+        user_data as *const Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>;
+    let repo = FromGlibPtrNone::from_glib_none(repo);
+    let path: PathBuf = FromGlibPtrNone::from_glib_none(path);
+    let result = (*closure)(&repo, &path, &*stat);
+    result.to_glib()
+}
 
 impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOptions {
     type Storage = (
@@ -75,6 +94,21 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
         let sepolicy = self.sepolicy.to_glib_none();
         options.sepolicy = sepolicy.0;
 
+        if let Some(filter) = &self.filter {
+            options.filter_user_data = filter
+                as *const Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>
+                as gpointer;
+            options.filter = Some(
+                filter_trampoline
+                    as unsafe extern "C" fn(
+                        *mut OstreeRepo,
+                        *const c_char,
+                        *mut libc::stat,
+                        gpointer,
+                    ) -> OstreeRepoCheckoutFilterResult,
+            );
+        }
+
         Stash(options.as_ref(), (options, subpath, sepolicy_prefix))
     }
 }
@@ -83,7 +117,7 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
 mod tests {
     use super::*;
     use gio::{File, NONE_CANCELLABLE};
-    use glib_sys::{GFALSE, GTRUE};
+    use glib_sys::{gpointer, GFALSE, GTRUE};
     use ostree_sys::{
         OSTREE_REPO_CHECKOUT_MODE_NONE, OSTREE_REPO_CHECKOUT_MODE_USER,
         OSTREE_REPO_CHECKOUT_OVERWRITE_NONE, OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL,
@@ -132,6 +166,9 @@ mod tests {
             force_copy_zerosized: true,
             subpath: Some("sub/path".into()),
             devino_to_csum_cache: Some(RepoDevInoCache::new()),
+            filter: Some(Box::new(|_repo, _path, _stat| {
+                RepoCheckoutFilterResult::Skip
+            })),
             sepolicy: Some(SePolicy::new(&File::new_for_path("a/b"), NONE_CANCELLABLE).unwrap()),
             sepolicy_prefix: Some("prefix".into()),
         };
@@ -161,8 +198,25 @@ mod tests {
             );
             assert_eq!((*ptr).unused_ints, [0; 6]);
             assert_eq!((*ptr).unused_ptrs, [ptr::null_mut(); 3]);
-            assert_eq!((*ptr).filter, None);
-            assert_eq!((*ptr).filter_user_data, ptr::null_mut());
+            assert_eq!(
+                (*ptr).filter,
+                Some(
+                    filter_trampoline
+                        as unsafe extern "C" fn(
+                            *mut OstreeRepo,
+                            *const c_char,
+                            *mut libc::stat,
+                            gpointer,
+                        )
+                            -> OstreeRepoCheckoutFilterResult
+                )
+            );
+            assert_eq!(
+                (*ptr).filter_user_data,
+                options.filter.as_ref().unwrap()
+                    as *const Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>
+                    as gpointer
+            );
             assert_eq!((*ptr).sepolicy, options.sepolicy.to_glib_none().0);
             assert_eq!(
                 CStr::from_ptr((*ptr).sepolicy_prefix),

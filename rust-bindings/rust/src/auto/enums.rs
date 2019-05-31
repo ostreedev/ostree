@@ -242,6 +242,53 @@ impl FromGlib<ostree_sys::OstreeObjectType> for ObjectType {
     }
 }
 
+#[cfg(any(feature = "v2018_2", feature = "dox"))]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy)]
+pub enum RepoCheckoutFilterResult {
+    Allow,
+    Skip,
+    #[doc(hidden)]
+    __Unknown(i32),
+}
+
+#[cfg(any(feature = "v2018_2", feature = "dox"))]
+impl fmt::Display for RepoCheckoutFilterResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoCheckoutFilterResult::{}", match *self {
+            RepoCheckoutFilterResult::Allow => "Allow",
+            RepoCheckoutFilterResult::Skip => "Skip",
+            _ => "Unknown",
+        })
+    }
+}
+
+#[cfg(any(feature = "v2018_2", feature = "dox"))]
+#[doc(hidden)]
+impl ToGlib for RepoCheckoutFilterResult {
+    type GlibType = ostree_sys::OstreeRepoCheckoutFilterResult;
+
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCheckoutFilterResult {
+        match *self {
+            RepoCheckoutFilterResult::Allow => ostree_sys::OSTREE_REPO_CHECKOUT_FILTER_ALLOW,
+            RepoCheckoutFilterResult::Skip => ostree_sys::OSTREE_REPO_CHECKOUT_FILTER_SKIP,
+            RepoCheckoutFilterResult::__Unknown(value) => value
+        }
+    }
+}
+
+#[cfg(any(feature = "v2018_2", feature = "dox"))]
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeRepoCheckoutFilterResult> for RepoCheckoutFilterResult {
+    fn from_glib(value: ostree_sys::OstreeRepoCheckoutFilterResult) -> Self {
+        match value {
+            0 => RepoCheckoutFilterResult::Allow,
+            1 => RepoCheckoutFilterResult::Skip,
+            value => RepoCheckoutFilterResult::__Unknown(value),
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 pub enum RepoCheckoutMode {

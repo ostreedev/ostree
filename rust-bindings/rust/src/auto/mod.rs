@@ -71,6 +71,8 @@ pub use self::enums::DeploymentUnlockedState;
 pub use self::enums::GpgSignatureAttr;
 pub use self::enums::GpgSignatureFormatFlags;
 pub use self::enums::ObjectType;
+#[cfg(any(feature = "v2018_2", feature = "dox"))]
+pub use self::enums::RepoCheckoutFilterResult;
 pub use self::enums::RepoCheckoutMode;
 pub use self::enums::RepoCheckoutOverwriteMode;
 pub use self::enums::RepoMode;
