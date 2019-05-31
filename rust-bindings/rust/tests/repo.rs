@@ -12,10 +12,9 @@ use util::*;
 use gio::prelude::*;
 use gio::NONE_CANCELLABLE;
 use glib::prelude::*;
-use ostree::{
-    ObjectName, ObjectType, RepoCheckoutAtOptions, RepoCheckoutFilterResult, RepoCheckoutMode,
-    RepoCheckoutOverwriteMode, RepoDevInoCache,
-};
+use ostree::ObjectType;
+use ostree::*;
+#[cfg(feature = "v2016_8")]
 use std::os::unix::io::AsRawFd;
 
 #[test]
