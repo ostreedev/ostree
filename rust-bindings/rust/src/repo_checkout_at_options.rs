@@ -1,6 +1,6 @@
 use glib::translate::{Stash, ToGlib, ToGlibPtr};
+use libc::c_char;
 use ostree_sys::OstreeRepoCheckoutAtOptions;
-use std::os::raw::c_char;
 use std::path::PathBuf;
 use {RepoCheckoutMode, RepoCheckoutOverwriteMode};
 use {RepoDevInoCache, SePolicy};
@@ -18,6 +18,7 @@ pub struct RepoCheckoutAtOptions {
     pub force_copy_zerosized: bool,
     pub subpath: Option<PathBuf>,
     pub devino_to_csum_cache: Option<RepoDevInoCache>,
+    // TODO: those thingamajigs
     // pub filter: OstreeRepoCheckoutFilter,
     // pub filter_user_data: gpointer,
     pub sepolicy: Option<SePolicy>,
@@ -62,15 +63,15 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
         options.force_copy = self.force_copy.to_glib();
         options.bareuseronly_dirs = self.bareuseronly_dirs.to_glib();
         options.force_copy_zerosized = self.force_copy_zerosized.to_glib();
+
         let subpath = self.subpath.to_glib_none();
         options.subpath = subpath.0;
         let sepolicy_prefix = self.sepolicy_prefix.to_glib_none();
         options.sepolicy_prefix = sepolicy_prefix.0;
-
-        /*
-        devino_to_csum_cache: None,
-        sepolicy: None,
-        */
+        let devino_to_csum_cache = self.devino_to_csum_cache.to_glib_none();
+        options.devino_to_csum_cache = devino_to_csum_cache.0;
+        let sepolicy = self.sepolicy.to_glib_none();
+        options.sepolicy = sepolicy.0;
 
         Stash(options.as_ref(), (options, subpath, sepolicy_prefix))
     }
@@ -152,12 +153,15 @@ mod tests {
                 CStr::from_ptr((*ptr).subpath),
                 CString::new("sub/path").unwrap().as_c_str()
             );
-            assert_ne!((*ptr).devino_to_csum_cache, ptr::null_mut());
+            assert_eq!(
+                (*ptr).devino_to_csum_cache,
+                options.devino_to_csum_cache.to_glib_none().0
+            );
             assert_eq!((*ptr).unused_ints, [0; 6]);
             assert_eq!((*ptr).unused_ptrs, [ptr::null_mut(); 3]);
             assert_eq!((*ptr).filter, None);
             assert_eq!((*ptr).filter_user_data, ptr::null_mut());
-            assert_ne!((*ptr).sepolicy, ptr::null_mut());
+            assert_eq!((*ptr).sepolicy, options.sepolicy.to_glib_none().0);
             assert_eq!(
                 CStr::from_ptr((*ptr).sepolicy_prefix),
                 CString::new("prefix").unwrap().as_c_str()

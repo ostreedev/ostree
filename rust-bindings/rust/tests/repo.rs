@@ -99,6 +99,7 @@ fn should_checkout_tree() {
 }
 
 #[test]
+#[cfg(feature = "v2016_8")]
 fn should_checkout_at_with_none_options() {
     let test_repo = TestRepo::new();
     let checksum = test_repo.test_commit("test");
@@ -120,6 +121,7 @@ fn should_checkout_at_with_none_options() {
 }
 
 #[test]
+#[cfg(feature = "v2016_8")]
 fn should_checkout_at_with_options() {
     let test_repo = TestRepo::new();
     let checksum = test_repo.test_commit("test");
