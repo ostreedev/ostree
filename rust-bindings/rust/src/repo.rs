@@ -54,7 +54,7 @@ impl Repo {
                 commit_checksum.to_glib_none().0,
                 maxdepth,
                 &mut hashtable,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                cancellable.map(AsRef::as_ref).to_glib_none().0,
                 &mut error,
             );
             if error.is_null() {
@@ -77,7 +77,7 @@ impl Repo {
                 self.to_glib_none().0,
                 refspec_prefix.to_glib_none().0,
                 &mut hashtable,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                cancellable.map(AsRef::as_ref).to_glib_none().0,
                 &mut error,
             );
 
@@ -104,7 +104,7 @@ impl Repo {
                 refspec_prefix.to_glib_none().0,
                 &mut hashtable,
                 flags.to_glib(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                cancellable.map(AsRef::as_ref).to_glib_none().0,
                 &mut error,
             );
 
