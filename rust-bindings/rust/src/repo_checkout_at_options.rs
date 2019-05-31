@@ -45,11 +45,13 @@ impl Default for RepoCheckoutAtOptions {
     }
 }
 
+type StringStash<'a, T> = Stash<'a, *const c_char, Option<T>>;
+
 impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOptions {
     type Storage = (
         Box<OstreeRepoCheckoutAtOptions>,
-        Stash<'a, *const c_char, Option<PathBuf>>,
-        Stash<'a, *const c_char, Option<String>>,
+        StringStash<'a, PathBuf>,
+        StringStash<'a, String>,
     );
 
     fn to_glib_none(&'a self) -> Stash<*const OstreeRepoCheckoutAtOptions, Self> {
