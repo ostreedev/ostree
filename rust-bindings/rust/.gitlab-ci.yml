@@ -1,8 +1,6 @@
 image: rust:latest
 
 variables:
-  # --all-features
-  CURRENT_FEATURES: --features v2018_9
   SCCACHE_URL: https://github.com/mozilla/sccache/releases/download/0.2.8/sccache-0.2.8-x86_64-unknown-linux-musl.tar.gz
   CARGO_TARGET_DIR: ${CI_PROJECT_DIR}/target
   CARGO_HOME: ${CI_PROJECT_DIR}/cargo
@@ -35,18 +33,24 @@ check:
   - git diff -R --exit-code
 
 # build
-ostree:
+.build-step: &build-step
   stage: build
   script:
   - rustup component add clippy
-  - cargo clippy --all ${CURRENT_FEATURES} -- -D warnings
-  - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
-  - cargo test --verbose ${CURRENT_FEATURES}
+  - cargo clippy --all ${FEATURES} -- -D warnings
+  - cargo test --verbose --manifest-path sys/Cargo.toml ${FEATURES}
+  - cargo test --verbose ${FEATURES}
 
-ostree_default_features:
-  stage: build
-  script:
-  - cargo test --verbose
+ostree:
+  <<: *build-step
+  variables:
+    # TODO: need to switch back to --all-features
+    FEATURES: --features v2018_9
+
+ostree_default-features:
+  <<: *build-step
+  variables:
+    FEATURES: ""
 
 # docs
 docs:
