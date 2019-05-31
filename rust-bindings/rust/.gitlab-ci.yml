@@ -30,9 +30,10 @@ check:
   stage: check
   script:
   - rustup component add clippy rustfmt
-  - cargo check --all ${CURRENT_FEATURES}
-  - cargo clippy --all ${CURRENT_FEATURES}
   - cargo fmt --all -- --check
+  - cargo check --all ${CURRENT_FEATURES}
+  - touch src/lib.rs # force clippy
+  - cargo clippy --all ${CURRENT_FEATURES}
 
 gir:
   stage: check
