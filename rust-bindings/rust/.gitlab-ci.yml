@@ -21,55 +21,32 @@ cache:
   - sccache/
 
 stages:
-- check
 - build
 - publish
 
-# checks
+# format and freshness checks
 check:
-  stage: check
+  stage: build
   script:
-  - rustup component add clippy rustfmt
+  - rustup component add rustfmt
   - cargo fmt --all -- --check
-  - cargo clippy --all ${CURRENT_FEATURES} -- -D warnings
-
-gir:
-  stage: check
-  script:
   - rm -rf src/auto/
   - make gir
   - git diff -R --exit-code
 
-# ostree-sys
-ostree-sys:
-  stage: build
-  script:
-  - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
-
-publish_ostree-sys:
-  stage: publish
-  script:
-  - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
-  cache: {}
-  when: manual
-
-# ostree
+# build
 ostree:
   stage: build
   script:
+  - rustup component add clippy
+  - cargo clippy --all ${CURRENT_FEATURES} -- -D warnings
+  - cargo test --verbose --manifest-path sys/Cargo.toml ${CURRENT_FEATURES}
   - cargo test --verbose ${CURRENT_FEATURES}
 
 ostree_default_features:
   stage: build
   script:
   - cargo test --verbose
-
-publish_ostree:
-  stage: publish
-  script:
-  - cargo publish --verbose --token $CRATES_IO_TOKEN
-  cache: {}
-  when: manual
 
 # docs
 docs:
@@ -103,3 +80,18 @@ pages:
     - public
   only:
   - master
+
+# publish
+publish_ostree-sys:
+  stage: publish
+  script:
+  - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
+  cache: {}
+  when: manual
+
+publish_ostree:
+  stage: publish
+  script:
+  - cargo publish --verbose --token $CRATES_IO_TOKEN
+  cache: {}
+  when: manual
