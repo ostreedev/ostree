@@ -14,6 +14,7 @@ use gio::NONE_CANCELLABLE;
 use glib::prelude::*;
 use ostree::{
     ObjectName, ObjectType, RepoCheckoutAtOptions, RepoCheckoutMode, RepoCheckoutOverwriteMode,
+    RepoDevInoCache,
 };
 use std::os::unix::io::AsRawFd;
 
@@ -122,6 +123,28 @@ fn should_checkout_at_with_none_options() {
 
 #[test]
 #[cfg(feature = "v2016_8")]
+fn should_checkout_at_with_default_options() {
+    let test_repo = TestRepo::new();
+    let checksum = test_repo.test_commit("test");
+    let checkout_dir = tempfile::tempdir().expect("checkout dir");
+
+    let dirfd = openat::Dir::open(checkout_dir.path()).expect("openat");
+    test_repo
+        .repo
+        .checkout_at(
+            Some(&RepoCheckoutAtOptions::default()),
+            dirfd.as_raw_fd(),
+            "test-checkout",
+            &checksum,
+            NONE_CANCELLABLE,
+        )
+        .expect("checkout at");
+
+    assert_test_file(checkout_dir.path());
+}
+
+#[test]
+#[cfg(feature = "v2016_8")]
 fn should_checkout_at_with_options() {
     let test_repo = TestRepo::new();
     let checksum = test_repo.test_commit("test");
@@ -133,7 +156,11 @@ fn should_checkout_at_with_options() {
         .checkout_at(
             Some(&RepoCheckoutAtOptions {
                 mode: RepoCheckoutMode::User,
-                overwrite_mode: RepoCheckoutOverwriteMode::UnionIdentical,
+                overwrite_mode: RepoCheckoutOverwriteMode::AddFiles,
+                enable_fsync: true,
+                force_copy: true,
+                force_copy_zerosized: true,
+                devino_to_csum_cache: Some(RepoDevInoCache::new()),
                 ..Default::default()
             }),
             dirfd.as_raw_fd(),
