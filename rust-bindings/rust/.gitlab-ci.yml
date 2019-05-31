@@ -64,17 +64,7 @@ docs:
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
   - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
-  artifacts:
-    paths:
-    - target/doc
-
-pages:
-  stage: publish
-  image: alpine
-  before_script: []
-  script:
   - cp -r target/doc public
-  cache: {}
   artifacts:
     paths:
     - public
