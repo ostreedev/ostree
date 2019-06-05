@@ -43,6 +43,8 @@ gboolean
 ot_util_filename_validate (const char *name,
                            GError    **error)
 {
+  if (name == NULL)
+    return glnx_throw (error, "Invalid NULL filename");
   if (strcmp (name, ".") == 0)
     return glnx_throw (error, "Invalid self-referential filename '.'");
   if (strcmp (name, "..") == 0)
