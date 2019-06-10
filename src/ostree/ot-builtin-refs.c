@@ -32,6 +32,7 @@ static gboolean opt_list;
 static gboolean opt_alias;
 static char *opt_create;
 static gboolean opt_collections;
+static gboolean opt_force;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
@@ -44,6 +45,7 @@ static GOptionEntry options[] = {
   { "alias", 'A', 0, G_OPTION_ARG_NONE, &opt_alias, "If used with --create, create an alias, otherwise just list aliases", NULL },
   { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit", "NEWREF" },
   { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections, "Enable listing collection IDs for refs", NULL },
+  { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Overwrite existing refs when creating", NULL },
   { NULL }
 };
 
@@ -89,7 +91,7 @@ do_ref_with_collections (OstreeRepo    *repo,
           else goto out;
         }
 
-      if (checksum_existing != NULL)
+      if (!opt_force && checksum_existing != NULL)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "--create specified but ref %s already exists", opt_create);
@@ -205,9 +207,11 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
           else goto out;
         }
 
-      /* We want to allow replacing an existing alias */
+      /* We want to allow replacing an existing alias or a normal ref when
+       * forced
+       */
       gboolean replacing_alias = opt_alias && g_hash_table_contains (ref_aliases, opt_create);
-      if (!replacing_alias && checksum_existing != NULL)
+      if (!replacing_alias && !opt_force && checksum_existing != NULL)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "--create specified but ref %s already exists", opt_create);

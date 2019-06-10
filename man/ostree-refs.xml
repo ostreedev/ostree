@@ -126,6 +126,16 @@ Boston, MA 02111-1307, USA.
                   PREFIX are deleted.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--force</option></term>
+
+                <listitem><para>
+                  When creating <literal>NEWREF</literal> with
+                  <option>--create</option>, allow an existing ref to be
+                  updated instead of erroring.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

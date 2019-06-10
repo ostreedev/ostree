@@ -90,6 +90,11 @@ if ${CMD_PREFIX} ostree --repo=repo refs foo/ctest --create=ctest; then
     assert_not_reached "refs --create unexpectedly succeeded in overwriting an existing prefix!"
 fi
 
+# Force overwriting ctest and check the revision got updated
+foo_ctest_rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse foo/ctest)
+${CMD_PREFIX} ostree --repo=repo refs foo/ctest --create=ctest --force
+assert_ref repo ctest ${foo_ctest_rev}
+
 # https://github.com/ostreedev/ostree/issues/1285
 # One tool was creating .latest_rsync files in each dir, let's ignore stuff like
 # that.
