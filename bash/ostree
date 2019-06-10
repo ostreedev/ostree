@@ -952,6 +952,7 @@ _ostree_refs() {
         --collections -c
         --delete
         --list
+        --force
     "
 
     local options_with_args="
