@@ -70,6 +70,14 @@ typedef struct OstreeGpgVerifyResult OstreeGpgVerifyResult;
  *   (will be the same as OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT if the
  *   the signature is already from the primary key rather than a subkey,
  *   and will be the empty string if the key is missing.)
+ * @OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP:
+ *   [#G_VARIANT_TYPE_INT64] Key expiration Unix timestamp (0 if no
+ *   expiration or if the key is missing)
+ * @OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY:
+ *   [#G_VARIANT_TYPE_INT64] Key expiration Unix timestamp of the signing key's
+ *   primary key (will be the same as OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP
+ *   if the signing key is the primary key and 0 if no expiration or if the key
+ *   is missing)
  *
  * Signature attributes available from an #OstreeGpgVerifyResult.
  * The attribute's #GVariantType is shown in brackets.
@@ -88,6 +96,8 @@ typedef enum {
   OSTREE_GPG_SIGNATURE_ATTR_USER_NAME,
   OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL,
   OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY,
+  OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP,
+  OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY,
 } OstreeGpgSignatureAttr;
 
 _OSTREE_PUBLIC

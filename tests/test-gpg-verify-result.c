@@ -45,7 +45,8 @@ static OstreeGpgSignatureAttr some_attributes[] = {
   OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED,
   OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
   OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED,
-  OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING
+  OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING,
+  OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP,
 };
 
 static void
@@ -174,7 +175,7 @@ test_attribute_basics (TestFixture *fixture,
       tuple = ostree_gpg_verify_result_get_all (fixture->result, ii);
 
       type_string = g_variant_get_type_string (tuple);
-      g_assert_cmpstr (type_string, ==, "(bbbbbsxxsssss)");
+      g_assert_cmpstr (type_string, ==, "(bbbbbsxxsssssxx)");
 
       /* Check attributes which should be common to all signatures. */
 
@@ -221,24 +222,27 @@ test_valid_signature (TestFixture *fixture,
   gboolean key_expired;
   gboolean key_revoked;
   gboolean key_missing;
+  gint64 key_exp_timestamp;
 
   tuple = ostree_gpg_verify_result_get (fixture->result,
                                         signature_index,
                                         some_attributes,
                                         G_N_ELEMENTS (some_attributes));
 
-  g_variant_get (tuple, "(bbbbb)",
+  g_variant_get (tuple, "(bbbbbx)",
                  &valid,
                  &sig_expired,
                  &key_expired,
                  &key_revoked,
-                 &key_missing);
+                 &key_missing,
+                 &key_exp_timestamp);
 
   g_assert_true (valid);
   g_assert_false (sig_expired);
   g_assert_false (key_expired);
   g_assert_false (key_revoked);
   g_assert_false (key_missing);
+  g_assert_cmpint (key_exp_timestamp, ==, 0);
 }
 
 static void
@@ -252,24 +256,27 @@ test_expired_key (TestFixture *fixture,
   gboolean key_expired;
   gboolean key_revoked;
   gboolean key_missing;
+  gint64 key_exp_timestamp;
 
   tuple = ostree_gpg_verify_result_get (fixture->result,
                                         signature_index,
                                         some_attributes,
                                         G_N_ELEMENTS (some_attributes));
 
-  g_variant_get (tuple, "(bbbbb)",
+  g_variant_get (tuple, "(bbbbbx)",
                  &valid,
                  &sig_expired,
                  &key_expired,
                  &key_revoked,
-                 &key_missing);
+                 &key_missing,
+                 &key_exp_timestamp);
 
   g_assert_false (valid);
   g_assert_false (sig_expired);
   g_assert_true (key_expired);
   g_assert_false (key_revoked);
   g_assert_false (key_missing);
+  g_assert_cmpint (key_exp_timestamp, ==, 1426782201);
 }
 
 static void
@@ -283,24 +290,27 @@ test_revoked_key (TestFixture *fixture,
   gboolean key_expired;
   gboolean key_revoked;
   gboolean key_missing;
+  gint64 key_exp_timestamp;
 
   tuple = ostree_gpg_verify_result_get (fixture->result,
                                         signature_index,
                                         some_attributes,
                                         G_N_ELEMENTS (some_attributes));
 
-  g_variant_get (tuple, "(bbbbb)",
+  g_variant_get (tuple, "(bbbbbx)",
                  &valid,
                  &sig_expired,
                  &key_expired,
                  &key_revoked,
-                 &key_missing);
+                 &key_missing,
+                 &key_exp_timestamp);
 
   g_assert_false (valid);
   g_assert_false (sig_expired);
   g_assert_false (key_expired);
   g_assert_true (key_revoked);
   g_assert_false (key_missing);
+  g_assert_cmpint (key_exp_timestamp, ==, 0);
 }
 
 static void
@@ -314,24 +324,27 @@ test_missing_key (TestFixture *fixture,
   gboolean key_expired;
   gboolean key_revoked;
   gboolean key_missing;
+  gint64 key_exp_timestamp;
 
   tuple = ostree_gpg_verify_result_get (fixture->result,
                                         signature_index,
                                         some_attributes,
                                         G_N_ELEMENTS (some_attributes));
 
-  g_variant_get (tuple, "(bbbbb)",
+  g_variant_get (tuple, "(bbbbbx)",
                  &valid,
                  &sig_expired,
                  &key_expired,
                  &key_revoked,
-                 &key_missing);
+                 &key_missing,
+                 &key_exp_timestamp);
 
   g_assert_false (valid);
   g_assert_false (sig_expired);
   g_assert_false (key_expired);
   g_assert_false (key_revoked);
   g_assert_true (key_missing);
+  g_assert_cmpint (key_exp_timestamp, ==, 0);
 }
 
 static void
@@ -345,24 +358,27 @@ test_expired_signature (TestFixture *fixture,
   gboolean key_expired;
   gboolean key_revoked;
   gboolean key_missing;
+  gint64 key_exp_timestamp;
 
   tuple = ostree_gpg_verify_result_get (fixture->result,
                                         signature_index,
                                         some_attributes,
                                         G_N_ELEMENTS (some_attributes));
 
-  g_variant_get (tuple, "(bbbbb)",
+  g_variant_get (tuple, "(bbbbbx)",
                  &valid,
                  &sig_expired,
                  &key_expired,
                  &key_revoked,
-                 &key_missing);
+                 &key_missing,
+                 &key_exp_timestamp);
 
   g_assert_true (valid);
   g_assert_true (sig_expired);
   g_assert_false (key_expired);
   g_assert_false (key_revoked);
   g_assert_false (key_missing);
+  g_assert_cmpint (key_exp_timestamp, ==, 0);
 }
 
 int
