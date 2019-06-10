@@ -621,6 +621,7 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
   gboolean valid;
   gboolean sig_expired;
   gboolean key_expired;
+  gboolean key_revoked;
   gboolean key_missing;
   gsize len;
 
@@ -642,6 +643,8 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
                        "b", &sig_expired);
   g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
                        "b", &key_expired);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED,
+                       "b", &key_revoked);
   g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING,
                        "b", &key_missing);
   g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT,
@@ -702,6 +705,10 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
       g_string_append_printf (output_buffer,
                               "Good signature from \"%s <%s>\"\n",
                               user_name, user_email);
+    }
+  else if (key_revoked)
+    {
+      g_string_append (output_buffer, "Key revoked\n");
     }
   else if (sig_expired)
     {
