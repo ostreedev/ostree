@@ -513,6 +513,49 @@ ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
   ostree_gpg_verify_result_describe_variant (variant, output_buffer, line_prefix, flags);
 }
 
+static void
+append_expire_info (GString *output_buffer,
+                    const gchar *line_prefix,
+                    const gchar *exp_type,
+                    gint64 exp_timestamp,
+                    gboolean expired)
+{
+  g_autoptr(GDateTime) date_time_utc = NULL;
+  g_autoptr(GDateTime) date_time_local = NULL;
+  g_autofree char *formatted_date_time = NULL;
+
+  if (line_prefix != NULL)
+    g_string_append (output_buffer, line_prefix);
+
+  date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
+  if (date_time_utc == NULL)
+    {
+      g_string_append_printf (output_buffer,
+                              "%s expiry timestamp (%" G_GINT64_FORMAT ") is invalid\n",
+                              exp_type,
+                              exp_timestamp);
+      return;
+    }
+
+  date_time_local = g_date_time_to_local (date_time_utc);
+  formatted_date_time = g_date_time_format (date_time_local, "%c");
+
+  if (expired)
+    {
+      g_string_append_printf (output_buffer,
+                              "%s expired %s\n",
+                              exp_type,
+                              formatted_date_time);
+    }
+  else
+    {
+      g_string_append_printf (output_buffer,
+                              "%s expires %s\n",
+                              exp_type,
+                              formatted_date_time);
+    }
+}
+
 /**
  * ostree_gpg_verify_result_describe_variant:
  * @variant: a #GVariant from ostree_gpg_verify_result_get_all()
@@ -652,35 +695,8 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
     }
 
   if (exp_timestamp > 0)
-    {
-      if (line_prefix != NULL)
-        g_string_append (output_buffer, line_prefix);
-
-      date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
-      if (date_time_utc == NULL)
-        {
-          g_string_append_printf (output_buffer,
-                                  "Signature expiry timestamp (%" G_GINT64_FORMAT ") is invalid\n",
-                                  exp_timestamp);
-          return;
-        }
-
-      date_time_local = g_date_time_to_local (date_time_utc);
-      formatted_date_time = g_date_time_format (date_time_local, "%c");
-
-      if (sig_expired)
-        {
-          g_string_append_printf (output_buffer,
-                                  "Signature expired %s\n",
-                                  formatted_date_time);
-        }
-      else
-        {
-          g_string_append_printf (output_buffer,
-                                  "Signature expires %s\n",
-                                  formatted_date_time);
-        }
-    }
+    append_expire_info (output_buffer, line_prefix, "Signature", exp_timestamp,
+                        sig_expired);
 }
 
 /**
