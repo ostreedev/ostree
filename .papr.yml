@@ -6,8 +6,8 @@ branches:
     - try
 required: true
 container:
-  image: registry.fedoraproject.org/fedora:28
-context: f28-primary
+  image: registry.fedoraproject.org/fedora:29
+context: f29-primary
 env:
   # We only use -Werror=maybe-uninitialized here with a "fixed" toolchain
   CFLAGS: '-fsanitize=undefined -fsanitize-undefined-trap-on-error -fsanitize=address -O2 -Wp,-D_FORTIFY_SOURCE=2'
@@ -31,10 +31,10 @@ artifacts:
 ---
 # And now the contexts below here are variant container builds
 
-context: f28-rust
+context: f29-rust
 inherit: true
 container:
-    image: registry.fedoraproject.org/fedora:28
+    image: registry.fedoraproject.org/fedora:29
 env:
   CONFIGOPTS: '--enable-rust'
   CI_PKGS: cargo
@@ -45,10 +45,10 @@ tests:
 
 ---
 
-context: f28-gnutls
+context: f29-gnutls
 inherit: true
 container:
-    image: registry.fedoraproject.org/fedora:28
+    image: registry.fedoraproject.org/fedora:29
 env:
   CONFIGOPTS: '--with-crypto=gnutls'
   CI_PKGS: pkgconfig(gnutls)
@@ -61,7 +61,7 @@ tests:
 
 inherit: true
 
-context: f28-minimal
+context: f29-minimal
 env:
   CONFIGOPTS: '--without-curl --without-soup --disable-gtk-doc --disable-man
    --disable-rust --without-libarchive --without-selinux --without-smack
@@ -76,7 +76,7 @@ tests:
 inherit: true
 required: true
 
-context: f28-libsoup
+context: f29-libsoup
 
 env:
   CONFIGOPTS: "--without-curl --without-openssl --with-soup"
@@ -89,7 +89,7 @@ tests:
 inherit: true
 required: true
 
-context: f28-introspection-tests
+context: f29-introspection-tests
 
 env:
     # ASAN conflicts with introspection testing;
@@ -108,19 +108,19 @@ branches:
     - auto
     - try
 
-context: f28-flatpak
+context: f29-flatpak
 required: true
 
 # This test case wants an "unprivileged container with bubblewrap",
 # which we don't have right now; so just provision a VM and do a
 # docker --privileged run.
 host:
-  distro: fedora/28/atomic
+  distro: fedora/29/atomic
   specs:
     ram: 4096  # build-bundle is a static delta, which needs RAM right now
 
 tests:
-  - docker run --rm --privileged -v $(pwd):/srv/code registry.fedoraproject.org/fedora:28 /bin/sh -c "cd /srv/code && ./ci/flatpak.sh"
+  - docker run --rm --privileged -v $(pwd):/srv/code registry.fedoraproject.org/fedora:29 /bin/sh -c "cd /srv/code && ./ci/flatpak.sh"
 
 artifacts:
   - test-suite.log
@@ -136,16 +136,16 @@ branches:
     - auto
     - try
 
-context: f28-rpmostree
+context: f29-rpmostree
 # XXX: some issues currently failing that need investigating.
 required: false
 
 cluster:
   hosts:
     - name: vmcheck
-      distro: fedora/28/atomic
+      distro: fedora/29/atomic
   container:
-    image: registry.fedoraproject.org/fedora:28
+    image: registry.fedoraproject.org/fedora:29
 
 env:
   HOSTS: vmcheck
