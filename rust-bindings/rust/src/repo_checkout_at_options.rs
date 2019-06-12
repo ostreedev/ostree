@@ -1,8 +1,7 @@
-use self::repo_checkout_filter::filter_trampoline;
 use glib::translate::{Stash, ToGlib, ToGlibPtr};
 use glib_sys::gpointer;
 use libc::c_char;
-use ostree_sys::{OstreeRepo, OstreeRepoCheckoutAtOptions, OstreeRepoCheckoutFilterResult};
+use ostree_sys::OstreeRepoCheckoutAtOptions;
 use std::path::{Path, PathBuf};
 use {Repo, RepoCheckoutFilterResult};
 use {RepoCheckoutMode, RepoCheckoutOverwriteMode};
@@ -24,7 +23,7 @@ pub struct RepoCheckoutAtOptions {
     pub force_copy_zerosized: bool,
     pub subpath: Option<PathBuf>,
     pub devino_to_csum_cache: Option<RepoDevInoCache>,
-    pub filter: RepoCheckoutFilter,
+    pub filter: Option<RepoCheckoutFilter>,
     pub sepolicy: Option<SePolicy>,
     pub sepolicy_prefix: Option<String>,
 }
@@ -81,18 +80,8 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
         options.sepolicy = sepolicy.0;
 
         if let Some(filter) = &self.filter {
-            options.filter_user_data = filter
-                as *const Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>
-                as gpointer;
-            options.filter = Some(
-                filter_trampoline
-                    as unsafe extern "C" fn(
-                        *mut OstreeRepo,
-                        *const c_char,
-                        *mut libc::stat,
-                        gpointer,
-                    ) -> OstreeRepoCheckoutFilterResult,
-            );
+            options.filter_user_data = filter as *const RepoCheckoutFilter as gpointer;
+            options.filter = repo_checkout_filter::trampoline();
         }
 
         Stash(options.as_ref(), (options, subpath, sepolicy_prefix))
@@ -184,24 +173,10 @@ mod tests {
             );
             assert_eq!((*ptr).unused_ints, [0; 6]);
             assert_eq!((*ptr).unused_ptrs, [ptr::null_mut(); 3]);
-            assert_eq!(
-                (*ptr).filter,
-                Some(
-                    filter_trampoline
-                        as unsafe extern "C" fn(
-                            *mut OstreeRepo,
-                            *const c_char,
-                            *mut libc::stat,
-                            gpointer,
-                        )
-                            -> OstreeRepoCheckoutFilterResult
-                )
-            );
+            assert_eq!((*ptr).filter, repo_checkout_filter::trampoline());
             assert_eq!(
                 (*ptr).filter_user_data,
-                options.filter.as_ref().unwrap()
-                    as *const Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>
-                    as gpointer
+                options.filter.as_ref().unwrap() as *const RepoCheckoutFilter as gpointer
             );
             assert_eq!((*ptr).sepolicy, options.sepolicy.to_glib_none().0);
             assert_eq!(
