@@ -62,9 +62,7 @@ fn should_checkout_at_with_options() {
                 force_copy: true,
                 force_copy_zerosized: true,
                 devino_to_csum_cache: Some(RepoDevInoCache::new()),
-                filter: Some(Box::new(|_repo, _path, _stat| {
-                    RepoCheckoutFilterResult::Allow
-                })),
+                filter: repo_checkout_filter(|_repo, _path, _stat| RepoCheckoutFilterResult::Allow),
                 ..Default::default()
             }),
             dirfd.as_raw_fd(),
@@ -88,13 +86,13 @@ fn should_checkout_at_with_filter() {
         .repo
         .checkout_at(
             Some(&RepoCheckoutAtOptions {
-                filter: Some(Box::new(|_repo, path, _stat| {
+                filter: repo_checkout_filter(|_repo, path, _stat| {
                     if let Some("testfile") = path.file_name().map(|s| s.to_str().unwrap()) {
                         RepoCheckoutFilterResult::Skip
                     } else {
                         RepoCheckoutFilterResult::Allow
                     }
-                })),
+                }),
                 ..Default::default()
             }),
             dirfd.as_raw_fd(),

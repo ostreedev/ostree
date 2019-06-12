@@ -1,15 +1,13 @@
+use crate::{RepoCheckoutMode, RepoCheckoutOverwriteMode, RepoDevInoCache, SePolicy};
 use glib::translate::{Stash, ToGlib, ToGlibPtr};
 use glib_sys::gpointer;
 use libc::c_char;
 use ostree_sys::OstreeRepoCheckoutAtOptions;
-use std::path::{Path, PathBuf};
-use {Repo, RepoCheckoutFilterResult};
-use {RepoCheckoutMode, RepoCheckoutOverwriteMode};
-use {RepoDevInoCache, SePolicy};
+use std::path::PathBuf;
 
 mod repo_checkout_filter;
 
-pub use self::repo_checkout_filter::RepoCheckoutFilter;
+pub use self::repo_checkout_filter::{repo_checkout_filter, RepoCheckoutFilter};
 
 pub struct RepoCheckoutAtOptions {
     pub mode: RepoCheckoutMode,
@@ -91,6 +89,7 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RepoCheckoutFilterResult;
     use gio::{File, NONE_CANCELLABLE};
     use glib_sys::{gpointer, GFALSE, GTRUE};
     use ostree_sys::{
@@ -141,9 +140,7 @@ mod tests {
             force_copy_zerosized: true,
             subpath: Some("sub/path".into()),
             devino_to_csum_cache: Some(RepoDevInoCache::new()),
-            filter: Some(Box::new(|_repo, _path, _stat| {
-                RepoCheckoutFilterResult::Skip
-            })),
+            filter: repo_checkout_filter(|_repo, _path, _stat| RepoCheckoutFilterResult::Skip),
             sepolicy: Some(SePolicy::new(&File::new_for_path("a/b"), NONE_CANCELLABLE).unwrap()),
             sepolicy_prefix: Some("prefix".into()),
         };

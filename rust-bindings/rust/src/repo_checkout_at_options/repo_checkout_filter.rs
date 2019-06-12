@@ -7,6 +7,14 @@ use std::path::{Path, PathBuf};
 
 pub type RepoCheckoutFilter = Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>;
 
+pub fn repo_checkout_filter<F>(closure: F) -> Option<RepoCheckoutFilter>
+where
+    F: 'static,
+    F: Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult,
+{
+    Some(Box::new(closure))
+}
+
 unsafe extern "C" fn filter_trampoline(
     repo: *mut OstreeRepo,
     path: *const c_char,
