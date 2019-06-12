@@ -1,4 +1,5 @@
-use glib::translate::{FromGlibPtrNone, Stash, ToGlib, ToGlibPtr};
+use self::repo_checkout_filter::filter_trampoline;
+use glib::translate::{Stash, ToGlib, ToGlibPtr};
 use glib_sys::gpointer;
 use libc::c_char;
 use ostree_sys::{OstreeRepo, OstreeRepoCheckoutAtOptions, OstreeRepoCheckoutFilterResult};
@@ -7,8 +8,9 @@ use {Repo, RepoCheckoutFilterResult};
 use {RepoCheckoutMode, RepoCheckoutOverwriteMode};
 use {RepoDevInoCache, SePolicy};
 
-pub type RepoCheckoutFilter =
-    Option<Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>>;
+mod repo_checkout_filter;
+
+pub use self::repo_checkout_filter::RepoCheckoutFilter;
 
 pub struct RepoCheckoutAtOptions {
     pub mode: RepoCheckoutMode,
@@ -22,7 +24,6 @@ pub struct RepoCheckoutAtOptions {
     pub force_copy_zerosized: bool,
     pub subpath: Option<PathBuf>,
     pub devino_to_csum_cache: Option<RepoDevInoCache>,
-    // TODO: might be interesting to turn this into a type parameter
     pub filter: RepoCheckoutFilter,
     pub sepolicy: Option<SePolicy>,
     pub sepolicy_prefix: Option<String>,
@@ -50,21 +51,6 @@ impl Default for RepoCheckoutAtOptions {
 }
 
 type StringStash<'a, T> = Stash<'a, *const c_char, Option<T>>;
-
-unsafe extern "C" fn filter_trampoline(
-    repo: *mut OstreeRepo,
-    path: *const c_char,
-    stat: *mut libc::stat,
-    user_data: gpointer,
-) -> OstreeRepoCheckoutFilterResult {
-    // TODO: handle unwinding
-    let closure =
-        user_data as *const Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>;
-    let repo = FromGlibPtrNone::from_glib_none(repo);
-    let path: PathBuf = FromGlibPtrNone::from_glib_none(path);
-    let result = (*closure)(&repo, &path, &*stat);
-    result.to_glib()
-}
 
 impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOptions {
     type Storage = (
