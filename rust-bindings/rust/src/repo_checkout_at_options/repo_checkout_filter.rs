@@ -1,10 +1,8 @@
 use crate::{Repo, RepoCheckoutFilterResult};
-use glib::translate::{
-    from_glib_borrow, from_glib_none, FromGlibPtrNone, Stash, ToGlib, ToGlibPtr,
-};
+use glib::translate::*;
 use glib_sys::gpointer;
 use libc::c_char;
-use ostree_sys::{OstreeRepo, OstreeRepoCheckoutFilterResult};
+use ostree_sys::*;
 use std::path::{Path, PathBuf};
 
 /// A filter callback to decide which files to checkout from a [Repo](struct.Repo.html). The
@@ -64,7 +62,7 @@ impl FromGlibPtrNone<gpointer> for &RepoCheckoutFilter {
 ///
 /// # Panics
 /// If any parameter is a null pointer, the function panics.
-unsafe extern "C" fn filter_trampoline(
+pub(super) unsafe extern "C" fn filter_trampoline(
     repo: *mut OstreeRepo,
     path: *const c_char,
     stat: *mut libc::stat,
@@ -87,25 +85,9 @@ unsafe extern "C" fn filter_trampoline(
     result.to_glib()
 }
 
-/// Returns the trampoline function in a `Some`.
-///
-/// This is mostly convenient because the full type needs to be written out in fewer places.
-pub(super) fn trampoline() -> Option<
-    unsafe extern "C" fn(
-        *mut OstreeRepo,
-        *const c_char,
-        *mut libc::stat,
-        gpointer,
-    ) -> OstreeRepoCheckoutFilterResult,
-> {
-    Some(filter_trampoline)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use glib::translate::ToGlibPtr;
-    use ostree_sys::OSTREE_REPO_CHECKOUT_FILTER_SKIP;
     use std::ffi::CString;
     use std::ptr;
 

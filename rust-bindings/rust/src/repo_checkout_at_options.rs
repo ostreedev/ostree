@@ -1,7 +1,7 @@
 use crate::{RepoCheckoutMode, RepoCheckoutOverwriteMode, RepoDevInoCache, SePolicy};
-use glib::translate::{Stash, ToGlib, ToGlibPtr};
+use glib::translate::*;
 use libc::c_char;
-use ostree_sys::{OstreeRepoCheckoutAtOptions, OstreeRepoDevInoCache, OstreeSePolicy};
+use ostree_sys::*;
 use std::path::PathBuf;
 
 mod repo_checkout_filter;
@@ -50,6 +50,7 @@ type StringStash<'a, T> = Stash<'a, *const c_char, Option<T>>;
 type WrapperStash<'a, GlibT, WrappedT> = Stash<'a, *mut GlibT, Option<WrappedT>>;
 
 impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOptions {
+    #[allow(clippy::type_complexity)]
     type Storage = (
         Box<OstreeRepoCheckoutAtOptions>,
         StringStash<'a, PathBuf>,
@@ -90,7 +91,7 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
 
         if let Some(filter) = &self.filter {
             options.filter_user_data = filter.to_glib_none().0;
-            options.filter = repo_checkout_filter::trampoline();
+            options.filter = Some(repo_checkout_filter::filter_trampoline);
         }
 
         Stash(
@@ -112,10 +113,6 @@ mod tests {
     use crate::RepoCheckoutFilterResult;
     use gio::{File, NONE_CANCELLABLE};
     use glib_sys::{GFALSE, GTRUE};
-    use ostree_sys::{
-        OSTREE_REPO_CHECKOUT_MODE_NONE, OSTREE_REPO_CHECKOUT_MODE_USER,
-        OSTREE_REPO_CHECKOUT_OVERWRITE_NONE, OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL,
-    };
     use std::ffi::{CStr, CString};
     use std::ptr;
 
@@ -190,7 +187,7 @@ mod tests {
             );
             assert_eq!((*ptr).unused_ints, [0; 6]);
             assert_eq!((*ptr).unused_ptrs, [ptr::null_mut(); 3]);
-            assert_eq!((*ptr).filter, repo_checkout_filter::trampoline());
+            assert!((*ptr).filter == Some(repo_checkout_filter::filter_trampoline));
             assert_eq!(
                 (*ptr).filter_user_data,
                 options.filter.as_ref().unwrap().to_glib_none().0,
