@@ -2,6 +2,7 @@ use crate::util::*;
 use gio::NONE_CANCELLABLE;
 use ostree::*;
 use std::os::unix::io::AsRawFd;
+use std::path::PathBuf;
 
 #[test]
 fn should_checkout_at_with_none_options() {
@@ -62,7 +63,9 @@ fn should_checkout_at_with_options() {
                 force_copy: true,
                 force_copy_zerosized: true,
                 devino_to_csum_cache: Some(RepoDevInoCache::new()),
-                filter: repo_checkout_filter(|_repo, _path, _stat| RepoCheckoutFilterResult::Allow),
+                filter: RepoCheckoutFilter::new(|_repo, _path, _stat| {
+                    RepoCheckoutFilterResult::Allow
+                }),
                 ..Default::default()
             }),
             dirfd.as_raw_fd(),
@@ -86,8 +89,8 @@ fn should_checkout_at_with_filter() {
         .repo
         .checkout_at(
             Some(&RepoCheckoutAtOptions {
-                filter: repo_checkout_filter(|_repo, path, _stat| {
-                    if let Some("testfile") = path.file_name().map(|s| s.to_str().unwrap()) {
+                filter: RepoCheckoutFilter::new(|_repo, path, _stat| {
+                    if path == PathBuf::from("/testdir/testfile") {
                         RepoCheckoutFilterResult::Skip
                     } else {
                         RepoCheckoutFilterResult::Allow

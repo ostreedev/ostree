@@ -1,13 +1,12 @@
 use crate::{RepoCheckoutMode, RepoCheckoutOverwriteMode, RepoDevInoCache, SePolicy};
 use glib::translate::{Stash, ToGlib, ToGlibPtr};
-use glib_sys::gpointer;
 use libc::c_char;
-use ostree_sys::OstreeRepoCheckoutAtOptions;
+use ostree_sys::{OstreeRepoCheckoutAtOptions, OstreeRepoDevInoCache, OstreeSePolicy};
 use std::path::PathBuf;
 
 mod repo_checkout_filter;
 
-pub use self::repo_checkout_filter::{repo_checkout_filter, RepoCheckoutFilter};
+pub use self::repo_checkout_filter::RepoCheckoutFilter;
 
 pub struct RepoCheckoutAtOptions {
     pub mode: RepoCheckoutMode,
@@ -48,15 +47,25 @@ impl Default for RepoCheckoutAtOptions {
 }
 
 type StringStash<'a, T> = Stash<'a, *const c_char, Option<T>>;
+type WrapperStash<'a, GlibT, WrappedT> = Stash<'a, *mut GlibT, Option<WrappedT>>;
 
 impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOptions {
     type Storage = (
         Box<OstreeRepoCheckoutAtOptions>,
         StringStash<'a, PathBuf>,
         StringStash<'a, String>,
+        WrapperStash<'a, OstreeRepoDevInoCache, RepoDevInoCache>,
+        WrapperStash<'a, OstreeSePolicy, SePolicy>,
     );
 
+    // We need to make sure that all memory pointed to by the returned pointer is kept alive by
+    // either the `self` reference or the returned Stash.
     fn to_glib_none(&'a self) -> Stash<*const OstreeRepoCheckoutAtOptions, Self> {
+        // Creating this struct from zeroed memory is fine since it's `repr(C)` and only contains
+        // primitive types. In fact, the libostree docs say to zero the struct. This means we handle
+        // the unused bytes correctly.
+        // The struct needs to be boxed so the pointer we return remains valid even as the Stash is
+        // moved around.
         let mut options = Box::new(unsafe { std::mem::zeroed::<OstreeRepoCheckoutAtOptions>() });
         options.mode = self.mode.to_glib();
         options.overwrite_mode = self.overwrite_mode.to_glib();
@@ -68,6 +77,8 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
         options.bareuseronly_dirs = self.bareuseronly_dirs.to_glib();
         options.force_copy_zerosized = self.force_copy_zerosized.to_glib();
 
+        // We keep these complex values alive by returning them in our Stash. Technically, some of
+        // these are being kept alive by `self` already, but it's better to be consistent here.
         let subpath = self.subpath.to_glib_none();
         options.subpath = subpath.0;
         let sepolicy_prefix = self.sepolicy_prefix.to_glib_none();
@@ -78,11 +89,20 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
         options.sepolicy = sepolicy.0;
 
         if let Some(filter) = &self.filter {
-            options.filter_user_data = filter as *const RepoCheckoutFilter as gpointer;
+            options.filter_user_data = filter.to_glib_none().0;
             options.filter = repo_checkout_filter::trampoline();
         }
 
-        Stash(options.as_ref(), (options, subpath, sepolicy_prefix))
+        Stash(
+            options.as_ref(),
+            (
+                options,
+                subpath,
+                sepolicy_prefix,
+                devino_to_csum_cache,
+                sepolicy,
+            ),
+        )
     }
 }
 
@@ -91,7 +111,7 @@ mod tests {
     use super::*;
     use crate::RepoCheckoutFilterResult;
     use gio::{File, NONE_CANCELLABLE};
-    use glib_sys::{gpointer, GFALSE, GTRUE};
+    use glib_sys::{GFALSE, GTRUE};
     use ostree_sys::{
         OSTREE_REPO_CHECKOUT_MODE_NONE, OSTREE_REPO_CHECKOUT_MODE_USER,
         OSTREE_REPO_CHECKOUT_OVERWRITE_NONE, OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL,
@@ -140,7 +160,7 @@ mod tests {
             force_copy_zerosized: true,
             subpath: Some("sub/path".into()),
             devino_to_csum_cache: Some(RepoDevInoCache::new()),
-            filter: repo_checkout_filter(|_repo, _path, _stat| RepoCheckoutFilterResult::Skip),
+            filter: RepoCheckoutFilter::new(|_repo, _path, _stat| RepoCheckoutFilterResult::Skip),
             sepolicy: Some(SePolicy::new(&File::new_for_path("a/b"), NONE_CANCELLABLE).unwrap()),
             sepolicy_prefix: Some("prefix".into()),
         };
@@ -173,7 +193,7 @@ mod tests {
             assert_eq!((*ptr).filter, repo_checkout_filter::trampoline());
             assert_eq!(
                 (*ptr).filter_user_data,
-                options.filter.as_ref().unwrap() as *const RepoCheckoutFilter as gpointer
+                options.filter.as_ref().unwrap().to_glib_none().0,
             );
             assert_eq!((*ptr).sepolicy, options.sepolicy.to_glib_none().0);
             assert_eq!(
