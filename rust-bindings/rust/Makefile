@@ -1,6 +1,6 @@
 all: gir
 
-.PHONY: update-gir-files remove-gir-files merge-lgpl-docs
+.PHONY: gir gir-report update-gir-files remove-gir-files merge-lgpl-docs
 
 
 # -- gir generation --
@@ -10,6 +10,9 @@ target/tools/bin/gir:
 gir: target/tools/bin/gir
 	target/tools/bin/gir -c conf/ostree-sys.toml
 	target/tools/bin/gir -c conf/ostree.toml
+
+gir-report: gir
+	target/tools/bin/gir -c conf/ostree.toml -m not_bound
 
 
 # -- LGPL docs generation --
