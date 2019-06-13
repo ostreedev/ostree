@@ -89,8 +89,6 @@ if ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature'; then
   assert_not_reached
 fi
 
-libtest_cleanup_gpg
-
 echo "ok"
 
 # Remaining tests require gpg

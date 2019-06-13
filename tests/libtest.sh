@@ -648,6 +648,7 @@ libtest_cleanup_gpg () {
     local gpg_homedir=${1:-${test_tmpdir}/gpghome}
     gpg-connect-agent --homedir "${gpg_homedir}" killagent /bye || true
 }
+libtest_exit_cmds+=(libtest_cleanup_gpg)
 
 is_bare_user_only_repo () {
   grep -q 'mode=bare-user-only' $1/config
