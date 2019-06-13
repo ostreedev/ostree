@@ -98,6 +98,8 @@ pub use self::enums::ObjectType;
 pub use self::enums::RepoCheckoutFilterResult;
 pub use self::enums::RepoCheckoutMode;
 pub use self::enums::RepoCheckoutOverwriteMode;
+pub use self::enums::RepoCommitFilterResult;
+pub use self::enums::RepoCommitIterResult;
 pub use self::enums::RepoMode;
 pub use self::enums::RepoPruneFlags;
 pub use self::enums::RepoRemoteChange;
@@ -107,8 +109,11 @@ mod flags;
 #[cfg(any(feature = "v2017_13", feature = "dox"))]
 pub use self::flags::ChecksumFlags;
 pub use self::flags::DiffFlags;
+pub use self::flags::RepoCommitModifierFlags;
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 pub use self::flags::RepoCommitState;
+pub use self::flags::RepoCommitTraverseFlags;
+pub use self::flags::RepoListObjectsFlags;
 pub use self::flags::RepoListRefsExtFlags;
 pub use self::flags::RepoPullFlags;
 pub use self::flags::RepoResolveRevExtFlags;

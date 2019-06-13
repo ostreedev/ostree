@@ -344,7 +344,7 @@ impl Repo {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_commit_objects_starting_with() }
     //}
 
-    //pub fn list_objects<P: IsA<gio::Cancellable>>(&self, flags: /*Ignored*/RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 182 }/TypeId { ns_id: 2, id: 182 }, cancellable: Option<&P>) -> Result<(), Error> {
+    //pub fn list_objects<P: IsA<gio::Cancellable>>(&self, flags: RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 182 }/TypeId { ns_id: 2, id: 182 }, cancellable: Option<&P>) -> Result<(), Error> {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_objects() }
     //}
 

@@ -385,6 +385,100 @@ impl FromGlib<ostree_sys::OstreeRepoCheckoutOverwriteMode> for RepoCheckoutOverw
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+pub enum RepoCommitFilterResult {
+    Allow,
+    Skip,
+    #[doc(hidden)]
+    __Unknown(i32),
+}
+
+impl fmt::Display for RepoCommitFilterResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoCommitFilterResult::{}", match *self {
+            RepoCommitFilterResult::Allow => "Allow",
+            RepoCommitFilterResult::Skip => "Skip",
+            _ => "Unknown",
+        })
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoCommitFilterResult {
+    type GlibType = ostree_sys::OstreeRepoCommitFilterResult;
+
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCommitFilterResult {
+        match *self {
+            RepoCommitFilterResult::Allow => ostree_sys::OSTREE_REPO_COMMIT_FILTER_ALLOW,
+            RepoCommitFilterResult::Skip => ostree_sys::OSTREE_REPO_COMMIT_FILTER_SKIP,
+            RepoCommitFilterResult::__Unknown(value) => value
+        }
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeRepoCommitFilterResult> for RepoCommitFilterResult {
+    fn from_glib(value: ostree_sys::OstreeRepoCommitFilterResult) -> Self {
+        match value {
+            0 => RepoCommitFilterResult::Allow,
+            1 => RepoCommitFilterResult::Skip,
+            value => RepoCommitFilterResult::__Unknown(value),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy)]
+pub enum RepoCommitIterResult {
+    Error,
+    End,
+    File,
+    Dir,
+    #[doc(hidden)]
+    __Unknown(i32),
+}
+
+impl fmt::Display for RepoCommitIterResult {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RepoCommitIterResult::{}", match *self {
+            RepoCommitIterResult::Error => "Error",
+            RepoCommitIterResult::End => "End",
+            RepoCommitIterResult::File => "File",
+            RepoCommitIterResult::Dir => "Dir",
+            _ => "Unknown",
+        })
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoCommitIterResult {
+    type GlibType = ostree_sys::OstreeRepoCommitIterResult;
+
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCommitIterResult {
+        match *self {
+            RepoCommitIterResult::Error => ostree_sys::OSTREE_REPO_COMMIT_ITER_RESULT_ERROR,
+            RepoCommitIterResult::End => ostree_sys::OSTREE_REPO_COMMIT_ITER_RESULT_END,
+            RepoCommitIterResult::File => ostree_sys::OSTREE_REPO_COMMIT_ITER_RESULT_FILE,
+            RepoCommitIterResult::Dir => ostree_sys::OSTREE_REPO_COMMIT_ITER_RESULT_DIR,
+            RepoCommitIterResult::__Unknown(value) => value
+        }
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeRepoCommitIterResult> for RepoCommitIterResult {
+    fn from_glib(value: ostree_sys::OstreeRepoCommitIterResult) -> Self {
+        match value {
+            0 => RepoCommitIterResult::Error,
+            1 => RepoCommitIterResult::End,
+            2 => RepoCommitIterResult::File,
+            3 => RepoCommitIterResult::Dir,
+            value => RepoCommitIterResult::__Unknown(value),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy)]
 pub enum RepoMode {
     Bare,
     Archive,

@@ -61,6 +61,34 @@ impl FromGlib<ostree_sys::OstreeDiffFlags> for DiffFlags {
     }
 }
 
+bitflags! {
+    pub struct RepoCommitModifierFlags: u32 {
+        const NONE = 0;
+        const SKIP_XATTRS = 1;
+        const GENERATE_SIZES = 2;
+        const CANONICAL_PERMISSIONS = 4;
+        const ERROR_ON_UNLABELED = 8;
+        const CONSUME = 16;
+        const DEVINO_CANONICAL = 32;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoCommitModifierFlags {
+    type GlibType = ostree_sys::OstreeRepoCommitModifierFlags;
+
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCommitModifierFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeRepoCommitModifierFlags> for RepoCommitModifierFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoCommitModifierFlags) -> RepoCommitModifierFlags {
+        RepoCommitModifierFlags::from_bits_truncate(value)
+    }
+}
+
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 bitflags! {
     pub struct RepoCommitState: u32 {
@@ -84,6 +112,53 @@ impl ToGlib for RepoCommitState {
 impl FromGlib<ostree_sys::OstreeRepoCommitState> for RepoCommitState {
     fn from_glib(value: ostree_sys::OstreeRepoCommitState) -> RepoCommitState {
         RepoCommitState::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
+    pub struct RepoCommitTraverseFlags: u32 {
+        const REPO_COMMIT_TRAVERSE_FLAG_NONE = 1;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoCommitTraverseFlags {
+    type GlibType = ostree_sys::OstreeRepoCommitTraverseFlags;
+
+    fn to_glib(&self) -> ostree_sys::OstreeRepoCommitTraverseFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeRepoCommitTraverseFlags> for RepoCommitTraverseFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoCommitTraverseFlags) -> RepoCommitTraverseFlags {
+        RepoCommitTraverseFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
+    pub struct RepoListObjectsFlags: u32 {
+        const LOOSE = 1;
+        const PACKED = 2;
+        const ALL = 4;
+        const NO_PARENTS = 8;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoListObjectsFlags {
+    type GlibType = ostree_sys::OstreeRepoListObjectsFlags;
+
+    fn to_glib(&self) -> ostree_sys::OstreeRepoListObjectsFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeRepoListObjectsFlags> for RepoListObjectsFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoListObjectsFlags) -> RepoListObjectsFlags {
+        RepoListObjectsFlags::from_bits_truncate(value)
     }
 }
 

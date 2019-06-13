@@ -27,6 +27,11 @@ generate = [
     "OSTree.RepoCheckoutFilterResult",
     "OSTree.RepoCheckoutMode",
     "OSTree.RepoCheckoutOverwriteMode",
+    "OSTree.RepoCommitFilterResult",
+    "OSTree.RepoCommitFilter",
+    "OSTree.RepoCommitIterResult",
+    "OSTree.RepoCommitModifierFlags",
+    "OSTree.RepoCommitTraverseFlags",
     "OSTree.RepoCommitModifier",
     "OSTree.RepoCommitState",
     "OSTree.RepoDevInoCache",
@@ -36,6 +41,7 @@ generate = [
     "OSTree.RepoFinderConfig",
     "OSTree.RepoFinderMount",
     "OSTree.RepoFinderOverride",
+    "OSTree.RepoListObjectsFlags",
     "OSTree.RepoListRefsExtFlags",
     "OSTree.RepoMode",
     "OSTree.RepoPruneFlags",
@@ -51,18 +57,23 @@ generate = [
     "OSTree.SysrootUpgrader",
     "OSTree.SysrootUpgraderFlags",
     "OSTree.SysrootUpgraderPullFlags",
+
 ]
 
 manual = [
+    # types from glib/gio we need
     "Gio.AsyncReadyCallback",
     "Gio.AsyncResult",
     "Gio.Cancellable",
     "Gio.File",
     "Gio.FileInfo",
     "Gio.FileQueryInfoFlags",
+    "Gio.FilterInputStream",
     "Gio.InputStream",
     "Gio.VolumeMonitor",
     "GLib.Bytes",
+    "GLib.Checksum",
+    "GLib.DestroyNotify",
     "GLib.Error",
     "GLib.KeyFile",
     "GLib.MainContext",
@@ -71,6 +82,7 @@ manual = [
     "GLib.Variant",
     "GLib.VariantType",
 
+    # types implemented by hand
     "OSTree.RepoCheckoutAtOptions",
     "OSTree.RepoCheckoutFilter",
 ]
@@ -78,6 +90,26 @@ manual = [
 ignore = [
     # only used for the already-deprecated checkout_tree_at function
     "OSTree.RepoCheckoutOptions",
+    # types for zero-terminated arrays we probably don't want
+    "OSTree.CollectionRefv",
+    "OSTree.RepoFinderResultv",
+    # not part of the public interface, as far as I can tell
+    "OSTree.Bootloader",
+    "OSTree.BootloaderGrub2",
+    "OSTree.BootloaderInterface",
+    "OSTree.BootloaderSyslinux",
+    "OSTree.BootloaderUboot",
+    "OSTree.ChecksumInputStream",
+    "OSTree.ChecksumInputStreamBuilder",
+    "OSTree.CmdPrivateVTable",
+    "OSTree.GpgVerifier",
+    "OSTree.LibarchiveInputStream",
+    "OSTree.LzmaCompressor",
+    "OSTree.LzmaDecompressor",
+    "OSTree.RollsumMatches",
+    # builders we don't want
+    "OSTree.RepoBuilder",
+    "OSTree.SysrootBuilder",
 ]
 
 [crate_name_overrides]
