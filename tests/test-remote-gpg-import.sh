@@ -280,5 +280,3 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u --gpg
 ${OSTREE} pull --require-static-deltas R1:main
 
 echo "ok gpg trusted signed commit for delta upgrades"
-
-libtest_cleanup_gpg

@@ -274,5 +274,3 @@ cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.
 cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig.2 >&2
 
 echo "ok pull with signed summary broken cache"
-
-libtest_cleanup_gpg

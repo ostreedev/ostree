@@ -140,4 +140,3 @@ assert_not_file_has_content show.txt 'Found.*signature'
 echo "ok pull sig deleted"
 
 rm -rf repo gnomerepo-files
-libtest_cleanup_gpg
