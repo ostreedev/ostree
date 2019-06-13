@@ -5,6 +5,7 @@
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 use Error;
 use RepoFinder;
+use glib;
 use glib::object::IsA;
 use glib::translate::*;
 use ostree_sys;
@@ -21,9 +22,11 @@ glib_wrapper! {
 }
 
 impl RepoFinderAvahi {
-    //pub fn new(context: /*Ignored*/&glib::MainContext) -> RepoFinderAvahi {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_finder_avahi_new() }
-    //}
+    pub fn new(context: &glib::MainContext) -> RepoFinderAvahi {
+        unsafe {
+            from_glib_full(ostree_sys::ostree_repo_finder_avahi_new(context.to_glib_none().0))
+        }
+    }
 }
 
 pub const NONE_REPO_FINDER_AVAHI: Option<&RepoFinderAvahi> = None;

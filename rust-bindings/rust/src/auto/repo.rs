@@ -19,6 +19,8 @@ use RepoCommitModifier;
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 use RepoCommitState;
 use RepoFile;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use RepoFinderResult;
 use RepoMode;
 use RepoPruneFlags;
 use RepoPullFlags;

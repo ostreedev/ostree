@@ -54,16 +54,22 @@ generate = [
 ]
 
 manual = [
+    "Gio.AsyncReadyCallback",
+    "Gio.AsyncResult",
     "Gio.Cancellable",
     "Gio.File",
     "Gio.FileInfo",
     "Gio.FileQueryInfoFlags",
     "Gio.InputStream",
+    "Gio.VolumeMonitor",
     "GLib.Bytes",
     "GLib.Error",
     "GLib.KeyFile",
+    "GLib.MainContext",
+    "GLib.Quark",
     "GLib.String",
     "GLib.Variant",
+    "GLib.VariantType",
 
     "OSTree.RepoCheckoutAtOptions",
     "OSTree.RepoCheckoutFilter",

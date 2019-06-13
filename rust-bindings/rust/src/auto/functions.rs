@@ -172,18 +172,22 @@ pub fn create_directory_metadata(dir_info: &gio::FileInfo, xattrs: Option<&glib:
 //    unsafe { TODO: call ostree_sys:ostree_diff_print() }
 //}
 
-//#[cfg(any(feature = "v2017_10", feature = "dox"))]
-//pub fn gpg_error_quark() -> /*Ignored*/glib::Quark {
-//    unsafe { TODO: call ostree_sys:ostree_gpg_error_quark() }
-//}
+#[cfg(any(feature = "v2017_10", feature = "dox"))]
+pub fn gpg_error_quark() -> glib::Quark {
+    unsafe {
+        from_glib(ostree_sys::ostree_gpg_error_quark())
+    }
+}
 
 //pub fn hash_object_name(a: /*Unimplemented*/Option<Fundamental: Pointer>) -> u32 {
 //    unsafe { TODO: call ostree_sys:ostree_hash_object_name() }
 //}
 
-//pub fn metadata_variant_type(objtype: ObjectType) -> /*Ignored*/Option<glib::VariantType> {
-//    unsafe { TODO: call ostree_sys:ostree_metadata_variant_type() }
-//}
+pub fn metadata_variant_type(objtype: ObjectType) -> Option<glib::VariantType> {
+    unsafe {
+        from_glib_none(ostree_sys::ostree_metadata_variant_type(objtype.to_glib()))
+    }
+}
 
 pub fn object_from_string(str: &str) -> (GString, ObjectType) {
     unsafe {
