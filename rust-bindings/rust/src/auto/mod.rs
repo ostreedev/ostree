@@ -30,6 +30,29 @@ mod repo_finder;
 pub use self::repo_finder::{RepoFinder, NONE_REPO_FINDER};
 pub use self::repo_finder::RepoFinderExt;
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+mod repo_finder_avahi;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::repo_finder_avahi::{RepoFinderAvahi, RepoFinderAvahiClass, NONE_REPO_FINDER_AVAHI};
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::repo_finder_avahi::RepoFinderAvahiExt;
+
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+mod repo_finder_config;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::repo_finder_config::{RepoFinderConfig, RepoFinderConfigClass, NONE_REPO_FINDER_CONFIG};
+
+mod repo_finder_mount;
+pub use self::repo_finder_mount::{RepoFinderMount, RepoFinderMountClass, NONE_REPO_FINDER_MOUNT};
+pub use self::repo_finder_mount::RepoFinderMountExt;
+
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+mod repo_finder_override;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::repo_finder_override::{RepoFinderOverride, RepoFinderOverrideClass, NONE_REPO_FINDER_OVERRIDE};
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+pub use self::repo_finder_override::RepoFinderOverrideExt;
+
 mod se_policy;
 pub use self::se_policy::{SePolicy, SePolicyClass};
 
@@ -128,4 +151,9 @@ pub mod traits {
     pub use super::MutableTreeExt;
     pub use super::RepoFileExt;
     pub use super::RepoFinderExt;
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    pub use super::RepoFinderAvahiExt;
+    pub use super::RepoFinderMountExt;
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    pub use super::RepoFinderOverrideExt;
 }
