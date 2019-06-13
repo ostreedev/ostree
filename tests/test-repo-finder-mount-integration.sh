@@ -55,7 +55,7 @@ _mount_cleanup () {
 
 case "${TEST_SKIP_CLEANUP:-}" in
     no|"")
-        trap _mount_cleanup EXIT
+        libtest_exit_cmds+=(_mount_cleanup)
         ;;
     err)
         trap _mount_cleanup ERR

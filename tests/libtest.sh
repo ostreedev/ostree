@@ -34,13 +34,24 @@ else
 fi
 . ${test_srcdir}/libtest-core.sh
 
+# Array of expressions to execute when exiting. Each expression should
+# be a single string (quoting if necessary) that will be eval'd. To add
+# a command to run on exit, append to the libtest_exit_cmds array like
+# libtest_exit_cmds+=(expr).
+libtest_exit_cmds=()
+run_exit_cmds() {
+  for expr in "${libtest_exit_cmds[@]}"; do
+    eval "${expr}" || true
+  done
+}
+trap run_exit_cmds EXIT
+
 save_core() {
   if [ -e core ]; then
     cp core "$test_srcdir/core"
   fi
 }
-
-trap save_core EXIT;
+libtest_exit_cmds+=(save_core)
 
 test_tmpdir=$(pwd)
 

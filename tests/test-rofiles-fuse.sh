@@ -41,7 +41,7 @@ rofiles-fuse checkout-test2 mnt
 cleanup_fuse() {
     fusermount -u ${test_tmpdir}/mnt || true
 }
-trap cleanup_fuse EXIT
+libtest_exit_cmds+=(cleanup_fuse)
 assert_file_has_content mnt/firstfile first
 echo "ok mount"
 
