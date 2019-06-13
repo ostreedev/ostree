@@ -20,6 +20,15 @@ pub struct RepoCheckoutAtOptions {
     pub force_copy_zerosized: bool,
     pub subpath: Option<PathBuf>,
     pub devino_to_csum_cache: Option<RepoDevInoCache>,
+    /// A callback function to decide which files and directories will be checked out from the
+    /// repo. See the documentation on [RepoCheckoutFilter](struct.RepoCheckoutFilter.html) for more
+    /// information on the signature.
+    ///
+    /// # Panics
+    /// This callback may not panic. If it does, `abort()` will be called to avoid unwinding across
+    /// an FFI boundary and into the libostree C code (which is Undefined Behavior). If you prefer to
+    /// swallow the panic rather than aborting, you can use `std::panic::catch_unwind` inside your
+    /// callback to catch and silence any panics that occur.
     pub filter: Option<RepoCheckoutFilter>,
     pub sepolicy: Option<SePolicy>,
     pub sepolicy_prefix: Option<String>,

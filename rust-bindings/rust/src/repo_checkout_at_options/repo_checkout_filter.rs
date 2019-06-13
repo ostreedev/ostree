@@ -87,6 +87,8 @@ unsafe extern "C" fn filter_trampoline(
     result.to_glib()
 }
 
+/// Unwind-safe trampoline to call the Rust filter callback. See [filter_trampoline](fn.filter_trampoline.html).
+/// This function additionally catches panics and aborts to avoid unwinding into C code.
 pub(super) unsafe extern "C" fn filter_trampoline_unwindsafe(
     repo: *mut OstreeRepo,
     path: *const c_char,
@@ -102,6 +104,9 @@ pub(super) unsafe extern "C" fn filter_trampoline_unwindsafe(
     })
 }
 
+/// Print a panic message and the value to stderr, if we can.
+///
+/// If the panic value is either `&str` or `String`, we print it. Otherwise, we don't.
 fn print_panic(panic: Box<dyn Any>) {
     eprintln!("A Rust callback invoked by C code panicked.");
     eprintln!("Unwinding across FFI boundaries is Undefined Behavior so abort() will be called.");
