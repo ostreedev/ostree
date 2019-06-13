@@ -91,7 +91,7 @@ impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOpt
 
         if let Some(filter) = &self.filter {
             options.filter_user_data = filter.to_glib_none().0;
-            options.filter = Some(repo_checkout_filter::filter_trampoline);
+            options.filter = Some(repo_checkout_filter::filter_trampoline_unwindsafe);
         }
 
         Stash(
@@ -187,7 +187,7 @@ mod tests {
             );
             assert_eq!((*ptr).unused_ints, [0; 6]);
             assert_eq!((*ptr).unused_ptrs, [ptr::null_mut(); 3]);
-            assert!((*ptr).filter == Some(repo_checkout_filter::filter_trampoline));
+            assert!((*ptr).filter == Some(repo_checkout_filter::filter_trampoline_unwindsafe));
             assert_eq!(
                 (*ptr).filter_user_data,
                 options.filter.as_ref().unwrap().to_glib_none().0,

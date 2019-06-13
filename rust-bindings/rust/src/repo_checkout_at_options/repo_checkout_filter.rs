@@ -3,7 +3,10 @@ use glib::translate::*;
 use glib_sys::gpointer;
 use libc::c_char;
 use ostree_sys::*;
+use std::any::Any;
+use std::panic::catch_unwind;
 use std::path::{Path, PathBuf};
+use std::process::abort;
 
 /// A filter callback to decide which files to checkout from a [Repo](struct.Repo.html). The
 /// function is called for every directory and file in the dirtree.
@@ -62,13 +65,12 @@ impl FromGlibPtrNone<gpointer> for &RepoCheckoutFilter {
 ///
 /// # Panics
 /// If any parameter is a null pointer, the function panics.
-pub(super) unsafe extern "C" fn filter_trampoline(
+unsafe extern "C" fn filter_trampoline(
     repo: *mut OstreeRepo,
     path: *const c_char,
     stat: *mut libc::stat,
     user_data: gpointer,
 ) -> OstreeRepoCheckoutFilterResult {
-    // TODO: handle unwinding
     // We can't guarantee it's a valid pointer, but we can make sure it's not null.
     assert!(!stat.is_null());
     let stat = &*stat;
@@ -83,6 +85,36 @@ pub(super) unsafe extern "C" fn filter_trampoline(
 
     let result = closure.call(&repo, &path, stat);
     result.to_glib()
+}
+
+pub(super) unsafe extern "C" fn filter_trampoline_unwindsafe(
+    repo: *mut OstreeRepo,
+    path: *const c_char,
+    stat: *mut libc::stat,
+    user_data: gpointer,
+) -> OstreeRepoCheckoutFilterResult {
+    // Unwinding across an FFI boundary is Undefined Behavior and we have no other way to communicate
+    // the error. We abort() safely to avoid further problems.
+    let result = catch_unwind(move || filter_trampoline(repo, path, stat, user_data));
+    result.unwrap_or_else(|panic| {
+        print_panic(panic);
+        abort()
+    })
+}
+
+fn print_panic(panic: Box<dyn Any>) {
+    eprintln!("A Rust callback invoked by C code panicked.");
+    eprintln!("Unwinding across FFI boundaries is Undefined Behavior so abort() will be called.");
+    let msg = {
+        if let Some(s) = panic.as_ref().downcast_ref::<&str>() {
+            s
+        } else if let Some(s) = panic.as_ref().downcast_ref::<String>() {
+            s
+        } else {
+            "UNABLE TO SHOW VALUE OF PANIC"
+        }
+    };
+    eprintln!("Panic value: {}", msg);
 }
 
 #[cfg(test)]
