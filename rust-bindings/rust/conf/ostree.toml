@@ -76,6 +76,7 @@ manual = [
 ]
 
 ignore = [
+    # only used for the already-deprecated checkout_tree_at function
     "OSTree.RepoCheckoutOptions",
 ]
 
@@ -99,8 +100,16 @@ status = "generate"
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
-    # these all don't generate properly
-    pattern = "write_metadata_async|write_content_async|pull_from_remotes_async|find_remotes_async"
+    # this one crashes gir, somehow
+    name = "write_metadata_async"
+    ignore = true
+    [[object.function]]
+    # this one generates a guchar** incorrectly
+    name = "write_content_async"
+    ignore = true
+    [[object.function]]
+    # these fail because of issues with zero-terminated arrays
+    pattern = "find_remotes_async|pull_from_remotes_async"
     ignore = true
 
     [[object.function]]
