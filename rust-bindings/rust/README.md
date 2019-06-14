@@ -92,6 +92,10 @@ The version needs to be changed in the following places (if applicable):
 * in `Cargo.toml` for the main crate version
 * in `README.md` in the *Installing* section in case of major version bumps
 
+Then, run the publish jobs on the release commit. Main and -sys crate don't have
+to be released in lockstep. Then tag the commit as `ostree/x.y.z` and/or
+`ostree-sys/x.y.z`.
+
 ## License
 The `ostree` crate is licensed under the MIT license. See the LICENSE file for
 details.
