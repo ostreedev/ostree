@@ -139,4 +139,7 @@ ot_copy_dir_recurse (int              src_parent_dfd,
 gboolean
 ot_is_ro_mount (const char *path);
 
+gboolean
+ot_is_rw_mount (const char *path);
+
 G_END_DECLS

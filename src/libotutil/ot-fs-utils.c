@@ -349,13 +349,11 @@ ot_copy_dir_recurse (int              src_parent_dfd,
   return TRUE;
 }
 
-/* Detect whether or not @path refers to a read-only mountpoint. This is
- * currently just used to handle a potentially read-only /boot by transiently
- * remounting it read-write. In the future we might also do this for e.g.
- * /sysroot.
+/* Detect whether or not @path refers to a mountpoint. If is a mountpoint
+ * the struct statvfs .f_flag is returned in @flag to get the mount flags.
  */
-gboolean
-ot_is_ro_mount (const char *path)
+static gboolean
+is_mount(const char *path, unsigned long *flag)
 {
 #ifdef HAVE_LIBMOUNT
   /* Dragging in all of this crud is apparently necessary just to determine
@@ -394,8 +392,33 @@ ot_is_ro_mount (const char *path)
    * introspect the actual mount at runtime.
    */
   if (statvfs (path, &stvfsbuf) == 0)
-    return (stvfsbuf.f_flag & ST_RDONLY) != 0;
+    {
+      *flag = stvfsbuf.f_flag;
+      return TRUE;
+    }
 
 #endif
   return FALSE;
+}
+
+/* Detect whether or not @path refers to a read-only mountpoint. This is
+ * currently just used to handle a potentially read-only /boot by transiently
+ * remounting it read-write. In the future we might also do this for e.g.
+ * /sysroot.
+ */
+gboolean
+ot_is_ro_mount (const char *path)
+{
+  unsigned long flag;
+  return is_mount (path, &flag) && (flag & ST_RDONLY) != 0;
+}
+
+/* Detect whether or not @path refers to a mountpoint that is not read-only.
+ * This is currently used to check if /boot/efi is a read-write mountpoint.
+ */
+gboolean
+ot_is_rw_mount (const char *path)
+{
+  unsigned long flag;
+  return is_mount (path, &flag) && (flag & ST_RDONLY) == 0;
 }
