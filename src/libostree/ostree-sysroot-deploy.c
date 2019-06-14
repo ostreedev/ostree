@@ -25,16 +25,12 @@
 #include <gio/gunixoutputstream.h>
 #include <glib-unix.h>
 #include <sys/mount.h>
-#include <sys/statvfs.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
 #include <linux/fs.h>
 #include <err.h>
 
-#ifdef HAVE_LIBMOUNT
-#include <libmount.h>
-#endif
 #ifdef HAVE_LIBSYSTEMD
 #include <systemd/sd-journal.h>
 #endif
@@ -86,15 +82,6 @@ symlink_at_replace (const char    *oldpath,
   return TRUE;
 }
 
-static GLnxFileCopyFlags
-sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults,
-                             OstreeSysrootDebugFlags sysrootflags)
-{
-  if (sysrootflags & OSTREE_SYSROOT_DEBUG_NO_XATTRS)
-    defaults |= GLNX_FILE_COPY_NOXATTRS;
-  return defaults;
-}
-
 /* Try a hardlink if we can, otherwise fall back to copying.  Used
  * right now for kernels/initramfs/device trees in /boot, where we can just
  * hardlink if we're on the same partition.
@@ -134,101 +121,6 @@ install_into_boot (OstreeSePolicy *sepolicy,
         }
       else
         return glnx_throw_errno_prefix (error, "linkat(%s)", dest_subpath);
-    }
-
-  return TRUE;
-}
-
-/* Copy ownership, mode, and xattrs from source directory to destination */
-static gboolean
-dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
-                                  const char    *src_name,
-                                  int            src_dfd,
-                                  int            dest_dfd,
-                                  OstreeSysrootDebugFlags flags,
-                                  GCancellable  *cancellable,
-                                  GError       **error)
-{
-  g_autoptr(GVariant) xattrs = NULL;
-
-  /* Clone all xattrs first, so we get the SELinux security context
-   * right.  This will allow other users access if they have ACLs, but
-   * oh well.
-   */
-  if (!(flags & OSTREE_SYSROOT_DEBUG_NO_XATTRS))
-    {
-      if (!glnx_dfd_name_get_all_xattrs (src_parent_dfd, src_name,
-                                         &xattrs, cancellable, error))
-        return FALSE;
-      if (!glnx_fd_set_all_xattrs (dest_dfd, xattrs,
-                                   cancellable, error))
-        return FALSE;
-    }
-
-  struct stat src_stbuf;
-  if (!glnx_fstat (src_dfd, &src_stbuf, error))
-    return FALSE;
-  if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
-    return glnx_throw_errno_prefix (error, "fchown");
-  if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
-    return glnx_throw_errno_prefix (error, "fchmod");
-
-  return TRUE;
-}
-
-static gboolean
-copy_dir_recurse (int              src_parent_dfd,
-                  int              dest_parent_dfd,
-                  const char      *name,
-                  OstreeSysrootDebugFlags flags,
-                  GCancellable    *cancellable,
-                  GError         **error)
-{
-  g_auto(GLnxDirFdIterator) src_dfd_iter = { 0, };
-  glnx_autofd int dest_dfd = -1;
-  struct dirent *dent;
-
-  if (!glnx_dirfd_iterator_init_at (src_parent_dfd, name, TRUE, &src_dfd_iter, error))
-    return FALSE;
-
-  /* Create with mode 0700, we'll fchmod/fchown later */
-  if (!glnx_ensure_dir (dest_parent_dfd, name, 0700, error))
-    return FALSE;
-
-  if (!glnx_opendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
-    return FALSE;
-
-  if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd_iter.fd, dest_dfd,
-                                         flags, cancellable, error))
-    return FALSE;
-
-  while (TRUE)
-    {
-      struct stat child_stbuf;
-
-      if (!glnx_dirfd_iterator_next_dent (&src_dfd_iter, &dent, cancellable, error))
-        return FALSE;
-      if (dent == NULL)
-        break;
-
-      if (!glnx_fstatat (src_dfd_iter.fd, dent->d_name, &child_stbuf,
-                         AT_SYMLINK_NOFOLLOW, error))
-        return FALSE;
-
-      if (S_ISDIR (child_stbuf.st_mode))
-        {
-          if (!copy_dir_recurse (src_dfd_iter.fd, dest_dfd, dent->d_name,
-                                 flags, cancellable, error))
-            return FALSE;
-        }
-      else
-        {
-          if (!glnx_file_copy_at (src_dfd_iter.fd, dent->d_name, &child_stbuf,
-                                  dest_dfd, dent->d_name,
-                                  sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
-                                  cancellable, error))
-            return FALSE;
-        }
     }
 
   return TRUE;
@@ -290,8 +182,8 @@ ensure_directory_from_template (int                 orig_etc_fd,
   if (!glnx_opendirat (new_etc_fd, path, TRUE, &target_dfd, error))
     return FALSE;
 
-  if (!dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd,
-                                         flags, cancellable, error))
+  if (!ot_dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd,
+                                            flags, cancellable, error))
     return FALSE;
 
   if (out_dfd)
@@ -365,15 +257,15 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   if (S_ISDIR (modified_stbuf.st_mode))
     {
-      if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path, flags,
-                             cancellable, error))
+      if (!ot_copy_dir_recurse (modified_etc_fd, new_etc_fd, path, flags,
+                                cancellable, error))
         return FALSE;
     }
   else if (S_ISLNK (modified_stbuf.st_mode) || S_ISREG (modified_stbuf.st_mode))
     {
       if (!glnx_file_copy_at (modified_etc_fd, path, &modified_stbuf,
                               new_etc_fd, path,
-                              sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
+                              ot_sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
                               cancellable, error))
         return FALSE;
     }
@@ -1979,57 +1871,6 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
   return TRUE;
 }
 
-/* Detect whether or not @path refers to a read-only mountpoint. This is
- * currently just used to handle a potentially read-only /boot by transiently
- * remounting it read-write. In the future we might also do this for e.g.
- * /sysroot.
- */
-static gboolean
-is_ro_mount (const char *path)
-{
-#ifdef HAVE_LIBMOUNT
-  /* Dragging in all of this crud is apparently necessary just to determine
-   * whether something is a mount point.
-   *
-   * Systemd has a totally different implementation in
-   * src/basic/mount-util.c.
-   */
-  struct libmnt_table *tb = mnt_new_table_from_file ("/proc/self/mountinfo");
-  struct libmnt_fs *fs;
-  struct libmnt_cache *cache;
-  gboolean is_mount = FALSE;
-  struct statvfs stvfsbuf;
-
-  if (!tb)
-    return FALSE;
-
-  /* to canonicalize all necessary paths */
-  cache = mnt_new_cache ();
-  mnt_table_set_cache (tb, cache);
-
-  fs = mnt_table_find_target(tb, path, MNT_ITER_BACKWARD);
-  is_mount = fs && mnt_fs_get_target (fs);
-#ifdef HAVE_MNT_UNREF_CACHE
-  mnt_unref_table (tb);
-  mnt_unref_cache (cache);
-#else
-  mnt_free_table (tb);
-  mnt_free_cache (cache);
-#endif
-
-  if (!is_mount)
-    return FALSE;
-
-  /* We *could* parse the options, but it seems more reliable to
-   * introspect the actual mount at runtime.
-   */
-  if (statvfs (path, &stvfsbuf) == 0)
-    return (stvfsbuf.f_flag & ST_RDONLY) != 0;
-
-#endif
-  return FALSE;
-}
-
 /**
  * ostree_sysroot_write_deployments:
  * @self: Sysroot
@@ -2331,7 +2172,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     {
       gboolean boot_was_ro_mount = FALSE;
       if (self->booted_deployment)
-        boot_was_ro_mount = is_ro_mount ("/boot");
+        boot_was_ro_mount = ot_is_ro_mount ("/boot");
 
       g_debug ("boot is ro: %s", boot_was_ro_mount ? "yes" : "no");
 

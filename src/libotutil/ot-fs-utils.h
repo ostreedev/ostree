@@ -26,6 +26,19 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+
+  /* Don't flag deployments as immutable. */
+  OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS = 1 << 0,
+  /* See https://github.com/ostreedev/ostree/pull/759 */
+  OSTREE_SYSROOT_DEBUG_NO_XATTRS = 1 << 1,
+  /* https://github.com/ostreedev/ostree/pull/1049 */
+  OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE = 1 << 2,
+  /* This is a temporary flag until we fully drop the explicit `systemctl start
+   * ostree-finalize-staged.service` so that tests can exercise the new path unit. */
+  OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH = 1 << 3,
+} OstreeSysrootDebugFlags;
+
 /* A little helper to call unlinkat() as a cleanup
  * function.  Mostly only necessary to handle
  * deletion of temporary symlinks.
@@ -51,6 +64,15 @@ ot_cleanup_unlinkat (OtCleanupUnlinkat *cleanup)
     }
 }
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OtCleanupUnlinkat, ot_cleanup_unlinkat)
+
+static inline GLnxFileCopyFlags
+ot_sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults,
+                                OstreeSysrootDebugFlags sysrootflags)
+{
+  if (sysrootflags & OSTREE_SYSROOT_DEBUG_NO_XATTRS)
+    defaults |= GLNX_FILE_COPY_NOXATTRS;
+  return defaults;
+}
 
 GFile * ot_fdrel_to_gfile (int dfd, const char *path);
 
@@ -96,5 +118,25 @@ ot_parse_file_by_line (const char    *path,
                        void          *cbdata,
                        GCancellable  *cancellable,
                        GError       **error);
+
+gboolean
+ot_dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
+                                     const char    *src_name,
+                                     int            src_dfd,
+                                     int            dest_dfd,
+                                     OstreeSysrootDebugFlags flags,
+                                     GCancellable  *cancellable,
+                                     GError       **error);
+
+gboolean
+ot_copy_dir_recurse (int              src_parent_dfd,
+                     int              dest_parent_dfd,
+                     const char      *name,
+                     OstreeSysrootDebugFlags flags,
+                     GCancellable    *cancellable,
+                     GError         **error);
+
+gboolean
+ot_is_ro_mount (const char *path);
 
 G_END_DECLS
