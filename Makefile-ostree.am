@@ -112,6 +112,10 @@ ostree_SOURCES += \
 	$(NULL)
 endif
 
+if USE_LIBSODIUM
+ostree_CFLAGS += $(OT_DEP_LIBSODIUM_CFLAGS)
+ostree_LDADD += $(OT_DEP_LIBSODIUM_LIBS)
+endif # USE_LIBSODIUM
 
 if USE_CURL_OR_SOUP
 ostree_SOURCES += src/ostree/ot-remote-builtin-add-cookie.c \
