@@ -189,7 +189,7 @@ cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.2,}
 if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
     assert_not_reached "Successful pull with old summary"
 fi
-assert_file_has_content err.txt "none are in trusted keyring"
+assert_file_has_content err.txt "BAD signature"
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
 cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.1 >&2

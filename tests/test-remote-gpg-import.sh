@@ -163,7 +163,7 @@ ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/key1.asc,${test_tmp
 if ${OSTREE} pull R8:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with different key"
 fi
-assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+assert_file_has_content err.txt "public key not found"
 
 # Test gpgkeypath success with directory containing a valid key
 ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/ R9 $(cat httpd-address)/ostree/gnomerepo
@@ -243,7 +243,7 @@ ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/key2.asc R6 $(cat h
 if ${OSTREE} pull R6:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with different key"
 fi
-assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+assert_file_has_content err.txt "public key not found"
 
 echo "ok"
 
@@ -269,7 +269,7 @@ newrev=$(${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo rev-par
 if ${OSTREE} pull --require-static-deltas R1:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling commit signed with untrusted key"
 fi
-assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+assert_file_has_content err.txt "public key not found"
 
 echo "ok gpg untrusted signed commit for delta upgrades"
 
