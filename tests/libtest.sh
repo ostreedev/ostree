@@ -601,7 +601,8 @@ has_gpgme () {
 }
 
 libtest_cleanup_gpg () {
-    gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye || true
+    local gpg_homedir=${1:-${test_tmpdir}/gpghome}
+    gpg-connect-agent --homedir "${gpg_homedir}" killagent /bye || true
 }
 
 is_bare_user_only_repo () {
