@@ -52,24 +52,39 @@ ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation
       return FALSE;
     }
 
-  const char *deploy_index_str = argv[1];
-  const int deploy_index = atoi (deploy_index_str);
-
-  g_autoptr(OstreeDeployment) target_deployment = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
-  if (!target_deployment)
-    return FALSE;
-
-
-  gboolean current_pin = ostree_deployment_is_pinned (target_deployment);
-  const gboolean desired_pin = !opt_unpin;
-  if (current_pin == desired_pin)
-    g_print ("Deployment is already %s\n", current_pin ? "pinned" : "unpinned");
-  else
+  unsigned int nsuccess = 0;
+  for (unsigned int i = 1; i < argc; i++)
     {
-      if (!ostree_sysroot_deployment_set_pinned (sysroot, target_deployment, desired_pin, error))
-        return FALSE;
-      g_print ("Deployment is now %s\n", desired_pin ? "pinned" : "unpinned");
+      const char *deploy_index_str = argv[i];
+      const int deploy_index = atoi (deploy_index_str);
+
+      g_autoptr(GError) e = NULL;
+      g_autoptr(OstreeDeployment) target_deployment = ot_admin_get_indexed_deployment (sysroot, deploy_index, &e);
+      if (!target_deployment)
+        {
+          g_print ("Invalid deployment %s: %s\n", deploy_index_str, e->message);
+          continue;
+        }
+
+      gboolean current_pin = ostree_deployment_is_pinned (target_deployment);
+      const gboolean desired_pin = !opt_unpin;
+      if (current_pin == desired_pin)
+        {
+          g_print ("Deployment %s is already %s\n", deploy_index_str, current_pin ? "pinned" : "unpinned");
+          nsuccess++;
+        }
+      else
+      {
+        g_autoptr(GError) e = NULL;
+        if (ostree_sysroot_deployment_set_pinned (sysroot, target_deployment, desired_pin, &e))
+          {
+            g_print ("Deployment %s is now %s\n", deploy_index_str, desired_pin ? "pinned" : "unpinned");
+            nsuccess++;
+          }
+        else
+          g_print ("Failed to %s deployment %s: %s\n", desired_pin ? "pin" : "unpin", deploy_index_str, e->message);
+      }
     }
 
-  return TRUE;
+  return nsuccess > 0;
 }

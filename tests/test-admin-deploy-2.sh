@@ -102,8 +102,7 @@ ${CMD_PREFIX} ostree admin pin -u 0
 assert_n_pinned 0
 echo "ok pin unpin"
 
-${CMD_PREFIX} ostree admin pin 0
-${CMD_PREFIX} ostree admin pin 1
+${CMD_PREFIX} ostree admin pin 0 1
 assert_n_pinned 2
 assert_n_deployments 2
 os_repository_new_commit
