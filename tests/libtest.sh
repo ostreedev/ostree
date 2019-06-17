@@ -512,6 +512,55 @@ os_repository_new_commit ()
     cd ${test_tmpdir}
 }
 
+# TODO: deduplicate this with os_repository_new_commit()
+os_repository_commit ()
+{
+    repo=${1:-testos-repo}
+    boot_checksum_iteration=${2:-0}
+    content_iteration=${3:-0}
+    branch=${4:-testos/buildmaster/x86_64-runtime}
+    export version=${5:-$(date "+%Y%m%d.${content_iteration}")}
+    echo "BOOT ITERATION: $boot_checksum_iteration"
+    cd ${test_tmpdir}/osdata
+    kver=3.6.0
+    if test -f usr/lib/modules/${kver}/vmlinuz; then
+        bootdir=usr/lib/modules/${kver}
+    else
+        if test -d usr/lib/ostree-boot; then
+            bootdir=usr/lib/ostree-boot
+        else
+            bootdir=boot
+        fi
+    fi
+    rm ${bootdir}/*
+    kernel_path=${bootdir}/vmlinuz
+    initramfs_path=${bootdir}/initramfs.img
+    if [[ $bootdir != usr/lib/modules/* ]]; then
+        kernel_path=${kernel_path}-${kver}
+        initramfs_path=${bootdir}/initramfs-${kver}.img
+    fi
+    echo "new: a kernel ${boot_checksum_iteration}" > ${kernel_path}
+    echo "new: an initramfs ${boot_checksum_iteration}" > ${initramfs_path}
+    bootcsum=$(cat ${kernel_path} ${initramfs_path} | sha256sum | cut -f 1 -d ' ')
+    export bootcsum
+    if [[ $bootdir != usr/lib/modules/* ]]; then
+        mv ${kernel_path}{,-${bootcsum}}
+        mv ${initramfs_path}{,-${bootcsum}}
+    fi
+
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/${repo} commit  --add-metadata-string "version=${version}" -b $branch -s "Build"
+    cd ${test_tmpdir}
+}
+
+os_tree_write_file ()
+{
+    path=${1}
+    contents="${2}"
+    cd ${test_tmpdir}/osdata
+    echo "${contents}" > ${path}
+    cd ${test_tmpdir}
+}
+
 _have_user_xattrs=''
 have_user_xattrs() {
     assert_has_setfattr
