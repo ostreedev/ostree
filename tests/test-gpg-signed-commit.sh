@@ -29,7 +29,16 @@ if ! has_gpgme; then
     exit 0
 fi
 
-echo "1..1"
+num_tests=1
+
+# Run some more tests if an appropriate GPG is available
+num_gpg_tests=8
+GPG=$(which_gpg)
+if [ -n "${GPG}" ]; then
+  let num_tests+=num_gpg_tests
+fi
+
+echo "1..${num_tests}"
 
 setup_test_repository "archive"
 
@@ -83,3 +92,216 @@ fi
 libtest_cleanup_gpg
 
 echo "ok"
+
+# Remaining tests require gpg
+if [ -z "${GPG}" ]; then
+  exit 0
+fi
+
+# Create a temporary GPG homedir
+tmpgpg_home=${test_tmpdir}/tmpgpghome
+mkdir -m700 ${tmpgpg_home}
+
+# Create an temporary trusted GPG directory
+tmpgpg_trusted=${test_tmpdir}/tmpgpgtrusted
+tmpgpg_trusted_keyring=${tmpgpg_trusted}/keyring.gpg
+export OSTREE_GPG_HOME=${tmpgpg_trusted}
+mkdir -p ${tmpgpg_trusted}
+
+# Create one normal signing key and one signing key with a subkey. See
+# https://www.gnupg.org/documentation/manuals/gnupg/Unattended-GPG-key-generation.html.
+${GPG} --homedir=${tmpgpg_home} --batch --generate-key <<"EOF"
+Key-Type: RSA
+Key-Length: 2048
+Key-Usage: sign
+Name-Real: Test Key 1
+Expire-Date: 0
+%no-protection
+%transient-key
+%commit
+Key-Type: RSA
+Key-Length: 2048
+Key-Usage: sign
+Subkey-Type: RSA
+Subkey-Length: 2048
+Subkey-Usage: sign
+Name-Real: Test Key 2
+Expire-Date: 0
+%no-protection
+%transient-key
+%commit
+EOF
+
+# Figure out the key IDs and fingerprints. Assume that the order of the
+# keys matches those specified in the generation.
+#
+# https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob_plain;f=doc/DETAILS
+key1_id=
+key1_fpr=
+key2_id=
+key2_fpr=
+key2_sub_id=
+key2_sub_fpr=
+gpg_seckey_listing=$(${GPG} --homedir=${tmpgpg_home} --list-secret-keys --with-colons)
+while IFS=: read -a fields; do
+  if [ "${fields[0]}" = sec ]; then
+    # Secret key - key ID is in field 5
+    if [ -z "${key1_id}" ]; then
+      key1_id=${fields[4]}
+    else
+      key2_id=${fields[4]}
+    fi
+  elif [ "${fields[0]}" = ssb ]; then
+    # Secret subkey - key ID is in field 5
+    key2_sub_id=${fields[4]}
+  elif [ "${fields[0]}" = fpr ]; then
+    # Fingerprint record - the fingerprint ID is in field 10
+    if [ -z "${key1_fpr}" ]; then
+      key1_fpr=${fields[9]}
+    elif [ -z "${key2_fpr}" ]; then
+      key2_fpr=${fields[9]}
+    else
+      key2_sub_fpr=${fields[9]}
+    fi
+  fi
+done <<< "${gpg_seckey_listing}"
+
+# Create a commit and sign it with both key1 and key2_sub
+${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" \
+  --tree=dir=files --gpg-homedir=${tmpgpg_home} \
+  --gpg-sign=${key1_id} --gpg-sign=${key2_sub_id}
+${OSTREE} show test2 > test2-show
+assert_file_has_content test2-show '^Found 2 signatures'
+assert_file_has_content test2-show 'public key not found'
+assert_file_has_content test2-show "${key1_id}"
+assert_file_has_content test2-show "${key2_sub_id}"
+
+echo "ok signed with both generated keys"
+
+# Export the public keys and check again
+${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+${OSTREE} show test2 > test2-show
+assert_file_has_content test2-show '^Found 2 signatures'
+assert_not_file_has_content test2-show 'public key not found'
+assert_file_has_content test2-show "${key1_id}"
+assert_file_has_content test2-show "${key2_sub_id}"
+assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
+assert_file_has_content test2-show 'Good signature from "Test Key 2 <>"'
+assert_file_has_content test2-show "Primary key ID ${key2_id}"
+
+echo "ok verified both generated keys"
+
+# Make key1 expired, wait until it's expired, export the public keys and check
+# again
+${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key1_fpr} seconds=1
+sleep 2
+${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+${OSTREE} show test2 > test2-show
+assert_file_has_content test2-show '^Found 2 signatures'
+assert_not_file_has_content test2-show 'public key not found'
+assert_file_has_content test2-show "${key1_id}"
+assert_file_has_content test2-show "${key2_sub_id}"
+assert_file_has_content test2-show 'BAD signature from "Test Key 1 <>"'
+assert_file_has_content test2-show 'Key expired'
+assert_file_has_content test2-show 'Good signature from "Test Key 2 <>"'
+assert_file_has_content test2-show "Primary key ID ${key2_id}"
+
+echo "ok verified with key1 expired"
+
+# Unexpire key1, expire key2 primary, wait until it's expired, export the
+# public keys and check again
+${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key1_fpr} seconds=0
+${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=1
+sleep 2
+${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+${OSTREE} show test2 > test2-show
+assert_file_has_content test2-show '^Found 2 signatures'
+assert_not_file_has_content test2-show 'public key not found'
+assert_file_has_content test2-show "${key1_id}"
+assert_file_has_content test2-show "${key2_sub_id}"
+assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
+assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
+assert_not_file_has_content test2-show 'Key expired'
+assert_file_has_content test2-show "Primary key ID ${key2_id}"
+assert_file_has_content test2-show 'Primary key expired'
+
+echo "ok verified with key2 primary expired"
+
+# Expire key2 subkey, wait until it's expired, export the public keys and
+# check again
+${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=1 ${key2_sub_fpr}
+sleep 2
+${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+${OSTREE} show test2 > test2-show
+assert_file_has_content test2-show '^Found 2 signatures'
+assert_not_file_has_content test2-show 'public key not found'
+assert_file_has_content test2-show "${key1_id}"
+assert_file_has_content test2-show "${key2_sub_id}"
+assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
+assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
+assert_file_has_content test2-show 'Key expired'
+assert_file_has_content test2-show "Primary key ID ${key2_id}"
+assert_file_has_content test2-show 'Primary key expired'
+
+echo "ok verified with key2 primary and subkey expired"
+
+# Unexpire key2 primary, export the public keys and check again
+${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=0
+${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+${OSTREE} show test2 > test2-show
+assert_file_has_content test2-show '^Found 2 signatures'
+assert_not_file_has_content test2-show 'public key not found'
+assert_file_has_content test2-show "${key1_id}"
+assert_file_has_content test2-show "${key2_sub_id}"
+assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
+assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
+assert_file_has_content test2-show 'Key expired'
+assert_file_has_content test2-show "Primary key ID ${key2_id}"
+assert_not_file_has_content test2-show 'Primary key expired'
+
+echo "ok verified with key2 subkey expired"
+
+# Add a second subkey but don't export it to the trusted keyring so that a new
+# commit signed with fails.
+${GPG} --homedir=${tmpgpg_home} --batch --passphrase '' \
+  --quick-add-key ${key2_fpr} rsa2048 sign never
+gpg_seckey_listing=$(${GPG} --homedir=${tmpgpg_home} --list-secret-keys --with-colons)
+key2_sub2_id=$(awk -F: '{if ($1 == "ssb") print $5}' <<< "${gpg_seckey_listing}" | tail -n1)
+key2_sub2_fpr=$(awk -F: '{if ($1 == "fpr") print $10}' <<< "${gpg_seckey_listing}" | tail -n1)
+${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" \
+  --tree=dir=files --gpg-homedir=${tmpgpg_home} \
+  --gpg-sign=${key1_id} --gpg-sign=${key2_sub2_id}
+${OSTREE} show test2 > test2-show
+assert_file_has_content test2-show '^Found 2 signatures'
+assert_file_has_content test2-show "${key1_id}"
+assert_file_has_content test2-show "${key2_sub2_id}"
+assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
+assert_file_has_content test2-show 'public key not found'
+
+echo "ok verified with key2 sub2 missing"
+
+# Revoke key1 by importing the revocation certificate created when generating
+# the key. The cert should be in $homedir/openpgp-revocs.d/$fpr.rev with
+# recent gnupg. However, it tries to prevent you from accidentally revoking
+# things by adding a : before the block, so it needs to be stripped.
+key1_rev=${tmpgpg_home}/openpgp-revocs.d/${key1_fpr}.rev
+if [ -f ${key1_rev} ]; then
+  sed -i '/BEGIN PGP PUBLIC KEY BLOCK/s/^://' ${key1_rev}
+  ${GPG} --homedir=${tmpgpg_home} --import ${key1_rev}
+  # Export both keys again
+  ${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+  ${OSTREE} show test2 > test2-show
+  assert_file_has_content test2-show '^Found 2 signatures'
+  assert_not_file_has_content test2-show 'public key not found'
+  assert_file_has_content test2-show "${key1_id}"
+  assert_file_has_content test2-show "${key2_sub2_id}"
+  assert_file_has_content test2-show 'Key revoked'
+  assert_file_has_content test2-show 'Good signature from "Test Key 2 <>"'
+  assert_file_has_content test2-show "Primary key ID ${key2_id}"
+
+  echo "ok verified with key1 revoked"
+else
+  echo "ok # SKIP could not find key revocation certificate"
+fi
+
+libtest_cleanup_gpg ${tmpgpg_home}
