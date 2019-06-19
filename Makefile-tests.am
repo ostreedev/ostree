@@ -229,7 +229,8 @@ dist_gpginsttest_revoc_DATA = \
 
 gpgvinsttestdir = $(installed_testdir)/gpg-verify-data
 dist_gpgvinsttest_DATA = $(addprefix tests/gpg-verify-data/, \
-	gpg.conf lgpl2 lgpl2.sig pubring.gpg secring.gpg trustdb.gpg)
+	gpg.conf lgpl2 lgpl2.sig lgpl2.sig0 lgpl2.sig1 lgpl2.sig2 lgpl2.sig3 \
+	lgpl2.sig4 pubring.gpg secring.gpg trustdb.gpg)
 endif
 endif
 
