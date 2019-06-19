@@ -548,14 +548,10 @@ append_expire_info (GString *output_buffer,
                     gint64 exp_timestamp,
                     gboolean expired)
 {
-  g_autoptr(GDateTime) date_time_utc = NULL;
-  g_autoptr(GDateTime) date_time_local = NULL;
-  g_autofree char *formatted_date_time = NULL;
-
   if (line_prefix != NULL)
     g_string_append (output_buffer, line_prefix);
 
-  date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
+  g_autoptr(GDateTime) date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
   if (date_time_utc == NULL)
     {
       g_string_append_printf (output_buffer,
@@ -565,8 +561,8 @@ append_expire_info (GString *output_buffer,
       return;
     }
 
-  date_time_local = g_date_time_to_local (date_time_utc);
-  formatted_date_time = g_date_time_format (date_time_local, "%c");
+  g_autoptr(GDateTime) date_time_local = g_date_time_to_local (date_time_utc);
+  g_autofree char *formatted_date_time = g_date_time_format (date_time_local, "%c");
 
   if (expired)
     {
