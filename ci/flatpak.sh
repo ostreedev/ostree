@@ -6,7 +6,7 @@ set -xeuo pipefail
 # Keep this pinned to avoid arbitrary change for now; it's also
 # good to test building older code against newer ostree as it helps
 # us notice any API breaks.
-FLATPAK_TAG=0.99.2
+FLATPAK_TAG=1.4.1
 
 dn=$(dirname $0)
 . ${dn}/libpaprci/libbuild.sh
