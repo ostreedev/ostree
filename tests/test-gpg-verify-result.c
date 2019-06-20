@@ -53,12 +53,12 @@ static void
 test_fixture_setup (TestFixture *fixture,
                     gconstpointer user_data)
 {
+  const char * const *sig_files = user_data;
   gpgme_error_t gpg_error;
   gpgme_data_t data_buffer;
   gpgme_data_t signature_buffer;
   OstreeGpgVerifyResult *result;
   g_autofree char *homedir = NULL;
-  g_autofree char *filename = NULL;
   GError *local_error = NULL;
 
   /* Mimic what OstreeGpgVerifier does to create OstreeGpgVerifyResult.
@@ -74,15 +74,47 @@ test_fixture_setup (TestFixture *fixture,
                            NULL, &local_error, NULL);
   g_assert_no_error (local_error);
 
-  filename = g_build_filename (homedir, "lgpl2", NULL);
-  gpg_error = gpgme_data_new_from_file (&data_buffer, filename, 1);
-  assert_no_gpg_error (gpg_error, filename);
+  g_autofree char *data_filename = g_build_filename (homedir, "lgpl2", NULL);
+  gpg_error = gpgme_data_new_from_file (&data_buffer, data_filename, 1);
+  assert_no_gpg_error (gpg_error, data_filename);
 
-  g_clear_pointer (&filename, g_free);
+  if (sig_files == NULL)
+    {
+      /* No signature files specified, use full lgpl2.sig file */
+      g_autofree char *filename = g_build_filename (homedir, "lgpl2.sig", NULL);
+      gpg_error = gpgme_data_new_from_file (&signature_buffer, filename, 1);
+      assert_no_gpg_error (gpg_error, filename);
+    }
+  else
+    {
+      /* Read all the specified files into the signature buffer */
+      gpg_error = gpgme_data_new (&signature_buffer);
+      assert_no_gpg_error (gpg_error, NULL);
 
-  filename = g_build_filename (homedir, "lgpl2.sig", NULL);
-  gpg_error = gpgme_data_new_from_file (&signature_buffer, filename, 1);
-  assert_no_gpg_error (gpg_error, filename);
+      for (const char * const *name = sig_files; *name != NULL; name++)
+        {
+          g_autofree char *path = g_build_filename (homedir, *name, NULL);
+          g_autoptr(GFile) sig_file = g_file_new_for_path (path);
+
+          g_autofree char *contents = NULL;
+          gsize len;
+          g_assert_true (g_file_load_contents (sig_file, NULL, &contents,
+                                               &len, NULL, &local_error));
+          g_assert_no_error (local_error);
+
+          char *cur = contents;
+          while (len > 0)
+            {
+              ssize_t written = gpgme_data_write (signature_buffer, cur, len);
+              if (written == -1)
+                assert_no_gpg_error (gpgme_error_from_syserror (), path);
+              cur += written;
+              len -= written;
+            }
+        }
+
+      gpgme_data_seek (signature_buffer, 0, SEEK_SET);
+    }
 
   gpg_error = gpgme_op_verify (result->context,
                                signature_buffer, data_buffer, NULL);
@@ -123,7 +155,7 @@ test_signature_lookup (TestFixture *fixture,
                        gconstpointer user_data)
 {
   /* Checking the signature with the revoked key for this case. */
-  guint expected_signature_index = GPOINTER_TO_UINT (user_data);
+  guint expected_signature_index = 2;
 
   /* Lowercase letters to ensure OstreeGpgVerifyResult handles it. */
   const char *fingerprint = "68dcc2db4bec5811c2573590bd9d2a44b7f541a6";
@@ -215,7 +247,7 @@ static void
 test_valid_signature (TestFixture *fixture,
                       gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 0;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -249,7 +281,7 @@ static void
 test_expired_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 1;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -283,7 +315,7 @@ static void
 test_revoked_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 2;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -317,7 +349,7 @@ static void
 test_missing_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 3;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -351,7 +383,7 @@ static void
 test_expired_signature (TestFixture *fixture,
                         gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 4;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -397,7 +429,7 @@ main (int argc, char **argv)
 
   g_test_add ("/gpg-verify-result/signature-lookup",
               TestFixture,
-              GINT_TO_POINTER (2),
+              NULL,
               test_fixture_setup,
               test_signature_lookup,
               test_fixture_teardown);
@@ -411,35 +443,35 @@ main (int argc, char **argv)
 
   g_test_add ("/gpg-verify-result/valid-signature",
               TestFixture,
-              GINT_TO_POINTER (0),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_valid_signature,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/expired-key",
               TestFixture,
-              GINT_TO_POINTER (1),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_expired_key,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/revoked-key",
               TestFixture,
-              GINT_TO_POINTER (2),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_revoked_key,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/missing-key",
               TestFixture,
-              GINT_TO_POINTER (3),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_missing_key,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/expired-signature",
               TestFixture,
-              GINT_TO_POINTER (4),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_expired_signature,
               test_fixture_teardown);
