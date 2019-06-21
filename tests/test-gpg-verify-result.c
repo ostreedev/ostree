@@ -115,7 +115,7 @@ test_check_counts (TestFixture *fixture,
   count_valid = ostree_gpg_verify_result_count_valid (fixture->result);
 
   g_assert_cmpint (count_all, ==, 5);
-  g_assert_cmpint (count_valid, ==, 2);
+  g_assert_cmpint (count_valid, ==, 1);
 }
 
 static void
@@ -373,7 +373,7 @@ test_expired_signature (TestFixture *fixture,
                  &key_missing,
                  &key_exp_timestamp);
 
-  g_assert_true (valid);
+  g_assert_false (valid);
   g_assert_true (sig_expired);
   g_assert_false (key_expired);
   g_assert_false (key_revoked);
