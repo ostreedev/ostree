@@ -220,6 +220,12 @@ dist_gpginsttest_DATA = tests/gpghome/secring.gpg \
 	tests/gpghome/key3.asc
 gpginsttest_trusteddir = $(installed_testdir)/gpghome/trusted
 dist_gpginsttest_trusted_DATA = tests/gpghome/trusted/pubring.gpg
+gpginsttest_revocdir = $(installed_testdir)/gpghome/revocations
+dist_gpginsttest_revoc_DATA = \
+	tests/gpghome/revocations/key1.rev \
+	tests/gpghome/revocations/key2.rev \
+	tests/gpghome/revocations/key3.rev \
+	$(NULL)
 
 gpgvinsttestdir = $(installed_testdir)/gpg-verify-data
 dist_gpgvinsttest_DATA = $(addprefix tests/gpg-verify-data/, \
