@@ -3496,7 +3496,10 @@ ostree_repo_get_mode (OstreeRepo  *self)
  * @out_reserved_bytes: (out): Location to store the result
  * @error: Return location for a #GError
  *
- * It can be used to query the value (in bytes) of min-free-space-* config option.
+ * Determine the number of bytes of free disk space that are reserved according
+ * to the repo config and return that number in @out_reserved_bytes. See the
+ * documentation for the core.min-free-space-size and
+ * core.min-free-space-percent repo config options.
  *
  * Returns: %TRUE on success, %FALSE otherwise.
  * Since: 2018.9
