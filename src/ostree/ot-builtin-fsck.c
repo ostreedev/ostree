@@ -444,7 +444,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
     }
   else if (n_partial > 0)
     {
-      g_print ("%u partial commits not verified\n", n_partial);
+      return glnx_throw (error, "%u partial commits not verified", n_partial);
     }
 
   if (found_corruption)
