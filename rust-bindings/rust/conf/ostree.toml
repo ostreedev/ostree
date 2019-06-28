@@ -48,7 +48,6 @@ generate = [
     "OSTree.RepoPullFlags",
     "OSTree.RepoRemoteChange",
     "OSTree.RepoResolveRevExtFlags",
-    "OSTree.RepoTransactionStats",
     "OSTree.SePolicy",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
@@ -171,6 +170,12 @@ status = "generate"
     # clone() should already be this
     name = "dup"
     ignore = true
+
+[[object]]
+name = "OSTree.RepoTransactionStats"
+status = "generate"
+init_function_expression = "|_ptr| ()"
+clear_function_expression = "|_ptr| ()"
 
 [[object]]
 name = "OSTree.*"

@@ -12,6 +12,8 @@ glib_wrapper! {
     match fn {
         copy => |ptr| gobject_sys::g_boxed_copy(ostree_sys::ostree_repo_transaction_stats_get_type(), ptr as *mut _) as *mut ostree_sys::OstreeRepoTransactionStats,
         free => |ptr| gobject_sys::g_boxed_free(ostree_sys::ostree_repo_transaction_stats_get_type(), ptr as *mut _),
+        init => |_ptr| (),
+        clear => |_ptr| (),
         get_type => || ostree_sys::ostree_repo_transaction_stats_get_type(),
     }
 }
