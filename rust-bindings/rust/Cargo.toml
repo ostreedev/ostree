@@ -31,6 +31,8 @@ name = "ostree"
 [dependencies]
 libc = "0.2"
 bitflags = "1"
+fragile = { version = "0.3.0", optional = true }
+futures-preview = { version = "0.3.0-alpha", optional = true }
 lazy_static = "1.1"
 glib = "0.8.0"
 gio = "0.7.0"
@@ -46,6 +48,7 @@ tempfile = "3"
 
 [features]
 dox = ["ostree-sys/dox"]
+futures = ["futures-preview", "fragile", "gio/futures", "glib/futures"]
 v2014_9 = ["ostree-sys/v2014_9"]
 v2015_7 = ["v2014_9", "ostree-sys/v2015_7"]
 v2016_4 = ["v2015_7", "ostree-sys/v2016_4"]

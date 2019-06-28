@@ -18,6 +18,10 @@ extern crate libc;
 extern crate bitflags;
 #[macro_use]
 extern crate lazy_static;
+#[cfg(feature = "futures")]
+extern crate fragile;
+#[cfg(feature = "futures")]
+extern crate futures;
 
 use glib::Error;
 
