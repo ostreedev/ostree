@@ -57,6 +57,8 @@ ostree_futures:
   image: rustlang/rust:nightly
   variables:
     FEATURES: --features v2018_9,futures
+  script:
+  - cargo test --verbose ${FEATURES}
 
 # docs
 docs:
