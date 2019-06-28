@@ -23,7 +23,7 @@ impl RepoFinder {
 
     //#[cfg(feature = "futures")]
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn resolve_all_async_future(finders: &[RepoFinder], refs: &[&CollectionRef], parent_repo: &Repo) -> Box_<future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, Error>> + std::marker::Unpin> {
+    //pub fn resolve_all_async_future(finders: &[RepoFinder], refs: &[&CollectionRef], parent_repo: &Repo) -> Box_<dyn future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, Error>> + std::marker::Unpin> {
         //use gio::GioFuture;
         //use fragile::Fragile;
 
@@ -56,7 +56,7 @@ pub trait RepoFinderExt: 'static {
 
     //#[cfg(feature = "futures")]
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Box_<future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, Error>> + std::marker::Unpin>;
+    //fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Box_<dyn future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, Error>> + std::marker::Unpin>;
 }
 
 impl<O: IsA<RepoFinder>> RepoFinderExt for O {
@@ -67,7 +67,7 @@ impl<O: IsA<RepoFinder>> RepoFinderExt for O {
 
     //#[cfg(feature = "futures")]
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Box_<future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, Error>> + std::marker::Unpin> {
+    //fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Box_<dyn future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, Error>> + std::marker::Unpin> {
         //use gio::GioFuture;
         //use fragile::Fragile;
 

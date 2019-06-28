@@ -5,7 +5,7 @@ all: gir
 
 # -- gir generation --
 target/tools/bin/gir:
-	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git --rev f511aaeee8a324dc8d23b7a854121739b9bfcd2e -- gir
+	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git --rev 20feecf4fe8b4f3524715a0d4111f8c279666324 -- gir
 
 gir: target/tools/bin/gir
 	target/tools/bin/gir -c conf/ostree-sys.toml

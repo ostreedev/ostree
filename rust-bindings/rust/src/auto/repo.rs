@@ -987,17 +987,16 @@ impl Repo {
     //}
 
     pub fn connect_gpg_verify_result<F: Fn(&Repo, &str, &GpgVerifyResult) + 'static>(&self, f: F) -> SignalHandlerId {
+        unsafe extern "C" fn gpg_verify_result_trampoline<F: Fn(&Repo, &str, &GpgVerifyResult) + 'static>(this: *mut ostree_sys::OstreeRepo, checksum: *mut libc::c_char, result: *mut ostree_sys::OstreeGpgVerifyResult, f: glib_sys::gpointer) {
+            let f: &F = &*(f as *const F);
+            f(&from_glib_borrow(this), &GString::from_glib_borrow(checksum), &from_glib_borrow(result))
+        }
         unsafe {
             let f: Box_<F> = Box_::new(f);
             connect_raw(self.as_ptr() as *mut _, b"gpg-verify-result\0".as_ptr() as *const _,
                 Some(transmute(gpg_verify_result_trampoline::<F> as usize)), Box_::into_raw(f))
         }
     }
-}
-
-unsafe extern "C" fn gpg_verify_result_trampoline<F: Fn(&Repo, &str, &GpgVerifyResult) + 'static>(this: *mut ostree_sys::OstreeRepo, checksum: *mut libc::c_char, result: *mut ostree_sys::OstreeGpgVerifyResult, f: glib_sys::gpointer) {
-    let f: &F = &*(f as *const F);
-    f(&from_glib_borrow(this), &GString::from_glib_borrow(checksum), &from_glib_borrow(result))
 }
 
 impl fmt::Display for Repo {

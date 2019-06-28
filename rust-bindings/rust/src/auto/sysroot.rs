@@ -238,7 +238,7 @@ impl Sysroot {
     }
 
     #[cfg(feature = "futures")]
-    pub fn lock_async_future(&self) -> Box_<future::Future<Output = Result<(), Error>> + std::marker::Unpin> {
+    pub fn lock_async_future(&self) -> Box_<dyn future::Future<Output = Result<(), Error>> + std::marker::Unpin> {
         use gio::GioFuture;
         use fragile::Fragile;
 
@@ -351,18 +351,16 @@ impl Sysroot {
 
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     pub fn connect_journal_msg<F: Fn(&Sysroot, &str) + 'static>(&self, f: F) -> SignalHandlerId {
+        unsafe extern "C" fn journal_msg_trampoline<F: Fn(&Sysroot, &str) + 'static>(this: *mut ostree_sys::OstreeSysroot, msg: *mut libc::c_char, f: glib_sys::gpointer) {
+            let f: &F = &*(f as *const F);
+            f(&from_glib_borrow(this), &GString::from_glib_borrow(msg))
+        }
         unsafe {
             let f: Box_<F> = Box_::new(f);
             connect_raw(self.as_ptr() as *mut _, b"journal-msg\0".as_ptr() as *const _,
                 Some(transmute(journal_msg_trampoline::<F> as usize)), Box_::into_raw(f))
         }
     }
-}
-
-#[cfg(any(feature = "v2017_10", feature = "dox"))]
-unsafe extern "C" fn journal_msg_trampoline<F: Fn(&Sysroot, &str) + 'static>(this: *mut ostree_sys::OstreeSysroot, msg: *mut libc::c_char, f: glib_sys::gpointer) {
-    let f: &F = &*(f as *const F);
-    f(&from_glib_borrow(this), &GString::from_glib_borrow(msg))
 }
 
 impl fmt::Display for Sysroot {
