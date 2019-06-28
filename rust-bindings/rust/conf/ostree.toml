@@ -131,13 +131,10 @@ status = "generate"
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
-    # this one crashes gir, somehow
-    name = "write_metadata_async"
-    ignore = true
-    [[object.function]]
     # this one generates a guchar** incorrectly
     name = "write_content_async"
     ignore = true
+
     [[object.function]]
     # these fail because of issues with zero-terminated arrays
     pattern = "find_remotes_async|pull_from_remotes_async"

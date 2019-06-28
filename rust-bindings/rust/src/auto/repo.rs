@@ -900,6 +900,34 @@ impl Repo {
     //    unsafe { TODO: call ostree_sys:ostree_repo_write_metadata() }
     //}
 
+    //pub fn write_metadata_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result</*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, Error>) + Send + 'static>(&self, objtype: ObjectType, expected_checksum: Option<&str>, object: &glib::Variant, cancellable: Option<&P>, callback: Q) {
+    //    unsafe { TODO: call ostree_sys:ostree_repo_write_metadata_async() }
+    //}
+
+    //#[cfg(feature = "futures")]
+    //pub fn write_metadata_async_future(&self, objtype: ObjectType, expected_checksum: Option<&str>, object: &glib::Variant) -> Box_<dyn future::Future<Output = Result</*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, Error>> + std::marker::Unpin> {
+        //use gio::GioFuture;
+        //use fragile::Fragile;
+
+        //let expected_checksum = expected_checksum.map(ToOwned::to_owned);
+        //let object = object.clone();
+        //GioFuture::new(self, move |obj, send| {
+        //    let cancellable = gio::Cancellable::new();
+        //    let send = Fragile::new(send);
+        //    obj.write_metadata_async(
+        //        objtype,
+        //        expected_checksum.as_ref().map(::std::borrow::Borrow::borrow),
+        //        &object,
+        //        Some(&cancellable),
+        //        move |res| {
+        //            let _ = send.into_inner().send(res);
+        //        },
+        //    );
+
+        //    cancellable
+        //})
+    //}
+
     pub fn write_metadata_stream_trusted<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(&self, objtype: ObjectType, checksum: &str, object_input: &P, length: u64, cancellable: Option<&Q>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
