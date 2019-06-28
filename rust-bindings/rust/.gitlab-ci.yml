@@ -44,13 +44,19 @@ check:
 ostree:
   <<: *build-step
   variables:
-    # TODO: need to switch back to --all-features
+    # 2019.2 still hasn't been backported
     FEATURES: --features v2018_9
 
 ostree_default-features:
   <<: *build-step
   variables:
     FEATURES: ""
+
+ostree_futures:
+  <<: *build-step
+  image: rustlang/rust:nightly
+  variables:
+    FEATURES: --features v2018_9,futures
 
 # docs
 docs:
