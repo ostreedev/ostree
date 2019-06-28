@@ -75,7 +75,7 @@ docs:
   script:
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
-  - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
+  - cargo rustdoc --verbose --package ostree --features dox,futures -- ${RUSTDOC_OPTS}
   artifacts:
     paths:
     - target/doc
