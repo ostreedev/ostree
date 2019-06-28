@@ -65,7 +65,7 @@ impl FromGlibPtrNone<gpointer> for &RepoCheckoutFilter {
 ///
 /// # Panics
 /// If any parameter is a null pointer, the function panics.
-unsafe extern "C" fn filter_trampoline(
+unsafe fn filter_trampoline(
     repo: *mut OstreeRepo,
     path: *const c_char,
     stat: *mut libc::stat,
