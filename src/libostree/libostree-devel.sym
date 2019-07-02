@@ -35,6 +35,7 @@ global:
   ostree_kernel_args_delete_key_entry;
   ostree_kernel_args_append_proc_cmdline;
   ostree_kernel_args_parse_append;
+  ostree_kernel_args_get_last_value;
   ostree_kernel_args_from_string;
   ostree_kernel_args_to_strv;
   ostree_kernel_args_to_string;
