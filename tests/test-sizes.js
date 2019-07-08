@@ -53,7 +53,7 @@ let [,dirTree] = repo.write_mtree(mtree, null);
 let [,commit] = repo.write_commit(null, 'Some subject', 'Some body', null, dirTree, null);
 print("commit => " + commit);
 
-repo.commit_transaction(null, null);
+repo.commit_transaction(null);
 
 // Test the sizes metadata
 let [,commitVariant] = repo.load_variant(OSTree.ObjectType.COMMIT, commit);
