@@ -64,10 +64,10 @@ assertEquals(nSizes, 2);
 let expectedUncompressedSizes = [12, 18];
 let foundExpectedUncompressedSizes = 0;
 for (let i = 0; i < nSizes; i++) {
-    let sizeEntry = sizes.get_child_value(i).deep_unpack();
-    assertEquals(sizeEntry.length, 34);
-    let compressedSize = sizeEntry[32];
-    let uncompressedSize = sizeEntry[33];
+    let sizeEntry = sizes.get_child_value(i);
+    assertEquals(sizeEntry.n_children(), 34);
+    let compressedSize = sizeEntry.get_child_value(32).get_byte();
+    let uncompressedSize = sizeEntry.get_child_value(33).get_byte();
     print("compressed = " + compressedSize);
     print("uncompressed = " + uncompressedSize);
     for (let j = 0; j < expectedUncompressedSizes.length; j++) {
