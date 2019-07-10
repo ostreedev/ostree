@@ -30,17 +30,20 @@ cd ${test_tmpdir}
 rm -rf ./f1
 mkdir -p ./f1
 ${CMD_PREFIX} ostree --repo=./f1 init --mode=archive-z2
+rm -rf ./trial
 mkdir -p ./trial
 echo test > ./trial/test
 ${CMD_PREFIX} ostree --repo=./f1 commit --tree=dir=./trial --skip-if-unchanged --branch=exp1 --subject="test Commit"
 
 rm -rf ./f2
 mkdir -p ./f2
-${CMD_PREFIX} ostree --repo=./f2 init
+${CMD_PREFIX} ostree --repo=./f2 init --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=./f2 pull-local  ./f1
 echo "ok 1 fsck-pre-commit"
 
-echo whoops > `find ./f2 |grep objects |grep \\.file `
+file=`find ./f2 |grep objects |grep \\.file |tail -1 `
+rm $file
+echo whoops > $file
 
 # First check for corruption
 if ${CMD_PREFIX} ostree fsck --repo=./f2 > fsck 2> fsck-error; then
