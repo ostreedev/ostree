@@ -1874,15 +1874,67 @@ ensure_txn_refs (OstreeRepo *self)
 }
 
 /**
+ * ostree_repo_mark_commit_partial_reason:
+ * @self: Repo
+ * @checksum: Commit SHA-256
+ * @is_partial: Whether or not this commit is partial
+ * @in_state: Reason bitmask for partial commit
+ * @error: Error
+ *
+ * Allows the setting of a reason code for a partial commit. Presently
+ * it only supports setting reason bitmask to
+ * OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL, or
+ * OSTREE_REPO_COMMIT_STATE_NORMAL.  This will allow successive ostree
+ * fsck operations to exit properly with an error code if the
+ * repository has been truncated as a result of fsck trying to repair
+ * it.
+ *
+ * Since: 2019.4
+ */
+gboolean
+ostree_repo_mark_commit_partial_reason (OstreeRepo     *self,
+                                        const char     *checksum,
+                                        gboolean        is_partial,
+                                        OstreeRepoCommitState in_state,
+                                        GError        **error)
+{
+  g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
+  if (is_partial)
+    {
+      glnx_autofd int fd = openat (self->repo_dir_fd, commitpartial_path,
+                                   O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
+      if (fd == -1)
+        {
+          if (errno != EEXIST)
+            return glnx_throw_errno_prefix (error, "open(%s)", commitpartial_path);
+        }
+      else
+        {
+          if (in_state & OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL)
+            if (glnx_loop_write (fd, "f", 1) < 0)
+              return glnx_throw_errno_prefix (error, "write(%s)", commitpartial_path);
+        }
+    }
+  else
+    {
+      if (!ot_ensure_unlinked_at (self->repo_dir_fd, commitpartial_path, 0))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+/**
  * ostree_repo_mark_commit_partial:
  * @self: Repo
  * @checksum: Commit SHA-256
  * @is_partial: Whether or not this commit is partial
  * @error: Error
  *
- * Commits in "partial" state do not have all their child objects written. This
- * occurs in various situations, such as during a pull, but also if a "subpath"
- * pull is used, as well as "commit only" pulls.
+ * Commits in the "partial" state do not have all their child objects
+ * written.  This occurs in various situations, such as during a pull,
+ * but also if a "subpath" pull is used, as well as "commit only"
+ * pulls.
  *
  * This function is used by ostree_repo_pull_with_options(); you
  * should use this if you are implementing a different type of transport.
@@ -1895,24 +1947,9 @@ ostree_repo_mark_commit_partial (OstreeRepo     *self,
                                  gboolean        is_partial,
                                  GError        **error)
 {
-  g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-  if (is_partial)
-    {
-      glnx_autofd int fd = openat (self->repo_dir_fd, commitpartial_path,
-                                   O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
-      if (fd == -1)
-        {
-          if (errno != EEXIST)
-            return glnx_throw_errno_prefix (error, "open(%s)", commitpartial_path);
-        }
-    }
-  else
-    {
-      if (!ot_ensure_unlinked_at (self->repo_dir_fd, commitpartial_path, 0))
-        return FALSE;
-    }
-
-  return TRUE;
+  return ostree_repo_mark_commit_partial_reason (self, checksum, is_partial,
+                                                 OSTREE_REPO_COMMIT_STATE_NORMAL,
+                                                 error);
 }
 
 /**
