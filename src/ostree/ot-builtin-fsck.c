@@ -127,7 +127,7 @@ fsck_one_object (OstreeRepo            *repo,
                   if ((state & OSTREE_REPO_COMMIT_STATE_PARTIAL) == 0)
                     {
                       g_printerr ("Marking commit as partial: %s\n", parent_commit);
-                      if (!ostree_repo_mark_commit_partial (repo, parent_commit, TRUE, error))
+                      if (!ostree_repo_mark_commit_partial_reason (repo, parent_commit, TRUE, OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL, error))
                         return FALSE;
                     }
                 }
@@ -302,6 +302,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
     opt_verify_bindings = TRUE;
 
   guint n_partial = 0;
+  guint n_fsck_partial = 0;
   g_hash_table_iter_init (&hash_iter, objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
@@ -410,7 +411,11 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
             }
 
           if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
-            n_partial++;
+	    {
+	      n_partial++;
+	      if (commitstate & OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL)
+		n_fsck_partial++;
+	    }
           else
             g_hash_table_add (commits, g_variant_ref (serialized_key));
         }
@@ -449,6 +454,9 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
 
   if (found_corruption)
     return glnx_throw (error, "Repository corruption encountered");
+
+  if (n_fsck_partial > 0)
+    return glnx_throw (error, "%u fsck deleted partial commits not verified\n", n_partial);
 
   return TRUE;
 }

@@ -39,6 +39,7 @@ global:
   ostree_kernel_args_from_string;
   ostree_kernel_args_to_strv;
   ostree_kernel_args_to_string;
+  ostree_repo_mark_commit_partial_reason;
 } LIBOSTREE_2018.9;
 
 /* Stub section for the stable release *after* this development one; don't
