@@ -3768,10 +3768,19 @@ load_metadata_internal (OstreeRepo       *self,
           g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (sha256);
           *out_state = 0;
 
-          if (!glnx_fstatat_allow_noent (self->repo_dir_fd, commitpartial_path, NULL, 0, error))
+          glnx_autofd int fd = -1;
+          if (!ot_openat_ignore_enoent (self->repo_dir_fd, commitpartial_path, &fd, error))
             return FALSE;
-          if (errno == 0)
-            *out_state |= OSTREE_REPO_COMMIT_STATE_PARTIAL;
+          if (fd != -1)
+            {
+              *out_state |= OSTREE_REPO_COMMIT_STATE_PARTIAL;
+               char reason;
+               if (read (fd, &reason, 1) == 1)
+                 {
+                   if (reason == 'f')
+                     *out_state |= OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL;
+                 }
+            }
         }
     }
   else if (self->parent_repo)
