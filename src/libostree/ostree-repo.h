@@ -147,7 +147,6 @@ _OSTREE_PUBLIC
 gboolean      ostree_repo_reload_config (OstreeRepo *self,
                                          GCancellable *cancellable,
                                          GError    **error);
-
 _OSTREE_PUBLIC
 gboolean      ostree_repo_remote_add (OstreeRepo     *self,
                                       const char     *name,
