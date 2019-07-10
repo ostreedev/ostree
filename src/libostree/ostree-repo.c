@@ -2873,6 +2873,46 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
   return TRUE;
 }
 
+/* FIXME: replace by g_ascii_string_to_unsigned when using glib >= 2.54 */
+static gboolean
+ascii_string_to_unsigned (const gchar  *str,
+                          guint         base,
+                          guint64       min,
+                          guint64       max,
+                          guint64      *out_num)
+{
+  gchar *endptr = NULL;
+  guint64 value = g_ascii_strtoull (str, &endptr, base);
+  if ((*endptr != '\0') ||
+      (value == G_MAXUINT64 && errno == ERANGE) ||
+      (!value && (errno == EINVAL || endptr == str)) ||
+      (value < min) || (value > max))
+    return FALSE;
+
+  *out_num = value;
+  return TRUE;
+}
+
+/* FIXME: replace by g_ascii_string_to_signed when using glib >= 2.54 */
+static gboolean
+ascii_string_to_signed (const gchar *str,
+                        guint        base,
+                        gint64       min,
+                        gint64       max,
+                        gint64      *out_num)
+{
+  gchar *endptr = NULL;
+  gint64 value = g_ascii_strtoll (str, &endptr, base);
+  if ((*endptr != '\0') ||
+      ((value == G_MAXINT64 || value == G_MININT64) && errno == ERANGE) ||
+      (!value && (errno == EINVAL || endptr == str)) ||
+      (value < min) || (value > max))
+    return FALSE;
+
+  *out_num = value;
+  return TRUE;
+}
+
 static gboolean
 reload_core_config (OstreeRepo          *self,
                     GCancellable        *cancellable,
@@ -2953,7 +2993,9 @@ reload_core_config (OstreeRepo          *self,
                                             &tmp_expiry_seconds, error))
       return FALSE;
 
-    self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
+    if (!ascii_string_to_unsigned (tmp_expiry_seconds, 10, 0, G_MAXUINT64,
+                                   &self->tmp_expiry_seconds))
+      return glnx_throw (error, "Invalid tmp-expiry-secs '%s'", tmp_expiry_seconds);
   }
 
   { gboolean locking;
@@ -2973,7 +3015,11 @@ reload_core_config (OstreeRepo          *self,
                                                 &lock_timeout_seconds, error))
           return FALSE;
 
-        self->lock_timeout_seconds = g_ascii_strtoll (lock_timeout_seconds, NULL, 10);
+        gint64 value;
+        if (!ascii_string_to_signed (lock_timeout_seconds, 10, REPO_LOCK_DISABLED, G_MAXINT64, &value))
+          return glnx_throw (error, "Invalid lock-timeout-secs '%s'", lock_timeout_seconds);
+
+        self->lock_timeout_seconds = (gint)value;
       }
   }
 
@@ -2984,8 +3030,14 @@ reload_core_config (OstreeRepo          *self,
                                              &compression_level_str, NULL);
 
     if (compression_level_str)
-      /* Ensure level is in [1,9] */
-      self->zlib_compression_level = MAX (1, MIN (9, g_ascii_strtoull (compression_level_str, NULL, 10)));
+      {
+        /* Ensure level is in [1,9] */
+        guint64 value;
+        if (!ascii_string_to_unsigned (compression_level_str, 10, 1, 9, &value))
+          return glnx_throw (error, "Invalid zlib-level '%s'", compression_level_str);
+
+        self->zlib_compression_level = (guint)value;
+      }
     else
       self->zlib_compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
   }
@@ -3015,9 +3067,11 @@ reload_core_config (OstreeRepo          *self,
                                                 NULL, &min_free_space_percent_str, error))
           return FALSE;
 
-        self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
-        if (self->min_free_space_percent > 99)
+        guint64 value;
+        if (!ascii_string_to_unsigned (min_free_space_percent_str, 10, 0, 99, &value))
           return glnx_throw (error, "Invalid min-free-space-percent '%s'", min_free_space_percent_str);
+
+        self->min_free_space_percent = (guint)value;
       }
     else if (!g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
       {
@@ -3076,7 +3130,9 @@ reload_core_config (OstreeRepo          *self,
                                             &payload_threshold, error))
       return FALSE;
 
-    self->payload_link_threshold = g_ascii_strtoull (payload_threshold, NULL, 10);
+    if (!ascii_string_to_unsigned (payload_threshold, 10, 0, G_MAXUINT64,
+                                   &self->payload_link_threshold))
+      return glnx_throw (error, "Invalid payload-link-threshold '%s'", payload_threshold);
   }
 
   { g_auto(GStrv) configured_finders = NULL;
