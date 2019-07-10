@@ -129,6 +129,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-create-usb.sh \
 	tests/test-find-remotes.sh \
 	tests/test-fsck-collections.sh \
+	tests/test-fsck-delete.sh \
 	tests/test-init-collections.sh \
 	tests/test-prune-collections.sh \
 	tests/test-refs-collections.sh \
