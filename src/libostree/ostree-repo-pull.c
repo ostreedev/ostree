@@ -114,7 +114,7 @@ typedef struct {
   GVariant         *summary;
   GHashTable       *summary_deltas_checksums;
   GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */
-  GHashTable       *gpg_verified_commits; /* Set<checksum> of commits that have been verified */
+  GHashTable       *verified_commits; /* Set<checksum> of commits that have been verified */
   GHashTable       *ref_keyring_map; /* Maps OstreeCollectionRef to keyring remote name */
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
@@ -261,14 +261,13 @@ static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           GError                    **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
 static gboolean
-gpg_verify_unwritten_commit (OtPullData                 *pull_data,
-                             const char                 *checksum,
-                             GVariant                   *commit,
-                             GVariant                   *detached_metadata,
-                             const OstreeCollectionRef  *ref,
-                             GCancellable               *cancellable,
-                             GError                    **error);
-
+ostree_verify_unwritten_commit (OtPullData                 *pull_data,
+                                const char                 *checksum,
+                                GVariant                   *commit,
+                                GVariant                   *detached_metadata,
+                                const OstreeCollectionRef  *ref,
+                                GCancellable               *cancellable,
+                                GError                    **error);
 
 static gboolean
 update_progress (gpointer user_data)
@@ -1300,16 +1299,16 @@ meta_fetch_on_complete (GObject           *object,
        */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          /* Do GPG verification. `detached_data` may be NULL if no detached
+          /* Do signature verification. `detached_data` may be NULL if no detached
            * metadata was found during pull; that's handled by
-           * gpg_verify_unwritten_commit(). If we ever change the pull code to
+           * ostree_ostree_verify_unwritten_commit(). If we ever change the pull code to
            * not always fetch detached metadata, this bit will have to learn how
            * to look up from the disk state as well, or insert the on-disk
            * metadata into this hash.
            */
           GVariant *detached_data = g_hash_table_lookup (pull_data->fetched_detached_metadata, checksum);
-          if (!gpg_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
-                                            fetch_data->requested_ref, pull_data->cancellable, error))
+          if (!ostree_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
+                                               fetch_data->requested_ref, pull_data->cancellable, error))
             goto out;
 
           if (!ostree_repo_mark_commit_partial (pull_data->repo, checksum, TRUE, error))
@@ -1459,20 +1458,20 @@ process_verify_result (OtPullData            *pull_data,
    * the case of "written but not verified". But we also don't want to check
    * twice, as that'd result in duplicate signals.
    */
-  g_hash_table_add (pull_data->gpg_verified_commits, g_strdup (checksum));
+  g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
 
   return TRUE;
 }
 #endif /* OSTREE_DISABLE_GPGME */
 
 static gboolean
-gpg_verify_unwritten_commit (OtPullData                 *pull_data,
-                             const char                 *checksum,
-                             GVariant                   *commit,
-                             GVariant                   *detached_metadata,
-                             const OstreeCollectionRef  *ref,
-                             GCancellable               *cancellable,
-                             GError                    **error)
+ostree_verify_unwritten_commit (OtPullData                 *pull_data,
+                                const char                 *checksum,
+                                GVariant                   *commit,
+                                GVariant                   *detached_metadata,
+                                const OstreeCollectionRef  *ref,
+                                GCancellable               *cancellable,
+                                GError                    **error)
 {
 #ifndef OSTREE_DISABLE_GPGME
   if (pull_data->gpg_verify)
@@ -1480,7 +1479,7 @@ gpg_verify_unwritten_commit (OtPullData                 *pull_data,
       const char *keyring_remote = NULL;
 
       /* Shouldn't happen, but see comment in process_verify_result() */
-      if (g_hash_table_contains (pull_data->gpg_verified_commits, checksum))
+      if (g_hash_table_contains (pull_data->verified_commits, checksum))
         return TRUE;
 
       if (ref != NULL)
@@ -1808,7 +1807,7 @@ scan_commit_object (OtPullData                 *pull_data,
    * but also ensure we've done it here if not already.
    */
   if (pull_data->gpg_verify &&
-      !g_hash_table_contains (pull_data->gpg_verified_commits, checksum))
+      !g_hash_table_contains (pull_data->verified_commits, checksum))
     {
       g_autoptr(OstreeGpgVerifyResult) result = NULL;
       const char *keyring_remote = NULL;
@@ -2414,8 +2413,8 @@ process_one_static_delta (OtPullData                 *pull_data,
           g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
           g_autoptr(GVariant) detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
 
-          if (!gpg_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
-                                            ref, cancellable, error))
+          if (!ostree_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
+                                               ref, cancellable, error))
             return FALSE;
 
           if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
@@ -3697,8 +3696,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->ref_original_commits = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
                                                            (GDestroyNotify)NULL,
                                                            (GDestroyNotify)g_free);
-  pull_data->gpg_verified_commits = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                           (GDestroyNotify)g_free, NULL);
+  pull_data->verified_commits = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                       (GDestroyNotify)g_free, NULL);
   pull_data->ref_keyring_map = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
                                                       (GDestroyNotify)ostree_collection_ref_free, (GDestroyNotify)g_free);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
@@ -4645,21 +4644,21 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         g_string_append_printf (msg, "libostree pull from '%s' for %u refs complete",
                                 pull_data->remote_name, g_hash_table_size (requested_refs_to_fetch));
 
-      const char *gpg_verify_state;
+      const char *verify_state;
 #ifndef OSTREE_DISABLE_GPGME
       if (pull_data->gpg_verify_summary)
         {
           if (pull_data->gpg_verify)
-            gpg_verify_state = "summary+commit";
+            verify_state = "summary+commit";
           else
-            gpg_verify_state = "summary-only";
+            verify_state = "summary-only";
         }
       else
-        gpg_verify_state = (pull_data->gpg_verify ? "commit" : "disabled");
-      g_string_append_printf (msg, "\nsecurity: GPG: %s ", gpg_verify_state);
+        verify_state = (pull_data->gpg_verify ? "commit" : "disabled");
+      g_string_append_printf (msg, "\nsecurity: GPG: %s ", verify_state);
 #else
-      gpg_verify_state = "disabled";
-      g_string_append_printf (msg, "\nsecurity: %s ", gpg_verify_state);
+      verify_state = "disabled";
+      g_string_append_printf (msg, "\nsecurity: %s ", verify_state);
 #endif /* OSTREE_DISABLE_GPGME */
 
       OstreeFetcherURI *first_uri = pull_data->meta_mirrorlist->pdata[0];
@@ -4696,7 +4695,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       ot_journal_send ("MESSAGE=%s", msg->str,
                        "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_MESSAGE_FETCH_COMPLETE_ID),
                        "OSTREE_REMOTE=%s", pull_data->remote_name,
-                       "OSTREE_GPG=%s", gpg_verify_state,
+                       "OSTREE_GPG=%s", verify_state,
                        "OSTREE_SECONDS=%u", n_seconds,
                        "OSTREE_XFER_SIZE=%s", formatted_xferred,
                        NULL);
@@ -4756,7 +4755,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->fetched_detached_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->ref_original_commits, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->gpg_verified_commits, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->verified_commits, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->ref_keyring_map, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
