@@ -584,6 +584,9 @@ OSTREE_FEATURES="$OSTREE_FEATURES $release_build_type"
 # P2P API is public in OSTree >= 2018.6
 OSTREE_FEATURES="$OSTREE_FEATURES p2p"
 
+# Strip leading whitespace
+OSTREE_FEATURES=$(echo ${OSTREE_FEATURES})
+
 AC_CONFIG_FILES([
 Makefile
 apidoc/Makefile

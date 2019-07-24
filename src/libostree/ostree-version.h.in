@@ -91,3 +91,13 @@
 #define OSTREE_CHECK_VERSION(year,release)   \
         (OSTREE_YEAR_VERSION > (year) || \
          (OSTREE_YEAR_VERSION == (year) && OSTREE_RELEASE_VERSION >= (release)))
+
+/**
+ * OSTREE_BUILT_FEATURES:
+ *
+ * Whitespace separated set of features this libostree was configured with at build time.
+ * Consult the source code in configure.ac (or the CLI `ostree --version`) for examples.
+ *
+ * Since: 2019.3
+ */
+#define OSTREE_BUILT_FEATURES "@OSTREE_FEATURES@"
