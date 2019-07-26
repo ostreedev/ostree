@@ -334,6 +334,12 @@ if ${CMD_PREFIX} ostree --repo=repo pull -T origin main 2>err.txt; then
 fi
 assert_file_has_content err.txt "Upgrade.*is chronologically older"
 assert_streq ${newrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
+# And also check we can't pull it when using overrides
+if ${CMD_PREFIX} ostree --repo=repo pull -T origin main@${newrev2} 2>err.txt; then
+    fatal "pulled older commit override with timestamp checking enabled?"
+fi
+assert_file_has_content err.txt "Upgrade.*is chronologically older"
+assert_streq ${newrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
 # But we can pull it without timestamp checking
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 echo "ok pull timestamp checking"
