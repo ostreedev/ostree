@@ -100,7 +100,7 @@ fi
 # the expiration date for subkeys below. That was only added in gnupg
 # 2.1.22. Check if SUBKEY-FPRS is in the usage output.
 # (https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=NEWS;hb=HEAD)
-if (${GPG} --quick-set-expire || :) |& grep -q SUBKEY-FPRS; then
+if (${GPG} --quick-set-expire 2>&1 || :) | grep -q SUBKEY-FPRS; then
   GPG_CAN_EXPIRE_SUBKEYS=true
 else
   GPG_CAN_EXPIRE_SUBKEYS=false
