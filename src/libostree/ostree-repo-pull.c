@@ -4335,16 +4335,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                        const char*, override_commitid)
     {
       g_autofree char *contents = NULL;
+      g_autoptr(OstreeCollectionRef) ref_with_collection = NULL;
 
       /* Support specifying "" for an override commitid */
       if (override_commitid && *override_commitid)
         {
-          g_hash_table_replace (updated_requested_refs_to_fetch, ostree_collection_ref_dup (ref), g_strdup (override_commitid));
+          ref_with_collection = ostree_collection_ref_dup (ref);
+          contents = g_strdup (override_commitid);
         }
       else
         {
-          g_autoptr(OstreeCollectionRef) ref_with_collection = NULL;
-
           if (pull_data->summary)
             {
               gsize commit_size = 0;
@@ -4367,29 +4367,29 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
               ref_with_collection = ostree_collection_ref_dup (ref);
             }
-
-          /* If we have timestamp checking enabled, find the current value of
-           * the ref, and store its timestamp in the hash map, to check later.
-           */
-          if (pull_data->timestamp_check)
-            {
-              g_autofree char *from_rev = NULL;
-              if (!ostree_repo_resolve_rev (pull_data->repo, ref_with_collection->ref_name, TRUE,
-                                            &from_rev, error))
-                goto out;
-              /* Explicitly store NULL if there's no previous revision. We do
-               * this so we can assert() if we somehow didn't find a ref in the
-               * hash at all.  Note we don't copy the collection-ref, so the
-               * lifetime of this hash must be equal to `requested_refs_to_fetch`.
-               */
-              g_hash_table_insert (pull_data->ref_original_commits, ref_with_collection,
-                                   g_steal_pointer (&from_rev));
-            }
-
-          g_hash_table_replace (updated_requested_refs_to_fetch,
-                                g_steal_pointer (&ref_with_collection),
-                                g_steal_pointer (&contents));
         }
+
+      /* If we have timestamp checking enabled, find the current value of
+       * the ref, and store its timestamp in the hash map, to check later.
+       */
+      if (pull_data->timestamp_check)
+        {
+          g_autofree char *from_rev = NULL;
+          if (!ostree_repo_resolve_rev (pull_data->repo, ref_with_collection->ref_name, TRUE,
+                                        &from_rev, error))
+            goto out;
+          /* Explicitly store NULL if there's no previous revision. We do
+           * this so we can assert() if we somehow didn't find a ref in the
+           * hash at all.  Note we don't copy the collection-ref, so the
+           * lifetime of this hash must be equal to `requested_refs_to_fetch`.
+           */
+          g_hash_table_insert (pull_data->ref_original_commits, ref_with_collection,
+                               g_steal_pointer (&from_rev));
+        }
+
+      g_hash_table_replace (updated_requested_refs_to_fetch,
+                            g_steal_pointer (&ref_with_collection),
+                            g_steal_pointer (&contents));
     }
 
   g_hash_table_unref (requested_refs_to_fetch);
