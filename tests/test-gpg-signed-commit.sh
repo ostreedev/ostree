@@ -100,6 +100,12 @@ fi
 tmpgpg_home=${test_tmpdir}/tmpgpghome
 mkdir -m700 ${tmpgpg_home}
 
+# Wire up an exit hook to kill the gpg-agent in it
+cleanup_tmpgpg_home() {
+  libtest_cleanup_gpg ${tmpgpg_home}
+}
+libtest_exit_cmds+=(cleanup_tmpgpg_home)
+
 # Create an temporary trusted GPG directory
 tmpgpg_trusted=${test_tmpdir}/tmpgpgtrusted
 tmpgpg_trusted_keyring=${tmpgpg_trusted}/keyring.gpg
@@ -301,5 +307,3 @@ if [ -f ${key1_rev} ]; then
 else
   echo "ok # SKIP could not find key revocation certificate"
 fi
-
-libtest_cleanup_gpg ${tmpgpg_home}
