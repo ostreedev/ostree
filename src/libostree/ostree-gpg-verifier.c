@@ -91,6 +91,96 @@ verify_result_finalized_cb (gpointer data,
   (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
 }
 
+static gboolean
+_ostree_gpg_verifier_import_keys (OstreeGpgVerifier  *self,
+                                  gpgme_ctx_t         gpgme_ctx,
+                                  GOutputStream      *pubring_stream,
+                                  GCancellable       *cancellable,
+                                  GError            **error)
+{
+  GLNX_AUTO_PREFIX_ERROR("GPG", error);
+
+  for (GList *link = self->keyrings; link != NULL; link = link->next)
+    {
+      g_autoptr(GFileInputStream) source_stream = NULL;
+      GFile *keyring_file = link->data;
+      gssize bytes_written;
+      GError *local_error = NULL;
+
+      source_stream = g_file_read (keyring_file, cancellable, &local_error);
+
+      /* Disregard non-existent keyrings. */
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+          continue;
+        }
+      else if (local_error != NULL)
+        {
+          g_propagate_error (error, local_error);
+          return FALSE;
+        }
+
+      bytes_written = g_output_stream_splice (pubring_stream,
+                                              G_INPUT_STREAM (source_stream),
+                                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                                              cancellable, error);
+      if (bytes_written < 0)
+        return FALSE;
+    }
+
+  for (guint i = 0; i < self->keyring_data->len; i++)
+    {
+      GBytes *keyringd = self->keyring_data->pdata[i];
+      gsize len;
+      gsize bytes_written;
+      const guint8 *buf = g_bytes_get_data (keyringd, &len);
+      if (!g_output_stream_write_all (pubring_stream, buf, len, &bytes_written,
+                                      cancellable, error))
+        return FALSE;
+    }
+
+  if (!g_output_stream_close (pubring_stream, cancellable, error))
+    return FALSE;
+
+  /* Save the previous armor value - we need it on for importing ASCII keys */
+  int armor = gpgme_get_armor (gpgme_ctx);
+  gpgme_set_armor (gpgme_ctx, 1);
+
+  /* Now, use the API to import ASCII-armored keys */
+  if (self->key_ascii_files)
+    {
+      for (guint i = 0; i < self->key_ascii_files->len; i++)
+        {
+          gpgme_error_t gpg_error;
+          const char *path = self->key_ascii_files->pdata[i];
+          glnx_autofd int fd = -1;
+          g_auto(gpgme_data_t) kdata = NULL;
+
+          if (!glnx_openat_rdonly (AT_FDCWD, path, TRUE, &fd, error))
+            return FALSE;
+
+          gpg_error = gpgme_data_new_from_fd (&kdata, fd);
+          if (gpg_error != GPG_ERR_NO_ERROR)
+            {
+              ot_gpgme_throw (gpg_error, error, "Loading data from fd %i", fd);
+              return FALSE;
+            }
+
+          gpg_error = gpgme_op_import (gpgme_ctx, kdata);
+          if (gpg_error != GPG_ERR_NO_ERROR)
+            {
+              ot_gpgme_throw (gpg_error, error, "Failed to import key");
+              return FALSE;
+            }
+        }
+    }
+
+  gpgme_set_armor (gpgme_ctx, armor);
+
+  return TRUE;
+}
+
 OstreeGpgVerifyResult *
 _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                       GBytes             *signed_data,
@@ -106,8 +196,6 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   g_autoptr(GOutputStream) target_stream = NULL;
   OstreeGpgVerifyResult *result = NULL;
   gboolean success = FALSE;
-  GList *link;
-  int armor;
 
   /* GPGME has no API for using multiple keyrings (aka, gpg --keyring),
    * so we concatenate all the keyring files into one pubring.gpg in a
@@ -127,82 +215,9 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                   cancellable, error))
     goto out;
 
-  for (link = self->keyrings; link != NULL; link = link->next)
-    {
-      g_autoptr(GFileInputStream) source_stream = NULL;
-      GFile *keyring_file = link->data;
-      gssize bytes_written;
-      GError *local_error = NULL;
-
-      source_stream = g_file_read (keyring_file, cancellable, &local_error);
-
-      /* Disregard non-existent keyrings. */
-      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&local_error);
-          continue;
-        }
-      else if (local_error != NULL)
-        {
-          g_propagate_error (error, local_error);
-          goto out;
-        }
-
-      bytes_written = g_output_stream_splice (target_stream,
-                                              G_INPUT_STREAM (source_stream),
-                                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                              cancellable, error);
-      if (bytes_written < 0)
-        goto out;
-    }
-
-  for (guint i = 0; i < self->keyring_data->len; i++)
-    {
-      GBytes *keyringd = self->keyring_data->pdata[i];
-      gsize len;
-      gsize bytes_written;
-      const guint8 *buf = g_bytes_get_data (keyringd, &len);
-      if (!g_output_stream_write_all (target_stream, buf, len, &bytes_written,
-                                      cancellable, error))
-        goto out;
-    }
-
-  if (!g_output_stream_close (target_stream, cancellable, error))
+  if (!_ostree_gpg_verifier_import_keys (self, result->context, target_stream,
+                                         cancellable, error))
     goto out;
-
-  /* Save the previous armor value - we need it on for importing ASCII keys */
-  armor = gpgme_get_armor (result->context);
-  gpgme_set_armor (result->context, 1);
-
-  /* Now, use the API to import ASCII-armored keys */
-  if (self->key_ascii_files)
-    {
-      for (guint i = 0; i < self->key_ascii_files->len; i++)
-        {
-          const char *path = self->key_ascii_files->pdata[i];
-          glnx_autofd int fd = -1;
-          g_auto(gpgme_data_t) kdata = NULL;
-
-          if (!glnx_openat_rdonly (AT_FDCWD, path, TRUE, &fd, error))
-            goto out;
-
-          gpg_error = gpgme_data_new_from_fd (&kdata, fd);
-          if (gpg_error != GPG_ERR_NO_ERROR)
-            {
-              ot_gpgme_throw (gpg_error, error, "Loading data from fd %i", fd);
-              goto out;
-            }
-
-          gpg_error = gpgme_op_import (result->context, kdata);
-          if (gpg_error != GPG_ERR_NO_ERROR)
-            {
-              ot_gpgme_throw (gpg_error, error, "Failed to import key");
-              goto out;
-            }
-        }
-    }
-
-  gpgme_set_armor (result->context, armor);
 
   /* Both the signed data and signature GBytes instances will outlive the
    * gpgme_data_t structs, so we can safely reuse the GBytes memory buffer
