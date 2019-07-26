@@ -233,37 +233,52 @@ echo "ok verified with key2 primary expired"
 
 # Expire key2 subkey, wait until it's expired, export the public keys and
 # check again
-${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=1 ${key2_sub_fpr}
-sleep 2
-${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
-${OSTREE} show test2 > test2-show
-assert_file_has_content test2-show '^Found 2 signatures'
-assert_not_file_has_content test2-show 'public key not found'
-assert_file_has_content test2-show "${key1_id}"
-assert_file_has_content test2-show "${key2_sub_id}"
-assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
-assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
-assert_file_has_content test2-show 'Key expired'
-assert_file_has_content test2-show "Primary key ID ${key2_id}"
-assert_file_has_content test2-show 'Primary key expired'
+if ! ${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=1 ${key2_sub_fpr}; then
+  # The gpg option to set expiration on subkeys using a 3rd argument to
+  # --quick-set-expire is only available in gnupg 2.1.22.
+  # (https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=NEWS;hb=HEAD)
+  #
+  # The following 2 tests will fail without expiring the subkey, so skip them.
+  for ((i = 0; i < 2; i++)); do
+    echo "ok # SKIP gpg --quick-set-expire does not support expiring subkeys"
+  done
 
-echo "ok verified with key2 primary and subkey expired"
+  # Unexpire key2 primary and export the public keys again for the
+  # subsequent tests
+  ${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=0
+  ${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+else
+  sleep 2
+  ${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+  ${OSTREE} show test2 > test2-show
+  assert_file_has_content test2-show '^Found 2 signatures'
+  assert_not_file_has_content test2-show 'public key not found'
+  assert_file_has_content test2-show "${key1_id}"
+  assert_file_has_content test2-show "${key2_sub_id}"
+  assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
+  assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
+  assert_file_has_content test2-show 'Key expired'
+  assert_file_has_content test2-show "Primary key ID ${key2_id}"
+  assert_file_has_content test2-show 'Primary key expired'
 
-# Unexpire key2 primary, export the public keys and check again
-${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=0
-${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
-${OSTREE} show test2 > test2-show
-assert_file_has_content test2-show '^Found 2 signatures'
-assert_not_file_has_content test2-show 'public key not found'
-assert_file_has_content test2-show "${key1_id}"
-assert_file_has_content test2-show "${key2_sub_id}"
-assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
-assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
-assert_file_has_content test2-show 'Key expired'
-assert_file_has_content test2-show "Primary key ID ${key2_id}"
-assert_not_file_has_content test2-show 'Primary key expired'
+  echo "ok verified with key2 primary and subkey expired"
 
-echo "ok verified with key2 subkey expired"
+  # Unexpire key2 primary, export the public keys and check again
+  ${GPG} --homedir=${tmpgpg_home} --quick-set-expire ${key2_fpr} seconds=0
+  ${GPG} --homedir=${tmpgpg_home} --export ${key1_id} ${key2_id} > ${tmpgpg_trusted_keyring}
+  ${OSTREE} show test2 > test2-show
+  assert_file_has_content test2-show '^Found 2 signatures'
+  assert_not_file_has_content test2-show 'public key not found'
+  assert_file_has_content test2-show "${key1_id}"
+  assert_file_has_content test2-show "${key2_sub_id}"
+  assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
+  assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
+  assert_file_has_content test2-show 'Key expired'
+  assert_file_has_content test2-show "Primary key ID ${key2_id}"
+  assert_not_file_has_content test2-show 'Primary key expired'
+
+  echo "ok verified with key2 subkey expired"
+fi
 
 # Add a second subkey but don't export it to the trusted keyring so that a new
 # commit signed with fails.
