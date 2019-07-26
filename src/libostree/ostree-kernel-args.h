@@ -35,8 +35,6 @@ GPtrArray *_ostree_kernel_arg_get_key_array (OstreeKernelArgs *kargs);
 _OSTREE_PUBLIC
 void ostree_kernel_args_free (OstreeKernelArgs *kargs);
 
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeKernelArgs, ostree_kernel_args_free)
-
 _OSTREE_PUBLIC
 OstreeKernelArgs *ostree_kernel_args_new (void);
 
