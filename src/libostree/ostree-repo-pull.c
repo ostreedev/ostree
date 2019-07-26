@@ -4334,14 +4334,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   GLNX_HASH_TABLE_FOREACH_KV (requested_refs_to_fetch, const OstreeCollectionRef*, ref,
                                                        const char*, override_commitid)
     {
-      g_autofree char *contents = NULL;
+      g_autofree char *checksum = NULL;
       g_autoptr(OstreeCollectionRef) ref_with_collection = NULL;
 
       /* Support specifying "" for an override commitid */
       if (override_commitid && *override_commitid)
         {
           ref_with_collection = ostree_collection_ref_dup (ref);
-          contents = g_strdup (override_commitid);
+          checksum = g_strdup (override_commitid);
         }
       else
         {
@@ -4351,18 +4351,18 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               guint64 *malloced_size;
               g_autofree gchar *collection_id = NULL;
 
-              if (!lookup_commit_checksum_and_collection_from_summary (pull_data, ref, &contents, &commit_size, &collection_id, error))
+              if (!lookup_commit_checksum_and_collection_from_summary (pull_data, ref, &checksum, &commit_size, &collection_id, error))
                 goto out;
 
               ref_with_collection = ostree_collection_ref_new (collection_id, ref->ref_name);
 
               malloced_size = g_new0 (guint64, 1);
               *malloced_size = commit_size;
-              g_hash_table_insert (pull_data->expected_commit_sizes, g_strdup (contents), malloced_size);
+              g_hash_table_insert (pull_data->expected_commit_sizes, g_strdup (checksum), malloced_size);
             }
           else
             {
-              if (!fetch_ref_contents (pull_data, main_collection_id, ref, &contents, cancellable, error))
+              if (!fetch_ref_contents (pull_data, main_collection_id, ref, &checksum, cancellable, error))
                 goto out;
 
               ref_with_collection = ostree_collection_ref_dup (ref);
@@ -4389,7 +4389,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
       g_hash_table_replace (updated_requested_refs_to_fetch,
                             g_steal_pointer (&ref_with_collection),
-                            g_steal_pointer (&contents));
+                            g_steal_pointer (&checksum));
     }
 
   g_hash_table_unref (requested_refs_to_fetch);
