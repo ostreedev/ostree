@@ -21,6 +21,22 @@
 LIBOSTREE_2020.2 {
 global:
   ostree_repo_commit_modifier_set_sepolicy_from_commit;
+  someostree_symbol_deleteme;
+  ostree_sign_get_type;
+  ostree_sign_list_names;
+  ostree_sign_commit;
+  ostree_sign_commit_verify;
+  ostree_sign_data;
+  ostree_sign_get_by_name;
+  ostree_sign_get_name;
+  ostree_sign_detached_metadata_append;
+  ostree_sign_metadata_verify;
+  ostree_sign_load_pk;
+  ostree_sign_set_pk;
+  ostree_sign_set_sk;
+  ostree_sign_dummy_get_type;
+  ostree_sign_ed25519_get_type;
+  ostree_sign_ed25519_keypair_generate;
 } LIBOSTREE_2020.1;
 
 /* Stub section for the stable release *after* this development one; don't

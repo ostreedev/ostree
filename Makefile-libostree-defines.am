@@ -46,6 +46,8 @@ libostree_public_headers = \
 	src/libostree/ostree-repo-finder-mount.h \
 	src/libostree/ostree-repo-finder-override.h \
 	src/libostree/ostree-kernel-args.h \
+	src/libostree/ostree-sign.h \
+	src/libostree/ostree-sign-ed25519.h \
 	$(NULL)
 
 # This one is generated via configure.ac, and the gtk-doc

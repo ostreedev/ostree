@@ -705,3 +705,26 @@ ostree_kernel_args_from_string
 ostree_kernel_args_to_strv
 ostree_kernel_args_to_string
 </SECTION>
+
+<SECTION>
+<FILE>ostree-sign</FILE>
+OstreeSign
+OstreeSignDummy
+OstreeSignEd25519
+ostree_sign_list_names
+ostree_sign_commit
+ostree_sign_commit_verify
+ostree_sign_data
+ostree_sign_get_by_name
+ostree_sign_get_name
+ostree_sign_detached_metadata_append
+ostree_sign_metadata_verify
+ostree_sign_load_pk
+ostree_sign_set_pk
+ostree_sign_set_sk
+ostree_sign_ed25519_keypair_generate
+<SUBSECTION Standard>
+ostree_sign_get_type
+ostree_sign_dummy_get_type
+ostree_sign_ed25519_get_type
+</SECTION>
