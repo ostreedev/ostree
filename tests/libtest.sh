@@ -605,10 +605,18 @@ skip_without_experimental () {
 }
 
 has_gpgme () {
+    local ret
     ${CMD_PREFIX} ostree --version > version.txt
-    assert_file_has_content version.txt '- gpgme'
+    grep -q -e '- gpgme' version.txt
+    ret=$?
     rm -f version.txt
-    true
+    return ${ret}
+}
+
+skip_without_gpgme() {
+    if ! has_gpgme; then
+        skip "no gpg support compiled in"
+    fi
 }
 
 # Find an appropriate gpg program to use. We want one that has the
