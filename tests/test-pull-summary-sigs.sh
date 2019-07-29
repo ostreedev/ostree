@@ -23,9 +23,15 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..10"
+COMMIT_SIGN=""
+if has_gpgme; then
+    COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+    echo "1..10"
+else
+    # Only one test don't need GPG support
+    echo "1..1"
+fi
 
-COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}"
 
 # Now, setup multiple branches

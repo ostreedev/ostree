@@ -25,6 +25,8 @@ set -euo pipefail
 
 skip_without_user_xattrs
 
+skip_without_gpgme
+
 echo '1..2'
 
 setup_test_repository "archive"

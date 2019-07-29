@@ -23,9 +23,12 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..4"
+COMMIT_SIGN=""
+if has_gpgme; then
+    COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+fi
 
-COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+echo "1..4"
 
 # Test pulling from a repo which gives error 500 (internal server error) a lot of the time.
 setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}" --random-500s=50

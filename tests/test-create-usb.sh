@@ -26,6 +26,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_gpgme
+
 echo "1..5"
 
 cd ${test_tmpdir}
