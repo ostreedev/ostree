@@ -28,7 +28,12 @@ unset OSTREE_GPG_HOME
 
 skip_without_user_xattrs
 
-echo "1..8"
+if has_gpgme; then
+    echo "1..8"
+else
+    # Only some tests doesn't need GPG support
+    echo "1..5"
+fi
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -62,6 +67,20 @@ find checkout3 -printf '%P %s %#m %u/%g %y %l\n' | sort > checkout3.files
 cmp checkout1.files checkout2.files
 cmp checkout1.files checkout3.files
 echo "ok checkouts same"
+
+mkdir repo7
+ostree_repo_init repo7 --mode="archive"
+${CMD_PREFIX} ostree --repo=repo7 pull-local repo
+${CMD_PREFIX} ostree --repo=repo7 fsck
+for src_object in `find repo/objects -name '*.filez'`; do
+    dst_object=${src_object/repo/repo7}
+    assert_files_hardlinked "$src_object" "$dst_object"
+done
+echo "ok pull-local z2 to z2 default hardlink"
+
+if ! has_gpgme; then
+    exit 0
+fi
 
 mkdir repo4
 ostree_repo_init repo4 --mode="archive"
@@ -97,13 +116,3 @@ ${OSTREE} summary --update --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_G
 ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1
 
 echo "ok --gpg-verify-summary"
-
-mkdir repo7
-ostree_repo_init repo7 --mode="archive"
-${CMD_PREFIX} ostree --repo=repo7 pull-local repo
-${CMD_PREFIX} ostree --repo=repo7 fsck
-for src_object in `find repo/objects -name '*.filez'`; do
-    dst_object=${src_object/repo/repo7}
-    assert_files_hardlinked "$src_object" "$dst_object"
-done
-echo "ok pull-local z2 to z2 default hardlink"

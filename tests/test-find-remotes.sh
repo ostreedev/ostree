@@ -23,6 +23,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_gpgme
+
 echo '1..1'
 
 # Create two upstream collection repositories with some example commits

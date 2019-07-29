@@ -28,6 +28,12 @@ set -euo pipefail
 
 echo "1..2"
 
+COMMIT_SIGN=""
+if has_gpgme; then
+    COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+fi
+
+
 cd ${test_tmpdir}
 mkdir repo
 ostree_repo_init repo
@@ -45,7 +51,7 @@ done
 ${CMD_PREFIX} ostree --repo=repo summary --update
 
 # Generate a signed summary file.
-${CMD_PREFIX} ostree --repo=repo summary --update --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}
+${CMD_PREFIX} ostree --repo=repo summary --update ${COMMIT_SIGN}
 
 # Try various ways of adding additional data.
 ${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata key="'value'" --add-metadata=key2=true
@@ -77,7 +83,7 @@ done
 ${CMD_PREFIX} ostree --repo=repo summary --update
 
 # Generate a signed summary file.
-${CMD_PREFIX} ostree --repo=repo summary --update --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}
+${CMD_PREFIX} ostree --repo=repo summary --update ${COMMIT_SIGN}
 
 # Try various ways of adding additional data.
 ${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata key="'value'" --add-metadata=key2=true

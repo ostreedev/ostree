@@ -54,7 +54,12 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..34"
+if has_gpgme; then
+    echo "1..34"
+else
+    # 3 tests needs GPG support
+    echo "1..31"
+fi
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -543,13 +548,15 @@ fi
 assert_file_has_content err.txt "404"
 echo "ok pull repo 404"
 
-cd ${test_tmpdir}
-repo_init --set=gpg-verify=true
-if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main 2>err.txt; then
-    assert_not_reached "pull repo 404 succeeded?"
+if has_gpgme; then
+    cd ${test_tmpdir}
+    repo_init --set=gpg-verify=true
+    if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main 2>err.txt; then
+        assert_not_reached "pull repo 404 succeeded?"
+    fi
+    assert_file_has_content err.txt "GPG verification enabled, but no signatures found"
+    echo "ok pull repo 404 (gpg)"
 fi
-assert_file_has_content err.txt "GPG verification enabled, but no signatures found"
-echo "ok pull repo 404 (gpg)"
 
 cd ${test_tmpdir}
 find ostree-srv/gnomerepo/objects -name '*.dirtree' | while read f; do mv ${f}{,.orig}; done
@@ -561,29 +568,31 @@ assert_file_has_content err.txt "404"
 find ostree-srv/gnomerepo/objects -name '*.dirtree.orig' | while read f; do mv ${f} $(dirname $f)/$(basename ${f} .orig); done
 echo "ok pull repo 404 on dirtree object"
 
-cd ${test_tmpdir}
-repo_init --set=gpg-verify=true
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} \
-  --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1} -b main \
-  -s "A signed commit" --tree=ref=main
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
-# make sure gpg verification is correctly on
-csum=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse main)
-objpath=objects/${csum::2}/${csum:2}.commitmeta
-remotesig=ostree-srv/gnomerepo/$objpath
-localsig=repo/$objpath
-mv $remotesig $remotesig.bak
-if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main; then
-    assert_not_reached "pull with gpg-verify unexpectedly succeeded?"
+if has_gpgme; then
+    cd ${test_tmpdir}
+    repo_init --set=gpg-verify=true
+    ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} \
+      --gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1} -b main \
+      -s "A signed commit" --tree=ref=main
+    ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+    # make sure gpg verification is correctly on
+    csum=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse main)
+    objpath=objects/${csum::2}/${csum:2}.commitmeta
+    remotesig=ostree-srv/gnomerepo/$objpath
+    localsig=repo/$objpath
+    mv $remotesig $remotesig.bak
+    if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main; then
+        assert_not_reached "pull with gpg-verify unexpectedly succeeded?"
+    fi
+    # ok now check that we can pull correctly
+    mv $remotesig.bak $remotesig
+    ${CMD_PREFIX} ostree --repo=repo pull origin main
+    echo "ok pull signed commit"
+    rm $localsig
+    ${CMD_PREFIX} ostree --repo=repo pull origin main
+    test -f $localsig
+    echo "ok re-pull signature for stored commit"
 fi
-# ok now check that we can pull correctly
-mv $remotesig.bak $remotesig
-${CMD_PREFIX} ostree --repo=repo pull origin main
-echo "ok pull signed commit"
-rm $localsig
-${CMD_PREFIX} ostree --repo=repo pull origin main
-test -f $localsig
-echo "ok re-pull signature for stored commit"
 
 cd ${test_tmpdir}
 repo_init --no-gpg-verify

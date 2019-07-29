@@ -28,7 +28,11 @@ set -euo pipefail
 
 echo "1..2"
 
-COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+COMMIT_SIGN=""
+if has_gpgme; then
+    COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+fi
+
 setup_fake_remote_repo1 "archive" "${COMMIT_SIGN}"
 
 # Set up a second branch.
