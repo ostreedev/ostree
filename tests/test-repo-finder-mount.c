@@ -557,10 +557,13 @@ int main (int argc, char **argv)
   g_test_add_func ("/repo-finder-mount/init", test_repo_finder_mount_init);
   g_test_add ("/repo-finder-mount/no-mounts", Fixture, NULL, setup,
               test_repo_finder_mount_no_mounts, teardown);
+#ifndef OSTREE_DISABLE_GPGME
+  /*`ostree_repo_resolve_keyring_for_collection()` fail the tests if no GPG support is compiled in. */
   g_test_add ("/repo-finder-mount/mixed-mounts", Fixture, NULL, setup,
               test_repo_finder_mount_mixed_mounts, teardown);
   g_test_add ("/repo-finder-mount/well-known", Fixture, NULL, setup,
               test_repo_finder_mount_well_known, teardown);
+#endif /* OSTREE_DISABLE_GPGME */
 
   return g_test_run();
 }
