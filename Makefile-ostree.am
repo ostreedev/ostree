@@ -43,6 +43,7 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-remote.c \
 	src/ostree/ot-builtin-reset.c \
 	src/ostree/ot-builtin-rev-parse.c \
+	src/ostree/ot-builtin-sign.c \
 	src/ostree/ot-builtin-summary.c \
 	src/ostree/ot-builtin-show.c \
 	src/ostree/ot-builtin-static-delta.c \
