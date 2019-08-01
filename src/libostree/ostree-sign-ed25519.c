@@ -67,7 +67,6 @@ static void
 ostree_sign_ed25519_class_init (OstreeSignEd25519Class *self)
 {
   g_debug ("%s enter", __FUNCTION__);
-  GObjectClass *object_class = G_OBJECT_CLASS(self);
 }
 
 static void

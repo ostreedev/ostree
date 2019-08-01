@@ -64,7 +64,6 @@ static void
 ostree_sign_dummy_class_init (OstreeSignDummyClass *self)
 {
   g_debug ("%s enter", __FUNCTION__);
-  GObjectClass *object_class = G_OBJECT_CLASS(self);
 }
 
 static void
