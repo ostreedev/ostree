@@ -673,6 +673,16 @@ which_gpg () {
     echo ${gpg}
 }
 
+has_libsodium () {
+    local ret
+    ${CMD_PREFIX} ostree --version > version.txt
+    grep -q -e '- libsodium' version.txt
+    ret=$?
+    rm -f version.txt
+    return ${ret}
+}
+
+
 libtest_cleanup_gpg () {
     local gpg_homedir=${1:-${test_tmpdir}/gpghome}
     gpg-connect-agent --homedir "${gpg_homedir}" killagent /bye || true
