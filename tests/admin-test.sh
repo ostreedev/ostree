@@ -21,7 +21,15 @@
 
 set -euo pipefail
 
-echo "1..$((26 + ${extra_admin_tests:-0}))"
+echo "1..$((27 + ${extra_admin_tests:-0}))"
+
+mkdir sysrootmin
+${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
+assert_has_dir sysrootmin/boot
+assert_has_dir sysrootmin/ostree/repo
+assert_not_has_dir sysrootmin/home
+rm sysrootmin -rf
+echo "ok init-fs --modern"
 
 function validate_bootloader() {
     cd ${test_tmpdir};
@@ -48,7 +56,7 @@ orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
-# This initial deployment gets kicked off with some kernel arguments 
+# This initial deployment gets kicked off with some kernel arguments
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 assert_not_streq "${orig_mtime}" "${new_mtime}"
