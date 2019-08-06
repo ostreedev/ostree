@@ -30,7 +30,10 @@
 
 #include <glib/gi18n.h>
 
+static gboolean opt_modern;
+
 static GOptionEntry options[] = {
+  { "modern", 0, 0, G_OPTION_ARG_NONE, &opt_modern, "Only create /boot and /ostree", NULL },
   { NULL }
 };
 
@@ -58,26 +61,39 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeCommandInvocation *invoca
   if (!glnx_opendirat (AT_FDCWD, sysroot_path, TRUE, &root_dfd, error))
     return FALSE;
 
-  const char *normal_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
-  for (guint i = 0; i < G_N_ELEMENTS (normal_toplevels); i++)
+  /* It's common to want to mount this outside of a deployment as well */
+  if (!glnx_shutil_mkdir_p_at (root_dfd, "boot", 0755, cancellable, error))
+    return FALSE;
+
+  /* See https://github.com/coreos/coreos-assembler/pull/688
+   * For Fedora CoreOS at least, we have this now to the point where we don't
+   * need this stuff in the physical sysroot.  I'm not sure we ever really did,
+   * but to be conservative, make it opt-in to the new model of just boot/ and ostree/.
+   */
+  if (!opt_modern)
     {
-      if (!glnx_shutil_mkdir_p_at (root_dfd, normal_toplevels[i], 0755,
-                                   cancellable, error))
+      const char *traditional_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
+      for (guint i = 0; i < G_N_ELEMENTS (traditional_toplevels); i++)
+        {
+          if (!glnx_shutil_mkdir_p_at (root_dfd, traditional_toplevels[i], 0755,
+                                      cancellable, error))
+            return FALSE;
+        }
+
+      if (!glnx_shutil_mkdir_p_at (root_dfd, "root", 0700,
+                                  cancellable, error))
         return FALSE;
+
+      if (!glnx_shutil_mkdir_p_at (root_dfd, "tmp", 01777,
+                                  cancellable, error))
+        return FALSE;
+      if (fchmodat (root_dfd, "tmp", 01777, 0) == -1)
+        {
+          glnx_set_prefix_error_from_errno (error, "chmod: %s", "tmp");
+          return FALSE;
+        }
     }
 
-  if (!glnx_shutil_mkdir_p_at (root_dfd, "root", 0700,
-                               cancellable, error))
-    return FALSE;
-
-  if (!glnx_shutil_mkdir_p_at (root_dfd, "tmp", 01777,
-                               cancellable, error))
-    return FALSE;
-  if (fchmodat (root_dfd, "tmp", 01777, 0) == -1)
-    {
-      glnx_set_prefix_error_from_errno (error, "chmod: %s", "tmp");
-      return FALSE;
-    }
   g_autoptr(GFile) dir = g_file_new_for_path (sysroot_path);
   g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (dir);
   if (!ostree_sysroot_ensure_initialized (sysroot, cancellable, error))
