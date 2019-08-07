@@ -36,8 +36,35 @@ version of
    projects like [flatpak](https://github.com/flatpak/flatpak) which
    use libostree for applications, rather than hosts.
 
-Projects using OSTree
+Operating systems and distributions using OSTree
 ---------------------
+
+[Endless OS](https://endlessos.com/) uses libostree for their host system as
+well as flatpak. See
+their [eos-updater](https://github.com/endlessm/eos-updater)
+and [deb-ostree-builder](https://github.com/dbnicholson/deb-ostree-builder)
+projects.
+
+Fedora derivatives use rpm-ostree (noted below); there are 3 variants using OSTree:
+
+ - [Fedora CoreOS](https://getfedora.org/en/coreos/)
+ - [Fedora Silverblue](https://silverblue.fedoraproject.org/)
+ - [Fedora IoT](https://iot.fedoraproject.org/)
+
+Red Hat Enterprise Linux CoreOS is a derivative of Fedora CoreOS, used in [OpenShift 4](https://try.openshift.com/).
+The [machine-config-operator](https://github.com/openshift/machine-config-operator/blob/master/docs/OSUpgrades.md)
+manages upgrades.  RHEL CoreOS is also the successor to RHEL Atomic Host, which
+uses rpm-ostree as well.
+
+[GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
+where OSTree was born - as a high performance continuous delivery/testing
+system for GNOME.
+
+[Liri OS](https://liri.io/download/silverblue/) has the option to install
+their distribution using ostree.
+
+Distribution build tools
+------------------------
 
 [meta-updater](https://github.com/advancedtelematic/meta-updater) is
 a layer available for [OpenEmbedded](http://www.openembedded.org/wiki/Main_Page)
@@ -46,36 +73,31 @@ systems.
 [QtOTA](http://doc.qt.io/QtOTA/) is Qt's over-the-air update framework
 which uses libostree.
 
-[rpm-ostree](https://github.com/projectatomic/rpm-ostree) is a next-generation
-hybrid package/image system for [Fedora](https://getfedora.org/) and [CentOS](https://www.centos.org/),
-used by the [Atomic Host](http://www.projectatomic.io/) project.
-By default it uses libostree to atomically replicate a base OS (all dependency
-resolution is done on the server), but it supports "package layering", where
+The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
+integration tool uses libostree as a caching system to store and share
+built artifacts.
+
+Fedora [coreos-assembler](https://github.com/coreos/coreos-assembler) is
+the build tool used to generate Fedora CoreOS derivatives.
+
+Projects linking to libostree
+-----------------------------
+
+[rpm-ostree](https://github.com/projectatomic/rpm-ostree) is used by the
+Fedora-derived operating systems listed above.  It is a full hybrid
+image/package system.  By default it uses libostree to atomically replicate a base OS
+(all dependency resolution is done on the server), but it supports "package layering", where
 additional RPMs can be layered on top of the base.  This brings a "best of both worlds""
 model for image and package systems.
+
+[eos-updater](https://github.com/endlessm/eos-updater) is a daemon that implements updates
+on EndlessOS.
 
 [flatpak](https://github.com/flatpak/flatpak) uses libostree for desktop
 application containers. Unlike most of the other systems here, flatpak does not
 use the "libostree host system" aspects (e.g. bootloader management), just the
 "git-like hardlink dedup". For example, flatpak supports a per-user OSTree
 repository.
-
-[Endless OS](https://endlessos.com/) uses libostree for their host system as
-well as flatpak. See
-their [eos-updater](https://github.com/endlessm/eos-updater)
-and [deb-ostree-builder](https://github.com/dbnicholson/deb-ostree-builder)
-projects.
-
-[GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
-where OSTree was born - as a high performance continuous delivery/testing
-system for GNOME.
-
-The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
-integration tool uses libostree as a caching system to store and share
-built artifacts.
-
-[Liri OS](https://liri.io/download/silverblue/) has the option to install
-their distribution using ostree.
 
 Language bindings
 ----
