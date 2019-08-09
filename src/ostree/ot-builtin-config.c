@@ -74,6 +74,8 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
   int correct_argc;
 
   context = g_option_context_new ("(get KEY|set KEY VALUE|unset KEY)");
+  /* Needed so we don't fail when passing negative integers as VALUE */
+  g_option_context_set_ignore_unknown_options (context, TRUE);
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
