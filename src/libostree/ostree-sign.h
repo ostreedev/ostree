@@ -68,8 +68,12 @@ struct _OstreeSignInterface
                        GVariant *public_key,
                        GError **error);
 
+  gboolean (* add_pk) (OstreeSign *self,
+                       GVariant *public_key,
+                       GError **error);
+
   gboolean (* load_pk) (OstreeSign *self,
-                        gchar *remote_name,
+                        GVariant *options,
                         GError **error);
 
 };
@@ -127,8 +131,13 @@ gboolean ostree_sign_set_pk (OstreeSign *self,
                              GError **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_sign_add_pk (OstreeSign *self,
+                             GVariant *public_key,
+                             GError **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_sign_load_pk (OstreeSign *self,
-                              gchar *remote_name,
+                              GVariant *options,
                               GError **error);
 
 

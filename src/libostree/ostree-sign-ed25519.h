@@ -63,13 +63,20 @@ gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
                                      GVariant *public_key,
                                      GError **error);
 
-void ostree_sign_ed25519_finalize (GObject *gobject);
+gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
+                                     GVariant *public_key,
+                                     GError **error);
+
+gboolean ostree_sign_ed25519_load_pk (OstreeSign *self,
+                                      GVariant *options,
+                                      GError **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_sign_ed25519_keypair_generate (OstreeSign *self,
                                                GVariant **out_secret_key,
                                                GVariant **out_public_key,
                                                GError **error);
+
 
 G_END_DECLS
 

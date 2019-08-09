@@ -1508,13 +1508,21 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
       gboolean ret = FALSE;
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
       /* list all signature types in detached metadata and check if signed by any? */
-      GStrv names = ostree_sign_list_names();
+      g_auto(GStrv) names = ostree_sign_list_names();
       for (guint i=0; i < g_strv_length (names); i++)
         {
-          g_autoptr (OstreeSign) sign = ostree_sign_get_by_name (names[i], error);
+          g_autoptr (OstreeSign) sign = NULL;
           g_autoptr(GVariant) signatures = NULL;
-          g_autofree gchar *signature_key = ostree_sign_metadata_key (sign);
-          g_autofree GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
+          g_autofree gchar *signature_key = NULL;
+          g_autofree GVariantType *signature_format = NULL;
+
+          if ((sign = ostree_sign_get_by_name (names[i], error)) == NULL)
+          {
+              g_error_free (*error);
+              continue;
+          }
+          signature_key = ostree_sign_metadata_key (sign);
+          signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
 
           signatures = g_variant_lookup_value (detached_metadata,
                                                signature_key,
@@ -1531,7 +1539,6 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                           ))
             ret = TRUE;
         }
-      g_strfreev(names);
       return ret;
     }
 

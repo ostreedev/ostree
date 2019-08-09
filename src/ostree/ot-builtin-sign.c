@@ -136,10 +136,9 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
           if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
             {
               gsize key_len = 0;
-              key = g_malloc0 (crypto_sign_PUBLICKEYBYTES);
-              if (sodium_hex2bin (key, crypto_sign_PUBLICKEYBYTES,
-                                  key_ids[ii], strlen (key_ids[ii]),
-                                  NULL, &key_len, NULL) != 0)
+              g_autofree guchar *key = g_base64_decode (key_ids[ii], &key_len);
+              
+              if ( key_len != crypto_sign_PUBLICKEYBYTES)
                 {
                   g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "Invalid KEY '%s'", key_ids[ii]);
@@ -170,10 +169,9 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
           if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
             {
               gsize key_len = 0;
-              key = g_malloc0 (crypto_sign_SECRETKEYBYTES);
-              if (sodium_hex2bin (key, crypto_sign_SECRETKEYBYTES,
-                                  key_ids[ii], strlen (key_ids[ii]),
-                                  NULL, &key_len, NULL) != 0)
+              g_autofree guchar *key = g_base64_decode (key_ids[ii], &key_len);
+
+              if ( key_len != crypto_sign_SECRETKEYBYTES)
                 {
                   g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "Invalid KEY '%s'", key_ids[ii]);

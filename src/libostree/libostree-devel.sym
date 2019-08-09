@@ -33,6 +33,7 @@ global:
   ostree_sign_metadata_verify;
   ostree_sign_load_pk;
   ostree_sign_set_pk;
+  ostree_sign_add_pk;
   ostree_sign_set_sk;
   ostree_sign_dummy_get_type;
   ostree_sign_ed25519_get_type;

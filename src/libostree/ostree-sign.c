@@ -88,22 +88,31 @@ gboolean ostree_sign_set_pk (OstreeSign *self,
   return OSTREE_SIGN_GET_IFACE (self)->set_pk (self, public_key, error);
 }
 
+gboolean ostree_sign_add_pk (OstreeSign *self,
+                             GVariant *public_key,
+                             GError **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+
+  if (OSTREE_SIGN_GET_IFACE (self)->add_pk == NULL)
+    return TRUE;
+
+  return OSTREE_SIGN_GET_IFACE (self)->add_pk (self, public_key, error);
+}
+
 /* Load private keys for verification from anywhere.
  * No need to have the same function for secret keys -- the signing SW must do it in it's own way
  * */
 gboolean
 ostree_sign_load_pk (OstreeSign *self,
-                     gchar *remote_name,
+                     GVariant *options,
                      GError **error)
 {
   g_debug ("%s enter", __FUNCTION__);
 
   g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->load_pk != NULL, FALSE);
 
-  if (remote_name == NULL)
-    remote_name = OSTREE_SIGN_ALL_REMOTES;
-
-  return OSTREE_SIGN_GET_IFACE (self)->load_pk (self, remote_name, error);
+  return OSTREE_SIGN_GET_IFACE (self)->load_pk (self, options, error);
 }
 
 gboolean ostree_sign_data (OstreeSign *self,

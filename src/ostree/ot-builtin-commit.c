@@ -868,11 +868,10 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
               else if (!g_strcmp0 (ostree_sign_get_name (sign), "ed25519"))
                 {
                   gsize key_len = 0;
-                  key = g_malloc0 (crypto_sign_SECRETKEYBYTES);
-                  if (sodium_hex2bin (key, crypto_sign_SECRETKEYBYTES,
-                                 keyid, strlen (keyid),
-                                 NULL, &key_len, NULL) != 0)
-                    {
+                  g_autofree guchar *key = g_base64_decode (keyid, &key_len);
+
+                  if ( key_len != crypto_sign_SECRETKEYBYTES)
+                  {
                       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                    "Invalid KEY '%s'", keyid);
 

@@ -60,16 +60,16 @@ openssl genpkey -algorithm ed25519 -outform PEM -out "${PEMFILE}"
 if has_libsodium; then
     # Based on: http://openssl.6102.n7.nabble.com/ed25519-key-generation-td73907.html
     # Extract the private and public parts from generated key.
-    PUBLIC="$(openssl pkey -outform DER -pubout -in ${PEMFILE} | hexdump -s 12 -e '16/1 "%.2x"')"
-    SEED="$(openssl pkey -outform DER -in ${PEMFILE} | hexdump -s 16 -e '16/1 "%.2x"')"
+    PUBLIC="$(openssl pkey -outform DER -pubout -in ${PEMFILE} | tail -c 32 | base64)"
+    SEED="$(openssl pkey -outform DER -in ${PEMFILE} | tail -c 32 | base64)"
     # Secret key is concantination of SEED and PUBLIC
-    SECRET="${SEED}${PUBLIC}"
+    SECRET="$(echo ${SEED}${PUBLIC} | base64 -d | base64 -w 0)"
 
     echo "SEED = $SEED"
     echo "PUBLIC = $PUBLIC"
 
     echo "Signed commit with ed25519: ${SECRET}" >> file.txt
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo commit -b main -s "Signed with ed25519 module" --sign=${SECRET} --sign-type=ed25519  
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo commit -b main -s "Signed with ed25519 module" --sign="${SECRET}" --sign-type=ed25519
     COMMIT="$(ostree --repo=${test_tmpdir}/repo rev-parse main)"
 
     # Ensure that detached metadata contain signature

@@ -57,7 +57,5 @@ gboolean ostree_sign_dummy_metadata_verify (OstreeSign *self,
 
 gboolean ostree_sign_dummy_set_signature (OstreeSign *self, GVariant *key, GError **error);
 
-void ostree_sign_dummy_finalize (GObject *gobject);
-
 G_END_DECLS
 
