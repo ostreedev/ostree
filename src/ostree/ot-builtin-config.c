@@ -71,7 +71,7 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autofree char *section = NULL;
   g_autofree char *key = NULL;
   g_autoptr(GKeyFile) config = NULL;
-  int correct_argc;
+  int i, correct_argc;
 
   context = g_option_context_new ("(get KEY|set KEY VALUE|unset KEY)");
   /* Needed so we don't fail when passing negative integers as VALUE */
@@ -79,6 +79,17 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
+
+  for (i = 0; i < argc; i++)
+    {
+      /* There should be no more options at this point */
+      if (g_str_has_prefix (argv[i], "--"))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unknown option %s", argv[i]);
+          return FALSE;
+        }
+    }
 
   if (argc < 2)
     {
