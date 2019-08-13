@@ -66,9 +66,11 @@ fi
 assert_file_has_content err.txt "error: Too many arguments given"
 echo "ok config set"
 
-# Check that "ostree config unset" works
+# Check that using `--` works and that "ostree config unset" works
 ${CMD_PREFIX} ostree config --repo=repo set core.lock-timeout-secs 60
 assert_file_has_content repo/config "lock-timeout-secs=60"
+${CMD_PREFIX} ostree config --repo=repo -- set core.lock-timeout-secs -1
+assert_file_has_content repo/config "lock-timeout-secs=-1"
 ${CMD_PREFIX} ostree config --repo=repo unset core.lock-timeout-secs
 assert_not_file_has_content repo/config "lock-timeout-secs="
 
