@@ -53,6 +53,7 @@ ot_dump_variant (GVariant *variant)
 
 static gchar *
 format_timestamp (guint64  timestamp,
+                  gboolean local_tz,
                   GError **error)
 {
   GDateTime *dt;
@@ -66,7 +67,19 @@ format_timestamp (guint64  timestamp,
       return NULL;
     }
 
-  str = g_date_time_format (dt, "%Y-%m-%d %H:%M:%S +0000");
+  if (local_tz)
+    {
+      /* Convert to local time and display in the locale's preferred
+       * representation.
+       */
+      g_autoptr(GDateTime) dt_local = g_date_time_to_local (dt);
+      str = g_date_time_format (dt_local, "%c");
+    }
+  else
+    {
+      str = g_date_time_format (dt, "%Y-%m-%d %H:%M:%S +0000");
+    }
+
   g_date_time_unref (dt);
 
   return str;
@@ -124,7 +137,7 @@ dump_commit (GVariant            *variant,
                  &subject, &body, &timestamp, NULL, NULL);
 
   timestamp = GUINT64_FROM_BE (timestamp);
-  str = format_timestamp (timestamp, &local_error);
+  str = format_timestamp (timestamp, FALSE, &local_error);
   if (!str)
     {
       g_assert (local_error); /* Pacify static analysis */
@@ -389,4 +402,100 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
       else
         g_print ("%s: %s\n", key, value_str);
     }
+}
+
+static gboolean
+dump_gpg_subkey (GVariant  *subkey,
+                 gboolean   primary,
+                 GError   **error)
+{
+  const gchar *fingerprint = NULL;
+  gint64 created = 0;
+  gint64 expires = 0;
+  gboolean revoked = FALSE;
+  gboolean expired = FALSE;
+  gboolean invalid = FALSE;
+  (void) g_variant_lookup (subkey, "fingerprint", "&s", &fingerprint);
+  (void) g_variant_lookup (subkey, "created", "x", &created);
+  (void) g_variant_lookup (subkey, "expires", "x", &expires);
+  (void) g_variant_lookup (subkey, "revoked", "b", &revoked);
+  (void) g_variant_lookup (subkey, "expired", "b", &expired);
+  (void) g_variant_lookup (subkey, "invalid", "b", &invalid);
+
+  /* Convert timestamps from big endian if needed */
+  created = GINT64_FROM_BE (created);
+  expires = GINT64_FROM_BE (expires);
+
+  g_print ("%s: %s%s%s\n",
+           primary ? "Key" : "  Subkey",
+           fingerprint,
+           revoked ? " (revoked)" : "",
+           invalid ? " (invalid)" : "");
+
+  g_autofree gchar *created_str = format_timestamp (created, TRUE,
+                                                    error);
+  if (created_str == NULL)
+    return FALSE;
+  g_print ("%sCreated: %s\n",
+           primary ? "  " : "    ",
+           created_str);
+
+  if (expires > 0)
+    {
+      g_autofree gchar *expires_str = format_timestamp (expires, TRUE,
+                                                        error);
+      if (expires_str == NULL)
+        return FALSE;
+      g_print ("%s%s: %s\n",
+               primary ? "  " : "    ",
+               expired ? "Expired" : "Expires",
+               expires_str);
+    }
+
+  return TRUE;
+}
+
+gboolean
+ot_dump_gpg_key (GVariant  *key,
+                 GError   **error)
+{
+  if (!g_variant_is_of_type (key, OSTREE_GPG_KEY_GVARIANT_FORMAT))
+    return glnx_throw (error, "GPG key variant type doesn't match '%s'",
+                       OSTREE_GPG_KEY_GVARIANT_STRING);
+
+  g_autoptr(GVariant) subkeys_v = g_variant_get_child_value (key, 0);
+  GVariantIter subkeys_iter;
+  g_variant_iter_init (&subkeys_iter, subkeys_v);
+
+  g_autoptr(GVariant) primary_key = NULL;
+  g_variant_iter_next (&subkeys_iter, "(@a{sv})", &primary_key);
+  if (!dump_gpg_subkey (primary_key, TRUE, error))
+    return FALSE;
+
+  g_autoptr(GVariant) uids_v = g_variant_get_child_value (key, 1);
+  GVariantIter uids_iter;
+  g_variant_iter_init (&uids_iter, uids_v);
+  GVariant *uid_v = NULL;
+  while (g_variant_iter_loop (&uids_iter, "(@a{sv})", &uid_v))
+    {
+      const gchar *uid = NULL;
+      gboolean revoked = FALSE;
+      gboolean invalid = FALSE;
+      (void) g_variant_lookup (uid_v, "uid", "&s", &uid);
+      (void) g_variant_lookup (uid_v, "revoked", "b", &revoked);
+      (void) g_variant_lookup (uid_v, "invalid", "b", &invalid);
+      g_print ("  UID: %s%s%s\n",
+               uid,
+               revoked ? " (revoked)" : "",
+               invalid ? " (invalid)" : "");
+    }
+
+  GVariant *subkey = NULL;
+  while (g_variant_iter_loop (&subkeys_iter, "(@a{sv})", &subkey))
+    {
+      if (!dump_gpg_subkey (subkey, FALSE, error))
+        return FALSE;
+    }
+
+  return TRUE;
 }

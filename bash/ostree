@@ -1235,6 +1235,40 @@ _ostree_remote_list_cookies() {
     return 0
 }
 
+_ostree_remote_list_gpg_keys() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+        *)
+            local argpos=$( __ostree_pos_first_nonflag $( __ostree_to_alternatives "$options_with_args" ) )
+
+            if [ $cword -eq $argpos ]; then
+                __ostree_compreply_remotes
+            fi
+    esac
+
+    return 0
+}
+
 _ostree_remote_refs() {
     local boolean_options="
         $main_boolean_options
@@ -1349,6 +1383,7 @@ _ostree_remote() {
         gpg-import
         list
         list-cookies
+        list-gpg-keys
         refs
         show-url
         summary
