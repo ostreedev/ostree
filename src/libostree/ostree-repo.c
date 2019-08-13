@@ -5338,20 +5338,17 @@ find_keyring (OstreeRepo          *self,
   return TRUE;
 }
 
-static OstreeGpgVerifyResult *
-_ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
-                                       const gchar   *remote_name,
-                                       GBytes        *data,
-                                       GBytes        *signatures,
-                                       GFile         *keyringdir,
-                                       GFile         *extra_keyring,
-                                       GCancellable  *cancellable,
-                                       GError       **error)
+static gboolean
+_ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
+                                   const gchar        *remote_name,
+                                   GFile              *keyringdir,
+                                   GFile              *extra_keyring,
+                                   OstreeGpgVerifier **out_verifier,
+                                   GCancellable       *cancellable,
+                                   GError            **error)
 {
-  g_autoptr(OstreeGpgVerifier) verifier = NULL;
+  g_autoptr(OstreeGpgVerifier) verifier = _ostree_gpg_verifier_new ();
   gboolean add_global_keyring_dir = TRUE;
-
-  verifier = _ostree_gpg_verifier_new ();
 
   if (remote_name == OSTREE_ALL_REMOTES)
     {
@@ -5359,7 +5356,7 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
 
       if (!_ostree_gpg_verifier_add_keyring_dir_at (verifier, self->repo_dir_fd, ".",
                                                     cancellable, error))
-        return NULL;
+        return FALSE;
     }
   else if (remote_name != NULL)
     {
@@ -5369,11 +5366,11 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
 
       remote = _ostree_repo_get_remote_inherited (self, remote_name, error);
       if (remote == NULL)
-        return NULL;
+        return FALSE;
 
       g_autoptr(GBytes) keyring_data = NULL;
       if (!find_keyring (self, remote, &keyring_data, cancellable, error))
-        return NULL;
+        return FALSE;
 
       if (keyring_data != NULL)
         {
@@ -5389,14 +5386,14 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
                                                              ";,",
                                                              &gpgkeypath_list,
                                                              error))
-        return NULL;
+        return FALSE;
 
       if (gpgkeypath_list)
         {
           for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)
             if (!_ostree_gpg_verifier_add_keyfile_path (verifier, *iter,
                                                         cancellable, error))
-              return NULL;
+              return FALSE;
         }
     }
 
@@ -5404,19 +5401,45 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
     {
       /* Use the deprecated global keyring directory. */
       if (!_ostree_gpg_verifier_add_global_keyring_dir (verifier, cancellable, error))
-        return NULL;
+        return FALSE;
     }
 
   if (keyringdir)
     {
       if (!_ostree_gpg_verifier_add_keyring_dir (verifier, keyringdir,
                                                  cancellable, error))
-        return NULL;
+        return FALSE;
     }
   if (extra_keyring != NULL)
     {
       _ostree_gpg_verifier_add_keyring_file (verifier, extra_keyring);
     }
+
+  if (out_verifier != NULL)
+    *out_verifier = g_steal_pointer (&verifier);
+
+  return TRUE;
+}
+
+static OstreeGpgVerifyResult *
+_ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
+                                       const gchar   *remote_name,
+                                       GBytes        *data,
+                                       GBytes        *signatures,
+                                       GFile         *keyringdir,
+                                       GFile         *extra_keyring,
+                                       GCancellable  *cancellable,
+                                       GError       **error)
+{
+  g_autoptr(OstreeGpgVerifier) verifier = NULL;
+  if (!_ostree_repo_gpg_prepare_verifier (self,
+                                          remote_name,
+                                          keyringdir,
+                                          extra_keyring,
+                                          &verifier,
+                                          cancellable,
+                                          error))
+    return NULL;
 
   return _ostree_gpg_verifier_check_signature (verifier,
                                                data,
