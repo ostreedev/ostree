@@ -2353,6 +2353,130 @@ out:
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
+static gboolean
+_ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
+                                   const gchar        *remote_name,
+                                   GFile              *keyringdir,
+                                   GFile              *extra_keyring,
+                                   gboolean            add_global_keyrings,
+                                   OstreeGpgVerifier **out_verifier,
+                                   GCancellable       *cancellable,
+                                   GError            **error);
+
+/**
+ * ostree_repo_remote_get_gpg_keys:
+ * @self: an #OstreeRepo
+ * @name (nullable): name of the remote or %NULL
+ * @key_ids: (array zero-terminated=1) (element-type utf8) (nullable):
+ *    a %NULL-terminated array of GPG key IDs to include, or %NULL
+ * @out_keys: (out) (optional) (element-type GVariant) (transfer container):
+ *    return location for a #GPtrArray of the remote's trusted GPG keys, or
+ *    %NULL
+ * @cancellable: (nullable): a #GCancellable, or %NULL
+ * @error: return location for a #GError, or %NULL
+ *
+ * Enumerate the trusted GPG keys for the remote @name. If @name is
+ * %NULL, the global GPG keys will be returned. The keys will be
+ * returned in the @out_keys #GPtrArray. Each element in the array is a
+ * #GVariant of format %OSTREE_GPG_KEY_GVARIANT_FORMAT. The @key_ids
+ * array can be used to limit which keys are included. If @key_ids is
+ * %NULL, then all keys are included.
+ *
+ * Returns: %TRUE if the GPG keys could be enumerated, %FALSE otherwise
+ *
+ * Since: 2021.4
+ */
+gboolean
+ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
+                                 const char          *name,
+                                 const char * const  *key_ids,
+                                 GPtrArray          **out_keys,
+                                 GCancellable        *cancellable,
+                                 GError             **error)
+{
+#ifndef OSTREE_DISABLE_GPGME
+  g_autoptr(OstreeGpgVerifier) verifier = NULL;
+  gboolean global_keyrings = (name == NULL);
+  if (!_ostree_repo_gpg_prepare_verifier (self, name, NULL, NULL, global_keyrings,
+                                          &verifier, cancellable, error))
+    return FALSE;
+
+  g_autoptr(GPtrArray) gpg_keys = NULL;
+  if (!_ostree_gpg_verifier_list_keys (verifier, key_ids, &gpg_keys,
+                                       cancellable, error))
+    return FALSE;
+
+  g_autoptr(GPtrArray) keys =
+    g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
+  for (guint i = 0; i < gpg_keys->len; i++)
+    {
+      gpgme_key_t key = gpg_keys->pdata[i];
+
+      g_auto(GVariantBuilder) subkeys_builder = OT_VARIANT_BUILDER_INITIALIZER;
+      g_variant_builder_init (&subkeys_builder, G_VARIANT_TYPE ("a(a{sv})"));
+      g_auto(GVariantBuilder) uids_builder = OT_VARIANT_BUILDER_INITIALIZER;
+      g_variant_builder_init (&uids_builder, G_VARIANT_TYPE ("a(a{sv})"));
+      for (gpgme_subkey_t subkey = key->subkeys; subkey != NULL;
+           subkey = subkey->next)
+        {
+          g_auto(GVariantDict) subkey_dict = OT_VARIANT_BUILDER_INITIALIZER;
+          g_variant_dict_init (&subkey_dict, NULL);
+          g_variant_dict_insert_value (&subkey_dict, "fingerprint",
+                                       g_variant_new_string (subkey->fpr));
+          g_variant_dict_insert_value (&subkey_dict, "created",
+                                       g_variant_new_int64 (GINT64_TO_BE (subkey->timestamp)));
+          g_variant_dict_insert_value (&subkey_dict, "expires",
+                                       g_variant_new_int64 (GINT64_TO_BE (subkey->expires)));
+          g_variant_dict_insert_value (&subkey_dict, "revoked",
+                                       g_variant_new_boolean (subkey->revoked));
+          g_variant_dict_insert_value (&subkey_dict, "expired",
+                                       g_variant_new_boolean (subkey->expired));
+          g_variant_dict_insert_value (&subkey_dict, "invalid",
+                                       g_variant_new_boolean (subkey->invalid));
+          g_variant_builder_add (&subkeys_builder, "(@a{sv})",
+                                 g_variant_dict_end (&subkey_dict));
+        }
+
+      for (gpgme_user_id_t uid = key->uids; uid != NULL; uid = uid->next)
+        {
+          g_auto(GVariantDict) uid_dict = OT_VARIANT_BUILDER_INITIALIZER;
+          g_variant_dict_init (&uid_dict, NULL);
+          g_variant_dict_insert_value (&uid_dict, "uid",
+                                       g_variant_new_string (uid->uid));
+          g_variant_dict_insert_value (&uid_dict, "name",
+                                       g_variant_new_string (uid->name));
+          g_variant_dict_insert_value (&uid_dict, "comment",
+                                       g_variant_new_string (uid->comment));
+          g_variant_dict_insert_value (&uid_dict, "email",
+                                       g_variant_new_string (uid->email));
+          g_variant_dict_insert_value (&uid_dict, "revoked",
+                                       g_variant_new_boolean (uid->revoked));
+          g_variant_dict_insert_value (&uid_dict, "invalid",
+                                       g_variant_new_boolean (uid->invalid));
+          g_variant_builder_add (&uids_builder, "(@a{sv})",
+                                 g_variant_dict_end (&uid_dict));
+        }
+
+      /* Currently empty */
+      g_auto(GVariantDict) metadata_dict = OT_VARIANT_BUILDER_INITIALIZER;
+      g_variant_dict_init (&metadata_dict, NULL);
+
+      GVariant *key_variant = g_variant_new ("(@a(a{sv})@a(a{sv})@a{sv})",
+                                             g_variant_builder_end (&subkeys_builder),
+                                             g_variant_builder_end (&uids_builder),
+                                             g_variant_dict_end (&metadata_dict));
+      g_ptr_array_add (keys, g_variant_ref_sink (key_variant));
+    }
+
+  if (out_keys)
+    *out_keys = g_steal_pointer (&keys);
+
+  return TRUE;
+#else /* OSTREE_DISABLE_GPGME */
+  return glnx_throw (error, "GPG feature is disabled in a build time");
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
 /**
  * ostree_repo_remote_fetch_summary:
  * @self: Self
