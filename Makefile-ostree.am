@@ -109,6 +109,7 @@ ostree_SOURCES += \
 if USE_GPGME
 ostree_SOURCES += \
 	src/ostree/ot-remote-builtin-gpg-import.c \
+	src/ostree/ot-remote-builtin-list-gpg-keys.c \
 	$(NULL)
 endif
 

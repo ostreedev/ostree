@@ -66,6 +66,9 @@ Boston, MA 02111-1307, USA.
                 <command>ostree remote gpg-import</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">NAME</arg> <arg choice="opt" rep="repeat">KEY-ID</arg>
             </cmdsynopsis>
             <cmdsynopsis>
+                <command>ostree remote list-gpg-keys</command> <arg choice="req">NAME</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
                 <command>ostree remote refs</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
@@ -106,7 +109,11 @@ Boston, MA 02111-1307, USA.
             for more information.
         </para>
         <para>
-            The <command>gpg-import</command> subcommand can associate GPG keys to a specific remote repository for use when pulling signed commits from that repository (if GPG verification is enabled).
+            The <command>gpg-import</command> subcommand can associate GPG
+            keys to a specific remote repository for use when pulling signed
+            commits from that repository (if GPG verification is enabled). The
+            <command>list-gpg-keys</command> subcommand can be used to see the
+            GPG keys currently associated with a remote repository.
         </para>
         <para>
             The GPG keys to import may be in binary OpenPGP format or ASCII armored.  The optional <arg>KEY-ID</arg> list can restrict which keys are imported from a keyring file or input stream.  All keys are imported if this list is omitted.  If neither <option>--keyring</option> nor <option>--stdin</option> options are given, then keys are imported from the user's personal GPG keyring.
