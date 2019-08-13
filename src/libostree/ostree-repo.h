@@ -1347,6 +1347,46 @@ gboolean      ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
                                                          const char  *name,
                                                          gboolean    *out_gpg_verify_summary,
                                                          GError     **error);
+
+/**
+ * OSTREE_GPG_KEY_GVARIANT_FORMAT:
+ *
+ * - a(a{sv}) - Array of subkeys. Each a{sv} dictionary represents a
+ *   subkey. The primary key is the first subkey. The following keys are
+ *   currently recognized:
+ *   - key: `fingerprint`, value: `s`, key fingerprint hexadecimal string
+ *   - key: `created`, value: `x`, key creation timestamp (seconds since
+ *     the Unix epoch in UTC, big-endian)
+ *   - key: `expires`, value: `x`, key expiration timestamp (seconds since
+ *     the Unix epoch in UTC, big-endian). If this value is 0, the key does
+ *     not expire.
+ *   - key: `revoked`, value: `b`, whether key is revoked
+ *   - key: `expired`, value: `b`, whether key is expired
+ *   - key: `invalid`, value: `b`, whether key is invalid
+ * - a(a{sv}) - Array of user IDs. Each a{sv} dictionary represents a
+ *   user ID. The following keys are currently recognized:
+ *   - key: `uid`, value: `s`, full user ID (name, email and comment)
+ *   - key: `name`, value: `s`, user ID name component
+ *   - key: `comment`, value: `s`, user ID comment component
+ *   - key: `email`, value: `s`, user ID email component
+ *   - key: `revoked`, value: `b`, whether user ID is revoked
+ *   - key: `invalid`, value: `b`, whether user ID is invalid
+ * - a{sv} - Additional metadata dictionary. There are currently no
+ *   additional metadata keys defined.
+ *
+ * Since: 2019.5
+ */
+#define OSTREE_GPG_KEY_GVARIANT_STRING "(a(a{sv})a(a{sv})a{sv})"
+#define OSTREE_GPG_KEY_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_GPG_KEY_GVARIANT_STRING)
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
+                                               const char          *name,
+                                               const char * const  *key_ids,
+                                               GPtrArray          **out_keys,
+                                               GCancellable        *cancellable,
+                                               GError             **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                         const char         *name,

@@ -181,6 +181,91 @@ _ostree_gpg_verifier_import_keys (OstreeGpgVerifier  *self,
   return TRUE;
 }
 
+gboolean
+_ostree_gpg_verifier_list_keys (OstreeGpgVerifier   *self,
+                                const char * const  *key_ids,
+                                GPtrArray          **out_keys,
+                                GCancellable        *cancellable,
+                                GError             **error)
+{
+  GLNX_AUTO_PREFIX_ERROR("GPG", error);
+  g_auto(gpgme_ctx_t) context = NULL;
+  g_autoptr(GOutputStream) pubring_stream = NULL;
+  g_autofree char *tmp_dir = NULL;
+  g_autoptr(GPtrArray) keys = NULL;
+  gpgme_error_t gpg_error = 0;
+  gboolean ret = FALSE;
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    goto out;
+
+  context = ot_gpgme_new_ctx (NULL, error);
+  if (context == NULL)
+    goto out;
+
+  if (!ot_gpgme_ctx_tmp_home_dir (context, &tmp_dir, &pubring_stream,
+                                  cancellable, error))
+    goto out;
+
+  if (!_ostree_gpg_verifier_import_keys (self, context, pubring_stream,
+                                         cancellable, error))
+    goto out;
+
+  keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gpgme_key_unref);
+  if (key_ids != NULL)
+    {
+      for (guint i = 0; key_ids[i] != NULL; i++)
+        {
+          gpgme_key_t key = NULL;
+
+          gpg_error = gpgme_get_key (context, key_ids[i], &key, 0);
+          if (gpg_error != GPG_ERR_NO_ERROR)
+            {
+              ot_gpgme_throw (gpg_error, error, "Unable to find key \"%s\"",
+                              key_ids[i]);
+              goto out;
+            }
+
+          /* Transfer ownership. */
+          g_ptr_array_add (keys, key);
+        }
+    }
+  else
+    {
+      gpg_error = gpgme_op_keylist_start (context, NULL, 0);
+      while (gpg_error == GPG_ERR_NO_ERROR)
+        {
+          gpgme_key_t key = NULL;
+
+          gpg_error = gpgme_op_keylist_next (context, &key);
+          if (gpg_error != GPG_ERR_NO_ERROR)
+            break;
+
+          /* Transfer ownership. */
+          g_ptr_array_add (keys, key);
+        }
+
+      if (gpgme_err_code (gpg_error) != GPG_ERR_EOF)
+        {
+          ot_gpgme_throw (gpg_error, error, "Unable to list keys");
+          goto out;
+        }
+    }
+
+  if (out_keys != NULL)
+    *out_keys = g_steal_pointer (&keys);
+
+  ret = TRUE;
+
+ out:
+  if (tmp_dir != NULL) {
+    ot_gpgme_kill_agent (tmp_dir);
+    (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
+  }
+
+  return ret;
+}
+
 OstreeGpgVerifyResult *
 _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                       GBytes             *signed_data,

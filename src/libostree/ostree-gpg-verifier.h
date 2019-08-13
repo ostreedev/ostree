@@ -51,6 +51,12 @@ OstreeGpgVerifyResult *_ostree_gpg_verifier_check_signature (OstreeGpgVerifier *
                                                              GCancellable      *cancellable,
                                                              GError           **error);
 
+gboolean      _ostree_gpg_verifier_list_keys (OstreeGpgVerifier   *self,
+                                              const char * const  *key_ids,
+                                              GPtrArray          **out_keys,
+                                              GCancellable        *cancellable,
+                                              GError             **error);
+
 gboolean      _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                                     GFile               *path,
                                                     GCancellable        *cancellable,
