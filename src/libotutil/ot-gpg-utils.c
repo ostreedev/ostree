@@ -25,6 +25,7 @@
 
 #include <stdlib.h>
 
+#include <gio/gunixoutputstream.h>
 #include "libglnx.h"
 
 /* Like glnx_throw_errno_prefix, but takes @gpg_error */
@@ -445,19 +446,27 @@ ot_gpgme_kill_agent (const char *homedir)
 
   /* Run gpg-connect-agent killagent /bye */
   g_autoptr(GError) local_error = NULL;
-  g_autoptr(GSubprocess) proc = g_subprocess_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE,
-                                                 &local_error,
-                                                 "gpg-connect-agent",
-                                                 "--homedir",
-                                                 homedir,
-                                                 "killagent",
-                                                 "/bye",
-                                                 NULL);
+  GSubprocessFlags flags = G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_PIPE;
+  g_autoptr(GSubprocess) proc = g_subprocess_new (flags,
+                                                  &local_error,
+                                                  "gpg-connect-agent",
+                                                  "--homedir",
+                                                  homedir,
+                                                  "killagent",
+                                                  "/bye",
+                                                  NULL);
   if (proc == NULL) {
     g_debug ("Spawning gpg-connect-agent failed: %s", local_error->message);
     return;
   }
   if (!g_subprocess_wait_check (proc, NULL, &local_error)) {
+    /* Dump out stderr on failures */
+    GInputStream *stderr_in = g_subprocess_get_stderr_pipe (proc);
+    g_autoptr(GOutputStream) stderr_out =
+      G_OUTPUT_STREAM (g_unix_output_stream_new (STDERR_FILENO, FALSE));
+    g_output_stream_splice (stderr_out, stderr_in, G_OUTPUT_STREAM_SPLICE_NONE,
+                            NULL, NULL);
+
     g_debug ("Killing GPG agent with gpg-connect-agent failed: %s",
              local_error->message);
     return;
