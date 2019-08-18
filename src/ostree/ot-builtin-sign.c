@@ -41,6 +41,7 @@
 static gboolean opt_delete;
 static gboolean opt_verify;
 static char *opt_sign_name;
+static char *opt_filename;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
@@ -52,6 +53,7 @@ static GOptionEntry options[] = {
   { "verify", 0, 0, G_OPTION_ARG_NONE, &opt_verify, "Verify signatures", NULL},
   { "sign-type", 's', 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
 #if defined(HAVE_LIBSODIUM)
+  { "keys-file", 's', 0, G_OPTION_ARG_STRING, &opt_filename, "Read public key(s) from file", "NAME"},
 #endif
    { NULL }
 };
@@ -197,6 +199,32 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
             goto out;
         }
     }
+
+  /* Read public signatures from file */
+  if (opt_verify && opt_filename)
+    {
+      g_autoptr (GVariantBuilder) builder = NULL;
+      g_autoptr (GVariant) options = NULL;
+
+      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+      g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
+      g_variant_builder_add (builder, "{sv}", "test", g_variant_new_string (opt_filename));
+      options = g_variant_builder_end (builder);
+
+      if (!ostree_sign_load_pk (sign, options, error))
+        {
+          ret = FALSE;
+          goto out;
+        }
+      if (ostree_sign_commit_verify (sign,
+                                     repo,
+                                     resolved_commit,
+                                     cancellable,
+                                     error))
+        ret = TRUE;
+      if (ret != TRUE)
+        goto out;
+    } /* Check via file */
 
   // No valid signature found
   if (opt_verify && (ret != TRUE))
