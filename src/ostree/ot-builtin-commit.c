@@ -32,11 +32,6 @@
 #include "ostree-repo-private.h"
 #include "ostree-libarchive-private.h"
 #include "ostree-sign.h"
-#include "ostree-sign-dummy.h"
-#if defined(HAVE_LIBSODIUM)
-#include "ostree-sign-ed25519.h"
-#include <sodium.h>
-#endif
 
 static char *opt_subject;
 static char *opt_body;
@@ -864,23 +859,13 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
                 {
                   secret_key = g_variant_new_string (keyid);
                 }
-#if defined(HAVE_LIBSODIUM)
               else if (!g_strcmp0 (ostree_sign_get_name (sign), "ed25519"))
                 {
                   gsize key_len = 0;
                   g_autofree guchar *key = g_base64_decode (keyid, &key_len);
 
-                  if ( key_len != crypto_sign_SECRETKEYBYTES)
-                  {
-                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "Invalid KEY '%s'", keyid);
-
-                      goto out;
-                    }
-
                   secret_key = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
                 }
-#endif
               if (!ostree_sign_set_sk (sign, secret_key, error))
                   goto out;
 
