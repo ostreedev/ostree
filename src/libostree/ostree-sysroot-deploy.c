@@ -1374,7 +1374,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
            * the filesystem is already frozen (EBUSY).
            * OK, let's just do a syncfs.
            */
-          if (G_IN_SET (errno, EOPNOTSUPP, EPERM, EBUSY))
+          if (G_IN_SET (errno, EOPNOTSUPP, ENOSYS, EPERM, EBUSY))
             {
               /* Warn if the filesystem was already frozen */
               if (errno == EBUSY)
