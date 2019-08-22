@@ -18,28 +18,6 @@
 ***/
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
-LIBOSTREE_2019.3 {
-global:
-  ostree_repo_write_archive_to_mtree_from_fd;
-  ostree_kernel_args_free;
-  ostree_kernel_args_new;
-  ostree_kernel_args_cleanup;
-  ostree_kernel_args_replace_take;
-  ostree_kernel_args_replace;
-  ostree_kernel_args_replace_argv;
-  ostree_kernel_args_append;
-  ostree_kernel_args_append_argv;
-  ostree_kernel_args_append_argv_filtered;
-  ostree_kernel_args_new_replace;
-  ostree_kernel_args_delete;
-  ostree_kernel_args_delete_key_entry;
-  ostree_kernel_args_append_proc_cmdline;
-  ostree_kernel_args_parse_append;
-  ostree_kernel_args_get_last_value;
-  ostree_kernel_args_from_string;
-  ostree_kernel_args_to_strv;
-  ostree_kernel_args_to_string;
-} LIBOSTREE_2018.9;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
