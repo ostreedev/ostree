@@ -67,6 +67,8 @@ cat > expected <<"EOF"
 Key: 5E65DE75AB1C501862D476347FCA23D8472CDAFA
   Created: Tue Sep 10 02:29:42 2013
   UID: Ostree Tester <test@test.com>
+  Advanced update URL: https://openpgpkey.test.com/.well-known/openpgpkey/test.com/hu/iffe93qcsgp4c8ncbb378rxjo6cn9q6u?l=test
+  Direct update URL: https://test.com/.well-known/openpgpkey/hu/iffe93qcsgp4c8ncbb378rxjo6cn9q6u?l=test
   Subkey: CC47B2DFB520AEF231180725DF20F58B408DEA49
     Created: Tue Sep 10 02:29:42 2013
 EOF
@@ -89,16 +91,22 @@ cat > expected <<"EOF"
 Key: 5E65DE75AB1C501862D476347FCA23D8472CDAFA
   Created: Tue Sep 10 02:29:42 2013
   UID: Ostree Tester <test@test.com>
+  Advanced update URL: https://openpgpkey.test.com/.well-known/openpgpkey/test.com/hu/iffe93qcsgp4c8ncbb378rxjo6cn9q6u?l=test
+  Direct update URL: https://test.com/.well-known/openpgpkey/hu/iffe93qcsgp4c8ncbb378rxjo6cn9q6u?l=test
   Subkey: CC47B2DFB520AEF231180725DF20F58B408DEA49
     Created: Tue Sep 10 02:29:42 2013
 Key: 7B3B1020D74479687FDB2273D8228CFECA950D41
   Created: Tue Mar 17 14:00:32 2015
   UID: Ostree Tester II <test2@test.com>
+  Advanced update URL: https://openpgpkey.test.com/.well-known/openpgpkey/test.com/hu/nnxwsxno46ap6hw7fgphp68j76egpfa9?l=test2
+  Direct update URL: https://test.com/.well-known/openpgpkey/hu/nnxwsxno46ap6hw7fgphp68j76egpfa9?l=test2
   Subkey: 1EFA95C06EB1EB91754575E004B69C2560D53993
     Created: Tue Mar 17 14:00:32 2015
 Key: 7D29CF060B8269CDF63BFBDD0D15FAE7DF444D67
   Created: Tue Mar 17 14:01:05 2015
   UID: Ostree Tester III <test3@test.com>
+  Advanced update URL: https://openpgpkey.test.com/.well-known/openpgpkey/test.com/hu/8494gyqhmrcs6gn38tn6kgjexet117cj?l=test3
+  Direct update URL: https://test.com/.well-known/openpgpkey/hu/8494gyqhmrcs6gn38tn6kgjexet117cj?l=test3
   Subkey: 0E45E48CBF7B360C0E04443E0C601A7402416340
     Created: Tue Mar 17 14:01:05 2015
 EOF
