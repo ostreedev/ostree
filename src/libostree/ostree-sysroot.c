@@ -959,7 +959,18 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
     }
 
   if (self->root_is_ostree_booted && !self->booted_deployment)
-    return glnx_throw (error, "Unexpected state: /run/ostree-booted found and in / sysroot but not in a booted deployment");
+    {
+      if (!glnx_fstatat_allow_noent (self->sysroot_fd, "boot/loader", NULL, AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
+      if (errno == ENOENT)
+        {
+          return glnx_throw (error, "Unexpected state: /run/ostree-booted found, but no /boot/loader directory");
+        }
+      else
+        {
+          return glnx_throw (error, "Unexpected state: /run/ostree-booted found and in / sysroot, but bootloader entry not found");
+        }
+     }
 
   if (!_ostree_sysroot_reload_staged (self, error))
     return FALSE;
