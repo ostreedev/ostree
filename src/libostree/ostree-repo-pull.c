@@ -1505,6 +1505,17 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
 
   if (pull_data->sign_verify)
     {
+      /* Nothing to check if detached metadata is absent */
+      if (detached_metadata == NULL)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Can't verify commit without detached metadata");
+          return FALSE;
+        }
+      /* Shouldn't happen, but see comment in process_verify_result() */
+      if (g_hash_table_contains (pull_data->verified_commits, checksum))
+        return TRUE;
+
       gboolean ret = FALSE;
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
       /* list all signature types in detached metadata and check if signed by any? */
@@ -1512,13 +1523,14 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
       for (guint i=0; i < g_strv_length (names); i++)
         {
           g_autoptr (OstreeSign) sign = NULL;
-          g_autoptr(GVariant) signatures = NULL;
+          g_autoptr (GVariant) signatures = NULL;
           g_autofree gchar *signature_key = NULL;
           g_autofree GVariantType *signature_format = NULL;
+          g_autofree gchar *pk_ascii = NULL;
 
           if ((sign = ostree_sign_get_by_name (names[i], error)) == NULL)
           {
-              g_error_free (*error);
+              g_clear_error (error);
               continue;
           }
           signature_key = ostree_sign_metadata_key (sign);
@@ -1528,17 +1540,55 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                                signature_key,
                                                signature_format);
 
-          /* Set return to true if any sign fit */
           if (!signatures)
             continue;
 
+          /* TODO: load keys for remote here */
+          ostree_repo_get_remote_option (pull_data->repo,
+                                         pull_data->remote_name,
+                                         "verification-key", NULL,
+                                         &pk_ascii, NULL);
+          if (pk_ascii != NULL)
+            {
+              g_autoptr (GVariant) pk = NULL;
+
+              if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
+                {
+                  // Just use the string as signature
+                  pk = g_variant_new_string(pk_ascii);
+                }
+              else if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
+                {
+                  gsize key_len = 0;
+                  g_autofree guchar *key = g_base64_decode (pk_ascii, &key_len);
+                  pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
+                }
+
+              if (!ostree_sign_set_pk (sign, pk, error))
+                g_clear_error (error);
+            }
+
+          /* Set return to true if any sign fit */
           if (ostree_sign_metadata_verify (sign,
                                            signed_data,
                                            signatures,
                                            error
                                           ))
             ret = TRUE;
+          else
+            g_clear_error (error);
         }
+
+      /* Mark the commit as verified to avoid double verification
+       * see process_verify_result () for rationale */
+      if (ret)
+        {
+        g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
+        }
+      else
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "Can't verify commit");
+
       return ret;
     }
 
@@ -1876,21 +1926,60 @@ scan_commit_object (OtPullData                 *pull_data,
     {
       gboolean ret = FALSE;
       /* list all signature types in detached metadata and check if signed by any? */
-      GStrv names = ostree_sign_list_names();
+      g_auto (GStrv) names = ostree_sign_list_names();
       for (guint i=0; i < g_strv_length (names); i++)
         {
-          g_autoptr (OstreeSign) sign = ostree_sign_get_by_name (names[i], error);
+          g_autoptr (OstreeSign) sign = NULL;
+          g_autofree gchar *pk_ascii = NULL;
 
+          if ((sign = ostree_sign_get_by_name (names[i], error)) == NULL)
+          {
+              g_clear_error (error);
+              continue;
+          }
+          /* TODO: load keys for remote here */
+          ostree_repo_get_remote_option (pull_data->repo,
+                                         pull_data->remote_name,
+                                         "verification-key", NULL,
+                                         &pk_ascii, NULL);
+          if (pk_ascii != NULL)
+            {
+              g_autoptr (GVariant) pk = NULL;
+
+              if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
+                {
+                  // Just use the string as signature
+                  pk = g_variant_new_string(pk_ascii);
+                }
+              else if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
+                {
+                  gsize key_len = 0;
+                  g_autofree guchar *key = g_base64_decode (pk_ascii, &key_len);
+                  pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
+                }
+
+              if (!ostree_sign_set_pk (sign, pk, error))
+                g_clear_error (error);
+            }
+
+
+          /* Set return to true if any sign fit */
           if (ostree_sign_commit_verify (sign,
                                          pull_data->repo,
                                          checksum,
                                          cancellable,
                                          error))
             ret = TRUE;
+          else
+            g_clear_error (error);
+
         }
-      g_strfreev(names);
-      if (ret == FALSE)
-        return FALSE;
+      if (!ret)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Can't verify commit");
+          return FALSE;
+        }
     }
 
   /* If we found a legacy transaction flag, assume we have to scan.
@@ -3857,10 +3946,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                         &pull_data->gpg_verify_summary, error))
           goto out;
 #endif /* OSTREE_DISABLE_GPGME */
-
-      /* TODO: read option for remote. */
+      /* Fetch verification settings from remote if it wasn't already
+       * explicitly set in the options. */
       if (!opt_sign_verify_set)
-        opt_sign_verify_set = TRUE;
+        if (!ostree_repo_get_remote_boolean_option (self, pull_data->remote_name,
+                                                    "sign-verify", TRUE,
+                                                    &pull_data->sign_verify, error))
+          goto out;
 
       /* NOTE: If changing this, see the matching implementation in
        * ostree-sysroot-upgrader.c
