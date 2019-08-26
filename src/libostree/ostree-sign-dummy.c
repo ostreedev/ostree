@@ -27,6 +27,9 @@
 #include "ostree-sign-dummy.h"
 #include <string.h>
 
+#undef G_LOG_DOMAIN
+#define G_LOG_DOMAIN "OSTreeSign"
+
 #define OSTREE_SIGN_DUMMY_NAME "dummy"
 
 #define OSTREE_SIGN_METADATA_DUMMY_KEY "ostree.sign.dummy"
@@ -174,6 +177,10 @@ gboolean ostree_sign_dummy_metadata_verify (OstreeSign *self,
       if (!g_strcmp0(sign_ascii, sign->signature_ascii))
           ret = TRUE;
     }
+  if (ret == FALSE && *error == NULL)
+    g_set_error_literal (error,
+                         G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "signature: dummy: incorrect signature");
 
 err:
   return ret;
