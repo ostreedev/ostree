@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..4"
+echo "1..7"
 
 setup_fake_remote_repo1 "archive"
 
@@ -90,3 +90,19 @@ repo_init --set=sign-verify=true
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${PUBLIC}"
 test_signed_pull "ed25519"
 
+# Prepare files with public ed25519 signatures
+PUBKEYS="$(mktemp -p ${test_tmpdir} ed25519_XXXXXX.ed25519)"
+
+# Test the file with multiple keys without a valid public key
+for((i=0;i<100;i++)); do
+    # Generate a list with some public signatures
+    openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64
+done > ${PUBKEYS}
+# Add correct key into the list
+echo ${PUBLIC} >> ${PUBKEYS}
+
+repo_init --set=sign-verify=true
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-file "${PUBKEYS}"
+test_signed_pull "ed25519"
+
+echo "ok verify ed25519 keys file"

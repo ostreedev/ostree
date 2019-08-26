@@ -1527,6 +1527,7 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
           g_autofree gchar *signature_key = NULL;
           g_autofree GVariantType *signature_format = NULL;
           g_autofree gchar *pk_ascii = NULL;
+          g_autofree gchar *pk_file = NULL;
 
           if ((sign = ostree_sign_get_by_name (names[i], error)) == NULL)
           {
@@ -1543,7 +1544,25 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
           if (!signatures)
             continue;
 
-          /* TODO: load keys for remote here */
+          /* Load keys for remote from file */
+          ostree_repo_get_remote_option (pull_data->repo,
+                                         pull_data->remote_name,
+                                         "verification-file", NULL,
+                                         &pk_file, NULL);
+          if (pk_file != NULL)
+            {
+              g_autoptr (GVariantBuilder) builder = NULL;
+              g_autoptr (GVariant) options = NULL;
+
+              builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+              g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
+              options = g_variant_builder_end (builder);
+
+              if (!ostree_sign_load_pk (sign, options, error))
+                g_clear_error (error);
+            }
+
+          /* Override key if it is set explicitly */
           ostree_repo_get_remote_option (pull_data->repo,
                                          pull_data->remote_name,
                                          "verification-key", NULL,
@@ -1931,13 +1950,32 @@ scan_commit_object (OtPullData                 *pull_data,
         {
           g_autoptr (OstreeSign) sign = NULL;
           g_autofree gchar *pk_ascii = NULL;
+          g_autofree gchar *pk_file = NULL;
 
           if ((sign = ostree_sign_get_by_name (names[i], error)) == NULL)
           {
               g_clear_error (error);
               continue;
           }
-          /* TODO: load keys for remote here */
+
+          /* Load keys for remote from file */
+          ostree_repo_get_remote_option (pull_data->repo,
+                                         pull_data->remote_name,
+                                         "verification-file", NULL,
+                                         &pk_file, NULL);
+          if (pk_file != NULL)
+            {
+              g_autoptr (GVariantBuilder) builder = NULL;
+              g_autoptr (GVariant) options = NULL;
+
+              builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+              g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
+              options = g_variant_builder_end (builder);
+
+              if (!ostree_sign_load_pk (sign, options, error))
+                g_clear_error (error);
+            }
+
           ostree_repo_get_remote_option (pull_data->repo,
                                          pull_data->remote_name,
                                          "verification-key", NULL,
