@@ -140,6 +140,12 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-signed-commit.sh \
 	$(NULL)
 
+if USE_LIBSODIUM
+_installed_or_uninstalled_test_scripts += \
+	tests/test-signed-pull.sh \
+	$(NULL)
+endif
+
 if USE_GPGME
 _installed_or_uninstalled_test_scripts += \
 	tests/test-remote-gpg-import.sh \
