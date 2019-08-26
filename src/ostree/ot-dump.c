@@ -464,6 +464,13 @@ ot_dump_gpg_key (GVariant  *key,
                uid,
                revoked ? " (revoked)" : "",
                invalid ? " (invalid)" : "");
+
+      const char *advanced_url = NULL;
+      const char *direct_url = NULL;
+      (void) g_variant_lookup (uid_v, "advanced_url", "m&s", &advanced_url);
+      (void) g_variant_lookup (uid_v, "direct_url", "m&s", &direct_url);
+      g_print ("  Advanced update URL: %s\n", advanced_url ?: "");
+      g_print ("  Direct update URL: %s\n", direct_url ?: "");
     }
 
   GVariant *subkey = NULL;
