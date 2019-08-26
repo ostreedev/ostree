@@ -30,6 +30,7 @@
 #include <sodium.h>
 #endif
 
+#undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "OSTreeSign"
 
 #define OSTREE_SIGN_ED25519_NAME "ed25519"
@@ -74,27 +75,9 @@ ostree_sign_ed25519_iface_init (OstreeSignInterface *self)
 }
 
 static void
-ostree_sign_ed25519_finalize (GObject *object)
-{
-  g_debug ("%s enter", __FUNCTION__);
-#if 0
-  OstreeSignEd25519 *self = OSTREE_SIGN_ED25519 (object);
-
-  if (self->public_keys != NULL)
-    g_list_free_full (self->public_keys, g_object_unref);
-  if (self->secret_key != NULL)
-    free(self->secret_key);
-#endif
-  G_OBJECT_CLASS (ostree_sign_ed25519_parent_class)->finalize (object);
-}
-
-static void
 ostree_sign_ed25519_class_init (OstreeSignEd25519Class *self)
 {
   g_debug ("%s enter", __FUNCTION__);
-  GObjectClass *object_class = G_OBJECT_CLASS (self);
-
-  object_class->finalize = ostree_sign_ed25519_finalize;
 }
 
 static void
@@ -154,7 +137,6 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
       goto err;
     }
 
-  g_debug ("sign: data hash = 0x%x", g_bytes_hash(data));
   *signature = g_bytes_new (sig, sig_size);
   return TRUE;
 #endif /* HAVE_LIBSODIUM */
@@ -189,9 +171,9 @@ gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
 }
 
 gboolean ostree_sign_ed25519_metadata_verify (OstreeSign *self,
-                                            GBytes     *data,
-                                            GVariant   *signatures,
-                                            GError     **error)
+                                              GBytes     *data,
+                                              GVariant   *signatures,
+                                              GError     **error)
 {
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
@@ -216,7 +198,7 @@ gboolean ostree_sign_ed25519_metadata_verify (OstreeSign *self,
       goto err;
     }
 
-  if ((sign->initialized != TRUE) || (sign->public_keys == NULL))
+  if (sign->initialized != TRUE)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                           "Not able to verify: libsodium library isn't initialized properly");
@@ -224,6 +206,20 @@ gboolean ostree_sign_ed25519_metadata_verify (OstreeSign *self,
     }
 
 #ifdef HAVE_LIBSODIUM
+  /* If no keys pre-loaded then,
+   * try to load public keys from storage(s) */
+  if (sign->public_keys == NULL)
+    {
+      g_autoptr (GVariantBuilder) builder = NULL;
+      g_autoptr (GVariant) options = NULL;
+
+      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+      options = g_variant_builder_end (builder);
+
+      if (!ostree_sign_ed25519_load_pk (self, options, error))
+        goto err;
+    }
+
   g_debug ("verify: data hash = 0x%x", g_bytes_hash(data));
 
   for (gsize i = 0; i < g_variant_n_children(signatures); i++)
@@ -397,7 +393,7 @@ err:
 
 
 static gboolean
-load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, GError **error)
+_load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, GError **error)
 {
   g_return_val_if_fail (key_data_in, FALSE);
 #ifdef HAVE_LIBSODIUM
@@ -496,7 +492,6 @@ ostree_sign_ed25519_load_pk (OstreeSign *self,
   g_autoptr (GFileInputStream) key_stream_in = NULL;
   g_autoptr (GDataInputStream) key_data_in = NULL;
 
-  const gchar *remote_name = NULL;
   const gchar *filename = NULL;
 
   /* Clear already loaded keys */
@@ -506,16 +501,19 @@ ostree_sign_ed25519_load_pk (OstreeSign *self,
       sign->public_keys = NULL;
     }
 
-  /* Check if the name of remote is provided */
-  if (! g_variant_lookup (options, "remote", "&s", &remote_name))
-    remote_name = OSTREE_SIGN_ALL_REMOTES;
-
   /* Read filename or use will-known if not provided */
   if (! g_variant_lookup (options, "filename", "&s", &filename))
     {
-      // TODO: define well-known places and load file(s)
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Please provide a filename to load");
+      /* TODO: define well-known places to read */
+      /* TODO: scan directories */
+      filename = "/etc/ostree/trusted.ed25519"; 
+    }
+
+  if (!g_file_test (filename, G_FILE_TEST_IS_REGULAR))
+    {
+      g_debug ("Can't open file '%s' with pulic keys", filename);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "File object '%s' is not a regular file", filename);
       goto err;
     }
 
@@ -527,7 +525,7 @@ ostree_sign_ed25519_load_pk (OstreeSign *self,
   key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
   g_assert (key_data_in != NULL);
 
-  if (!load_pk_from_stream (self, key_data_in, error))
+  if (!_load_pk_from_stream (self, key_data_in, error))
     goto err;
 
   return TRUE;
