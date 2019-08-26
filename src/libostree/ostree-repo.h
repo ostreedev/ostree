@@ -1449,6 +1449,8 @@ gboolean      ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
  *   - key: `email`, value: `s`, user ID email component
  *   - key: `revoked`, value: `b`, whether user ID is revoked
  *   - key: `invalid`, value: `b`, whether user ID is invalid
+ *   - key: `advanced_url`, value: `ms`, advanced WKD update URL
+ *   - key: `direct_url`, value: `ms`, direct WKD update URL
  * - a{sv} - Additional metadata dictionary. There are currently no
  *   additional metadata keys defined.
  *

@@ -2439,6 +2439,16 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
 
       for (gpgme_user_id_t uid = key->uids; uid != NULL; uid = uid->next)
         {
+          /* Get WKD update URLs if address set */
+          g_autofree char *advanced_url = NULL;
+          g_autofree char *direct_url = NULL;
+          if (uid->address != NULL)
+            {
+              if (!ot_gpg_wkd_urls (uid->address, &advanced_url, &direct_url,
+                                    error))
+                return FALSE;
+            }
+
           g_auto(GVariantDict) uid_dict = OT_VARIANT_BUILDER_INITIALIZER;
           g_variant_dict_init (&uid_dict, NULL);
           g_variant_dict_insert_value (&uid_dict, "uid",
@@ -2453,6 +2463,10 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
                                        g_variant_new_boolean (uid->revoked));
           g_variant_dict_insert_value (&uid_dict, "invalid",
                                        g_variant_new_boolean (uid->invalid));
+          g_variant_dict_insert_value (&uid_dict, "advanced_url",
+                                       g_variant_new ("ms", advanced_url));
+          g_variant_dict_insert_value (&uid_dict, "direct_url",
+                                       g_variant_new ("ms", direct_url));
           g_variant_builder_add (&uids_builder, "(@a{sv})",
                                  g_variant_dict_end (&uid_dict));
         }
