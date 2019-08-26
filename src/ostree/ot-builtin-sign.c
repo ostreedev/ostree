@@ -32,11 +32,6 @@
 #include "otutil.h"
 #include "ostree-core-private.h"
 #include "ostree-sign.h"
-#include "ostree-sign-dummy.h"
-#if defined(HAVE_LIBSODIUM)
-#include "ostree-sign-ed25519.h"
-#include <sodium.h>
-#endif
 
 static gboolean opt_delete;
 static gboolean opt_verify;
@@ -134,23 +129,12 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
       if (opt_verify)
         {
-#if defined(HAVE_LIBSODIUM)
           if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
             {
               gsize key_len = 0;
               g_autofree guchar *key = g_base64_decode (key_ids[ii], &key_len);
-              
-              if ( key_len != crypto_sign_PUBLICKEYBYTES)
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Invalid KEY '%s'", key_ids[ii]);
-
-                  goto out;
-                }
-
               pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
             }
-#endif
 
           if (!ostree_sign_set_pk (sign, pk, error))
             {
@@ -167,23 +151,13 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
       else
         {
-#if defined(HAVE_LIBSODIUM)
           if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
             {
               gsize key_len = 0;
               g_autofree guchar *key = g_base64_decode (key_ids[ii], &key_len);
-
-              if ( key_len != crypto_sign_SECRETKEYBYTES)
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Invalid KEY '%s'", key_ids[ii]);
-
-                  goto out;
-                }
-
               sk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
             }
-#endif
+
           if (!ostree_sign_set_sk (sign, sk, error))
             {
               ret = FALSE;
@@ -208,7 +182,6 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
 
       builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
       g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
-      g_variant_builder_add (builder, "{sv}", "test", g_variant_new_string (opt_filename));
       options = g_variant_builder_end (builder);
 
       if (!ostree_sign_load_pk (sign, options, error))
