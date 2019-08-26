@@ -3950,7 +3950,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
        * explicitly set in the options. */
       if (!opt_sign_verify_set)
         if (!ostree_repo_get_remote_boolean_option (self, pull_data->remote_name,
-                                                    "sign-verify", TRUE,
+                                                    "sign-verify", FALSE,
                                                     &pull_data->sign_verify, error))
           goto out;
 
