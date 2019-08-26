@@ -38,7 +38,30 @@
 #include "ostree-sign-ed25519.h"
 #endif
 
+#undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "OSTreeSign"
+
+typedef struct
+{
+  gchar *name;
+  GType type;
+} _sign_type;
+
+_sign_type sign_types[] =
+{
+#if defined(HAVE_LIBSODIUM)
+    {"ed25519", 0},
+#endif
+    {"dummy", 0}
+};
+
+enum
+{
+#if defined(HAVE_LIBSODIUM)
+    SIGN_ED25519,
+#endif
+    SIGN_DUMMY
+};
 
 G_DEFINE_INTERFACE (OstreeSign, ostree_sign, G_TYPE_OBJECT)
 
@@ -110,7 +133,8 @@ ostree_sign_load_pk (OstreeSign *self,
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->load_pk != NULL, FALSE);
+  if (OSTREE_SIGN_GET_IFACE (self)->load_pk == NULL)
+    return FALSE;
 
   return OSTREE_SIGN_GET_IFACE (self)->load_pk (self, options, error);
 }
@@ -208,14 +232,6 @@ ostree_sign_commit_verify (OstreeSign     *self,
 
   g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit_variant);
 
-  /* XXX This is a hackish way to indicate to use ALL remote-specific
-   *     keyrings in the signature verification.  We want this when
-   *     verifying a signed commit that's already been pulled. */
-/*
-  if (remote_name == NULL)
-    remote_name = OSTREE_ALL_REMOTES;
-*/
-
   g_autoptr(GVariant) signatures = NULL;
 
   g_autofree gchar *signature_key = ostree_sign_metadata_key(self);
@@ -246,33 +262,31 @@ OstreeSign * ostree_sign_get_by_name (const gchar *name, GError **error)
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  GType types [] = {
+  OstreeSign *sign = NULL;
+
+  /* Get types if not initialized yet */
 #if defined(HAVE_LIBSODIUM)
-          OSTREE_TYPE_SIGN_ED25519,
+  if (sign_types[SIGN_ED25519].type == 0)
+    sign_types[SIGN_ED25519].type = OSTREE_TYPE_SIGN_ED25519;
 #endif
-          OSTREE_TYPE_SIGN_DUMMY
-  };
-  OstreeSign *ret = NULL;
+  if (sign_types[SIGN_DUMMY].type == 0)
+    sign_types[SIGN_DUMMY].type = OSTREE_TYPE_SIGN_DUMMY;
 
-  for (gint i=0; i < G_N_ELEMENTS(types); i++)
+  for (gint i=0; i < G_N_ELEMENTS(sign_types); i++)
   {
-    g_autoptr (OstreeSign) sign = g_object_new (types[i], NULL);
-    g_autofree gchar *sign_name = OSTREE_SIGN_GET_IFACE (sign)->get_name(sign);
-
-    g_debug ("Found '%s' signing module", sign_name);
-
-    if (g_strcmp0 (name, sign_name) == 0)
-    {
-      ret = g_steal_pointer (&sign);
-      break;
-    }
+    if (g_strcmp0 (name, sign_types[i].name) == 0)
+      {
+        g_debug ("Found '%s' signing module", sign_types[i].name);
+        sign = g_object_new (sign_types[i].type, NULL);
+        break;
+      }
   }
 
-  if (ret == NULL)
+  if (sign == NULL)
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "Requested signature type is not implemented");
 
-  return ret;
+  return sign;
 }
 
 
@@ -336,19 +350,12 @@ GStrv ostree_sign_list_names(void)
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  GType types [] = {
-#if defined(HAVE_LIBSODIUM)
-          OSTREE_TYPE_SIGN_ED25519,
-#endif
-          OSTREE_TYPE_SIGN_DUMMY
-  };
-  GStrv names = g_new0 (char *, G_N_ELEMENTS(types)+1); 
+  GStrv names = g_new0 (char *, G_N_ELEMENTS(sign_types) + 1);
   gint i = 0;
 
-  for (i=0; i < G_N_ELEMENTS(types); i++)
+  for (i=0; i < G_N_ELEMENTS(sign_types); i++)
   {
-    g_autoptr (OstreeSign) sign = g_object_new (types[i], NULL);
-    names[i] = OSTREE_SIGN_GET_IFACE (sign)->get_name(sign);
+    names[i] = g_strdup(sign_types[i].name);
     g_debug ("Found '%s' signing module", names[i]);
   }
 
