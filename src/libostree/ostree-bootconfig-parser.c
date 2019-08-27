@@ -30,7 +30,6 @@ struct _OstreeBootconfigParser
   const char   *separators;
 
   GHashTable   *options;
-  GPtrArray    *lines;
 };
 
 typedef GObjectClass OstreeBootconfigParserClass;
@@ -47,9 +46,6 @@ OstreeBootconfigParser *
 ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
 {
   OstreeBootconfigParser *parser = ostree_bootconfig_parser_new ();
-
-  for (guint i = 0; i < self->lines->len; i++)
-    g_ptr_array_add (parser->lines, g_variant_ref (self->lines->pdata[i]));
 
   GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
     g_hash_table_replace (parser->options, g_strdup (k), g_strdup (v));
@@ -84,7 +80,6 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
   for (char **iter = lines; *iter; iter++)
     {
       const char *line = *iter;
-      char *keyname = "";
 
       if (g_ascii_isalpha (*line))
         {
@@ -92,7 +87,6 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
           items = g_strsplit_set (line, self->separators, 2);
           if (g_strv_length (items) == 2 && items[0][0] != '\0')
             {
-              keyname = items[0];
               g_hash_table_insert (self->options, items[0], items[1]);
               g_free (items); /* Transfer ownership */
             }
@@ -101,7 +95,6 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
               g_strfreev (items);
             }
         }
-      g_ptr_array_add (self->lines, g_variant_new ("(ss)", keyname, line));
     }
 
   self->parsed = TRUE;
@@ -154,36 +147,9 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
                                    GError                  **error)
 {
   g_autoptr(GString) buf = g_string_new ("");
-  g_autoptr(GHashTable) written_overrides = g_hash_table_new (g_str_hash, g_str_equal);
-
-  for (guint i = 0; i < self->lines->len; i++)
-    {
-      GVariant *linedata = self->lines->pdata[i];
-      const char *key;
-      const char *value;
-      const char *line;
-
-      g_variant_get (linedata, "(&s&s)", &key, &line);
-
-      value = g_hash_table_lookup (self->options, key);
-      if (value == NULL)
-        {
-          g_string_append (buf, line);
-          g_string_append_c (buf, '\n');
-        }
-      else
-        {
-          write_key (self, buf, key, value);
-          g_hash_table_add (written_overrides, (gpointer)key);
-        }
-    }
 
   GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
-    {
-      if (g_hash_table_lookup (written_overrides, k))
-        continue;
-      write_key (self, buf, k, v);
-    }
+    write_key (self, buf, k, v);
 
   if (!glnx_file_replace_contents_at (dfd, path, (guint8*)buf->str, buf->len,
                                       GLNX_FILE_REPLACE_NODATASYNC,
@@ -210,7 +176,6 @@ ostree_bootconfig_parser_finalize (GObject *object)
   OstreeBootconfigParser *self = OSTREE_BOOTCONFIG_PARSER (object);
 
   g_hash_table_unref (self->options);
-  g_ptr_array_unref (self->lines);
 
   G_OBJECT_CLASS (ostree_bootconfig_parser_parent_class)->finalize (object);
 }
@@ -219,7 +184,6 @@ static void
 ostree_bootconfig_parser_init (OstreeBootconfigParser *self)
 {
   self->options = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  self->lines = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 }
 
 void
