@@ -10,7 +10,7 @@ variables:
 before_script:
 # TODO: use libostree from unstable
 - apt-get update
-- apt-get install -y libostree-dev
+- apt-get install -y cmake libostree-dev
 - wget -O - ${SCCACHE_URL} | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
 
 cache:
