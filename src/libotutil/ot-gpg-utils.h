@@ -48,4 +48,9 @@ gpgme_ctx_t ot_gpgme_new_ctx (const char *homedir,
 
 void ot_gpgme_kill_agent (const char *homedir);
 
+gboolean ot_gpg_wkd_urls (const char  *email,
+                          char       **out_advanced_url,
+                          char       **out_direct_url,
+                          GError     **error);
+
 G_END_DECLS
