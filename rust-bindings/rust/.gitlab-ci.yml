@@ -55,7 +55,7 @@ ostree_default-features:
 # docs
 docs:
   stage: build
-  image: rustlang/rust:nightly
+  image: rustlang/rust:nightly-buster
   variables:
     RUSTDOC_OPTS: >-
       -Z unstable-options
@@ -64,7 +64,6 @@ docs:
       --extern-html-root-url gio_sys=https://gtk-rs.org/docs
       --extern-html-root-url glib=https://gtk-rs.org/docs
       --extern-html-root-url gio=https://gtk-rs.org/docs
-  before_script: []
   script:
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
