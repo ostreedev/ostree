@@ -38,18 +38,20 @@ check:
   script:
   - rustup component add clippy
   - cargo clippy --all ${FEATURES} -- -D warnings
-  - cargo test --verbose --manifest-path sys/Cargo.toml ${FEATURES}
+  - cargo test --verbose --manifest-path sys/Cargo.toml ${SYS_FEATURES}
   - cargo test --verbose ${FEATURES}
 
 ostree:
   <<: *build-step
   variables:
     # TODO: update
+    SYS_FEATURES: --features v2018_9
     FEATURES: --features v2018_9,futures
 
 ostree_default-features:
   <<: *build-step
   variables:
+    SYS_FEATURES: ""
     FEATURES: ""
 
 # docs
