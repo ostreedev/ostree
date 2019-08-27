@@ -27,6 +27,7 @@
 
 #include <gio/gunixoutputstream.h>
 #include "libglnx.h"
+#include "zbase32.h"
 
 /* Like glnx_throw_errno_prefix, but takes @gpg_error */
 gboolean
@@ -537,4 +538,93 @@ ot_gpgme_kill_agent (const char *homedir)
                local_error->message);
       return;
     }
+}
+
+static char *
+ascii_lower (const char *in)
+{
+  GString *tmp;
+
+  g_return_val_if_fail (in != NULL, NULL);
+  tmp = g_string_new (in);
+  return g_string_free (g_string_ascii_down (tmp), FALSE);
+}
+
+/* Takes the SHA1 checksum of the local component of an email address and
+ * returns the zbase32 encoding.
+ */
+static char *
+encode_wkd_local (const char *local)
+{
+  g_autoptr(GChecksum) checksum = NULL;
+  guint8 digest[20] = { 0 };
+  gsize len = sizeof(digest);
+  char *encoded;
+
+  g_return_val_if_fail (local != NULL, NULL);
+
+  checksum = g_checksum_new (G_CHECKSUM_SHA1);
+  g_checksum_update (checksum, (const guchar *)local, -1);
+  g_checksum_get_digest (checksum, digest, &len);
+
+  encoded = zbase32_encode (digest, len);
+
+  /* If the returned string is NULL, then there must have been a memory
+   * allocation problem. Just exit immediately like g_malloc.
+   */
+  if (encoded == NULL)
+    g_error ("%s: %s", G_STRLOC, g_strerror (errno));
+
+  return encoded;
+}
+
+/* Implementation of OpenPGP Web Key Directory URLs as defined in
+ * https://tools.ietf.org/html/draft-koch-openpgp-webkey-service-08#section-3.1.
+ */
+gboolean
+ot_gpg_wkd_urls (const char  *email,
+                 char       **out_advanced_url,
+                 char       **out_direct_url,
+                 GError     **error)
+{
+  g_auto(GStrv) email_parts = NULL;
+  g_autofree char *local_lowered = NULL;
+  g_autofree char *domain_lowered = NULL;
+  g_autofree char *local_encoded = NULL;
+  g_autofree char *local_escaped = NULL;
+  g_autofree char *advanced_url = NULL;
+  g_autofree char *direct_url = NULL;
+
+  g_return_val_if_fail (email != NULL, FALSE);
+
+  email_parts = g_strsplit (email, "@", -1);
+  if (g_strv_length (email_parts) != 2)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "Invalid email address \"%s\"", email);
+      return FALSE;
+    }
+
+  local_lowered = ascii_lower (email_parts[0]);
+  domain_lowered = ascii_lower (email_parts[1]);
+  local_encoded = encode_wkd_local (local_lowered);
+  local_escaped = g_uri_escape_string (email_parts[0], NULL, FALSE);
+
+  advanced_url = g_strdup_printf ("https://openpgpkey.%s"
+                                  "/.well-known/openpgpkey/"
+                                  "%s/hu/%s?l=%s",
+                                  email_parts[1], domain_lowered,
+                                  local_encoded, local_escaped);
+  g_debug ("Advanced WKD URL: %s", advanced_url);
+
+  direct_url = g_strdup_printf ("https://%s/.well-known/openpgpkey/hu/%s?l=%s",
+                                email_parts[1], local_encoded, local_escaped);
+  g_debug ("Direct WKD URL: %s", direct_url);
+
+  if (out_advanced_url != NULL)
+    *out_advanced_url = g_steal_pointer (&advanced_url);
+  if (out_direct_url != NULL)
+    *out_direct_url = g_steal_pointer (&direct_url);
+
+  return TRUE;
 }
