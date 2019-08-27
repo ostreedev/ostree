@@ -44,21 +44,13 @@ check:
 ostree:
   <<: *build-step
   variables:
-    # 2019.2 still hasn't been backported
-    FEATURES: --features v2018_9
+    # TODO: update
+    FEATURES: --features v2018_9,futures
 
 ostree_default-features:
   <<: *build-step
   variables:
     FEATURES: ""
-
-ostree_futures:
-  <<: *build-step
-  image: rustlang/rust:nightly
-  variables:
-    FEATURES: --features v2018_9,futures
-  script:
-  - cargo test --verbose ${FEATURES}
 
 # docs
 docs:
@@ -72,6 +64,7 @@ docs:
       --extern-html-root-url gio_sys=https://gtk-rs.org/docs
       --extern-html-root-url glib=https://gtk-rs.org/docs
       --extern-html-root-url gio=https://gtk-rs.org/docs
+  before_script: []
   script:
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
