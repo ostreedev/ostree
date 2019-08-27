@@ -21,6 +21,7 @@
 LIBOSTREE_2019.5 {
 global:
   ostree_repo_remote_get_gpg_keys;
+  ostree_repo_remote_update_gpg_keys;
 } LIBOSTREE_2019.4;
 
 /* Stub section for the stable release *after* this development one; don't

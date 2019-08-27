@@ -1390,6 +1390,13 @@ gboolean      ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
                                                GError             **error);
 
 _OSTREE_PUBLIC
+gboolean      ostree_repo_remote_update_gpg_keys (OstreeRepo     *self,
+                                                  const char     *name,
+                                                  GPtrArray     **out_keys,
+                                                  GCancellable   *cancellable,
+                                                  GError        **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                         const char         *name,
                                         GInputStream       *source_stream,

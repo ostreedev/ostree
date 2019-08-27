@@ -40,6 +40,7 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
 #include "ostree-repo-static-delta-private.h"
+#include "ostree-fetcher-util.h"
 #include "ot-fs-utils.h"
 #include "ostree-autocleanups.h"
 
@@ -2476,6 +2477,204 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
 
   if (out_keys)
     *out_keys = g_steal_pointer (&keys);
+
+  return TRUE;
+#else /* OSTREE_DISABLE_GPGME */
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "'%s': GPG feature is disabled in a build time",
+               __FUNCTION__);
+  return FALSE;
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
+/* Arbitrary limits for fetched GPG keys */
+#define GPG_UPDATE_MAX_SIZE (1024 * 1024)
+#define GPG_UPDATE_N_RETRIES 1
+
+static gboolean
+fetch_gpg_uid_key (OstreeFetcher  *fetcher,
+                   const char     *address,
+                   GBytes        **out_key,
+                   GCancellable   *cancellable,
+                   GError        **error)
+{
+  g_return_val_if_fail (address != NULL, FALSE);
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return FALSE;
+
+  g_autofree char *advanced_url = NULL;
+  g_autofree char *direct_url = NULL;
+  if (!ot_gpg_wkd_urls (address, &advanced_url, &direct_url, error))
+    return FALSE;
+
+  g_autoptr(OstreeFetcherURI) advanced_uri =
+    _ostree_fetcher_uri_parse (advanced_url, error);
+  if (advanced_uri == NULL)
+    return FALSE;
+
+  g_autoptr(GError) local_error = NULL;
+  g_autoptr(GBytes) key = NULL;
+  if (!_ostree_fetcher_request_uri_to_membuf (fetcher,
+                                              advanced_uri,
+                                              0,
+                                              GPG_UPDATE_N_RETRIES,
+                                              &key,
+                                              GPG_UPDATE_MAX_SIZE,
+                                              cancellable,
+                                              &local_error))
+    {
+      if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
+        }
+
+      /* Key at advanced URL not found, try direct URL */
+      g_autoptr(OstreeFetcherURI) direct_uri =
+        _ostree_fetcher_uri_parse (direct_url, error);
+      if (direct_uri == NULL)
+        return FALSE;
+      if (!_ostree_fetcher_request_uri_to_membuf (fetcher,
+                                                  direct_uri,
+                                                  0,
+                                                  GPG_UPDATE_N_RETRIES,
+                                                  &key,
+                                                  GPG_UPDATE_MAX_SIZE,
+                                                  cancellable,
+                                                  error))
+        return FALSE;
+    }
+
+  if (out_key != NULL)
+    *out_key = g_steal_pointer (&key);
+
+  return TRUE;
+}
+
+/**
+ * ostree_repo_remote_update_gpg_keys:
+ * @self: an #OstreeRepo
+ * @name: name of the remote
+ * @out_keys: (out) (optional) (element-type GVariant) (transfer container):
+ *    return location for a #GPtrArray of the remote's trusted GPG keys, or
+ *    %NULL
+ * @cancellable: (nullable): a #GCancellable, or %NULL
+ * @error: return location for a #GError, or %NULL
+ *
+ * Update the trusted GPG keys for the remote @name. The updated keys will be
+ * returned in the @out_keys #GPtrArray. Each element in the array is a
+ * #GVariant of format %OSTREE_GPG_KEY_GVARIANT_FORMAT.
+ *
+ * Returns: %TRUE if the GPG keys could be updated, %FALSE otherwise
+ *
+ * Since: 2019.5
+ */
+gboolean
+ostree_repo_remote_update_gpg_keys (OstreeRepo     *self,
+                                    const char     *name,
+                                    GPtrArray     **out_keys,
+                                    GCancellable   *cancellable,
+                                    GError        **error)
+{
+#ifndef OSTREE_DISABLE_GPGME
+  g_autoptr(OstreeGpgVerifier) verifier = NULL;
+  if (!_ostree_repo_gpg_prepare_verifier (self, name, NULL, NULL, &verifier,
+                                          cancellable, error))
+    return FALSE;
+
+  g_autoptr(GPtrArray) gpg_keys = NULL;
+  if (!_ostree_gpg_verifier_list_keys (verifier, NULL, &gpg_keys, cancellable,
+                                       error))
+    return FALSE;
+
+  /* Use a temporary file for the updated keys */
+  g_auto(GLnxTmpfile) updated_keys_tmpf = { 0, };
+  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &updated_keys_tmpf,
+                                    error))
+    return FALSE;
+
+  /* GPGME buffer for updated keys */
+  g_autoptr(GOutputStream) updated_keys_ostream =
+    g_unix_output_stream_new (updated_keys_tmpf.fd, FALSE);
+  g_auto(gpgme_data_t) updated_keys_data = ot_gpgme_data_output (updated_keys_ostream);
+
+  g_autoptr(GPtrArray) updated_fingerprints = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr(OstreeFetcher) fetcher = _ostree_fetcher_new (self->tmp_dir_fd,
+                                                          name, 0);
+  for (guint i = 0; i < gpg_keys->len; i++)
+    {
+      gpgme_key_t key = gpg_keys->pdata[i];
+
+      for (gpgme_user_id_t uid = key->uids; uid != NULL; uid = uid->next)
+        {
+          if (uid->address == NULL)
+            continue;
+
+          g_autoptr(GBytes) fetched_key = NULL;
+          g_autoptr(GError) temp_error = NULL;
+          if (!fetch_gpg_uid_key (fetcher, uid->address, &fetched_key,
+                                  cancellable, &temp_error))
+            {
+              if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+                {
+                  /* No key found for this uid */
+                  g_debug ("No GPG key update found for UID %s", uid->uid);
+                  g_clear_error (&temp_error);
+                  continue;
+                } else {
+                  g_propagate_error (error, g_steal_pointer (&temp_error));
+                  return FALSE;
+                }
+            }
+
+          /* Find the keys matching this email */
+          if (!ot_gpgme_filter_keyring_by_email (fetched_key,
+                                                 uid->address,
+                                                 updated_keys_data,
+                                                 updated_fingerprints,
+                                                 cancellable,
+                                                 error))
+            return FALSE;
+        }
+    }
+
+  /* Writing to the new keyring is finished */
+  gpgme_data_release (updated_keys_data);
+  updated_keys_data = NULL;
+  g_clear_object (&updated_keys_ostream);
+
+  /* Import the updated keys if any were found */
+  g_autoptr(GPtrArray) ret_keys = NULL;
+  if (updated_fingerprints->len > 0)
+    {
+      /* NULL terminate the fingerprint array for use as a key ID array */
+      g_ptr_array_add (updated_fingerprints, NULL);
+      const char * const *key_ids = (const char * const *)updated_fingerprints->pdata;
+
+      /* Seek back to the beginning of the tmp file and open an input
+       * stream for importing.
+       */
+      if (lseek (updated_keys_tmpf.fd, 0, SEEK_SET) < 0)
+        return glnx_throw_errno_prefix (error, "lseek");
+      g_autoptr(GInputStream) updated_keys_istream =
+        g_unix_input_stream_new (updated_keys_tmpf.fd, FALSE);
+      if (!ostree_repo_remote_gpg_import (self, name, updated_keys_istream,
+                                          key_ids, NULL, cancellable, error))
+        return FALSE;
+
+      if (!ostree_repo_remote_get_gpg_keys (self, name, key_ids, &ret_keys,
+                                            cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      /* Empty key array */
+      ret_keys = g_ptr_array_new ();
+    }
+
+  if (out_keys != NULL)
+    *out_keys = g_steal_pointer (&ret_keys);
 
   return TRUE;
 #else /* OSTREE_DISABLE_GPGME */
