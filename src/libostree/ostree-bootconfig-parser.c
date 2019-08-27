@@ -146,10 +146,32 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
                                    GCancellable             *cancellable,
                                    GError                  **error)
 {
+  /* Write the fields in a deterministic order, following what is used
+   * in the bootconfig example of the BootLoaderspec document:
+   * https://systemd.io/BOOT_LOADER_SPECIFICATION
+   */
+  const char *fields[] = { "title", "version", "options", "devicetree", "linux", "initrd" };
+  g_autoptr(GHashTable) keys_written = g_hash_table_new (g_str_hash, g_str_equal);
   g_autoptr(GString) buf = g_string_new ("");
 
+  for (guint i = 0; i < G_N_ELEMENTS (fields); i++)
+    {
+      const char *key = fields[i];
+      const char *value = g_hash_table_lookup (self->options, key);
+      if (value != NULL)
+        {
+          write_key (self, buf, key, value);
+          g_hash_table_add (keys_written, (gpointer)key);
+        }
+    }
+
+  /* Write unknown fields */
   GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
-    write_key (self, buf, k, v);
+    {
+      if (g_hash_table_lookup (keys_written, k))
+        continue;
+      write_key (self, buf, k, v);
+    }
 
   if (!glnx_file_replace_contents_at (dfd, path, (guint8*)buf->str, buf->len,
                                       GLNX_FILE_REPLACE_NODATASYNC,
