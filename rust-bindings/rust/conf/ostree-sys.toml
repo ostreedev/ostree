@@ -27,6 +27,9 @@ ignore = [
     "OSTree.VERSION",
     "OSTree.VERSION_S",
     "OSTree.YEAR_VERSION",
+
+    # build-dependent constants
+    "OSTree.BUILT_FEATURES",
 ]
 
 girs_dir = "../gir-files"
