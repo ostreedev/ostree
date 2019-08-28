@@ -31,7 +31,9 @@ fn main() {
 fn find() -> Result<(), Error> {
     let package_name = "ostree-1";
     let shared_libs = ["ostree-1"];
-    let version = if cfg!(feature = "v2019_2") {
+    let version = if cfg!(feature = "v2019_3") {
+        "2019.3"
+    } else if cfg!(feature = "v2019_2") {
         "2019.2"
     } else if cfg!(feature = "v2018_9") {
         "2018.9"

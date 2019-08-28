@@ -51,6 +51,8 @@ pub const OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME: OstreeGpgSignatureAttr = 9;
 pub const OSTREE_GPG_SIGNATURE_ATTR_USER_NAME: OstreeGpgSignatureAttr = 10;
 pub const OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL: OstreeGpgSignatureAttr = 11;
 pub const OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY: OstreeGpgSignatureAttr = 12;
+pub const OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP: OstreeGpgSignatureAttr = 13;
+pub const OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY: OstreeGpgSignatureAttr = 14;
 
 pub type OstreeGpgSignatureFormatFlags = c_int;
 pub const OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT: OstreeGpgSignatureFormatFlags = 0;
@@ -321,6 +323,11 @@ pub struct _OstreeGpgVerifier(c_void);
 pub type OstreeGpgVerifier = *mut _OstreeGpgVerifier;
 
 #[repr(C)]
+pub struct _OstreeKernelArgs(c_void);
+
+pub type OstreeKernelArgs = *mut _OstreeKernelArgs;
+
+#[repr(C)]
 pub struct _OstreeLibarchiveInputStreamPrivate(c_void);
 
 pub type OstreeLibarchiveInputStreamPrivate = *mut _OstreeLibarchiveInputStreamPrivate;
@@ -545,7 +552,7 @@ impl ::std::fmt::Debug for OstreeRepoFinderConfigClass {
 #[derive(Copy, Clone)]
 pub struct OstreeRepoFinderInterface {
     pub g_iface: gobject::GTypeInterface,
-    pub resolve_async: Option<unsafe extern "C" fn(*mut OstreeRepoFinder, *mut *mut OstreeCollectionRef, *mut OstreeRepo, *mut gio::GCancellable, gio::GAsyncReadyCallback, gpointer)>,
+    pub resolve_async: Option<unsafe extern "C" fn(*mut OstreeRepoFinder, *const *const OstreeCollectionRef, *mut OstreeRepo, *mut gio::GCancellable, gio::GAsyncReadyCallback, gpointer)>,
     pub resolve_finish: Option<unsafe extern "C" fn(*mut OstreeRepoFinder, *mut gio::GAsyncResult, *mut *mut glib::GError) -> *mut glib::GPtrArray>,
 }
 
@@ -881,7 +888,7 @@ extern "C" {
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_collection_ref_free(ref_: *mut OstreeCollectionRef);
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn ostree_collection_ref_dupv(refs: *mut *mut OstreeCollectionRef) -> *mut *mut OstreeCollectionRef;
+    pub fn ostree_collection_ref_dupv(refs: *const *const OstreeCollectionRef) -> *mut *mut OstreeCollectionRef;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_collection_ref_equal(ref1: gconstpointer, ref2: gconstpointer) -> gboolean;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -895,6 +902,45 @@ extern "C" {
     pub fn ostree_diff_item_get_type() -> GType;
     pub fn ostree_diff_item_ref(diffitem: *mut OstreeDiffItem) -> *mut OstreeDiffItem;
     pub fn ostree_diff_item_unref(diffitem: *mut OstreeDiffItem);
+
+    //=========================================================================
+    // OstreeKernelArgs
+    //=========================================================================
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_append(kargs: *mut OstreeKernelArgs, arg: *const c_char);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_append_argv(kargs: *mut OstreeKernelArgs, argv: *mut *mut c_char);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_append_argv_filtered(kargs: *mut OstreeKernelArgs, argv: *mut *mut c_char, prefixes: *mut *mut c_char);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_append_proc_cmdline(kargs: *mut OstreeKernelArgs, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_kernel_args_delete(kargs: *mut OstreeKernelArgs, arg: *const c_char, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_delete_key_entry(kargs: *mut OstreeKernelArgs, key: *const c_char, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_free(kargs: *mut OstreeKernelArgs);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_get_last_value(kargs: *mut OstreeKernelArgs, key: *const c_char) -> *const c_char;
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_new_replace(kargs: *mut OstreeKernelArgs, arg: *const c_char, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_parse_append(kargs: *mut OstreeKernelArgs, options: *const c_char);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_replace(kargs: *mut OstreeKernelArgs, arg: *const c_char);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_replace_argv(kargs: *mut OstreeKernelArgs, argv: *mut *mut c_char);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_replace_take(kargs: *mut OstreeKernelArgs, arg: *mut c_char);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_to_string(kargs: *mut OstreeKernelArgs) -> *mut c_char;
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_to_strv(kargs: *mut OstreeKernelArgs) -> *mut *mut c_char;
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_cleanup(loc: *mut c_void);
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_from_string(options: *const c_char) -> *mut OstreeKernelArgs;
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn ostree_kernel_args_new() -> *mut OstreeKernelArgs;
 
     //=========================================================================
     // OstreeRemote
@@ -1099,7 +1145,7 @@ extern "C" {
     #[cfg(any(feature = "v2018_5", feature = "dox"))]
     pub fn ostree_repo_traverse_parents_get_commits(parents: *mut glib::GHashTable, object: *mut glib::GVariant) -> *mut *mut c_char;
     pub fn ostree_repo_abort_transaction(self_: *mut OstreeRepo, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_repo_add_gpg_signature_summary(self_: *mut OstreeRepo, key_id: *mut *mut c_char, homedir: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_repo_add_gpg_signature_summary(self_: *mut OstreeRepo, key_id: *mut *const c_char, homedir: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_append_gpg_signature(self_: *mut OstreeRepo, commit_checksum: *const c_char, signature_bytes: *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2016_8", feature = "dox"))]
     pub fn ostree_repo_checkout_at(self_: *mut OstreeRepo, options: *mut OstreeRepoCheckoutAtOptions, destination_dfd: c_int, destination_path: *const c_char, commit: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
@@ -1114,7 +1160,7 @@ extern "C" {
     pub fn ostree_repo_equal(a: *mut OstreeRepo, b: *mut OstreeRepo) -> gboolean;
     pub fn ostree_repo_export_tree_to_archive(self_: *mut OstreeRepo, opts: *mut OstreeRepoExportArchiveOptions, root: *mut OstreeRepoFile, archive: *mut c_void, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn ostree_repo_find_remotes_async(self_: *mut OstreeRepo, refs: *mut *mut OstreeCollectionRef, options: *mut glib::GVariant, finders: *mut *mut OstreeRepoFinder, progress: *mut OstreeAsyncProgress, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
+    pub fn ostree_repo_find_remotes_async(self_: *mut OstreeRepo, refs: *const *const OstreeCollectionRef, options: *mut glib::GVariant, finders: *mut *mut OstreeRepoFinder, progress: *mut OstreeAsyncProgress, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_find_remotes_finish(self_: *mut OstreeRepo, result: *mut gio::GAsyncResult, error: *mut *mut glib::GError) -> *mut *mut OstreeRepoFinderResult;
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
@@ -1125,7 +1171,7 @@ extern "C" {
     pub fn ostree_repo_get_collection_id(self_: *mut OstreeRepo) -> *const c_char;
     pub fn ostree_repo_get_config(self_: *mut OstreeRepo) -> *mut glib::GKeyFile;
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
-    pub fn ostree_repo_get_default_repo_finders(self_: *mut OstreeRepo) -> *mut *mut c_char;
+    pub fn ostree_repo_get_default_repo_finders(self_: *mut OstreeRepo) -> *const *const c_char;
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
     pub fn ostree_repo_get_dfd(self_: *mut OstreeRepo) -> c_int;
     pub fn ostree_repo_get_disable_fsync(self_: *mut OstreeRepo) -> gboolean;
@@ -1175,7 +1221,7 @@ extern "C" {
     pub fn ostree_repo_prune_static_deltas(self_: *mut OstreeRepo, commit: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_pull(self_: *mut OstreeRepo, remote_name: *const c_char, refs_to_fetch: *mut *mut c_char, flags: OstreeRepoPullFlags, progress: *mut OstreeAsyncProgress, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn ostree_repo_pull_from_remotes_async(self_: *mut OstreeRepo, results: *mut *mut OstreeRepoFinderResult, options: *mut glib::GVariant, progress: *mut OstreeAsyncProgress, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
+    pub fn ostree_repo_pull_from_remotes_async(self_: *mut OstreeRepo, results: *const *const OstreeRepoFinderResult, options: *mut glib::GVariant, progress: *mut OstreeAsyncProgress, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_pull_from_remotes_finish(self_: *mut OstreeRepo, result: *mut gio::GAsyncResult, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_pull_one_dir(self_: *mut OstreeRepo, remote_name: *const c_char, dir_to_pull: *const c_char, refs_to_fetch: *mut *mut c_char, flags: OstreeRepoPullFlags, progress: *mut OstreeAsyncProgress, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
@@ -1195,7 +1241,7 @@ extern "C" {
     pub fn ostree_repo_remote_get_gpg_verify(self_: *mut OstreeRepo, name: *const c_char, out_gpg_verify: *mut gboolean, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_remote_get_gpg_verify_summary(self_: *mut OstreeRepo, name: *const c_char, out_gpg_verify_summary: *mut gboolean, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_remote_get_url(self_: *mut OstreeRepo, name: *const c_char, out_url: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_repo_remote_gpg_import(self_: *mut OstreeRepo, name: *const c_char, source_stream: *mut gio::GInputStream, key_ids: *mut *mut c_char, out_imported: *mut c_uint, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_repo_remote_gpg_import(self_: *mut OstreeRepo, name: *const c_char, source_stream: *mut gio::GInputStream, key_ids: *const *const c_char, out_imported: *mut c_uint, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_remote_list(self_: *mut OstreeRepo, out_n_remotes: *mut c_uint) -> *mut *mut c_char;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_remote_list_collection_refs(self_: *mut OstreeRepo, remote_name: *const c_char, out_all_refs: *mut *mut glib::GHashTable, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
@@ -1238,6 +1284,7 @@ extern "C" {
     pub fn ostree_repo_verify_commit_for_remote(self_: *mut OstreeRepo, commit_checksum: *const c_char, remote_name: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> *mut OstreeGpgVerifyResult;
     pub fn ostree_repo_verify_summary(self_: *mut OstreeRepo, remote_name: *const c_char, summary: *mut glib::GBytes, signatures: *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> *mut OstreeGpgVerifyResult;
     pub fn ostree_repo_write_archive_to_mtree(self_: *mut OstreeRepo, archive: *mut gio::GFile, mtree: *mut OstreeMutableTree, modifier: *mut OstreeRepoCommitModifier, autocreate_parents: gboolean, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_repo_write_archive_to_mtree_from_fd(self_: *mut OstreeRepo, fd: c_int, mtree: *mut OstreeMutableTree, modifier: *mut OstreeRepoCommitModifier, autocreate_parents: gboolean, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_commit(self_: *mut OstreeRepo, parent: *const c_char, subject: *const c_char, body: *const c_char, metadata: *mut glib::GVariant, root: *mut OstreeRepoFile, out_commit: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_commit_detached_metadata(self_: *mut OstreeRepo, checksum: *const c_char, metadata: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_commit_with_time(self_: *mut OstreeRepo, parent: *const c_char, subject: *const c_char, body: *const c_char, metadata: *mut glib::GVariant, root: *mut OstreeRepoFile, time: u64, out_commit: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
@@ -1397,11 +1444,11 @@ extern "C" {
     //=========================================================================
     pub fn ostree_repo_finder_get_type() -> GType;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn ostree_repo_finder_resolve_all_async(finders: *mut *mut OstreeRepoFinder, refs: *mut *mut OstreeCollectionRef, parent_repo: *mut OstreeRepo, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
+    pub fn ostree_repo_finder_resolve_all_async(finders: *const *mut OstreeRepoFinder, refs: *const *const OstreeCollectionRef, parent_repo: *mut OstreeRepo, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_finder_resolve_all_finish(result: *mut gio::GAsyncResult, error: *mut *mut glib::GError) -> *mut glib::GPtrArray;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    pub fn ostree_repo_finder_resolve_async(self_: *mut OstreeRepoFinder, refs: *mut *mut OstreeCollectionRef, parent_repo: *mut OstreeRepo, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
+    pub fn ostree_repo_finder_resolve_async(self_: *mut OstreeRepoFinder, refs: *const *const OstreeCollectionRef, parent_repo: *mut OstreeRepo, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_finder_resolve_finish(self_: *mut OstreeRepoFinder, result: *mut gio::GAsyncResult, error: *mut *mut glib::GError) -> *mut glib::GPtrArray;
 
@@ -1413,22 +1460,22 @@ extern "C" {
     #[cfg(any(feature = "v2017_4", feature = "dox"))]
     pub fn ostree_check_version(required_year: c_uint, required_release: c_uint) -> gboolean;
     #[cfg(any(feature = "v2016_8", feature = "dox"))]
-    pub fn ostree_checksum_b64_from_bytes(csum: *mut [c_uchar; 32]) -> *mut c_char;
-    pub fn ostree_checksum_b64_inplace_from_bytes(csum: *mut [c_uchar; 32], buf: *mut c_char);
-    pub fn ostree_checksum_b64_inplace_to_bytes(checksum: *mut [c_char; 32], buf: *mut u8);
+    pub fn ostree_checksum_b64_from_bytes(csum: *const [c_uchar; 32]) -> *mut c_char;
+    pub fn ostree_checksum_b64_inplace_from_bytes(csum: *const [c_uchar; 32], buf: *mut c_char);
+    pub fn ostree_checksum_b64_inplace_to_bytes(checksum: *const [c_char; 32], buf: *mut u8);
     #[cfg(any(feature = "v2016_8", feature = "dox"))]
     pub fn ostree_checksum_b64_to_bytes(checksum: *const c_char) -> *mut [c_uchar; 32];
-    pub fn ostree_checksum_bytes_peek(bytes: *mut glib::GVariant) -> *mut [c_uchar; 32];
-    pub fn ostree_checksum_bytes_peek_validate(bytes: *mut glib::GVariant, error: *mut *mut glib::GError) -> *mut [c_uchar; 32];
+    pub fn ostree_checksum_bytes_peek(bytes: *mut glib::GVariant) -> *const [c_uchar; 32];
+    pub fn ostree_checksum_bytes_peek_validate(bytes: *mut glib::GVariant, error: *mut *mut glib::GError) -> *const [c_uchar; 32];
     pub fn ostree_checksum_file(f: *mut gio::GFile, objtype: OstreeObjectType, out_csum: *mut *mut [*mut u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_checksum_file_async(f: *mut gio::GFile, objtype: OstreeObjectType, io_priority: c_int, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
     pub fn ostree_checksum_file_async_finish(f: *mut gio::GFile, result: *mut gio::GAsyncResult, out_csum: *mut *mut [*mut u8; 32], error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2017_13", feature = "dox"))]
     pub fn ostree_checksum_file_at(dfd: c_int, path: *const c_char, stbuf: *mut stat, objtype: OstreeObjectType, flags: OstreeChecksumFlags, out_checksum: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_checksum_file_from_input(file_info: *mut gio::GFileInfo, xattrs: *mut glib::GVariant, in_: *mut gio::GInputStream, objtype: OstreeObjectType, out_csum: *mut *mut [*mut u8; 32], cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_checksum_from_bytes(csum: *mut [c_uchar; 32]) -> *mut c_char;
+    pub fn ostree_checksum_from_bytes(csum: *const [c_uchar; 32]) -> *mut c_char;
     pub fn ostree_checksum_from_bytes_v(csum_v: *mut glib::GVariant) -> *mut c_char;
-    pub fn ostree_checksum_inplace_from_bytes(csum: *mut [c_uchar; 32], buf: *mut c_char);
+    pub fn ostree_checksum_inplace_from_bytes(csum: *const [c_uchar; 32], buf: *mut c_char);
     pub fn ostree_checksum_inplace_to_bytes(checksum: *const c_char, buf: *mut u8);
     pub fn ostree_checksum_to_bytes(checksum: *const c_char) -> *mut [c_uchar; 32];
     pub fn ostree_checksum_to_bytes_v(checksum: *const c_char) -> *mut glib::GVariant;

@@ -43,6 +43,7 @@ v2018_6 = ["v2018_5"]
 v2018_7 = ["v2018_6"]
 v2018_9 = ["v2018_7"]
 v2019_2 = ["v2018_9"]
+v2019_3 = ["v2019_2"]
 dox = []
 
 [lib]
@@ -64,4 +65,4 @@ version = "0.4.0"
 features = ["dox"]
 
 ["package.metadata.docs.rs"]
-features = ["dox", "v2019_2"]
+features = ["dox", "v2019_3"]
