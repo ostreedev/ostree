@@ -20,7 +20,7 @@ exclude = [
 ]
 
 [package.metadata.docs.rs]
-features = ["dox"]
+features = ["dox", "futures"]
 
 [badges.gitlab]
 repository = "fkrull/ostree-rs"
@@ -77,6 +77,4 @@ v2018_6 = ["v2018_5", "ostree-sys/v2018_6"]
 v2018_7 = ["v2018_6", "ostree-sys/v2018_7"]
 v2018_9 = ["v2018_7", "ostree-sys/v2018_9"]
 v2019_2 = ["v2018_9", "ostree-sys/v2019_2"]
-
-["package.metadata.docs.rs"]
-features = ["dox", "futures"]
+v2019_3 = ["v2019_2", "ostree-sys/v2019_3"]
