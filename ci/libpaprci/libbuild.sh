@@ -35,7 +35,13 @@ pkg_install_if_os() {
 
 pkg_install_buildroot() {
     case "${OS_ID}" in
-        fedora) pkg_install dnf-plugins-core @buildsys-build;;
+        fedora)
+            # https://github.com/projectatomic/rpm-ostree/pull/1889/commits/9ff611758bea22b0ad4892cc16182dd1f7f47e89
+            # https://fedoraproject.org/wiki/Common_F30_bugs#Conflicts_between_fedora-release_packages_when_installing_package_groups
+            if rpm -q fedora-release-container; then
+                yum -y swap fedora-release{-container,}
+            fi
+            pkg_install dnf-plugins-core @buildsys-build;;
         centos) pkg_install yum-utils
                 # Base buildroot, copied from the mock config sadly
                 pkg_install bash bzip2 coreutils cpio diffutils system-release findutils gawk gcc gcc-c++ \
