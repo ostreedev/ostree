@@ -479,39 +479,20 @@ err:
   return FALSE;
 }
 
-gboolean
-ostree_sign_ed25519_load_pk (OstreeSign *self,
-                             GVariant *options,
-                             GError **error)
+static gboolean
+_load_pk_from_file (OstreeSign *self,
+                    const gchar *filename,
+                    GError **error)
 {
   g_debug ("%s enter", __FUNCTION__);
-
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
   g_autoptr (GFile) keyfile = NULL;
   g_autoptr (GFileInputStream) key_stream_in = NULL;
   g_autoptr (GDataInputStream) key_data_in = NULL;
 
-  const gchar *filename = NULL;
-
-  /* Clear already loaded keys */
-  if (sign->public_keys != NULL)
-    {
-      g_list_free_full (sign->public_keys, g_object_unref);
-      sign->public_keys = NULL;
-    }
-
-  /* Read filename or use will-known if not provided */
-  if (! g_variant_lookup (options, "filename", "&s", &filename))
-    {
-      /* TODO: define well-known places to read */
-      /* TODO: scan directories */
-      filename = "/etc/ostree/trusted.ed25519"; 
-    }
-
   if (!g_file_test (filename, G_FILE_TEST_IS_REGULAR))
     {
-      g_debug ("Can't open file '%s' with pulic keys", filename);
+      g_debug ("Can't open file '%s' with public keys", filename);
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "File object '%s' is not a regular file", filename);
       goto err;
@@ -531,5 +512,77 @@ ostree_sign_ed25519_load_pk (OstreeSign *self,
   return TRUE;
 err:
   return FALSE;
+}
+
+gboolean
+ostree_sign_ed25519_load_pk (OstreeSign *self,
+                             GVariant *options,
+                             GError **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+
+  gboolean ret = FALSE;
+
+  /* Default paths there to find files with public keys */
+  const gchar *default_dirs[] =
+    {
+      "/etc/ostree/trusted.ed25519.d",
+      DATADIR "/ostree/trusted.ed25519.d"
+    };
+  const gchar *default_files[] =
+    {
+      "/etc/ostree/trusted.ed25519",
+      DATADIR "/ostree/trusted.ed25519"
+    };
+
+  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+
+  const gchar *filename = NULL;
+
+  /* Clear already loaded keys */
+  if (sign->public_keys != NULL)
+    {
+      g_list_free_full (sign->public_keys, g_object_unref);
+      sign->public_keys = NULL;
+    }
+
+  /* Read only file provided */
+  if (g_variant_lookup (options, "filename", "&s", &filename))
+      return _load_pk_from_file (self, filename, error);
+
+  /* Scan all well-known files and directories */
+  for (gint i=0; i < G_N_ELEMENTS(default_files); i++)
+    if (!_load_pk_from_file (self, default_files[i], error))
+      {
+        g_debug ("Problem with loading ed25519 public keys from `%s`", default_files[i]);
+        g_clear_error(error);
+      }
+    else
+      ret = TRUE;
+
+  /* Scan all well-known files and directories */
+  for (gint i=0; i < G_N_ELEMENTS(default_dirs); i++)
+    {
+      g_autoptr (GDir) dir = g_dir_open (default_dirs[i], 0, error);
+      if (dir == NULL)
+        {
+          g_clear_error (error);
+          continue;
+        }
+      const gchar *entry = NULL;
+      while ((entry = g_dir_read_name (dir)) != NULL)
+        {
+          filename = g_build_filename (default_dirs[i], entry, NULL);
+          if (!_load_pk_from_file (self, filename, error))
+            {
+              g_debug ("Problem with loading ed25519 public keys from `%s`", filename);
+              g_clear_error(error);
+            }
+          else
+            ret = TRUE;
+        }
+    }
+
+  return ret;
 }
 
