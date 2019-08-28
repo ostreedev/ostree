@@ -8,9 +8,15 @@ variables:
   RUSTC_WRAPPER: sccache
 
 before_script:
-# TODO: use libostree from unstable
+- echo deb https://deb.debian.org/debian unstable main > /etc/apt/sources.list.d/unstable.list
+- |
+    cat > /etc/apt/preferences.d/pin <<EOF
+    Package: *
+    Pin: release a=unstable
+    Pin-Priority: -999
+    EOF
 - apt-get update
-- apt-get install -y libostree-dev
+- apt-get install -y -t unstable libostree-dev
 - wget -O - ${SCCACHE_URL} | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
 
 cache:
@@ -33,26 +39,18 @@ check:
   - git diff -R --exit-code
 
 # build
-.build-step: &build-step
+all_features:
   stage: build
   script:
   - rustup component add clippy
-  - cargo clippy --all ${FEATURES} -- -D warnings
-  - cargo test --verbose --manifest-path sys/Cargo.toml ${SYS_FEATURES}
-  - cargo test --verbose ${FEATURES}
+  - cargo clippy --all --all-features -- -D warnings
+  - cargo test --verbose --manifest-path sys/Cargo.toml --all-features
+  - cargo test --verbose --all-features
 
-ostree:
-  <<: *build-step
-  variables:
-    # TODO: update
-    SYS_FEATURES: --features v2018_9
-    FEATURES: --features v2018_9,futures
-
-ostree_default-features:
-  <<: *build-step
-  variables:
-    SYS_FEATURES: ""
-    FEATURES: ""
+default-features:
+  stage: build
+  script:
+  - cargo test --verbose
 
 # docs
 docs:
