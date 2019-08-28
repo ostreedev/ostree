@@ -848,6 +848,14 @@ impl Repo {
         }
     }
 
+    pub fn write_archive_to_mtree_from_fd<P: IsA<MutableTree>, Q: IsA<gio::Cancellable>>(&self, fd: i32, mtree: &P, modifier: Option<&RepoCommitModifier>, autocreate_parents: bool, cancellable: Option<&Q>) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_write_archive_to_mtree_from_fd(self.to_glib_none().0, fd, mtree.as_ref().to_glib_none().0, modifier.to_glib_none().0, autocreate_parents.to_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     pub fn write_commit<P: IsA<RepoFile>, Q: IsA<gio::Cancellable>>(&self, parent: Option<&str>, subject: Option<&str>, body: Option<&str>, metadata: Option<&glib::Variant>, root: &P, cancellable: Option<&Q>) -> Result<GString, Error> {
         unsafe {
             let mut out_commit = ptr::null_mut();

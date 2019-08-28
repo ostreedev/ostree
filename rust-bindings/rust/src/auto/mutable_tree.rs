@@ -60,7 +60,7 @@ pub trait MutableTreeExt: 'static {
 
     fn get_metadata_checksum(&self) -> Option<GString>;
 
-    //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 37 };
+    //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 38 };
 
     fn lookup(&self, name: &str) -> Result<(GString, MutableTree), Error>;
 
@@ -122,7 +122,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
         }
     }
 
-    //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 37 } {
+    //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 38 } {
     //    unsafe { TODO: call ostree_sys:ostree_mutable_tree_get_subdirs() }
     //}
 

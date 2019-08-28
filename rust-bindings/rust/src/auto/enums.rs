@@ -69,6 +69,8 @@ pub enum GpgSignatureAttr {
     UserName,
     UserEmail,
     FingerprintPrimary,
+    KeyExpTimestamp,
+    KeyExpTimestampPrimary,
     #[doc(hidden)]
     __Unknown(i32),
 }
@@ -89,6 +91,8 @@ impl fmt::Display for GpgSignatureAttr {
             GpgSignatureAttr::UserName => "UserName",
             GpgSignatureAttr::UserEmail => "UserEmail",
             GpgSignatureAttr::FingerprintPrimary => "FingerprintPrimary",
+            GpgSignatureAttr::KeyExpTimestamp => "KeyExpTimestamp",
+            GpgSignatureAttr::KeyExpTimestampPrimary => "KeyExpTimestampPrimary",
             _ => "Unknown",
         })
     }
@@ -113,6 +117,8 @@ impl ToGlib for GpgSignatureAttr {
             GpgSignatureAttr::UserName => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_USER_NAME,
             GpgSignatureAttr::UserEmail => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL,
             GpgSignatureAttr::FingerprintPrimary => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY,
+            GpgSignatureAttr::KeyExpTimestamp => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP,
+            GpgSignatureAttr::KeyExpTimestampPrimary => ostree_sys::OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY,
             GpgSignatureAttr::__Unknown(value) => value
         }
     }
@@ -135,6 +141,8 @@ impl FromGlib<ostree_sys::OstreeGpgSignatureAttr> for GpgSignatureAttr {
             10 => GpgSignatureAttr::UserName,
             11 => GpgSignatureAttr::UserEmail,
             12 => GpgSignatureAttr::FingerprintPrimary,
+            13 => GpgSignatureAttr::KeyExpTimestamp,
+            14 => GpgSignatureAttr::KeyExpTimestampPrimary,
             value => GpgSignatureAttr::__Unknown(value),
         }
     }
