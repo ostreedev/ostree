@@ -136,11 +136,6 @@ status = "generate"
     ignore = true
 
     [[object.function]]
-    # these fail because of issues with zero-terminated arrays
-    pattern = "find_remotes_async|pull_from_remotes_async"
-    ignore = true
-
-    [[object.function]]
     # this is deprecated and supposedly unsafe for GI
     name = "checkout_tree_at"
     ignore = true
