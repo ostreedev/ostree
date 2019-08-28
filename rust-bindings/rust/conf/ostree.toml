@@ -186,3 +186,8 @@ status = "generate"
     # version-dependent constants
     pattern = "VERSION|VERSION_S|YEAR_VERSION|RELEASE_VERSION"
     ignore = true
+
+    [[object.constant]]
+    # build-dependent constants
+    pattern = "BUILT_FEATURES"
+    ignore = true
