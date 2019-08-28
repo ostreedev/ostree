@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..7"
+echo "1..8"
 
 mkdir ${test_tmpdir}/repo
 ostree_repo_init repo --mode="archive"
@@ -57,6 +57,7 @@ if ! has_libsodium; then
     echo "ok ed25519 signature verified # SKIP due libsodium unavailability"
     echo "ok multiple signing # SKIP due libsodium unavailability"
     echo "ok verify ed25519 keys file # SKIP due libsodium unavailability"
+    echo "ok sign with ed25519 keys file # SKIP due libsodium unavailability"
     exit 0
 fi
 
@@ -136,3 +137,17 @@ echo ${PUBLIC} >> ${PUBKEYS}
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}
 
 echo "ok verify ed25519 keys file"
+
+# Check ed25519 signing with secret file
+echo "Unsigned commit for secret file usage" >> file.txt
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo commit -b main -s 'Unsigned commit'
+COMMIT="$(ostree --repo=${test_tmpdir}/repo rev-parse main)"
+
+KEYFILE="$(mktemp -p ${test_tmpdir} secret_XXXXXX.ed25519)"
+echo "${SECRET}" > ${KEYFILE}
+# Sign
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=ed25519 --keys-file=${KEYFILE} ${COMMIT}
+# Verify
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}
+echo "ok sign with ed25519 keys file"
+

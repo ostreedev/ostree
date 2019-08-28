@@ -48,7 +48,7 @@ static GOptionEntry options[] = {
   { "verify", 0, 0, G_OPTION_ARG_NONE, &opt_verify, "Verify signatures", NULL},
   { "sign-type", 's', 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
 #if defined(HAVE_LIBSODIUM)
-  { "keys-file", 's', 0, G_OPTION_ARG_STRING, &opt_filename, "Read public key(s) from file", "NAME"},
+  { "keys-file", 's', 0, G_OPTION_ARG_STRING, &opt_filename, "Read key(s) from file", "NAME"},
 #endif
    { NULL }
 };
@@ -92,7 +92,7 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
 
   commit = argv[1];
 
-  if (!opt_verify && argc < 3)
+  if (!opt_filename && argc < 3)
     {
       usage_error (context, "Need at least one KEY-ID to sign with", error);
       goto out;
@@ -174,30 +174,95 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
     }
 
-  /* Read public signatures from file */
-  if (opt_verify && opt_filename)
+  /* Read signatures from file */
+  if (opt_filename)
     {
-      g_autoptr (GVariantBuilder) builder = NULL;
-      g_autoptr (GVariant) options = NULL;
-
-      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-      g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
-      options = g_variant_builder_end (builder);
-
-      if (!ostree_sign_load_pk (sign, options, error))
+      if (opt_verify)
         {
-          ret = FALSE;
-          goto out;
+          g_autoptr (GVariantBuilder) builder = NULL;
+          g_autoptr (GVariant) options = NULL;
+
+          builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+          g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
+          options = g_variant_builder_end (builder);
+
+          if (!ostree_sign_load_pk (sign, options, error))
+            {
+              ret = FALSE;
+              goto out;
+            }
+          if (ostree_sign_commit_verify (sign,
+                                         repo,
+                                         resolved_commit,
+                                         cancellable,
+                                         error))
+            ret = TRUE;
+          if (ret != TRUE)
+            goto out;
+        } /* Check via file */
+      else
+        { /* Sign with keys from provided file */
+          g_autoptr (GFile) keyfile = NULL;
+          g_autoptr (GFileInputStream) key_stream_in = NULL;
+          g_autoptr (GDataInputStream) key_data_in = NULL;
+
+          if (!g_file_test (opt_filename, G_FILE_TEST_IS_REGULAR))
+            {
+              g_warning ("Can't open file '%s' with keys", opt_filename);
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "File object '%s' is not a regular file", opt_filename);
+              goto out;
+            }
+
+          keyfile = g_file_new_for_path (opt_filename);
+          key_stream_in = g_file_read (keyfile, NULL, error);
+          if (key_stream_in == NULL)
+            goto out;
+
+          key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
+          g_assert (key_data_in != NULL);
+
+          /* Use simple file format with just a list of base64 public keys per line */
+          while (TRUE)
+            {
+              gsize len = 0;
+              g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
+              g_autoptr (GVariant) sk = NULL;
+
+              if (*error != NULL)
+                goto out;
+
+              if (line == NULL)
+                goto out;
+
+
+              if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
+                {
+                  // Just use the string as signature
+                  sk = g_variant_new_string(line);
+                }
+
+
+              if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
+                {
+                  gsize key_len = 0;
+                  g_autofree guchar *key = g_base64_decode (line, &key_len);
+                  sk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
+                }
+
+              if (!ostree_sign_set_sk (sign, sk, error))
+                continue;
+
+              ret = ostree_sign_commit (sign,
+                                        repo,
+                                        resolved_commit,
+                                        cancellable,
+                                        error);
+              if (ret != TRUE)
+                goto out;
+            }
         }
-      if (ostree_sign_commit_verify (sign,
-                                     repo,
-                                     resolved_commit,
-                                     cancellable,
-                                     error))
-        ret = TRUE;
-      if (ret != TRUE)
-        goto out;
-    } /* Check via file */
+    }
 
   // No valid signature found
   if (opt_verify && (ret != TRUE))
