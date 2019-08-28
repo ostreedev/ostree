@@ -362,6 +362,14 @@ Any watchers of the #OstreeAsyncProgress will be notified of the change if
         </callback>
       </field>
     </record>
+    <constant name="BUILT_FEATURES"
+              value="libsoup gpgme libarchive selinux avahi libmount release p2p"
+              c:type="OSTREE_BUILT_FEATURES"
+              version="2019.3">
+      <doc xml:space="preserve">Whitespace separated set of features this libostree was configured with at build time.
+Consult the source code in configure.ac (or the CLI `ostree --version`) for examples.</doc>
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
     <class name="BootconfigParser"
            c:symbol-prefix="bootconfig_parser"
            c:type="OstreeBootconfigParser"
@@ -979,7 +987,7 @@ elements. @refs must be %NULL-terminated; it may be empty, but must not be
         <parameters>
           <parameter name="refs" transfer-ownership="none">
             <doc xml:space="preserve">%NULL-terminated array of #OstreeCollectionRefs</doc>
-            <array c:type="OstreeCollectionRef**">
+            <array c:type="const OstreeCollectionRef* const*">
               <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
             </array>
           </parameter>
@@ -1558,6 +1566,20 @@ The attribute's #GVariantType is shown in brackets.</doc>
   the signature is already from the primary key rather than a subkey,
   and will be the empty string if the key is missing.)</doc>
       </member>
+      <member name="key_exp_timestamp"
+              value="13"
+              c:identifier="OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP">
+        <doc xml:space="preserve">[#G_VARIANT_TYPE_INT64] Key expiration Unix timestamp (0 if no
+  expiration or if the key is missing)</doc>
+      </member>
+      <member name="key_exp_timestamp_primary"
+              value="14"
+              c:identifier="OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY">
+        <doc xml:space="preserve">[#G_VARIANT_TYPE_INT64] Key expiration Unix timestamp of the signing key's
+  primary key (will be the same as OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP
+  if the signing key is the primary key and 0 if no expiration or if the key
+  is missing)</doc>
+      </member>
     </enumeration>
     <enumeration name="GpgSignatureFormatFlags"
                  c:type="OstreeGpgSignatureFormatFlags">
@@ -1810,6 +1832,388 @@ signature from trusted keyring, otherwise %FALSE</doc>
         </parameters>
       </method>
     </class>
+    <record name="KernelArgs" c:type="OstreeKernelArgs" disguised="1">
+      <method name="append"
+              c:identifier="ostree_kernel_args_append"
+              version="2019.3">
+        <doc xml:space="preserve">Appends @arg which is in the form of key=value pair to the hash table kargs-&gt;table
+(appends to the value list if key is already in the hash table)
+and appends key to kargs-&gt;order if it is not in the hash table already.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="arg" transfer-ownership="none">
+            <doc xml:space="preserve">key or key/value pair to be added</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="append_argv"
+              c:identifier="ostree_kernel_args_append_argv"
+              version="2019.3">
+        <doc xml:space="preserve">Appends each value in @argv to the corresponding value array and
+appends key to kargs-&gt;order if it is not in the hash table already.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="argv" transfer-ownership="none">
+            <doc xml:space="preserve">an array of key=value argument pairs</doc>
+            <type name="utf8" c:type="char**"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="append_argv_filtered"
+              c:identifier="ostree_kernel_args_append_argv_filtered"
+              version="2019.3">
+        <doc xml:space="preserve">Appends each argument that does not have one of the @prefixes as prefix to the @kargs</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="argv" transfer-ownership="none">
+            <doc xml:space="preserve">an array of key=value argument pairs</doc>
+            <type name="utf8" c:type="char**"/>
+          </parameter>
+          <parameter name="prefixes" transfer-ownership="none">
+            <doc xml:space="preserve">an array of prefix strings</doc>
+            <type name="utf8" c:type="char**"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="append_proc_cmdline"
+              c:identifier="ostree_kernel_args_append_proc_cmdline"
+              version="2019.3"
+              throws="1">
+        <doc xml:space="preserve">Appends the command line arguments in the file "/proc/cmdline"
+that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the @kargs</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE on success, %FALSE on failure</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve">optional GCancellable object, NULL to ignore</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="delete"
+              c:identifier="ostree_kernel_args_delete"
+              throws="1">
+        <doc xml:space="preserve">There are few scenarios being handled for deletion:
+
+ 1: for input arg with a single key(i.e without = for split),
+ the key/value pair will be deleted if there is only
+ one value that is associated with the key
+
+ 2: for input arg wth key/value pair, the specific key
+ value pair will be deleted from the pointer array
+ if those exist.
+
+ 3: If the found key has only one value
+ associated with it, the key entry in the table will also
+ be removed, and the key will be removed from order table
+
+ Returns: %TRUE on success, %FALSE on failure
+
+ Since: 2019.3</doc>
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="arg" transfer-ownership="none">
+            <doc xml:space="preserve">key or key/value pair for deletion</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="delete_key_entry"
+              c:identifier="ostree_kernel_args_delete_key_entry"
+              version="2019.3"
+              throws="1">
+        <doc xml:space="preserve">This function removes the key entry from the hashtable
+as well from the order pointer array inside kargs
+
+Note: since both table and order inside kernel args
+are with free function, no extra free functions are
+being called as they are done automatically by GLib</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE on success, %FALSE on failure</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">an OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve">the key to remove</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="free"
+              c:identifier="ostree_kernel_args_free"
+              version="2019.3">
+        <doc xml:space="preserve">Frees the kargs structure</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">An OstreeKernelArgs that represents kernel arguments</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_last_value"
+              c:identifier="ostree_kernel_args_get_last_value"
+              version="2019.3">
+        <doc xml:space="preserve">Finds and returns the last element of value array
+corresponding to the @key in @kargs hash table. Note that the application
+will be terminated if the @key is found but the value array is empty</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">NULL if @key is not found in the @kargs hash table,
+otherwise returns last element of value array corresponding to @key</doc>
+          <type name="utf8" c:type="const char*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="key" transfer-ownership="none">
+            <doc xml:space="preserve">a key to look for in @kargs hash table</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="new_replace"
+              c:identifier="ostree_kernel_args_new_replace"
+              version="2019.3"
+              throws="1">
+        <doc xml:space="preserve">This function implements the basic logic behind key/value pair
+replacement. Do note that the arg need to be properly formatted
+
+When replacing key with exact one value, the arg can be in
+the form:
+key, key=new_val, or key=old_val=new_val
+The first one swaps the old_val with the key to an empty value
+The second and third replace the old_val into the new_val
+
+When replacing key with multiple values, the arg can only be
+in the form of:
+key=old_val=new_val. Unless there is a special case where
+there is an empty value associated with the key, then
+key=new_val will work because old_val is empty. The empty
+val will be swapped with the new_val in that case</doc>
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE on success, %FALSE on failure (and in some other instances such as:
+1. key not found in @kargs
+2. old value not found when @arg is in the form of key=old_val=new_val
+3. multiple old values found when @arg is in the form of key=old_val)</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="arg" transfer-ownership="none">
+            <doc xml:space="preserve">a string argument</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="parse_append"
+              c:identifier="ostree_kernel_args_parse_append"
+              version="2019.3">
+        <doc xml:space="preserve">Parses @options by separating it by whitespaces and appends each argument to @kargs</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="options" transfer-ownership="none">
+            <doc xml:space="preserve">a string representing command line arguments</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="replace"
+              c:identifier="ostree_kernel_args_replace"
+              version="2019.3">
+        <doc xml:space="preserve">Finds and replaces the old key if @arg is already in the hash table,
+otherwise adds @arg as new key and split_keyeq (arg) as value.
+Note that when replacing old key value pair, the old values are freed.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="arg" transfer-ownership="none">
+            <doc xml:space="preserve">key or key/value pair for replacement</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="replace_argv"
+              c:identifier="ostree_kernel_args_replace_argv"
+              version="2019.3">
+        <doc xml:space="preserve">Finds and replaces each non-null arguments of @argv in the hash table,
+otherwise adds individual arg as new key and split_keyeq (arg) as value.
+Note that when replacing old key value pair, the old values are freed.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="argv" transfer-ownership="none">
+            <doc xml:space="preserve">an array of key or key/value pairs</doc>
+            <type name="utf8" c:type="char**"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="replace_take"
+              c:identifier="ostree_kernel_args_replace_take"
+              version="2019.3">
+        <doc xml:space="preserve">Finds and replaces the old key if @arg is already in the hash table,
+otherwise adds @arg as new key and split_keyeq (arg) as value.
+Note that when replacing old key, the old values are freed.</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+          <parameter name="arg" transfer-ownership="full">
+            <doc xml:space="preserve">key or key/value pair for replacement</doc>
+            <type name="utf8" c:type="char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="to_string"
+              c:identifier="ostree_kernel_args_to_string"
+              version="2019.3">
+        <doc xml:space="preserve">Extracts all key value pairs in @kargs and appends to a temporary
+GString in forms of "key=value" or "key" if value is NULL separated
+by a single whitespace, and returns the temporary string with the
+GString wrapper freed
+
+Note: the application will be terminated if one of the values array
+in @kargs is NULL</doc>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve">a string of "key=value" pairs or "key" if value is NULL,
+separated by single whitespaces</doc>
+          <type name="utf8" c:type="char*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="to_strv"
+              c:identifier="ostree_kernel_args_to_strv"
+              version="2019.3">
+        <doc xml:space="preserve">Extracts all key value pairs in @kargs and appends to a temporary
+array in forms of "key=value" or "key" if value is NULL, and returns
+the temporary array with the GPtrArray wrapper freed</doc>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve">an array of "key=value" pairs or "key" if value is NULL</doc>
+          <array c:type="char**">
+            <type name="utf8"/>
+          </array>
+        </return-value>
+        <parameters>
+          <instance-parameter name="kargs" transfer-ownership="none">
+            <doc xml:space="preserve">a OstreeKernelArgs instance</doc>
+            <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <function name="cleanup"
+                c:identifier="ostree_kernel_args_cleanup"
+                version="2019.3">
+        <doc xml:space="preserve">Frees the OstreeKernelArgs structure pointed by *loc</doc>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="loc"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve">Address of an OstreeKernelArgs pointer</doc>
+            <type name="gpointer" c:type="void*"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="from_string"
+                c:identifier="ostree_kernel_args_from_string"
+                version="2019.3"
+                introspectable="0">
+        <doc xml:space="preserve">Initializes a new OstreeKernelArgs then parses and appends @options
+to the empty OstreeKernelArgs</doc>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve">newly allocated #OstreeKernelArgs with @options appended</doc>
+          <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+        </return-value>
+        <parameters>
+          <parameter name="options" transfer-ownership="none">
+            <doc xml:space="preserve">a string representing command line arguments</doc>
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="new"
+                c:identifier="ostree_kernel_args_new"
+                version="2019.3"
+                introspectable="0">
+        <doc xml:space="preserve">Initializes a new OstreeKernelArgs structure and returns it</doc>
+        <return-value transfer-ownership="full">
+          <doc xml:space="preserve">A newly created #OstreeKernelArgs for kernel arguments</doc>
+          <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+        </return-value>
+      </function>
+    </record>
     <record name="LibarchiveInputStream" c:type="OstreeLibarchiveInputStream">
       <field name="parent_instance" writable="1">
         <type name="Gio.InputStream" c:type="GInputStream"/>
@@ -2661,7 +3065,7 @@ transaction will do nothing and return successfully.</doc>
           </instance-parameter>
           <parameter name="key_id" transfer-ownership="none">
             <doc xml:space="preserve">NULL-terminated array of GPG keys.</doc>
-            <array c:type="gchar**">
+            <array c:type="const gchar**">
               <type name="utf8"/>
             </array>
           </parameter>
@@ -3111,7 +3515,7 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
           </instance-parameter>
           <parameter name="refs" transfer-ownership="none">
             <doc xml:space="preserve">non-empty array of collection–ref pairs to find remotes for</doc>
-            <array c:type="OstreeCollectionRef**">
+            <array c:type="const OstreeCollectionRef* const*">
               <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
             </array>
           </parameter>
@@ -3269,7 +3673,7 @@ the "core.default-repo-finders" config key.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">
    %NULL-terminated array of strings.</doc>
-          <array c:type="gchar**">
+          <array c:type="const gchar* const*">
             <type name="utf8"/>
           </array>
         </return-value>
@@ -3316,7 +3720,10 @@ repository (to see whether a ref was written).</doc>
               c:identifier="ostree_repo_get_min_free_space_bytes"
               version="2018.9"
               throws="1">
-        <doc xml:space="preserve">It can be used to query the value (in bytes) of min-free-space-* config option.</doc>
+        <doc xml:space="preserve">Determine the number of bytes of free disk space that are reserved according
+to the repo config and return that number in @out_reserved_bytes. See the
+documentation for the core.min-free-space-size and
+core.min-free-space-percent repo config options.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve">%TRUE on success, %FALSE otherwise.</doc>
           <type name="gboolean" c:type="gboolean"/>
@@ -4582,7 +4989,7 @@ The following @options are currently defined:
           <parameter name="results" transfer-ownership="none">
             <doc xml:space="preserve">%NULL-terminated array of remotes to
    pull from, including the refs to pull from each</doc>
-            <array c:type="OstreeRepoFinderResult**">
+            <array c:type="const OstreeRepoFinderResult* const*">
               <type name="RepoFinderResult" c:type="OstreeRepoFinderResult*"/>
             </array>
           </parameter>
@@ -5308,7 +5715,7 @@ from the remote named @name.</doc>
                      nullable="1"
                      allow-none="1">
             <doc xml:space="preserve">a %NULL-terminated array of GPG key IDs, or %NULL</doc>
-            <array c:type="char**">
+            <array c:type="const char* const*">
               <type name="utf8"/>
             </array>
           </parameter>
@@ -6449,6 +6856,48 @@ file structure to @mtree.</doc>
           <parameter name="archive" transfer-ownership="none">
             <doc xml:space="preserve">A path to an archive file</doc>
             <type name="Gio.File" c:type="GFile*"/>
+          </parameter>
+          <parameter name="mtree" transfer-ownership="none">
+            <doc xml:space="preserve">The #OstreeMutableTree to write to</doc>
+            <type name="MutableTree" c:type="OstreeMutableTree*"/>
+          </parameter>
+          <parameter name="modifier"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve">Optional commit modifier</doc>
+            <type name="RepoCommitModifier"
+                  c:type="OstreeRepoCommitModifier*"/>
+          </parameter>
+          <parameter name="autocreate_parents" transfer-ownership="none">
+            <doc xml:space="preserve">Autocreate parent directories</doc>
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+          <parameter name="cancellable"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve">Cancellable</doc>
+            <type name="Gio.Cancellable" c:type="GCancellable*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="write_archive_to_mtree_from_fd"
+              c:identifier="ostree_repo_write_archive_to_mtree_from_fd"
+              throws="1">
+        <doc xml:space="preserve">Read an archive from @fd and import it into the repository, writing
+its file structure to @mtree.</doc>
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve">An #OstreeRepo</doc>
+            <type name="Repo" c:type="OstreeRepo*"/>
+          </instance-parameter>
+          <parameter name="fd" transfer-ownership="none">
+            <doc xml:space="preserve">A file descriptor to read the archive from</doc>
+            <type name="gint" c:type="int"/>
           </parameter>
           <parameter name="mtree" transfer-ownership="none">
             <doc xml:space="preserve">The #OstreeMutableTree to write to</doc>
@@ -8229,13 +8678,13 @@ options.  This is used by ostree_repo_export_tree_to_archive().</doc>
         <parameters>
           <parameter name="finders" transfer-ownership="none">
             <doc xml:space="preserve">non-empty array of #OstreeRepoFinders</doc>
-            <array c:type="OstreeRepoFinder**">
+            <array c:type="OstreeRepoFinder* const*">
               <type name="RepoFinder" c:type="OstreeRepoFinder*"/>
             </array>
           </parameter>
           <parameter name="refs" transfer-ownership="none">
             <doc xml:space="preserve">non-empty array of collection–ref pairs to find remotes for</doc>
-            <array c:type="OstreeCollectionRef**">
+            <array c:type="const OstreeCollectionRef* const*">
               <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
             </array>
           </parameter>
@@ -8323,7 +8772,7 @@ Pass the results to ostree_repo_pull_from_remotes_async() to pull the given
           </instance-parameter>
           <parameter name="refs" transfer-ownership="none">
             <doc xml:space="preserve">non-empty array of collection–ref pairs to find remotes for</doc>
-            <array c:type="OstreeCollectionRef**">
+            <array c:type="const OstreeCollectionRef* const*">
               <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
             </array>
           </parameter>
@@ -8416,7 +8865,7 @@ Pass the results to ostree_repo_pull_from_remotes_async() to pull the given
           </instance-parameter>
           <parameter name="refs" transfer-ownership="none">
             <doc xml:space="preserve">non-empty array of collection–ref pairs to find remotes for</doc>
-            <array c:type="OstreeCollectionRef**">
+            <array c:type="const OstreeCollectionRef* const*">
               <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
             </array>
           </parameter>
@@ -8595,7 +9044,7 @@ ostree_repo_finder_avahi_start().</doc>
             </parameter>
             <parameter name="refs" transfer-ownership="none">
               <doc xml:space="preserve">non-empty array of collection–ref pairs to find remotes for</doc>
-              <array c:type="OstreeCollectionRef**">
+              <array c:type="const OstreeCollectionRef* const*">
                 <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
               </array>
             </parameter>
@@ -8755,6 +9204,8 @@ operation. This represents a single remote which provides none, some or all
 of the refs being resolved. The structure includes various bits of metadata
 which allow ostree_repo_pull_from_remotes_async() (for example) to prioritise
 how to pull the refs.
+
+An #OstreeRepoFinderResult is immutable after construction.
 
 The @priority is used as one input of many to ordering functions like
 ostree_repo_finder_result_compare().
@@ -11138,7 +11589,7 @@ character is used.</doc>
       <parameters>
         <parameter name="csum" transfer-ownership="none">
           <doc xml:space="preserve">An binary checksum of length 32</doc>
-          <array zero-terminated="0" c:type="guchar*" fixed-size="32">
+          <array zero-terminated="0" c:type="const guchar*" fixed-size="32">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -11156,7 +11607,7 @@ character is used.</doc>
       <parameters>
         <parameter name="csum" transfer-ownership="none">
           <doc xml:space="preserve">An binary checksum of length 32</doc>
-          <array zero-terminated="0" c:type="guchar*" fixed-size="32">
+          <array zero-terminated="0" c:type="const guchar*" fixed-size="32">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -11176,7 +11627,7 @@ character is used.</doc>
       <parameters>
         <parameter name="checksum" transfer-ownership="none">
           <doc xml:space="preserve">An binary checksum of length 32</doc>
-          <array zero-terminated="0" c:type="char*" fixed-size="32">
+          <array zero-terminated="0" c:type="const char*" fixed-size="32">
             <type name="utf8" c:type="char"/>
           </array>
         </parameter>
@@ -11206,7 +11657,7 @@ character is used.</doc>
               c:identifier="ostree_checksum_bytes_peek">
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">Binary checksum data in @bytes; do not free.  If @bytes does not have the correct length, return %NULL.</doc>
-        <array zero-terminated="0" c:type="guchar*" fixed-size="32">
+        <array zero-terminated="0" c:type="const guchar*" fixed-size="32">
           <type name="guint8"/>
         </array>
       </return-value>
@@ -11223,7 +11674,7 @@ character is used.</doc>
       <doc xml:space="preserve">Like ostree_checksum_bytes_peek(), but also throws @error.</doc>
       <return-value transfer-ownership="none">
         <doc xml:space="preserve">Binary checksum data</doc>
-        <array zero-terminated="0" c:type="guchar*" fixed-size="32">
+        <array zero-terminated="0" c:type="const guchar*" fixed-size="32">
           <type name="guint8"/>
         </array>
       </return-value>
@@ -11445,7 +11896,7 @@ allocated buffer.</doc>
       <parameters>
         <parameter name="csum" transfer-ownership="none">
           <doc xml:space="preserve">An binary checksum of length 32</doc>
-          <array zero-terminated="0" c:type="guchar*" fixed-size="32">
+          <array zero-terminated="0" c:type="const guchar*" fixed-size="32">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -11474,7 +11925,7 @@ allocated buffer.</doc>
       <parameters>
         <parameter name="csum" transfer-ownership="none">
           <doc xml:space="preserve">An binary checksum of length 32</doc>
-          <array zero-terminated="0" c:type="guchar*" fixed-size="32">
+          <array zero-terminated="0" c:type="const guchar*" fixed-size="32">
             <type name="guint8" c:type="guchar"/>
           </array>
         </parameter>
@@ -11567,7 +12018,7 @@ elements. @refs must be %NULL-terminated; it may be empty, but must not be
       <parameters>
         <parameter name="refs" transfer-ownership="none">
           <doc xml:space="preserve">%NULL-terminated array of #OstreeCollectionRefs</doc>
-          <array c:type="OstreeCollectionRef**">
+          <array c:type="const OstreeCollectionRef* const*">
             <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
           </array>
         </parameter>
@@ -12017,6 +12468,53 @@ sets of #OstreeDiffItem in @modified, @removed, and @added.</doc>
         </parameter>
       </parameters>
     </function>
+    <function name="kernel_args_cleanup"
+              c:identifier="ostree_kernel_args_cleanup"
+              moved-to="KernelArgs.cleanup"
+              version="2019.3">
+      <doc xml:space="preserve">Frees the OstreeKernelArgs structure pointed by *loc</doc>
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="loc"
+                   transfer-ownership="none"
+                   nullable="1"
+                   allow-none="1">
+          <doc xml:space="preserve">Address of an OstreeKernelArgs pointer</doc>
+          <type name="gpointer" c:type="void*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="kernel_args_from_string"
+              c:identifier="ostree_kernel_args_from_string"
+              moved-to="KernelArgs.from_string"
+              version="2019.3"
+              introspectable="0">
+      <doc xml:space="preserve">Initializes a new OstreeKernelArgs then parses and appends @options
+to the empty OstreeKernelArgs</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">newly allocated #OstreeKernelArgs with @options appended</doc>
+        <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+      </return-value>
+      <parameters>
+        <parameter name="options" transfer-ownership="none">
+          <doc xml:space="preserve">a string representing command line arguments</doc>
+          <type name="utf8" c:type="const char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="kernel_args_new"
+              c:identifier="ostree_kernel_args_new"
+              moved-to="KernelArgs.new"
+              version="2019.3"
+              introspectable="0">
+      <doc xml:space="preserve">Initializes a new OstreeKernelArgs structure and returns it</doc>
+      <return-value transfer-ownership="full">
+        <doc xml:space="preserve">A newly created #OstreeKernelArgs for kernel arguments</doc>
+        <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
+      </return-value>
+    </function>
     <function name="metadata_variant_type"
               c:identifier="ostree_metadata_variant_type">
       <return-value transfer-ownership="none">
@@ -12348,13 +12846,13 @@ for writing data to an #OstreeRepo.</doc>
       <parameters>
         <parameter name="finders" transfer-ownership="none">
           <doc xml:space="preserve">non-empty array of #OstreeRepoFinders</doc>
-          <array c:type="OstreeRepoFinder**">
+          <array c:type="OstreeRepoFinder* const*">
             <type name="RepoFinder" c:type="OstreeRepoFinder*"/>
           </array>
         </parameter>
         <parameter name="refs" transfer-ownership="none">
           <doc xml:space="preserve">non-empty array of collection–ref pairs to find remotes for</doc>
-          <array c:type="OstreeCollectionRef**">
+          <array c:type="const OstreeCollectionRef* const*">
             <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
           </array>
         </parameter>
