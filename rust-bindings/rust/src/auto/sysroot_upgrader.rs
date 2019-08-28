@@ -84,18 +84,20 @@ impl SysrootUpgrader {
 
     pub fn pull<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>>(&self, flags: RepoPullFlags, upgrader_flags: SysrootUpgraderPullFlags, progress: Option<&P>, cancellable: Option<&Q>) -> Result<bool, Error> {
         unsafe {
-            let mut out_changed = mem::uninitialized();
+            let mut out_changed = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_sysroot_upgrader_pull(self.to_glib_none().0, flags.to_glib(), upgrader_flags.to_glib(), progress.map(|p| p.as_ref()).to_glib_none().0, &mut out_changed, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_upgrader_pull(self.to_glib_none().0, flags.to_glib(), upgrader_flags.to_glib(), progress.map(|p| p.as_ref()).to_glib_none().0, out_changed.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_changed = out_changed.assume_init();
             if error.is_null() { Ok(from_glib(out_changed)) } else { Err(from_glib_full(error)) }
         }
     }
 
     pub fn pull_one_dir<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>>(&self, dir_to_pull: &str, flags: RepoPullFlags, upgrader_flags: SysrootUpgraderPullFlags, progress: Option<&P>, cancellable: Option<&Q>) -> Result<bool, Error> {
         unsafe {
-            let mut out_changed = mem::uninitialized();
+            let mut out_changed = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_sysroot_upgrader_pull_one_dir(self.to_glib_none().0, dir_to_pull.to_glib_none().0, flags.to_glib(), upgrader_flags.to_glib(), progress.map(|p| p.as_ref()).to_glib_none().0, &mut out_changed, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_upgrader_pull_one_dir(self.to_glib_none().0, dir_to_pull.to_glib_none().0, flags.to_glib(), upgrader_flags.to_glib(), progress.map(|p| p.as_ref()).to_glib_none().0, out_changed.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_changed = out_changed.assume_init();
             if error.is_null() { Ok(from_glib(out_changed)) } else { Err(from_glib_full(error)) }
         }
     }

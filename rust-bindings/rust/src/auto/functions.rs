@@ -192,8 +192,9 @@ pub fn metadata_variant_type(objtype: ObjectType) -> Option<glib::VariantType> {
 pub fn object_from_string(str: &str) -> (GString, ObjectType) {
     unsafe {
         let mut out_checksum = ptr::null_mut();
-        let mut out_objtype = mem::uninitialized();
-        ostree_sys::ostree_object_from_string(str.to_glib_none().0, &mut out_checksum, &mut out_objtype);
+        let mut out_objtype = mem::MaybeUninit::uninit();
+        ostree_sys::ostree_object_from_string(str.to_glib_none().0, &mut out_checksum, out_objtype.as_mut_ptr());
+        let out_objtype = out_objtype.assume_init();
         (from_glib_full(out_checksum), from_glib(out_objtype))
     }
 }
@@ -201,8 +202,9 @@ pub fn object_from_string(str: &str) -> (GString, ObjectType) {
 pub fn object_name_deserialize(variant: &glib::Variant) -> (GString, ObjectType) {
     unsafe {
         let mut out_checksum = ptr::null();
-        let mut out_objtype = mem::uninitialized();
-        ostree_sys::ostree_object_name_deserialize(variant.to_glib_none().0, &mut out_checksum, &mut out_objtype);
+        let mut out_objtype = mem::MaybeUninit::uninit();
+        ostree_sys::ostree_object_name_deserialize(variant.to_glib_none().0, &mut out_checksum, out_objtype.as_mut_ptr());
+        let out_objtype = out_objtype.assume_init();
         (from_glib_none(out_checksum), from_glib(out_objtype))
     }
 }
@@ -264,9 +266,10 @@ pub fn raw_file_to_archive_z2_stream_with_options<P: IsA<gio::InputStream>, Q: I
 pub fn raw_file_to_content_stream<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(input: &P, file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<(gio::InputStream, u64), Error> {
     unsafe {
         let mut out_input = ptr::null_mut();
-        let mut out_length = mem::uninitialized();
+        let mut out_length = mem::MaybeUninit::uninit();
         let mut error = ptr::null_mut();
-        let _ = ostree_sys::ostree_raw_file_to_content_stream(input.as_ref().to_glib_none().0, file_info.to_glib_none().0, xattrs.to_glib_none().0, &mut out_input, &mut out_length, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+        let _ = ostree_sys::ostree_raw_file_to_content_stream(input.as_ref().to_glib_none().0, file_info.to_glib_none().0, xattrs.to_glib_none().0, &mut out_input, out_length.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+        let out_length = out_length.assume_init();
         if error.is_null() { Ok((from_glib_full(out_input), out_length)) } else { Err(from_glib_full(error)) }
     }
 }

@@ -52,8 +52,9 @@ impl GpgVerifyResult {
 
     pub fn lookup(&self, key_id: &str) -> Option<u32> {
         unsafe {
-            let mut out_signature_index = mem::uninitialized();
-            let ret = from_glib(ostree_sys::ostree_gpg_verify_result_lookup(self.to_glib_none().0, key_id.to_glib_none().0, &mut out_signature_index));
+            let mut out_signature_index = mem::MaybeUninit::uninit();
+            let ret = from_glib(ostree_sys::ostree_gpg_verify_result_lookup(self.to_glib_none().0, key_id.to_glib_none().0, out_signature_index.as_mut_ptr()));
+            let out_signature_index = out_signature_index.assume_init();
             if ret { Some(out_signature_index) } else { None }
         }
     }

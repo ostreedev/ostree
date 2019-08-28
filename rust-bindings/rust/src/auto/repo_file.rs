@@ -88,9 +88,10 @@ impl<O: IsA<RepoFile>> RepoFileExt for O {
 
     fn tree_find_child(&self, name: &str) -> (i32, bool, glib::Variant) {
         unsafe {
-            let mut is_dir = mem::uninitialized();
+            let mut is_dir = mem::MaybeUninit::uninit();
             let mut out_container = ptr::null_mut();
-            let ret = ostree_sys::ostree_repo_file_tree_find_child(self.as_ref().to_glib_none().0, name.to_glib_none().0, &mut is_dir, &mut out_container);
+            let ret = ostree_sys::ostree_repo_file_tree_find_child(self.as_ref().to_glib_none().0, name.to_glib_none().0, is_dir.as_mut_ptr(), &mut out_container);
+            let is_dir = is_dir.assume_init();
             (ret, from_glib(is_dir), from_glib_full(out_container))
         }
     }

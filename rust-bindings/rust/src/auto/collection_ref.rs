@@ -4,6 +4,7 @@
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 use glib::translate::*;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 use glib_sys;
 use gobject_sys;
 use ostree_sys;

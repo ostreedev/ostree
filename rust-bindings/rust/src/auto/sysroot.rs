@@ -207,9 +207,10 @@ impl Sysroot {
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
     pub fn load_if_changed<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<bool, Error> {
         unsafe {
-            let mut out_changed = mem::uninitialized();
+            let mut out_changed = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_sysroot_load_if_changed(self.to_glib_none().0, &mut out_changed, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_sysroot_load_if_changed(self.to_glib_none().0, out_changed.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_changed = out_changed.assume_init();
             if error.is_null() { Ok(from_glib(out_changed)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -307,9 +308,10 @@ impl Sysroot {
 
     pub fn try_lock(&self) -> Result<bool, Error> {
         unsafe {
-            let mut out_acquired = mem::uninitialized();
+            let mut out_acquired = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_sysroot_try_lock(self.to_glib_none().0, &mut out_acquired, &mut error);
+            let _ = ostree_sys::ostree_sysroot_try_lock(self.to_glib_none().0, out_acquired.as_mut_ptr(), &mut error);
+            let out_acquired = out_acquired.assume_init();
             if error.is_null() { Ok(from_glib(out_acquired)) } else { Err(from_glib_full(error)) }
         }
     }

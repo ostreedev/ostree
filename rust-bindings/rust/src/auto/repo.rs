@@ -43,6 +43,7 @@ use glib_sys;
 use gobject_sys;
 use libc;
 use ostree_sys;
+#[cfg(any(feature = "v2016_8", feature = "dox"))]
 use std;
 use std::boxed::Box as Box_;
 use std::fmt;
@@ -220,9 +221,10 @@ impl Repo {
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
     pub fn get_min_free_space_bytes(&self) -> Result<u64, Error> {
         unsafe {
-            let mut out_reserved_bytes = mem::uninitialized();
+            let mut out_reserved_bytes = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_get_min_free_space_bytes(self.to_glib_none().0, &mut out_reserved_bytes, &mut error);
+            let _ = ostree_sys::ostree_repo_get_min_free_space_bytes(self.to_glib_none().0, out_reserved_bytes.as_mut_ptr(), &mut error);
+            let out_reserved_bytes = out_reserved_bytes.assume_init();
             if error.is_null() { Ok(out_reserved_bytes) } else { Err(from_glib_full(error)) }
         }
     }
@@ -248,9 +250,10 @@ impl Repo {
     #[cfg(any(feature = "v2016_5", feature = "dox"))]
     pub fn get_remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool) -> Result<bool, Error> {
         unsafe {
-            let mut out_value = mem::uninitialized();
+            let mut out_value = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_get_remote_boolean_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, default_value.to_glib(), &mut out_value, &mut error);
+            let _ = ostree_sys::ostree_repo_get_remote_boolean_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, default_value.to_glib(), out_value.as_mut_ptr(), &mut error);
+            let out_value = out_value.assume_init();
             if error.is_null() { Ok(from_glib(out_value)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -286,9 +289,10 @@ impl Repo {
 
     pub fn has_object<P: IsA<gio::Cancellable>>(&self, objtype: ObjectType, checksum: &str, cancellable: Option<&P>) -> Result<bool, Error> {
         unsafe {
-            let mut out_have_object = mem::uninitialized();
+            let mut out_have_object = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_has_object(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, &mut out_have_object, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_repo_has_object(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, out_have_object.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_have_object = out_have_object.assume_init();
             if error.is_null() { Ok(from_glib(out_have_object)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -365,9 +369,10 @@ impl Repo {
     pub fn load_commit(&self, checksum: &str) -> Result<(glib::Variant, RepoCommitState), Error> {
         unsafe {
             let mut out_commit = ptr::null_mut();
-            let mut out_state = mem::uninitialized();
+            let mut out_state = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_load_commit(self.to_glib_none().0, checksum.to_glib_none().0, &mut out_commit, &mut out_state, &mut error);
+            let _ = ostree_sys::ostree_repo_load_commit(self.to_glib_none().0, checksum.to_glib_none().0, &mut out_commit, out_state.as_mut_ptr(), &mut error);
+            let out_state = out_state.assume_init();
             if error.is_null() { Ok((from_glib_full(out_commit), from_glib(out_state))) } else { Err(from_glib_full(error)) }
         }
     }
@@ -386,9 +391,10 @@ impl Repo {
     pub fn load_object_stream<P: IsA<gio::Cancellable>>(&self, objtype: ObjectType, checksum: &str, cancellable: Option<&P>) -> Result<(gio::InputStream, u64), Error> {
         unsafe {
             let mut out_input = ptr::null_mut();
-            let mut out_size = mem::uninitialized();
+            let mut out_size = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_load_object_stream(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, &mut out_input, &mut out_size, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_repo_load_object_stream(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, &mut out_input, out_size.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_size = out_size.assume_init();
             if error.is_null() { Ok((from_glib_full(out_input), out_size)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -430,20 +436,24 @@ impl Repo {
 
     pub fn prepare_transaction<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<bool, Error> {
         unsafe {
-            let mut out_transaction_resume = mem::uninitialized();
+            let mut out_transaction_resume = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_prepare_transaction(self.to_glib_none().0, &mut out_transaction_resume, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_repo_prepare_transaction(self.to_glib_none().0, out_transaction_resume.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_transaction_resume = out_transaction_resume.assume_init();
             if error.is_null() { Ok(from_glib(out_transaction_resume)) } else { Err(from_glib_full(error)) }
         }
     }
 
     pub fn prune<P: IsA<gio::Cancellable>>(&self, flags: RepoPruneFlags, depth: i32, cancellable: Option<&P>) -> Result<(i32, i32, u64), Error> {
         unsafe {
-            let mut out_objects_total = mem::uninitialized();
-            let mut out_objects_pruned = mem::uninitialized();
-            let mut out_pruned_object_size_total = mem::uninitialized();
+            let mut out_objects_total = mem::MaybeUninit::uninit();
+            let mut out_objects_pruned = mem::MaybeUninit::uninit();
+            let mut out_pruned_object_size_total = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_prune(self.to_glib_none().0, flags.to_glib(), depth, &mut out_objects_total, &mut out_objects_pruned, &mut out_pruned_object_size_total, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_repo_prune(self.to_glib_none().0, flags.to_glib(), depth, out_objects_total.as_mut_ptr(), out_objects_pruned.as_mut_ptr(), out_pruned_object_size_total.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_objects_total = out_objects_total.assume_init();
+            let out_objects_pruned = out_objects_pruned.assume_init();
+            let out_pruned_object_size_total = out_pruned_object_size_total.assume_init();
             if error.is_null() { Ok((out_objects_total, out_objects_pruned, out_pruned_object_size_total)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -487,9 +497,10 @@ impl Repo {
 
     pub fn query_object_storage_size<P: IsA<gio::Cancellable>>(&self, objtype: ObjectType, sha256: &str, cancellable: Option<&P>) -> Result<u64, Error> {
         unsafe {
-            let mut out_size = mem::uninitialized();
+            let mut out_size = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_query_object_storage_size(self.to_glib_none().0, objtype.to_glib(), sha256.to_glib_none().0, &mut out_size, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_repo_query_object_storage_size(self.to_glib_none().0, objtype.to_glib(), sha256.to_glib_none().0, out_size.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_size = out_size.assume_init();
             if error.is_null() { Ok(out_size) } else { Err(from_glib_full(error)) }
         }
     }
@@ -577,18 +588,20 @@ impl Repo {
 
     pub fn remote_get_gpg_verify(&self, name: &str) -> Result<bool, Error> {
         unsafe {
-            let mut out_gpg_verify = mem::uninitialized();
+            let mut out_gpg_verify = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_remote_get_gpg_verify(self.to_glib_none().0, name.to_glib_none().0, &mut out_gpg_verify, &mut error);
+            let _ = ostree_sys::ostree_repo_remote_get_gpg_verify(self.to_glib_none().0, name.to_glib_none().0, out_gpg_verify.as_mut_ptr(), &mut error);
+            let out_gpg_verify = out_gpg_verify.assume_init();
             if error.is_null() { Ok(from_glib(out_gpg_verify)) } else { Err(from_glib_full(error)) }
         }
     }
 
     pub fn remote_get_gpg_verify_summary(&self, name: &str) -> Result<bool, Error> {
         unsafe {
-            let mut out_gpg_verify_summary = mem::uninitialized();
+            let mut out_gpg_verify_summary = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_remote_get_gpg_verify_summary(self.to_glib_none().0, name.to_glib_none().0, &mut out_gpg_verify_summary, &mut error);
+            let _ = ostree_sys::ostree_repo_remote_get_gpg_verify_summary(self.to_glib_none().0, name.to_glib_none().0, out_gpg_verify_summary.as_mut_ptr(), &mut error);
+            let out_gpg_verify_summary = out_gpg_verify_summary.assume_init();
             if error.is_null() { Ok(from_glib(out_gpg_verify_summary)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -604,17 +617,18 @@ impl Repo {
 
     pub fn remote_gpg_import<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(&self, name: &str, source_stream: Option<&P>, key_ids: &[&str], cancellable: Option<&Q>) -> Result<u32, Error> {
         unsafe {
-            let mut out_imported = mem::uninitialized();
+            let mut out_imported = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_remote_gpg_import(self.to_glib_none().0, name.to_glib_none().0, source_stream.map(|p| p.as_ref()).to_glib_none().0, key_ids.to_glib_none().0, &mut out_imported, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let _ = ostree_sys::ostree_repo_remote_gpg_import(self.to_glib_none().0, name.to_glib_none().0, source_stream.map(|p| p.as_ref()).to_glib_none().0, key_ids.to_glib_none().0, out_imported.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            let out_imported = out_imported.assume_init();
             if error.is_null() { Ok(out_imported) } else { Err(from_glib_full(error)) }
         }
     }
 
     pub fn remote_list(&self) -> Vec<GString> {
         unsafe {
-            let mut out_n_remotes = mem::uninitialized();
-            let ret = FromGlibContainer::from_glib_full_num(ostree_sys::ostree_repo_remote_list(self.to_glib_none().0, &mut out_n_remotes), out_n_remotes as usize);
+            let mut out_n_remotes = mem::MaybeUninit::uninit();
+            let ret = FromGlibContainer::from_glib_full_num(ostree_sys::ostree_repo_remote_list(self.to_glib_none().0, out_n_remotes.as_mut_ptr()), out_n_remotes.assume_init() as usize);
             ret
         }
     }
@@ -980,9 +994,10 @@ impl Repo {
 
     pub fn mode_from_string(mode: &str) -> Result<RepoMode, Error> {
         unsafe {
-            let mut out_mode = mem::uninitialized();
+            let mut out_mode = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_mode_from_string(mode.to_glib_none().0, &mut out_mode, &mut error);
+            let _ = ostree_sys::ostree_repo_mode_from_string(mode.to_glib_none().0, out_mode.as_mut_ptr(), &mut error);
+            let out_mode = out_mode.assume_init();
             if error.is_null() { Ok(from_glib(out_mode)) } else { Err(from_glib_full(error)) }
         }
     }

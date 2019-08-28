@@ -62,3 +62,6 @@ repository = "https://gitlab.com/fkrull/ostree-rs"
 version = "0.4.0"
 [package.metadata.docs.rs]
 features = ["dox"]
+
+["package.metadata.docs.rs"]
+features = ["dox", "v2019_2"]
