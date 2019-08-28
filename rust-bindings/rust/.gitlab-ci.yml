@@ -6,6 +6,7 @@ variables:
   CARGO_HOME: ${CI_PROJECT_DIR}/cargo
   SCCACHE_DIR: ${CI_PROJECT_DIR}/sccache
   RUSTC_WRAPPER: sccache
+  OSTREE_VERSION: v2019_2
 
 before_script:
 - echo deb https://deb.debian.org/debian unstable main > /etc/apt/sources.list.d/unstable.list
@@ -39,15 +40,15 @@ check:
   - git diff -R --exit-code
 
 # build
-all_features:
+build_all-features:
   stage: build
   script:
   - rustup component add clippy
-  - cargo clippy --all --all-features -- -D warnings
-  - cargo test --verbose --manifest-path sys/Cargo.toml --all-features
-  - cargo test --verbose --all-features
+  - cargo clippy --all --features ${OSTREE_VERSION},futures -- -D warnings
+  - cargo test --verbose --manifest-path sys/Cargo.toml --features ${OSTREE_VERSION}
+  - cargo test --verbose --features ${OSTREE_VERSION},futures
 
-default-features:
+build_default-features:
   stage: build
   script:
   - cargo test --verbose
