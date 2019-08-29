@@ -94,16 +94,22 @@ print("ok add-in-remotes-config-dir");
 
 // Trying to set a remote config option via write_config() for a remote
 // defined in the config file should succeed
-let [, gpg_verify] = repo.remote_get_gpg_verify('bar');
-assertEquals(gpg_verify, true);
-repoConfig = repo.copy_config();
-repoConfig.set_boolean('remote "bar"', 'gpg-verify', false);
-repo.write_config(repoConfig);
-repo.reload_config(null);
-[, gpg_verify] = repo.remote_get_gpg_verify('bar');
-assertEquals(gpg_verify, false);
-
-print("ok config-remote-in-config-file-succeeds");
+try {
+    let [, gpg_verify] = repo.remote_get_gpg_verify('bar');
+    assertEquals(gpg_verify, true);
+    repoConfig = repo.copy_config();
+    repoConfig.set_boolean('remote "bar"', 'gpg-verify', false);
+    repo.write_config(repoConfig);
+    repo.reload_config(null);
+    [, gpg_verify] = repo.remote_get_gpg_verify('bar');
+    assertEquals(gpg_verify, false);
+    print("ok config-remote-in-config-file-succeeds");
+} catch (e) {
+    // Skip this test if GPG is not supported
+    if (!(e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_SUPPORTED)))
+        throw e;
+    print("ok config-remote-in-config-file-succeeds # SKIP due build without GPG support");
+}
 
 // Trying to set a remote config option via write_config() for a remote
 // defined in the config dir should fail with G_IO_ERROR_EXISTS
