@@ -66,4 +66,8 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'option
 assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
 assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
 
+# Check correct ordering of different-valued args of the same key.
+${CMD_PREFIX} ostree admin deploy  --os=testos --karg-append=FOO=TESTORDERED --karg-append=APPENDARG=3RDAPPEND testos:testos/buildmaster/x86_64-runtime
+assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND .*FOO=TESTORDERED .*APPENDARG=3RDAPPEND'
+
 echo "ok deploy --karg-append"
