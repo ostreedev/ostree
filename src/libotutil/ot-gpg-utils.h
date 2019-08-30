@@ -48,6 +48,13 @@ gpgme_ctx_t ot_gpgme_new_ctx (const char *homedir,
 
 void ot_gpgme_kill_agent (const char *homedir);
 
+gboolean ot_gpgme_filter_keyring_by_email (GBytes        *keyring_data,
+                                           const char    *email,
+                                           gpgme_data_t   export_data,
+                                           GPtrArray     *export_fingerprints,
+                                           GCancellable  *cancellable,
+                                           GError       **error);
+
 gboolean ot_gpg_wkd_urls (const char  *email,
                           char       **out_advanced_url,
                           char       **out_direct_url,

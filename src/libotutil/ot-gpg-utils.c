@@ -540,6 +540,118 @@ ot_gpgme_kill_agent (const char *homedir)
     }
 }
 
+gboolean
+ot_gpgme_filter_keyring_by_email (GBytes        *keyring_data,
+                                  const char    *email,
+                                  gpgme_data_t   export_data,
+                                  GPtrArray     *export_fingerprints,
+                                  GCancellable  *cancellable,
+                                  GError       **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *tmp_dir = NULL;
+  g_autoptr(GPtrArray) export_keys = NULL;
+
+  g_return_val_if_fail (keyring_data != NULL, FALSE);
+  g_return_val_if_fail (email != NULL, FALSE);
+  g_return_val_if_fail (export_data != NULL, FALSE);
+
+  /* Setup a temporary context and homedir to import the keyring into since
+   * gpgme offers no other method to analyze it.
+   */
+  g_auto(gpgme_ctx_t) ctx = ot_gpgme_new_ctx (NULL, error);
+  if (ctx == NULL)
+    goto out;
+  if (!ot_gpgme_ctx_tmp_home_dir (ctx, &tmp_dir, NULL, cancellable, error))
+    goto out;
+
+  /* Import the keyring data */
+  gpgme_error_t gpg_error = 0;
+  g_auto(gpgme_data_t) input_buffer = NULL;
+  gpg_error = gpgme_data_new_from_mem (&input_buffer,
+                                       g_bytes_get_data (keyring_data, NULL),
+                                       g_bytes_get_size (keyring_data),
+                                       0 /* do not copy */);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_throw (gpg_error, error, "Unable to load keyring data");
+      goto out;
+    }
+  gpg_error = gpgme_op_import (ctx, input_buffer);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_throw (gpg_error, error, "Unable to import keyring data");
+      goto out;
+    }
+
+  /* Fail if any of the keys couldn't be imported */
+  gpgme_import_result_t import_result;
+  gpgme_import_status_t import_status;
+  import_result = gpgme_op_import_result (ctx);
+  g_debug ("Read %d keys for %s", import_result->imported, email);
+  for (import_status = import_result->imports;
+       import_status != NULL;
+       import_status = import_status->next)
+    {
+      if (import_status->result != GPG_ERR_NO_ERROR)
+        {
+          ot_gpgme_throw (import_status->result, error,
+                          "Unable to import key \"%s\"",
+                          import_status->fpr);
+          goto out;
+        }
+    }
+
+  /* Iterate through the imported keys looking for any that match email */
+  export_keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gpgme_key_unref);
+  gpg_error = gpgme_op_keylist_start (ctx, NULL, 0);
+  while (gpg_error == GPG_ERR_NO_ERROR)
+    {
+      g_auto(gpgme_key_t) key = NULL;
+
+      gpg_error = gpgme_op_keylist_next (ctx, &key);
+      if (gpg_error != GPG_ERR_NO_ERROR)
+        break;
+
+      for (gpgme_user_id_t uid = key->uids; uid != NULL; uid = uid->next)
+        {
+          if (g_strcmp0 (uid->address, email) == 0)
+            {
+              g_debug ("Found key %s matching %s", key->fpr, email);
+              gpgme_key_ref (key);
+              g_ptr_array_add (export_keys, key);
+              g_ptr_array_add (export_fingerprints, g_strdup (key->fpr));
+              break;
+            }
+        }
+    }
+
+  /* Export the matching keys */
+  if (export_keys->len > 0)
+    {
+      /* NULL terminate key array */
+      g_ptr_array_add (export_keys, NULL);
+
+      gpg_error = gpgme_op_export_keys (ctx, (gpgme_key_t *) export_keys->pdata,
+                                        0, export_data);
+      if (gpg_error != GPG_ERR_NO_ERROR)
+        {
+          ot_gpgme_throw (gpg_error, error, "Unable to export keys");
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+
+ out:
+  if (tmp_dir != NULL) {
+    ot_gpgme_kill_agent (tmp_dir);
+    (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
+  }
+
+  return ret;
+}
+
 static char *
 ascii_lower (const char *in)
 {
