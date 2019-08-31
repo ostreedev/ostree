@@ -34,6 +34,7 @@ pub use crate::auto::functions::*;
 pub use crate::auto::*;
 
 // handwritten code
+mod checksum;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod collection_ref;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
@@ -42,6 +43,7 @@ mod object_name;
 mod repo;
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 mod repo_checkout_at_options;
+pub use crate::checksum::*;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use crate::collection_ref::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
