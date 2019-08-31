@@ -6,7 +6,7 @@ variables:
   CARGO_HOME: ${CI_PROJECT_DIR}/cargo
   SCCACHE_DIR: ${CI_PROJECT_DIR}/sccache
   RUSTC_WRAPPER: sccache
-  OSTREE_VERSION: v2019_2
+  OSTREE_VERSION: v2019_3
 
 before_script:
 - echo deb https://deb.debian.org/debian unstable main > /etc/apt/sources.list.d/unstable.list
