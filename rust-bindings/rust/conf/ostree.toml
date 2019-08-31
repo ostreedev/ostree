@@ -82,6 +82,7 @@ manual = [
     "GLib.VariantType",
 
     # types implemented by hand
+    "OSTree.KernelArgs",
     "OSTree.RepoCheckoutAtOptions",
     "OSTree.RepoCheckoutFilter",
 ]

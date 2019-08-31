@@ -36,12 +36,16 @@ pub use crate::auto::*;
 // handwritten code
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod collection_ref;
+#[cfg(any(feature = "v2019_3", feature = "dox"))]
+mod kernel_args;
 mod object_name;
 mod repo;
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 mod repo_checkout_at_options;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use crate::collection_ref::*;
+#[cfg(any(feature = "v2019_3", feature = "dox"))]
+pub use crate::kernel_args::*;
 pub use crate::object_name::*;
 pub use crate::repo::*;
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
