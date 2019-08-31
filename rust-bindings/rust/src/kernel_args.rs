@@ -6,6 +6,7 @@ use glib::translate::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 use glib::GString;
 use ostree_sys;
+use ostree_sys::OstreeKernelArgs;
 use std::fmt;
 use std::ptr;
 use Error;
@@ -15,7 +16,7 @@ glib_wrapper! {
     pub struct KernelArgs(Boxed<ostree_sys::OstreeKernelArgs>);
 
     match fn {
-        copy => |ptr| ostree_sys::ostree_kernel_args_copy(mut_override(ptr)),
+        copy => |_ptr| unimplemented!(),
         free => |ptr| ostree_sys::ostree_kernel_args_free(ptr),
     }
 }
@@ -28,7 +29,7 @@ impl KernelArgs {
         }
     }
 
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    /*#[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_argv(&mut self, argv: &str) {
         unsafe {
             ostree_sys::ostree_kernel_args_append_argv(
@@ -47,7 +48,7 @@ impl KernelArgs {
                 prefixes.to_glib_none().0,
             );
         }
-    }
+    }*/
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_proc_cmdline<P: IsA<gio::Cancellable>>(
@@ -103,10 +104,10 @@ impl KernelArgs {
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn get_last_value(&mut self, key: &str) -> Option<GString> {
+    pub fn get_last_value(&self, key: &str) -> Option<GString> {
         unsafe {
             from_glib_none(ostree_sys::ostree_kernel_args_get_last_value(
-                self.to_glib_none_mut().0,
+                self.to_glib_none().0 as *mut OstreeKernelArgs,
                 key.to_glib_none().0,
             ))
         }
@@ -146,7 +147,7 @@ impl KernelArgs {
         }
     }
 
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    /*#[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace_argv(&mut self, argv: &str) {
         unsafe {
             ostree_sys::ostree_kernel_args_replace_argv(
@@ -154,7 +155,7 @@ impl KernelArgs {
                 argv.to_glib_none().0,
             );
         }
-    }
+    }*/
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace_take(&mut self, arg: &str) {
@@ -167,30 +168,28 @@ impl KernelArgs {
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    fn to_string(&mut self) -> GString {
+    fn to_gstring(&self) -> GString {
         unsafe {
             from_glib_full(ostree_sys::ostree_kernel_args_to_string(
-                self.to_glib_none_mut().0,
+                self.to_glib_none().0 as *mut OstreeKernelArgs,
             ))
         }
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn to_strv(&mut self) -> Vec<GString> {
+    pub fn to_strv(&self) -> Vec<GString> {
         unsafe {
             FromGlibPtrContainer::from_glib_full(ostree_sys::ostree_kernel_args_to_strv(
-                self.to_glib_none_mut().0,
+                self.to_glib_none().0 as *mut OstreeKernelArgs,
             ))
         }
     }
 
-    //#[cfg(any(feature = "v2019_3", feature = "dox"))]
-    //pub fn cleanup(loc: /*Unimplemented*/Option<Fundamental: Pointer>) {
-    //    unsafe { TODO: call ostree_sys:ostree_kernel_args_cleanup() }
-    //}
+    // Not needed
+    //pub fn cleanup(loc: /*Unimplemented*/Option<Fundamental: Pointer>)
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn from_string(options: &str) -> Option<KernelArgs> {
+    pub fn from_string(options: &str) -> KernelArgs {
         unsafe {
             from_glib_full(ostree_sys::ostree_kernel_args_from_string(
                 options.to_glib_none().0,
@@ -199,7 +198,7 @@ impl KernelArgs {
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn new() -> Option<KernelArgs> {
+    pub fn new() -> KernelArgs {
         unsafe { from_glib_full(ostree_sys::ostree_kernel_args_new()) }
     }
 }
@@ -214,6 +213,12 @@ impl Default for KernelArgs {
 impl fmt::Display for KernelArgs {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self.to_gstring())
+    }
+}
+
+impl<T: AsRef<str>> From<T> for KernelArgs {
+    fn from(v: T) -> Self {
+        KernelArgs::from_string(v.as_ref())
     }
 }
