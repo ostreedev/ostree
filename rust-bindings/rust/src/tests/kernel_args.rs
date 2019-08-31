@@ -1,4 +1,5 @@
-#[cfg(feature = "v2019_3")]
+#![cfg(feature = "v2019_3")]
+
 use crate::KernelArgs;
 
 #[test]
