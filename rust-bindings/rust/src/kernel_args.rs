@@ -29,8 +29,8 @@ impl KernelArgs {
         }
     }
 
-    /*#[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn append_argv(&mut self, argv: &str) {
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn append_argv(&mut self, argv: &[&str]) {
         unsafe {
             ostree_sys::ostree_kernel_args_append_argv(
                 self.to_glib_none_mut().0,
@@ -40,7 +40,7 @@ impl KernelArgs {
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn append_argv_filtered(&mut self, argv: &str, prefixes: &str) {
+    pub fn append_argv_filtered(&mut self, argv: &[&str], prefixes: &[&str]) {
         unsafe {
             ostree_sys::ostree_kernel_args_append_argv_filtered(
                 self.to_glib_none_mut().0,
@@ -48,7 +48,7 @@ impl KernelArgs {
                 prefixes.to_glib_none().0,
             );
         }
-    }*/
+    }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_proc_cmdline<P: IsA<gio::Cancellable>>(
@@ -147,15 +147,15 @@ impl KernelArgs {
         }
     }
 
-    /*#[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn replace_argv(&mut self, argv: &str) {
+    #[cfg(any(feature = "v2019_3", feature = "dox"))]
+    pub fn replace_argv(&mut self, argv: &[&str]) {
         unsafe {
             ostree_sys::ostree_kernel_args_replace_argv(
                 self.to_glib_none_mut().0,
                 argv.to_glib_none().0,
             );
         }
-    }*/
+    }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace_take(&mut self, arg: &str) {
