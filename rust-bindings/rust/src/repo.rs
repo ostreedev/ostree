@@ -1,6 +1,6 @@
-use crate::Repo;
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
+use crate::{Checksum, Repo};
 use gio;
 use glib;
 use glib::translate::*;
@@ -110,6 +110,33 @@ impl Repo {
 
             if error.is_null() {
                 Ok(FromGlibPtrContainer::from_glib_container(hashtable))
+            } else {
+                Err(from_glib_full(error))
+            }
+        }
+    }
+
+    pub fn write_content<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(
+        &self,
+        expected_checksum: Option<&str>,
+        object_input: &P,
+        length: u64,
+        cancellable: Option<&Q>,
+    ) -> Result<Checksum, Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let mut out_csum = ptr::null_mut();
+            let _ = ostree_sys::fixed::ostree_repo_write_content(
+                self.to_glib_none().0,
+                expected_checksum.to_glib_none().0,
+                object_input.as_ref().to_glib_none().0,
+                length,
+                &mut out_csum,
+                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                &mut error,
+            );
+            if error.is_null() {
+                Ok(from_glib_full(out_csum))
             } else {
                 Err(from_glib_full(error))
             }

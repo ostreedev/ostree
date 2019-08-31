@@ -88,3 +88,30 @@ fn should_checkout_tree() {
 
     assert_test_file(checkout_dir.path());
 }
+
+#[test]
+fn should_write_content_to_repo() {
+    let src = TestRepo::new();
+    let mtree = create_mtree(&src.repo);
+    let checksum = commit(&src.repo, &mtree, "test");
+
+    let dest = TestRepo::new();
+    let objects = src
+        .repo
+        .traverse_commit(&checksum, -1, NONE_CANCELLABLE)
+        .expect("traverse");
+    for obj in objects {
+        let (stream, len) = src
+            .repo
+            .load_object_stream(obj.object_type(), obj.checksum(), NONE_CANCELLABLE)
+            .expect("load object stream");
+        if obj.object_type() == ObjectType::File {
+            let out_csum = dest
+                .repo
+                .write_content(None, &stream, len, NONE_CANCELLABLE)
+                .expect("write content");
+
+            assert_eq!(out_csum.to_string(), obj.checksum());
+        }
+    }
+}
