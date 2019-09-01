@@ -43,6 +43,7 @@ mod object_name;
 mod repo;
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 mod repo_checkout_at_options;
+mod se_policy;
 pub use crate::checksum::*;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use crate::collection_ref::*;
@@ -52,6 +53,7 @@ pub use crate::object_name::*;
 pub use crate::repo::*;
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 pub use crate::repo_checkout_at_options::*;
+pub use crate::se_policy::*;
 
 // tests
 #[cfg(test)]
