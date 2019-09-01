@@ -1,6 +1,6 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
-use crate::{Checksum, Repo};
+use crate::{Checksum, ObjectName, ObjectType, Repo};
 use gio;
 use glib;
 use glib::translate::*;
@@ -11,7 +11,6 @@ use ostree_sys;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::ptr;
-use ObjectName;
 
 unsafe extern "C" fn read_variant_table(
     _key: glib_sys::gpointer,
@@ -131,6 +130,33 @@ impl Repo {
                 expected_checksum.to_glib_none().0,
                 object_input.as_ref().to_glib_none().0,
                 length,
+                &mut out_csum,
+                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                &mut error,
+            );
+            if error.is_null() {
+                Ok(from_glib_full(out_csum))
+            } else {
+                Err(from_glib_full(error))
+            }
+        }
+    }
+
+    pub fn write_metadata<P: IsA<gio::Cancellable>>(
+        &self,
+        objtype: ObjectType,
+        expected_checksum: Option<&str>,
+        object: &glib::Variant,
+        cancellable: Option<&P>,
+    ) -> Result<Checksum, Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let mut out_csum = ptr::null_mut();
+            let _ = ostree_sys::fixed::ostree_repo_write_metadata(
+                self.to_glib_none().0,
+                objtype.to_glib(),
+                expected_checksum.to_glib_none().0,
+                object.to_glib_none().0,
                 &mut out_csum,
                 cancellable.map(|p| p.as_ref()).to_glib_none().0,
                 &mut error,

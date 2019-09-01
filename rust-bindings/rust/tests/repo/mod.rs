@@ -101,17 +101,33 @@ fn should_write_content_to_repo() {
         .traverse_commit(&checksum, -1, NONE_CANCELLABLE)
         .expect("traverse");
     for obj in objects {
-        let (stream, len) = src
-            .repo
-            .load_object_stream(obj.object_type(), obj.checksum(), NONE_CANCELLABLE)
-            .expect("load object stream");
-        if obj.object_type() == ObjectType::File {
-            let out_csum = dest
-                .repo
-                .write_content(None, &stream, len, NONE_CANCELLABLE)
-                .expect("write content");
-
-            assert_eq!(out_csum.to_string(), obj.checksum());
+        match obj.object_type() {
+            ObjectType::File => copy_file(&src, &dest, &obj),
+            _ => copy_metadata(&src, &dest, &obj),
         }
     }
+}
+
+fn copy_file(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) {
+    let (stream, len) = src
+        .repo
+        .load_object_stream(obj.object_type(), obj.checksum(), NONE_CANCELLABLE)
+        .expect("load object stream");
+    let out_csum = dest
+        .repo
+        .write_content(None, &stream, len, NONE_CANCELLABLE)
+        .expect("write content");
+    assert_eq!(out_csum.to_string(), obj.checksum());
+}
+
+fn copy_metadata(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) -> () {
+    let data = src
+        .repo
+        .load_variant(obj.object_type(), obj.checksum())
+        .expect("load variant");
+    let out_csum = dest
+        .repo
+        .write_metadata(obj.object_type(), None, &data, NONE_CANCELLABLE)
+        .expect("write metadata");
+    assert_eq!(out_csum.to_string(), obj.checksum());
 }
