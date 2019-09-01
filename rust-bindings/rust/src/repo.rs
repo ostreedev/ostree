@@ -254,4 +254,85 @@ impl Repo {
             cancellable
         })
     }
+
+    pub fn write_metadata_async<
+        P: IsA<gio::Cancellable>,
+        Q: FnOnce(Result<Checksum, Error>) + Send + 'static,
+    >(
+        &self,
+        objtype: ObjectType,
+        expected_checksum: Option<&str>,
+        object: &glib::Variant,
+        cancellable: Option<&P>,
+        callback: Q,
+    ) {
+        let user_data: Box<Q> = Box::new(callback);
+        unsafe extern "C" fn write_metadata_async_trampoline<
+            Q: FnOnce(Result<Checksum, Error>) + Send + 'static,
+        >(
+            _source_object: *mut gobject_sys::GObject,
+            res: *mut gio_sys::GAsyncResult,
+            user_data: glib_sys::gpointer,
+        ) {
+            let mut error = ptr::null_mut();
+            let mut out_csum = MaybeUninit::uninit();
+            let _ = ostree_sys::ostree_repo_write_metadata_finish(
+                _source_object as *mut _,
+                res,
+                out_csum.as_mut_ptr(),
+                &mut error,
+            );
+            let out_csum = out_csum.assume_init();
+            let result = if error.is_null() {
+                Ok(Checksum::from_glib_full(out_csum))
+            } else {
+                Err(from_glib_full(error))
+            };
+            let callback: Box<Q> = Box::from_raw(user_data as *mut _);
+            callback(result);
+        }
+        let callback = write_metadata_async_trampoline::<Q>;
+        unsafe {
+            ostree_sys::ostree_repo_write_metadata_async(
+                self.to_glib_none().0,
+                objtype.to_glib(),
+                expected_checksum.to_glib_none().0,
+                object.to_glib_none().0,
+                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                Some(callback),
+                Box::into_raw(user_data) as *mut _,
+            );
+        }
+    }
+
+    #[cfg(feature = "futures")]
+    pub fn write_metadata_async_future(
+        &self,
+        objtype: ObjectType,
+        expected_checksum: Option<&str>,
+        object: &glib::Variant,
+    ) -> Box_<dyn future::Future<Output = Result<Checksum, Error>> + std::marker::Unpin> {
+        use fragile::Fragile;
+        use gio::GioFuture;
+
+        let expected_checksum = expected_checksum.map(ToOwned::to_owned);
+        let object = object.clone();
+        GioFuture::new(self, move |obj, send| {
+            let cancellable = gio::Cancellable::new();
+            let send = Fragile::new(send);
+            obj.write_metadata_async(
+                objtype,
+                expected_checksum
+                    .as_ref()
+                    .map(::std::borrow::Borrow::borrow),
+                &object,
+                Some(&cancellable),
+                move |res| {
+                    let _ = send.into_inner().send(res);
+                },
+            );
+
+            cancellable
+        })
+    }
 }
