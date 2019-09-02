@@ -6,5 +6,6 @@ extern crate tempfile;
 #[macro_use]
 extern crate maplit;
 
+mod functions;
 mod repo;
 mod util;

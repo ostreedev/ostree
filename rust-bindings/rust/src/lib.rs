@@ -37,6 +37,7 @@ pub use crate::auto::*;
 mod checksum;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod collection_ref;
+mod functions;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 mod kernel_args;
 mod object_name;
@@ -47,6 +48,7 @@ mod se_policy;
 pub use crate::checksum::*;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use crate::collection_ref::*;
+pub use crate::functions::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 pub use crate::kernel_args::*;
 pub use crate::object_name::*;

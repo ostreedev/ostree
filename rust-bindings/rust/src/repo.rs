@@ -11,6 +11,7 @@ use glib::Error;
 use glib::IsA;
 use glib_sys;
 use ostree_sys;
+#[cfg(feature = "futures")]
 use std::boxed::Box as Box_;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
