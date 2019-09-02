@@ -19,8 +19,6 @@ impl<T> AsNonnullPtr for *mut T {
     }
 }
 
-// TODO: these methods are unsound if you change the underlying OstreeCollectionRef from C. Is that
-//  a problem?
 impl CollectionRef {
     /// Get the collection ID from this `CollectionRef`.
     ///
