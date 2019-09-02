@@ -1746,10 +1746,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
       g_string_append_c (title_key, ':');
       g_string_append (title_key, osname);
     }
-  if (!(deployment_version && *deployment_version))
-    {
-      g_string_append_printf (title_key, ":%d", ostree_deployment_get_index (deployment));
-    }
+
+  g_string_append_printf (title_key, ":%d", ostree_deployment_get_index (deployment));
+
   g_string_append_c (title_key, ')');
   ostree_bootconfig_parser_set (bootconfig, "title", title_key->str);
 

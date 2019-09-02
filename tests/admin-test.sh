@@ -290,10 +290,10 @@ echo "ok upgrade with multiple kernel args"
 
 os_repository_new_commit
 ${CMD_PREFIX} ostree admin upgrade --os=testos
-assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 ${version} (ostree:testos)$"
+assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 ${version} (ostree:testos:0)$"
 os_repository_new_commit 0 0 testos/buildmaster/x86_64-runtime 42
 ${CMD_PREFIX} ostree admin upgrade --os=testos
-assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 (ostree:testos)$"
+assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 (ostree:testos:0)$"
 
 echo "ok no duplicate version strings in title"
 
