@@ -1,7 +1,11 @@
 use gio::NONE_CANCELLABLE;
-use glib::Cast;
-use ostree::{checksum_file, checksum_file_from_input, ObjectType, RepoFile, RepoFileExt};
+use glib::prelude::*;
+use ostree::prelude::*;
+use ostree::{checksum_file, checksum_file_from_input, ObjectType, RepoFile};
 use util::TestRepo;
+
+#[cfg(feature = "v2017_13")]
+mod checksum_file_at;
 
 #[test]
 fn should_checksum_file() {

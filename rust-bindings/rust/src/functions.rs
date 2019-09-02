@@ -1,3 +1,5 @@
+#[cfg(any(feature = "v2017_13", feature = "dox"))]
+use crate::ChecksumFlags;
 use crate::{Checksum, ObjectType};
 #[cfg(feature = "futures")]
 use futures::future;
@@ -6,7 +8,7 @@ use glib::translate::*;
 use glib_sys::GFALSE;
 #[cfg(feature = "futures")]
 use std::boxed::Box as Box_;
-use std::error::Error;
+use std::error;
 use std::mem::MaybeUninit;
 use std::ptr;
 
@@ -14,7 +16,7 @@ pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(
     f: &P,
     objtype: ObjectType,
     cancellable: Option<&Q>,
-) -> Result<Checksum, Box<dyn Error>> {
+) -> Result<Checksum, Box<dyn error::Error>> {
     unsafe {
         let mut out_csum = ptr::null_mut();
         let mut error = ptr::null_mut();
@@ -32,7 +34,7 @@ pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(
 pub fn checksum_file_async<
     P: IsA<gio::File>,
     Q: IsA<gio::Cancellable>,
-    R: FnOnce(Result<Checksum, Box<dyn Error>>) + Send + 'static,
+    R: FnOnce(Result<Checksum, Box<dyn error::Error>>) + Send + 'static,
 >(
     f: &P,
     objtype: ObjectType,
@@ -42,7 +44,7 @@ pub fn checksum_file_async<
 ) {
     let user_data: Box<R> = Box::new(callback);
     unsafe extern "C" fn checksum_file_async_trampoline<
-        R: FnOnce(Result<Checksum, Box<dyn Error>>) + Send + 'static,
+        R: FnOnce(Result<Checksum, Box<dyn error::Error>>) + Send + 'static,
     >(
         _source_object: *mut gobject_sys::GObject,
         res: *mut gio_sys::GAsyncResult,
@@ -79,7 +81,8 @@ pub fn checksum_file_async_future<P: IsA<gio::File> + Clone + 'static>(
     f: &P,
     objtype: ObjectType,
     io_priority: i32,
-) -> Box_<dyn future::Future<Output = Result<Checksum, Box<dyn Error>>> + std::marker::Unpin> {
+) -> Box_<dyn future::Future<Output = Result<Checksum, Box<dyn error::Error>>> + std::marker::Unpin>
+{
     use fragile::Fragile;
     use gio::GioFuture;
 
@@ -100,7 +103,7 @@ pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellabl
     in_: Option<&P>,
     objtype: ObjectType,
     cancellable: Option<&Q>,
-) -> Result<Checksum, Box<dyn Error>> {
+) -> Result<Checksum, Box<dyn error::Error>> {
     unsafe {
         let mut out_csum = ptr::null_mut();
         let mut error = ptr::null_mut();
@@ -117,11 +120,43 @@ pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellabl
     }
 }
 
+#[cfg(any(feature = "v2017_13", feature = "dox"))]
+pub fn checksum_file_at<P: IsA<gio::Cancellable>>(
+    dfd: i32,
+    path: &std::path::Path,
+    stbuf: Option<&libc::stat>,
+    objtype: ObjectType,
+    flags: ChecksumFlags,
+    cancellable: Option<&P>,
+) -> Result<glib::GString, glib::Error> {
+    unsafe {
+        let mut out_checksum = ptr::null_mut();
+        let mut error = ptr::null_mut();
+        ostree_sys::ostree_checksum_file_at(
+            dfd,
+            path.to_glib_none().0,
+            stbuf
+                .map(|p| p as *const libc::stat as *mut libc::stat)
+                .unwrap_or(ptr::null_mut()),
+            objtype.to_glib(),
+            flags.to_glib(),
+            &mut out_checksum,
+            cancellable.map(|p| p.as_ref()).to_glib_none().0,
+            &mut error,
+        );
+        if error.is_null() {
+            Ok(from_glib_full(out_checksum))
+        } else {
+            Err(from_glib_full(error))
+        }
+    }
+}
+
 unsafe fn checksum_file_error(
     out_csum: *mut [*mut u8; 32],
     error: *mut glib_sys::GError,
     ret: i32,
-) -> Result<Checksum, Box<dyn Error>> {
+) -> Result<Checksum, Box<dyn error::Error>> {
     if !error.is_null() {
         Err(Box::<glib::Error>::new(from_glib_full(error)))
     } else if ret == GFALSE {
