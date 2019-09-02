@@ -32,6 +32,12 @@ impl FromGlibPtrFull<*mut [u8; 32]> for Checksum {
     }
 }
 
+impl FromGlibPtrFull<*mut [*mut u8; 32]> for Checksum {
+    unsafe fn from_glib_full(ptr: *mut [*mut u8; 32]) -> Self {
+        Checksum::new(ptr as *mut u8 as *mut [u8; 32])
+    }
+}
+
 impl FromGlibPtrFull<*mut u8> for Checksum {
     unsafe fn from_glib_full(ptr: *mut u8) -> Self {
         Checksum::new(ptr as *mut [u8; 32])

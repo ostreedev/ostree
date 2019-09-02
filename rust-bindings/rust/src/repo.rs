@@ -129,7 +129,7 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let mut out_csum = ptr::null_mut();
-            let _ = ostree_sys::fixed::ostree_repo_write_content(
+            let _ = ostree_sys::ostree_repo_write_content(
                 self.to_glib_none().0,
                 expected_checksum.to_glib_none().0,
                 object_input.as_ref().to_glib_none().0,
@@ -156,7 +156,7 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let mut out_csum = ptr::null_mut();
-            let _ = ostree_sys::fixed::ostree_repo_write_metadata(
+            let _ = ostree_sys::ostree_repo_write_metadata(
                 self.to_glib_none().0,
                 objtype.to_glib(),
                 expected_checksum.to_glib_none().0,
