@@ -92,11 +92,13 @@ publish_ostree-sys:
   script:
   - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
   cache: {}
-  when: manual
+  only:
+  - /^ostree-sys\/.+$/
 
 publish_ostree:
   stage: publish
   script:
   - cargo publish --verbose --token $CRATES_IO_TOKEN
   cache: {}
-  when: manual
+  only:
+  - /^ostree\/.+$/
