@@ -1519,28 +1519,26 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
       gboolean ret = FALSE;
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
       /* list all signature types in detached metadata and check if signed by any? */
-      g_auto(GStrv) names = ostree_sign_list_names();
+      g_auto (GStrv) names = ostree_sign_list_names();
       for (guint i=0; i < g_strv_length (names); i++)
         {
           g_autoptr (OstreeSign) sign = NULL;
+          g_autoptr (GError) local_error = NULL;
           g_autoptr (GVariant) signatures = NULL;
-          g_autofree gchar *signature_key = NULL;
-          g_autofree GVariantType *signature_format = NULL;
+          const gchar *signature_key = NULL;
+          GVariantType *signature_format = NULL;
           g_autofree gchar *pk_ascii = NULL;
           g_autofree gchar *pk_file = NULL;
 
-          if ((sign = ostree_sign_get_by_name (names[i], error)) == NULL)
-          {
-              g_clear_error (error);
-              continue;
-          }
+          if ((sign = ostree_sign_get_by_name (names[i], &local_error)) == NULL)
+            continue;
+
           signature_key = ostree_sign_metadata_key (sign);
           signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
 
           signatures = g_variant_lookup_value (detached_metadata,
                                                signature_key,
                                                signature_format);
-
           if (!signatures)
             continue;
 
@@ -1558,8 +1556,8 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
               g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
               options = g_variant_builder_end (builder);
 
-              if (!ostree_sign_load_pk (sign, options, error))
-                g_clear_error (error);
+              if (!ostree_sign_load_pk (sign, options, &local_error))
+                g_clear_error (&local_error);
             }
 
           /* Override key if it is set explicitly */
@@ -1583,27 +1581,23 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                   pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
                 }
 
-              if (!ostree_sign_set_pk (sign, pk, error))
-                g_clear_error (error);
+              if (!ostree_sign_set_pk (sign, pk, &local_error))
+                continue;
             }
 
           /* Set return to true if any sign fit */
           if (ostree_sign_metadata_verify (sign,
                                            signed_data,
                                            signatures,
-                                           error
+                                           &local_error
                                           ))
             ret = TRUE;
-          else
-            g_clear_error (error);
         }
 
       /* Mark the commit as verified to avoid double verification
        * see process_verify_result () for rationale */
       if (ret)
-        {
         g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
-        }
       else
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                              "Can't verify commit");
@@ -1946,17 +1940,15 @@ scan_commit_object (OtPullData                 *pull_data,
       gboolean ret = FALSE;
       /* list all signature types in detached metadata and check if signed by any? */
       g_auto (GStrv) names = ostree_sign_list_names();
-      for (guint i=0; i < g_strv_length (names); i++)
+      for (char **iter=names; iter && *iter; iter++)
         {
           g_autoptr (OstreeSign) sign = NULL;
+          g_autoptr (GError) local_error = NULL;
           g_autofree gchar *pk_ascii = NULL;
           g_autofree gchar *pk_file = NULL;
 
-          if ((sign = ostree_sign_get_by_name (names[i], error)) == NULL)
-          {
-              g_clear_error (error);
-              continue;
-          }
+          if ((sign = ostree_sign_get_by_name (*iter, &local_error)) == NULL)
+            continue;
 
           /* Load keys for remote from file */
           ostree_repo_get_remote_option (pull_data->repo,
@@ -1972,8 +1964,8 @@ scan_commit_object (OtPullData                 *pull_data,
               g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
               options = g_variant_builder_end (builder);
 
-              if (!ostree_sign_load_pk (sign, options, error))
-                g_clear_error (error);
+              if (!ostree_sign_load_pk (sign, options, &local_error))
+                g_clear_error (&local_error);
             }
 
           ostree_repo_get_remote_option (pull_data->repo,
@@ -1996,8 +1988,8 @@ scan_commit_object (OtPullData                 *pull_data,
                   pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
                 }
 
-              if (!ostree_sign_set_pk (sign, pk, error))
-                g_clear_error (error);
+              if (!ostree_sign_set_pk (sign, pk, &local_error))
+                continue;
             }
 
 
@@ -2006,10 +1998,8 @@ scan_commit_object (OtPullData                 *pull_data,
                                          pull_data->repo,
                                          checksum,
                                          cancellable,
-                                         error))
+                                         &local_error))
             ret = TRUE;
-          else
-            g_clear_error (error);
 
         }
       if (!ret)

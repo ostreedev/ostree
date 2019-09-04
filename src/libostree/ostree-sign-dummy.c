@@ -108,30 +108,26 @@ gboolean ostree_sign_dummy_data (OstreeSign *self,
   return TRUE;
 }
 
-gchar * ostree_sign_dummy_get_name (OstreeSign *self)
+const gchar * ostree_sign_dummy_get_name (OstreeSign *self)
 {
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-  g_autofree gchar *name = g_strdup(OSTREE_SIGN_DUMMY_NAME);
-
-  return g_steal_pointer (&name);
+  return OSTREE_SIGN_DUMMY_NAME;
 }
 
-gchar * ostree_sign_dummy_metadata_key (OstreeSign *self)
+const gchar * ostree_sign_dummy_metadata_key (OstreeSign *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  g_autofree gchar *key = g_strdup(OSTREE_SIGN_METADATA_DUMMY_KEY);
-  return g_steal_pointer (&key);
+  return OSTREE_SIGN_METADATA_DUMMY_KEY;
 }
 
-gchar * ostree_sign_dummy_metadata_format (OstreeSign *self)
+const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  g_autofree gchar *type = g_strdup(OSTREE_SIGN_METADATA_DUMMY_TYPE);
-  return g_steal_pointer (&type);
+  return OSTREE_SIGN_METADATA_DUMMY_TYPE;
 }
 
 gboolean ostree_sign_dummy_metadata_verify (OstreeSign *self,

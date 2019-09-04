@@ -47,14 +47,14 @@ G_DECLARE_INTERFACE (OstreeSign, ostree_sign, OSTREE, SIGN, GObject)
 struct _OstreeSignInterface
 {
   GTypeInterface g_iface;
-  gchar *(* get_name) (OstreeSign *self);
+  const gchar *(* get_name) (OstreeSign *self);
   gboolean (* data)   (OstreeSign *self,
                        GBytes *data,
                        GBytes **signature,
                        GCancellable *cancellable,
                        GError **error);
-  gchar *(* metadata_key) (OstreeSign *self);
-  gchar *(* metadata_format) (OstreeSign *self);
+  const gchar *(* metadata_key) (OstreeSign *self);
+  const gchar *(* metadata_format) (OstreeSign *self);
   gboolean (* metadata_verify) (OstreeSign *self,
                                 GBytes *data,
                                 GVariant   *metadata,
@@ -90,10 +90,10 @@ gboolean ostree_sign_data (OstreeSign *self,
 
 
 _OSTREE_PUBLIC
-gchar * ostree_sign_metadata_key (OstreeSign *self);
+const gchar * ostree_sign_metadata_key (OstreeSign *self);
 
 _OSTREE_PUBLIC
-gchar * ostree_sign_metadata_format (OstreeSign *self);
+const gchar * ostree_sign_metadata_format (OstreeSign *self);
 
 _OSTREE_PUBLIC
 GVariant * ostree_sign_detached_metadata_append (OstreeSign *self,

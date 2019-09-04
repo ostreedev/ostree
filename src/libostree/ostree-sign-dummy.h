@@ -39,7 +39,7 @@ G_DECLARE_FINAL_TYPE (OstreeSignDummy,
                       SIGN_DUMMY,
                       GObject)
 
-gchar * ostree_sign_dummy_get_name (OstreeSign *self);
+const gchar * ostree_sign_dummy_get_name (OstreeSign *self);
 
 gboolean ostree_sign_dummy_data (OstreeSign *self,
                                  GBytes *data,
@@ -47,8 +47,8 @@ gboolean ostree_sign_dummy_data (OstreeSign *self,
                                  GCancellable *cancellable,
                                  GError **error);
 
-gchar * ostree_sign_dummy_metadata_key (OstreeSign *self);
-gchar * ostree_sign_dummy_metadata_format (OstreeSign *self);
+const gchar * ostree_sign_dummy_metadata_key (OstreeSign *self);
+const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self);
 
 gboolean ostree_sign_dummy_metadata_verify (OstreeSign *self,
                                             GBytes     *data,

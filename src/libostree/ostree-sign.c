@@ -71,7 +71,7 @@ ostree_sign_default_init (OstreeSignInterface *iface)
   g_debug ("OstreeSign initialization");
 }
 
-gchar * ostree_sign_metadata_key (OstreeSign *self)
+const gchar * ostree_sign_metadata_key (OstreeSign *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
@@ -79,7 +79,7 @@ gchar * ostree_sign_metadata_key (OstreeSign *self)
   return OSTREE_SIGN_GET_IFACE (self)->metadata_key (self);
 }
 
-gchar * ostree_sign_metadata_format (OstreeSign *self)
+const gchar * ostree_sign_metadata_format (OstreeSign *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
@@ -134,7 +134,7 @@ ostree_sign_load_pk (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
 
   if (OSTREE_SIGN_GET_IFACE (self)->load_pk == NULL)
-    return FALSE;
+    return TRUE;
 
   return OSTREE_SIGN_GET_IFACE (self)->load_pk (self, options, error);
 }
@@ -170,8 +170,8 @@ ostree_sign_detached_metadata_append (OstreeSign *self,
 
   g_variant_dict_init (&metadata_dict, existing_metadata);
 
-  g_autofree gchar *signature_key = ostree_sign_metadata_key(self);
-  g_autofree GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(self);
+  const gchar *signature_key = ostree_sign_metadata_key(self);
+  GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(self);
 
   signature_data = g_variant_dict_lookup_value (&metadata_dict,
                                                 signature_key,
@@ -234,8 +234,8 @@ ostree_sign_commit_verify (OstreeSign     *self,
 
   g_autoptr(GVariant) signatures = NULL;
 
-  g_autofree gchar *signature_key = ostree_sign_metadata_key(self);
-  g_autofree GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(self);
+  const gchar *signature_key = ostree_sign_metadata_key(self);
+  GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(self);
 
   if (metadata)
     signatures = g_variant_lookup_value (metadata,
