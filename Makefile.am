@@ -39,6 +39,7 @@ AM_DISTCHECK_CONFIGURE_FLAGS += \
 	--enable-gtk-doc \
 	--enable-man \
 	--disable-maintainer-mode \
+	--enable-trivial-httpd-cmdline \
 	$(NULL)
 
 GITIGNOREFILES = aclocal.m4 build-aux/ buildutil/*.m4 config.h.in gtk-doc.make
