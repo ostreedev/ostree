@@ -439,10 +439,74 @@ ot_gpgme_new_ctx (const char *homedir,
   return g_steal_pointer (&context);
 }
 
+static gboolean
+get_gnupg_version (guint *major,
+                   guint *minor,
+                   guint *patch)
+{
+  g_return_val_if_fail (major != NULL, FALSE);
+  g_return_val_if_fail (minor != NULL, FALSE);
+  g_return_val_if_fail (patch != NULL, FALSE);
+
+  gpgme_engine_info_t info;
+  gpgme_error_t err = gpgme_get_engine_info (&info);
+  if (err != GPG_ERR_NO_ERROR)
+    {
+      g_debug ("Failed to get GPGME engine info: %s: %s",
+               gpgme_strsource (err), gpgme_strerror (err));
+      return FALSE;
+    }
+
+  const char *gnupg_version = NULL;
+  for (; info != NULL; info = info->next)
+    {
+      if (info->protocol == GPGME_PROTOCOL_OpenPGP)
+        {
+          gnupg_version = info->version;
+          break;
+        }
+    }
+
+  if (gnupg_version == NULL)
+    {
+      g_debug ("Could not determine GnuPG version");
+      return FALSE;
+    }
+
+  g_auto(GStrv) parts = g_strsplit (gnupg_version, ".", 4);
+  if (g_strv_length (parts) < 3)
+    {
+      g_debug ("Less than 3 components in GnuPG version \"%s\"", gnupg_version);
+      return FALSE;
+    }
+
+  *major = g_ascii_strtoull (parts[0], NULL, 10);
+  *minor = g_ascii_strtoull (parts[1], NULL, 10);
+  *patch = g_ascii_strtoull (parts[2], NULL, 10);
+
+  return TRUE;
+}
+
 void
 ot_gpgme_kill_agent (const char *homedir)
 {
   g_return_if_fail (homedir != NULL);
+
+  /* If gnupg is at least 2.1.17, gpg-agent will exit when the homedir
+   * is deleted.
+   */
+  guint gnupg_major, gnupg_minor, gnupg_patch;
+  if (get_gnupg_version (&gnupg_major, &gnupg_minor, &gnupg_patch))
+    {
+      if ((gnupg_major > 2) ||
+          (gnupg_major == 2 && gnupg_minor > 1) ||
+          (gnupg_major == 2 && gnupg_minor == 1 && gnupg_patch >= 17))
+        {
+          /* Note early return */
+          g_debug ("GnuPG >= 2.1.17, skipping gpg-agent cleanup");
+          return;
+        }
+    }
 
   /* Run gpg-connect-agent killagent /bye */
   g_autoptr(GError) local_error = NULL;
