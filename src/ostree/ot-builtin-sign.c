@@ -64,8 +64,8 @@ usage_error (GOptionContext *context, const char *message, GError **error)
 gboolean
 ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   g_autoptr (OstreeSign) sign = NULL;
   g_autofree char *resolved_commit = NULL;
   const char *commit;
@@ -92,7 +92,10 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
 
   commit = argv[1];
 
-  if (!opt_filename && argc < 3)
+  /* Verification could be done via system files with public keys */
+  if (!opt_verify &&
+      !opt_filename &&
+      argc < 3)
     {
       usage_error (context, "Need at least one KEY-ID to sign with", error);
       goto out;
@@ -110,10 +113,7 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
 
   sign = ostree_sign_get_by_name (opt_sign_name, error);
   if (sign == NULL)
-    {
-      ret = FALSE;
-      goto out;
-    }
+    goto out;
 
   for (ii = 0; ii < n_key_ids; ii++)
     {
@@ -129,6 +129,9 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
       if (opt_verify)
         {
+          g_autoptr (GError) local_error = NULL;
+
+
           if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
             {
               gsize key_len = 0;
@@ -136,17 +139,14 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
               pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
             }
 
-          if (!ostree_sign_set_pk (sign, pk, error))
-            {
-              ret = FALSE;
-              goto out;
-            }
+          if (!ostree_sign_set_pk (sign, pk, &local_error))
+            continue;
 
           if (ostree_sign_commit_verify (sign,
                                          repo,
                                          resolved_commit,
                                          cancellable,
-                                         error))
+                                         &local_error))
             ret = TRUE;
         }
       else
@@ -174,34 +174,36 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
     }
 
-  /* Read signatures from file */
-  if (opt_filename)
+  /* Try to verify with user-provided file or system configuration */
+  if (opt_verify)
     {
-      if (opt_verify)
+      if ((n_key_ids == 0) || opt_filename)
         {
           g_autoptr (GVariantBuilder) builder = NULL;
           g_autoptr (GVariant) options = NULL;
 
           builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-          g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
+          /* The last chance for verification source -- system files */
+          if (opt_filename)
+            g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
           options = g_variant_builder_end (builder);
 
           if (!ostree_sign_load_pk (sign, options, error))
-            {
-              ret = FALSE;
-              goto out;
-            }
+            goto out;
+
           if (ostree_sign_commit_verify (sign,
                                          repo,
                                          resolved_commit,
                                          cancellable,
                                          error))
             ret = TRUE;
-          if (ret != TRUE)
-            goto out;
         } /* Check via file */
-      else
-        { /* Sign with keys from provided file */
+    }
+  else
+    {
+      /* Sign with keys from provided file */
+      if (opt_filename)
+        {
           g_autoptr (GFile) keyfile = NULL;
           g_autoptr (GFileInputStream) key_stream_in = NULL;
           g_autoptr (GDataInputStream) key_data_in = NULL;
@@ -233,7 +235,7 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
                 goto out;
 
               if (line == NULL)
-                goto out;
+                break;
 
 
               if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
@@ -251,7 +253,10 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
                 }
 
               if (!ostree_sign_set_sk (sign, sk, error))
-                continue;
+                {
+                  ret = FALSE;
+                  goto out;
+                }
 
               ret = ostree_sign_commit (sign,
                                         repo,
@@ -271,5 +276,8 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
                          "No valid signatures found");
 
 out:
+  /* It is possible to have an error due multiple signatures check */
+  if (ret == TRUE)
+    g_clear_error (error);
   return ret;
 }

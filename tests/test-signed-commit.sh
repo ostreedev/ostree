@@ -73,6 +73,8 @@ SEED="$(openssl pkey -outform DER -in ${PEMFILE} | tail -c 32 | base64)"
 # Secret key is concantination of SEED and PUBLIC
 SECRET="$(echo ${SEED}${PUBLIC} | base64 -d | base64 -w 0)"
 
+WRONG_PUBLIC="$(openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64)"
+
 echo "SEED = $SEED"
 echo "PUBLIC = $PUBLIC"
 
@@ -85,7 +87,15 @@ ${CMD_PREFIX} ostree --repo=repo show ${COMMIT} --print-detached-metadata-key=os
 echo "ok Detached ed25519 signature added"
 
 # Verify vith sign mechanism
+if ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${WRONG_PUBLIC}; then
+    exit 1
+fi
 ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC} ${PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${WRONG_PUBLIC} ${PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${WRONG_PUBLIC} ${WRONG_PUBLIC} ${PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC} ${WRONG_PUBLIC} ${WRONG_PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${WRONG_PUBLIC} ${WRONG_PUBLIC} ${PUBLIC} ${WRONG_PUBLIC} ${WRONG_PUBLIC}
 echo "ok ed25519 signature verified"
 
 # Check if we able to use all available modules to sign the same commit
@@ -128,9 +138,17 @@ for((i=0;i<100;i++)); do
     # Generate a list with some public signatures
     openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64
 done > ${PUBKEYS}
+# Check if file contain no valid signatures
 if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}; then
     exit 1
 fi
+# Check if no valid signatures provided via args&file
+if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT} ${WRONG_PUBLIC}; then
+    exit 1
+fi
+
+#Test keys file and public key
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT} ${PUBLIC}
 
 # Add correct key into the list
 echo ${PUBLIC} >> ${PUBKEYS}
