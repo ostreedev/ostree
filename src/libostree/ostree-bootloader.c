@@ -55,6 +55,7 @@ gboolean
 _ostree_bootloader_write_config (OstreeBootloader  *self,
                             int            bootversion,
                             GPtrArray     *new_deployments,
+                            const char    *boot_path_on_disk,
                             GCancellable  *cancellable,
                             GError       **error)
 {
@@ -62,6 +63,7 @@ _ostree_bootloader_write_config (OstreeBootloader  *self,
 
   return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion,
                                                            new_deployments,
+                                                           boot_path_on_disk,
                                                            cancellable, error);
 }
 

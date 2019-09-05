@@ -45,6 +45,7 @@ struct _OstreeBootloaderInterface
   gboolean             (* write_config)           (OstreeBootloader  *self,
                                                    int            bootversion,
                                                    GPtrArray     *new_deployments,
+                                                   const char    *boot_path_on_disk,
                                                    GCancellable  *cancellable,
                                                    GError       **error);
   gboolean             (* is_atomic)              (OstreeBootloader  *self);
@@ -63,6 +64,7 @@ const char *_ostree_bootloader_get_name (OstreeBootloader  *self);
 gboolean _ostree_bootloader_write_config (OstreeBootloader  *self,
                                           int            bootversion,
                                           GPtrArray     *new_deployments,
+                                          const char    *boot_path_on_disk,
                                           GCancellable  *cancellable,
                                           GError       **error);
 

@@ -2057,6 +2057,49 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                                         cancellable, error);
 }
 
+/* Finds the path to /boot on the filesystem that /boot is actually stored on.
+ * If you have a dedicated boot partition this will probably be "".  If it's
+ * stored on the root partition it will be "/boot".
+ *
+ * The path_out won't end with a "/".  That means that "/" is represented at ""
+ */
+static gboolean
+boot_find_path_on_disk(char** path_out, GError **error)
+{
+#ifdef HAVE_LIBMOUNT
+  g_autoptr(libmnt_table) tb = mnt_new_table();
+  g_assert (tb);
+  if (mnt_table_parse_mtab(tb, getenv("OSTREE_DEBUG_MOUNTINFO_FILE")) < 0)
+    return glnx_throw (error, "Failed to parse /proc/self/mountinfo");
+
+  const char *suffix = NULL;
+  struct libmnt_fs *fs = mnt_table_find_target(tb, "/boot", MNT_ITER_BACKWARD);
+  if (fs)
+    suffix = "";
+  else
+    {
+      suffix = "boot";
+      fs = mnt_table_find_target(tb, "/", MNT_ITER_BACKWARD);
+      if (!fs)
+        return glnx_throw (error, "libmount error: Can't find /");
+    }
+  g_autofree char *path = g_build_path ("/", mnt_fs_get_root (fs), suffix, NULL);
+  if (strcmp(path, "/") == 0)
+    {
+      g_free (g_steal_pointer(&path));
+      path = g_strdup("");
+    }
+
+  *path_out = g_steal_pointer(&path);
+  return TRUE;
+#else /* !HAVE_LIBMOUNT */
+  g_printerr ("warning: ostree compiled without libmount so we can't determine "
+              "whether /boot is its own partition.  Assuming yes\n");
+  *path_out = g_strdup("");
+  return TRUE;
+#endif /* HAVE_LIBMOUNT */
+}
+
 /* Handle writing out a new bootloader config. One reason this needs to be a
  * helper function is to handle wrapping it with temporarily remounting /boot
  * rw.
@@ -2123,9 +2166,12 @@ write_deployments_bootswap (OstreeSysroot     *self,
 
   if (bootloader)
     {
+      g_autofree char *boot_path_on_disk = NULL;
+      if (!boot_find_path_on_disk (&boot_path_on_disk, error))
+        return FALSE;
       if (!_ostree_bootloader_write_config (bootloader, new_bootversion,
-                                            new_deployments, cancellable,
-                                            error))
+                                            new_deployments, boot_path_on_disk,
+                                            cancellable, error))
         return glnx_prefix_error (error, "Bootloader write config");
     }
 

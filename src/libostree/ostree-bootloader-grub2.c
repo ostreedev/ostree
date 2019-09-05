@@ -333,6 +333,7 @@ static gboolean
 _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
                                        int                    bootversion,
                                        GPtrArray             *new_deployments,
+                                       const char            *boot_path_on_disk,
                                        GCancellable          *cancellable,
                                        GError               **error)
 {
