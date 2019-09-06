@@ -1,0 +1,3 @@
+FROM buildroot
+RUN ./ci/build.sh && \
+    make install
