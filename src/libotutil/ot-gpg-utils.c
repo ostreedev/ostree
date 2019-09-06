@@ -509,31 +509,32 @@ ot_gpgme_kill_agent (const char *homedir)
     }
 
   /* Run gpg-connect-agent killagent /bye */
-  g_autoptr(GError) local_error = NULL;
-  GSubprocessFlags flags = G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_PIPE;
-  g_debug ("Killing gpg-agent in %s", homedir);
-  g_autoptr(GSubprocess) proc = g_subprocess_new (flags,
-                                                  &local_error,
-                                                  "gpg-connect-agent",
-                                                  "--homedir",
-                                                  homedir,
-                                                  "killagent",
-                                                  "/bye",
-                                                  NULL);
-  if (proc == NULL) {
-    g_debug ("Spawning gpg-connect-agent failed: %s", local_error->message);
-    return;
-  }
-  if (!g_subprocess_wait_check (proc, NULL, &local_error)) {
-    /* Dump out stderr on failures */
-    GInputStream *stderr_in = g_subprocess_get_stderr_pipe (proc);
-    g_autoptr(GOutputStream) stderr_out =
-      G_OUTPUT_STREAM (g_unix_output_stream_new (STDERR_FILENO, FALSE));
-    g_output_stream_splice (stderr_out, stderr_in, G_OUTPUT_STREAM_SPLICE_NONE,
-                            NULL, NULL);
+  g_autoptr(GPtrArray) argv = g_ptr_array_new ();
+  g_ptr_array_add (argv, "gpg-connect-agent");
+  g_ptr_array_add (argv, "--homedir");
+  g_ptr_array_add (argv, (gpointer)homedir);
+  g_ptr_array_add (argv, "killagent");
+  g_ptr_array_add (argv, "/bye");
+  g_ptr_array_add (argv, NULL);
 
-    g_debug ("Killing GPG agent with gpg-connect-agent failed: %s",
-             local_error->message);
-    return;
-  }
+  g_autoptr(GError) local_error = NULL;
+  GSpawnFlags flags = G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL;
+  gint proc_status = 0;
+  g_autofree gchar *proc_stderr = NULL;
+  g_debug ("Killing gpg-agent in %s", homedir);
+  if (!g_spawn_sync (NULL, (char **)argv->pdata, NULL, flags, NULL, NULL,
+                     NULL, &proc_stderr, &proc_status, &local_error))
+    {
+      g_debug ("Spawning gpg-connect-agent failed: %s", local_error->message);
+      return;
+    }
+  if (!g_spawn_check_exit_status (proc_status, &local_error))
+    {
+      /* Dump out stderr on failures */
+      g_printerr ("%s", proc_stderr);
+
+      g_debug ("Killing GPG agent with gpg-connect-agent failed: %s",
+               local_error->message);
+      return;
+    }
 }
