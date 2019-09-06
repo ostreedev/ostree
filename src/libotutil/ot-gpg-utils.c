@@ -495,7 +495,7 @@ ot_gpgme_kill_agent (const char *homedir)
   /* If gnupg is at least 2.1.17, gpg-agent will exit when the homedir
    * is deleted.
    */
-  guint gnupg_major, gnupg_minor, gnupg_patch;
+  guint gnupg_major = 0, gnupg_minor = 0, gnupg_patch = 0;
   if (get_gnupg_version (&gnupg_major, &gnupg_minor, &gnupg_patch))
     {
       if ((gnupg_major > 2) ||
@@ -503,7 +503,7 @@ ot_gpgme_kill_agent (const char *homedir)
           (gnupg_major == 2 && gnupg_minor == 1 && gnupg_patch >= 17))
         {
           /* Note early return */
-          g_debug ("GnuPG >= 2.1.17, skipping gpg-agent cleanup");
+          g_debug ("GnuPG >= 2.1.17, skipping gpg-agent cleanup in %s", homedir);
           return;
         }
     }
@@ -511,6 +511,7 @@ ot_gpgme_kill_agent (const char *homedir)
   /* Run gpg-connect-agent killagent /bye */
   g_autoptr(GError) local_error = NULL;
   GSubprocessFlags flags = G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_PIPE;
+  g_debug ("Killing gpg-agent in %s", homedir);
   g_autoptr(GSubprocess) proc = g_subprocess_new (flags,
                                                   &local_error,
                                                   "gpg-connect-agent",
