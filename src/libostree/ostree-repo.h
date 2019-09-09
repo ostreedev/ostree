@@ -255,7 +255,7 @@ gboolean      ostree_repo_write_config (OstreeRepo *self,
  * @OSTREE_REPO_COMMIT_STATE_PARTIAL: One or more objects are missing from the
  *    local copy of the commit, but metadata is present. (Since: 2015.7.)
  * @OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL: One or more objects are missing from the
- *    local copy of the commit, due to an fsck --delete. (Since: 2019.3.)
+ *    local copy of the commit, due to an fsck --delete. (Since: 2019.4.)
  *
  * Flags representing the state of a commit in the local repository, as returned
  * by ostree_repo_load_commit().
