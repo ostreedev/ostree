@@ -456,7 +456,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
     return glnx_throw (error, "Repository corruption encountered");
 
   if (n_fsck_partial > 0)
-    return glnx_throw (error, "%u fsck deleted partial commits not verified", n_partial);
+    return glnx_throw (error, "%u partial commits from fsck-detected corruption", n_partial);
 
   return TRUE;
 }
