@@ -273,6 +273,9 @@ main(int argc, char *argv[])
 
       if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
+
+      if (rmdir ("/sysroot.tmp") < 0)
+        err (EXIT_FAILURE, "couldn't remove temporary sysroot /sysroot.tmp");
     }
 
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
