@@ -202,7 +202,7 @@ ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
  * ostree_gpg_verify_result_describe:
  * @result: an #OstreeGpgVerifyResult
  * @signature_index: which signature to describe
- * @output_buffer: a #GString to hold the description
+ * @output_buffer: (out): a #GString to hold the description
  * @line_prefix: (allow-none): optional line prefix string
  * @flags: flags to adjust the description format
  *
