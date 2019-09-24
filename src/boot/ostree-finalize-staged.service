@@ -26,6 +26,9 @@ DefaultDependencies=no
 RequiresMountsFor=/sysroot
 After=local-fs.target
 Before=basic.target final.target
+# We want to make sure the transaction logs are persisted to disk:
+# https://bugzilla.redhat.com/show_bug.cgi?id=1751272
+After=systemd-journal-flush.service
 Conflicts=final.target
 
 [Service]
