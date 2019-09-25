@@ -571,6 +571,10 @@ global:
   ostree_kernel_args_to_string;
 } LIBOSTREE_2018.9;
 
+LIBOSTREE_2019.4 {
+  ostree_repo_mark_commit_partial_reason;
+} LIBOSTREE_2019.3;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
