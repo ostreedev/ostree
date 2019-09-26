@@ -26,6 +26,13 @@ if ! test -d /ostree/repo; then
     exit 0
 fi
 
+# Gracefully exit if the grub2 configuration has BLS enabled,
+# since there is no need to create menu entries in that case.
+. /etc/default/grub
+if test ${GRUB_ENABLE_BLSCFG} = "true"; then
+    exit 0
+fi
+
 # Make sure we're in the right environment
 if ! test -n "${GRUB_DEVICE}"; then
     echo "This script must be run as a child of grub2-mkconfig" 1>&2
