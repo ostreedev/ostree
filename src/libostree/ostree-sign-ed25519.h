@@ -41,19 +41,19 @@ G_DECLARE_FINAL_TYPE (OstreeSignEd25519,
 
 
 gboolean ostree_sign_ed25519_data (OstreeSign *self,
-                                 GBytes *data,
-                                 GBytes **signature,
-                                 GCancellable *cancellable,
-                                 GError **error);
+                                   GBytes *data,
+                                   GBytes **signature,
+                                   GCancellable *cancellable,
+                                   GError **error);
 
 const gchar * ostree_sign_ed25519_get_name (OstreeSign *self);
 const gchar * ostree_sign_ed25519_metadata_key (OstreeSign *self);
 const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self);
 
 gboolean ostree_sign_ed25519_metadata_verify (OstreeSign *self,
-                                            GBytes     *data,
-                                            GVariant   *signatures,
-                                            GError     **error);
+                                              GBytes     *data,
+                                              GVariant   *signatures,
+                                              GError     **error);
 
 gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
                                      GVariant *secret_key,
@@ -70,13 +70,6 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
 gboolean ostree_sign_ed25519_load_pk (OstreeSign *self,
                                       GVariant *options,
                                       GError **error);
-
-_OSTREE_PUBLIC
-gboolean ostree_sign_ed25519_keypair_generate (OstreeSign *self,
-                                               GVariant **out_secret_key,
-                                               GVariant **out_public_key,
-                                               GError **error);
-
 
 G_END_DECLS
 

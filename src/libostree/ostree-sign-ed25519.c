@@ -38,12 +38,6 @@
 #define OSTREE_SIGN_METADATA_ED25519_KEY "ostree.sign.ed25519"
 #define OSTREE_SIGN_METADATA_ED25519_TYPE "aay"
 
-#if 0
-#define SIGNIFY_COMMENT_HEADER "untrusted comment:"
-#define SIGNIFY_ID_LENGTH 8
-#define SIGNIFY_MAGIC_ED25519 "Ed"
-#endif
-
 struct _OstreeSignEd25519
 {
   GObject parent;
@@ -259,45 +253,6 @@ out:
   return ret;
 }
 
-gboolean
-ostree_sign_ed25519_keypair_generate (OstreeSign *self,
-                                      GVariant **out_secret_key,
-                                      GVariant **out_public_key,
-                                      GError **error)
- {
-  g_debug ("%s enter", __FUNCTION__);
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
-
-  if (sign->initialized != TRUE)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "Not able to sign -- libsodium library isn't initialized properly");
-      goto err;
-    }
-
-#ifdef HAVE_LIBSODIUM
-  unsigned char pk[crypto_sign_PUBLICKEYBYTES];
-  unsigned char sk[crypto_sign_SECRETKEYBYTES];
-
-  if (crypto_sign_keypair(pk, sk))
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "Not able to generate keypair");
-      goto err;
-    }
-
-  *out_secret_key = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, sk, crypto_sign_SECRETKEYBYTES, sizeof(guchar));
-  *out_public_key = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, pk, crypto_sign_PUBLICKEYBYTES, sizeof(guchar));
-
-  return TRUE;
-#endif /* HAVE_LIBSODIUM */
-
-err:
-  return FALSE;
-}
-
 gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
                                      GVariant *secret_key,
                                      GError **error)
@@ -391,50 +346,6 @@ _load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, GError **
   g_return_val_if_fail (key_data_in, FALSE);
 #ifdef HAVE_LIBSODIUM
   gboolean ret = FALSE;
-
-#if 0
-/* Try to load the public key in signify format from the stream
- * https://www.openbsd.org/papers/bsdcan-signify.html
- * 
- * FIXME: Not sure if we need to support that format.
- * */
-  g_autofree gchar * comment = NULL;
-  while (TRUE)
-    {
-      gsize len = 0;
-      g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
-      if (error)
-        goto err;
-
-      if (line)
-        {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Signify format for ed25519 public key not found");
-          goto err;
-        }
-      
-      if (comment == NULL)
-        {
-          /* Scan for the comment first and compare with prefix&suffix */
-          if (g_str_has_prefix (line, SIGNIFY_COMMENT_HEADER) && g_str_has_suffix (line, "public key"))
-            /* Save comment without the prefix and blank space */
-            comment = g_strdup (line + strlen(SIGNIFY_COMMENT_HEADER) + 1);
-        }
-      else
-        {
-          /* Read the key itself */
-          /* base64 encoded key */
-          gsize keylen = 0;
-          g_autofree guchar *key = g_base64_decode (line, &keylen);
-
-          /* Malformed key */
-          if (keylen != SIGNIFY_ID_LENGTH ||
-              strncmp (line, SIGNIFY_MAGIC_ED25519, strlen(SIGNIFY_MAGIC_ED25519)) != 0)
-            continue;
-
-        }
-    }
-#endif /* 0 */
 
   /* Use simple file format with just a list of base64 public keys per line */
   while (TRUE)

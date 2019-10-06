@@ -37,7 +37,6 @@ global:
   ostree_sign_set_sk;
   ostree_sign_dummy_get_type;
   ostree_sign_ed25519_get_type;
-  ostree_sign_ed25519_keypair_generate;
 } LIBOSTREE_2020.1;
 
 /* Stub section for the stable release *after* this development one; don't
