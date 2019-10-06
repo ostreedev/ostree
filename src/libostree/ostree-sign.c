@@ -153,13 +153,26 @@ gboolean ostree_sign_data (OstreeSign *self,
   return OSTREE_SIGN_GET_IFACE (self)->data (self, data, signature, cancellable, error);
 }
 
+gboolean
+ostree_sign_data_verify (OstreeSign *self,
+                             GBytes     *data,
+                             GVariant   *signatures,
+                             GError     **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->data_verify != NULL, FALSE);
+
+  return OSTREE_SIGN_GET_IFACE (self)->data_verify(self, data, signatures, error);
+}
+
 /*
  * Adopted version of _ostree_detached_metadata_append_gpg_sig ()
  */
-GVariant *
-ostree_sign_detached_metadata_append (OstreeSign *self,
-                                      GVariant   *existing_metadata,
-                                      GBytes     *signature_bytes)
+static GVariant *
+_sign_detached_metadata_append (OstreeSign *self,
+                                GVariant   *existing_metadata,
+                                GBytes     *signature_bytes)
 {
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (signature_bytes != NULL, FALSE);
@@ -187,20 +200,6 @@ ostree_sign_detached_metadata_append (OstreeSign *self,
                                g_variant_builder_end (signature_builder));
 
   return  g_variant_dict_end (&metadata_dict);
-}
-
-
-gboolean
-ostree_sign_metadata_verify (OstreeSign *self,
-                             GBytes     *data,
-                             GVariant   *signatures,
-                             GError     **error)
-{
-  g_debug ("%s enter", __FUNCTION__);
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-  g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->metadata_verify != NULL, FALSE);
-
-  return OSTREE_SIGN_GET_IFACE (self)->metadata_verify(self, data, signatures, error);
 }
 
 gboolean
@@ -243,7 +242,7 @@ ostree_sign_commit_verify (OstreeSign     *self,
                                          signature_format);
 
 
-  return ostree_sign_metadata_verify (self,
+  return ostree_sign_data_verify (self,
                                       signed_data,
                                       signatures,
                                       error);
@@ -325,8 +324,6 @@ ostree_sign_commit (OstreeSign     *self,
                                                   error))
     return glnx_prefix_error (error, "Failed to read detached metadata");
 
-  // TODO: d4s: check if already signed?
-
   commit_data = g_variant_get_data_as_bytes (commit_variant);
 
   if (!ostree_sign_data (self, commit_data, &signature,
@@ -334,7 +331,7 @@ ostree_sign_commit (OstreeSign     *self,
     return glnx_prefix_error (error, "Not able to sign the cobject");
 
   new_metadata =
-    ostree_sign_detached_metadata_append (self, old_metadata, signature);
+    _sign_detached_metadata_append (self, old_metadata, signature);
 
   if (!ostree_repo_write_commit_detached_metadata (repo,
                                                    commit_checksum,

@@ -58,10 +58,10 @@ ostree_sign_ed25519_iface_init (OstreeSignInterface *self)
   g_debug ("%s enter", __FUNCTION__);
 
   self->data = ostree_sign_ed25519_data;
+  self->data_verify = ostree_sign_ed25519_data_verify;
   self->get_name = ostree_sign_ed25519_get_name;
   self->metadata_key = ostree_sign_ed25519_metadata_key;
   self->metadata_format = ostree_sign_ed25519_metadata_format;
-  self->metadata_verify = ostree_sign_ed25519_metadata_verify;
   self->set_sk = ostree_sign_ed25519_set_sk;
   self->set_pk = ostree_sign_ed25519_set_pk;
   self->add_pk = ostree_sign_ed25519_add_pk;
@@ -138,32 +138,10 @@ err:
   return FALSE;
 }
 
-const gchar * ostree_sign_ed25519_get_name (OstreeSign *self)
-{
-  g_debug ("%s enter", __FUNCTION__);
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-
-  return OSTREE_SIGN_ED25519_NAME;
-}
-
-const gchar * ostree_sign_ed25519_metadata_key (OstreeSign *self)
-{
-  g_debug ("%s enter", __FUNCTION__);
-
-  return OSTREE_SIGN_METADATA_ED25519_KEY;
-}
-
-const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
-{
-  g_debug ("%s enter", __FUNCTION__);
-
-  return OSTREE_SIGN_METADATA_ED25519_TYPE;
-}
-
-gboolean ostree_sign_ed25519_metadata_verify (OstreeSign *self,
-                                              GBytes     *data,
-                                              GVariant   *signatures,
-                                              GError     **error)
+gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
+                                          GBytes     *data,
+                                          GVariant   *signatures,
+                                          GError     **error)
 {
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
@@ -251,6 +229,28 @@ gboolean ostree_sign_ed25519_metadata_verify (OstreeSign *self,
 
 out:
   return ret;
+}
+
+const gchar * ostree_sign_ed25519_get_name (OstreeSign *self)
+{
+  g_debug ("%s enter", __FUNCTION__);
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+
+  return OSTREE_SIGN_ED25519_NAME;
+}
+
+const gchar * ostree_sign_ed25519_metadata_key (OstreeSign *self)
+{
+  g_debug ("%s enter", __FUNCTION__);
+
+  return OSTREE_SIGN_METADATA_ED25519_KEY;
+}
+
+const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
+{
+  g_debug ("%s enter", __FUNCTION__);
+
+  return OSTREE_SIGN_METADATA_ED25519_TYPE;
 }
 
 gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,

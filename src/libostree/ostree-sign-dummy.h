@@ -47,15 +47,15 @@ gboolean ostree_sign_dummy_data (OstreeSign *self,
                                  GCancellable *cancellable,
                                  GError **error);
 
+gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
+                                        GBytes     *data,
+                                        GVariant   *signatures,
+                                        GError     **error);
+
 const gchar * ostree_sign_dummy_metadata_key (OstreeSign *self);
 const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self);
 
-gboolean ostree_sign_dummy_metadata_verify (OstreeSign *self,
-                                            GBytes     *data,
-                                            GVariant   *signatures,
-                                            GError     **error);
-
-gboolean ostree_sign_dummy_set_signature (OstreeSign *self, GVariant *key, GError **error);
+gboolean ostree_sign_dummy_set_key (OstreeSign *self, GVariant *key, GError **error);
 
 G_END_DECLS
 

@@ -1586,7 +1586,7 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
             }
 
           /* Set return to true if any sign fit */
-          if (ostree_sign_metadata_verify (sign,
+          if (ostree_sign_data_verify (sign,
                                            signed_data,
                                            signatures,
                                            &local_error

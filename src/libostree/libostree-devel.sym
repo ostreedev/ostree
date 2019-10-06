@@ -27,10 +27,9 @@ global:
   ostree_sign_commit;
   ostree_sign_commit_verify;
   ostree_sign_data;
+  ostree_sign_data_verify;
   ostree_sign_get_by_name;
   ostree_sign_get_name;
-  ostree_sign_detached_metadata_append;
-  ostree_sign_metadata_verify;
   ostree_sign_load_pk;
   ostree_sign_set_pk;
   ostree_sign_add_pk;

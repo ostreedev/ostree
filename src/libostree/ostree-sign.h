@@ -53,29 +53,24 @@ struct _OstreeSignInterface
                        GBytes **signature,
                        GCancellable *cancellable,
                        GError **error);
+  gboolean (* data_verify) (OstreeSign *self,
+                            GBytes *data,
+                            GVariant   *metadata,
+                            GError **error);
   const gchar *(* metadata_key) (OstreeSign *self);
   const gchar *(* metadata_format) (OstreeSign *self);
-  gboolean (* metadata_verify) (OstreeSign *self,
-                                GBytes *data,
-                                GVariant   *metadata,
-                                GError **error);
-
   gboolean (* set_sk) (OstreeSign *self,
                        GVariant *secret_key,
                        GError **error);
-
   gboolean (* set_pk) (OstreeSign *self,
                        GVariant *public_key,
                        GError **error);
-
   gboolean (* add_pk) (OstreeSign *self,
                        GVariant *public_key,
                        GError **error);
-
   gboolean (* load_pk) (OstreeSign *self,
                         GVariant *options,
                         GError **error);
-
 };
 
 _OSTREE_PUBLIC
@@ -88,6 +83,11 @@ gboolean ostree_sign_data (OstreeSign *self,
                              GCancellable *cancellable,
                              GError **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_sign_data_verify (OstreeSign *self,
+                                      GBytes     *data,
+                                      GVariant   *signatures,
+                                      GError     **error);
 
 _OSTREE_PUBLIC
 const gchar * ostree_sign_metadata_key (OstreeSign *self);
@@ -96,22 +96,11 @@ _OSTREE_PUBLIC
 const gchar * ostree_sign_metadata_format (OstreeSign *self);
 
 _OSTREE_PUBLIC
-GVariant * ostree_sign_detached_metadata_append (OstreeSign *self,
-                                                 GVariant   *existing_metadata,
-                                                 GBytes     *signature_bytes);
-
-_OSTREE_PUBLIC
 gboolean ostree_sign_commit (OstreeSign     *self,
                              OstreeRepo     *repo,
                              const gchar    *commit_checksum,
                              GCancellable   *cancellable,
                              GError         **error);
-
-_OSTREE_PUBLIC
-gboolean ostree_sign_metadata_verify (OstreeSign *self,
-                                      GBytes     *data,
-                                      GVariant   *signatures,
-                                      GError     **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_sign_commit_verify (OstreeSign *self,

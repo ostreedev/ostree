@@ -46,14 +46,14 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
                                    GCancellable *cancellable,
                                    GError **error);
 
+gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
+                                          GBytes     *data,
+                                          GVariant   *signatures,
+                                          GError     **error);
+
 const gchar * ostree_sign_ed25519_get_name (OstreeSign *self);
 const gchar * ostree_sign_ed25519_metadata_key (OstreeSign *self);
 const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self);
-
-gboolean ostree_sign_ed25519_metadata_verify (OstreeSign *self,
-                                              GBytes     *data,
-                                              GVariant   *signatures,
-                                              GError     **error);
 
 gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
                                      GVariant *secret_key,

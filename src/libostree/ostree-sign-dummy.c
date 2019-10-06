@@ -54,13 +54,13 @@ ostree_sign_dummy_iface_init (OstreeSignInterface *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  self->data = ostree_sign_dummy_data;
   self->get_name = ostree_sign_dummy_get_name;
+  self->data = ostree_sign_dummy_data;
+  self->data_verify = ostree_sign_dummy_data_verify;
   self->metadata_key = ostree_sign_dummy_metadata_key;
   self->metadata_format = ostree_sign_dummy_metadata_format;
-  self->metadata_verify = ostree_sign_dummy_metadata_verify;
-  self->set_sk = ostree_sign_dummy_set_signature;
-  self->set_pk = ostree_sign_dummy_set_signature;
+  self->set_sk = ostree_sign_dummy_set_key;
+  self->set_pk = ostree_sign_dummy_set_key;
 }
 
 static void
@@ -77,7 +77,7 @@ ostree_sign_dummy_init (OstreeSignDummy *self)
   self->signature_ascii = g_strdup(OSTREE_SIGN_DUMMY_SIGNATURE);
 }
 
-gboolean ostree_sign_dummy_set_signature (OstreeSign *self, GVariant *key, GError **error)
+gboolean ostree_sign_dummy_set_key (OstreeSign *self, GVariant *key, GError **error)
 {
   g_debug ("%s enter", __FUNCTION__);
 
@@ -130,7 +130,7 @@ const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self)
   return OSTREE_SIGN_METADATA_DUMMY_TYPE;
 }
 
-gboolean ostree_sign_dummy_metadata_verify (OstreeSign *self,
+gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
                                             GBytes     *data,
                                             GVariant   *signatures,
                                             GError     **error)
