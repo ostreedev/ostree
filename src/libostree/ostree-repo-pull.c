@@ -1469,6 +1469,104 @@ process_verify_result (OtPullData            *pull_data,
 }
 #endif /* OSTREE_DISABLE_GPGME */
 
+/* _remote_load_public_keys:
+ *
+ * Load public keys according remote's configuration:
+ * inlined key passed via config option `verification-key` or
+ * file name with public keys via `verification-file` option.
+ *
+ * If both options are set then load all all public keys
+ * both from file and inlined in config.
+ *
+ * Returns: %FALSE if any source is configured but nothing has been loaded.
+ * Returns: %TRUE if no configuration or any key loaded.
+ * */
+static gboolean
+_load_public_keys (OtPullData *pull_data,
+                   OstreeSign *sign)
+{
+
+  g_autofree gchar *pk_ascii = NULL;
+  g_autofree gchar *pk_file = NULL;
+  gboolean loaded_from_file = TRUE;
+  gboolean loaded_inlined = TRUE;
+  g_autoptr (GError) error = NULL;
+
+  /* Load keys for remote from file */
+  ostree_repo_get_remote_option (pull_data->repo,
+                                 pull_data->remote_name,
+                                 "verification-file", NULL,
+                                 &pk_file, NULL);
+
+  ostree_repo_get_remote_option (pull_data->repo,
+                                 pull_data->remote_name,
+                                 "verification-key", NULL,
+                                 &pk_ascii, NULL);
+
+  /* return TRUE if there is no configuration for remote */
+  if ((pk_file == NULL) &&(pk_ascii == NULL))
+    {
+      /* It is expected what remote may have verification file as
+       * a part of configuration. Hence there is not a lot of sense
+       * for automatic resolve of per-remote keystore file as it
+       * used in find_keyring () for GPG.
+       * If it is needed to add the similar mechanism, it is preferable
+       * to pass the path to ostree_sign_load_pk () via GVariant options
+       * and call it here for loading with method and file structure
+       * specific for signature type.
+       */
+      return TRUE;
+    }
+
+  if (pk_file != NULL)
+    {
+      g_autoptr (GVariantBuilder) builder = NULL;
+      g_autoptr (GVariant) options = NULL;
+
+      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+      g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
+      options = g_variant_builder_end (builder);
+
+      if (ostree_sign_load_pk (sign, options, &error))
+        loaded_from_file = TRUE;
+      else
+        {
+          if (error == NULL)
+            g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "unknown reason");
+
+          g_warning("Unable to load public keys from file '%s': %s",
+                    pk_file, error->message);
+          g_clear_error (&error);
+        }
+    }
+
+  if (pk_ascii != NULL)
+    {
+      g_autoptr (GVariant) pk = g_variant_new_string(pk_ascii);
+
+      /* Add inlined public key */
+      if (loaded_from_file)
+        loaded_inlined = ostree_sign_add_pk (sign, pk, &error);
+      else
+        loaded_inlined = ostree_sign_set_pk (sign, pk, &error);
+
+      if (!loaded_inlined)
+        {
+          if (error == NULL)
+            g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "unknown reason");
+
+          g_warning("Unable to load public key '%s': %s",
+                    pk_ascii, error->message);
+          g_clear_error (&error);
+        }
+    }
+
+  /* Return true if able to load from any source */
+  return (loaded_from_file || loaded_inlined);
+}
+
 static gboolean
 ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                 const char                 *checksum,
@@ -1518,17 +1616,16 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
 
       gboolean ret = FALSE;
       g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
+
       /* list all signature types in detached metadata and check if signed by any? */
       g_auto (GStrv) names = ostree_sign_list_names();
       for (guint i=0; i < g_strv_length (names); i++)
         {
           g_autoptr (OstreeSign) sign = NULL;
-          g_autoptr (GError) local_error = NULL;
           g_autoptr (GVariant) signatures = NULL;
           const gchar *signature_key = NULL;
           GVariantType *signature_format = NULL;
-          g_autofree gchar *pk_ascii = NULL;
-          g_autofree gchar *pk_file = NULL;
+          g_autoptr (GError) local_error = NULL;
 
           if ((sign = ostree_sign_get_by_name (names[i], &local_error)) == NULL)
             continue;
@@ -1539,45 +1636,21 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
           signatures = g_variant_lookup_value (detached_metadata,
                                                signature_key,
                                                signature_format);
+
+          /* If not found signatures for requested signature subsystem */
           if (!signatures)
             continue;
 
-          /* Load keys for remote from file */
-          ostree_repo_get_remote_option (pull_data->repo,
-                                         pull_data->remote_name,
-                                         "verification-file", NULL,
-                                         &pk_file, NULL);
-          if (pk_file != NULL)
-            {
-              g_autoptr (GVariantBuilder) builder = NULL;
-              g_autoptr (GVariant) options = NULL;
+          /* Try to load public key(s) according remote's configuration */
+          if (!_load_public_keys (pull_data, sign))
+            continue;
 
-              builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-              g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
-              options = g_variant_builder_end (builder);
-
-              if (!ostree_sign_load_pk (sign, options, &local_error))
-                g_clear_error (&local_error);
-            }
-
-          /* Override key if it is set explicitly */
-          ostree_repo_get_remote_option (pull_data->repo,
-                                         pull_data->remote_name,
-                                         "verification-key", NULL,
-                                         &pk_ascii, NULL);
-          if (pk_ascii != NULL)
-            {
-              g_autoptr (GVariant) pk = g_variant_new_string(pk_ascii);
-              if (!ostree_sign_set_pk (sign, pk, &local_error))
-                continue;
-            }
-
-          /* Set return to true if any sign fit */
+          /* Return true if any signature fit to pre-loaded public keys.
+           * If no keys configured -- then system configuration will be used */
           if (ostree_sign_data_verify (sign,
-                                           signed_data,
-                                           signatures,
-                                           &local_error
-                                          ))
+                                       signed_data,
+                                       signatures,
+                                       &local_error))
             ret = TRUE;
         }
 
@@ -1931,44 +2004,13 @@ scan_commit_object (OtPullData                 *pull_data,
         {
           g_autoptr (OstreeSign) sign = NULL;
           g_autoptr (GError) local_error = NULL;
-          g_autofree gchar *pk_ascii = NULL;
-          g_autofree gchar *pk_file = NULL;
 
           if ((sign = ostree_sign_get_by_name (*iter, &local_error)) == NULL)
             continue;
 
-          /* Load keys for remote from file */
-          ostree_repo_get_remote_option (pull_data->repo,
-                                         pull_data->remote_name,
-                                         "verification-file", NULL,
-                                         &pk_file, NULL);
-          if (pk_file != NULL)
-            {
-              g_autoptr (GVariantBuilder) builder = NULL;
-              g_autoptr (GVariant) options = NULL;
-
-              builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-              g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
-              options = g_variant_builder_end (builder);
-
-              if (!ostree_sign_load_pk (sign, options, &local_error))
-                g_clear_error (&local_error);
-            }
-
-          ostree_repo_get_remote_option (pull_data->repo,
-                                         pull_data->remote_name,
-                                         "verification-key", NULL,
-                                         &pk_ascii, NULL);
-          if (pk_ascii != NULL)
-            {
-              g_autoptr (GVariant) pk = NULL;
-
-              // Just use the string as signature
-              pk = g_variant_new_string(pk_ascii);
-              if (!ostree_sign_set_pk (sign, pk, &local_error))
-                continue;
-            }
-
+          /* Try to load public key(s) according remote's configuration */
+          if (!_load_public_keys (pull_data, sign))
+            continue;
 
           /* Set return to true if any sign fit */
           if (ostree_sign_commit_verify (sign,
