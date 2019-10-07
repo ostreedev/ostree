@@ -1567,20 +1567,7 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                          &pk_ascii, NULL);
           if (pk_ascii != NULL)
             {
-              g_autoptr (GVariant) pk = NULL;
-
-              if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
-                {
-                  // Just use the string as signature
-                  pk = g_variant_new_string(pk_ascii);
-                }
-              else if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
-                {
-                  gsize key_len = 0;
-                  g_autofree guchar *key = g_base64_decode (pk_ascii, &key_len);
-                  pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
-                }
-
+              g_autoptr (GVariant) pk = g_variant_new_string(pk_ascii);
               if (!ostree_sign_set_pk (sign, pk, &local_error))
                 continue;
             }
@@ -1976,18 +1963,8 @@ scan_commit_object (OtPullData                 *pull_data,
             {
               g_autoptr (GVariant) pk = NULL;
 
-              if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
-                {
-                  // Just use the string as signature
-                  pk = g_variant_new_string(pk_ascii);
-                }
-              else if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
-                {
-                  gsize key_len = 0;
-                  g_autofree guchar *key = g_base64_decode (pk_ascii, &key_len);
-                  pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
-                }
-
+              // Just use the string as signature
+              pk = g_variant_new_string(pk_ascii);
               if (!ostree_sign_set_pk (sign, pk, &local_error))
                 continue;
             }
@@ -4853,11 +4830,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       else
         gpg_verify_state = (pull_data->gpg_verify ? "commit" : "disabled");
 
-      g_string_append_printf (msg, "\nsecurity: GPG: %s ", gpg_verify_state);
 #else
       gpg_verify_state = "disabled";
-      g_string_append_printf (msg, "\nsecurity: %s ", gpg_verify_state);
 #endif /* OSTREE_DISABLE_GPGME */
+      g_string_append_printf (msg, "\nsecurity: GPG: %s ", gpg_verify_state);
 
       const char *sign_verify_state;
       sign_verify_state = (pull_data->sign_verify ? "commit" : "disabled");

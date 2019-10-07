@@ -253,6 +253,10 @@ const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
   return OSTREE_SIGN_METADATA_ED25519_TYPE;
 }
 
+/* Support 2 representations:
+ * base64 ascii -- secret key is passed as string
+ * raw key -- key is passed as bytes array
+ * */
 gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
                                      GVariant *secret_key,
                                      GError **error)
@@ -266,7 +270,23 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
   g_free (sign->secret_key);
 
   gsize n_elements = 0;
-  sign->secret_key = (guchar *) g_variant_get_fixed_array (secret_key, &n_elements, sizeof(guchar));
+
+  if (g_variant_is_of_type (secret_key, G_VARIANT_TYPE_STRING))
+    {
+      const gchar *sk_ascii = g_variant_get_string (secret_key, NULL);
+      sign->secret_key = g_base64_decode (sk_ascii, &n_elements);
+    }
+  else if (g_variant_is_of_type (secret_key, G_VARIANT_TYPE_BYTESTRING))
+    {
+      sign->secret_key = (guchar *) g_variant_get_fixed_array (secret_key, &n_elements, sizeof(guchar));
+    }
+  else
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown ed25519 secret key type");
+      goto err;
+    }
+
 
   if (n_elements != crypto_sign_SECRETKEYBYTES)
     {
@@ -282,6 +302,10 @@ err:
   return FALSE;
 }
 
+/* Support 2 representations:
+ * base64 ascii -- public key is passed as string
+ * raw key -- key is passed as bytes array
+ * */
 gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
                                      GVariant *public_key,
                                      GError **error)
@@ -301,6 +325,10 @@ gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
   return ostree_sign_ed25519_add_pk (self, public_key, error);
 }
 
+/* Support 2 representations:
+ * base64 ascii -- public key is passed as string
+ * raw key -- key is passed as bytes array
+ * */
 gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
                                      GVariant *public_key,
                                      GError **error)
@@ -314,7 +342,22 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
   gpointer key = NULL; 
 
   gsize n_elements = 0;
-  key = (gpointer) g_variant_get_fixed_array (public_key, &n_elements, sizeof(guchar));
+
+  if (g_variant_is_of_type (public_key, G_VARIANT_TYPE_STRING))
+    {
+      const gchar *pk_ascii = g_variant_get_string (public_key, NULL);
+      key = g_base64_decode (pk_ascii, &n_elements);
+    }
+  else if (g_variant_is_of_type (public_key, G_VARIANT_TYPE_BYTESTRING))
+    {
+      key = (gpointer) g_variant_get_fixed_array (public_key, &n_elements, sizeof(guchar));
+    }
+  else
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown ed25519 public key type");
+      goto err;
+    }
 
   hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
   g_debug ("Read ed25519 public key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));

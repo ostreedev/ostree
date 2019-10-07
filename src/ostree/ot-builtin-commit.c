@@ -855,17 +855,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
               const char *keyid = *iter;
               g_autoptr (GVariant) secret_key = NULL;
 
-              if (!g_strcmp0(ostree_sign_get_name (sign), "dummy"))
-                {
-                  secret_key = g_variant_new_string (keyid);
-                }
-              else if (!g_strcmp0 (ostree_sign_get_name (sign), "ed25519"))
-                {
-                  gsize key_len = 0;
-                  g_autofree guchar *key = g_base64_decode (keyid, &key_len);
-
-                  secret_key = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
-                }
+              secret_key = g_variant_new_string (keyid);
               if (!ostree_sign_set_sk (sign, secret_key, error))
                   goto out;
 

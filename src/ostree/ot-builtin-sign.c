@@ -72,11 +72,6 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
   char **key_ids;
   int n_key_ids, ii;
   gboolean ret = FALSE;
-#if defined(HAVE_LIBSODIUM)
-  g_autoptr (GVariant) ed25519_sk = NULL;
-  g_autoptr (GVariant) ed25519_pk = NULL;
-#endif
-
 
   context = g_option_context_new ("COMMIT KEY-ID...");
 
@@ -119,25 +114,14 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
     {
       g_autoptr (GVariant) sk = NULL;
       g_autoptr (GVariant) pk = NULL;
-      g_autofree guchar *key = NULL;
 
-      if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
-        {
-          // Just use the string as signature
-          sk = g_variant_new_string(key_ids[ii]);
-          pk = g_variant_new_string(key_ids[ii]);
-        }
       if (opt_verify)
         {
           g_autoptr (GError) local_error = NULL;
 
 
-          if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
-            {
-              gsize key_len = 0;
-              g_autofree guchar *key = g_base64_decode (key_ids[ii], &key_len);
-              pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
-            }
+          // Pass the key as a string
+          pk = g_variant_new_string(key_ids[ii]);
 
           if (!ostree_sign_set_pk (sign, pk, &local_error))
             continue;
@@ -151,13 +135,8 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
       else
         {
-          if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
-            {
-              gsize key_len = 0;
-              g_autofree guchar *key = g_base64_decode (key_ids[ii], &key_len);
-              sk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
-            }
-
+          // Pass the key as a string
+          sk = g_variant_new_string(key_ids[ii]);
           if (!ostree_sign_set_sk (sign, sk, error))
             {
               ret = FALSE;
@@ -238,20 +217,8 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
                 break;
 
 
-              if (!g_strcmp0(ostree_sign_get_name(sign), "dummy"))
-                {
-                  // Just use the string as signature
-                  sk = g_variant_new_string(line);
-                }
-
-
-              if (!g_strcmp0(ostree_sign_get_name(sign), "ed25519"))
-                {
-                  gsize key_len = 0;
-                  g_autofree guchar *key = g_base64_decode (line, &key_len);
-                  sk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
-                }
-
+              // Pass the key as a string
+              sk = g_variant_new_string(line);
               if (!ostree_sign_set_sk (sign, sk, error))
                 {
                   ret = FALSE;
