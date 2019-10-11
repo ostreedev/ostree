@@ -35,9 +35,11 @@ fi
 copy_out_gdtr_artifacts() {
     # Keep this in sync with papr.yml
     # TODO; Split the main/clang builds into separate build dirs
+    local artifactdir
+    artifactdir=${ARTIFACTS:-${topdir}}
     for x in test-suite.log config.log gdtr-results; do
         if test -e ${resultsdir}/${x}; then
-            mv ${resultsdir}/${x} ${topdir}
+            mv ${resultsdir}/${x} ${artifactdir}
         fi
     done
 }
