@@ -37,6 +37,7 @@ copy_out_gdtr_artifacts() {
     # TODO; Split the main/clang builds into separate build dirs
     local artifactdir
     artifactdir=${ARTIFACTS:-${topdir}}
+    mkdir -p "${artifactdir}"
     for x in test-suite.log config.log gdtr-results; do
         if test -e ${resultsdir}/${x}; then
             mv ${resultsdir}/${x} ${artifactdir}
