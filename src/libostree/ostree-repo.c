@@ -4197,7 +4197,7 @@ ostree_repo_has_object (OstreeRepo           *self,
                         GCancellable         *cancellable,
                         GError              **error)
 {
-  gboolean ret_have_object;
+  gboolean ret_have_object = FALSE;
 
   if (!_ostree_repo_has_loose_object (self, checksum, objtype, &ret_have_object,
                                       cancellable, error))
