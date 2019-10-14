@@ -66,6 +66,19 @@ _ostree_bootloader_write_config (OstreeBootloader  *self,
 }
 
 gboolean
+_ostree_bootloader_post_bls_sync (OstreeBootloader  *self,
+                                  GCancellable  *cancellable,
+                                  GError       **error)
+{
+  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
+
+  if (OSTREE_BOOTLOADER_GET_IFACE (self)->post_bls_sync)
+    return OSTREE_BOOTLOADER_GET_IFACE (self)->post_bls_sync (self, cancellable, error);
+
+  return TRUE;
+}
+
+gboolean
 _ostree_bootloader_is_atomic (OstreeBootloader  *self)
 {
   g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);

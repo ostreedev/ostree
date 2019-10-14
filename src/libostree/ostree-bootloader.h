@@ -47,6 +47,9 @@ struct _OstreeBootloaderInterface
                                                    GPtrArray     *new_deployments,
                                                    GCancellable  *cancellable,
                                                    GError       **error);
+  gboolean             (* post_bls_sync)          (OstreeBootloader  *self,
+                                                   GCancellable  *cancellable,
+                                                   GError       **error);
   gboolean             (* is_atomic)              (OstreeBootloader  *self);
 };
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeBootloader, g_object_unref)
@@ -65,6 +68,10 @@ gboolean _ostree_bootloader_write_config (OstreeBootloader  *self,
                                           GPtrArray     *new_deployments,
                                           GCancellable  *cancellable,
                                           GError       **error);
+
+gboolean _ostree_bootloader_post_bls_sync (OstreeBootloader  *self,
+                                           GCancellable  *cancellable,
+                                           GError       **error);
 
 gboolean _ostree_bootloader_is_atomic (OstreeBootloader  *self);
 
