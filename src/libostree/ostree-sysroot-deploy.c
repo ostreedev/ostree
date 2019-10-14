@@ -753,15 +753,14 @@ prepare_deployment_etc (OstreeSysroot         *sysroot,
     return FALSE;
   gboolean usretc_exists = (errno == 0);
 
-  if (etc_exists && usretc_exists)
-    return glnx_throw (error, "Tree contains both /etc and /usr/etc");
-  else if (etc_exists)
+  if (etc_exists)
     {
+       if (usretc_exists)
+         return glnx_throw (error, "Tree contains both /etc and /usr/etc");
       /* Compatibility hack */
       if (!glnx_renameat (deployment_dfd, "etc", deployment_dfd, "usr/etc", error))
         return FALSE;
       usretc_exists = TRUE;
-      etc_exists = FALSE;
     }
 
   if (usretc_exists)
