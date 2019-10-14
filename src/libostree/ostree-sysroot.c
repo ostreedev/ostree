@@ -1671,10 +1671,7 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
 
   /* add it last if no crossover defined (or it's the first deployment in the sysroot) */
   if (!added_new)
-    {
-      g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
-      added_new = TRUE;
-    }
+    g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
 
   OstreeSysrootWriteDeploymentsOpts write_opts = { .do_postclean = postclean };
   if (!ostree_sysroot_write_deployments_with_options (sysroot, new_deployments, &write_opts,
