@@ -1585,6 +1585,13 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_repo_regenerate_metadata (OstreeRepo    *self,
+                                          GVariant      *additional_metadata,
+                                          GVariant      *options,
+                                          GCancellable  *cancellable,
+                                          GError       **error);
+
 
 /**
  * OstreeRepoLockType:

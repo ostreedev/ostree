@@ -6235,37 +6235,12 @@ summary_add_ref_entry (OstreeRepo       *self,
   return TRUE;
 }
 
-/**
- * ostree_repo_regenerate_summary:
- * @self: Repo
- * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
- * @cancellable: Cancellable
- * @error: Error
- *
- * An OSTree repository can contain a high level "summary" file that
- * describes the available branches and other metadata.
- *
- * If the timetable for making commits and updating the summary file is fairly
- * regular, setting the `ostree.summary.expires` key in @additional_metadata
- * will aid clients in working out when to check for updates.
- *
- * It is regenerated automatically after any ref is
- * added, removed, or updated if `core/auto-update-summary` is set.
- *
- * If the `core/collection-id` key is set in the configuration, it will be
- * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
- * have associated collection IDs will be included in the generated summary
- * file, listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs
- * and refs in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in
- * lexicographic order.
- *
- * Locking: shared (Prior to 2021.7, this was exclusive)
- */
-gboolean
-ostree_repo_regenerate_summary (OstreeRepo     *self,
-                                GVariant       *additional_metadata,
-                                GCancellable   *cancellable,
-                                GError        **error)
+static gboolean
+regenerate_metadata (OstreeRepo    *self,
+                     GVariant      *additional_metadata,
+                     GVariant      *options,
+                     GCancellable  *cancellable,
+                     GError       **error)
 {
   g_autoptr(OstreeRepoAutoLock) lock = NULL;
   gboolean no_deltas_in_summary = FALSE;
@@ -6274,6 +6249,35 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                      cancellable, error);
   if (!lock)
     return FALSE;
+
+  /* Parse options vardict. */
+  g_autofree char **gpg_key_ids = NULL;
+  const char *gpg_homedir = NULL;
+  g_autoptr(GVariant) sign_keys = NULL;
+  const char *sign_type = NULL;
+  g_autoptr(OstreeSign) sign = NULL;
+
+  if (options != NULL)
+    {
+      if (!g_variant_is_of_type (options, G_VARIANT_TYPE_VARDICT))
+        return glnx_throw (error, "Invalid options doesn't match variant type '%s'",
+                           (const char *) G_VARIANT_TYPE_VARDICT);
+
+      g_variant_lookup (options, "gpg-key-ids", "^a&s", &gpg_key_ids);
+      g_variant_lookup (options, "gpg-homedir", "&s", &gpg_homedir);
+      sign_keys = g_variant_lookup_value (options, "sign-keys", G_VARIANT_TYPE_ARRAY);
+      g_variant_lookup (options, "sign-type", "&s", &sign_type);
+
+      if (sign_keys != NULL)
+        {
+          if (sign_type == NULL)
+            sign_type = OSTREE_SIGN_NAME_ED25519;
+
+          sign = ostree_sign_get_by_name (sign_type, error);
+          if (sign == NULL)
+            return FALSE;
+        }
+    }
 
   g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
@@ -6472,7 +6476,89 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   if (!ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", error))
     return FALSE;
 
+  if (gpg_key_ids != NULL &&
+      !ostree_repo_add_gpg_signature_summary (self, (const char **) gpg_key_ids, gpg_homedir,
+                                              cancellable, error))
+    return FALSE;
+
+  if (sign_keys != NULL &&
+      !ostree_sign_summary (sign, self, sign_keys, cancellable, error))
+    return FALSE;
+
   return TRUE;
+}
+
+/**
+ * ostree_repo_regenerate_summary:
+ * @self: Repo
+ * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * An OSTree repository can contain a high level "summary" file that
+ * describes the available branches and other metadata.
+ *
+ * If the timetable for making commits and updating the summary file is fairly
+ * regular, setting the `ostree.summary.expires` key in @additional_metadata
+ * will aid clients in working out when to check for updates.
+ *
+ * It is regenerated automatically after any ref is
+ * added, removed, or updated if `core/auto-update-summary` is set.
+ *
+ * If the `core/collection-id` key is set in the configuration, it will be
+ * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
+ * have associated collection IDs will be included in the generated summary
+ * file, listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs
+ * and refs in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in
+ * lexicographic order.
+ *
+ * Locking: shared (Prior to 2021.7, this was exclusive)
+ */
+gboolean
+ostree_repo_regenerate_summary (OstreeRepo     *self,
+                                GVariant       *additional_metadata,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  return regenerate_metadata (self, additional_metadata, NULL, cancellable, error);
+}
+
+/**
+ * ostree_repo_regenerate_metadata:
+ * @self: Repo
+ * @additional_metadata: (nullable): A GVariant `a{sv}`, or %NULL
+ * @options: (nullable): A GVariant `a{sv}` with an extensible set of flags
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Regenerate the OSTree repository metadata used by clients to describe
+ * available branches and other metadata.
+ *
+ * The repository metadata currently consists of the `summary` file. See
+ * ostree_repo_regenerate_summary() and %OSTREE_SUMMARY_GVARIANT_FORMAT for
+ * additional details on its contents.
+ *
+ * The following @options are currently defined:
+ *
+ *   * `gpg-key-ids` (`as`): Array of GPG key IDs to sign the metadata with.
+ *   * `gpg-homedir` (`s`): GPG home directory.
+ *   * `sign-keys` (`av`): Array of keys to sign the metadata with. The key
+ *   type is specific to the sign engine used.
+ *   * `sign-type` (`s`): Sign engine type to use. If not specified,
+ *   %OSTREE_SIGN_NAME_ED25519 is used.
+ *
+ * Locking: shared
+ *
+ * Since: 2023.1
+ */
+gboolean
+ostree_repo_regenerate_metadata (OstreeRepo    *self,
+                                 GVariant      *additional_metadata,
+                                 GVariant      *options,
+                                 GCancellable  *cancellable,
+                                 GError       **error)
+{
+  return regenerate_metadata (self, additional_metadata, options, cancellable, error);
 }
 
 /* Regenerate the summary if `core/auto-update-summary` is set. We default to FALSE for
