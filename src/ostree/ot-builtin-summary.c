@@ -223,50 +223,39 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
             return FALSE;
         }
 
-      /* Regenerate and sign the conventional summary file. */
-      if (!ostree_repo_regenerate_summary (repo, additional_metadata, cancellable, error))
-        return FALSE;
-
-#ifndef OSTREE_DISABLE_GPGME
-      if (opt_gpg_key_ids)
+      /* Regenerate and sign the repo metadata. */
+      g_auto(GVariantBuilder) metadata_opts_builder = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
+      g_autoptr(GVariant) metadata_opts = NULL;
+      if (opt_gpg_key_ids != NULL)
+        g_variant_builder_add (&metadata_opts_builder, "{sv}", "gpg-key-ids",
+                               g_variant_new_strv ((const char * const *) opt_gpg_key_ids, -1));
+      if (opt_gpg_homedir != NULL)
+        g_variant_builder_add (&metadata_opts_builder, "{sv}", "gpg-homedir",
+                               g_variant_new_string (opt_gpg_homedir));
+      if (opt_key_ids != NULL)
         {
-          if (!ostree_repo_add_gpg_signature_summary (repo,
-                                                      (const gchar **) opt_gpg_key_ids,
-                                                      opt_gpg_homedir,
-                                                      cancellable,
-                                                      error))
-            return FALSE;
-        }
-#endif
-      if (opt_key_ids)
-        {
-          g_autoptr (GVariant) secret_keys = NULL;
-          g_autoptr (GVariantBuilder) sk_builder = NULL;
+          g_auto(GVariantBuilder) sk_builder = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_ARRAY);
 
-          sk_builder = g_variant_builder_new (G_VARIANT_TYPE_ARRAY);
-
-          char **iter;
-          for (iter = opt_key_ids; iter && *iter; iter++)
+          /* Currently only strings are used as keys for supported
+           * signature types. */
+          for (const char * const *iter = (const char * const *) opt_key_ids;
+               iter != NULL && *iter != NULL; iter++)
             {
-              const char *keyid = *iter;
-              GVariant *secret_key = NULL;
-
-              /* Currently only strings are used as keys
-               * for supported signature types */
-              secret_key = g_variant_new_string (keyid);
-
-              g_variant_builder_add (sk_builder, "v", secret_key);
+              const char *key_id = *iter;
+              g_variant_builder_add (&sk_builder, "v", g_variant_new_string (key_id));
             }
 
-          secret_keys = g_variant_builder_end (sk_builder);
-
-          if (! ostree_sign_summary (sign,
-                                     repo,
-                                     secret_keys,
-                                     cancellable,
-                                     error))
-            return FALSE;
+          g_variant_builder_add (&metadata_opts_builder, "{sv}", "sign-keys",
+                                 g_variant_builder_end (&sk_builder));
         }
+      if (opt_sign_name != NULL)
+        g_variant_builder_add (&metadata_opts_builder, "{sv}", "sign-type",
+                               g_variant_new_string (opt_sign_name));
+
+      metadata_opts = g_variant_ref_sink (g_variant_builder_end (&metadata_opts_builder));
+      if (!ostree_repo_regenerate_metadata (repo, additional_metadata, metadata_opts,
+                                            cancellable, error))
+        return FALSE;
     }
   else if (opt_view || opt_raw)
     {
