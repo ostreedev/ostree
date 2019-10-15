@@ -2350,7 +2350,8 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   /* Update the summary if auto-update-summary is set, because doing so was
    * delayed for each ref change during the transaction.
    */
-  if ((self->txn.refs || self->txn.collection_refs) &&
+  if (!self->txn.disable_auto_summary &&
+      (self->txn.refs || self->txn.collection_refs) &&
       !_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
     return FALSE;
 
