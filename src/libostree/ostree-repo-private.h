@@ -523,6 +523,13 @@ ostree_repo_list_objects_set (OstreeRepo                  *self,
                               GCancellable                *cancellable,
                               GError                     **error);
 
+gboolean
+_ostree_repo_transaction_write_repo_metadata (OstreeRepo    *self,
+                                              GVariant      *additional_metadata,
+                                              char         **out_checksum,
+                                              GCancellable  *cancellable,
+                                              GError       **error);
+
 /**
  * OstreeRepoAutoTransaction:
  *

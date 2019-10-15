@@ -6237,6 +6237,7 @@ summary_add_ref_entry (OstreeRepo       *self,
 
 static gboolean
 regenerate_metadata (OstreeRepo    *self,
+                     gboolean       do_metadata_commit,
                      GVariant      *additional_metadata,
                      GVariant      *options,
                      GCancellable  *cancellable,
@@ -6279,11 +6280,69 @@ regenerate_metadata (OstreeRepo    *self,
         }
     }
 
+  const gchar *main_collection_id = ostree_repo_get_collection_id (self);
+
+  /* Write out a new metadata commit for the repository when it has a collection ID. */
+  if (do_metadata_commit && main_collection_id != NULL)
+    {
+      g_autoptr(OstreeRepoAutoTransaction) txn =
+        _ostree_repo_auto_transaction_start (self, cancellable, error);
+      if (!txn)
+        return FALSE;
+
+      /* Disable automatic summary updating since we're already doing it */
+      self->txn.disable_auto_summary = TRUE;
+
+      g_autofree gchar *new_ostree_metadata_checksum = NULL;
+      if (!_ostree_repo_transaction_write_repo_metadata (self,
+                                                         additional_metadata,
+                                                         &new_ostree_metadata_checksum,
+                                                         cancellable,
+                                                         error))
+        return FALSE;
+
+      /* Sign the new commit. */
+      if (gpg_key_ids != NULL)
+        {
+          for (const char * const *iter = (const char * const *) gpg_key_ids;
+               iter != NULL && *iter != NULL; iter++)
+            {
+              const char *gpg_key_id = *iter;
+
+              if (!ostree_repo_sign_commit (self,
+                                            new_ostree_metadata_checksum,
+                                            gpg_key_id,
+                                            gpg_homedir,
+                                            cancellable,
+                                            error))
+                return FALSE;
+            }
+        }
+
+      if (sign_keys != NULL)
+        {
+          GVariantIter *iter;
+          GVariant *key;
+
+          g_variant_get (sign_keys, "av", &iter);
+          while (g_variant_iter_loop (iter, "v", &key))
+            {
+              if (!ostree_sign_set_sk (sign, key, error))
+                return FALSE;
+
+              if (!ostree_sign_commit (sign, self, new_ostree_metadata_checksum,
+                                       cancellable, error))
+                return FALSE;
+            }
+        }
+
+      if (!_ostree_repo_auto_transaction_commit (txn, NULL, cancellable, error))
+        return FALSE;
+    }
+
   g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   g_autoptr(GVariantBuilder) refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
-
-  const gchar *main_collection_id = ostree_repo_get_collection_id (self);
 
   {
     if (main_collection_id == NULL)
@@ -6520,7 +6579,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  return regenerate_metadata (self, additional_metadata, NULL, cancellable, error);
+  return regenerate_metadata (self, FALSE, additional_metadata, NULL, cancellable, error);
 }
 
 /**
@@ -6537,6 +6596,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
  * The repository metadata currently consists of the `summary` file. See
  * ostree_repo_regenerate_summary() and %OSTREE_SUMMARY_GVARIANT_FORMAT for
  * additional details on its contents.
+ *
+ * Additionally, if the `core/collection-id` key is set in the configuration, a
+ * %OSTREE_REPO_METADATA_REF commit will be created.
  *
  * The following @options are currently defined:
  *
@@ -6558,7 +6620,7 @@ ostree_repo_regenerate_metadata (OstreeRepo    *self,
                                  GCancellable  *cancellable,
                                  GError       **error)
 {
-  return regenerate_metadata (self, additional_metadata, options, cancellable, error);
+  return regenerate_metadata (self, TRUE, additional_metadata, options, cancellable, error);
 }
 
 /* Regenerate the summary if `core/auto-update-summary` is set. We default to FALSE for
