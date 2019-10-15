@@ -871,7 +871,10 @@ write_content_object (OstreeRepo         *self,
       /* Give a null input if there's no content */
       g_autoptr(GInputStream) null_input = NULL;
       if (!input)
-        null_input = input = g_memory_input_stream_new_from_data ("", 0, NULL);
+        {
+          null_input = input = g_memory_input_stream_new_from_data ("", 0, NULL);
+          (void) null_input;  /* quiet static analysis */
+        }
       checksum_input = ot_checksum_instream_new_with_start (input, G_CHECKSUM_SHA256,
                                                             buf, len);
 
