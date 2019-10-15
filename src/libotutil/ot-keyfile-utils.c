@@ -154,7 +154,7 @@ ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,
   guint sep_count = 0;
   gchar sep = '\0';
   g_autofree char  *value_str = NULL;
-  g_autofree char **value_list = NULL;
+  g_auto(GStrv) value_list = NULL;
 
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
@@ -215,8 +215,8 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
 
   g_key_file_set_list_separator (keyfile, separator);
 
-  g_autofree char **ret_value = g_key_file_get_string_list (keyfile, section,
-                                                            key, NULL, &temp_error);
+  g_auto(GStrv) ret_value = g_key_file_get_string_list (keyfile, section,
+                                                        key, NULL, &temp_error);
 
   if (temp_error)
     {
@@ -224,7 +224,7 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
                            G_KEY_FILE_ERROR_KEY_NOT_FOUND))
         {
           g_clear_error (&temp_error);
-          ret_value = default_value;
+          ret_value = g_strdupv (default_value);
         }
       else
         {
