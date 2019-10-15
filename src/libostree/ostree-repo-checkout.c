@@ -717,6 +717,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
             }
           current_repo = current_repo->parent_repo;
         }
+      /* Pacify clang-analyzer which sees us testing effectively if (repo == NULL) */
+      g_assert (repo);
 
       need_copy = (hardlink_res == HARDLINK_RESULT_NOT_SUPPORTED);
     }
