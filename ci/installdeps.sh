@@ -3,6 +3,14 @@
 
 set -xeuo pipefail
 
+# This is used by our OpenShift Prow job; we use the
+# cosa buildroot container
+# https://github.com/coreos/coreos-assembler/pull/730
+# And using `yum` at all means we can flake on fetching rpm metadata
+if [ -n "${SKIP_INSTALLDEPS:-}" ]; then
+    exit 0
+fi
+
 dn=$(dirname $0)
 . ${dn}/libpaprci/libbuild.sh
 
