@@ -3184,8 +3184,10 @@ reload_sysroot_config (OstreeRepo          *self,
      * binary "x" in /usr/lib/ostree/bootloaders/x). See:
      * https://github.com/ostreedev/ostree/issues/1719
      * https://github.com/ostreedev/ostree/issues/1801
+     * Also, dedup these strings with the bootloader implementations
      */
-    if (!(g_str_equal (bootloader, "auto") || g_str_equal (bootloader, "none")))
+    if (!(g_str_equal (bootloader, "auto") || g_str_equal (bootloader, "none")
+          || g_str_equal (bootloader, "zipl")))
       return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
 
     g_free (self->bootloader);
