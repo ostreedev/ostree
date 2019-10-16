@@ -434,6 +434,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   if (opt_add_tombstones)
     {
       guint i;
+      g_assert (tombstones); /* Pacify static analysis */
       if (tombstones->len)
         {
           if (!ot_enable_tombstone_commits (repo, error))

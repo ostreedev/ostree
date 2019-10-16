@@ -125,7 +125,10 @@ dump_commit (GVariant            *variant,
   timestamp = GUINT64_FROM_BE (timestamp);
   str = format_timestamp (timestamp, &local_error);
   if (!str)
-    errx (1, "Failed to read commit: %s", local_error->message);
+    {
+      g_assert (local_error); /* Pacify static analysis */
+      errx (1, "Failed to read commit: %s", local_error->message);
+    }
   g_autofree char *contents = ostree_commit_get_content_checksum (variant) ?: "<invalid commit>";
   g_print ("ContentChecksum:  %s\n", contents);
   g_print ("Date:  %s\n", str);
