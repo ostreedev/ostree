@@ -772,8 +772,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (!skip_commit)
     {
-      guint64 timestamp;
-
       if (!opt_no_bindings)
         {
           g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
@@ -782,10 +780,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
 
       if (!opt_timestamp)
         {
-          GDateTime *now = g_date_time_new_now_utc ();
-          timestamp = g_date_time_to_unix (now);
-          g_date_time_unref (now);
-
           if (!ostree_repo_write_commit (repo, parent, opt_subject, commit_body, metadata,
                                          OSTREE_REPO_FILE (root),
                                          &commit_checksum, cancellable, error))
@@ -800,8 +794,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
                            "Could not parse '%s'", opt_timestamp);
               goto out;
             }
-          timestamp = ts.tv_sec;
 
+          guint64 timestamp = ts.tv_sec;
           if (!ostree_repo_write_commit_with_time (repo, parent, opt_subject, commit_body, metadata,
                                                    OSTREE_REPO_FILE (root),
                                                    timestamp,

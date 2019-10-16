@@ -313,6 +313,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
   if (!list_all_deployment_directories (self, &all_deployment_dirs,
                                         cancellable, error))
     return FALSE;
+  g_assert (all_deployment_dirs); /* Pacify static analysis */
   for (guint i = 0; i < all_deployment_dirs->len; i++)
     {
       OstreeDeployment *deployment = all_deployment_dirs->pdata[i];

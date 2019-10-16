@@ -945,6 +945,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
 
   g_autoptr(GPtrArray) deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
+  g_assert (boot_loader_configs); /* Pacify static analysis */
   for (guint i = 0; i < boot_loader_configs->len; i++)
     {
       OstreeBootconfigParser *config = boot_loader_configs->pdata[i];

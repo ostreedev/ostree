@@ -205,7 +205,7 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
       g_autoptr(GHashTable) all_refs = NULL;
       g_autoptr(GHashTable) reachable = ostree_repo_traverse_new_reachable ();
       g_autoptr(GHashTable) retain_branch_depth = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-      struct timespec keep_younger_than_ts;
+      struct timespec keep_younger_than_ts = {0, };
       GHashTableIter hash_iter;
       gpointer key, value;
 
