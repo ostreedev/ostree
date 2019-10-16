@@ -35,15 +35,12 @@ ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
                                      gboolean      *out_bool,
                                      GError       **error)
 {
-  gboolean ret = FALSE;
+  g_return_val_if_fail (keyfile != NULL, FALSE);
+  g_return_val_if_fail (section != NULL, FALSE);
+  g_return_val_if_fail (value != NULL, FALSE);
+
   GError *temp_error = NULL;
-  gboolean ret_bool;
-
-  g_return_val_if_fail (keyfile != NULL, ret);
-  g_return_val_if_fail (section != NULL, ret);
-  g_return_val_if_fail (value != NULL, ret);
-
-  ret_bool = g_key_file_get_boolean (keyfile, section, value, &temp_error);
+  gboolean ret_bool = g_key_file_get_boolean (keyfile, section, value, &temp_error);
   if (temp_error)
     {
       if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
@@ -54,14 +51,12 @@ ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
       else
         {
           g_propagate_error (error, temp_error);
-          goto out;
+          return FALSE;
         }
     }
 
-  ret = TRUE;
   *out_bool = ret_bool;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -72,33 +67,29 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
                                    char         **out_value,
                                    GError       **error)
 {
-  gboolean ret = FALSE;
+  g_return_val_if_fail (keyfile != NULL, FALSE);
+  g_return_val_if_fail (section != NULL, FALSE);
+  g_return_val_if_fail (value != NULL, FALSE);
+
   GError *temp_error = NULL;
-  g_autofree char *ret_value = NULL;
-
-  g_return_val_if_fail (keyfile != NULL, ret);
-  g_return_val_if_fail (section != NULL, ret);
-  g_return_val_if_fail (value != NULL, ret);
-
-  ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
+  g_autofree char *ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
   if (temp_error)
     {
       if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
         {
           g_clear_error (&temp_error);
+          g_assert (ret_value == NULL);
           ret_value = g_strdup (default_value);
         }
       else
         {
           g_propagate_error (error, temp_error);
-          goto out;
+          return FALSE;
         }
     }
 
-  ret = TRUE;
   ot_transfer_out_value(out_value, &ret_value);
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -109,14 +100,12 @@ ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
                                                   char         **out_value,
                                                   GError       **error)
 {
-  gboolean ret = FALSE;
+  g_return_val_if_fail (keyfile != NULL, FALSE);
+  g_return_val_if_fail (section != NULL, FALSE);
+  g_return_val_if_fail (value != NULL, FALSE);
+
   GError *local_error = NULL;
   g_autofree char *ret_value = NULL;
-
-  g_return_val_if_fail (keyfile != NULL, ret);
-  g_return_val_if_fail (section != NULL, ret);
-  g_return_val_if_fail (value != NULL, ret);
-
   if (!ot_keyfile_get_value_with_default (keyfile, section, value, default_value, &ret_value, &local_error))
     {
       if (g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND))
@@ -127,14 +116,12 @@ ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
       else
         {
           g_propagate_error (error, local_error);
-          goto out;
+          return FALSE;
         }
     }
 
-  ret = TRUE;
   ot_transfer_out_value(out_value, &ret_value);
- out:
-  return ret;
+  return TRUE;
 }
 
 /* Read the value of key as a string.  If the value string contains
@@ -151,22 +138,21 @@ ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,
                                                   char        ***out_value,
                                                   GError       **error)
 {
-  guint sep_count = 0;
-  gchar sep = '\0';
-  g_autofree char  *value_str = NULL;
-  g_auto(GStrv) value_list = NULL;
-
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
   g_return_val_if_fail (key != NULL, FALSE);
   g_return_val_if_fail (separators != NULL, FALSE);
 
+  g_autofree char  *value_str = NULL;
   if (!ot_keyfile_get_value_with_default (keyfile, section, key, NULL,
                                           &value_str, error))
     return FALSE;
 
+  g_auto(GStrv) value_list = NULL;
   if (value_str)
     {
+      gchar sep = '\0';
+      guint sep_count = 0;
       for (size_t i = 0; i < strlen (separators) && sep_count <= 1; i++)
         {
           if (strchr (value_str, separators[i]))
