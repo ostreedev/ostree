@@ -195,6 +195,9 @@ AC_ARG_ENABLE(trivial-httpd-cmdline,
   [Continue to support "ostree trivial-httpd" [default=no]])],,
   enable_trivial_httpd_cmdline=no)
 AM_CONDITIONAL(BUILDOPT_TRIVIAL_HTTPD, test x$enable_trivial_httpd_cmdline = xyes)
+AS_IF([test x$with_soup = xno && test x$enable_trivial_httpd_cmdline = xyes], [
+  AC_MSG_ERROR([trivial-httpd enabled, but libsoup is not; libsoup is needed for trivial-httpd])
+])
 AM_COND_IF(BUILDOPT_TRIVIAL_HTTPD,
   [AC_DEFINE([BUILDOPT_ENABLE_TRIVIAL_HTTPD_CMDLINE], 1, [Define if we are enabling ostree trivial-httpd entrypoint])]
 )
