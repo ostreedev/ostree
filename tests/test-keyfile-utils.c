@@ -199,8 +199,6 @@ test_get_value_with_default_group_optional (void)
 static void
 test_copy_group (void)
 {
-  g_auto(GStrv) keys = NULL;
-  g_auto(GStrv) keys2 = NULL;
   gsize length, length2, ii;
   GKeyFile *tmp = g_key_file_new ();
   const char *section = "section";
@@ -218,8 +216,8 @@ test_copy_group (void)
 
   g_assert_true (ot_keyfile_copy_group (g_keyfile, tmp, section));
 
-  keys = g_key_file_get_keys (g_keyfile, section, &length, NULL);
-  keys2 = g_key_file_get_keys (tmp, section, &length2, NULL);
+  g_auto(GStrv) keys = g_key_file_get_keys (g_keyfile, section, &length, NULL);
+  g_strfreev (g_key_file_get_keys (tmp, section, &length2, NULL));
   g_assert_cmpint(length, ==, length2);
 
   for (ii = 0; ii < length; ii++)
