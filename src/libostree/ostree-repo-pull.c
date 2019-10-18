@@ -2181,7 +2181,6 @@ static void
 start_fetch (OtPullData *pull_data,
              FetchObjectData *fetch)
 {
-  gboolean is_meta;
   g_autofree char *obj_subpath = NULL;
   guint64 *expected_max_size_p;
   guint64 expected_max_size;
@@ -2190,13 +2189,12 @@ start_fetch (OtPullData *pull_data,
   GPtrArray *mirrorlist = NULL;
 
   ostree_object_name_deserialize (fetch->object, &expected_checksum, &objtype);
-  is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
 
   g_debug ("starting fetch of %s.%s%s", expected_checksum,
            ostree_object_type_to_string (objtype),
            fetch->is_detached_meta ? " (detached)" : "");
 
-  is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
+  gboolean is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
   if (is_meta)
     pull_data->n_outstanding_metadata_fetches++;
   else
