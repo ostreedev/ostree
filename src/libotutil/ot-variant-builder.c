@@ -1150,14 +1150,8 @@ ot_variant_builder_end (OtVariantBuilder *builder,
                         GError **error)
 {
   OtVariantBuilderInfo *info = builder->head;
-  gsize total_size;
-  gsize offset_size;
-  int i;
-  g_autofree guchar *offset_table = NULL;
-  gsize offset_table_size;
   gboolean add_offset_table = FALSE;
   gboolean reverse_offset_table = FALSE;
-  guchar *p;
 
   g_return_val_if_fail (info->n_children >= info->min_items,
                         FALSE);
@@ -1188,15 +1182,14 @@ ot_variant_builder_end (OtVariantBuilder *builder,
 
   if (add_offset_table)
     {
-      total_size = gvs_calculate_total_size (info->offset, info->child_ends->len);
-      offset_size = gvs_get_offset_size (total_size);
-
-      offset_table_size = total_size - info->offset;
-      offset_table = g_malloc (offset_table_size);
-      p = offset_table;
+      const gsize total_size = gvs_calculate_total_size (info->offset, info->child_ends->len);
+      const gsize offset_size = gvs_get_offset_size (total_size);
+      const gsize offset_table_size = total_size - info->offset;
+      g_autofree guchar *offset_table = g_malloc (offset_table_size);
+      guchar *p = offset_table;
       if (reverse_offset_table)
         {
-          for (i = info->child_ends->len - 1; i >= 0; i--)
+          for (int i = info->child_ends->len - 1; i >= 0; i--)
             {
               gvs_write_unaligned_le (p, g_array_index (info->child_ends, guint64, i), offset_size);
               p += offset_size;
@@ -1204,7 +1197,7 @@ ot_variant_builder_end (OtVariantBuilder *builder,
         }
       else
         {
-          for (i = 0; i < info->child_ends->len; i++)
+          for (int i = 0; i < info->child_ends->len; i++)
             {
               gvs_write_unaligned_le (p, g_array_index (info->child_ends, guint64, i), offset_size);
               p += offset_size;
