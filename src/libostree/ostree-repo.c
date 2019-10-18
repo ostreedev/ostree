@@ -1548,8 +1548,8 @@ keyfile_set_from_vardict (GKeyFile     *keyfile,
           g_key_file_set_string_list (keyfile, section, key, strv_child, len);
         }
       else
-        g_critical ("Unhandled type '%s' in " G_GNUC_FUNCTION,
-                    (char*)g_variant_get_type (child));
+        g_critical ("Unhandled type '%s' in %s",
+                    (char*)g_variant_get_type (child), G_STRFUNC);
     }
 }
 
