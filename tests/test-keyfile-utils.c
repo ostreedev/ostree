@@ -199,15 +199,14 @@ test_get_value_with_default_group_optional (void)
 static void
 test_copy_group (void)
 {
-  g_auto(GStrv) keys = NULL;
-  g_auto(GStrv) keys2 = NULL;
-  gsize length, length2, ii;
-  GKeyFile *tmp = g_key_file_new ();
+  gsize length, length2;
   const char *section = "section";
   GLogLevelFlags always_fatal_mask;
 
   /* Avoid that g_return_val_if_fail causes the test to fail.  */
   always_fatal_mask = g_log_set_always_fatal (0);
+
+  g_autoptr(GKeyFile) tmp = g_key_file_new ();
 
   g_assert_false (ot_keyfile_copy_group (NULL, tmp, section));
   g_assert_false (ot_keyfile_copy_group (g_keyfile, NULL, section));
@@ -218,21 +217,17 @@ test_copy_group (void)
 
   g_assert_true (ot_keyfile_copy_group (g_keyfile, tmp, section));
 
-  keys = g_key_file_get_keys (g_keyfile, section, &length, NULL);
-  keys2 = g_key_file_get_keys (tmp, section, &length2, NULL);
+  g_auto(GStrv) keys = g_key_file_get_keys (g_keyfile, section, &length, NULL);
+  g_strfreev (g_key_file_get_keys (tmp, section, &length2, NULL));
   g_assert_cmpint(length, ==, length2);
 
-  for (ii = 0; ii < length; ii++)
+  for (gsize ii = 0; ii < length; ii++)
     {
-      g_autofree char *value = NULL;
-      g_autofree char *value2 = NULL;
-
-      value = g_key_file_get_value (g_keyfile, section, keys[ii], NULL);
-      value2 = g_key_file_get_value (g_keyfile, section, keys[ii], NULL);
+      g_autofree char *value = g_key_file_get_value (g_keyfile, section, keys[ii], NULL);
+      g_autofree char *value2 = g_key_file_get_value (g_keyfile, section, keys[ii], NULL);
       g_assert_cmpstr (value, ==, value2);
     }
 
-  g_key_file_free (tmp);
 }
 
 static void
