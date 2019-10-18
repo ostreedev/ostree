@@ -145,7 +145,7 @@ ot_test_setup_sysroot (GCancellable *cancellable,
 
   g_autoptr(GString) buf = g_string_new ("mutable-deployments");
 
-  gboolean can_relabel;
+  gboolean can_relabel = FALSE;
   if (!ot_check_relabeling (&can_relabel, error))
     return FALSE;
   if (!can_relabel)
