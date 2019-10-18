@@ -494,6 +494,7 @@ on_dir_changed (GFileMonitor  *mon,
 
   if (event == G_FILE_MONITOR_EVENT_DELETED)
     {
+      httpd_log (self, "root directory removed, exiting\n");
       self->running = FALSE;
       g_main_context_wakeup (NULL);
     }
