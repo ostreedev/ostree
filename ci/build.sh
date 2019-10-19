@@ -22,11 +22,6 @@ case "${CONFIGOPTS:-}" in
         fi
         ;;
 esac
-# unless libsoup is disabled, enable trivial-httpd for the tests
-case "${CONFIGOPTS:-}" in
-    *--without-soup*) ;;
-    *) CONFIGOPTS="${CONFIGOPTS:-} --enable-trivial-httpd-cmdline" ;;
-esac
 
 # always fail on warnings; https://github.com/ostreedev/ostree/pull/971
 # NB: this disables the default set of flags from configure.ac

@@ -85,7 +85,6 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 
 ../configure \
     --enable-always-build-tests \
-    --enable-trivial-httpd-cmdline \
     ${ci_configopts}
     "$@"
 
