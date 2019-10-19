@@ -143,13 +143,12 @@ ostree_SOURCES += src/ostree/ot-builtin-pull.c
 endif
 
 if USE_LIBSOUP
-if BUILDOPT_TRIVIAL_HTTPD
+# Eventually once we stop things from using this, we should support disabling this
 ostree_SOURCES += src/ostree/ot-builtin-trivial-httpd.c
 pkglibexec_PROGRAMS += ostree-trivial-httpd
 ostree_trivial_httpd_SOURCES = src/ostree/ostree-trivial-httpd.c
 ostree_trivial_httpd_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_SOUP_CFLAGS)
 ostree_trivial_httpd_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_SOUP_LIBS)
-endif
 
 if !USE_CURL
 # This is necessary for the cookie jar bits
