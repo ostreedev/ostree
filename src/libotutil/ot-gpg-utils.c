@@ -704,6 +704,8 @@ ot_gpg_wkd_urls (const char  *email,
   g_autofree char *domain_lowered = NULL;
   g_autofree char *local_encoded = NULL;
   g_autofree char *local_escaped = NULL;
+  g_autofree char *advanced_server = NULL;
+  g_autofree char *direct_server = NULL;
   g_autofree char *advanced_url = NULL;
   g_autofree char *direct_url = NULL;
 
@@ -722,15 +724,42 @@ ot_gpg_wkd_urls (const char  *email,
   local_encoded = encode_wkd_local (local_lowered);
   local_escaped = g_uri_escape_string (email_parts[0], NULL, FALSE);
 
-  advanced_url = g_strdup_printf ("https://openpgpkey.%s"
-                                  "/.well-known/openpgpkey/"
+  /* Allow URLs to point to a local server for testing. */
+  const char *local_port = g_getenv ("_OSTREE_GPG_UPDATE_LOCAL_PORT");
+  if (local_port != NULL)
+    {
+      for (const char *cur = local_port; *cur != '\0'; cur++)
+        {
+          if (!g_ascii_isdigit (*cur))
+            {
+              g_debug ("Ignoring non-digit environment variable "
+                       "_OSTREE_GPG_UPDATE_LOCAL_PORT");
+              local_port = NULL;
+              break;
+            }
+        }
+    }
+
+  if (local_port != NULL)
+    {
+      advanced_server = g_strdup_printf ("http://127.0.0.1:%s", local_port);
+      direct_server = g_strdup (advanced_server);
+    }
+  else
+    {
+      advanced_server = g_strdup_printf ("https://openpgpkey.%s",
+                                         email_parts[1]);
+      direct_server = g_strdup_printf ("https://%s", email_parts[1]);
+    }
+
+  advanced_url = g_strdup_printf ("%s/.well-known/openpgpkey/"
                                   "%s/hu/%s?l=%s",
-                                  email_parts[1], domain_lowered,
+                                  advanced_server, domain_lowered,
                                   local_encoded, local_escaped);
   g_debug ("Advanced WKD URL: %s", advanced_url);
 
-  direct_url = g_strdup_printf ("https://%s/.well-known/openpgpkey/hu/%s?l=%s",
-                                email_parts[1], local_encoded, local_escaped);
+  direct_url = g_strdup_printf ("%s/.well-known/openpgpkey/hu/%s?l=%s",
+                                direct_server, local_encoded, local_escaped);
   g_debug ("Direct WKD URL: %s", direct_url);
 
   if (out_advanced_url != NULL)
