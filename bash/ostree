@@ -1384,6 +1384,7 @@ _ostree_remote() {
         refs
         show-url
         summary
+        update-gpg-keys
     "
 
     __ostree_subcommands "$subcommands" && return 0

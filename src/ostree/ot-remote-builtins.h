@@ -33,6 +33,7 @@ BUILTINPROTO(add);
 BUILTINPROTO(delete);
 BUILTINPROTO(gpg_import);
 BUILTINPROTO(list_gpg_keys);
+BUILTINPROTO(update_gpg_keys);
 BUILTINPROTO(list);
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
 BUILTINPROTO(add_cookie);

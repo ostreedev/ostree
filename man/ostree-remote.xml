@@ -69,6 +69,9 @@ Boston, MA 02111-1307, USA.
                 <command>ostree remote list-gpg-keys</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
+                <command>ostree remote update-gpg-keys</command> <arg choice="req">NAME</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
                 <command>ostree remote refs</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
@@ -117,6 +120,12 @@ Boston, MA 02111-1307, USA.
         </para>
         <para>
             The GPG keys to import may be in binary OpenPGP format or ASCII armored.  The optional <arg>KEY-ID</arg> list can restrict which keys are imported from a keyring file or input stream.  All keys are imported if this list is omitted.  If neither <option>--keyring</option> nor <option>--stdin</option> options are given, then keys are imported from the user's personal GPG keyring.
+        </para>
+        <para>
+          The <command>update-gpg-keys</command> subcommand will attempt to
+          update the remote's GPG trusted keys using the PGP Web Key Directory
+          protocol. The URLs that will be used for locating keys can be seen in
+          the <command>list-gpg-keys</command> subcommand.
         </para>
         <para>
             The various cookie related command allow management of a remote specific cookie jar.

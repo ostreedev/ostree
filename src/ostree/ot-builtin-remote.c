@@ -47,6 +47,9 @@ static OstreeCommand remote_subcommands[] = {
   { "list-gpg-keys", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_list_gpg_keys,
     "Show remote GPG keys" },
+  { "update-gpg-keys", OSTREE_BUILTIN_FLAG_NONE,
+    ot_remote_builtin_update_gpg_keys,
+    "Update remote GPG keys" },
 #endif /* OSTREE_DISABLE_GPGME */
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
   { "add-cookie", OSTREE_BUILTIN_FLAG_NONE,
