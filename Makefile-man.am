@@ -34,7 +34,7 @@ ostree-init.1 ostree-log.1 ostree-ls.1 ostree-prune.1 ostree-pull-local.1 \
 ostree-pull.1 ostree-refs.1 ostree-remote.1 ostree-reset.1 \
 ostree-rev-parse.1 ostree-show.1 ostree-summary.1 \
 ostree-static-delta.1
-if BUILDOPT_TRIVIAL_HTTPD
+if USE_LIBSOUP
 man1_files += ostree-trivial-httpd.1
 else
 # We still want to distribute the source, even if we are not building it

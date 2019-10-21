@@ -194,8 +194,7 @@ AC_ARG_ENABLE(trivial-httpd-cmdline,
   [AS_HELP_STRING([--enable-trivial-httpd-cmdline],
   [Continue to support "ostree trivial-httpd" [default=no]])],,
   enable_trivial_httpd_cmdline=no)
-AM_CONDITIONAL(BUILDOPT_TRIVIAL_HTTPD, test x$enable_trivial_httpd_cmdline = xyes)
-AM_COND_IF(BUILDOPT_TRIVIAL_HTTPD,
+AS_IF([test x$enable_trivial_httpd_cmdline = xyes],
   [AC_DEFINE([BUILDOPT_ENABLE_TRIVIAL_HTTPD_CMDLINE], 1, [Define if we are enabling ostree trivial-httpd entrypoint])]
 )
 
