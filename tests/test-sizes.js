@@ -28,6 +28,96 @@ function assertEquals(a, b) {
 	throw new Error("assertion failed " + JSON.stringify(a) + " == " + JSON.stringify(b));
 }
 
+function assertGreater(a, b) {
+    if (a <= b)
+	throw new Error("assertion failed " + JSON.stringify(a) + " > " + JSON.stringify(b));
+}
+
+function assertGreaterEquals(a, b) {
+    if (a < b)
+	throw new Error("assertion failed " + JSON.stringify(a) + " >= " + JSON.stringify(b));
+}
+
+// Adapted from _ostree_read_varuint64()
+function readVarint(buffer) {
+    let result = 0;
+    let count = 0;
+    let len = buffer.length;
+    let cur;
+
+    do {
+        assertGreater(len, 0);
+        cur = buffer[count];
+        result = result | ((cur & 0x7F) << (7 * count));
+        count++;
+        len--;
+    } while (cur & 0x80);
+
+    return [result, count];
+}
+
+// There have been various bugs with byte array unpacking in GJS, so
+// just do it manually.
+function unpackByteArray(variant) {
+    let array = [];
+    let nBytes = variant.n_children();
+    for (let i = 0; i < nBytes; i++) {
+        array.push(variant.get_child_value(i).get_byte());
+    }
+    return array;
+}
+
+function validateSizes(repo, commit, expectedFiles) {
+    let [,commitVariant] = repo.load_variant(OSTree.ObjectType.COMMIT, commit);
+    let metadata = commitVariant.get_child_value(0);
+    let sizes = metadata.lookup_value('ostree.sizes', GLib.VariantType.new('aay'));
+    let nSizes = sizes.n_children();
+    let expectedNSizes = Object.keys(expectedFiles).length
+    assertEquals(nSizes, expectedNSizes);
+
+    for (let i = 0; i < nSizes; i++) {
+        let sizeEntry = sizes.get_child_value(i);
+        assertGreaterEquals(sizeEntry.n_children(), 34);
+        let entryBytes = unpackByteArray(sizeEntry);
+        let checksumBytes = entryBytes.slice(0, 32);
+        let checksumString = OSTree.checksum_from_bytes(checksumBytes);
+        print("checksum = " + checksumString);
+
+        // Read the sizes from the next 2 varints
+        let remainingBytes = entryBytes.slice(32);
+        assertGreaterEquals(remainingBytes.length, 2);
+        let varintRead;
+        let compressedSize;
+        let uncompressedSize;
+        [compressedSize, varintRead] = readVarint(remainingBytes);
+        remainingBytes = remainingBytes.slice(varintRead);
+        assertGreaterEquals(remainingBytes.length, 1);
+        [uncompressedSize, varintRead] = readVarint(remainingBytes);
+        remainingBytes = remainingBytes.slice(varintRead);
+        assertEquals(remainingBytes.length, 0);
+        print("compressed = " + compressedSize);
+        print("uncompressed = " + uncompressedSize);
+
+        if (!(checksumString in expectedFiles)) {
+            throw new Error("Checksum " + checksumString + " not in " +
+                            JSON.stringify(expectedFiles));
+        }
+        let expectedSizes = expectedFiles[checksumString];
+        let expectedCompressedSize = expectedSizes[0];
+        let expectedUncompressedSize = expectedSizes[1];
+        if (compressedSize != expectedCompressedSize) {
+            throw new Error("Compressed size " + compressedSize +
+                            " for checksum " + checksumString +
+                            " does not match expected " + expectedCompressedSize);
+        }
+        if (uncompressedSize != expectedUncompressedSize) {
+            throw new Error("Uncompressed size " + uncompressedSize +
+                            " for checksum " + checksumString +
+                            " does not match expected " + expectedUncompressedSize);
+        }
+    }
+}
+
 print('1..1')
 
 let testDataDir = Gio.File.new_for_path('test-data');
@@ -41,7 +131,10 @@ repo.create(OSTree.RepoMode.ARCHIVE_Z2, null);
 
 repo.open(null);
 
-let commitModifier = OSTree.RepoCommitModifier.new(OSTree.RepoCommitModifierFlags.GENERATE_SIZES, null);
+let commitModifierFlags = (OSTree.RepoCommitModifierFlags.GENERATE_SIZES |
+                           OSTree.RepoCommitModifierFlags.SKIP_XATTRS |
+                           OSTree.RepoCommitModifierFlags.CANONICAL_PERMISSIONS);
+let commitModifier = OSTree.RepoCommitModifier.new(commitModifierFlags, null);
 
 assertEquals(repo.get_mode(), OSTree.RepoMode.ARCHIVE_Z2);
 
@@ -56,31 +149,10 @@ print("commit => " + commit);
 repo.commit_transaction(null);
 
 // Test the sizes metadata
-let [,commitVariant] = repo.load_variant(OSTree.ObjectType.COMMIT, commit);
-let metadata = commitVariant.get_child_value(0);
-let sizes = metadata.lookup_value('ostree.sizes', GLib.VariantType.new('aay'));
-let nSizes = sizes.n_children();
-assertEquals(nSizes, 2);
-let expectedUncompressedSizes = [12, 18];
-let foundExpectedUncompressedSizes = 0;
-for (let i = 0; i < nSizes; i++) {
-    let sizeEntry = sizes.get_child_value(i);
-    assertEquals(sizeEntry.n_children(), 34);
-    let compressedSize = sizeEntry.get_child_value(32).get_byte();
-    let uncompressedSize = sizeEntry.get_child_value(33).get_byte();
-    print("compressed = " + compressedSize);
-    print("uncompressed = " + uncompressedSize);
-    for (let j = 0; j < expectedUncompressedSizes.length; j++) {
-	let expected = expectedUncompressedSizes[j];
-	if (expected == uncompressedSize) {
-	    print("Matched expected uncompressed size " + expected);
-	    expectedUncompressedSizes.splice(j, 1);
-	    break;
-	}
-    }
-}
-if (expectedUncompressedSizes.length > 0) {
-    throw new Error("Failed to match expectedUncompressedSizes: " + JSON.stringify(expectedUncompressedSizes));
-}
+let expectedFiles = {
+    'f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad': [54, 18],
+    'd35bfc50864fca777dbeead3ba3689115b76674a093210316589b1fe5cc3ff4b': [48, 12],
+};
+validateSizes(repo, commit, expectedFiles);
 
 print("ok test-sizes");
