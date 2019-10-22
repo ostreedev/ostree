@@ -118,7 +118,7 @@ function validateSizes(repo, commit, expectedFiles) {
     }
 }
 
-print('1..1')
+print('1..2')
 
 let testDataDir = Gio.File.new_for_path('test-data');
 testDataDir.make_directory(null);
@@ -156,3 +156,17 @@ let expectedFiles = {
 validateSizes(repo, commit, expectedFiles);
 
 print("ok test-sizes");
+
+// Repeat the commit now that all the objects are cached and ensure the
+// metadata is still correct
+repo.prepare_transaction(null);
+mtree = OSTree.MutableTree.new();
+repo.write_directory_to_mtree(testDataDir, mtree, commitModifier, null);
+[,dirTree] = repo.write_mtree(mtree, null);
+[,commit] = repo.write_commit(null, 'Another subject', 'Another body', null, dirTree, null);
+print("commit => " + commit);
+repo.commit_transaction(null);
+
+validateSizes(repo, commit, expectedFiles);
+
+print("ok test-sizes repeated");
