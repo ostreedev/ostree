@@ -1060,6 +1060,19 @@ write_content_object (OstreeRepo         *self,
 
   g_assert (actual_checksum != NULL); /* Pacify static analysis */
 
+  /* Update size metadata if configured and entry missing */
+  if (self->generate_sizes && object_file_type == G_FILE_TYPE_REGULAR &&
+      (self->object_sizes == NULL ||
+       g_hash_table_lookup (self->object_sizes, actual_checksum) == NULL))
+    {
+      struct stat stbuf;
+
+      if (!glnx_fstat (tmpf.fd, &stbuf, error))
+        return FALSE;
+
+      repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
+    }
+
   /* See whether or not we have the object, now that we know the
    * checksum.
    */
@@ -1125,17 +1138,6 @@ write_content_object (OstreeRepo         *self,
     }
   else
     {
-      /* Update size metadata if configured */
-      if (self->generate_sizes && object_file_type == G_FILE_TYPE_REGULAR)
-        {
-          struct stat stbuf;
-
-          if (!glnx_fstat (tmpf.fd, &stbuf, error))
-            return FALSE;
-
-          repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
-        }
-
       /* Check if a file with the same payload is present in the repository,
          and in case try to reflink it */
       if (actual_payload_checksum && !_try_clone_from_payload_link (self, self, actual_payload_checksum, file_info, &tmpf, cancellable, error))
@@ -2638,8 +2640,11 @@ ostree_repo_write_content (OstreeRepo       *self,
 {
   /* First, if we have an expected checksum, see if we already have this
    * object.  This mirrors the same logic in ostree_repo_write_metadata().
+   *
+   * If size metadata is needed, fall through to write_content_object()
+   * where the entries are made.
    */
-  if (expected_checksum)
+  if (expected_checksum && !self->generate_sizes)
     {
       gboolean have_obj;
       if (!_ostree_repo_has_loose_object (self, expected_checksum,
