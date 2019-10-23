@@ -352,7 +352,13 @@ repo_setup_generate_sizes (OstreeRepo               *self,
   if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
     {
       if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE)
-        self->generate_sizes = TRUE;
+        {
+          self->generate_sizes = TRUE;
+
+          /* Clear any stale data in the object sizes hash table */
+          if (self->object_sizes != NULL)
+            g_hash_table_remove_all (self->object_sizes);
+        }
       else
         g_debug ("Not generating sizes for non-archive repo");
     }
@@ -428,6 +434,9 @@ add_size_index_to_metadata (OstreeRepo        *self,
 
       g_variant_builder_add (builder, "{sv}", "ostree.sizes",
                              g_variant_builder_end (&index_builder));
+
+      /* Clear the object sizes hash table for a subsequent commit. */
+      g_hash_table_remove_all (self->object_sizes);
     }
 
   return g_variant_ref_sink (g_variant_builder_end (builder));
