@@ -3573,7 +3573,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autofree char **refs_to_fetch = NULL;
   g_autoptr(GVariantIter) collection_refs_iter = NULL;
   g_autofree char **override_commit_ids = NULL;
-  GSource *update_timeout = NULL;
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
   gboolean opt_collection_refs_set = FALSE;
@@ -4505,6 +4504,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (pull_data->progress)
     {
+      g_autoptr(GSource) update_timeout = NULL;
+
       /* Setup a custom frequency if set */
       if (update_frequency > 0)
         update_timeout = g_timeout_source_new (pull_data->dry_run ? 0 : update_frequency);
@@ -4514,7 +4515,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_source_set_priority (update_timeout, G_PRIORITY_HIGH);
       g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
       g_source_attach (update_timeout, pull_data->main_context);
-      g_source_unref (update_timeout);
     }
 
   /* Now await work completion */
@@ -4732,8 +4732,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (!inherit_transaction)
     ostree_repo_abort_transaction (pull_data->repo, cancellable, NULL);
   g_main_context_unref (pull_data->main_context);
-  if (update_timeout)
-    g_source_destroy (update_timeout);
   g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
   g_clear_pointer (&pull_data->extra_headers, (GDestroyNotify)g_variant_unref);
