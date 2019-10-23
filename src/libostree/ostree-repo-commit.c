@@ -346,6 +346,19 @@ content_size_cache_entry_free (gpointer entry)
 }
 
 static void
+repo_setup_generate_sizes (OstreeRepo               *self,
+                           OstreeRepoCommitModifier *modifier)
+{
+  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
+    {
+      if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE)
+        self->generate_sizes = TRUE;
+      else
+        g_debug ("Not generating sizes for non-archive repo");
+    }
+}
+
+static void
 repo_store_size_entry (OstreeRepo       *self,
                        const gchar      *checksum,
                        goffset           unpacked,
@@ -956,7 +969,6 @@ write_content_object (OstreeRepo         *self,
   g_auto(OtCleanupUnlinkat) tmp_unlinker = { commit_tmp_dfd (self), NULL };
   g_auto(GLnxTmpfile) tmpf = { 0, };
   goffset unpacked_size = 0;
-  gboolean indexable = FALSE;
   /* Is it a symlink physically? */
   if (phys_object_is_symlink)
     {
@@ -981,9 +993,6 @@ write_content_object (OstreeRepo         *self,
       g_autoptr(GOutputStream) temp_out = NULL;
 
       g_assert (repo_mode == OSTREE_REPO_MODE_ARCHIVE);
-
-      if (self->generate_sizes)
-        indexable = TRUE;
 
       if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                           &tmpf, error))
@@ -1108,7 +1117,7 @@ write_content_object (OstreeRepo         *self,
   else
     {
       /* Update size metadata if configured */
-      if (indexable && object_file_type == G_FILE_TYPE_REGULAR)
+      if (self->generate_sizes && object_file_type == G_FILE_TYPE_REGULAR)
         {
           struct stat stbuf;
 
@@ -3848,8 +3857,7 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
     }
   else
     {
-      if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
-        self->generate_sizes = TRUE;
+      repo_setup_generate_sizes (self, modifier);
 
       g_autoptr(GPtrArray) path = g_ptr_array_new ();
       if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
@@ -3883,8 +3891,7 @@ ostree_repo_write_dfd_to_mtree (OstreeRepo                *self,
                                 GCancellable              *cancellable,
                                 GError                   **error)
 {
-  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
-    self->generate_sizes = TRUE;
+  repo_setup_generate_sizes (self, modifier);
 
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))
