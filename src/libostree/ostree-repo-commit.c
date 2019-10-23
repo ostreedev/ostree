@@ -365,15 +365,38 @@ repo_setup_generate_sizes (OstreeRepo               *self,
 }
 
 static void
-repo_store_size_entry (OstreeRepo       *self,
-                       const gchar      *checksum,
-                       goffset           unpacked,
-                       goffset           archived)
+repo_ensure_size_entries (OstreeRepo *self)
 {
   if (G_UNLIKELY (self->object_sizes == NULL))
     self->object_sizes = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                 g_free, content_size_cache_entry_free);
+}
 
+static gboolean
+repo_has_size_entry (OstreeRepo       *self,
+                     OstreeObjectType  objtype,
+                     const gchar      *checksum)
+{
+  /* Only file, dirtree and dirmeta objects appropriate for size metadata */
+  if (objtype > OSTREE_OBJECT_TYPE_DIR_META)
+    return TRUE;
+
+  repo_ensure_size_entries (self);
+  return (g_hash_table_lookup (self->object_sizes, checksum) != NULL);
+}
+
+static void
+repo_store_size_entry (OstreeRepo       *self,
+                       OstreeObjectType  objtype,
+                       const gchar      *checksum,
+                       goffset           unpacked,
+                       goffset           archived)
+{
+  /* Only file, dirtree and dirmeta objects appropriate for size metadata */
+  if (objtype > OSTREE_OBJECT_TYPE_DIR_META)
+    return;
+
+  repo_ensure_size_entries (self);
   g_hash_table_replace (self->object_sizes,
                         g_strdup (checksum),
                         content_size_cache_entry_new (unpacked, archived));
@@ -1031,6 +1054,11 @@ write_content_object (OstreeRepo         *self,
 
           unpacked_size = g_file_info_get_size (file_info);
         }
+      else
+        {
+          /* For a symlink, the size is the length of the target */
+          unpacked_size = strlen (g_file_info_get_symlink_target (file_info));
+        }
 
       if (!g_output_stream_flush (temp_out, cancellable, error))
         return FALSE;
@@ -1061,16 +1089,16 @@ write_content_object (OstreeRepo         *self,
   g_assert (actual_checksum != NULL); /* Pacify static analysis */
 
   /* Update size metadata if configured and entry missing */
-  if (self->generate_sizes && object_file_type == G_FILE_TYPE_REGULAR &&
-      (self->object_sizes == NULL ||
-       g_hash_table_lookup (self->object_sizes, actual_checksum) == NULL))
+  if (self->generate_sizes &&
+      !repo_has_size_entry (self, OSTREE_OBJECT_TYPE_FILE, actual_checksum))
     {
       struct stat stbuf;
 
       if (!glnx_fstat (tmpf.fd, &stbuf, error))
         return FALSE;
 
-      repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
+      repo_store_size_entry (self, OSTREE_OBJECT_TYPE_FILE, actual_checksum,
+                             unpacked_size, stbuf.st_size);
     }
 
   /* See whether or not we have the object, now that we know the
@@ -1329,6 +1357,11 @@ write_metadata_object (OstreeRepo         *self,
        */
       if (have_obj)
         {
+          /* Update size metadata if needed */
+          if (self->generate_sizes &&
+              !repo_has_size_entry (self, objtype, actual_checksum))
+            repo_store_size_entry (self, objtype, actual_checksum, len, len);
+
           g_mutex_lock (&self->txn_lock);
           self->txn.stats.metadata_objects_total++;
           g_mutex_unlock (&self->txn_lock);
@@ -1349,6 +1382,11 @@ write_metadata_object (OstreeRepo         *self,
   /* Ok, checksum is known, let's get the data */
   gsize len;
   const guint8 *bufp = g_bytes_get_data (buf, &len);
+
+  /* Update size metadata if needed */
+  if (self->generate_sizes &&
+      !repo_has_size_entry (self, objtype, actual_checksum))
+    repo_store_size_entry (self, objtype, actual_checksum, len, len);
 
   /* Write the metadata to a temporary file */
   g_auto(GLnxTmpfile) tmpf = { 0, };
@@ -2365,6 +2403,16 @@ ostree_repo_write_metadata (OstreeRepo         *self,
         return FALSE;
       if (have_obj)
         {
+          /* Update size metadata if needed */
+          if (self->generate_sizes &&
+              !repo_has_size_entry (self, objtype, expected_checksum))
+            {
+              /* Make sure we have a fully serialized object */
+              g_autoptr(GVariant) trusted = g_variant_get_normal_form (object);
+              gsize size = g_variant_get_size (trusted);
+              repo_store_size_entry (self, objtype, expected_checksum, size, size);
+            }
+
           if (out_csum)
             *out_csum = ostree_checksum_to_bytes (expected_checksum);
           return TRUE;

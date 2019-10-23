@@ -123,6 +123,10 @@ print('1..3')
 let testDataDir = Gio.File.new_for_path('test-data');
 testDataDir.make_directory(null);
 testDataDir.get_child('some-file').replace_contents("hello world!", null, false, 0, null);
+testDataDir.get_child('some-file').copy(testDataDir.get_child('duplicate-file'),
+                                        Gio.FileCopyFlags.OVERWRITE,
+                                        null, null);
+testDataDir.get_child('link-file').make_symbolic_link('some-file', null);
 testDataDir.get_child('another-file').replace_contents("hello world again!", null, false, 0, null);
 
 let repoPath = Gio.File.new_for_path('repo');
@@ -152,15 +156,21 @@ repo.commit_transaction(null);
 let expectedFiles = {
     'f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad': [54, 18],
     'd35bfc50864fca777dbeead3ba3689115b76674a093210316589b1fe5cc3ff4b': [48, 12],
+    '8322876a078e79d8c960b8b4658fe77e7b2f878f8a6cf89dbb87c6becc8128a0': [43, 9],
+    '1c77033ca06eae77ed99cb26472969964314ffd5b4e4c0fd3ff6ec4265c86e51': [185, 185],
+    '446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec73f62988eb0b6c5488': [12, 12],
 };
 validateSizes(repo, commit, expectedFiles);
 
 print("ok test-sizes");
 
 // Remove a file to make sure that metadata is not reused from the
-// previous commit
+// previous commit. Remove that file from the expected metadata and
+// replace the dirtree object.
 testDataDir.get_child('another-file').delete(null);
 delete expectedFiles['f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad'];
+delete expectedFiles['1c77033ca06eae77ed99cb26472969964314ffd5b4e4c0fd3ff6ec4265c86e51'];
+expectedFiles['a384660cc18ffdb60296961dde9a2d6f78f4fec095165652cb53aa81f6dc7539'] = [138, 138];
 
 repo.prepare_transaction(null);
 mtree = OSTree.MutableTree.new();
