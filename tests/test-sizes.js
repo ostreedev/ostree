@@ -118,7 +118,7 @@ function validateSizes(repo, commit, expectedFiles) {
     }
 }
 
-print('1..2')
+print('1..3')
 
 let testDataDir = Gio.File.new_for_path('test-data');
 testDataDir.make_directory(null);
@@ -156,6 +156,23 @@ let expectedFiles = {
 validateSizes(repo, commit, expectedFiles);
 
 print("ok test-sizes");
+
+// Remove a file to make sure that metadata is not reused from the
+// previous commit
+testDataDir.get_child('another-file').delete(null);
+delete expectedFiles['f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad'];
+
+repo.prepare_transaction(null);
+mtree = OSTree.MutableTree.new();
+repo.write_directory_to_mtree(testDataDir, mtree, commitModifier, null);
+[,dirTree] = repo.write_mtree(mtree, null);
+[,commit] = repo.write_commit(null, 'Some subject', 'Some body', null, dirTree, null);
+print("commit => " + commit);
+repo.commit_transaction(null);
+
+validateSizes(repo, commit, expectedFiles);
+
+print("ok test-sizes file deleted");
 
 // Repeat the commit now that all the objects are cached and ensure the
 // metadata is still correct
