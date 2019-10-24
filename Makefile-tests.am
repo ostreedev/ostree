@@ -86,6 +86,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-pull-resume.sh \
 	tests/test-pull-basicauth.sh \
 	tests/test-pull-repeated.sh \
+	tests/test-pull-sizes.sh \
 	tests/test-pull-untrusted.sh \
 	tests/test-pull-override-url.sh \
 	tests/test-pull-localcache.sh \

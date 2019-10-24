@@ -1445,6 +1445,7 @@ _ostree_show() {
     local boolean_options="
         $main_boolean_options
         --print-related
+        --print-sizes
         --raw
     "
 
