@@ -348,9 +348,9 @@ content_size_cache_entry_free (gpointer entry)
     g_slice_free (OstreeContentSizeCacheEntry, entry);
 }
 
-static void
-repo_setup_generate_sizes (OstreeRepo               *self,
-                           OstreeRepoCommitModifier *modifier)
+void
+_ostree_repo_setup_generate_sizes (OstreeRepo               *self,
+                                   OstreeRepoCommitModifier *modifier)
 {
   if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
     {
@@ -3923,7 +3923,7 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
     }
   else
     {
-      repo_setup_generate_sizes (self, modifier);
+      _ostree_repo_setup_generate_sizes (self, modifier);
 
       g_autoptr(GPtrArray) path = g_ptr_array_new ();
       if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
@@ -3957,7 +3957,7 @@ ostree_repo_write_dfd_to_mtree (OstreeRepo                *self,
                                 GCancellable              *cancellable,
                                 GError                   **error)
 {
-  repo_setup_generate_sizes (self, modifier);
+  _ostree_repo_setup_generate_sizes (self, modifier);
 
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))

@@ -337,6 +337,10 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     GFileInfo                *file_info,
                                     GFileInfo               **out_modified_info);
 
+void
+_ostree_repo_setup_generate_sizes (OstreeRepo               *self,
+                                   OstreeRepoCommitModifier *modifier);
+
 gboolean
 _ostree_repo_remote_name_is_file (const char *remote_name);
 

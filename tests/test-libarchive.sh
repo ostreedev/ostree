@@ -28,7 +28,7 @@ fi
 
 . $(dirname $0)/libtest.sh
 
-echo "1..17"
+echo "1..18"
 
 setup_test_repository "bare"
 
@@ -234,3 +234,17 @@ for filter in '^usr/bin/,usr/sbin/' '/bin/,/sbin/'; do
     assert_file_has_content usr/lib/libfoo.so 'a library'
     echo "ok tar pathname filter modification: ${filter}"
 done
+
+# Test sizes metadata. This needs an archive repo, so a separate repo is used.
+cd ${test_tmpdir}
+rm -rf repo2
+ostree_repo_init repo2 --mode=archive
+${CMD_PREFIX} ostree --repo=repo2 commit \
+  -s "from tar" -b test-tar \
+  --generate-sizes \
+  --tree=tar=foo.tar.gz
+${CMD_PREFIX} ostree --repo=repo2 show --print-sizes test-tar > sizes.txt
+assert_file_has_content sizes.txt 'Compressed size (needed/total): 0[  ]bytes/1.1[  ]kB'
+assert_file_has_content sizes.txt 'Unpacked size (needed/total): 0[  ]bytes/900[  ]bytes'
+assert_file_has_content sizes.txt 'Number of objects (needed/total): 0/12'
+echo "ok tar sizes metadata"
