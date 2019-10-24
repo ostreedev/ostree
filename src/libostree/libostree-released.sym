@@ -575,6 +575,8 @@ LIBOSTREE_2019.4 {
   ostree_repo_mark_commit_partial_reason;
 } LIBOSTREE_2019.3;
 
+/* No new symbols in 2019.5 */
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
