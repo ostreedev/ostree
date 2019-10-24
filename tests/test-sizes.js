@@ -67,15 +67,15 @@ function unpackByteArray(variant) {
     return array;
 }
 
-function validateSizes(repo, commit, expectedFiles) {
+function validateSizes(repo, commit, expectedObjects) {
     let [,commitVariant] = repo.load_variant(OSTree.ObjectType.COMMIT, commit);
     let metadata = commitVariant.get_child_value(0);
     let sizes = metadata.lookup_value('ostree.sizes', GLib.VariantType.new('aay'));
-    let nSizes = sizes.n_children();
-    let expectedNSizes = Object.keys(expectedFiles).length
-    assertEquals(nSizes, expectedNSizes);
+    let nObjects = sizes.n_children();
+    let expectedNObjects = Object.keys(expectedObjects).length
+    assertEquals(nObjects, expectedNObjects);
 
-    for (let i = 0; i < nSizes; i++) {
+    for (let i = 0; i < nObjects; i++) {
         let sizeEntry = sizes.get_child_value(i);
         assertGreaterEquals(sizeEntry.n_children(), 34);
         let entryBytes = unpackByteArray(sizeEntry);
@@ -94,15 +94,20 @@ function validateSizes(repo, commit, expectedFiles) {
         assertGreaterEquals(remainingBytes.length, 1);
         [uncompressedSize, varintRead] = readVarint(remainingBytes);
         remainingBytes = remainingBytes.slice(varintRead);
-        assertEquals(remainingBytes.length, 0);
+        assertEquals(remainingBytes.length, 1);
+        let objectType = remainingBytes[0];
+        let objectTypeString = OSTree.object_type_to_string(objectType);
         print("compressed = " + compressedSize);
         print("uncompressed = " + uncompressedSize);
+        print("objtype = " + objectTypeString + " (" + objectType + ")");
+        let objectName = OSTree.object_to_string(checksumString, objectType);
+        print("object = " + objectName);
 
-        if (!(checksumString in expectedFiles)) {
-            throw new Error("Checksum " + checksumString + " not in " +
-                            JSON.stringify(expectedFiles));
+        if (!(objectName in expectedObjects)) {
+            throw new Error("Object " + objectName + " not in " +
+                            JSON.stringify(expectedObjects));
         }
-        let expectedSizes = expectedFiles[checksumString];
+        let expectedSizes = expectedObjects[objectName];
         let expectedCompressedSize = expectedSizes[0];
         let expectedUncompressedSize = expectedSizes[1];
         if (compressedSize != expectedCompressedSize) {
@@ -152,15 +157,26 @@ print("commit => " + commit);
 
 repo.commit_transaction(null);
 
-// Test the sizes metadata
-let expectedFiles = {
-    'f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad': [54, 18],
-    'd35bfc50864fca777dbeead3ba3689115b76674a093210316589b1fe5cc3ff4b': [48, 12],
-    '8322876a078e79d8c960b8b4658fe77e7b2f878f8a6cf89dbb87c6becc8128a0': [43, 9],
-    '1c77033ca06eae77ed99cb26472969964314ffd5b4e4c0fd3ff6ec4265c86e51': [185, 185],
-    '446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec73f62988eb0b6c5488': [12, 12],
+// Test the sizes metadata. The key is the object and the value is an
+// array of compressed size and uncompressed size.
+let expectedObjects = {
+    'f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad.file': [
+        54, 18
+    ],
+    'd35bfc50864fca777dbeead3ba3689115b76674a093210316589b1fe5cc3ff4b.file': [
+        48, 12
+    ],
+    '8322876a078e79d8c960b8b4658fe77e7b2f878f8a6cf89dbb87c6becc8128a0.file': [
+        43, 9
+    ],
+    '1c77033ca06eae77ed99cb26472969964314ffd5b4e4c0fd3ff6ec4265c86e51.dirtree': [
+        185, 185
+    ],
+    '446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec73f62988eb0b6c5488.dirmeta': [
+        12, 12
+    ],
 };
-validateSizes(repo, commit, expectedFiles);
+validateSizes(repo, commit, expectedObjects);
 
 print("ok test-sizes");
 
@@ -168,9 +184,11 @@ print("ok test-sizes");
 // previous commit. Remove that file from the expected metadata and
 // replace the dirtree object.
 testDataDir.get_child('another-file').delete(null);
-delete expectedFiles['f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad'];
-delete expectedFiles['1c77033ca06eae77ed99cb26472969964314ffd5b4e4c0fd3ff6ec4265c86e51'];
-expectedFiles['a384660cc18ffdb60296961dde9a2d6f78f4fec095165652cb53aa81f6dc7539'] = [138, 138];
+delete expectedObjects['f5ee222a21e2c96edbd6f2543c4bc8a039f827be3823d04777c9ee187778f1ad.file'];
+delete expectedObjects['1c77033ca06eae77ed99cb26472969964314ffd5b4e4c0fd3ff6ec4265c86e51.dirtree'];
+expectedObjects['a384660cc18ffdb60296961dde9a2d6f78f4fec095165652cb53aa81f6dc7539.dirtree'] = [
+    138, 138
+];
 
 repo.prepare_transaction(null);
 mtree = OSTree.MutableTree.new();
@@ -180,7 +198,7 @@ repo.write_directory_to_mtree(testDataDir, mtree, commitModifier, null);
 print("commit => " + commit);
 repo.commit_transaction(null);
 
-validateSizes(repo, commit, expectedFiles);
+validateSizes(repo, commit, expectedObjects);
 
 print("ok test-sizes file deleted");
 
@@ -194,6 +212,6 @@ repo.write_directory_to_mtree(testDataDir, mtree, commitModifier, null);
 print("commit => " + commit);
 repo.commit_transaction(null);
 
-validateSizes(repo, commit, expectedFiles);
+validateSizes(repo, commit, expectedObjects);
 
 print("ok test-sizes repeated");

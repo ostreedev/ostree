@@ -322,16 +322,19 @@ commit_loose_regfile_object (OstreeRepo        *self,
 /* This is used by OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES */
 typedef struct
 {
+  OstreeObjectType objtype;
   goffset unpacked;
   goffset archived;
 } OstreeContentSizeCacheEntry;
 
 static OstreeContentSizeCacheEntry *
-content_size_cache_entry_new (goffset unpacked,
-                              goffset archived)
+content_size_cache_entry_new (OstreeObjectType objtype,
+                              goffset          unpacked,
+                              goffset          archived)
 {
   OstreeContentSizeCacheEntry *entry = g_slice_new0 (OstreeContentSizeCacheEntry);
 
+  entry->objtype = objtype;
   entry->unpacked = unpacked;
   entry->archived = archived;
 
@@ -399,7 +402,7 @@ repo_store_size_entry (OstreeRepo       *self,
   repo_ensure_size_entries (self);
   g_hash_table_replace (self->object_sizes,
                         g_strdup (checksum),
-                        content_size_cache_entry_new (unpacked, archived));
+                        content_size_cache_entry_new (objtype, unpacked, archived));
 }
 
 static int
@@ -450,6 +453,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
             g_hash_table_lookup (self->object_sizes, e_checksum);
           _ostree_write_varuint64 (buffer, e_size->archived);
           _ostree_write_varuint64 (buffer, e_size->unpacked);
+          g_string_append_c (buffer, (gchar) e_size->objtype);
 
           g_variant_builder_add (&index_builder, "@ay",
                                  ot_gvariant_new_bytearray ((guint8*)buffer->str, buffer->len));
