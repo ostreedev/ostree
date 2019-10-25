@@ -31,6 +31,7 @@
 #include "libglnx.h"
 #include "otutil.h"
 #include <glnx-console.h>
+#include <linux/magic.h>
 
 #include "ostree-core-private.h"
 #include "ostree-sysroot-private.h"
@@ -47,6 +48,7 @@
 #include <glib/gstdio.h>
 #include <sys/file.h>
 #include <sys/statvfs.h>
+#include <sys/statfs.h>
 
 #define REPO_LOCK_DISABLED (-2)
 #define REPO_LOCK_BLOCKING (-1)
@@ -3033,6 +3035,34 @@ reload_core_config (OstreeRepo          *self,
       }
   }
 
+  /* Currently experimental */
+  static const char fsverity_key[] = "ex-fsverity";
+  self->fs_verity_wanted = _OSTREE_FEATURE_NO;
+#ifdef HAVE_LINUX_FSVERITY_H
+  self->fs_verity_supported = _OSTREE_FEATURE_MAYBE;
+#else
+  self->fs_verity_supported = _OSTREE_FEATURE_NO;
+#endif
+  gboolean fsverity_required = FALSE;
+  if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "required",
+                                            FALSE, &fsverity_required, error))
+    return FALSE;
+  if (fsverity_required)
+    {
+      self->fs_verity_wanted = _OSTREE_FEATURE_YES;
+      if (self->fs_verity_supported == _OSTREE_FEATURE_NO)
+        return glnx_throw (error, "fsverity required, but libostree compiled without support");
+    }
+  else
+    {  
+      gboolean fsverity_opportunistic = FALSE;
+      if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "opportunistic",
+                                                FALSE, &fsverity_opportunistic, error))
+        return FALSE;
+      if (fsverity_opportunistic)
+        self->fs_verity_wanted = _OSTREE_FEATURE_MAYBE;
+    }
+  
   {
     g_clear_pointer (&self->collection_id, g_free);
     if (!ot_keyfile_get_value_with_default (self->config, "core", "collection-id",

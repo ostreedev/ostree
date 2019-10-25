@@ -246,6 +246,10 @@ LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 # What's in RHEL7.2.
 FUSE_DEPENDENCY="fuse >= 2.9.2"
 
+AC_CHECK_HEADERS([linux/fsverity.h])
+AS_IF([test x$ac_cv_header_linux_fsverity_h = xyes ],
+  [OSTREE_FEATURES="$OSTREE_FEATURES ex-fsverity"])
+
 # check for gtk-doc
 m4_ifdef([GTK_DOC_CHECK], [
 GTK_DOC_CHECK([1.15], [--flavour no-tmpl])
@@ -618,6 +622,7 @@ echo "
     HTTP backend:                                 $fetcher_backend
     \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
     SELinux:                                      $with_selinux
+    fs-verity:                                    $ac_cv_header_linux_fsverity_h
     cryptographic checksums:                      $with_crypto
     systemd:                                      $with_libsystemd
     libmount:                                     $with_libmount
