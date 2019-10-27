@@ -405,10 +405,7 @@ _load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, GError **
       
       /* Read the key itself */
       /* base64 encoded key */
-      gsize key_len = 0;
-      g_autofree guchar *key = g_base64_decode (line, &key_len);
-
-      pk = g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, key, key_len, sizeof(guchar));
+      pk = g_variant_new_string (line);
       if (ostree_sign_ed25519_add_pk (self, pk, error))
         {
           ret = TRUE;
