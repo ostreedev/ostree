@@ -59,6 +59,8 @@ struct _OstreeSignInterface
                             GError **error);
   const gchar *(* metadata_key) (OstreeSign *self);
   const gchar *(* metadata_format) (OstreeSign *self);
+  gboolean (* clear_keys) (OstreeSign *self,
+                           GError **error);
   gboolean (* set_sk) (OstreeSign *self,
                        GVariant *secret_key,
                        GError **error);
@@ -108,6 +110,10 @@ gboolean ostree_sign_commit_verify (OstreeSign *self,
                                     const gchar    *commit_checksum,
                                     GCancellable   *cancellable,
                                     GError         **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_sign_clear_keys (OstreeSign *self,
+                                 GError **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_sign_set_sk (OstreeSign *self,

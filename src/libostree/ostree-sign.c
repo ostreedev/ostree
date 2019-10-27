@@ -87,6 +87,17 @@ const gchar * ostree_sign_metadata_format (OstreeSign *self)
   return OSTREE_SIGN_GET_IFACE (self)->metadata_format (self);
 }
 
+gboolean ostree_sign_clear_keys (OstreeSign *self,
+                                 GError **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+
+  if (OSTREE_SIGN_GET_IFACE (self)->clear_keys == NULL)
+    return TRUE;
+
+  return OSTREE_SIGN_GET_IFACE (self)->clear_keys (self, error);
+}
+
 gboolean ostree_sign_set_sk (OstreeSign *self,
                              GVariant *secret_key,
                              GError **error)

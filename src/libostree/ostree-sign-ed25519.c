@@ -62,6 +62,7 @@ ostree_sign_ed25519_iface_init (OstreeSignInterface *self)
   self->get_name = ostree_sign_ed25519_get_name;
   self->metadata_key = ostree_sign_ed25519_metadata_key;
   self->metadata_format = ostree_sign_ed25519_metadata_format;
+  self->clear_keys = ostree_sign_ed25519_clear_keys;
   self->set_sk = ostree_sign_ed25519_set_sk;
   self->set_pk = ostree_sign_ed25519_set_pk;
   self->add_pk = ostree_sign_ed25519_add_pk;
@@ -253,6 +254,36 @@ const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
   return OSTREE_SIGN_METADATA_ED25519_TYPE;
 }
 
+gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
+                                         GError **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+
+#ifdef HAVE_LIBSODIUM
+  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+
+  /* Clear secret key */
+  if (sign->secret_key != NULL)
+  {
+    memset (sign->secret_key, 0, crypto_sign_SECRETKEYBYTES);
+    g_free (sign->secret_key);
+    sign->secret_key = NULL;
+  }
+
+  /* Clear already loaded trusted keys */
+  if (sign->public_keys != NULL)
+    {
+      g_list_free_full (sign->public_keys, g_free);
+      sign->public_keys = NULL;
+    }
+
+  return TRUE;
+
+#endif /* HAVE_LIBSODIUM */
+  return FALSE;
+}
+
 /* Support 2 representations:
  * base64 ascii -- secret key is passed as string
  * raw key -- key is passed as bytes array
@@ -267,7 +298,7 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
 #ifdef HAVE_LIBSODIUM
   OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
-  g_free (sign->secret_key);
+  ostree_sign_ed25519_clear_keys (self, error);
 
   gsize n_elements = 0;
 
@@ -315,12 +346,7 @@ gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
 
   OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
-  /* Substitute the key(s) with a new one */
-  if (sign->public_keys != NULL)
-    {
-      g_list_free_full (sign->public_keys, g_free);
-      sign->public_keys = NULL;
-    }
+  ostree_sign_ed25519_clear_keys (self, error);
 
   return ostree_sign_ed25519_add_pk (self, public_key, error);
 }

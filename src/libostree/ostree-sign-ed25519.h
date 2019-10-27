@@ -55,6 +55,9 @@ const gchar * ostree_sign_ed25519_get_name (OstreeSign *self);
 const gchar * ostree_sign_ed25519_metadata_key (OstreeSign *self);
 const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self);
 
+gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
+                                         GError **error);
+
 gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
                                      GVariant *secret_key,
                                      GError **error);
