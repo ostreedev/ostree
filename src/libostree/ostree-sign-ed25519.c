@@ -44,6 +44,7 @@ struct _OstreeSignEd25519
   gboolean initialized;
   guchar *secret_key;
   GList *public_keys;
+  GList *revoked_keys;
 };
 
 static void
@@ -83,6 +84,7 @@ ostree_sign_ed25519_init (OstreeSignEd25519 *self)
   self->initialized = TRUE;
   self->secret_key = NULL;
   self->public_keys = NULL;
+  self->revoked_keys = NULL;
 
 #ifdef HAVE_LIBSODIUM
   if (sodium_init() < 0)
@@ -138,6 +140,13 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
 err:
   return FALSE;
 }
+
+#ifdef HAVE_LIBSODIUM
+static gint
+_compare_ed25519_keys(gconstpointer a, gconstpointer b) {
+    return memcmp (a, b, crypto_sign_PUBLICKEYBYTES);
+}
+#endif
 
 gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
                                           GBytes     *data,
@@ -204,6 +213,15 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
            public_key != NULL;
            public_key = public_key->next)
         {
+
+          /* TODO: use non-list for tons of revoked keys? */
+          if (g_list_find_custom (sign->revoked_keys, public_key->data, _compare_ed25519_keys) != NULL)
+            {
+              g_debug("Skip revoked key '%s'",
+                      sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, public_key->data, crypto_sign_PUBLICKEYBYTES));
+              continue;
+            }
+
           if (crypto_sign_verify_detached ((guchar *) g_variant_get_data (child),
                                            g_bytes_get_data (data, NULL),
                                            g_bytes_get_size (data),
@@ -278,6 +296,13 @@ gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
       sign->public_keys = NULL;
     }
 
+  /* Clear already loaded revoked keys */
+  if (sign->revoked_keys != NULL)
+    {
+      g_list_free_full (sign->revoked_keys, g_free);
+      sign->revoked_keys = NULL;
+    }
+
   return TRUE;
 
 #endif /* HAVE_LIBSODIUM */
@@ -344,8 +369,6 @@ gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
-
   ostree_sign_ed25519_clear_keys (self, error);
 
   return ostree_sign_ed25519_add_pk (self, public_key, error);
@@ -365,7 +388,7 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
 #ifdef HAVE_LIBSODIUM
   OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
   g_autofree char * hex = NULL;
-  gpointer key = NULL; 
+  gpointer key = NULL;
 
   gsize n_elements = 0;
 
@@ -395,7 +418,7 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
       goto err;
     }
 
-  if (g_list_find (sign->public_keys, key) == NULL)
+  if (g_list_find_custom (sign->public_keys, key, _compare_ed25519_keys) == NULL)
     {
       gpointer newkey = g_memdup (key, n_elements);
       sign->public_keys = g_list_prepend (sign->public_keys, newkey);
@@ -408,10 +431,65 @@ err:
   return FALSE;
 }
 
+#ifdef HAVE_LIBSODIUM
+/* Add revoked public key */
+static gboolean
+_ed25519_add_revoked (OstreeSign *self,
+                      GVariant *revoked_key,
+                      GError **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+
+  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  g_autofree char * hex = NULL;
+  gpointer key = NULL;
+
+  gsize n_elements = 0;
+
+  if (g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
+    {
+      const gchar *rk_ascii = g_variant_get_string (revoked_key, NULL);
+      key = g_base64_decode (rk_ascii, &n_elements);
+    }
+  else
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown ed25519 revoked key type");
+      goto err;
+    }
+
+  hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
+  g_debug ("Read ed25519 revoked key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));
+
+  if (n_elements != crypto_sign_PUBLICKEYBYTES)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Incorrect ed25519 revoked key");
+      goto err;
+    }
+
+  if (g_list_find_custom (sign->revoked_keys, key, _compare_ed25519_keys) == NULL)
+    {
+      gpointer newkey = g_memdup (key, n_elements);
+      sign->revoked_keys = g_list_prepend (sign->revoked_keys, newkey);
+    }
+
+  return TRUE;
+
+err:
+  return FALSE;
+}
+#endif /* HAVE_LIBSODIUM */
+
 
 static gboolean
-_load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, GError **error)
+_load_pk_from_stream (OstreeSign *self,
+                      GDataInputStream *key_data_in,
+                      gboolean trusted,
+                      GError **error)
 {
+  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (key_data_in, FALSE);
 #ifdef HAVE_LIBSODIUM
   gboolean ret = FALSE;
@@ -422,23 +500,31 @@ _load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, GError **
       gsize len = 0;
       g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
       g_autoptr (GVariant) pk = NULL;
+      gboolean added = FALSE;
 
       if (*error != NULL)
         goto err;
 
       if (line == NULL)
-          goto out;
+        goto out;
       
       /* Read the key itself */
       /* base64 encoded key */
       pk = g_variant_new_string (line);
-      if (ostree_sign_ed25519_add_pk (self, pk, error))
-        {
-          ret = TRUE;
-          g_debug ("Added public key: %s", line);
-        }
+
+      if (trusted)
+        added = ostree_sign_ed25519_add_pk (self, pk, error);
       else
-        g_debug ("Invalid public key: %s", line);
+        added = _ed25519_add_revoked (self, pk, error);
+
+      g_debug ("%s %s key: %s",
+               added ? "Added" : "Invalid",
+               trusted ? "public" : "revoked",
+               line);
+
+      /* Mark what we load at least one key */
+      if (added)
+        ret = TRUE;
     }
 
 out:
@@ -452,6 +538,7 @@ err:
 static gboolean
 _load_pk_from_file (OstreeSign *self,
                     const gchar *filename,
+                    gboolean trusted,
                     GError **error)
 {
   g_debug ("%s enter", __FUNCTION__);
@@ -477,64 +564,63 @@ _load_pk_from_file (OstreeSign *self,
   key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
   g_assert (key_data_in != NULL);
 
-  if (!_load_pk_from_stream (self, key_data_in, error))
-    goto err;
+  if (!_load_pk_from_stream (self, key_data_in, trusted, error))
+    {
+      if (error == NULL || *error == NULL)
+        g_set_error (error,
+                     G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "signature: ed25519: no valid keys in file '%s'",
+                     filename);
+      goto err;
+    }
 
   return TRUE;
 err:
   return FALSE;
 }
 
-gboolean
-ostree_sign_ed25519_load_pk (OstreeSign *self,
-                             GVariant *options,
-                             GError **error)
+static gboolean
+_ed25519_load_pk (OstreeSign *self,
+                  GVariant *options,
+                  gboolean trusted,
+                  GError **error)
 {
   g_debug ("%s enter", __FUNCTION__);
 
   gboolean ret = FALSE;
+  const gchar *custom_dir = NULL;
 
-  /* Default paths there to find files with public keys */
-  const gchar *default_dirs[] =
+  g_autoptr (GPtrArray) base_dirs = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) ed25519_files = g_ptr_array_new_with_free_func (g_free);
+
+  if (g_variant_lookup (options, "basedir", "&s", &custom_dir))
     {
-      "/etc/ostree/trusted.ed25519.d",
-      DATADIR "/ostree/trusted.ed25519.d"
-    };
-  const gchar *default_files[] =
+      /* Add custom directory */
+      g_ptr_array_add (base_dirs, g_strdup (custom_dir));
+    }
+  else
     {
-      "/etc/ostree/trusted.ed25519",
-      DATADIR "/ostree/trusted.ed25519"
-    };
-
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
-
-  const gchar *filename = NULL;
-
-  /* Clear already loaded keys */
-  if (sign->public_keys != NULL)
-    {
-      g_list_free_full (sign->public_keys, g_free);
-      sign->public_keys = NULL;
+      /* Default paths where to find files with public keys */
+      g_ptr_array_add (base_dirs, g_strdup ("/etc/ostree"));
+      g_ptr_array_add (base_dirs, g_strdup (DATADIR "/ostree"));
     }
 
-  /* Read only file provided */
-  if (g_variant_lookup (options, "filename", "&s", &filename))
-      return _load_pk_from_file (self, filename, error);
-
-  /* Scan all well-known files and directories */
-  for (gint i=0; i < G_N_ELEMENTS(default_files); i++)
-    if (!_load_pk_from_file (self, default_files[i], error))
-      {
-        g_debug ("Problem with loading ed25519 public keys from `%s`", default_files[i]);
-        g_clear_error(error);
-      }
-    else
-      ret = TRUE;
-
-  /* Scan all well-known files and directories */
-  for (gint i=0; i < G_N_ELEMENTS(default_dirs); i++)
+  /* Scan all well-known directories and construct the list with file names to scan keys */
+  for (gint i=0; i < base_dirs->len; i++)
     {
-      g_autoptr (GDir) dir = g_dir_open (default_dirs[i], 0, error);
+      gchar *base_name = NULL;
+      g_autofree gchar *base_dir = NULL;
+      g_autoptr (GDir) dir = NULL;
+
+      base_name = g_build_filename ((gchar *)g_ptr_array_index (base_dirs, i), 
+                                    trusted ? "trusted.ed25519" : "revoked.ed25519",
+                                    NULL);
+
+      g_debug ("Check ed25519 keys from file: %s", base_name);
+      g_ptr_array_add (ed25519_files, base_name);
+
+      base_dir = g_strconcat (base_name, ".d", NULL);
+      dir = g_dir_open (base_dir, 0, error);
       if (dir == NULL)
         {
           g_clear_error (error);
@@ -543,17 +629,65 @@ ostree_sign_ed25519_load_pk (OstreeSign *self,
       const gchar *entry = NULL;
       while ((entry = g_dir_read_name (dir)) != NULL)
         {
-          filename = g_build_filename (default_dirs[i], entry, NULL);
-          if (!_load_pk_from_file (self, filename, error))
-            {
-              g_debug ("Problem with loading ed25519 public keys from `%s`", filename);
-              g_clear_error(error);
-            }
-          else
-            ret = TRUE;
+          gchar *filename = g_build_filename (base_dir, entry, NULL);
+          g_debug ("Check ed25519 keys from file: %s", filename);
+          g_ptr_array_add (ed25519_files, filename);
         }
     }
+
+  /* Scan all well-known files */
+  for (gint i=0; i < ed25519_files->len; i++)
+    {
+    if (!_load_pk_from_file (self, (gchar *)g_ptr_array_index (ed25519_files, i), trusted, error))
+      {
+        g_debug ("Problem with loading ed25519 %s keys from `%s`",
+                 trusted ? "public" : "revoked",
+                 (gchar *)g_ptr_array_index (ed25519_files, i));
+        g_clear_error(error);
+      }
+    else
+      ret = TRUE;
+    }
+
+  if (!ret && (error == NULL || *error == NULL))
+    g_set_error_literal (error,
+                         G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "signature: ed25519: no keys loaded");
 
   return ret;
 }
 
+/*
+ * options argument should be a{sv}:
+ * - filename -- single file to use to load keys from;
+ * - basedir -- directory containing subdirectories
+ *   'trusted.ed25519.d' and 'revoked.ed25519.d' with appropriate
+ *   public keys. Used for testing and re-definition of system-wide
+ *   directories if defaults are not suitable for any reason.
+ */
+gboolean
+ostree_sign_ed25519_load_pk (OstreeSign *self,
+                             GVariant *options,
+                             GError **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+
+  const gchar *filename = NULL;
+
+  /* Read keys only from single file provided */
+  if (g_variant_lookup (options, "filename", "&s", &filename))
+      return _load_pk_from_file (self, filename, TRUE, error);
+
+  /* Load public keys from well-known directories and files */
+  if (!_ed25519_load_pk (self, options, TRUE, error))
+    return FALSE;
+
+  /* Load untrusted keys from well-known directories and files
+   * Ignore the failure from this function -- it is expected to have
+   * empty list of revoked keys.
+   * */
+  if (!_ed25519_load_pk (self, options, FALSE, error))
+    g_clear_error(error);
+
+  return TRUE;
+}
