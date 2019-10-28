@@ -35,6 +35,7 @@ static gboolean opt_stage;
 static gboolean opt_lock_finalization;
 static gboolean opt_retain_pending;
 static gboolean opt_retain_rollback;
+static gboolean opt_retain_previous;
 static gboolean opt_not_as_default;
 static gboolean opt_no_prune;
 static gboolean opt_no_merge;
@@ -65,6 +66,8 @@ static GOptionEntry options[] = {
     "Do not delete pending deployments", NULL },
   { "retain-rollback", 0, 0, G_OPTION_ARG_NONE, &opt_retain_rollback,
     "Do not delete rollback deployments", NULL },
+  { "retain-previous-version", 0, 0, G_OPTION_ARG_NONE, &opt_retain_previous,
+    "Do not delete previous deployment if version differs from new deployment", NULL },
   { "not-as-default", 0, 0, G_OPTION_ARG_NONE, &opt_not_as_default,
     "Append rather than prepend new deployment", NULL },
   { "karg-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_proc_cmdline,
@@ -239,6 +242,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
     .locked = opt_lock_finalization,
     .override_kernel_argv = kargs_strv,
     .overlay_initrds = overlay_initrd_chksums ? (char **)overlay_initrd_chksums->pdata : NULL,
+    .finalization_flags = opt_retain_previous ? OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PREVIOUS_VERSION : 0,
   };
 
   g_autoptr (OstreeDeployment) new_deployment = NULL;
@@ -265,7 +269,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
                                             _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED);
         }
       /* use old API if we can to exercise it in CI */
-      if (!(overlay_initrd_chksums || opt_lock_finalization))
+      if (!(overlay_initrd_chksums || opt_lock_finalization || opt_retain_previous))
         {
           if (!ostree_sysroot_stage_tree (sysroot, opt_osname, revision, origin, merge_deployment,
                                           kargs_strv, &new_deployment, cancellable, error))
@@ -308,6 +312,8 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
             flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING;
           if (opt_retain_rollback)
             flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK;
+          if (opt_retain_previous)
+            flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PREVIOUS_VERSION;
         }
 
       if (opt_not_as_default)
