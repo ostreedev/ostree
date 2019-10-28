@@ -3573,6 +3573,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autofree char **refs_to_fetch = NULL;
   g_autoptr(GVariantIter) collection_refs_iter = NULL;
   g_autofree char **override_commit_ids = NULL;
+  g_autoptr(GSource) update_timeout = NULL;
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
   gboolean opt_collection_refs_set = FALSE;
@@ -3674,6 +3675,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     pull_data->async_error = &pull_data->cached_async_error;
   else
     pull_data->async_error = NULL;
+
+  /* Note we're using the thread default (or global) context here, so it may outlive the
+   * OtPullData object if there's another ref on it. Thus, always detach/destroy sources
+   * local to the `ostree_repo_pull*` operation rather than trying to transfer ownership. */
   pull_data->main_context = g_main_context_ref_thread_default ();
   pull_data->flags = flags;
 
@@ -4504,8 +4509,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (pull_data->progress)
     {
-      g_autoptr(GSource) update_timeout = NULL;
-
       /* Setup a custom frequency if set */
       if (update_frequency > 0)
         update_timeout = g_timeout_source_new (pull_data->dry_run ? 0 : update_frequency);
@@ -4732,6 +4735,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (!inherit_transaction)
     ostree_repo_abort_transaction (pull_data->repo, cancellable, NULL);
   g_main_context_unref (pull_data->main_context);
+  if (update_timeout)
+    g_source_destroy (update_timeout);
   g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
   g_clear_pointer (&pull_data->extra_headers, (GDestroyNotify)g_variant_unref);
