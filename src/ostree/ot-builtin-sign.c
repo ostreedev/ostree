@@ -37,6 +37,7 @@ static gboolean opt_delete;
 static gboolean opt_verify;
 static char *opt_sign_name;
 static char *opt_filename;
+static char *opt_keysdir;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
@@ -48,9 +49,10 @@ static GOptionEntry options[] = {
   { "verify", 0, 0, G_OPTION_ARG_NONE, &opt_verify, "Verify signatures", NULL},
   { "sign-type", 's', 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
 #if defined(HAVE_LIBSODIUM)
-  { "keys-file", 's', 0, G_OPTION_ARG_STRING, &opt_filename, "Read key(s) from file", "NAME"},
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_filename, "Read key(s) from file", "NAME"},
+  { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir, "Redefine system-wide directories with public and revoked keys for verification", "NAME"},
 #endif
-   { NULL }
+  { NULL }
 };
 
 static void
@@ -131,7 +133,10 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
                                          resolved_commit,
                                          cancellable,
                                          &local_error))
-            ret = TRUE;
+            {
+              ret = TRUE;
+              goto out;
+            }
         }
       else
         {
@@ -162,6 +167,9 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
           g_autoptr (GVariant) options = NULL;
 
           builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+          /* Use custom directory with public and revoked keys instead of system-wide directories */
+          if (opt_keysdir)
+            g_variant_builder_add (builder, "{sv}", "basedir", g_variant_new_string (opt_keysdir));
           /* The last chance for verification source -- system files */
           if (opt_filename)
             g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
@@ -235,9 +243,8 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
             }
         }
     }
-
   // No valid signature found
-  if (opt_verify && (ret != TRUE))
+  if (opt_verify && (ret != TRUE) && (*error == NULL))
     g_set_error_literal (error,
                          G_IO_ERROR, G_IO_ERROR_FAILED,
                          "No valid signatures found");
