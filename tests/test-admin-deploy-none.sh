@@ -43,6 +43,7 @@ ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os testos
 assert_file_has_content out.txt "Bootloader updated.*"
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.* root=LABEL=MOO'
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
+assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/.vmlinuz-3.6.0.hmac  'an hmac file'
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0.img 'an initramfs'
 echo "ok generate bls config on first deployment"
 
