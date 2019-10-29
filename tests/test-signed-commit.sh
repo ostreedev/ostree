@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..8"
+echo "1..10"
 
 mkdir ${test_tmpdir}/repo
 ostree_repo_init repo --mode="archive"
@@ -58,6 +58,8 @@ if ! has_libsodium; then
     echo "ok multiple signing # SKIP due libsodium unavailability"
     echo "ok verify ed25519 keys file # SKIP due libsodium unavailability"
     echo "ok sign with ed25519 keys file # SKIP due libsodium unavailability"
+    echo "ok verify ed25519 system-wide configuration # SKIP due libsodium unavailability"
+    echo "ok verify ed25519 revoking keys mechanism # SKIP due libsodium unavailability"
     exit 0
 fi
 
@@ -125,10 +127,12 @@ PUBKEYS="$(mktemp -p ${test_tmpdir} ed25519_XXXXXX.ed25519)"
 if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}; then
     exit 1
 fi
+
 # Test if have a problem with file object
 if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${test_tmpdir} ${COMMIT}; then
     exit 1
 fi
+
 # Test with single key in list
 echo ${PUBLIC} > ${PUBKEYS}
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}
@@ -169,3 +173,27 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=ed25519 --keys-
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}
 echo "ok sign with ed25519 keys file"
 
+# Check the well-known places mechanism
+mkdir -p ${test_tmpdir}/{trusted,revoked}.ed25519.d
+for((i=0;i<100;i++)); do
+    # Generate some key files with random public signatures
+    openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64 > ${test_tmpdir}/trusted.ed25519.d/signature_$i
+done
+# Check no valid public keys are available
+if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-dir=${test_tmpdir} ${COMMIT}; then
+    exit 1
+fi
+echo ${PUBLIC} > ${test_tmpdir}/trusted.ed25519.d/correct
+# Verify with correct key
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-dir=${test_tmpdir} ${COMMIT}
+
+echo "ok verify ed25519 system-wide configuration"
+
+# Add the public key into revoked list
+echo ${PUBLIC} > ${test_tmpdir}/revoked.ed25519.d/correct
+# Check if public key is not valid anymore
+if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-dir=${test_tmpdir} ${COMMIT}; then
+    exit 1
+fi
+rm -rf ${test_tmpdir}/{trusted,revoked}.ed25519.d
+echo "ok verify ed25519 revoking keys mechanism"
