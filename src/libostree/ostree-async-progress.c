@@ -465,7 +465,7 @@ ostree_async_progress_finish (OstreeAsyncProgress *self)
       if (self->idle_source)
         {
           g_source_destroy (self->idle_source);
-          self->idle_source = NULL;
+          g_clear_pointer (&self->idle_source, g_source_unref);
           emit_changed = TRUE;
         }
     }
