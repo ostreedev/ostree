@@ -878,6 +878,8 @@ typedef struct {
   int   boot_dfd;
   char *kernel_srcpath;
   char *kernel_namever;
+  char *kernel_hmac_srcpath;
+  char *kernel_hmac_namever;
   char *initramfs_srcpath;
   char *initramfs_namever;
   char *devicetree_srcpath;
@@ -890,6 +892,8 @@ _ostree_kernel_layout_free (OstreeKernelLayout *layout)
   glnx_close_fd (&layout->boot_dfd);
   g_free (layout->kernel_srcpath);
   g_free (layout->kernel_namever);
+  g_free (layout->kernel_hmac_srcpath);
+  g_free (layout->kernel_hmac_namever);
   g_free (layout->initramfs_srcpath);
   g_free (layout->initramfs_namever);
   g_free (layout->devicetree_srcpath);
@@ -1031,6 +1035,16 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
 
   g_clear_object (&in);
   glnx_close_fd (&fd);
+
+  /* And finally, look for any HMAC file. This is needed for FIPS mode on some distros. */
+  if (!glnx_fstatat_allow_noent (ret_layout->boot_dfd, ".vmlinuz.hmac", NULL, 0, error))
+    return FALSE;
+  if (errno == 0)
+    {
+      ret_layout->kernel_hmac_srcpath = g_strdup (".vmlinuz.hmac");
+      /* Name it as dracut expects it: https://github.com/dracutdevs/dracut/blob/225e4b94cbdb702cf512490dcd2ad9ca5f5b22c1/modules.d/01fips/fips.sh#L129 */
+      ret_layout->kernel_hmac_namever = g_strdup_printf (".%s.hmac", ret_layout->kernel_namever);
+    }
 
   char hexdigest[OSTREE_SHA256_STRING_LEN+1];
   ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof (hexdigest));
@@ -1680,6 +1694,20 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           if (!install_into_boot (sepolicy, kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
                                   bootcsum_dfd, kernel_layout->devicetree_namever,
+                                  sysroot->debug_flags,
+                                  cancellable, error))
+            return FALSE;
+        }
+    }
+
+  if (kernel_layout->kernel_hmac_srcpath)
+    {
+      if (!glnx_fstatat_allow_noent (bootcsum_dfd, kernel_layout->kernel_hmac_namever, &stbuf, 0, error))
+        return FALSE;
+      if (errno == ENOENT)
+        {
+          if (!install_into_boot (sepolicy, kernel_layout->boot_dfd, kernel_layout->kernel_hmac_srcpath,
+                                  bootcsum_dfd, kernel_layout->kernel_hmac_namever,
                                   sysroot->debug_flags,
                                   cancellable, error))
             return FALSE;

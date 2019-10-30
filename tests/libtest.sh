@@ -395,6 +395,8 @@ setup_os_repository () {
     mkdir -p usr/bin ${bootdir} usr/lib/modules/${kver} usr/share usr/etc
     kernel_path=${bootdir}/vmlinuz
     initramfs_path=${bootdir}/initramfs.img
+    # the HMAC file is only in /usr/lib/modules
+    hmac_path=usr/lib/modules/${kver}/.vmlinuz.hmac
     # /usr/lib/modules just uses "vmlinuz", since the version is in the module
     # directory name.
     if [[ $bootdir != usr/lib/modules/* ]]; then
@@ -403,6 +405,7 @@ setup_os_repository () {
     fi
     echo "a kernel" > ${kernel_path}
     echo "an initramfs" > ${initramfs_path}
+    echo "an hmac file" > ${hmac_path}
     bootcsum=$(cat ${kernel_path} ${initramfs_path} | sha256sum | cut -f 1 -d ' ')
     export bootcsum
     # Add the checksum for legacy dirs (/boot, /usr/lib/ostree-boot), but not
