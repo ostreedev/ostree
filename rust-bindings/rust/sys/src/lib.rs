@@ -155,6 +155,7 @@ pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL: OstreeRepoCommitMo
 pub type OstreeRepoCommitState = c_uint;
 pub const OSTREE_REPO_COMMIT_STATE_NORMAL: OstreeRepoCommitState = 0;
 pub const OSTREE_REPO_COMMIT_STATE_PARTIAL: OstreeRepoCommitState = 1;
+pub const OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL: OstreeRepoCommitState = 2;
 
 pub type OstreeRepoCommitTraverseFlags = c_uint;
 pub const OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE: OstreeRepoCommitTraverseFlags = 1;
@@ -246,6 +247,11 @@ pub type OstreeBootloaderSyslinux = *mut _OstreeBootloaderSyslinux;
 pub struct _OstreeBootloaderUboot(c_void);
 
 pub type OstreeBootloaderUboot = *mut _OstreeBootloaderUboot;
+
+#[repr(C)]
+pub struct _OstreeBootloaderZipl(c_void);
+
+pub type OstreeBootloaderZipl = *mut _OstreeBootloaderZipl;
 
 #[repr(C)]
 pub struct _OstreeChecksumInputStreamPrivate(c_void);
@@ -1213,6 +1219,8 @@ extern "C" {
     pub fn ostree_repo_load_variant_if_exists(self_: *mut OstreeRepo, objtype: OstreeObjectType, sha256: *const c_char, out_variant: *mut *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
     pub fn ostree_repo_mark_commit_partial(self_: *mut OstreeRepo, checksum: *const c_char, is_partial: gboolean, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2019_4", feature = "dox"))]
+    pub fn ostree_repo_mark_commit_partial_reason(self_: *mut OstreeRepo, checksum: *const c_char, is_partial: gboolean, in_state: OstreeRepoCommitState, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_open(self_: *mut OstreeRepo, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_prepare_transaction(self_: *mut OstreeRepo, out_transaction_resume: *mut gboolean, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_prune(self_: *mut OstreeRepo, flags: OstreeRepoPruneFlags, depth: c_int, out_objects_total: *mut c_int, out_objects_pruned: *mut c_int, out_pruned_object_size_total: *mut u64, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;

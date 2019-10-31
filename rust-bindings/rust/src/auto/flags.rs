@@ -94,6 +94,7 @@ bitflags! {
     pub struct RepoCommitState: u32 {
         const NORMAL = 0;
         const PARTIAL = 1;
+        const FSCK_PARTIAL = 2;
     }
 }
 

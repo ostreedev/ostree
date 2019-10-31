@@ -143,7 +143,7 @@ impl Sysroot {
         }
     }
 
-    //pub fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 } {
+    //pub fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 20 } {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_get_deployments() }
     //}
 
@@ -328,12 +328,12 @@ impl Sysroot {
         }
     }
 
-    //pub fn write_deployments<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, cancellable: Option<&P>) -> Result<(), Error> {
+    //pub fn write_deployments<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 20 }, cancellable: Option<&P>) -> Result<(), Error> {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments() }
     //}
 
     //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 19 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), Error> {
+    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 20 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), Error> {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments_with_options() }
     //}
 

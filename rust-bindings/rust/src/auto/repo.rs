@@ -426,6 +426,15 @@ impl Repo {
         }
     }
 
+    #[cfg(any(feature = "v2019_4", feature = "dox"))]
+    pub fn mark_commit_partial_reason(&self, checksum: &str, is_partial: bool, in_state: RepoCommitState) -> Result<(), Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_mark_commit_partial_reason(self.to_glib_none().0, checksum.to_glib_none().0, is_partial.to_glib(), in_state.to_glib(), &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     pub fn open<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), Error> {
         unsafe {
             let mut error = ptr::null_mut();
