@@ -1,0 +1,152 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2019 Denis Pynkin <denis.pynkin@collabora.com>
+
+SPDX-License-Identifier: LGPL-2.0+
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree sign</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree sign</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-sign</refname>
+        <refpurpose>Sign a commit</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+        <cmdsynopsis>
+            <command>ostree sign</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">COMMIT</arg> <arg choice="req" rep="repeat">KEY-ID</arg>
+        </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            Add a new signature to a commit.
+
+            Note that currently, this will append a new signature even if
+            the commit is already signed with a given key.
+        </para>
+
+        <para>
+            There are several "well-known" system places for `ed25519` trusted and revoked public keys -- expected single <literal>base64</literal>-encoded key per line.
+        </para>
+
+        <para>Files:
+            <itemizedlist>
+                <listitem><para><filename>/etc/ostree/trusted.ed25519</filename></para></listitem>
+                <listitem><para><filename>/etc/ostree/revoked.ed25519</filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/trusted.ed25519</filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/revoked.ed25519</filename></para></listitem>
+            </itemizedlist>
+        </para>
+
+        <para>Directories containing files with keys:
+            <itemizedlist>
+                <listitem><para><filename>/etc/ostree/trusted.ed25519.d</filename></para></listitem>
+                <listitem><para><filename>/etc/ostree/revoked.ed25519.d</filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/trusted.ed25519.d</filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/rvokeded.ed25519.d</filename></para></listitem>
+            </itemizedlist>
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>KEY-ID</option></term>
+                <listitem><para>
+                        <variablelist>
+                            <varlistentry>
+                                <term><option>for ed25519:</option></term>
+                                <listitem><para>
+                                        <literal>base64</literal>-encoded secret (for signing) or public key (for verifying).
+                                </para></listitem>
+                            </varlistentry>
+
+                            <varlistentry>
+                                <term><option>for dummy:</option></term>
+                                <listitem><para>
+                                            ASCII-string used as secret key and public key.
+                                </para></listitem>
+                            </varlistentry>
+                        </variablelist>
+                </para></listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>--verify</option></term>
+                <listitem><para>
+                    Verify signatures
+                </para></listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>-s, --sign-type</option></term>
+                <listitem><para>
+                    Use particular signature mechanism. Currently
+                    available <arg choice="plain">ed25519</arg> and <arg choice="plain">dummy</arg>
+                    signature types.
+
+                    The default is <arg choice="plain">ed25519</arg>.
+                </para></listitem>
+            </varlistentry>
+           <varlistentry>
+                <term><option>--keys-file</option></term>
+                <listitem><para>
+                    Read key(s) from file <filename>filename</filename>.
+                </para></listitem>
+
+                <listitem><para>
+                    Valid for <literal>ed25519</literal> signature type.
+                    For <literal>ed25519</literal> this file must contain <literal>base64</literal>-encoded
+                    secret key(s) (for signing) or public key(s) (for verifying) per line.
+                </para></listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>--keys-dir</option></term>
+                <listitem><para>
+                    Redefine the system path, where to search files and subdirectories with
+                    well-known and revoked keys.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+</refentry>
