@@ -56,7 +56,6 @@ generate = [
     "OSTree.SysrootUpgrader",
     "OSTree.SysrootUpgraderFlags",
     "OSTree.SysrootUpgraderPullFlags",
-
 ]
 
 manual = [
@@ -99,6 +98,7 @@ ignore = [
     "OSTree.BootloaderInterface",
     "OSTree.BootloaderSyslinux",
     "OSTree.BootloaderUboot",
+    "OSTree.BootloaderZipl",
     "OSTree.ChecksumInputStream",
     "OSTree.ChecksumInputStreamBuilder",
     "OSTree.CmdPrivateVTable",
@@ -109,7 +109,10 @@ ignore = [
     "OSTree.RollsumMatches",
     # builders we don't want
     "OSTree.RepoBuilder",
+    "OSTree.RepoFinderMountBuilder",
+    "OSTree.SePolicyBuilder",
     "OSTree.SysrootBuilder",
+    "OSTree.SysrootUpgraderBuilder",
 ]
 
 [crate_name_overrides]
