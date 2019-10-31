@@ -6,7 +6,6 @@ variables:
   CARGO_HOME: ${CI_PROJECT_DIR}/cargo
   SCCACHE_DIR: ${CI_PROJECT_DIR}/sccache
   RUSTC_WRAPPER: sccache
-  OSTREE_VERSION: v2019_3
 
 before_script:
 - dnf install -y cargo rust clippy rustfmt git make ostree-devel
@@ -34,8 +33,8 @@ check:
 build_all-features:
   stage: build
   script:
-  - cargo clippy --all --features ${OSTREE_VERSION},futures -- -D warnings
-  - cargo test --verbose --all --features ${OSTREE_VERSION},futures
+  - cargo clippy --all --features latest,futures -- -D warnings
+  - cargo test --verbose --all --features latest,futures
 
 build_default-features:
   stage: build
