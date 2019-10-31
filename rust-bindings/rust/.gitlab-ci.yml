@@ -25,7 +25,7 @@ stages:
 check:
   stage: build
   script:
-  - cargo fmt --all -- --check
+  - cargo fmt --package ostree -- --check
   - rm -rf src/auto/
   - make gir
   - git diff -R --exit-code
