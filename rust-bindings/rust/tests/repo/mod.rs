@@ -120,7 +120,7 @@ fn copy_file(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) {
     assert_eq!(out_csum.to_string(), obj.checksum());
 }
 
-fn copy_metadata(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) -> () {
+fn copy_metadata(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) {
     let data = src
         .repo
         .load_variant(obj.object_type(), obj.checksum())
