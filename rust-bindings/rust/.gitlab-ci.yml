@@ -9,9 +9,7 @@ variables:
   OSTREE_VERSION: v2019_3
 
 before_script:
-# only on the Fedora images
-- if which dnf > /dev/null; then dnf install -y cargo rust clippy rustfmt git make ostree-devel; fi
-# always
+- dnf install -y cargo rust clippy rustfmt git make ostree-devel
 - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
 
 cache:
@@ -56,6 +54,8 @@ docs:
       --extern-html-root-url gio_sys=https://gtk-rs.org/docs
       --extern-html-root-url glib=https://gtk-rs.org/docs
       --extern-html-root-url gio=https://gtk-rs.org/docs
+  before_script:
+  - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
   script:
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
