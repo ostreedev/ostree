@@ -29,8 +29,7 @@ impl RepoCheckoutFilter {
     /// convenience.
     pub fn new<F>(closure: F) -> Option<RepoCheckoutFilter>
     where
-        F: Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult,
-        F: 'static,
+        F: (Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult) + 'static,
     {
         Some(RepoCheckoutFilter(Box::new(closure)))
     }
