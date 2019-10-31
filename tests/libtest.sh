@@ -440,7 +440,9 @@ EOF
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.10 -b testos/buildmaster/x86_64-runtime -s "Build"
 
     cd ${test_tmpdir}
-    cp -a osdata osdata-devel
+    rm -rf osdata-devel
+    mkdir osdata-devel
+    tar -C osdata -cf - . | tar -C osdata-devel -xf -
     cd osdata-devel
     mkdir -p usr/include
     echo "a development header" > usr/include/foo.h
