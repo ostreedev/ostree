@@ -47,12 +47,12 @@ setup_mirror content_mirror3
 
 # Let's delete a file from 1 so that it falls back on 2
 cd ${test_tmpdir}/content_mirror1/ostree/gnomerepo
-filez=$(find objects/ -name '*.filez' | head -n 1)
+filez=$((find objects/ -name '*.filez' || true) | head -n 1)
 rm ${filez}
 
 # Let's delete a file from 1 and 2 so that it falls back on 3
 cd ${test_tmpdir}/content_mirror1/ostree/gnomerepo
-filez=$(find objects/ -name '*.filez' | head -n 1)
+filez=$((find objects/ -name '*.filez' || true) | head -n 1)
 rm ${filez}
 cd ${test_tmpdir}/content_mirror2/ostree/gnomerepo
 rm ${filez}
