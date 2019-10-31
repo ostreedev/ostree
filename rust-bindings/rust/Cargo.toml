@@ -28,6 +28,9 @@ repository = "fkrull/ostree-rs"
 [lib]
 name = "ostree"
 
+[workspace]
+members = ["sys"]
+
 [dependencies]
 libc = "0.2"
 bitflags = "1"

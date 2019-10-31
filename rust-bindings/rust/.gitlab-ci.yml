@@ -35,13 +35,12 @@ build_all-features:
   stage: build
   script:
   - cargo clippy --all --features ${OSTREE_VERSION},futures -- -D warnings
-  - cargo test --verbose --manifest-path sys/Cargo.toml --features ${OSTREE_VERSION}
-  - cargo test --verbose --features ${OSTREE_VERSION},futures
+  - cargo test --verbose --all --features ${OSTREE_VERSION},futures
 
 build_default-features:
   stage: build
   script:
-  - cargo test --verbose
+  - cargo test --verbose --all
 
 # docs
 docs:
