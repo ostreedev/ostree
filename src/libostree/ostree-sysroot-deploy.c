@@ -2005,24 +2005,9 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   if (val == NULL)
     return glnx_throw (error, "No PRETTY_NAME or ID in /etc/os-release");
 
-  g_autofree char *deployment_version = NULL;
+  const gchar *deployment_version = NULL;
   if (repo)
-    {
-      /* Try extracting a version for this deployment. */
-      const char *csum = ostree_deployment_get_csum (deployment);
-      g_autoptr (GVariant) variant = NULL;
-      g_autoptr (GVariant) metadata = NULL;
-
-      /* XXX Copying ot_admin_checksum_version() + bits from
-       *     ot-admin-builtin-status.c.  Maybe this should be
-       *     public API in libostree? */
-      if (ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum, &variant, NULL))
-        {
-          metadata = g_variant_get_child_value (variant, 0);
-          (void)g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s",
-                                  &deployment_version);
-        }
-    }
+    deployment_version = _ostree_deployment_get_version (deployment, repo);
 
   /* XXX The SYSLINUX bootloader backend actually parses the title string
    *     (specifically, it looks for the substring "(ostree"), so further
