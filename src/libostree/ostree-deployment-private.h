@@ -56,9 +56,12 @@ struct _OstreeDeployment
   gboolean staged;
   char **overlay_initrds;
   char *overlay_initrds_id;
+  gchar *version;
+  gboolean version_is_cached;
 };
 
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);
+char *_ostree_deployment_get_version (OstreeDeployment *self, OstreeRepo *repo, GError **error);
 
 void _ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
                                              char **overlay_initrds);
