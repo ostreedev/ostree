@@ -37,9 +37,15 @@ assert_not_reached () {
 # Some tests look for specific English strings. Use a UTF-8 version
 # of the C (POSIX) locale if we have one, or fall back to en_US.UTF-8
 # (https://sourceware.org/glibc/wiki/Proposals/C.UTF-8)
-export LC_ALL=$(locale -a | grep -Ee '\.(UTF-8|utf8)' | grep -iEe '^(C|en_US)' | head -1 || true)
-if [ -z "${LC_ALL}" ]; then fatal "Can't find suitable UTF-8 locale"; fi
-
+#
+# If we can't find the locale command assume we have support for C.UTF-8
+# (e.g. musl based systems)
+if type -p locale >/dev/null; then
+    export LC_ALL=$(locale -a | grep -Ee '\.(UTF-8|utf8)' | grep -iEe '^(C|en_US)' | head -1 || true)
+    if [ -z "${LC_ALL}" ]; then fatal "Can't find suitable UTF-8 locale"; fi
+else
+    export LC_ALL=C.UTF-8
+fi
 # A GNU extension, used whenever LC_ALL is not C
 unset LANGUAGE
 

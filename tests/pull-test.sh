@@ -177,7 +177,7 @@ if ! skip_one_without_user_xattrs; then
     ${CMD_PREFIX} ostree --repo=cacherepo pull-local ostree-srv/gnomerepo main
     rev=$(ostree --repo=cacherepo rev-parse main)
     ${CMD_PREFIX} ostree --repo=cacherepo ls -R -C main > ls.txt
-    regfile_hash=$(grep -E -e '^-0' ls.txt | head -1 | awk '{ print $5 }')
+    regfile_hash=$((grep -E -e '^-0' ls.txt || true) | head -1 | awk '{ print $5 }')
     ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false corruptrepo $(cat httpd-address)/ostree/corruptrepo
     # Make this a loop so in the future we can add more object types like commit etc.
     for object in ${regfile_hash}.file; do
