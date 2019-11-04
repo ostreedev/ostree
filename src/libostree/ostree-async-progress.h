@@ -92,4 +92,8 @@ void ostree_async_progress_set_variant (OstreeAsyncProgress *self,
 _OSTREE_PUBLIC
 void ostree_async_progress_finish (OstreeAsyncProgress *self);
 
+_OSTREE_PUBLIC
+void ostree_async_progress_copy_state (OstreeAsyncProgress *self,
+                                       OstreeAsyncProgress *dest);
+
 G_END_DECLS

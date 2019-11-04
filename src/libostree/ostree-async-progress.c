@@ -425,6 +425,40 @@ ostree_async_progress_set_uint64 (OstreeAsyncProgress       *self,
 }
 
 /**
+ * ostree_async_progress_copy_state:
+ * @self: An #OstreeAsyncProgress to copy from
+ * @dest: An #OstreeAsyncProgress to copy to
+ *
+ * Atomically copies all the state from @self to @dest, without invoking the
+ * callback.
+ * This is used for proxying progress objects across different #GMainContexts.
+ *
+ * Since: 2019.6
+ */
+void
+ostree_async_progress_copy_state (OstreeAsyncProgress *self,
+                                  OstreeAsyncProgress *dest)
+{
+  g_return_if_fail (OSTREE_IS_ASYNC_PROGRESS (self));
+  g_return_if_fail (OSTREE_IS_ASYNC_PROGRESS (dest));
+
+  g_mutex_lock (&self->lock);
+
+  if (self->dead)
+    goto out;
+
+  GLNX_HASH_TABLE_FOREACH_KV (self->values, void *, key, GVariant *, value)
+    {
+      if (value)
+        g_variant_ref (value);
+      g_hash_table_replace (dest->values, key, value);
+    }
+
+ out:
+  g_mutex_unlock (&self->lock);
+}
+
+/**
  * ostree_async_progress_new:
  *
  * Returns: (transfer full): A new progress object

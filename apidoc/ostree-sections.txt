@@ -3,6 +3,7 @@
 OstreeAsyncProgress
 ostree_async_progress_new
 ostree_async_progress_new_and_connect
+ostree_async_progress_copy_state
 ostree_async_progress_get_status
 ostree_async_progress_get
 ostree_async_progress_get_variant
