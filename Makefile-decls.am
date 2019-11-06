@@ -47,6 +47,7 @@ typelibdir = $(libdir)/girepository-1.0
 typelib_DATA =
 gsettings_SCHEMAS =
 ostree_bootdir = $(prefix)/lib/ostree
+ostree_boot_SCRIPTS =
 ostree_boot_PROGRAMS =
 
 # This initializes some more variables

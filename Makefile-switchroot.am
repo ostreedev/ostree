@@ -42,7 +42,7 @@ if BUILDOPT_USE_STATIC_COMPILER
 # to get autotools to install this as an executable but without generating rules
 # to make it itself which we have specified manually.  See
 # https://lists.gnu.org/archive/html/help-gnu-utils/2007-01/msg00007.html
-ostree_boot_SCRIPTS = ostree-prepare-root
+ostree_boot_SCRIPTS += ostree-prepare-root
 
 ostree-prepare-root : $(ostree_prepare_root_SOURCES)
 	$(STATIC_COMPILER) -o $@ -static $(top_srcdir)/src/switchroot/ostree-prepare-root.c $(ostree_prepare_root_CPPFLAGS) $(AM_CFLAGS) $(DEFAULT_INCLUDES) -DOSTREE_PREPARE_ROOT_STATIC=1
