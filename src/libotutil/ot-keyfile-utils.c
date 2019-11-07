@@ -27,6 +27,13 @@
 
 #include <string.h>
 
+static gboolean
+is_notfound (GError *error)
+{
+  return g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)
+          || g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND);
+}
+
 gboolean
 ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
                                      const char    *section,
@@ -43,7 +50,7 @@ ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
   gboolean ret_bool = g_key_file_get_boolean (keyfile, section, value, &temp_error);
   if (temp_error)
     {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+      if (is_notfound (temp_error))
         {
           g_clear_error (&temp_error);
           ret_bool = default_value;
@@ -75,7 +82,7 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
   g_autofree char *ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
   if (temp_error)
     {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+      if (is_notfound (temp_error))
         {
           g_clear_error (&temp_error);
           g_assert (ret_value == NULL);
@@ -206,8 +213,7 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
 
   if (temp_error)
     {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR,
-                           G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+      if (is_notfound (temp_error))
         {
           g_clear_error (&temp_error);
           ret_value = g_strdupv (default_value);
