@@ -60,12 +60,12 @@ test_get_boolean_with_default (void)
   g_assert_true (out);
 
   g_clear_error (&error);
-  g_assert_false (ot_keyfile_get_boolean_with_default (g_keyfile,
-                                                       "a_fake_section",
-                                                       "a_boolean_true",
-                                                       FALSE,
-                                                       &out,
-                                                       &error));
+  g_assert (ot_keyfile_get_boolean_with_default (g_keyfile,
+                                                 "a_fake_section",
+                                                 "a_boolean_true",
+                                                 FALSE,
+                                                 &out,
+                                                 &error));
 }
 
 static void
@@ -122,13 +122,13 @@ test_get_value_with_default (void)
   g_assert_cmpstr (out, ==, "correct");
   g_clear_pointer (&out, g_free);
 
-  g_assert_false (ot_keyfile_get_value_with_default (g_keyfile,
-                                                     "a_fake_section",
-                                                     "a_value_true",
-                                                     "no value",
-                                                     &out,
-                                                     &error));
-  g_clear_error (&error);
+  g_assert (ot_keyfile_get_value_with_default (g_keyfile,
+                                               "a_fake_section",
+                                               "a_value_true",
+                                               "no value",
+                                               &out,
+                                               &error));
+  g_assert_cmpstr (out, ==, "no value");
   g_clear_pointer (&out, g_free);
 }
 
