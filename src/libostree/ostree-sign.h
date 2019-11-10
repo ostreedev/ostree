@@ -55,7 +55,7 @@ struct _OstreeSignInterface
                        GError **error);
   gboolean (* data_verify) (OstreeSign *self,
                             GBytes *data,
-                            GVariant   *metadata,
+                            GVariant   *signatures,
                             GError **error);
   const gchar *(* metadata_key) (OstreeSign *self);
   const gchar *(* metadata_format) (OstreeSign *self);
@@ -80,16 +80,16 @@ const gchar * ostree_sign_get_name (OstreeSign *self);
 
 _OSTREE_PUBLIC
 gboolean ostree_sign_data (OstreeSign *self,
-                             GBytes *data,
-                             GBytes **signature,
-                             GCancellable *cancellable,
-                             GError **error);
+                           GBytes *data,
+                           GBytes **signature,
+                           GCancellable *cancellable,
+                           GError **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_sign_data_verify (OstreeSign *self,
-                                      GBytes     *data,
-                                      GVariant   *signatures,
-                                      GError     **error);
+                                  GBytes     *data,
+                                  GVariant   *signatures,
+                                  GError     **error);
 
 _OSTREE_PUBLIC
 const gchar * ostree_sign_metadata_key (OstreeSign *self);
@@ -136,23 +136,9 @@ gboolean ostree_sign_load_pk (OstreeSign *self,
                               GError **error);
 
 
-/**
- * ostree_sign_list_names:
- *
- * Return the array with all available sign modules names.
- *
- * Returns: (transfer full): an array of strings, free when you used it
- */
 _OSTREE_PUBLIC
 GStrv ostree_sign_list_names(void);
 
-/**
- * ostree_sign_get_by_name:
- *
- * Tries to find and return proper signing engine by it's name.
- *
- * Returns: (transfer full): a constant, free when you used it
- */
 _OSTREE_PUBLIC
 OstreeSign * ostree_sign_get_by_name (const gchar *name, GError **error);
 
