@@ -39,6 +39,7 @@ static gboolean opt_bareuseronly_files;
 static gboolean opt_require_static_deltas;
 static gboolean opt_gpg_verify;
 static gboolean opt_gpg_verify_summary;
+static gboolean opt_sign_verify;
 static int opt_depth = 0;
 
 /* ATTENTION:
@@ -55,6 +56,7 @@ static GOptionEntry options[] = {
   { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
   { "gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify, "GPG verify commits (must specify --remote)", NULL },
   { "gpg-verify-summary", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify_summary, "GPG verify summary (must specify --remote)", NULL },
+  { "sign-verify", 0, 0, G_OPTION_ARG_NONE, &opt_sign_verify, "Verify commits signature (must specify --remote)", NULL },
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
   { NULL }
 };
@@ -181,6 +183,10 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
                              g_variant_new_variant (g_variant_new_boolean (TRUE)));
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
+
+    if (opt_sign_verify)
+      g_variant_builder_add (&builder, "{s@v}", "sign-verify",
+                             g_variant_new_variant (g_variant_new_boolean (TRUE)));
 
     if (console.is_tty)
       progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
