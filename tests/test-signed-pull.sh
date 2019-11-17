@@ -70,19 +70,10 @@ test_signed_pull "dummy"
 
 
 # Test ostree sign with 'ed25519' module
-# Generate private key in PEM format
-PEMFILE="$(mktemp -p ${test_tmpdir} ed25519_XXXXXX.pem)"
-openssl genpkey -algorithm ed25519 -outform PEM -out "${PEMFILE}"
-
-# Based on: http://openssl.6102.n7.nabble.com/ed25519-key-generation-td73907.html
-# Extract the private and public parts from generated key.
-PUBLIC="$(openssl pkey -outform DER -pubout -in ${PEMFILE} | tail -c 32 | base64)"
-SEED="$(openssl pkey -outform DER -in ${PEMFILE} | tail -c 32 | base64)"
-# Secret key is concantination of SEED and PUBLIC
-SECRET="$(echo ${SEED}${PUBLIC} | base64 -d | base64 -w 0)"
-
-echo "SEED = $SEED"
-echo "PUBLIC = $PUBLIC"
+gen_ed25519_keys
+PUBLIC=${ED25519PUBLIC}
+SEED=${ED25519SEED}
+SECRET=${ED25519SECRET}
 
 COMMIT_ARGS="--sign=${SECRET} --sign-type=ed25519"
 
@@ -96,7 +87,7 @@ PUBKEYS="$(mktemp -p ${test_tmpdir} ed25519_XXXXXX.ed25519)"
 # Test the file with multiple keys without a valid public key
 for((i=0;i<100;i++)); do
     # Generate a list with some public signatures
-    openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64
+    gen_ed25519_random_public
 done > ${PUBKEYS}
 # Add correct key into the list
 echo ${PUBLIC} >> ${PUBKEYS}

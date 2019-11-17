@@ -64,18 +64,12 @@ if ! has_libsodium; then
 fi
 
 # Test ostree sign with 'ed25519' module
-# Generate private key in PEM format
-PEMFILE="$(mktemp -p ${test_tmpdir} ed25519_XXXXXX.pem)"
-openssl genpkey -algorithm ed25519 -outform PEM -out "${PEMFILE}"
+gen_ed25519_keys
+PUBLIC=${ED25519PUBLIC}
+SEED=${ED25519SEED}
+SECRET=${ED25519SECRET}
 
-# Based on: http://openssl.6102.n7.nabble.com/ed25519-key-generation-td73907.html
-# Extract the private and public parts from generated key.
-PUBLIC="$(openssl pkey -outform DER -pubout -in ${PEMFILE} | tail -c 32 | base64)"
-SEED="$(openssl pkey -outform DER -in ${PEMFILE} | tail -c 32 | base64)"
-# Secret key is concantination of SEED and PUBLIC
-SECRET="$(echo ${SEED}${PUBLIC} | base64 -d | base64 -w 0)"
-
-WRONG_PUBLIC="$(openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64)"
+WRONG_PUBLIC="$(gen_ed25519_random_public)"
 
 echo "SEED = $SEED"
 echo "PUBLIC = $PUBLIC"
@@ -94,10 +88,10 @@ if ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed
 fi
 ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC}
 ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC} ${PUBLIC}
-${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${WRONG_PUBLIC} ${PUBLIC}
-${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${WRONG_PUBLIC} ${WRONG_PUBLIC} ${PUBLIC}
-${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC} ${WRONG_PUBLIC} ${WRONG_PUBLIC}
-${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${WRONG_PUBLIC} ${WRONG_PUBLIC} ${PUBLIC} ${WRONG_PUBLIC} ${WRONG_PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} $(gen_ed25519_random_public) ${PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} $(gen_ed25519_random_public) $(gen_ed25519_random_public) ${PUBLIC}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC} $(gen_ed25519_random_public) $(gen_ed25519_random_public)
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} $(gen_ed25519_random_public) $(gen_ed25519_random_public) ${PUBLIC} $(gen_ed25519_random_public) $(gen_ed25519_random_public)
 echo "ok ed25519 signature verified"
 
 # Check if we able to use all available modules to sign the same commit
@@ -140,7 +134,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed2551
 # Test the file with multiple keys without a valid public key
 for((i=0;i<100;i++)); do
     # Generate a list with some public signatures
-    openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64
+    gen_ed25519_random_public
 done > ${PUBKEYS}
 # Check if file contain no valid signatures
 if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}; then
@@ -177,7 +171,7 @@ echo "ok sign with ed25519 keys file"
 mkdir -p ${test_tmpdir}/{trusted,revoked}.ed25519.d
 for((i=0;i<100;i++)); do
     # Generate some key files with random public signatures
-    openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64 > ${test_tmpdir}/trusted.ed25519.d/signature_$i
+    gen_ed25519_random_public
 done
 # Check no valid public keys are available
 if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-dir=${test_tmpdir} ${COMMIT}; then
