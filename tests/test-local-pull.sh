@@ -28,12 +28,7 @@ unset OSTREE_GPG_HOME
 
 skip_without_user_xattrs
 
-if has_gpgme; then
-    echo "1..8"
-else
-    # Only some tests doesn't need GPG support
-    echo "1..5"
-fi
+echo "1..11"
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -68,6 +63,49 @@ cmp checkout1.files checkout2.files
 cmp checkout1.files checkout3.files
 echo "ok checkouts same"
 
+if has_gpgme; then
+    # These tests are needed GPG support
+    mkdir repo4
+    ostree_repo_init repo4 --mode="archive"
+    ${CMD_PREFIX} ostree --repo=repo4 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
+
+    if ${CMD_PREFIX} ostree --repo=repo4 pull-local --remote=origin --gpg-verify repo test2 2>&1; then
+        assert_not_reached "GPG verification unexpectedly succeeded"
+    fi
+    echo "ok --gpg-verify with no signature"
+
+    ${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME} test2  ${TEST_GPG_KEYID_1}
+
+    mkdir repo5
+    ostree_repo_init repo5 --mode="archive"
+    ${CMD_PREFIX} ostree --repo=repo5 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
+    ${CMD_PREFIX} ostree --repo=repo5 pull-local --remote=origin --gpg-verify repo test2
+    echo "ok --gpg-verify"
+
+    mkdir repo6
+    ostree_repo_init repo6 --mode="archive"
+    ${CMD_PREFIX} ostree --repo=repo6 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
+    if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
+        assert_not_reached "GPG summary verification with no summary unexpectedly succeeded"
+    fi
+
+    ${OSTREE} summary --update
+
+    if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
+        assert_not_reached "GPG summary verification with signed no summary unexpectedly succeeded"
+    fi
+
+    ${OSTREE} summary --update --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_GPG_KEYHOME}
+
+    ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1
+
+    echo "ok --gpg-verify-summary"
+else
+    echo "ok --gpg-verify with no signature | # SKIP due GPG unavailability"
+    echo "ok --gpg-verify | # SKIP due GPG unavailability"
+    echo "ok --gpg-verify-summary | # SKIP due GPG unavailability"
+fi
+
 mkdir repo7
 ostree_repo_init repo7 --mode="archive"
 ${CMD_PREFIX} ostree --repo=repo7 pull-local repo
@@ -78,41 +116,36 @@ for src_object in `find repo/objects -name '*.filez'`; do
 done
 echo "ok pull-local z2 to z2 default hardlink"
 
-if ! has_gpgme; then
-    exit 0
+if has_libsodium; then
+    gen_ed25519_keys
+
+    mkdir repo8
+    ostree_repo_init repo8 --mode="archive"
+    ${CMD_PREFIX} ostree --repo=repo8 remote add --set=verification-key="${ED25519PUBLIC}" origin repo
+    cat repo8/config
+
+    if ${CMD_PREFIX} ostree --repo=repo8 pull-local --remote=origin --sign-verify repo test2 2>&1; then
+        assert_not_reached "Ed25519 signature verification unexpectedly succeeded"
+    fi
+    echo "ok --sign-verify with no signature"
+
+    ${OSTREE} sign test2 ${ED25519SECRET}
+
+    mkdir repo9
+    ostree_repo_init repo9 --mode="archive"
+    ${CMD_PREFIX} ostree --repo=repo9 remote add --set=verification-key="$(gen_ed25519_random_public)" origin repo
+    if ${CMD_PREFIX} ostree --repo=repo9 pull-local --remote=origin --sign-verify repo test2 2>&1; then
+        assert_not_reached "Ed25519 signature verification unexpectedly succeeded"
+    fi
+    echo "ok --sign-verify with wrong signature"
+
+    mkdir repo10
+    ostree_repo_init repo10 --mode="archive"
+    ${CMD_PREFIX} ostree --repo=repo10 remote add --set=verification-key="${ED25519PUBLIC}" origin repo
+    ${CMD_PREFIX} ostree --repo=repo10 pull-local --remote=origin --sign-verify repo test2
+    echo "ok --sign-verify"
+else
+    echo "ok --sign-verify with no signature | # SKIP due libsodium unavailability"
+    echo "ok --sign-verify with wrong signature | # SKIP due libsodium unavailability"
+    echo "ok --sign-verify | # SKIP libsodium unavailability"
 fi
-
-mkdir repo4
-ostree_repo_init repo4 --mode="archive"
-${CMD_PREFIX} ostree --repo=repo4 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
-if ${CMD_PREFIX} ostree --repo=repo4 pull-local --remote=origin --gpg-verify repo test2 2>&1; then
-    assert_not_reached "GPG verification unexpectedly succeeded"
-fi
-echo "ok --gpg-verify with no signature"
-
-${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME} test2  ${TEST_GPG_KEYID_1}
-
-mkdir repo5
-ostree_repo_init repo5 --mode="archive"
-${CMD_PREFIX} ostree --repo=repo5 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
-${CMD_PREFIX} ostree --repo=repo5 pull-local --remote=origin --gpg-verify repo test2
-echo "ok --gpg-verify"
-
-mkdir repo6
-ostree_repo_init repo6 --mode="archive"
-${CMD_PREFIX} ostree --repo=repo6 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
-if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
-    assert_not_reached "GPG summary verification with no summary unexpectedly succeeded"
-fi
-
-${OSTREE} summary --update
-
-if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
-    assert_not_reached "GPG summary verification with signed no summary unexpectedly succeeded"
-fi
-
-${OSTREE} summary --update --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_GPG_KEYHOME}
-
-${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1
-
-echo "ok --gpg-verify-summary"
