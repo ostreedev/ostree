@@ -75,7 +75,7 @@ EOF
 cd ${test_tmpdir}
 mkdir repo
 ostree_repo_init repo
-${CMD_PREFIX} ostree --repo=repo remote add origin --no-gpg-verify \
+${CMD_PREFIX} ostree --repo=repo remote add origin --no-sign-verify \
   mirrorlist=$(cat httpd-address)/ostree/mirrorlist
 ${CMD_PREFIX} ostree --repo=repo pull origin:main
 
@@ -87,7 +87,7 @@ cd ${test_tmpdir}
 rm -rf repo
 mkdir repo
 ostree_repo_init repo
-${CMD_PREFIX} ostree --repo=repo remote add origin --no-gpg-verify \
+${CMD_PREFIX} ostree --repo=repo remote add origin --no-sign-verify \
   --contenturl=mirrorlist=$(cat httpd-address)/ostree/mirrorlist \
   $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin:main
@@ -100,7 +100,7 @@ cd ${test_tmpdir}
 rm -rf repo
 mkdir repo
 ostree_repo_init repo
-${CMD_PREFIX} ostree --repo=repo remote add origin --no-gpg-verify \
+${CMD_PREFIX} ostree --repo=repo remote add origin --no-sign-verify \
   --contenturl=mirrorlist=$(cat httpd-address)/ostree/mirrorlist \
   mirrorlist=$(cat httpd-address)/ostree/mirrorlist
 ${CMD_PREFIX} ostree --repo=repo pull origin:main

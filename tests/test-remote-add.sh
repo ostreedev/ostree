@@ -30,20 +30,20 @@ $OSTREE remote add origin http://example.com/ostree/gnome
 $OSTREE remote show-url origin >/dev/null
 echo "ok config"
 
-$OSTREE remote add --no-gpg-verify another http://another.com/repo
+$OSTREE remote add --no-sign-verify another http://another.com/repo
 $OSTREE remote show-url another >/dev/null
 echo "ok remote no gpg-verify"
 
-if $OSTREE remote add --no-gpg-verify another http://another.example.com/anotherrepo 2>err.txt; then
+if $OSTREE remote add --no-sign-verify another http://another.example.com/anotherrepo 2>err.txt; then
     assert_not_reached "Adding duplicate remote unexpectedly succeeded"
 fi
 echo "ok"
 
-$OSTREE remote add --if-not-exists --no-gpg-verify another http://another.example.com/anotherrepo
+$OSTREE remote add --if-not-exists --no-sign-verify another http://another.example.com/anotherrepo
 $OSTREE remote show-url another >/dev/null
 echo "ok"
 
-$OSTREE remote add --if-not-exists --no-gpg-verify another-noexist http://another-noexist.example.com/anotherrepo
+$OSTREE remote add --if-not-exists --no-sign-verify another-noexist http://another-noexist.example.com/anotherrepo
 $OSTREE remote show-url another-noexist >/dev/null
 echo "ok"
 
@@ -69,7 +69,7 @@ cd ${test_tmpdir}
 rm -rf parent-repo
 ostree_repo_init parent-repo
 $OSTREE config set core.parent ${test_tmpdir}/parent-repo
-${CMD_PREFIX} ostree --repo=parent-repo remote add --no-gpg-verify parent-remote http://parent-remote.example.com/parent-remote
+${CMD_PREFIX} ostree --repo=parent-repo remote add --no-sign-verify parent-remote http://parent-remote.example.com/parent-remote
 $OSTREE remote list > list.txt
 assert_file_has_content list.txt "origin"
 assert_file_has_content list.txt "another"
