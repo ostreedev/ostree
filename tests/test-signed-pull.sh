@@ -34,7 +34,7 @@ function repo_init() {
     rm repo -rf
     mkdir repo
     ostree_repo_init repo --mode=${repo_mode}
-    ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo "$@"
+    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo "$@"
 }
 
 function test_signed_pull() {
