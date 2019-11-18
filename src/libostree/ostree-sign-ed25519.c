@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#include <libglnx.h>
 #include "ostree-sign-ed25519.h"
 #ifdef HAVE_LIBSODIUM
 #include <sodium.h>
@@ -46,6 +47,10 @@ struct _OstreeSignEd25519
   GList *public_keys;
   GList *revoked_keys;
 };
+
+#ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSignEd25519, g_object_unref)
+#endif
 
 static void
 ostree_sign_ed25519_iface_init (OstreeSignInterface *self);

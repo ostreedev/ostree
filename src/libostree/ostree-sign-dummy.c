@@ -24,6 +24,7 @@
 
 #include "config.h"
 
+#include <libglnx.h>
 #include "ostree-sign-dummy.h"
 #include <string.h>
 
@@ -42,6 +43,10 @@ struct _OstreeSignDummy
   GObject parent;
   gchar *signature_ascii;
 };
+
+#ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSignDummy, g_object_unref)
+#endif
 
 static void
 ostree_sign_dummy_iface_init (OstreeSignInterface *self);

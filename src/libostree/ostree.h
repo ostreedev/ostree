@@ -40,5 +40,6 @@
 #include <ostree-repo-finder-mount.h>
 #include <ostree-repo-finder-override.h>
 #include <ostree-kernel-args.h>
+#include <ostree-sign.h>
 #include <ostree-autocleanups.h>
 #include <ostree-version.h>

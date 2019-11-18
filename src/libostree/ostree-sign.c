@@ -47,6 +47,8 @@
 #include "ostree-sign-ed25519.h"
 #endif
 
+#include "ostree-autocleanups.h"
+
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "OSTreeSign"
 

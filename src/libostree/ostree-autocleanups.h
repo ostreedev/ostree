@@ -73,6 +73,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoFinderOverride, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoFinderResult, ostree_repo_finder_result_free)
 G_DEFINE_AUTO_CLEANUP_FREE_FUNC (OstreeRepoFinderResultv, ostree_repo_finder_result_freev, NULL)
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSign, g_object_unref)
 #endif
 
 G_END_DECLS
