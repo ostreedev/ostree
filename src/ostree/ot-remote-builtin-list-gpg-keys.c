@@ -49,13 +49,13 @@ ot_remote_builtin_list_gpg_keys (int                       argc,
                                     invocation, &repo, cancellable, error))
     return FALSE;
 
-  if (argc < 2)
-    {
-      ot_util_usage_error (context, "NAME must be specified", error);
-      return FALSE;
-    }
+  /* if (argc < 2) */
+  /*   { */
+  /*     ot_util_usage_error (context, "NAME must be specified", error); */
+  /*     return FALSE; */
+  /*   } */
 
-  const char *remote_name = argv[1];
+  const char *remote_name = (argc > 1) ? argv[1] : NULL;
 
   g_autoptr(GPtrArray) keys = NULL;
   if (!ostree_repo_remote_get_gpg_keys (repo, remote_name, NULL, &keys,
