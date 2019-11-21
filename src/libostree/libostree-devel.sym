@@ -18,7 +18,8 @@
 ***/
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
-LIBOSTREE_2019.5 {
+LIBOSTREE_2019.6 {
+  ostree_async_progress_copy_state;
 } LIBOSTREE_2019.4;
 
 /* Stub section for the stable release *after* this development one; don't
