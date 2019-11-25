@@ -69,7 +69,9 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
 const gchar * ostree_sign_dummy_metadata_key (OstreeSign *self);
 const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self);
 
-gboolean ostree_sign_dummy_set_key (OstreeSign *self, GVariant *key, GError **error);
+gboolean ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **error);
+gboolean ostree_sign_dummy_set_pk (OstreeSign *self, GVariant *key, GError **error);
+gboolean ostree_sign_dummy_add_pk (OstreeSign *self, GVariant *key, GError **error);
 
 G_END_DECLS
 

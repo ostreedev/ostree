@@ -36,12 +36,11 @@
 #define OSTREE_SIGN_METADATA_DUMMY_KEY "ostree.sign.dummy"
 #define OSTREE_SIGN_METADATA_DUMMY_TYPE "aay"
 
-#define OSTREE_SIGN_DUMMY_SIGNATURE "dummysign"
-
 struct _OstreeSignDummy
 {
   GObject parent;
-  gchar *signature_ascii;
+  gchar *sk_ascii;
+  gchar *pk_ascii;
 };
 
 #ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
@@ -64,8 +63,10 @@ ostree_sign_dummy_iface_init (OstreeSignInterface *self)
   self->data_verify = ostree_sign_dummy_data_verify;
   self->metadata_key = ostree_sign_dummy_metadata_key;
   self->metadata_format = ostree_sign_dummy_metadata_format;
-  self->set_sk = ostree_sign_dummy_set_key;
-  self->set_pk = ostree_sign_dummy_set_key;
+  self->set_sk = ostree_sign_dummy_set_sk;
+  self->set_pk = ostree_sign_dummy_set_pk;
+  /* Implementation for dummy engine just load the single public key */
+  self->add_pk = ostree_sign_dummy_set_pk;
 }
 
 static void
@@ -79,19 +80,32 @@ ostree_sign_dummy_init (OstreeSignDummy *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  self->signature_ascii = g_strdup(OSTREE_SIGN_DUMMY_SIGNATURE);
+  self->sk_ascii = NULL;
+  self->pk_ascii = NULL;
 }
 
-gboolean ostree_sign_dummy_set_key (OstreeSign *self, GVariant *key, GError **error)
+gboolean ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **error)
 {
   g_debug ("%s enter", __FUNCTION__);
 
   OstreeSignDummy *sign =  ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
-  if (sign->signature_ascii != NULL)
-    g_free(sign->signature_ascii);
+  g_free(sign->sk_ascii);
 
-  sign->signature_ascii = g_variant_dup_string (key, 0);
+  sign->sk_ascii = g_variant_dup_string (key, 0);
+
+  return TRUE;
+}
+
+gboolean ostree_sign_dummy_set_pk (OstreeSign *self, GVariant *key, GError **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+
+  OstreeSignDummy *sign =  ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+
+  g_free(sign->pk_ascii);
+
+  sign->pk_ascii = g_variant_dup_string (key, 0);
 
   return TRUE;
 }
@@ -108,7 +122,7 @@ gboolean ostree_sign_dummy_data (OstreeSign *self,
 
   OstreeSignDummy *sign =  ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
-  *signature = g_bytes_new (sign->signature_ascii, strlen(sign->signature_ascii));
+  *signature = g_bytes_new (sign->sk_ascii, strlen(sign->sk_ascii));
 
   return TRUE;
 }
@@ -174,8 +188,9 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
       g_bytes_get_data (signature, &sign_size);
       g_autofree gchar *sign_ascii = g_strndup(g_bytes_get_data (signature, NULL), sign_size);
       g_debug("Read signature %d: %s", (gint)i, sign_ascii);
+      g_debug("Stored signature %d: %s", (gint)i, sign->pk_ascii);
 
-      if (!g_strcmp0(sign_ascii, sign->signature_ascii))
+      if (!g_strcmp0(sign_ascii, sign->pk_ascii))
           ret = TRUE;
     }
   if (ret == FALSE && *error == NULL)
