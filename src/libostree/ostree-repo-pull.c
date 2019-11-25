@@ -1492,7 +1492,6 @@ _load_public_keys (OtPullData *pull_data,
   gboolean loaded_inlined = TRUE;
   g_autoptr (GError) error = NULL;
 
-  /* Load keys for remote from file */
   ostree_repo_get_remote_option (pull_data->repo,
                                  pull_data->remote_name,
                                  "verification-file", NULL,
@@ -1531,12 +1530,9 @@ _load_public_keys (OtPullData *pull_data,
         loaded_from_file = TRUE;
       else
         {
-          if (error == NULL)
-            g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                 "unknown reason");
-
-          g_warning("Unable to load public keys from file '%s': %s",
-                    pk_file, error->message);
+          g_assert (error);
+          g_debug("Unable to load public keys for '%s' from file '%s': %s",
+                  ostree_sign_get_name(sign), pk_file, error->message);
           g_clear_error (&error);
         }
     }
@@ -1557,8 +1553,8 @@ _load_public_keys (OtPullData *pull_data,
             g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                  "unknown reason");
 
-          g_warning("Unable to load public key '%s': %s",
-                    pk_ascii, error->message);
+          g_debug("Unable to load public key '%s' for '%s': %s",
+                  pk_ascii, ostree_sign_get_name(sign), error->message);
           g_clear_error (&error);
         }
     }
