@@ -34,7 +34,7 @@ function repo_init() {
     rm repo -rf
     mkdir repo
     ostree_repo_init repo --mode=${repo_mode}
-    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo "$@"
+    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false --set=sign-verify-summary=false origin $(cat httpd-address)/ostree/gnomerepo "$@"
 }
 
 function test_signed_pull() {
@@ -66,6 +66,7 @@ function test_signed_pull() {
 DUMMYSIGN="dummysign"
 COMMIT_ARGS="--sign=${DUMMYSIGN} --sign-type=dummy"
 repo_init --set=sign-verify=true
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${DUMMYSIGN}"
 test_signed_pull "dummy"
 
 
