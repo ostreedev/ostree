@@ -62,7 +62,9 @@ setup (Fixture       *fixture,
     g_clear_error (&error);
   g_assert_no_error (error);
 
-  fixture->working_dir = g_file_new_for_path (fixture->tmpdir.path);
+  /* Realpath since at least coretoolbox makes /tmp a symlink to /host/tmp */
+  g_autofree char *tmpdir_real_path = realpath (fixture->tmpdir.path, NULL);
+  fixture->working_dir = g_file_new_for_path (tmpdir_real_path);
 
   fixture->parent_repo = ot_test_setup_repo (NULL, &error);
   g_assert_no_error (error);
@@ -443,9 +445,8 @@ test_repo_finder_mount_mixed_mounts (Fixture       *fixture,
         }
       else
         {
-          g_test_message ("Unknown result ‘%s’ with keyring ‘%s’.",
-                          result->remote->name, result->remote->keyring);
-          g_assert_not_reached ();
+          g_error ("Unknown result ‘%s’ with keyring ‘%s’",
+                   result->remote->name, result->remote->keyring);
         }
     }
 
