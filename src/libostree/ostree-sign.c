@@ -48,6 +48,7 @@
 #endif
 
 #include "ostree-autocleanups.h"
+#include "ostree-repo-private.h"
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "OSTreeSign"
@@ -593,4 +594,99 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
                            "Requested signature type is not implemented");
 
   return sign;
+}
+
+/**
+ * ostree_sign_summary:
+ * @self: Self
+ * @repo: ostree repository
+ * @keys: keys -- GVariant containing keys as GVarints specific to signature type.
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a signature to a summary file.
+ * Based on ostree_repo_add_gpg_signature_summary implementation.
+ *
+ * Returns: @TRUE if summary file has been signed with all provided keys
+ */
+gboolean
+ostree_sign_summary (OstreeSign    *self,
+                     OstreeRepo    *repo,
+                     GVariant      *keys,
+                     GCancellable  *cancellable,
+                     GError       **error)
+{
+  g_debug ("%s enter", __FUNCTION__);
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
+
+  gboolean ret = FALSE;
+
+  g_autoptr(GVariant) normalized = NULL;
+  g_autoptr(GBytes) summary_data = NULL;
+  g_autoptr(GVariant) metadata = NULL;
+
+  glnx_autofd int fd = -1;
+  if (!glnx_openat_rdonly (repo->repo_dir_fd, "summary", TRUE, &fd, error))
+    goto out;
+  summary_data = ot_fd_readall_or_mmap (fd, 0, error);
+  if (!summary_data)
+    goto out;
+
+  /* Note that fd is reused below */
+  glnx_close_fd (&fd);
+
+  if (!ot_openat_ignore_enoent (repo->repo_dir_fd, "summary.sig", &fd, error))
+    goto out;
+  if (fd >= 0)
+    {
+      if (!ot_variant_read_fd (fd, 0, OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                               FALSE, &metadata, error))
+        goto out;
+    }
+
+  if (g_variant_n_children(keys) == 0)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "No keys passed for signing summary");
+      goto out;
+    }
+
+  GVariantIter *iter;
+  GVariant *key;
+
+  g_variant_get (keys, "av", &iter);
+  while (g_variant_iter_loop (iter, "v", &key))
+    {
+      g_autoptr (GBytes) signature = NULL;
+
+      if (!ostree_sign_set_sk (self, key, error))
+        goto out;
+
+      if (!ostree_sign_data (self,
+                             summary_data,
+                             &signature,
+                             cancellable,
+                             error))
+        goto out;
+
+      g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
+      metadata =
+        _sign_detached_metadata_append (self, old_metadata, signature);
+    }
+  g_variant_iter_free (iter);
+
+  normalized = g_variant_get_normal_form (metadata);
+  if (!_ostree_repo_file_replace_contents (repo,
+                                           repo->repo_dir_fd,
+                                           "summary.sig",
+                                           g_variant_get_data (normalized),
+                                           g_variant_get_size (normalized),
+                                           cancellable, error))
+    goto out;
+
+  ret = TRUE;
+
+out:
+  return ret;
 }

@@ -152,5 +152,11 @@ GStrv ostree_sign_list_names(void);
 _OSTREE_PUBLIC
 OstreeSign * ostree_sign_get_by_name (const gchar *name, GError **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_sign_summary (OstreeSign    *self,
+                              OstreeRepo    *repo,
+                              GVariant      *keys,
+                              GCancellable  *cancellable,
+                              GError       **error);
 G_END_DECLS
 
