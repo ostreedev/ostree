@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..7"
+echo "1..6"
 
 setup_fake_remote_repo1 "archive"
 
@@ -39,6 +39,7 @@ function repo_init() {
 
 function test_signed_pull() {
     local sign_type="$1"
+    local comment="$2"
     cd ${test_tmpdir}
     ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} \
         -b main -s "A signed commit" --tree=ref=main
@@ -56,19 +57,26 @@ function test_signed_pull() {
     # ok now check that we can pull correctly
     mv $remotesig.bak $remotesig
     ${CMD_PREFIX} ostree --repo=repo pull origin main
-    echo "ok pull ${sign_type} signed commit"
+    echo "ok ${sign_type}${comment} pull signed commit"
     rm $localsig
     ${CMD_PREFIX} ostree --repo=repo pull origin main
     test -f $localsig
-    echo "ok re-pull ${sign_type} signature for stored commit"
+    echo "ok ${sign_type}${comment} re-pull signature for stored commit"
 }
 
 DUMMYSIGN="dummysign"
 COMMIT_ARGS="--sign=${DUMMYSIGN} --sign-type=dummy"
 repo_init --set=sign-verify=true
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${DUMMYSIGN}"
-test_signed_pull "dummy"
+test_signed_pull "dummy" ""
 
+if ! has_libsodium; then
+    echo "ok ed25519-key pull signed commit # SKIP due libsodium unavailability"
+    echo "ok ed25519-key re-pull signature for stored commit # SKIP due libsodium unavailability"
+    echo "ok ed25519-file pull signed commit # SKIP due libsodium unavailability"
+    echo "ok ed25519-file re-pull signature for stored commit # SKIP due libsodium unavailability"
+    exit 0
+fi
 
 # Test ostree sign with 'ed25519' module
 gen_ed25519_keys
@@ -80,7 +88,7 @@ COMMIT_ARGS="--sign=${SECRET} --sign-type=ed25519"
 
 repo_init --set=sign-verify=true
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${PUBLIC}"
-test_signed_pull "ed25519"
+test_signed_pull "ed25519" "key"
 
 # Prepare files with public ed25519 signatures
 PUBKEYS="$(mktemp -p ${test_tmpdir} ed25519_XXXXXX.ed25519)"
@@ -95,6 +103,5 @@ echo ${PUBLIC} >> ${PUBKEYS}
 
 repo_init --set=sign-verify=true
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-file "${PUBKEYS}"
-test_signed_pull "ed25519"
+test_signed_pull "ed25519" "file"
 
-echo "ok verify ed25519 keys file"
