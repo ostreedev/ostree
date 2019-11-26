@@ -113,6 +113,39 @@ Boston, MA 02111-1307, USA.
                 </para></listitem>
             </varlistentry>
 
+            <varlistentry>
+                <term><option>--sign-type</option>=ENGINE</term>
+
+                <listitem><para>
+                    Use particular signature engine. Currently
+                    available <arg choice="plain">ed25519</arg> and <arg choice="plain">dummy</arg>
+                    signature types.
+
+                    The default is <arg choice="plain">ed25519</arg>.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--sign</option>="KEY-ID"</term>
+                <listitem><para>
+                        There <literal>KEY-ID</literal> is:
+                        <variablelist>
+                            <varlistentry>
+                                <term><option>for ed25519:</option></term>
+                                <listitem><para>
+                                        <literal>base64</literal>-encoded secret key for signing.
+                                </para></listitem>
+                            </varlistentry>
+
+                            <varlistentry>
+                                <term><option>for dummy:</option></term>
+                                <listitem><para>
+                                            ASCII-string used as secret key.
+                                </para></listitem>
+                            </varlistentry>
+                        </variablelist>
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

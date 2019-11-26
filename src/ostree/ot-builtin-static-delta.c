@@ -40,6 +40,9 @@ static gboolean opt_swap_endianness;
 static gboolean opt_inline;
 static gboolean opt_disable_bsdiff;
 static gboolean opt_if_not_exists;
+static char **opt_key_ids;
+static char *opt_sign_name;
+static char *opt_keysfilename;
 
 #define BUILTINPROTO(name) static gboolean ot_static_delta_builtin_ ## name (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 
@@ -88,6 +91,11 @@ static GOptionEntry generate_options[] = {
   { "max-bsdiff-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_bsdiff_size, "Maximum size in megabytes to consider bsdiff compression for input files", NULL},
   { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size, "Maximum size of delta chunks in megabytes", NULL},
   { "filename", 0, 0, G_OPTION_ARG_FILENAME, &opt_filename, "Write the delta content to PATH (a directory).  If not specified, the OSTree repository is used", "PATH"},
+  { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Sign the delta with", "KEY_ID"},
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
+#if defined(HAVE_LIBSODIUM)
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
+#endif
   { NULL }
 };
 
@@ -325,6 +333,60 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
       g_variant_builder_add (parambuilder, "{sv}", "verbose", g_variant_new_boolean (TRUE));
       if (opt_endianness || opt_swap_endianness)
         g_variant_builder_add (parambuilder, "{sv}", "endianness", g_variant_new_uint32 (endianness));
+
+      if (opt_key_ids || opt_keysfilename)
+        {
+          g_autoptr(GPtrArray) key_ids = g_ptr_array_new ();
+
+          for (char **iter = opt_key_ids; iter != NULL && *iter != NULL; ++iter)
+            g_ptr_array_add (key_ids, *iter);
+
+          if (opt_keysfilename)
+            {
+              g_autoptr (GFile) keyfile = NULL;
+              g_autoptr (GFileInputStream) key_stream_in = NULL;
+              g_autoptr (GDataInputStream) key_data_in = NULL;
+
+              if (!g_file_test (opt_keysfilename, G_FILE_TEST_IS_REGULAR))
+                {
+                  g_warning ("Can't open file '%s' with keys", opt_keysfilename);
+                  return glnx_throw (error, "File object '%s' is not a regular file", opt_keysfilename);
+                }
+
+              keyfile = g_file_new_for_path (opt_keysfilename);
+              key_stream_in = g_file_read (keyfile, NULL, error);
+              if (key_stream_in == NULL)
+                return FALSE;
+
+              key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
+              g_assert (key_data_in != NULL);
+
+              /* Use simple file format with just a list of base64 public keys per line */
+              while (TRUE)
+                {
+                  gsize len = 0;
+                  g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
+                  g_autoptr (GVariant) sk = NULL;
+
+                  if (*error != NULL)
+                    return FALSE;
+
+                  if (line == NULL)
+                    break;
+
+                  // Pass the key as a string
+                  g_ptr_array_add (key_ids, g_strdup (line));
+                }
+            }
+
+          g_autoptr(GVariant) key_ids_v = g_variant_new_strv ((const char *const *)key_ids->pdata,
+                                                              key_ids->len);
+          g_variant_builder_add (parambuilder, "{s@v}", "sign-key-ids",
+                                 g_variant_new_variant (g_steal_pointer (&key_ids_v)));
+        }
+      opt_sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
+      g_variant_builder_add (parambuilder, "{sv}", "sign-name",
+                             g_variant_new_bytestring (opt_sign_name));
 
       g_print ("Generating static delta:\n");
       g_print ("  From: %s\n", from_resolved ? from_resolved : "empty");
