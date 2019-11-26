@@ -83,6 +83,18 @@ _fatal_print_file() {
     fatal "$@"
 }
 
+_fatal_print_files() {
+    file1="$1"
+    shift
+    file2="$1"
+    shift
+    ls -al "$file1" >&2
+    sed -e 's/^/# /' < "$file1" >&2
+    ls -al "$file2" >&2
+    sed -e 's/^/# /' < "$file2" >&2
+    fatal "$@"
+}
+
 assert_not_has_file () {
     if test -f "$1"; then
         _fatal_print_file "$1" "File '$1' exists"
@@ -153,6 +165,12 @@ assert_symlink_has_content () {
 assert_file_empty() {
     if test -s "$1"; then
         _fatal_print_file "$1" "File '$1' is not empty"
+    fi
+}
+
+assert_files_equal() {
+    if ! cmp "$1" "$2"; then
+        _fatal_print_files "$1" "$2" "File '$1' and '$2' is not equal"
     fi
 }
 
