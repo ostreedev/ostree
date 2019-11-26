@@ -123,6 +123,7 @@ ostree_SOURCES += src/ostree/ot-remote-builtin-add-cookie.c \
 endif
 
 src/ostree/parse-datetime.c: src/ostree/parse-datetime.y Makefile
+	mkdir -p src/ostree/
 	$(AM_V_GEN) $(YACC) $< -o $@
 
 EXTRA_DIST += src/ostree/parse-datetime.y
