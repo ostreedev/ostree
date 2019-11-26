@@ -108,6 +108,7 @@ typedef struct {
   gboolean          gpg_verify;
   gboolean          gpg_verify_summary;
   gboolean          sign_verify;
+  gboolean          sign_verify_summary;
   gboolean          require_static_deltas;
   gboolean          disable_static_deltas;
   gboolean          has_tombstone_commits;
@@ -1564,6 +1565,51 @@ _load_public_keys (OtPullData *pull_data,
 }
 
 static gboolean
+_ostree_repo_sign_verify (OtPullData *pull_data,
+                          GBytes *signed_data,
+                          GVariant *metadata)
+{
+  /* list all signature types in detached metadata and check if signed by any? */
+  g_auto (GStrv) names = ostree_sign_list_names();
+  for (char **iter=names; iter && *iter; iter++)
+    {
+      g_autoptr (OstreeSign) sign = NULL;
+      g_autoptr (GVariant) signatures = NULL;
+      const gchar *signature_key = NULL;
+      GVariantType *signature_format = NULL;
+      g_autoptr (GError) local_error = NULL;
+
+      if ((sign = ostree_sign_get_by_name (*iter, &local_error)) == NULL)
+        continue;
+
+      signature_key = ostree_sign_metadata_key (sign);
+      signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
+
+      signatures = g_variant_lookup_value (metadata,
+                                           signature_key,
+                                           signature_format);
+
+      /* If not found signatures for requested signature subsystem */
+      if (!signatures)
+        continue;
+
+      /* Try to load public key(s) according remote's configuration */
+      if (!_load_public_keys (pull_data, sign))
+        continue;
+
+      /* Return true if any signature fit to pre-loaded public keys.
+       * If no keys configured -- then system configuration will be used */
+      if (ostree_sign_data_verify (sign,
+                                   signed_data,
+                                   signatures,
+                                   &local_error))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+static gboolean
 ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                 const char                 *checksum,
                                 GVariant                   *commit,
@@ -1572,21 +1618,24 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                 GCancellable               *cancellable,
                                 GError                    **error)
 {
+
+  if (pull_data->gpg_verify || pull_data->sign_verify)
+    /* Shouldn't happen, but see comment in process_verify_result() */
+    if (g_hash_table_contains (pull_data->verified_commits, checksum))
+      return TRUE;
+
+  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
+
 #ifndef OSTREE_DISABLE_GPGME
   if (pull_data->gpg_verify)
     {
       const char *keyring_remote = NULL;
-
-      /* Shouldn't happen, but see comment in process_verify_result() */
-      if (g_hash_table_contains (pull_data->verified_commits, checksum))
-        return TRUE;
 
       if (ref != NULL)
         keyring_remote = g_hash_table_lookup (pull_data->ref_keyring_map, ref);
       if (keyring_remote == NULL)
         keyring_remote = pull_data->remote_name;
 
-      g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
       g_autoptr(OstreeGpgVerifyResult) result =
         _ostree_repo_gpg_verify_with_metadata (pull_data->repo, signed_data,
                                                detached_metadata,
@@ -1606,59 +1655,17 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                "Can't verify commit without detached metadata");
           return FALSE;
         }
-      /* Shouldn't happen, but see comment in process_verify_result() */
-      if (g_hash_table_contains (pull_data->verified_commits, checksum))
-        return TRUE;
 
-      gboolean ret = FALSE;
-      g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
-
-      /* list all signature types in detached metadata and check if signed by any? */
-      g_auto (GStrv) names = ostree_sign_list_names();
-      for (guint i=0; i < g_strv_length (names); i++)
+      if (!_ostree_repo_sign_verify (pull_data, signed_data, detached_metadata))
         {
-          g_autoptr (OstreeSign) sign = NULL;
-          g_autoptr (GVariant) signatures = NULL;
-          const gchar *signature_key = NULL;
-          GVariantType *signature_format = NULL;
-          g_autoptr (GError) local_error = NULL;
-
-          if ((sign = ostree_sign_get_by_name (names[i], &local_error)) == NULL)
-            continue;
-
-          signature_key = ostree_sign_metadata_key (sign);
-          signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
-
-          signatures = g_variant_lookup_value (detached_metadata,
-                                               signature_key,
-                                               signature_format);
-
-          /* If not found signatures for requested signature subsystem */
-          if (!signatures)
-            continue;
-
-          /* Try to load public key(s) according remote's configuration */
-          if (!_load_public_keys (pull_data, sign))
-            continue;
-
-          /* Return true if any signature fit to pre-loaded public keys.
-           * If no keys configured -- then system configuration will be used */
-          if (ostree_sign_data_verify (sign,
-                                       signed_data,
-                                       signatures,
-                                       &local_error))
-            ret = TRUE;
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Can't verify commit");
+          return FALSE;
         }
 
       /* Mark the commit as verified to avoid double verification
        * see process_verify_result () for rationale */
-      if (ret)
-        g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
-      else
-        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                             "Can't verify commit");
-
-      return ret;
+      g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
     }
 
   return TRUE;
@@ -3773,6 +3780,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
   gboolean opt_sign_verify_set = FALSE;
+  gboolean opt_sign_verify_summary_set = FALSE;
   gboolean opt_collection_refs_set = FALSE;
   gboolean opt_n_network_retries_set = FALSE;
   gboolean opt_ref_keyring_map_set = FALSE;
@@ -3809,6 +3817,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         g_variant_lookup (options, "gpg-verify-summary", "b", &pull_data->gpg_verify_summary);
       opt_sign_verify_set =
         g_variant_lookup (options, "sign-verify", "b", &pull_data->sign_verify);
+      opt_sign_verify_summary_set =
+        g_variant_lookup (options, "sign-verify-summary", "b", &pull_data->sign_verify_summary);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
       (void) g_variant_lookup (options, "disable-static-deltas", "b", &pull_data->disable_static_deltas);
       (void) g_variant_lookup (options, "require-static-deltas", "b", &pull_data->require_static_deltas);
@@ -3995,6 +4005,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         if (!ostree_repo_get_remote_boolean_option (self, pull_data->remote_name,
                                                     "sign-verify", FALSE,
                                                     &pull_data->sign_verify, error))
+          goto out;
+      if (!opt_sign_verify_summary_set)
+        if (!ostree_repo_get_remote_boolean_option (self, pull_data->remote_name,
+                                                    "sign-verify-summary", FALSE,
+                                                    &pull_data->sign_verify_summary, error))
           goto out;
 
       /* NOTE: If changing this, see the matching implementation in
@@ -4376,6 +4391,67 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           }
       }
 #endif /* OSTREE_DISABLE_GPGME */
+
+    if (pull_data->sign_verify_summary)
+      {
+        if (!bytes_sig && pull_data->sign_verify_summary)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Signatures verification enabled, but no summary.sig found (use sign-verify-summary=false in remote config to disable)");
+            goto out;
+          }
+        if (bytes_summary && bytes_sig)
+          {
+            g_autoptr(GVariant) signatures = NULL;
+
+            signatures = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                   bytes_sig, FALSE);
+
+
+            if (!_ostree_repo_sign_verify (pull_data, bytes_summary, signatures))
+              {
+                gboolean ret = FALSE;
+
+                if (summary_from_cache)
+                  {
+                    /* The cached summary doesn't match, fetch a new one and verify again */
+                    if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
+                      {
+                        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                     "Remote %s cached summary invalid and "
+                                     "OSTREE_REPO_TEST_ERROR_INVALID_CACHE specified",
+                                     pull_data->remote_name);
+                        goto out;
+                      }
+                    else
+                      g_debug ("Remote %s cached summary invalid, pulling new version",
+                               pull_data->remote_name);
+
+                    summary_from_cache = FALSE;
+                    g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                    if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                                     pull_data->meta_mirrorlist,
+                                                                     "summary",
+                                                                     OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                                     pull_data->n_network_retries,
+                                                                     &bytes_summary,
+                                                                     OSTREE_MAX_METADATA_SIZE,
+                                                                     cancellable, error))
+                      goto out;
+
+                    if (_ostree_repo_sign_verify (pull_data, bytes_summary, signatures))
+                      ret = TRUE;
+                  }
+
+                if (!ret)
+                  {
+                    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                         "Can't verify summary");
+                    goto out;
+                  }
+              }
+          }
+      }
 
     if (bytes_summary)
       {
