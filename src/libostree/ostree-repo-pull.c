@@ -3986,7 +3986,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_free (pull_data->remote_name);
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
-#ifndef OSTREE_DISABLE_GPGME
       /* Fetch GPG verification settings from remote if it wasn't already
        * explicitly set in the options. */
       if (!opt_gpg_verify_set)
@@ -3998,7 +3997,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         if (!ostree_repo_remote_get_gpg_verify_summary (self, pull_data->remote_name,
                                                         &pull_data->gpg_verify_summary, error))
           goto out;
-#endif /* OSTREE_DISABLE_GPGME */
       /* Fetch verification settings from remote if it wasn't already
        * explicitly set in the options. */
       if (!opt_sign_verify_set)
@@ -6460,9 +6458,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autofree char *metalink_url_string = NULL;
   g_autoptr(GBytes) summary = NULL;
   g_autoptr(GBytes) signatures = NULL;
-#ifndef OSTREE_DISABLE_GPGME
   gboolean gpg_verify_summary;
-#endif
   gboolean ret = FALSE;
   gboolean summary_is_from_cache;
 
@@ -6484,7 +6480,6 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                   error))
     goto out;
 
-#ifndef OSTREE_DISABLE_GPGME
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
     goto out;
 
@@ -6537,10 +6532,6 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
             }
         }
     }
-
-#else
-  g_message ("%s: GPG feature is disabled in a build time", __FUNCTION__);
-#endif /* OSTREE_DISABLE_GPGME */
 
   if (out_summary != NULL)
     *out_summary = g_steal_pointer (&summary);

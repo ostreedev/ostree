@@ -2028,17 +2028,8 @@ ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
       return TRUE;
     }
 
-#ifndef OSTREE_DISABLE_GPGME
   return ostree_repo_get_remote_boolean_option (self, name, "gpg-verify",
                                                TRUE, out_gpg_verify, error);
-#else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "'%s': GPG feature is disabled in a build time",
-               __FUNCTION__);
-  if (out_gpg_verify != NULL)
-    *out_gpg_verify = FALSE;
-  return FALSE;
-#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
@@ -2060,17 +2051,8 @@ ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
                                            gboolean    *out_gpg_verify_summary,
                                            GError     **error)
 {
-#ifndef OSTREE_DISABLE_GPGME
   return ostree_repo_get_remote_boolean_option (self, name, "gpg-verify-summary",
                                                 FALSE, out_gpg_verify_summary, error);
-#else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "'%s': GPG feature is disabled in a build time",
-               __FUNCTION__);
-  if (out_gpg_verify_summary != NULL)
-    *out_gpg_verify_summary = FALSE;
-  return FALSE;
-#endif /* OSTREE_DISABLE_GPGME */
 }
 
 /**
