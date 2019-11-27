@@ -1483,8 +1483,9 @@ process_verify_result (OtPullData            *pull_data,
  * Returns: %TRUE if no configuration or any key loaded.
  * */
 static gboolean
-_load_public_keys (OtPullData *pull_data,
-                   OstreeSign *sign)
+_load_public_keys (OstreeSign *sign,
+                   OstreeRepo *repo,
+                   const gchar *remote_name)
 {
 
   g_autofree gchar *pk_ascii = NULL;
@@ -1493,13 +1494,13 @@ _load_public_keys (OtPullData *pull_data,
   gboolean loaded_inlined = TRUE;
   g_autoptr (GError) error = NULL;
 
-  ostree_repo_get_remote_option (pull_data->repo,
-                                 pull_data->remote_name,
+  ostree_repo_get_remote_option (repo,
+                                 remote_name,
                                  "verification-file", NULL,
                                  &pk_file, NULL);
 
-  ostree_repo_get_remote_option (pull_data->repo,
-                                 pull_data->remote_name,
+  ostree_repo_get_remote_option (repo,
+                                 remote_name,
                                  "verification-key", NULL,
                                  &pk_ascii, NULL);
 
@@ -1565,7 +1566,8 @@ _load_public_keys (OtPullData *pull_data,
 }
 
 static gboolean
-_ostree_repo_sign_verify (OtPullData *pull_data,
+_ostree_repo_sign_verify (OstreeRepo *repo,
+                          const gchar *remote_name,
                           GBytes *signed_data,
                           GVariant *metadata)
 {
@@ -1594,7 +1596,7 @@ _ostree_repo_sign_verify (OtPullData *pull_data,
         continue;
 
       /* Try to load public key(s) according remote's configuration */
-      if (!_load_public_keys (pull_data, sign))
+      if (!_load_public_keys (sign, repo, remote_name))
         continue;
 
       /* Return true if any signature fit to pre-loaded public keys.
@@ -1656,7 +1658,7 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
           return FALSE;
         }
 
-      if (!_ostree_repo_sign_verify (pull_data, signed_data, detached_metadata))
+      if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata))
         {
           g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "Can't verify commit");
@@ -2012,7 +2014,7 @@ scan_commit_object (OtPullData                 *pull_data,
             continue;
 
           /* Try to load public key(s) according remote's configuration */
-          if (!_load_public_keys (pull_data, sign))
+          if (!_load_public_keys (sign, pull_data->repo, pull_data->remote_name))
             continue;
 
           /* Set return to true if any sign fit */
@@ -4406,7 +4408,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                    bytes_sig, FALSE);
 
 
-            if (!_ostree_repo_sign_verify (pull_data, bytes_summary, signatures))
+            if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures))
               {
                 gboolean ret = FALSE;
 
@@ -4437,7 +4439,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      cancellable, error))
                       goto out;
 
-                    if (_ostree_repo_sign_verify (pull_data, bytes_summary, signatures))
+                    if (_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures))
                       ret = TRUE;
                   }
 
