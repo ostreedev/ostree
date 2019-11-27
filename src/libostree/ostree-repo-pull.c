@@ -6314,6 +6314,7 @@ ostree_repo_pull_from_remotes_async (OstreeRepo                           *self,
 #endif /* OSTREE_DISABLE_GPGME */
       g_variant_dict_insert (&local_options_dict, "gpg-verify-summary", "b", FALSE);
       g_variant_dict_insert (&local_options_dict, "sign-verify", "b", FALSE);
+      g_variant_dict_insert (&local_options_dict, "sign-verify-summary", "b", FALSE);
       g_variant_dict_insert (&local_options_dict, "inherit-transaction", "b", TRUE);
       if (result->remote->refspec_name != NULL)
         g_variant_dict_insert (&local_options_dict, "override-remote-name", "s", result->remote->refspec_name);
