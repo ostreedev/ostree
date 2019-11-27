@@ -6462,6 +6462,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autoptr(GBytes) summary = NULL;
   g_autoptr(GBytes) signatures = NULL;
   gboolean gpg_verify_summary;
+  gboolean sign_verify_summary;
   gboolean ret = FALSE;
   gboolean summary_is_from_cache;
 
@@ -6486,33 +6487,73 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
     goto out;
 
-  if (gpg_verify_summary && summary == NULL)
+  if (gpg_verify_summary)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "GPG verification enabled, but no summary found (check that the configured URL in remote config is correct)");
-      goto out;
+      if (summary == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "GPG verification enabled, but no summary found (check that the configured URL in remote config is correct)");
+          goto out;
+        }
+
+      if (signatures == NULL)
+        {
+          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
+                       "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+          goto out;
+        }
+
+      /* Verify any summary signatures. */
+      if (summary != NULL && signatures != NULL)
+        {
+          g_autoptr(OstreeGpgVerifyResult) result = NULL;
+
+          result = ostree_repo_verify_summary (self,
+                                               name,
+                                               summary,
+                                               signatures,
+                                               cancellable,
+                                               error);
+          if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+            goto out;
+        }
     }
 
-  if (gpg_verify_summary && signatures == NULL)
-    {
-      g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
-                   "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+  if (!ostree_repo_get_remote_boolean_option (self, name, "sign-verify-summary",
+                                              FALSE, &sign_verify_summary, error))
       goto out;
-    }
 
-  /* Verify any summary signatures. */
-  if (gpg_verify_summary && summary != NULL && signatures != NULL)
+  if (sign_verify_summary)
     {
-      g_autoptr(OstreeGpgVerifyResult) result = NULL;
+      if (summary == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Signature verification enabled, but no summary found (check that the configured URL in remote config is correct)");
+          goto out;
+        }
 
-      result = ostree_repo_verify_summary (self,
-                                           name,
-                                           summary,
-                                           signatures,
-                                           cancellable,
-                                           error);
-      if (!ostree_gpg_verify_result_require_valid_signature (result, error))
-        goto out;
+      if (signatures == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Signature verification enabled, but no summary signatures found (use sign-verify-summary=false in remote config to disable)");
+          goto out;
+        }
+
+      /* Verify any summary signatures. */
+      if (summary != NULL && signatures != NULL)
+        {
+          g_autoptr(GVariant) sig_variant = NULL;
+
+          sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                  signatures, FALSE);
+
+          if (!_ostree_repo_sign_verify (self, name, summary, sig_variant))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                           "Signature verification enabled, but no valid signatures found");
+              goto out;
+            }
+        }
     }
 
   if (!summary_is_from_cache && summary && signatures)
