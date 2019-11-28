@@ -22,6 +22,7 @@ global:
   /* Add symbols here, and uncomment the bits in
    * Makefile-libostree.am to enable this too.
    */
+  ostree_repo_static_delta_verify_signature;
 } LIBOSTREE_2020.4;
 
 /* Stub section for the stable release *after* this development one; don't

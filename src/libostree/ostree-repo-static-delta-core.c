@@ -210,6 +210,61 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
   return TRUE;
 }
 
+static gboolean
+_ostree_repo_static_delta_is_signed (OstreeRepo       *self,
+                                     int               fd,
+                                     GPtrArray       **out_value,
+                                     GError          **error)
+{
+  g_autoptr(GVariant) delta = NULL;
+  g_autoptr(GVariant) delta_sign_magic = NULL;
+  g_autoptr(GVariant) delta_sign = NULL;
+  GVariantIter iter;
+  GVariant *item;
+  g_autoptr(GPtrArray) signatures = NULL;
+  gboolean ret = FALSE;
+
+  if (out_value)
+    *out_value = NULL;
+
+  if (!ot_variant_read_fd (fd, 0, (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT, TRUE, &delta, error))
+    return FALSE;
+
+  delta_sign_magic = g_variant_get_child_value (delta, 0);
+  if (delta_sign_magic == NULL)
+    return glnx_throw (error, "no signatures in static-delta");
+
+  if (GUINT64_FROM_BE (g_variant_get_uint64 (delta_sign_magic)) != OSTREE_STATIC_DELTA_SIGNED_MAGIC)
+    return glnx_throw (error, "no signatures in static-delta");
+
+  delta_sign = g_variant_get_child_value (delta, 2);
+  if (delta_sign == NULL)
+    return glnx_throw (error, "no signatures in static-delta");
+
+  if (out_value)
+    signatures = g_ptr_array_new_with_free_func (g_free);
+
+  /* Check if there are signatures in the superblock */
+  g_variant_iter_init (&iter, delta_sign);
+  while ((item = g_variant_iter_next_value (&iter)))
+    {
+      g_autoptr(GVariant) key_v = g_variant_get_child_value (item, 0);
+      const char *str = g_variant_get_string (key_v, NULL);
+      if (g_str_has_prefix (str, "ostree.sign."))
+        {
+          ret = TRUE;
+          if (signatures)
+            g_ptr_array_add (signatures, g_strdup (str + strlen ("ostree.sign.")));
+        }
+      g_variant_unref (item);
+    }
+
+  if (out_value && ret)
+    ot_transfer_out_value (out_value, &signatures);
+
+  return ret;
+}
+
 /**
  * ostree_repo_static_delta_execute_offline:
  * @self: Repo
@@ -894,4 +949,77 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
   }
 
   return TRUE;
+}
+
+/**
+ * ostree_repo_static_delta_verify_signature:
+ * @self: Repo
+ * @delta_id: delta path
+ * @sign: Signature engine used to check superblock
+ * @out_success_message: success message
+ * @error: Error
+ *
+ * Verify static delta file signature.
+ *
+ * Returns: TRUE if the signature of static delta file is valid using the
+ * signature engine provided, FALSE otherwise.
+ *
+ * Since: 2020.1
+ */
+gboolean
+ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
+                                           const char       *delta_id,
+                                           OstreeSign       *sign,
+                                           char            **out_success_message,
+                                           GError          **error)
+{
+  g_autoptr(GVariantBuilder) desc_sign_builder = NULL;
+  g_autoptr(GVariant) delta_meta = NULL;
+  glnx_autofd int delta_fd = -1;
+
+  if (strchr (delta_id, '/'))
+    {
+      if (!glnx_openat_rdonly (AT_FDCWD, delta_id, TRUE, &delta_fd, error))
+        return FALSE;
+    }
+  else
+    {
+      g_autofree char *from = NULL;
+      g_autofree char *to = NULL;
+      if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
+        return FALSE;
+
+      g_autofree char *delta_path = _ostree_get_relative_static_delta_superblock_path (from, to);
+      if (!glnx_openat_rdonly (self->repo_dir_fd, delta_path, TRUE, &delta_fd, error))
+        return FALSE;
+    }
+
+  if (!_ostree_repo_static_delta_is_signed (self, delta_fd, NULL, error))
+    return FALSE;
+
+  g_autoptr(GVariant) delta = NULL;
+  if (!ot_variant_read_fd (delta_fd, 0,
+                           (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
+                           TRUE, &delta, error))
+    return FALSE;
+
+  /* Check if there are signatures for signature engine */
+  const gchar *signature_key = ostree_sign_metadata_key(sign);
+  GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(sign);
+  delta_meta = g_variant_get_child_value (delta, 2);
+  if (delta_meta == NULL)
+      return glnx_throw (error, "no metadata in static-delta superblock");
+  g_autoptr(GVariant) signatures = g_variant_lookup_value (delta_meta,
+                                                           signature_key,
+                                                           signature_format);
+  if (!signatures)
+      return glnx_throw (error, "no signature for '%s' in static-delta superblock", signature_key);
+
+  /* Get static delta superblock */
+  g_autoptr(GVariant) child = g_variant_get_child_value (delta, 1);
+  if (child == NULL)
+      return glnx_throw (error, "no metadata in static-delta superblock");
+  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes(child);
+
+  return ostree_sign_data_verify (sign, signed_data, signatures, out_success_message, error);
 }
