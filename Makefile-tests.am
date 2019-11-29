@@ -114,6 +114,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-reset-nonlinear.sh \
 	tests/test-oldstyle-partial.sh \
 	tests/test-delta.sh \
+	tests/test-delta-sign.sh \
 	tests/test-xattrs.sh \
 	tests/test-auto-summary.sh \
 	tests/test-prune.sh \
