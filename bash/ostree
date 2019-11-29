@@ -1709,6 +1709,40 @@ _ostree_static_delta_show() {
     return 0
 }
 
+_ostree_static_delta_verify() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sign-type
+        --keys-file
+        --keys-dir
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --keys-file|--keys-dir|--repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
 _ostree_static_delta() {
     local subcommands="
         apply-offline
