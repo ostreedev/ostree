@@ -74,8 +74,7 @@ systems.
 which uses libostree.
 
 The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
-integration tool uses libostree as a caching system to store and share
-built artifacts.
+integration tool supports importing and exporting from libostree repos.
 
 Fedora [coreos-assembler](https://github.com/coreos/coreos-assembler) is
 the build tool used to generate Fedora CoreOS derivatives.
