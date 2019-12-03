@@ -261,9 +261,8 @@ destroy_and_unref_source (GSource *source)
 }
 
 static char *
-request_get_uri (FetcherRequest *req, guint idx)
+request_get_uri (FetcherRequest *req, SoupURI *baseuri)
 {
-  SoupURI *baseuri = req->mirrorlist->pdata[idx];
   if (!req->filename)
     return soup_uri_to_string (baseuri, FALSE);
   { g_autofree char *uristr = soup_uri_to_string (baseuri, FALSE);
@@ -715,7 +714,8 @@ initiate_next_curl_request (FetcherRequest *req,
 
   g_assert_cmpint (req->idx, <, req->mirrorlist->len);
 
-  { g_autofree char *uri = request_get_uri (req, req->idx);
+  SoupURI *baseuri = req->mirrorlist->pdata[req->idx];
+  { g_autofree char *uri = request_get_uri (req, baseuri);
     curl_easy_setopt (req->easy, CURLOPT_URL, uri);
   }
 
@@ -770,6 +770,12 @@ initiate_next_curl_request (FetcherRequest *req,
 
   if ((self->config_flags & OSTREE_FETCHER_FLAGS_TRANSFER_GZIP) > 0)
     curl_easy_setopt (req->easy, CURLOPT_ACCEPT_ENCODING, "");
+
+  /* If we have e.g. basic auth in the URL string, let's honor that */
+  const char *username = soup_uri_get_user (baseuri);
+  curl_easy_setopt (req->easy, CURLOPT_USERNAME, username);
+  const char *password = soup_uri_get_password (baseuri);
+  curl_easy_setopt (req->easy, CURLOPT_PASSWORD, password);
 
   /* We should only speak HTTP; TODO: only enable file if specified */
   curl_easy_setopt (req->easy, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FILE));
