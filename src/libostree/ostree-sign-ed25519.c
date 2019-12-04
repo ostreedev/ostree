@@ -55,7 +55,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSignEd25519, g_object_unref)
 static void
 ostree_sign_ed25519_iface_init (OstreeSignInterface *self);
 
-G_DEFINE_TYPE_WITH_CODE (OstreeSignEd25519, ostree_sign_ed25519, G_TYPE_OBJECT,
+G_DEFINE_TYPE_WITH_CODE (OstreeSignEd25519, _ostree_sign_ed25519, G_TYPE_OBJECT,
         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_SIGN, ostree_sign_ed25519_iface_init));
 
 static void
@@ -76,13 +76,13 @@ ostree_sign_ed25519_iface_init (OstreeSignInterface *self)
 }
 
 static void
-ostree_sign_ed25519_class_init (OstreeSignEd25519Class *self)
+_ostree_sign_ed25519_class_init (OstreeSignEd25519Class *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 }
 
 static void
-ostree_sign_ed25519_init (OstreeSignEd25519 *self)
+_ostree_sign_ed25519_init (OstreeSignEd25519 *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
@@ -111,7 +111,7 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
 
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
 #ifdef HAVE_LIBSODIUM
   guchar *sig = NULL;
@@ -163,7 +163,7 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
   g_return_val_if_fail (data != NULL, FALSE);
   gboolean ret = FALSE;
 
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
   if (signatures == NULL)
     {
@@ -284,7 +284,7 @@ gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
 #ifdef HAVE_LIBSODIUM
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
   /* Clear secret key */
   if (sign->secret_key != NULL)
@@ -326,7 +326,7 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
 #ifdef HAVE_LIBSODIUM
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
   ostree_sign_ed25519_clear_keys (self, error);
 
@@ -391,7 +391,7 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
 #ifdef HAVE_LIBSODIUM
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
   g_autofree char * hex = NULL;
   gpointer key = NULL;
 
@@ -446,7 +446,7 @@ _ed25519_add_revoked (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-  OstreeSignEd25519 *sign = ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
   g_autofree char * hex = NULL;
   gpointer key = NULL;
 
