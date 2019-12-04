@@ -50,7 +50,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSignDummy, g_object_unref)
 static void
 ostree_sign_dummy_iface_init (OstreeSignInterface *self);
 
-G_DEFINE_TYPE_WITH_CODE (OstreeSignDummy, ostree_sign_dummy, G_TYPE_OBJECT,
+G_DEFINE_TYPE_WITH_CODE (OstreeSignDummy, _ostree_sign_dummy, G_TYPE_OBJECT,
         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_SIGN, ostree_sign_dummy_iface_init));
 
 static void
@@ -70,13 +70,13 @@ ostree_sign_dummy_iface_init (OstreeSignInterface *self)
 }
 
 static void
-ostree_sign_dummy_class_init (OstreeSignDummyClass *self)
+_ostree_sign_dummy_class_init (OstreeSignDummyClass *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 }
 
 static void
-ostree_sign_dummy_init (OstreeSignDummy *self)
+_ostree_sign_dummy_init (OstreeSignDummy *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
@@ -88,7 +88,7 @@ gboolean ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **err
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  OstreeSignDummy *sign =  ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
   g_free(sign->sk_ascii);
 
@@ -101,7 +101,7 @@ gboolean ostree_sign_dummy_set_pk (OstreeSign *self, GVariant *key, GError **err
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  OstreeSignDummy *sign =  ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
   g_free(sign->pk_ascii);
 
@@ -120,7 +120,7 @@ gboolean ostree_sign_dummy_data (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-  OstreeSignDummy *sign =  ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
   *signature = g_bytes_new (sign->sk_ascii, strlen(sign->sk_ascii));
 
@@ -158,7 +158,7 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (data != NULL, FALSE);
 
-  OstreeSignDummy *sign =  ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
   gboolean ret = FALSE;
 

@@ -30,17 +30,16 @@
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_SIGN_DUMMY (ostree_sign_dummy_get_type ())
+#define OSTREE_TYPE_SIGN_DUMMY (_ostree_sign_dummy_get_type ())
 
-_OSTREE_PUBLIC
-GType ostree_sign_dummy_get_type (void);
+GType _ostree_sign_dummy_get_type (void);
 
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 typedef struct _OstreeSignDummy OstreeSignDummy;
 typedef struct { GObjectClass parent_class; } OstreeSignDummyClass;
 
-static inline OstreeSignDummy *OSTREE_SIGN_DUMMY (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_sign_dummy_get_type (), OstreeSignDummy); }
-static inline gboolean OSTREE_IS_SIGN_DUMMY (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_sign_dummy_get_type ()); }
+static inline OstreeSignDummy *OSTREE_SIGN_DUMMY (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_CAST (ptr, _ostree_sign_dummy_get_type (), OstreeSignDummy); }
+static inline gboolean OSTREE_IS_SIGN_DUMMY (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_TYPE (ptr, _ostree_sign_dummy_get_type ()); }
 
 G_GNUC_END_IGNORE_DEPRECATIONS
 

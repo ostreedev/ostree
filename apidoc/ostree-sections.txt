@@ -709,7 +709,6 @@ ostree_kernel_args_to_string
 <SECTION>
 <FILE>ostree-sign</FILE>
 OstreeSign
-OstreeSignDummy
 OstreeSignEd25519
 ostree_sign_list_names
 ostree_sign_commit
@@ -726,6 +725,5 @@ ostree_sign_set_sk
 ostree_sign_summary
 <SUBSECTION Standard>
 ostree_sign_get_type
-ostree_sign_dummy_get_type
 ostree_sign_ed25519_get_type
 </SECTION>
