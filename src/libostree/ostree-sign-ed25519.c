@@ -39,10 +39,17 @@
 #define OSTREE_SIGN_METADATA_ED25519_KEY "ostree.sign.ed25519"
 #define OSTREE_SIGN_METADATA_ED25519_TYPE "aay"
 
+typedef enum
+{
+  ED25519_OK,
+  ED25519_NOT_SUPPORTED,
+  ED25519_FAILED_INITIALIZATION
+} ed25519_state;
+
 struct _OstreeSignEd25519
 {
   GObject parent;
-  gboolean initialized;
+  ed25519_state state;
   guchar *secret_key;
   GList *public_keys;
   GList *revoked_keys;
@@ -86,20 +93,37 @@ _ostree_sign_ed25519_init (OstreeSignEd25519 *self)
 {
   g_debug ("%s enter", __FUNCTION__);
 
-  self->initialized = TRUE;
+  self->state = ED25519_OK;
   self->secret_key = NULL;
   self->public_keys = NULL;
   self->revoked_keys = NULL;
 
 #ifdef HAVE_LIBSODIUM
   if (sodium_init() < 0)
-    {
-      self->initialized = FALSE;
-      g_warning ("libsodium library couldn't be initialized");
-    }
+      self->state = ED25519_FAILED_INITIALIZATION;
 #else
-  g_error ("ed25519 signature isn't supported");
+  self->state = ED25519_NOT_SUPPORTED;
 #endif /* HAVE_LIBSODIUM */
+}
+
+static gboolean
+_ostree_sign_ed25519_is_initialized (OstreeSignEd25519 *self, GError **error)
+{
+  switch (self->state)
+    {
+    case ED25519_OK:
+      break;
+    case ED25519_NOT_SUPPORTED:
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                          "ed25519: engine is not supported");
+      return FALSE;
+    case ED25519_FAILED_INITIALIZATION:
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                          "ed25519: libsodium library isn't initialized properly");
+      return FALSE;
+    }
+
+  return TRUE;
 }
 
 gboolean ostree_sign_ed25519_data (OstreeSign *self,
@@ -117,10 +141,13 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
   guchar *sig = NULL;
 #endif
 
-  if ((sign->initialized != TRUE) || (sign->secret_key == NULL))
+  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+      goto err;
+
+  if (sign->secret_key == NULL)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "Not able to sign: libsodium library isn't initialized properly");
+                          "secret key is not set");
       goto err;
     }
 #ifdef HAVE_LIBSODIUM
@@ -135,7 +162,7 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
                             sign->secret_key))
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "Not able to sign the object");
+                          "fail to sign the object");
       goto err;
     }
 
@@ -143,6 +170,7 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
   return TRUE;
 #endif /* HAVE_LIBSODIUM */
 err:
+  g_prefix_error (error, "Not able to sign: ");
   return FALSE;
 }
 
@@ -165,11 +193,14 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
 
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
+  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+    goto out;
+
   if (signatures == NULL)
     {
       g_set_error_literal (error,
                            G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "signature: ed25519: commit have no signatures of my type");
+                           "ed25519: commit have no signatures of my type");
       goto out;
     }
 
@@ -177,14 +208,7 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
     {
       g_set_error_literal (error,
                            G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "signature: ed25519: wrong type passed for verification");
-      goto out;
-    }
-
-  if (sign->initialized != TRUE)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "Not able to verify: libsodium library isn't initialized properly");
+                           "ed25519: wrong type passed for verification");
       goto out;
     }
 
@@ -248,10 +272,12 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
 
   if (ret != TRUE)
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "Not able to verify: no valid signatures found");
+                         "no valid signatures found");
 #endif /* HAVE_LIBSODIUM */
 
 out:
+  if (ret != TRUE)
+    g_prefix_error (error, "Not able to verify: ");
   return ret;
 }
 
@@ -283,9 +309,12 @@ gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-#ifdef HAVE_LIBSODIUM
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
+  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+    goto err;
+
+#ifdef HAVE_LIBSODIUM
   /* Clear secret key */
   if (sign->secret_key != NULL)
   {
@@ -309,8 +338,9 @@ gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
     }
 
   return TRUE;
-
 #endif /* HAVE_LIBSODIUM */
+
+err:
   return FALSE;
 }
 
@@ -325,10 +355,12 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
+
+  if (!ostree_sign_ed25519_clear_keys (self, error))
+    goto err;
+
 #ifdef HAVE_LIBSODIUM
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
-
-  ostree_sign_ed25519_clear_keys (self, error);
 
   gsize n_elements = 0;
 
@@ -357,9 +389,9 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
     }
 
   return TRUE;
+#endif /* HAVE_LIBSODIUM */
 
 err:
-#endif /* HAVE_LIBSODIUM */
   return FALSE;
 }
 
@@ -374,7 +406,8 @@ gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-  ostree_sign_ed25519_clear_keys (self, error);
+  if (!ostree_sign_ed25519_clear_keys (self, error))
+    return FALSE;
 
   return ostree_sign_ed25519_add_pk (self, public_key, error);
 }
@@ -390,11 +423,14 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-#ifdef HAVE_LIBSODIUM
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+
+  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+    goto err;
+
+#ifdef HAVE_LIBSODIUM
   g_autofree char * hex = NULL;
   gpointer key = NULL;
-
   gsize n_elements = 0;
 
   if (g_variant_is_of_type (public_key, G_VARIANT_TYPE_STRING))
@@ -430,9 +466,9 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
     }
 
   return TRUE;
+#endif /* HAVE_LIBSODIUM */
 
 err:
-#endif /* HAVE_LIBSODIUM */
   return FALSE;
 }
 
@@ -678,6 +714,10 @@ ostree_sign_ed25519_load_pk (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
 
   const gchar *filename = NULL;
+
+  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
+  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+    return FALSE;
 
   /* Read keys only from single file provided */
   if (g_variant_lookup (options, "filename", "&s", &filename))
