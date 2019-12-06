@@ -2005,7 +2005,7 @@ scan_commit_object (OtPullData                 *pull_data,
       gboolean ret = FALSE;
       /* list all signature types in detached metadata and check if signed by any? */
       g_auto (GStrv) names = ostree_sign_list_names();
-      for (char **iter=names; iter && *iter; iter++)
+      for (char **iter=names; !ret && iter && *iter; iter++)
         {
           g_autoptr (OstreeSign) sign = NULL;
           g_autoptr (GError) local_error = NULL;
@@ -2023,15 +2023,28 @@ scan_commit_object (OtPullData                 *pull_data,
                                          checksum,
                                          cancellable,
                                          &local_error))
-            ret = TRUE;
+            {
+              ret = TRUE;
+              g_clear_error (error);
+            }
 
-        }
+          /* Save error message for better reason detection later if needed */
+          if (!ret)
+            {
+              if (*error == NULL)
+                g_propagate_error (error, g_steal_pointer (&local_error));
+              else
+                g_prefix_error (error, "%s; ", local_error->message);
+            }
+         }
+
       if (!ret)
         {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Can't verify commit");
+          g_prefix_error (error, "Can't verify commit %s: ", checksum);
           return FALSE;
         }
+      /* Clear non-fatal error */
+      g_clear_error (error);
     }
 
   /* If we found a legacy transaction flag, assume we have to scan.
