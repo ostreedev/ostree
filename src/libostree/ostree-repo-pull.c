@@ -1485,14 +1485,14 @@ process_verify_result (OtPullData            *pull_data,
 static gboolean
 _load_public_keys (OstreeSign *sign,
                    OstreeRepo *repo,
-                   const gchar *remote_name)
+                   const gchar *remote_name,
+                   GError **error)
 {
 
   g_autofree gchar *pk_ascii = NULL;
   g_autofree gchar *pk_file = NULL;
   gboolean loaded_from_file = TRUE;
   gboolean loaded_inlined = TRUE;
-  g_autoptr (GError) error = NULL;
 
   ostree_repo_get_remote_option (repo,
                                  remote_name,
@@ -1528,48 +1528,53 @@ _load_public_keys (OstreeSign *sign,
       g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
       options = g_variant_builder_end (builder);
 
-      if (ostree_sign_load_pk (sign, options, &error))
+      if (ostree_sign_load_pk (sign, options, error))
         loaded_from_file = TRUE;
       else
-        {
-          g_assert (error);
           g_debug("Unable to load public keys for '%s' from file '%s': %s",
-                  ostree_sign_get_name(sign), pk_file, error->message);
-          g_clear_error (&error);
-        }
+                  ostree_sign_get_name(sign), pk_file, (*error)->message);
     }
 
   if (pk_ascii != NULL)
     {
+      g_autoptr (GError) local_error = NULL;
       g_autoptr (GVariant) pk = g_variant_new_string(pk_ascii);
 
       /* Add inlined public key */
       if (loaded_from_file)
-        loaded_inlined = ostree_sign_add_pk (sign, pk, &error);
+        loaded_inlined = ostree_sign_add_pk (sign, pk, &local_error);
       else
-        loaded_inlined = ostree_sign_set_pk (sign, pk, &error);
+        loaded_inlined = ostree_sign_set_pk (sign, pk, &local_error);
 
       if (!loaded_inlined)
         {
-          if (error == NULL)
-            g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                 "unknown reason");
-
           g_debug("Unable to load public key '%s' for '%s': %s",
-                  pk_ascii, ostree_sign_get_name(sign), error->message);
-          g_clear_error (&error);
+                  pk_ascii, ostree_sign_get_name(sign), local_error->message);
+
+          /* Save error message for better reason detection later if needed */
+          if (*error == NULL)
+            g_propagate_error (error, g_steal_pointer (&local_error));
+          else
+            g_prefix_error (error, "%s; ", local_error->message);
         }
     }
 
   /* Return true if able to load from any source */
-  return (loaded_from_file || loaded_inlined);
+  if (loaded_from_file || loaded_inlined)
+    {
+      g_clear_error (error);
+      return TRUE;
+    }
+
+  return FALSE;
 }
 
 static gboolean
 _ostree_repo_sign_verify (OstreeRepo *repo,
                           const gchar *remote_name,
                           GBytes *signed_data,
-                          GVariant *metadata)
+                          GVariant *metadata,
+                          GError **error)
 {
   /* list all signature types in detached metadata and check if signed by any? */
   g_auto (GStrv) names = ostree_sign_list_names();
@@ -1596,17 +1601,32 @@ _ostree_repo_sign_verify (OstreeRepo *repo,
         continue;
 
       /* Try to load public key(s) according remote's configuration */
-      if (!_load_public_keys (sign, repo, remote_name))
-        continue;
+      if (_load_public_keys (sign, repo, remote_name, &local_error))
+        {
+          /* Return true if any signature fit to pre-loaded public keys.
+           * If no keys configured -- then system configuration will be used */
+          if (ostree_sign_data_verify (sign,
+                                       signed_data,
+                                       signatures,
+                                       &local_error))
+            {
+              g_clear_error (error);
+              return TRUE;
+            }
+        }
 
-      /* Return true if any signature fit to pre-loaded public keys.
-       * If no keys configured -- then system configuration will be used */
-      if (ostree_sign_data_verify (sign,
-                                   signed_data,
-                                   signatures,
-                                   &local_error))
-        return TRUE;
+      /* Save error message for better reason detection later if needed */
+      if (*error == NULL)
+        g_propagate_error (error, g_steal_pointer (&local_error));
+      else
+        g_prefix_error (error, "%s; ", local_error->message);
     }
+
+  /* In case if there were no signatures of known type
+   * or metadata contains invalid data */
+  if (*error == NULL)
+    g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                 "Metadata doesn't signed with supported type");
 
   return FALSE;
 }
@@ -1658,10 +1678,9 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
           return FALSE;
         }
 
-      if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata))
+      if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata, error))
         {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Can't verify commit");
+          g_prefix_error (error, "Can't verify commit");
           return FALSE;
         }
 
@@ -2014,18 +2033,19 @@ scan_commit_object (OtPullData                 *pull_data,
             continue;
 
           /* Try to load public key(s) according remote's configuration */
-          if (!_load_public_keys (sign, pull_data->repo, pull_data->remote_name))
-            continue;
-
-          /* Set return to true if any sign fit */
-          if (ostree_sign_commit_verify (sign,
-                                         pull_data->repo,
-                                         checksum,
-                                         cancellable,
-                                         &local_error))
+          if (_load_public_keys (sign, pull_data->repo, pull_data->remote_name, &local_error))
             {
-              ret = TRUE;
-              g_clear_error (error);
+
+              /* Set return to true if any sign fit */
+              if (ostree_sign_commit_verify (sign,
+                                             pull_data->repo,
+                                             checksum,
+                                             cancellable,
+                                             &local_error))
+                {
+                  ret = TRUE;
+                  g_clear_error (error);
+                }
             }
 
           /* Save error message for better reason detection later if needed */
@@ -4416,12 +4436,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         if (bytes_summary && bytes_sig)
           {
             g_autoptr(GVariant) signatures = NULL;
+            g_autoptr(GError) temp_error = NULL;
 
             signatures = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                                    bytes_sig, FALSE);
 
 
-            if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures))
+            if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, &temp_error))
               {
                 gboolean ret = FALSE;
 
@@ -4452,14 +4473,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      cancellable, error))
                       goto out;
 
-                    if (_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures))
+                    if (_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, error))
                       ret = TRUE;
                   }
+                else
+                  g_propagate_error (error, g_steal_pointer (&temp_error));
+
 
                 if (!ret)
                   {
-                    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                         "Can't verify summary");
+                    g_prefix_error (error, "Can't verify summary: ");
                     goto out;
                   }
               }
@@ -6560,12 +6583,8 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
           sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                                   signatures, FALSE);
 
-          if (!_ostree_repo_sign_verify (self, name, summary, sig_variant))
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                           "Signature verification enabled, but no valid signatures found");
-              goto out;
-            }
+          if (!_ostree_repo_sign_verify (self, name, summary, sig_variant, error))
+            goto out;
         }
     }
 
