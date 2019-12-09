@@ -577,6 +577,10 @@ LIBOSTREE_2019.4 {
 
 /* No new symbols in 2019.5 */
 
+LIBOSTREE_2019.6 {
+  ostree_async_progress_copy_state;
+} LIBOSTREE_2019.4;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
