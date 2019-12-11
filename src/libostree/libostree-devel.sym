@@ -19,6 +19,9 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2019.7 {
+  ostree_sysroot_initialize;
+  ostree_sysroot_is_booted;
+  ostree_sysroot_set_mount_namespace_in_use;
 } LIBOSTREE_2019.6;
 
 /* Stub section for the stable release *after* this development one; don't

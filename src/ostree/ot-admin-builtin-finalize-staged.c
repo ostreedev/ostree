@@ -34,6 +34,10 @@
 #include "ostree-cmdprivate.h"
 #include "ostree.h"
 
+static GOptionEntry options[] = {
+  { NULL }
+};
+
 /* Called by ostree-finalize-staged.service, and in turn
  * invokes a cmdprivate function inside the shared library.
  */
@@ -46,11 +50,13 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
   if (fstatat (AT_FDCWD, "/run/ostree-booted", &stbuf, 0) < 0)
     return TRUE;
 
-  g_autoptr(GFile) sysroot_file = g_file_new_for_path ("/");
-  g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_file);
-
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  g_autoptr(OstreeSysroot) sysroot = NULL;
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
+                                          invocation, &sysroot, cancellable, error))
     return FALSE;
+
   if (!ostree_cmd__private__()->ostree_finalize_staged (sysroot, cancellable, error))
     return FALSE;
 

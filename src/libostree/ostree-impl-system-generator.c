@@ -28,6 +28,7 @@
 #ifdef HAVE_LIBMOUNT
 #include <libmount.h>
 #endif
+#include <sys/statvfs.h>
 #include <stdbool.h>
 #include "otutil.h"
 
@@ -189,8 +190,6 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
                                "[Unit]\n"
                                "Documentation=man:ostree(1)\n"
                                "ConditionKernelCommandLine=!systemd.volatile\n"
-                               /* We need /sysroot mounted writable first */
-                               "After=ostree-remount.service\n"
                                "Before=local-fs.target\n"
                                "\n"
                                "[Mount]\n"

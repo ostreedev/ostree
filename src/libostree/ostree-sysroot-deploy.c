@@ -56,6 +56,9 @@
 #define OSTREE_DEPLOYMENT_FINALIZING_ID SD_ID128_MAKE(e8,64,6c,d6,3d,ff,46,25,b7,79,09,a8,e7,a4,09,94)
 #endif
 
+static gboolean
+is_ro_mount (const char *path);
+
 /*
  * Like symlinkat() but overwrites (atomically) an existing
  * symlink.
@@ -806,6 +809,9 @@ write_origin_file_internal (OstreeSysroot         *sysroot,
                             GCancellable          *cancellable,
                             GError               **error)
 {
+  if (!_ostree_sysroot_ensure_writable (sysroot, error))
+    return FALSE;
+
   GLNX_AUTO_PREFIX_ERROR ("Writing out origin file", error);
   GKeyFile *origin =
     new_origin ? new_origin : ostree_deployment_get_origin (deployment);
@@ -2217,7 +2223,10 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                                                GCancellable      *cancellable,
                                                GError           **error)
 {
-  g_assert (self->loaded);
+  g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
+
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
 
   /* Dealing with the staged deployment is quite tricky here. This function is
    * primarily concerned with writing out "finalized" deployments which have
@@ -2374,7 +2383,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 
       if (boot_was_ro_mount)
         {
-          /* TODO: Use new mount namespace.  https://github.com/ostreedev/ostree/issues/1265 */
           if (mount ("/boot", "/boot", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
             return glnx_throw_errno_prefix (error, "Remounting /boot read-write");
         }
@@ -2408,8 +2416,10 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       /* Note equivalent of try/finally here */
       gboolean success = write_deployments_bootswap (self, new_deployments, opts, bootloader,
                                                      &syncstats, cancellable, error);
-      /* Below here don't set GError until the if (!success) check */
-      if (boot_was_ro_mount)
+      /* Below here don't set GError until the if (!success) check.
+       * Note we only bother remounting if a mount namespace isn't in use.
+       * */
+      if (boot_was_ro_mount && !self->mount_namespace_in_use)
         {
           if (mount ("/boot", "/boot", NULL, MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
             {
@@ -2716,6 +2726,9 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                             GCancellable      *cancellable,
                             GError           **error)
 {
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
   g_autoptr(OstreeDeployment) deployment = NULL;
   if (!sysroot_initialize_deployment (self, osname, revision, origin, override_kernel_argv,
                                       &deployment, cancellable, error))
@@ -2817,6 +2830,9 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
                            GCancellable      *cancellable,
                            GError           **error)
 {
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
   OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (self);
   if (booted_deployment == NULL)
     return glnx_throw (error, "Cannot stage a deployment when not currently booted into an OSTree system");
@@ -3043,6 +3059,9 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
                                      GCancellable      *cancellable,
                                      GError           **error)
 {
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
   /* For now; instead of this do a redeployment */
   g_assert (!ostree_deployment_is_staged (deployment));
 
@@ -3090,6 +3109,8 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
                                        GCancellable      *cancellable,
                                        GError           **error)
 {
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;

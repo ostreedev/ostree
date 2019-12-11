@@ -42,10 +42,20 @@ _OSTREE_PUBLIC
 OstreeSysroot* ostree_sysroot_new_default (void);
 
 _OSTREE_PUBLIC
+void ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot  *self);
+
+_OSTREE_PUBLIC
 GFile *ostree_sysroot_get_path (OstreeSysroot *self);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_is_booted (OstreeSysroot *self);
+
+_OSTREE_PUBLIC
 int ostree_sysroot_get_fd (OstreeSysroot *self);
+
+_OSTREE_PUBLIC
+gboolean ostree_sysroot_initialize (OstreeSysroot  *self,
+                                    GError        **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_load (OstreeSysroot  *self,
@@ -90,6 +100,10 @@ GFile * ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path);
 
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_lock (OstreeSysroot  *self, GError **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_sysroot_lock_with_mount_namespace (OstreeSysroot  *self, GError **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_try_lock (OstreeSysroot         *self,
                                   gboolean              *out_acquired,

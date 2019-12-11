@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/statvfs.h>
 
 #include "ot-main.h"
 #include "ostree.h"
@@ -434,10 +435,46 @@ ostree_admin_option_context_parse (GOptionContext *context,
     sysroot_path = g_file_new_for_path (opt_sysroot);
 
   g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
+  if (!ostree_sysroot_initialize (sysroot, error))
+    return FALSE;
   g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
 
   if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
     {
+      /* If we're requested to lock the sysroot, first check if we're operating
+       * on a booted (not physical) sysroot.  Then find out if the /sysroot
+       * subdir is a read-only mount point, and if so, create a new mount
+       * namespace and tell the sysroot that we've done so. See the docs for
+       * ostree_sysroot_set_mount_namespace_in_use().
+       *
+       * This is a conservative approach; we could just always
+       * unshare() too.
+       */
+      if (ostree_sysroot_is_booted (sysroot))
+        {
+          int sysroot_fd = ostree_sysroot_get_fd (sysroot);
+          g_assert_cmpint (sysroot_fd, !=, -1);
+
+          glnx_autofd int sysroot_subdir_fd = glnx_opendirat_with_errno (sysroot_fd, "sysroot", TRUE);
+          if (sysroot_subdir_fd < 0)
+            {
+              if (errno != ENOENT)
+                return glnx_throw_errno_prefix (error, "opendirat");
+            }
+          else if (getuid () == 0)
+            {
+              struct statvfs stvfs;
+              if (fstatvfs (sysroot_subdir_fd, &stvfs) < 0)
+                return glnx_throw_errno_prefix (error, "fstatvfs");
+              if (stvfs.f_flag & ST_RDONLY)
+                {
+                  if (unshare (CLONE_NEWNS) < 0)
+                    return glnx_throw_errno_prefix (error, "preparing writable sysroot: unshare (CLONE_NEWNS)");
+                  ostree_sysroot_set_mount_namespace_in_use (sysroot);
+                }
+            }
+        }
+
       /* Released when sysroot is finalized, or on process exit */
       if (!ot_admin_sysroot_lock (sysroot, error))
         return FALSE;
