@@ -357,7 +357,7 @@ push_repo_lock (OstreeRepo          *self,
       g_debug ("Opening repo lock file");
       lock->fd = TEMP_FAILURE_RETRY (openat (self->repo_dir_fd, ".lock",
                                              O_CREAT | O_RDWR | O_CLOEXEC,
-                                             0600));
+                                             DEFAULT_REGFILE_MODE));
       if (lock->fd < 0)
         {
           free_repo_lock (lock);
@@ -2489,7 +2489,7 @@ repo_create_at_internal (int             dfd,
       }
   }
 
-  if (mkdirat (dfd, path, 0755) != 0)
+  if (mkdirat (dfd, path, DEFAULT_DIRECTORY_MODE) != 0)
     {
       if (G_UNLIKELY (errno != EEXIST))
         return glnx_throw_errno_prefix (error, "mkdirat");
@@ -2527,7 +2527,7 @@ repo_create_at_internal (int             dfd,
   for (guint i = 0; i < G_N_ELEMENTS (state_dirs); i++)
     {
       const char *elt = state_dirs[i];
-      if (mkdirat (repo_dfd, elt, 0755) == -1)
+      if (mkdirat (repo_dfd, elt, DEFAULT_DIRECTORY_MODE) == -1)
         {
           if (G_UNLIKELY (errno != EEXIST))
             return glnx_throw_errno_prefix (error, "mkdirat");
@@ -3295,7 +3295,7 @@ ostree_repo_open (OstreeRepo    *self,
        *
        * https://github.com/ostreedev/ostree/issues/1018
        */
-      if (mkdirat (self->repo_dir_fd, "tmp", 0755) == -1)
+      if (mkdirat (self->repo_dir_fd, "tmp", DEFAULT_DIRECTORY_MODE) == -1)
         {
           if (G_UNLIKELY (errno != EEXIST))
             return glnx_throw_errno_prefix (error, "mkdir(tmp)");
@@ -3307,7 +3307,7 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (self->writable)
     {
-      if (!glnx_shutil_mkdir_p_at (self->tmp_dir_fd, _OSTREE_CACHE_DIR, 0775, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (self->tmp_dir_fd, _OSTREE_CACHE_DIR, DEFAULT_DIRECTORY_MODE, cancellable, error))
         return FALSE;
 
       if (!glnx_opendirat (self->tmp_dir_fd, _OSTREE_CACHE_DIR, TRUE, &self->cache_dir_fd, error))
@@ -6099,7 +6099,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
     {
       g_auto(GLnxTmpDir) new_tmpdir = { 0, };
       /* No existing tmpdir found, create a new */
-      if (!glnx_mkdtempat (tmpdir_dfd, tmpdir_name_template, 0755,
+      if (!glnx_mkdtempat (tmpdir_dfd, tmpdir_name_template, DEFAULT_DIRECTORY_MODE,
                            &new_tmpdir, error))
         return FALSE;
 

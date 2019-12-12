@@ -1181,7 +1181,7 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
           char *parent = strdupa (ref->ref_name);
           parent[lastslash - ref->ref_name] = '\0';
 
-          if (!glnx_shutil_mkdir_p_at (dfd, parent, 0755, cancellable, error))
+          if (!glnx_shutil_mkdir_p_at (dfd, parent, DEFAULT_DIRECTORY_MODE, cancellable, error))
             return FALSE;
         }
 

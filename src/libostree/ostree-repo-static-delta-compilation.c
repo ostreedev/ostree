@@ -1427,7 +1427,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_autofree char *dnbuf = g_strdup (descriptor_relpath);
       const char *dn = dirname (dnbuf);
 
-      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, 0755, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, DEFAULT_DIRECTORY_MODE, cancellable, error))
         goto out;
       if (!glnx_opendirat (self->repo_dir_fd, dn, TRUE, &descriptor_dfd, error))
         goto out;

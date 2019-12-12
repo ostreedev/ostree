@@ -30,6 +30,12 @@ G_BEGIN_DECLS
 /* It's what gzip does, 9 is too slow */
 #define OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL (6)
 
+/* Note the permissive group bits. We want to be liberal here and let individual machines
+ * narrow permissions as needed via umask. This is important in setups where group ownership
+ * can matter for repo management (like OpenShift). */
+#define DEFAULT_DIRECTORY_MODE 0775
+#define DEFAULT_REGFILE_MODE 0660
+
 /* This file contains private implementation data format definitions
  * read by multiple implementation .c files.
  */
