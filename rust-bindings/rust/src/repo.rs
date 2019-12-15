@@ -1,17 +1,18 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
 use crate::{Checksum, ObjectName, ObjectType, Repo};
-use gio;
 use gio_sys;
-use glib;
-use glib::translate::*;
-use glib::Error;
-use glib::IsA;
+use glib::{self, translate::*, Error, IsA};
 use glib_sys;
 use ostree_sys;
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
-use std::{mem::MaybeUninit, ptr};
+use std::{
+    collections::{HashMap, HashSet},
+    future::Future,
+    mem::MaybeUninit,
+    path::Path,
+    pin::Pin,
+    ptr,
+};
 
 unsafe extern "C" fn read_variant_table(
     _key: glib_sys::gpointer,
@@ -226,15 +227,11 @@ impl Repo {
         expected_checksum: Option<&str>,
         object: &P,
         length: u64,
-    ) -> Box_<dyn future::Future<Output = Result<Checksum, Error>> + std::marker::Unpin> {
-        use fragile::Fragile;
-        use gio::GioFuture;
-
+    ) -> Pin<Box<dyn Future<Output = Result<Checksum, Error>> + 'static>> {
         let expected_checksum = expected_checksum.map(ToOwned::to_owned);
         let object = object.clone();
-        GioFuture::new(self, move |obj, send| {
+        Box::pin(gio::GioFuture::new(self, move |obj, send| {
             let cancellable = gio::Cancellable::new();
-            let send = Fragile::new(send);
             obj.write_content_async(
                 expected_checksum
                     .as_ref()
@@ -243,12 +240,11 @@ impl Repo {
                 length,
                 Some(&cancellable),
                 move |res| {
-                    let _ = send.into_inner().send(res);
+                    send.resolve(res);
                 },
             );
-
             cancellable
-        })
+        }))
     }
 
     pub fn write_metadata_async<
@@ -306,15 +302,11 @@ impl Repo {
         objtype: ObjectType,
         expected_checksum: Option<&str>,
         object: &glib::Variant,
-    ) -> Box_<dyn future::Future<Output = Result<Checksum, Error>> + std::marker::Unpin> {
-        use fragile::Fragile;
-        use gio::GioFuture;
-
+    ) -> Pin<Box<dyn Future<Output = Result<Checksum, Error>> + 'static>> {
         let expected_checksum = expected_checksum.map(ToOwned::to_owned);
         let object = object.clone();
-        GioFuture::new(self, move |obj, send| {
+        Box::pin(gio::GioFuture::new(self, move |obj, send| {
             let cancellable = gio::Cancellable::new();
-            let send = Fragile::new(send);
             obj.write_metadata_async(
                 objtype,
                 expected_checksum
@@ -323,11 +315,10 @@ impl Repo {
                 &object,
                 Some(&cancellable),
                 move |res| {
-                    let _ = send.into_inner().send(res);
+                    send.resolve(res);
                 },
             );
-
             cancellable
-        })
+        }))
     }
 }

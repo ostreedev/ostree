@@ -9,7 +9,6 @@ use ostree_sys;
 use ostree_sys::OstreeKernelArgs;
 use std::fmt;
 use std::ptr;
-use Error;
 
 glib_wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -54,7 +53,7 @@ impl KernelArgs {
     pub fn append_proc_cmdline<P: IsA<gio::Cancellable>>(
         &mut self,
         cancellable: Option<&P>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_kernel_args_append_proc_cmdline(
@@ -70,7 +69,7 @@ impl KernelArgs {
         }
     }
 
-    pub fn delete(&mut self, arg: &str) -> Result<(), Error> {
+    pub fn delete(&mut self, arg: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_kernel_args_delete(
@@ -87,7 +86,7 @@ impl KernelArgs {
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn delete_key_entry(&mut self, key: &str) -> Result<(), Error> {
+    pub fn delete_key_entry(&mut self, key: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_kernel_args_delete_key_entry(
@@ -114,7 +113,7 @@ impl KernelArgs {
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    pub fn new_replace(&mut self, arg: &str) -> Result<(), Error> {
+    pub fn new_replace(&mut self, arg: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_kernel_args_new_replace(
