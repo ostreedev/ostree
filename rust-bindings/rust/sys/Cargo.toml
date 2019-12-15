@@ -45,6 +45,7 @@ v2018_9 = ["v2018_7"]
 v2019_2 = ["v2018_9"]
 v2019_3 = ["v2019_2"]
 v2019_4 = ["v2019_3"]
+v2019_6 = ["v2019_4"]
 dox = []
 
 [lib]
@@ -64,4 +65,4 @@ repository = "https://gitlab.com/fkrull/ostree-rs"
 version = "0.5.1"
 
 ["package.metadata.docs.rs"]
-features = ["dox", "v2019_4"]
+features = ["dox", "v2019_6"]

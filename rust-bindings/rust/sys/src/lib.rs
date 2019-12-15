@@ -334,6 +334,11 @@ pub struct _OstreeKernelArgs(c_void);
 pub type OstreeKernelArgs = *mut _OstreeKernelArgs;
 
 #[repr(C)]
+pub struct _OstreeKernelArgsEntry(c_void);
+
+pub type OstreeKernelArgsEntry = *mut _OstreeKernelArgsEntry;
+
+#[repr(C)]
 pub struct _OstreeLibarchiveInputStreamPrivate(c_void);
 
 pub type OstreeLibarchiveInputStreamPrivate = *mut _OstreeLibarchiveInputStreamPrivate;
@@ -1024,6 +1029,8 @@ extern "C" {
     pub fn ostree_async_progress_get_type() -> GType;
     pub fn ostree_async_progress_new() -> *mut OstreeAsyncProgress;
     pub fn ostree_async_progress_new_and_connect(changed: *mut gpointer, user_data: gpointer) -> *mut OstreeAsyncProgress;
+    #[cfg(any(feature = "v2019_6", feature = "dox"))]
+    pub fn ostree_async_progress_copy_state(self_: *mut OstreeAsyncProgress, dest: *mut OstreeAsyncProgress);
     pub fn ostree_async_progress_finish(self_: *mut OstreeAsyncProgress);
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
     pub fn ostree_async_progress_get(self_: *mut OstreeAsyncProgress, ...);

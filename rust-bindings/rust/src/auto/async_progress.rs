@@ -46,6 +46,9 @@ impl Default for AsyncProgress {
 pub const NONE_ASYNC_PROGRESS: Option<&AsyncProgress> = None;
 
 pub trait AsyncProgressExt: 'static {
+    #[cfg(any(feature = "v2019_6", feature = "dox"))]
+    fn copy_state<P: IsA<AsyncProgress>>(&self, dest: &P);
+
     fn finish(&self);
 
     //#[cfg(any(feature = "v2017_6", feature = "dox"))]
@@ -78,6 +81,13 @@ pub trait AsyncProgressExt: 'static {
 }
 
 impl<O: IsA<AsyncProgress>> AsyncProgressExt for O {
+    #[cfg(any(feature = "v2019_6", feature = "dox"))]
+    fn copy_state<P: IsA<AsyncProgress>>(&self, dest: &P) {
+        unsafe {
+            ostree_sys::ostree_async_progress_copy_state(self.as_ref().to_glib_none().0, dest.as_ref().to_glib_none().0);
+        }
+    }
+
     fn finish(&self) {
         unsafe {
             ostree_sys::ostree_async_progress_finish(self.as_ref().to_glib_none().0);
