@@ -27,7 +27,7 @@ check:
   - cargo fmt --package ostree -- --check
   - rm -rf src/auto/
   - make gir
-  - git difftool -y --trust-exit-code -x "diff -u -I 'from gir-files'"
+  - git diff -R --exit-code
 
 # build
 build_all-features:
