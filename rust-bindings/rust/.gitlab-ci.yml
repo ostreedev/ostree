@@ -33,8 +33,8 @@ check:
 build_all-features:
   stage: build
   script:
-  - cargo clippy --all --features latest,futures -- -D warnings
-  - cargo test --verbose --all --features latest,futures
+  - cargo clippy --all --features latest -- -D warnings
+  - cargo test --verbose --all --features latest
 
 build_default-features:
   stage: build
@@ -58,7 +58,7 @@ docs:
   script:
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
-  - cargo rustdoc --verbose --package ostree --features dox,futures -- ${RUSTDOC_OPTS}
+  - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
   artifacts:
     paths:
     - target/doc

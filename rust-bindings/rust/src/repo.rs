@@ -1,8 +1,6 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
 use crate::{Checksum, ObjectName, ObjectType, Repo};
-#[cfg(feature = "futures")]
-use futures::future;
 use gio;
 use gio_sys;
 use glib;
@@ -11,8 +9,6 @@ use glib::Error;
 use glib::IsA;
 use glib_sys;
 use ostree_sys;
-#[cfg(feature = "futures")]
-use std::boxed::Box as Box_;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::{mem::MaybeUninit, ptr};
@@ -225,7 +221,6 @@ impl Repo {
         }
     }
 
-    #[cfg(feature = "futures")]
     pub fn write_content_async_future<P: IsA<gio::InputStream> + Clone + 'static>(
         &self,
         expected_checksum: Option<&str>,
@@ -306,7 +301,6 @@ impl Repo {
         }
     }
 
-    #[cfg(feature = "futures")]
     pub fn write_metadata_async_future(
         &self,
         objtype: ObjectType,
