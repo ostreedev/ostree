@@ -2,15 +2,15 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use BootconfigParser;
-#[cfg(any(feature = "v2016_4", feature = "dox"))]
-use DeploymentUnlockedState;
 use glib;
-use glib::GString;
 use glib::translate::*;
+use glib::GString;
 use glib_sys;
 use ostree_sys;
 use std::fmt;
+use BootconfigParser;
+#[cfg(any(feature = "v2016_4", feature = "dox"))]
+use DeploymentUnlockedState;
 
 glib_wrapper! {
     pub struct Deployment(Object<ostree_sys::OstreeDeployment, DeploymentClass>);

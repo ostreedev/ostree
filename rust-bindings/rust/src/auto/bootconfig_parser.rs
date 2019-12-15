@@ -2,11 +2,11 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use Error;
 use gio;
-use glib::GString;
+use glib;
 use glib::object::IsA;
 use glib::translate::*;
+use glib::GString;
 use ostree_sys;
 use std::fmt;
 use std::ptr;
@@ -38,7 +38,7 @@ impl BootconfigParser {
         }
     }
 
-    pub fn parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, path: &P, cancellable: Option<&Q>) -> Result<(), Error> {
+    pub fn parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, path: &P, cancellable: Option<&Q>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_bootconfig_parser_parse(self.to_glib_none().0, path.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -46,7 +46,7 @@ impl BootconfigParser {
         }
     }
 
-    pub fn parse_at<P: IsA<gio::Cancellable>>(&self, dfd: i32, path: &str, cancellable: Option<&P>) -> Result<(), Error> {
+    pub fn parse_at<P: IsA<gio::Cancellable>>(&self, dfd: i32, path: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_bootconfig_parser_parse_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -60,7 +60,7 @@ impl BootconfigParser {
         }
     }
 
-    pub fn write<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, output: &P, cancellable: Option<&Q>) -> Result<(), Error> {
+    pub fn write<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, output: &P, cancellable: Option<&Q>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_bootconfig_parser_write(self.to_glib_none().0, output.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -68,7 +68,7 @@ impl BootconfigParser {
         }
     }
 
-    pub fn write_at<P: IsA<gio::Cancellable>>(&self, dfd: i32, path: &str, cancellable: Option<&P>) -> Result<(), Error> {
+    pub fn write_at<P: IsA<gio::Cancellable>>(&self, dfd: i32, path: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_bootconfig_parser_write_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);

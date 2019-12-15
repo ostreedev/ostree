@@ -2,19 +2,19 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use Error;
-use SePolicyRestoreconFlags;
 use gio;
-use glib::GString;
-use glib::StaticType;
-use glib::Value;
+use glib;
 use glib::object::IsA;
 use glib::object::ObjectType as ObjectType_;
 use glib::translate::*;
+use glib::GString;
+use glib::StaticType;
+use glib::Value;
 use gobject_sys;
 use ostree_sys;
 use std::fmt;
 use std::ptr;
+use SePolicyRestoreconFlags;
 
 glib_wrapper! {
     pub struct SePolicy(Object<ostree_sys::OstreeSePolicy, SePolicyClass>);
@@ -25,7 +25,7 @@ glib_wrapper! {
 }
 
 impl SePolicy {
-    pub fn new<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(path: &P, cancellable: Option<&Q>) -> Result<SePolicy, Error> {
+    pub fn new<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(path: &P, cancellable: Option<&Q>) -> Result<SePolicy, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let ret = ostree_sys::ostree_sepolicy_new(path.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -34,7 +34,7 @@ impl SePolicy {
     }
 
     #[cfg(any(feature = "v2017_4", feature = "dox"))]
-    pub fn new_at<P: IsA<gio::Cancellable>>(rootfs_dfd: i32, cancellable: Option<&P>) -> Result<SePolicy, Error> {
+    pub fn new_at<P: IsA<gio::Cancellable>>(rootfs_dfd: i32, cancellable: Option<&P>) -> Result<SePolicy, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let ret = ostree_sys::ostree_sepolicy_new_at(rootfs_dfd, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -49,7 +49,7 @@ impl SePolicy {
         }
     }
 
-    pub fn get_label<P: IsA<gio::Cancellable>>(&self, relpath: &str, unix_mode: u32, cancellable: Option<&P>) -> Result<GString, Error> {
+    pub fn get_label<P: IsA<gio::Cancellable>>(&self, relpath: &str, unix_mode: u32, cancellable: Option<&P>) -> Result<GString, glib::Error> {
         unsafe {
             let mut out_label = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -70,7 +70,7 @@ impl SePolicy {
         }
     }
 
-    pub fn restorecon<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, path: &str, info: Option<&gio::FileInfo>, target: &P, flags: SePolicyRestoreconFlags, cancellable: Option<&Q>) -> Result<GString, Error> {
+    pub fn restorecon<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, path: &str, info: Option<&gio::FileInfo>, target: &P, flags: SePolicyRestoreconFlags, cancellable: Option<&Q>) -> Result<GString, glib::Error> {
         unsafe {
             let mut out_new_label = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -79,7 +79,7 @@ impl SePolicy {
         }
     }
 
-    pub fn setfscreatecon(&self, path: &str, mode: u32) -> Result<(), Error> {
+    pub fn setfscreatecon(&self, path: &str, mode: u32) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_sepolicy_setfscreatecon(self.to_glib_none().0, path.to_glib_none().0, mode, &mut error);
@@ -91,7 +91,7 @@ impl SePolicy {
         unsafe {
             let mut value = Value::from_type(<i32 as StaticType>::static_type());
             gobject_sys::g_object_get_property(self.as_ptr() as *mut gobject_sys::GObject, b"rootfs-dfd\0".as_ptr() as *const _, value.to_glib_none_mut().0);
-            value.get().unwrap()
+            value.get().expect("Return Value for property `rootfs-dfd` getter").unwrap()
         }
     }
 

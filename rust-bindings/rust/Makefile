@@ -1,3 +1,6 @@
+GIR_VERSION := d1e88f94e89a84d7aae7a51b3ff46b71838c42ff
+RUSTDOC_STRIPPER_VERSION := 0.1.9
+
 all: gir
 
 .PHONY: gir gir-report update-gir-files remove-gir-files merge-lgpl-docs
@@ -5,7 +8,7 @@ all: gir
 
 # -- gir generation --
 target/tools/bin/gir:
-	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git --rev c0f523f42d1c54e3489ae33e5464ecaaf0db3fd4 -- gir
+	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git --rev $(GIR_VERSION) -- gir
 
 gir: target/tools/bin/gir
 	target/tools/bin/gir -c conf/ostree-sys.toml
@@ -17,7 +20,7 @@ gir-report: gir
 
 # -- LGPL docs generation --
 target/tools/bin/rustdoc-stripper:
-	cargo install --root target/tools --version 0.1.5 -- rustdoc-stripper
+	cargo install --root target/tools --version $(RUSTDOC_STRIPPER_VERSION) -- rustdoc-stripper
 
 merge-lgpl-docs: target/tools/bin/gir target/tools/bin/rustdoc-stripper
 	target/tools/bin/gir -c conf/ostree.toml -m doc

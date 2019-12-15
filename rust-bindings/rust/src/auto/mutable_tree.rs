@@ -2,15 +2,15 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use Error;
-#[cfg(any(feature = "v2018_7", feature = "dox"))]
-use Repo;
-use glib::GString;
+use glib;
 use glib::object::IsA;
 use glib::translate::*;
+use glib::GString;
 use ostree_sys;
 use std::fmt;
 use std::ptr;
+#[cfg(any(feature = "v2018_7", feature = "dox"))]
+use Repo;
 
 glib_wrapper! {
     pub struct MutableTree(Object<ostree_sys::OstreeMutableTree, ostree_sys::OstreeMutableTreeClass, MutableTreeClass>);
@@ -45,11 +45,11 @@ pub const NONE_MUTABLE_TREE: Option<&MutableTree> = None;
 
 pub trait MutableTreeExt: 'static {
     #[cfg(any(feature = "v2018_7", feature = "dox"))]
-    fn check_error(&self) -> Result<(), Error>;
+    fn check_error(&self) -> Result<(), glib::Error>;
 
-    fn ensure_dir(&self, name: &str) -> Result<MutableTree, Error>;
+    fn ensure_dir(&self, name: &str) -> Result<MutableTree, glib::Error>;
 
-    //fn ensure_parent_dirs(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, metadata_checksum: &str) -> Result<MutableTree, Error>;
+    //fn ensure_parent_dirs(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, metadata_checksum: &str) -> Result<MutableTree, glib::Error>;
 
     #[cfg(any(feature = "v2018_7", feature = "dox"))]
     fn fill_empty_from_dirtree(&self, repo: &Repo, contents_checksum: &str, metadata_checksum: &str) -> bool;
@@ -62,23 +62,23 @@ pub trait MutableTreeExt: 'static {
 
     //fn get_subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 40 };
 
-    fn lookup(&self, name: &str) -> Result<(GString, MutableTree), Error>;
+    fn lookup(&self, name: &str) -> Result<(GString, MutableTree), glib::Error>;
 
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
-    fn remove(&self, name: &str, allow_noent: bool) -> Result<(), Error>;
+    fn remove(&self, name: &str, allow_noent: bool) -> Result<(), glib::Error>;
 
-    fn replace_file(&self, name: &str, checksum: &str) -> Result<(), Error>;
+    fn replace_file(&self, name: &str, checksum: &str) -> Result<(), glib::Error>;
 
     fn set_contents_checksum(&self, checksum: &str);
 
     fn set_metadata_checksum(&self, checksum: &str);
 
-    //fn walk(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, start: u32) -> Result<MutableTree, Error>;
+    //fn walk(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, start: u32) -> Result<MutableTree, glib::Error>;
 }
 
 impl<O: IsA<MutableTree>> MutableTreeExt for O {
     #[cfg(any(feature = "v2018_7", feature = "dox"))]
-    fn check_error(&self) -> Result<(), Error> {
+    fn check_error(&self) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_mutable_tree_check_error(self.as_ref().to_glib_none().0, &mut error);
@@ -86,7 +86,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
         }
     }
 
-    fn ensure_dir(&self, name: &str) -> Result<MutableTree, Error> {
+    fn ensure_dir(&self, name: &str) -> Result<MutableTree, glib::Error> {
         unsafe {
             let mut out_subdir = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -95,7 +95,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
         }
     }
 
-    //fn ensure_parent_dirs(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, metadata_checksum: &str) -> Result<MutableTree, Error> {
+    //fn ensure_parent_dirs(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, metadata_checksum: &str) -> Result<MutableTree, glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_mutable_tree_ensure_parent_dirs() }
     //}
 
@@ -126,7 +126,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
     //    unsafe { TODO: call ostree_sys:ostree_mutable_tree_get_subdirs() }
     //}
 
-    fn lookup(&self, name: &str) -> Result<(GString, MutableTree), Error> {
+    fn lookup(&self, name: &str) -> Result<(GString, MutableTree), glib::Error> {
         unsafe {
             let mut out_file_checksum = ptr::null_mut();
             let mut out_subdir = ptr::null_mut();
@@ -137,7 +137,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
     }
 
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
-    fn remove(&self, name: &str, allow_noent: bool) -> Result<(), Error> {
+    fn remove(&self, name: &str, allow_noent: bool) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_mutable_tree_remove(self.as_ref().to_glib_none().0, name.to_glib_none().0, allow_noent.to_glib(), &mut error);
@@ -145,7 +145,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
         }
     }
 
-    fn replace_file(&self, name: &str, checksum: &str) -> Result<(), Error> {
+    fn replace_file(&self, name: &str, checksum: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_mutable_tree_replace_file(self.as_ref().to_glib_none().0, name.to_glib_none().0, checksum.to_glib_none().0, &mut error);
@@ -165,7 +165,7 @@ impl<O: IsA<MutableTree>> MutableTreeExt for O {
         }
     }
 
-    //fn walk(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, start: u32) -> Result<MutableTree, Error> {
+    //fn walk(&self, split_path: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, start: u32) -> Result<MutableTree, glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_mutable_tree_walk() }
     //}
 }

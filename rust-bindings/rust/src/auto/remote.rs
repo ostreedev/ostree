@@ -3,9 +3,9 @@
 // DO NOT EDIT
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
-use glib::GString;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
 use glib::translate::*;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use glib::GString;
 use ostree_sys;
 
 glib_wrapper! {

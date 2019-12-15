@@ -5,14 +5,14 @@ repository = "fkrull/ostree-rs"
 pkg-config = "0.3.7"
 
 [dependencies]
-gio-sys = "0.9.0"
-glib-sys = "0.9.0"
-gobject-sys = "0.9.0"
+gio-sys = "0.9.1"
+glib-sys = "0.9.1"
+gobject-sys = "0.9.1"
 libc = "0.2"
 
 [dev-dependencies]
 shell-words = "0.1.0"
-tempdir = "0.3"
+tempfile = "3"
 
 [features]
 v2014_9 = []
@@ -63,6 +63,5 @@ links = "ostree-1"
 name = "ostree-sys"
 repository = "https://gitlab.com/fkrull/ostree-rs"
 version = "0.5.2"
-
-["package.metadata.docs.rs"]
-features = ["dox", "v2019_6"]
+[package.metadata.docs.rs]
+features = ["dox"]

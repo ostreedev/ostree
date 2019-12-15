@@ -4,13 +4,13 @@
 
 #[cfg(any(feature = "v2017_6", feature = "dox"))]
 use glib;
-#[cfg(any(feature = "v2017_6", feature = "dox"))]
-use glib::GString;
 use glib::object::Cast;
 use glib::object::IsA;
-use glib::signal::SignalHandlerId;
 use glib::signal::connect_raw;
+use glib::signal::SignalHandlerId;
 use glib::translate::*;
+#[cfg(any(feature = "v2017_6", feature = "dox"))]
+use glib::GString;
 use glib_sys;
 use ostree_sys;
 use std::boxed::Box as Box_;

@@ -2,11 +2,11 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use RepoFinder;
 use glib::object::IsA;
 use glib::translate::*;
 use ostree_sys;
 use std::fmt;
+use RepoFinder;
 
 glib_wrapper! {
     pub struct RepoFinderOverride(Object<ostree_sys::OstreeRepoFinderOverride, ostree_sys::OstreeRepoFinderOverrideClass, RepoFinderOverrideClass>) @implements RepoFinder;

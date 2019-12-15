@@ -2,9 +2,6 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-#[cfg(any(feature = "v2016_6", feature = "dox"))]
-use Error;
-use GpgSignatureFormatFlags;
 use glib;
 use glib::translate::*;
 use ostree_sys;
@@ -12,6 +9,7 @@ use std::fmt;
 use std::mem;
 #[cfg(any(feature = "v2016_6", feature = "dox"))]
 use std::ptr;
+use GpgSignatureFormatFlags;
 
 glib_wrapper! {
     pub struct GpgVerifyResult(Object<ostree_sys::OstreeGpgVerifyResult, GpgVerifyResultClass>);
@@ -60,7 +58,7 @@ impl GpgVerifyResult {
     }
 
     #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    pub fn require_valid_signature(&self) -> Result<(), Error> {
+    pub fn require_valid_signature(&self) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_gpg_verify_result_require_valid_signature(self.to_glib_none().0, &mut error);

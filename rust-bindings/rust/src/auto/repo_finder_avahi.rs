@@ -2,9 +2,6 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-use Error;
-use RepoFinder;
 use glib;
 use glib::object::IsA;
 use glib::translate::*;
@@ -12,6 +9,7 @@ use ostree_sys;
 use std::fmt;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 use std::ptr;
+use RepoFinder;
 
 glib_wrapper! {
     pub struct RepoFinderAvahi(Object<ostree_sys::OstreeRepoFinderAvahi, ostree_sys::OstreeRepoFinderAvahiClass, RepoFinderAvahiClass>) @implements RepoFinder;
@@ -33,7 +31,7 @@ pub const NONE_REPO_FINDER_AVAHI: Option<&RepoFinderAvahi> = None;
 
 pub trait RepoFinderAvahiExt: 'static {
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    fn start(&self) -> Result<(), Error>;
+    fn start(&self) -> Result<(), glib::Error>;
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     fn stop(&self);
@@ -41,7 +39,7 @@ pub trait RepoFinderAvahiExt: 'static {
 
 impl<O: IsA<RepoFinderAvahi>> RepoFinderAvahiExt for O {
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    fn start(&self) -> Result<(), Error> {
+    fn start(&self) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_finder_avahi_start(self.as_ref().to_glib_none().0, &mut error);

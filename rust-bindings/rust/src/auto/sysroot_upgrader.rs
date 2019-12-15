@@ -2,26 +2,25 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use AsyncProgress;
-use Error;
-use Repo;
-use RepoPullFlags;
-use Sysroot;
-use SysrootUpgraderFlags;
-use SysrootUpgraderPullFlags;
 use gio;
 use glib;
-use glib::GString;
-use glib::StaticType;
-use glib::Value;
 use glib::object::IsA;
 use glib::object::ObjectType as ObjectType_;
 use glib::translate::*;
+use glib::GString;
+use glib::StaticType;
+use glib::Value;
 use gobject_sys;
 use ostree_sys;
 use std::fmt;
 use std::mem;
 use std::ptr;
+use AsyncProgress;
+use Repo;
+use RepoPullFlags;
+use Sysroot;
+use SysrootUpgraderFlags;
+use SysrootUpgraderPullFlags;
 
 glib_wrapper! {
     pub struct SysrootUpgrader(Object<ostree_sys::OstreeSysrootUpgrader, SysrootUpgraderClass>);
@@ -32,7 +31,7 @@ glib_wrapper! {
 }
 
 impl SysrootUpgrader {
-    pub fn new<P: IsA<gio::Cancellable>>(sysroot: &Sysroot, cancellable: Option<&P>) -> Result<SysrootUpgrader, Error> {
+    pub fn new<P: IsA<gio::Cancellable>>(sysroot: &Sysroot, cancellable: Option<&P>) -> Result<SysrootUpgrader, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let ret = ostree_sys::ostree_sysroot_upgrader_new(sysroot.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -40,7 +39,7 @@ impl SysrootUpgrader {
         }
     }
 
-    pub fn new_for_os<P: IsA<gio::Cancellable>>(sysroot: &Sysroot, osname: Option<&str>, cancellable: Option<&P>) -> Result<SysrootUpgrader, Error> {
+    pub fn new_for_os<P: IsA<gio::Cancellable>>(sysroot: &Sysroot, osname: Option<&str>, cancellable: Option<&P>) -> Result<SysrootUpgrader, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let ret = ostree_sys::ostree_sysroot_upgrader_new_for_os(sysroot.to_glib_none().0, osname.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -48,7 +47,7 @@ impl SysrootUpgrader {
         }
     }
 
-    pub fn new_for_os_with_flags<P: IsA<gio::Cancellable>>(sysroot: &Sysroot, osname: Option<&str>, flags: SysrootUpgraderFlags, cancellable: Option<&P>) -> Result<SysrootUpgrader, Error> {
+    pub fn new_for_os_with_flags<P: IsA<gio::Cancellable>>(sysroot: &Sysroot, osname: Option<&str>, flags: SysrootUpgraderFlags, cancellable: Option<&P>) -> Result<SysrootUpgrader, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let ret = ostree_sys::ostree_sysroot_upgrader_new_for_os_with_flags(sysroot.to_glib_none().0, osname.to_glib_none().0, flags.to_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -56,7 +55,7 @@ impl SysrootUpgrader {
         }
     }
 
-    pub fn deploy<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), Error> {
+    pub fn deploy<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_sysroot_upgrader_deploy(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -82,7 +81,7 @@ impl SysrootUpgrader {
         }
     }
 
-    pub fn pull<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>>(&self, flags: RepoPullFlags, upgrader_flags: SysrootUpgraderPullFlags, progress: Option<&P>, cancellable: Option<&Q>) -> Result<bool, Error> {
+    pub fn pull<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>>(&self, flags: RepoPullFlags, upgrader_flags: SysrootUpgraderPullFlags, progress: Option<&P>, cancellable: Option<&Q>) -> Result<bool, glib::Error> {
         unsafe {
             let mut out_changed = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
@@ -92,7 +91,7 @@ impl SysrootUpgrader {
         }
     }
 
-    pub fn pull_one_dir<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>>(&self, dir_to_pull: &str, flags: RepoPullFlags, upgrader_flags: SysrootUpgraderPullFlags, progress: Option<&P>, cancellable: Option<&Q>) -> Result<bool, Error> {
+    pub fn pull_one_dir<P: IsA<AsyncProgress>, Q: IsA<gio::Cancellable>>(&self, dir_to_pull: &str, flags: RepoPullFlags, upgrader_flags: SysrootUpgraderPullFlags, progress: Option<&P>, cancellable: Option<&Q>) -> Result<bool, glib::Error> {
         unsafe {
             let mut out_changed = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
@@ -102,7 +101,7 @@ impl SysrootUpgrader {
         }
     }
 
-    pub fn set_origin<P: IsA<gio::Cancellable>>(&self, origin: Option<&glib::KeyFile>, cancellable: Option<&P>) -> Result<(), Error> {
+    pub fn set_origin<P: IsA<gio::Cancellable>>(&self, origin: Option<&glib::KeyFile>, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_sysroot_upgrader_set_origin(self.to_glib_none().0, origin.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -114,7 +113,7 @@ impl SysrootUpgrader {
         unsafe {
             let mut value = Value::from_type(<SysrootUpgraderFlags as StaticType>::static_type());
             gobject_sys::g_object_get_property(self.as_ptr() as *mut gobject_sys::GObject, b"flags\0".as_ptr() as *const _, value.to_glib_none_mut().0);
-            value.get().unwrap()
+            value.get().expect("Return Value for property `flags` getter").unwrap()
         }
     }
 
@@ -122,7 +121,7 @@ impl SysrootUpgrader {
         unsafe {
             let mut value = Value::from_type(<GString as StaticType>::static_type());
             gobject_sys::g_object_get_property(self.as_ptr() as *mut gobject_sys::GObject, b"osname\0".as_ptr() as *const _, value.to_glib_none_mut().0);
-            value.get()
+            value.get().expect("Return Value for property `osname` getter")
         }
     }
 
@@ -130,11 +129,11 @@ impl SysrootUpgrader {
         unsafe {
             let mut value = Value::from_type(<Sysroot as StaticType>::static_type());
             gobject_sys::g_object_get_property(self.as_ptr() as *mut gobject_sys::GObject, b"sysroot\0".as_ptr() as *const _, value.to_glib_none_mut().0);
-            value.get()
+            value.get().expect("Return Value for property `sysroot` getter")
         }
     }
 
-    pub fn check_timestamps(repo: &Repo, from_rev: &str, to_rev: &str) -> Result<(), Error> {
+    pub fn check_timestamps(repo: &Repo, from_rev: &str, to_rev: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_sysroot_upgrader_check_timestamps(repo.to_glib_none().0, from_rev.to_glib_none().0, to_rev.to_glib_none().0, &mut error);

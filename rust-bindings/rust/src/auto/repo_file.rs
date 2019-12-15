@@ -2,17 +2,16 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use Error;
-use Repo;
 use gio;
 use glib;
-use glib::GString;
 use glib::object::IsA;
 use glib::translate::*;
+use glib::GString;
 use ostree_sys;
 use std::fmt;
 use std::mem;
 use std::ptr;
+use Repo;
 
 glib_wrapper! {
     pub struct RepoFile(Object<ostree_sys::OstreeRepoFile, ostree_sys::OstreeRepoFileClass, RepoFileClass>) @implements gio::File;
@@ -25,7 +24,7 @@ glib_wrapper! {
 pub const NONE_REPO_FILE: Option<&RepoFile> = None;
 
 pub trait RepoFileExt: 'static {
-    fn ensure_resolved(&self) -> Result<(), Error>;
+    fn ensure_resolved(&self) -> Result<(), glib::Error>;
 
     fn get_checksum(&self) -> Option<GString>;
 
@@ -33,7 +32,7 @@ pub trait RepoFileExt: 'static {
 
     fn get_root(&self) -> Option<RepoFile>;
 
-    fn get_xattrs<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<glib::Variant, Error>;
+    fn get_xattrs<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<glib::Variant, glib::Error>;
 
     fn tree_find_child(&self, name: &str) -> (i32, bool, glib::Variant);
 
@@ -45,13 +44,13 @@ pub trait RepoFileExt: 'static {
 
     fn tree_get_metadata_checksum(&self) -> Option<GString>;
 
-    fn tree_query_child<P: IsA<gio::Cancellable>>(&self, n: i32, attributes: &str, flags: gio::FileQueryInfoFlags, cancellable: Option<&P>) -> Result<gio::FileInfo, Error>;
+    fn tree_query_child<P: IsA<gio::Cancellable>>(&self, n: i32, attributes: &str, flags: gio::FileQueryInfoFlags, cancellable: Option<&P>) -> Result<gio::FileInfo, glib::Error>;
 
     fn tree_set_metadata(&self, checksum: &str, metadata: &glib::Variant);
 }
 
 impl<O: IsA<RepoFile>> RepoFileExt for O {
-    fn ensure_resolved(&self) -> Result<(), Error> {
+    fn ensure_resolved(&self) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_file_ensure_resolved(self.as_ref().to_glib_none().0, &mut error);
@@ -77,7 +76,7 @@ impl<O: IsA<RepoFile>> RepoFileExt for O {
         }
     }
 
-    fn get_xattrs<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<glib::Variant, Error> {
+    fn get_xattrs<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<glib::Variant, glib::Error> {
         unsafe {
             let mut out_xattrs = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -120,7 +119,7 @@ impl<O: IsA<RepoFile>> RepoFileExt for O {
         }
     }
 
-    fn tree_query_child<P: IsA<gio::Cancellable>>(&self, n: i32, attributes: &str, flags: gio::FileQueryInfoFlags, cancellable: Option<&P>) -> Result<gio::FileInfo, Error> {
+    fn tree_query_child<P: IsA<gio::Cancellable>>(&self, n: i32, attributes: &str, flags: gio::FileQueryInfoFlags, cancellable: Option<&P>) -> Result<gio::FileInfo, glib::Error> {
         unsafe {
             let mut out_info = ptr::null_mut();
             let mut error = ptr::null_mut();

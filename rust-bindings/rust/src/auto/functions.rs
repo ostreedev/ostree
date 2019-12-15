@@ -2,20 +2,19 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
-use Error;
-use ObjectType;
 use gio;
 use glib;
-use glib::GString;
 use glib::object::IsA;
 use glib::translate::*;
+use glib::GString;
 use ostree_sys;
 use std::mem;
 use std::ptr;
+use ObjectType;
 
 
 #[cfg(any(feature = "v2017_15", feature = "dox"))]
-pub fn break_hardlink<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, skip_xattrs: bool, cancellable: Option<&P>) -> Result<(), Error> {
+pub fn break_hardlink<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, skip_xattrs: bool, cancellable: Option<&P>) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_break_hardlink(dfd, path.to_glib_none().0, skip_xattrs.to_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -52,24 +51,24 @@ pub fn check_version(required_year: u32, required_release: u32) -> bool {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_bytes_peek() }
 //}
 
-//pub fn checksum_bytes_peek_validate(bytes: &glib::Variant) -> Result</*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, Error> {
+//pub fn checksum_bytes_peek_validate(bytes: &glib::Variant) -> Result</*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_bytes_peek_validate() }
 //}
 
-//pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(f: &P, objtype: ObjectType, out_csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Option<&Q>) -> Result<(), Error> {
+//pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(f: &P, objtype: ObjectType, out_csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Option<&Q>) -> Result<(), glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_file() }
 //}
 
-//pub fn checksum_file_async<P: IsA<gio::File>, Q: IsA<gio::Cancellable>, R: FnOnce(Result<(), Error>) + 'static>(f: &P, objtype: ObjectType, io_priority: i32, cancellable: Option<&Q>, callback: R) {
+//pub fn checksum_file_async<P: IsA<gio::File>, Q: IsA<gio::Cancellable>, R: FnOnce(Result<(), glib::Error>) + 'static>(f: &P, objtype: ObjectType, io_priority: i32, cancellable: Option<&Q>, callback: R) {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_file_async() }
 //}
 
 //#[cfg(any(feature = "v2017_13", feature = "dox"))]
-//pub fn checksum_file_at<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, stbuf: /*Unimplemented*/Option<Fundamental: Pointer>, objtype: ObjectType, flags: ChecksumFlags, out_checksum: &str, cancellable: Option<&P>) -> Result<(), Error> {
+//pub fn checksum_file_at<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, stbuf: /*Unimplemented*/Option<Fundamental: Pointer>, objtype: ObjectType, flags: ChecksumFlags, out_checksum: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_file_at() }
 //}
 
-//pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, in_: Option<&P>, objtype: ObjectType, out_csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Option<&Q>) -> Result<(), Error> {
+//pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, in_: Option<&P>, objtype: ObjectType, out_csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Option<&Q>) -> Result<(), glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_file_from_input() }
 //}
 
@@ -120,7 +119,7 @@ pub fn commit_get_timestamp(commit_variant: &glib::Variant) -> u64 {
     }
 }
 
-pub fn content_file_parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(compressed: bool, content_path: &P, trusted: bool, cancellable: Option<&Q>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), Error> {
+pub fn content_file_parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(compressed: bool, content_path: &P, trusted: bool, cancellable: Option<&Q>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), glib::Error> {
     unsafe {
         let mut out_input = ptr::null_mut();
         let mut out_file_info = ptr::null_mut();
@@ -131,7 +130,7 @@ pub fn content_file_parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(compresse
     }
 }
 
-pub fn content_file_parse_at<P: IsA<gio::Cancellable>>(compressed: bool, parent_dfd: i32, path: &str, trusted: bool, cancellable: Option<&P>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), Error> {
+pub fn content_file_parse_at<P: IsA<gio::Cancellable>>(compressed: bool, parent_dfd: i32, path: &str, trusted: bool, cancellable: Option<&P>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), glib::Error> {
     unsafe {
         let mut out_input = ptr::null_mut();
         let mut out_file_info = ptr::null_mut();
@@ -142,7 +141,7 @@ pub fn content_file_parse_at<P: IsA<gio::Cancellable>>(compressed: bool, parent_
     }
 }
 
-pub fn content_stream_parse<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(compressed: bool, input: &P, input_length: u64, trusted: bool, cancellable: Option<&Q>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), Error> {
+pub fn content_stream_parse<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(compressed: bool, input: &P, input_length: u64, trusted: bool, cancellable: Option<&Q>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), glib::Error> {
     unsafe {
         let mut out_input = ptr::null_mut();
         let mut out_file_info = ptr::null_mut();
@@ -159,12 +158,12 @@ pub fn create_directory_metadata(dir_info: &gio::FileInfo, xattrs: Option<&glib:
     }
 }
 
-//pub fn diff_dirs<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 25 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, cancellable: Option<&R>) -> Result<(), Error> {
+//pub fn diff_dirs<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 25 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, cancellable: Option<&R>) -> Result<(), glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_diff_dirs() }
 //}
 
 //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-//pub fn diff_dirs_with_options<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 25 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, options: /*Ignored*/Option<&mut DiffDirsOptions>, cancellable: Option<&R>) -> Result<(), Error> {
+//pub fn diff_dirs_with_options<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 25 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, options: /*Ignored*/Option<&mut DiffDirsOptions>, cancellable: Option<&R>) -> Result<(), glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_diff_dirs_with_options() }
 //}
 
@@ -233,7 +232,7 @@ pub fn object_type_to_string(objtype: ObjectType) -> Option<GString> {
     }
 }
 
-pub fn parse_refspec(refspec: &str) -> Result<(Option<GString>, GString), Error> {
+pub fn parse_refspec(refspec: &str) -> Result<(Option<GString>, GString), glib::Error> {
     unsafe {
         let mut out_remote = ptr::null_mut();
         let mut out_ref = ptr::null_mut();
@@ -244,7 +243,7 @@ pub fn parse_refspec(refspec: &str) -> Result<(Option<GString>, GString), Error>
 }
 
 #[cfg(any(feature = "v2016_6", feature = "dox"))]
-pub fn raw_file_to_archive_z2_stream<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(input: &P, file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<gio::InputStream, Error> {
+pub fn raw_file_to_archive_z2_stream<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(input: &P, file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<gio::InputStream, glib::Error> {
     unsafe {
         let mut out_input = ptr::null_mut();
         let mut error = ptr::null_mut();
@@ -254,7 +253,7 @@ pub fn raw_file_to_archive_z2_stream<P: IsA<gio::InputStream>, Q: IsA<gio::Cance
 }
 
 #[cfg(any(feature = "v2017_3", feature = "dox"))]
-pub fn raw_file_to_archive_z2_stream_with_options<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(input: &P, file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, options: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<gio::InputStream, Error> {
+pub fn raw_file_to_archive_z2_stream_with_options<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(input: &P, file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, options: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<gio::InputStream, glib::Error> {
     unsafe {
         let mut out_input = ptr::null_mut();
         let mut error = ptr::null_mut();
@@ -263,7 +262,7 @@ pub fn raw_file_to_archive_z2_stream_with_options<P: IsA<gio::InputStream>, Q: I
     }
 }
 
-pub fn raw_file_to_content_stream<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(input: &P, file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<(gio::InputStream, u64), Error> {
+pub fn raw_file_to_content_stream<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(input: &P, file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<(gio::InputStream, u64), glib::Error> {
     unsafe {
         let mut out_input = ptr::null_mut();
         let mut out_length = mem::MaybeUninit::uninit();
@@ -274,7 +273,7 @@ pub fn raw_file_to_content_stream<P: IsA<gio::InputStream>, Q: IsA<gio::Cancella
     }
 }
 
-pub fn validate_checksum_string(sha256: &str) -> Result<(), Error> {
+pub fn validate_checksum_string(sha256: &str) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_checksum_string(sha256.to_glib_none().0, &mut error);
@@ -283,7 +282,7 @@ pub fn validate_checksum_string(sha256: &str) -> Result<(), Error> {
 }
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
-pub fn validate_collection_id(collection_id: Option<&str>) -> Result<(), Error> {
+pub fn validate_collection_id(collection_id: Option<&str>) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_collection_id(collection_id.to_glib_none().0, &mut error);
@@ -292,7 +291,7 @@ pub fn validate_collection_id(collection_id: Option<&str>) -> Result<(), Error> 
 }
 
 #[cfg(any(feature = "v2017_8", feature = "dox"))]
-pub fn validate_remote_name(remote_name: &str) -> Result<(), Error> {
+pub fn validate_remote_name(remote_name: &str) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_remote_name(remote_name.to_glib_none().0, &mut error);
@@ -300,7 +299,7 @@ pub fn validate_remote_name(remote_name: &str) -> Result<(), Error> {
     }
 }
 
-pub fn validate_rev(rev: &str) -> Result<(), Error> {
+pub fn validate_rev(rev: &str) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_rev(rev.to_glib_none().0, &mut error);
@@ -308,7 +307,7 @@ pub fn validate_rev(rev: &str) -> Result<(), Error> {
     }
 }
 
-pub fn validate_structureof_checksum_string(checksum: &str) -> Result<(), Error> {
+pub fn validate_structureof_checksum_string(checksum: &str) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_structureof_checksum_string(checksum.to_glib_none().0, &mut error);
@@ -316,7 +315,7 @@ pub fn validate_structureof_checksum_string(checksum: &str) -> Result<(), Error>
     }
 }
 
-pub fn validate_structureof_commit(commit: &glib::Variant) -> Result<(), Error> {
+pub fn validate_structureof_commit(commit: &glib::Variant) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_structureof_commit(commit.to_glib_none().0, &mut error);
@@ -324,7 +323,7 @@ pub fn validate_structureof_commit(commit: &glib::Variant) -> Result<(), Error> 
     }
 }
 
-pub fn validate_structureof_csum_v(checksum: &glib::Variant) -> Result<(), Error> {
+pub fn validate_structureof_csum_v(checksum: &glib::Variant) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_structureof_csum_v(checksum.to_glib_none().0, &mut error);
@@ -332,7 +331,7 @@ pub fn validate_structureof_csum_v(checksum: &glib::Variant) -> Result<(), Error
     }
 }
 
-pub fn validate_structureof_dirmeta(dirmeta: &glib::Variant) -> Result<(), Error> {
+pub fn validate_structureof_dirmeta(dirmeta: &glib::Variant) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_structureof_dirmeta(dirmeta.to_glib_none().0, &mut error);
@@ -340,7 +339,7 @@ pub fn validate_structureof_dirmeta(dirmeta: &glib::Variant) -> Result<(), Error
     }
 }
 
-pub fn validate_structureof_dirtree(dirtree: &glib::Variant) -> Result<(), Error> {
+pub fn validate_structureof_dirtree(dirtree: &glib::Variant) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_structureof_dirtree(dirtree.to_glib_none().0, &mut error);
@@ -348,7 +347,7 @@ pub fn validate_structureof_dirtree(dirtree: &glib::Variant) -> Result<(), Error
     }
 }
 
-pub fn validate_structureof_file_mode(mode: u32) -> Result<(), Error> {
+pub fn validate_structureof_file_mode(mode: u32) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_structureof_file_mode(mode, &mut error);
@@ -356,7 +355,7 @@ pub fn validate_structureof_file_mode(mode: u32) -> Result<(), Error> {
     }
 }
 
-pub fn validate_structureof_objtype(objtype: u8) -> Result<(), Error> {
+pub fn validate_structureof_objtype(objtype: u8) -> Result<(), glib::Error> {
     unsafe {
         let mut error = ptr::null_mut();
         let _ = ostree_sys::ostree_validate_structureof_objtype(objtype, &mut error);
