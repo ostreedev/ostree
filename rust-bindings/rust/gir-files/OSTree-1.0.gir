@@ -77,7 +77,7 @@ g_auto(OstreeRepoFinderResultv) results = NULL;
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-async-progress.c"
-               line="430">A new progress object</doc>
+               line="464">A new progress object</doc>
           <type name="AsyncProgress" c:type="OstreeAsyncProgress*"/>
         </return-value>
       </constructor>
@@ -120,10 +120,37 @@ g_auto(OstreeRepoFinderResultv) results = NULL;
           </parameter>
         </parameters>
       </virtual-method>
+      <method name="copy_state"
+              c:identifier="ostree_async_progress_copy_state"
+              version="2019.6">
+        <doc xml:space="preserve"
+             filename="ostree-async-progress.c"
+             line="427">Atomically copies all the state from @self to @dest, without invoking the
+callback.
+This is used for proxying progress objects across different #GMainContexts.</doc>
+        <source-position filename="ostree-async-progress.h" line="96"/>
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="ostree-async-progress.c"
+                 line="429">An #OstreeAsyncProgress to copy from</doc>
+            <type name="AsyncProgress" c:type="OstreeAsyncProgress*"/>
+          </instance-parameter>
+          <parameter name="dest" transfer-ownership="none">
+            <doc xml:space="preserve"
+                 filename="ostree-async-progress.c"
+                 line="430">An #OstreeAsyncProgress to copy to</doc>
+            <type name="AsyncProgress" c:type="OstreeAsyncProgress*"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="finish" c:identifier="ostree_async_progress_finish">
         <doc xml:space="preserve"
              filename="ostree-async-progress.c"
-             line="448">Process any pending signals, ensuring the main context is cleared
+             line="482">Process any pending signals, ensuring the main context is cleared
 of sources used by this object.  Also ensures that no further
 events will be queued.</doc>
         <source-position filename="ostree-async-progress.h" line="93"/>
@@ -134,7 +161,7 @@ events will be queued.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-async-progress.c"
-                 line="450">Self</doc>
+                 line="484">Self</doc>
             <type name="AsyncProgress" c:type="OstreeAsyncProgress*"/>
           </instance-parameter>
         </parameters>
@@ -2713,10 +2740,10 @@ signature from trusted keyring, otherwise %FALSE</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="380">Appends @arg which is in the form of key=value pair to the hash table kargs-&gt;table
+             line="506">Appends @arg which is in the form of key=value pair to the hash table kargs-&gt;table
 (appends to the value list if key is already in the hash table)
 and appends key to kargs-&gt;order if it is not in the hash table already.</doc>
-        <source-position filename="ostree-kernel-args.h" line="57"/>
+        <source-position filename="ostree-kernel-args.h" line="86"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -2724,13 +2751,13 @@ and appends key to kargs-&gt;order if it is not in the hash table already.</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="382">a OstreeKernelArgs instance</doc>
+                 line="508">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="arg" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="383">key or key/value pair to be added</doc>
+                 line="509">key or key/value pair to be added</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -2740,9 +2767,9 @@ and appends key to kargs-&gt;order if it is not in the hash table already.</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="470">Appends each value in @argv to the corresponding value array and
+             line="594">Appends each value in @argv to the corresponding value array and
 appends key to kargs-&gt;order if it is not in the hash table already.</doc>
-        <source-position filename="ostree-kernel-args.h" line="61"/>
+        <source-position filename="ostree-kernel-args.h" line="90"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -2750,13 +2777,13 @@ appends key to kargs-&gt;order if it is not in the hash table already.</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="472">a OstreeKernelArgs instance</doc>
+                 line="596">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="argv" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="473">an array of key=value argument pairs</doc>
+                 line="597">an array of key=value argument pairs</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
         </parameters>
@@ -2766,8 +2793,8 @@ appends key to kargs-&gt;order if it is not in the hash table already.</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="444">Appends each argument that does not have one of the @prefixes as prefix to the @kargs</doc>
-        <source-position filename="ostree-kernel-args.h" line="65"/>
+             line="568">Appends each argument that does not have one of the @prefixes as prefix to the @kargs</doc>
+        <source-position filename="ostree-kernel-args.h" line="94"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -2775,19 +2802,19 @@ appends key to kargs-&gt;order if it is not in the hash table already.</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="446">a OstreeKernelArgs instance</doc>
+                 line="570">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="argv" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="447">an array of key=value argument pairs</doc>
+                 line="571">an array of key=value argument pairs</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
           <parameter name="prefixes" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="448">an array of prefix strings</doc>
+                 line="572">an array of prefix strings</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
         </parameters>
@@ -2798,20 +2825,20 @@ appends key to kargs-&gt;order if it is not in the hash table already.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="487">Appends the command line arguments in the file "/proc/cmdline"
+             line="611">Appends the command line arguments in the file "/proc/cmdline"
 that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the @kargs</doc>
-        <source-position filename="ostree-kernel-args.h" line="85"/>
+        <source-position filename="ostree-kernel-args.h" line="114"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="496">%TRUE on success, %FALSE on failure</doc>
+               line="620">%TRUE on success, %FALSE on failure</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="489">a OstreeKernelArgs instance</doc>
+                 line="613">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="cancellable"
@@ -2820,7 +2847,7 @@ that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the @kargs</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="490">optional GCancellable object, NULL to ignore</doc>
+                 line="614">optional GCancellable object, NULL to ignore</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -2830,7 +2857,7 @@ that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the @kargs</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="264">There are few scenarios being handled for deletion:
+             line="372">There are few scenarios being handled for deletion:
 
  1: for input arg with a single key(i.e without = for split),
  the key/value pair will be deleted if there is only
@@ -2847,7 +2874,7 @@ that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the @kargs</doc>
  Returns: %TRUE on success, %FALSE on failure
 
  Since: 2019.3</doc>
-        <source-position filename="ostree-kernel-args.h" line="75"/>
+        <source-position filename="ostree-kernel-args.h" line="104"/>
         <return-value transfer-ownership="none">
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
@@ -2855,13 +2882,13 @@ that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the @kargs</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="266">a OstreeKernelArgs instance</doc>
+                 line="374">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="arg" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="267">key or key/value pair for deletion</doc>
+                 line="375">key or key/value pair for deletion</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -2872,30 +2899,30 @@ that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the @kargs</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="227">This function removes the key entry from the hashtable
+             line="332">This function removes the key entry from the hashtable
 as well from the order pointer array inside kargs
 
 Note: since both table and order inside kernel args
 are with free function, no extra free functions are
 being called as they are done automatically by GLib</doc>
-        <source-position filename="ostree-kernel-args.h" line="80"/>
+        <source-position filename="ostree-kernel-args.h" line="109"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="240">%TRUE on success, %FALSE on failure</doc>
+               line="345">%TRUE on success, %FALSE on failure</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="229">an OstreeKernelArgs instance</doc>
+                 line="334">an OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="key" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="230">the key to remove</doc>
+                 line="335">the key to remove</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -2905,8 +2932,8 @@ being called as they are done automatically by GLib</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="91">Frees the kargs structure</doc>
-        <source-position filename="ostree-kernel-args.h" line="36"/>
+             line="198">Frees the kargs structure</doc>
+        <source-position filename="ostree-kernel-args.h" line="65"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -2914,7 +2941,7 @@ being called as they are done automatically by GLib</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="93">An OstreeKernelArgs that represents kernel arguments</doc>
+                 line="200">An OstreeKernelArgs that represents kernel arguments</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
         </parameters>
@@ -2924,14 +2951,14 @@ being called as they are done automatically by GLib</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="674">Finds and returns the last element of value array
+             line="783">Finds and returns the last element of value array
 corresponding to the @key in @kargs hash table. Note that the application
 will be terminated if the @key is found but the value array is empty</doc>
-        <source-position filename="ostree-kernel-args.h" line="94"/>
+        <source-position filename="ostree-kernel-args.h" line="123"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="683">NULL if @key is not found in the @kargs hash table,
+               line="792">NULL if @key is not found in the @kargs hash table,
 otherwise returns last element of value array corresponding to @key</doc>
           <type name="utf8" c:type="const char*"/>
         </return-value>
@@ -2939,13 +2966,13 @@ otherwise returns last element of value array corresponding to @key</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="676">a OstreeKernelArgs instance</doc>
+                 line="785">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="key" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="677">a key to look for in @kargs hash table</doc>
+                 line="786">a key to look for in @kargs hash table</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -2956,7 +2983,7 @@ otherwise returns last element of value array corresponding to @key</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="159">This function implements the basic logic behind key/value pair
+             line="266">This function implements the basic logic behind key/value pair
 replacement. Do note that the arg need to be properly formatted
 
 When replacing key with exact one value, the arg can be in
@@ -2971,11 +2998,11 @@ key=old_val=new_val. Unless there is a special case where
 there is an empty value associated with the key, then
 key=new_val will work because old_val is empty. The empty
 val will be swapped with the new_val in that case</doc>
-        <source-position filename="ostree-kernel-args.h" line="70"/>
+        <source-position filename="ostree-kernel-args.h" line="99"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="181">%TRUE on success, %FALSE on failure (and in some other instances such as:
+               line="288">%TRUE on success, %FALSE on failure (and in some other instances such as:
 1. key not found in @kargs
 2. old value not found when @arg is in the form of key=old_val=new_val
 3. multiple old values found when @arg is in the form of key=old_val)</doc>
@@ -2985,13 +3012,13 @@ val will be swapped with the new_val in that case</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="161">OstreeKernelArgs instance</doc>
+                 line="268">OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="arg" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="162">a string argument</doc>
+                 line="269">a string argument</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -3001,8 +3028,8 @@ val will be swapped with the new_val in that case</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="531">Parses @options by separating it by whitespaces and appends each argument to @kargs</doc>
-        <source-position filename="ostree-kernel-args.h" line="90"/>
+             line="655">Parses @options by separating it by whitespaces and appends each argument to @kargs</doc>
+        <source-position filename="ostree-kernel-args.h" line="119"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -3010,13 +3037,13 @@ val will be swapped with the new_val in that case</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="533">a OstreeKernelArgs instance</doc>
+                 line="657">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="options" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="534">a string representing command line arguments</doc>
+                 line="658">a string representing command line arguments</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -3026,10 +3053,10 @@ val will be swapped with the new_val in that case</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="362">Finds and replaces the old key if @arg is already in the hash table,
+             line="488">Finds and replaces the old key if @arg is already in the hash table,
 otherwise adds @arg as new key and split_keyeq (arg) as value.
 Note that when replacing old key value pair, the old values are freed.</doc>
-        <source-position filename="ostree-kernel-args.h" line="49"/>
+        <source-position filename="ostree-kernel-args.h" line="78"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -3037,13 +3064,13 @@ Note that when replacing old key value pair, the old values are freed.</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="364">a OstreeKernelArgs instance</doc>
+                 line="490">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="arg" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="365">key or key/value pair for replacement</doc>
+                 line="491">key or key/value pair for replacement</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -3053,10 +3080,10 @@ Note that when replacing old key value pair, the old values are freed.</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="420">Finds and replaces each non-null arguments of @argv in the hash table,
+             line="544">Finds and replaces each non-null arguments of @argv in the hash table,
 otherwise adds individual arg as new key and split_keyeq (arg) as value.
 Note that when replacing old key value pair, the old values are freed.</doc>
-        <source-position filename="ostree-kernel-args.h" line="53"/>
+        <source-position filename="ostree-kernel-args.h" line="82"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -3064,13 +3091,13 @@ Note that when replacing old key value pair, the old values are freed.</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="422">a OstreeKernelArgs instance</doc>
+                 line="546">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="argv" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="423">an array of key or key/value pairs</doc>
+                 line="547">an array of key or key/value pairs</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
         </parameters>
@@ -3080,10 +3107,10 @@ Note that when replacing old key value pair, the old values are freed.</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="327">Finds and replaces the old key if @arg is already in the hash table,
+             line="437">Finds and replaces the old key if @arg is already in the hash table,
 otherwise adds @arg as new key and split_keyeq (arg) as value.
 Note that when replacing old key, the old values are freed.</doc>
-        <source-position filename="ostree-kernel-args.h" line="45"/>
+        <source-position filename="ostree-kernel-args.h" line="74"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -3091,13 +3118,13 @@ Note that when replacing old key, the old values are freed.</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="329">a OstreeKernelArgs instance</doc>
+                 line="439">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
           <parameter name="arg" transfer-ownership="full">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="330">key or key/value pair for replacement</doc>
+                 line="440">key or key/value pair for replacement</doc>
             <type name="utf8" c:type="char*"/>
           </parameter>
         </parameters>
@@ -3107,18 +3134,18 @@ Note that when replacing old key, the old values are freed.</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="621">Extracts all key value pairs in @kargs and appends to a temporary
+             line="738">Extracts all key value pairs in @kargs and appends to a temporary
 GString in forms of "key=value" or "key" if value is NULL separated
 by a single whitespace, and returns the temporary string with the
 GString wrapper freed
 
 Note: the application will be terminated if one of the values array
 in @kargs is NULL</doc>
-        <source-position filename="ostree-kernel-args.h" line="104"/>
+        <source-position filename="ostree-kernel-args.h" line="133"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="633">a string of "key=value" pairs or "key" if value is NULL,
+               line="750">a string of "key=value" pairs or "key" if value is NULL,
 separated by single whitespaces</doc>
           <type name="utf8" c:type="char*"/>
         </return-value>
@@ -3126,7 +3153,7 @@ separated by single whitespaces</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="623">a OstreeKernelArgs instance</doc>
+                 line="740">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
         </parameters>
@@ -3136,14 +3163,14 @@ separated by single whitespaces</doc>
               version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="581">Extracts all key value pairs in @kargs and appends to a temporary
+             line="705">Extracts all key value pairs in @kargs and appends to a temporary
 array in forms of "key=value" or "key" if value is NULL, and returns
 the temporary array with the GPtrArray wrapper freed</doc>
-        <source-position filename="ostree-kernel-args.h" line="101"/>
+        <source-position filename="ostree-kernel-args.h" line="130"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="589">an array of "key=value" pairs or "key" if value is NULL</doc>
+               line="713">an array of "key=value" pairs or "key" if value is NULL</doc>
           <array c:type="char**">
             <type name="utf8"/>
           </array>
@@ -3152,7 +3179,7 @@ the temporary array with the GPtrArray wrapper freed</doc>
           <instance-parameter name="kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="583">a OstreeKernelArgs instance</doc>
+                 line="707">a OstreeKernelArgs instance</doc>
             <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
           </instance-parameter>
         </parameters>
@@ -3162,8 +3189,8 @@ the temporary array with the GPtrArray wrapper freed</doc>
                 version="2019.3">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="109">Frees the OstreeKernelArgs structure pointed by *loc</doc>
-        <source-position filename="ostree-kernel-args.h" line="42"/>
+             line="216">Frees the OstreeKernelArgs structure pointed by *loc</doc>
+        <source-position filename="ostree-kernel-args.h" line="71"/>
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
         </return-value>
@@ -3174,7 +3201,7 @@ the temporary array with the GPtrArray wrapper freed</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="111">Address of an OstreeKernelArgs pointer</doc>
+                 line="218">Address of an OstreeKernelArgs pointer</doc>
             <type name="gpointer" c:type="void*"/>
           </parameter>
         </parameters>
@@ -3185,20 +3212,20 @@ the temporary array with the GPtrArray wrapper freed</doc>
                 introspectable="0">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="559">Initializes a new OstreeKernelArgs then parses and appends @options
+             line="683">Initializes a new OstreeKernelArgs then parses and appends @options
 to the empty OstreeKernelArgs</doc>
-        <source-position filename="ostree-kernel-args.h" line="98"/>
+        <source-position filename="ostree-kernel-args.h" line="127"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="566">newly allocated #OstreeKernelArgs with @options appended</doc>
+               line="690">newly allocated #OstreeKernelArgs with @options appended</doc>
           <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
         </return-value>
         <parameters>
           <parameter name="options" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-kernel-args.c"
-                 line="561">a string representing command line arguments</doc>
+                 line="685">a string representing command line arguments</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
         </parameters>
@@ -3209,15 +3236,20 @@ to the empty OstreeKernelArgs</doc>
                 introspectable="0">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="71">Initializes a new OstreeKernelArgs structure and returns it</doc>
-        <source-position filename="ostree-kernel-args.h" line="39"/>
+             line="176">Initializes a new OstreeKernelArgs structure and returns it</doc>
+        <source-position filename="ostree-kernel-args.h" line="68"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="76">A newly created #OstreeKernelArgs for kernel arguments</doc>
+               line="181">A newly created #OstreeKernelArgs for kernel arguments</doc>
           <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
         </return-value>
       </function>
+    </record>
+    <record name="KernelArgsEntry"
+            c:type="OstreeKernelArgsEntry"
+            disguised="1">
+      <source-position filename="ostree-kernel-args.h" line="30"/>
     </record>
     <function-macro name="LIBARCHIVE_INPUT_STREAM"
                     c:identifier="OSTREE_LIBARCHIVE_INPUT_STREAM"
@@ -3973,7 +4005,7 @@ content, the other types are metadata.</doc>
       </member>
     </enumeration>
     <constant name="RELEASE_VERSION"
-              value="5"
+              value="6"
               c:type="OSTREE_RELEASE_VERSION"
               version="2017.4">
       <doc xml:space="preserve"
@@ -15506,7 +15538,7 @@ users who had been using zero before.</doc>
       <source-position filename="ostree-tls-cert-interaction.h" line="35"/>
     </record>
     <constant name="VERSION"
-              value="2019.500000"
+              value="2019.600000"
               c:type="OSTREE_VERSION"
               version="2017.4">
       <doc xml:space="preserve"
@@ -15516,7 +15548,7 @@ users who had been using zero before.</doc>
       <type name="gdouble" c:type="gdouble"/>
     </constant>
     <constant name="VERSION_S"
-              value="2019.5"
+              value="2019.6"
               c:type="OSTREE_VERSION_S"
               version="2017.4">
       <doc xml:space="preserve"
@@ -16808,8 +16840,8 @@ sets of #OstreeDiffItem in @modified, @removed, and @added.</doc>
               version="2019.3">
       <doc xml:space="preserve"
            filename="ostree-kernel-args.c"
-           line="109">Frees the OstreeKernelArgs structure pointed by *loc</doc>
-      <source-position filename="ostree-kernel-args.h" line="42"/>
+           line="216">Frees the OstreeKernelArgs structure pointed by *loc</doc>
+      <source-position filename="ostree-kernel-args.h" line="71"/>
       <return-value transfer-ownership="none">
         <type name="none" c:type="void"/>
       </return-value>
@@ -16820,7 +16852,7 @@ sets of #OstreeDiffItem in @modified, @removed, and @added.</doc>
                    allow-none="1">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="111">Address of an OstreeKernelArgs pointer</doc>
+               line="218">Address of an OstreeKernelArgs pointer</doc>
           <type name="gpointer" c:type="void*"/>
         </parameter>
       </parameters>
@@ -16832,20 +16864,20 @@ sets of #OstreeDiffItem in @modified, @removed, and @added.</doc>
               introspectable="0">
       <doc xml:space="preserve"
            filename="ostree-kernel-args.c"
-           line="559">Initializes a new OstreeKernelArgs then parses and appends @options
+           line="683">Initializes a new OstreeKernelArgs then parses and appends @options
 to the empty OstreeKernelArgs</doc>
-      <source-position filename="ostree-kernel-args.h" line="98"/>
+      <source-position filename="ostree-kernel-args.h" line="127"/>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="566">newly allocated #OstreeKernelArgs with @options appended</doc>
+             line="690">newly allocated #OstreeKernelArgs with @options appended</doc>
         <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
       </return-value>
       <parameters>
         <parameter name="options" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-kernel-args.c"
-               line="561">a string representing command line arguments</doc>
+               line="685">a string representing command line arguments</doc>
           <type name="utf8" c:type="const char*"/>
         </parameter>
       </parameters>
@@ -16857,12 +16889,12 @@ to the empty OstreeKernelArgs</doc>
               introspectable="0">
       <doc xml:space="preserve"
            filename="ostree-kernel-args.c"
-           line="71">Initializes a new OstreeKernelArgs structure and returns it</doc>
-      <source-position filename="ostree-kernel-args.h" line="39"/>
+           line="176">Initializes a new OstreeKernelArgs structure and returns it</doc>
+      <source-position filename="ostree-kernel-args.h" line="68"/>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="ostree-kernel-args.c"
-             line="76">A newly created #OstreeKernelArgs for kernel arguments</doc>
+             line="181">A newly created #OstreeKernelArgs for kernel arguments</doc>
         <type name="KernelArgs" c:type="OstreeKernelArgs*"/>
       </return-value>
     </function>
