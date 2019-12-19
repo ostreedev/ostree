@@ -2430,6 +2430,76 @@ ostree_commit_get_content_checksum (GVariant *commit_variant)
   return g_strdup (hexdigest);
 }
 
+G_DEFINE_BOXED_TYPE (OstreeCommitSizesEntry, ostree_commit_sizes_entry,
+                     ostree_commit_sizes_entry_copy, ostree_commit_sizes_entry_free)
+
+/**
+ * ostree_commit_sizes_entry_new:
+ * @checksum: (not nullable): object checksum
+ * @objtype: object type
+ * @unpacked: unpacked object size
+ * @archived: compressed object size
+ *
+ * Create a new #OstreeCommitSizesEntry for representing an object in a
+ * commit's "ostree.sizes" metadata.
+ *
+ * Returns: (transfer full) (nullable): a new #OstreeCommitSizesEntry
+ * Since: 2019.7
+ */
+OstreeCommitSizesEntry *
+ostree_commit_sizes_entry_new (const gchar      *checksum,
+                               OstreeObjectType  objtype,
+                               guint64           unpacked,
+                               guint64           archived)
+{
+  g_return_val_if_fail (checksum == NULL || ostree_validate_checksum_string (checksum, NULL), NULL);
+
+  g_autoptr(OstreeCommitSizesEntry) entry = g_new0 (OstreeCommitSizesEntry, 1);
+  entry->checksum = g_strdup (checksum);
+  entry->objtype = objtype;
+  entry->unpacked = unpacked;
+  entry->archived = archived;
+
+  return g_steal_pointer (&entry);
+}
+
+/**
+ * ostree_commit_sizes_entry_copy:
+ * @entry: (not nullable): an #OstreeCommitSizesEntry
+ *
+ * Create a copy of the given @entry.
+ *
+ * Returns: (transfer full) (nullable): a new copy of @entry
+ * Since: 2019.7
+ */
+OstreeCommitSizesEntry *
+ostree_commit_sizes_entry_copy (const OstreeCommitSizesEntry *entry)
+{
+  g_return_val_if_fail (entry != NULL, NULL);
+
+  return ostree_commit_sizes_entry_new (entry->checksum,
+                                        entry->objtype,
+                                        entry->unpacked,
+                                        entry->archived);
+}
+
+/**
+ * ostree_commit_sizes_entry_free:
+ * @entry: (transfer full): an #OstreeCommitSizesEntry
+ *
+ * Free given @entry.
+ *
+ * Since: 2019.7
+ */
+void
+ostree_commit_sizes_entry_free (OstreeCommitSizesEntry *entry)
+{
+  g_return_if_fail (entry != NULL);
+
+  g_free (entry->checksum);
+  g_free (entry);
+}
+
 /* Used in pull/deploy to validate we're not being downgraded */
 gboolean
 _ostree_compare_timestamps (const char   *current_rev,

@@ -19,6 +19,11 @@
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2019.7 {
+global:
+  ostree_commit_sizes_entry_copy;
+  ostree_commit_sizes_entry_free;
+  ostree_commit_sizes_entry_get_type;
+  ostree_commit_sizes_entry_new;
   ostree_sysroot_initialize;
   ostree_sysroot_is_booted;
   ostree_sysroot_set_mount_namespace_in_use;

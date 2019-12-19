@@ -49,6 +49,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoDevInoCache, ostree_repo_devino_cache_u
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeAsyncProgress, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeBootconfigParser, g_object_unref)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeCommitSizesEntry, ostree_commit_sizes_entry_free)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeDeployment, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeGpgVerifyResult, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeKernelArgs, ostree_kernel_args_free)

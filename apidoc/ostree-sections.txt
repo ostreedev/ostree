@@ -151,7 +151,13 @@ ostree_validate_structureof_dirmeta
 ostree_commit_get_parent
 ostree_commit_get_timestamp
 ostree_commit_get_content_checksum
+OstreeCommitSizesEntry
+ostree_commit_sizes_entry_new
+ostree_commit_sizes_entry_copy
+ostree_commit_sizes_entry_free
 ostree_check_version
+<SUBSECTION Standard>
+ostree_commit_sizes_entry_get_type
 </SECTION>
 
 <SECTION>
