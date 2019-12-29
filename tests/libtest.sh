@@ -559,6 +559,18 @@ skip_without_user_xattrs () {
     fi
 }
 
+_have_systemd_and_libmount=''
+have_systemd_and_libmount() {
+    if test "${_have_systemd_and_libmount}" = ''; then
+        if [ $(ostree --version | grep -c -e '- systemd' -e '- libmount') -eq 2 ]; then
+            _have_systemd_and_libmount=yes
+        else
+            _have_systemd_and_libmount=no
+        fi
+    fi
+    test ${_have_systemd_and_libmount} = yes
+}
+
 # Skip unless SELinux is disabled, or we can relabel.
 # Default Docker has security.selinux xattrs, but returns
 # EOPNOTSUPP when trying to set them, even to the existing value.
