@@ -56,7 +56,7 @@ find_in_env() {
 		"$1" "$tmpdir"
 		enter_fs "$tmpdir"
 		ostree-prepare-root /sysroot
-		find /
+		find / \( -path /proc -o -path /sysroot/proc \) -prune -o -print
 		touch /usr/usr_writable 2>/null \
 			&& echo "/usr is writable" \
 			|| echo "/usr is not writable"
