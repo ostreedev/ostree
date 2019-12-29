@@ -533,6 +533,7 @@ dnl If we have both, we use the "new /var" model with ostree-system-generator
 AM_CONDITIONAL(BUILDOPT_SYSTEMD_AND_LIBMOUNT,[test x$with_systemd = xyes && test x$with_libmount = xyes])
 AM_COND_IF(BUILDOPT_SYSTEMD_AND_LIBMOUNT,
   AC_DEFINE([BUILDOPT_LIBSYSTEMD_AND_LIBMOUNT], 1, [Define if systemd and libmount]))
+if test x$with_systemd != xno; then OSTREE_FEATURES="$OSTREE_FEATURES systemd"; fi
 
 AC_ARG_WITH(builtin-grub2-mkconfig,
             AS_HELP_STRING([--with-builtin-grub2-mkconfig],
