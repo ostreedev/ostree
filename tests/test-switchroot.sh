@@ -140,7 +140,7 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 	[ -f /bin/busybox ] || \
 	    skip "this test needs busybox"
 
-        [ -n "${OSTREE_PREPARE_ROOT}" ] || \
+	[ -n "${OSTREE_PREPARE_ROOT}" ] || \
 	    skip "this test needs ostree-prepare-root"
 
 	echo "1..3"
