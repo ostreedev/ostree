@@ -2,6 +2,16 @@
 
 this_script="${BASH_SOURCE:-$(readlink -f "$0")}"
 
+OSTREE_PREPARE_ROOT=$(dirname "${this_script}")/../ostree-prepare-root
+if [ ! -x "${OSTREE_PREPARE_ROOT}" ]; then
+	# ostree-prepare-root is in $libdir by default, assume we can find it
+	# based on our test directory, if not we'll have to skip this test.
+	OSTREE_PREPARE_ROOT=$(dirname "${this_script}")/../../../lib/ostree/ostree-prepare-root
+	if [ ! -x "${OSTREE_PREPARE_ROOT}" ]; then
+		OSTREE_PREPARE_ROOT=""
+	fi
+fi
+
 setup_bootfs() {
 	mkdir -p "$1/proc" "$1/bin"
 
@@ -13,7 +23,7 @@ setup_bootfs() {
 	mount --bind "$1/override_cmdline" "$1/proc/cmdline"
 
 	touch "$1/this_is_bootfs"
-	cp "$(dirname "$this_script")/../ostree-prepare-root" "$1/bin"
+	cp "${OSTREE_PREPARE_ROOT}" "$1/bin"
 }
 
 setup_rootfs() {
@@ -129,6 +139,9 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 	    skip "this test needs to set up mount namespaces, rerun as root"
 	[ -f /bin/busybox ] || \
 	    skip "this test needs busybox"
+
+	[ -n "${OSTREE_PREPARE_ROOT}" ] || \
+	    skip "this test needs ostree-prepare-root"
 
 	echo "1..3"
 	test_that_prepare_root_sets_sysroot_up_correctly_with_initrd
