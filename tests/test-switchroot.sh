@@ -66,7 +66,7 @@ find_in_env() {
 		"$1" "$tmpdir"
 		enter_fs "$tmpdir"
 		ostree-prepare-root /sysroot
-		find /
+		find / \( -path /proc -o -path /sysroot/proc \) -prune -o -print
 		touch /usr/usr_writable 2>/null \
 			&& echo "/usr is writable" \
 			|| echo "/usr is not writable"
@@ -92,7 +92,9 @@ test_that_prepare_root_sets_sysroot_up_correctly_with_initrd() {
 	grep -qx "/this_is_bootfs" files
 	grep -qx "/sysroot/this_is_ostree_root" files
 	grep -qx "/sysroot/sysroot/this_is_real_root" files
-	grep -qx "/sysroot/var/this_is_ostree_var" files
+	if ! have_systemd_and_libmount; then
+		grep -qx "/sysroot/var/this_is_ostree_var" files
+	fi
 	grep -qx "/sysroot/usr/this_is_ostree_usr" files
 
 	grep -qx "/sysroot/usr is not writable" files
@@ -111,7 +113,9 @@ test_that_prepare_root_sets_root_up_correctly_with_no_initrd() {
 	grep -qx "/this_is_ostree_root" files
 	grep -qx "/sysroot/this_is_bootfs" files
 	grep -qx "/sysroot/this_is_real_root" files
-	grep -qx "/var/this_is_ostree_var" files
+	if ! have_systemd_and_libmount; then
+		grep -qx "/var/this_is_ostree_var" files
+	fi
 	grep -qx "/usr/this_is_ostree_usr" files
 
 	grep -qx "/usr is not writable" files
