@@ -504,11 +504,11 @@ AS_IF([ test x$with_libsystemd != xno ], [
     AS_IF([ test x$have_libsystemd = xyes], [
         AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd.pc])
         PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
-        with_libsystemd=yes
+        have_libsystemd=yes
     ], [
-        with_libsystemd=no
+        have_libsystemd=no
     ])
-], [ with_libsystemd=no ])
+], [ have_libsystemd=no ])
 AM_CONDITIONAL(BUILDOPT_LIBSYSTEMD, test $with_libsystemd != no)
 
 AS_IF([test "x$have_libsystemd" = "xyes"], [
@@ -533,7 +533,7 @@ dnl If we have both, we use the "new /var" model with ostree-system-generator
 AM_CONDITIONAL(BUILDOPT_SYSTEMD_AND_LIBMOUNT,[test x$with_systemd = xyes && test x$with_libmount = xyes])
 AM_COND_IF(BUILDOPT_SYSTEMD_AND_LIBMOUNT,
   AC_DEFINE([BUILDOPT_LIBSYSTEMD_AND_LIBMOUNT], 1, [Define if systemd and libmount]))
-if test x$with_systemd != xno; then OSTREE_FEATURES="$OSTREE_FEATURES systemd"; fi
+if test x$have_libsystemd != xno; then OSTREE_FEATURES="$OSTREE_FEATURES systemd"; fi
 
 AC_ARG_WITH(builtin-grub2-mkconfig,
             AS_HELP_STRING([--with-builtin-grub2-mkconfig],
