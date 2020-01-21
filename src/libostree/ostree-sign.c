@@ -40,6 +40,7 @@
 #include "ostree-autocleanups.h"
 #include "ostree-core.h"
 #include "ostree-sign.h"
+#include "ostree-sign-private.h"
 #include "ostree-sign-dummy.h"
 #ifdef HAVE_LIBSODIUM
 #include "ostree-sign-ed25519.h"
@@ -601,27 +602,13 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
   return sign;
 }
 
-/**
- * ostree_sign_summary:
- * @self: Self
- * @repo: ostree repository
- * @keys: keys -- GVariant containing keys as GVarints specific to signature type.
- * @cancellable: A #GCancellable
- * @error: a #GError
- *
- * Add a signature to a summary file.
- * Based on ostree_repo_add_gpg_signature_summary implementation.
- *
- * Returns: @TRUE if summary file has been signed with all provided keys
- *
- * Since: 2020.2
- */
 gboolean
-ostree_sign_summary (OstreeSign    *self,
-                     OstreeRepo    *repo,
-                     GVariant      *keys,
-                     GCancellable  *cancellable,
-                     GError       **error)
+_ostree_sign_summary_at (OstreeSign    *self,
+                         OstreeRepo    *repo,
+                         int            dir_fd,
+                         GVariant      *keys,
+                         GCancellable  *cancellable,
+                         GError       **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
   g_assert (OSTREE_IS_REPO (repo));
@@ -631,7 +618,7 @@ ostree_sign_summary (OstreeSign    *self,
   g_autoptr(GVariant) metadata = NULL;
 
   glnx_autofd int fd = -1;
-  if (!glnx_openat_rdonly (repo->repo_dir_fd, "summary", TRUE, &fd, error))
+  if (!glnx_openat_rdonly (dir_fd, "summary", TRUE, &fd, error))
     return FALSE;
   summary_data = ot_fd_readall_or_mmap (fd, 0, error);
   if (!summary_data)
@@ -640,7 +627,7 @@ ostree_sign_summary (OstreeSign    *self,
   /* Note that fd is reused below */
   glnx_close_fd (&fd);
 
-  if (!ot_openat_ignore_enoent (repo->repo_dir_fd, "summary.sig", &fd, error))
+  if (!ot_openat_ignore_enoent (dir_fd, "summary.sig", &fd, error))
     return FALSE;
 
   if (fd >= 0)
@@ -681,7 +668,7 @@ ostree_sign_summary (OstreeSign    *self,
 
   normalized = g_variant_get_normal_form (metadata);
   if (!_ostree_repo_file_replace_contents (repo,
-                                           repo->repo_dir_fd,
+                                           dir_fd,
                                            "summary.sig",
                                            g_variant_get_data (normalized),
                                            g_variant_get_size (normalized),
@@ -689,4 +676,30 @@ ostree_sign_summary (OstreeSign    *self,
     return FALSE;
 
   return TRUE;
+}
+
+/**
+ * ostree_sign_summary:
+ * @self: Self
+ * @repo: ostree repository
+ * @keys: keys -- GVariant containing keys as GVarints specific to signature type.
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a signature to a summary file.
+ * Based on ostree_repo_add_gpg_signature_summary implementation.
+ *
+ * Returns: @TRUE if summary file has been signed with all provided keys
+ *
+ * Since: 2020.2
+ */
+gboolean
+ostree_sign_summary (OstreeSign    *self,
+                     OstreeRepo    *repo,
+                     GVariant      *keys,
+                     GCancellable  *cancellable,
+                     GError       **error)
+{
+  return _ostree_sign_summary_at (self, repo, repo->repo_dir_fd, keys,
+                                  cancellable, error);
 }

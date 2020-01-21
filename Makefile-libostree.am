@@ -251,6 +251,7 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-sign-dummy.h \
 	src/libostree/ostree-sign-ed25519.c \
 	src/libostree/ostree-sign-ed25519.h \
+	src/libostree/ostree-sign-private.h \
 	$(NULL)
 
 if USE_LIBSODIUM

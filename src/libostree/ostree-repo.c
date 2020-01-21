@@ -5592,26 +5592,17 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   return FALSE;
 }
 
-/**
- * ostree_repo_add_gpg_signature_summary:
- * @self: Self
- * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
- * @homedir: (allow-none): GPG home directory, or %NULL
- * @cancellable: A #GCancellable
- * @error: a #GError
- *
- * Add a GPG signature to a summary file.
- */
-gboolean
-ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
-                                       const gchar    **key_id,
-                                       const gchar    *homedir,
-                                       GCancellable   *cancellable,
-                                       GError        **error)
+static gboolean
+_ostree_repo_add_gpg_signature_summary_at (OstreeRepo    *self,
+                                           int            dir_fd,
+                                           const gchar  **key_id,
+                                           const gchar   *homedir,
+                                           GCancellable  *cancellable,
+                                           GError       **error)
 {
 #ifndef OSTREE_DISABLE_GPGME
   glnx_autofd int fd = -1;
-  if (!glnx_openat_rdonly (self->repo_dir_fd, "summary", TRUE, &fd, error))
+  if (!glnx_openat_rdonly (dir_fd, "summary", TRUE, &fd, error))
     return FALSE;
   g_autoptr(GBytes) summary_data = ot_fd_readall_or_mmap (fd, 0, error);
   if (!summary_data)
@@ -5620,7 +5611,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   glnx_close_fd (&fd);
 
   g_autoptr(GVariant) metadata = NULL;
-  if (!ot_openat_ignore_enoent (self->repo_dir_fd, "summary.sig", &fd, error))
+  if (!ot_openat_ignore_enoent (dir_fd, "summary.sig", &fd, error))
     return FALSE;
   if (fd >= 0)
     {
@@ -5644,7 +5635,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   g_autoptr(GVariant) normalized = g_variant_get_normal_form (metadata);
 
   if (!_ostree_repo_file_replace_contents (self,
-                                           self->repo_dir_fd,
+                                           dir_fd,
                                            "summary.sig",
                                            g_variant_get_data (normalized),
                                            g_variant_get_size (normalized),
@@ -5652,6 +5643,35 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
     return FALSE;
 
   return TRUE;
+#else
+  return glnx_throw (error, "GPG feature is disabled at build time");
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
+/**
+ * ostree_repo_add_gpg_signature_summary:
+ * @self: Self
+ * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to a summary file.
+ */
+gboolean
+ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
+                                       const gchar    **key_id,
+                                       const gchar    *homedir,
+                                       GCancellable   *cancellable,
+                                       GError        **error)
+{
+#ifndef OSTREE_DISABLE_GPGME
+  return _ostree_repo_add_gpg_signature_summary_at (self,
+                                                    self->repo_dir_fd,
+                                                    key_id,
+                                                    homedir,
+                                                    cancellable,
+                                                    error);
 #else
   return glnx_throw (error, "GPG feature is disabled in a build time");
 #endif /* OSTREE_DISABLE_GPGME */
