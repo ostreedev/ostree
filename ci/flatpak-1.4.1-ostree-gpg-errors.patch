@@ -1,0 +1,65 @@
+From 8e649d094e9dd91adbb430015b2621c66e086df7 Mon Sep 17 00:00:00 2001
+From: Dan Nicholson <nicholson@endlessm.com>
+Date: Tue, 21 Jan 2020 15:32:27 -0700
+Subject: [PATCH] tests: Accommodate new OSTree GPG error strings
+
+Recently OSTree has been updated to provide proper error strings when
+validating GPG signatures instead of a single generic string[1]. Allow
+either in the tests so they work against new or old ostree.
+
+1. https://github.com/ostreedev/ostree/pull/1877
+---
+ tests/test-p2p-security.sh | 2 +-
+ tests/test-repo.sh         | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/tests/test-p2p-security.sh b/tests/test-p2p-security.sh
+index db929dd4..9b0ca1d0 100644
+--- a/tests/test-p2p-security.sh
++++ b/tests/test-p2p-security.sh
+@@ -53,7 +53,7 @@ GPGARGS="${FL_GPGARGS2}" make_updated_app test-impostor org.test.Collection
+ if G_MESSAGES_DEBUG=all ${FLATPAK} ${U} update -y org.test.Hello >failed-p2p-update-log; then
+     assert_not_reached "Update of org.test.Hello was successful despite malicious commit"
+ fi
+-assert_file_has_content failed-p2p-update-log "GPG signatures found, but none are in trusted keyring"
++assert_file_has_content failed-p2p-update-log "\(GPG signatures found, but none are in trusted keyring\|public key not found\)"
+ 
+ COMMIT_AFTER_FAILED_UPDATE=$(${FLATPAK} ${U} info -c org.test.Hello)
+ if [ "x${INITIAL_COMMIT}" != "x${COMMIT_AFTER_FAILED_UPDATE}" ]; then
+diff --git a/tests/test-repo.sh b/tests/test-repo.sh
+index 01ca6a94..14cb1179 100644
+--- a/tests/test-repo.sh
++++ b/tests/test-repo.sh
+@@ -183,25 +183,25 @@ ${FLATPAK} ${U} uninstall -y org.test.Platform org.test.Hello
+ if ${FLATPAK} ${U} install -y test-missing-gpg-repo org.test.Platform 2> install-error-log; then
+     assert_not_reached "Should not be able to install with missing gpg key"
+ fi
+-assert_file_has_content install-error-log "GPG signatures found, but none are in trusted keyring"
++assert_file_has_content install-error-log "\(GPG signatures found, but none are in trusted keyring\|public key not found\)"
+ 
+ 
+ if ${FLATPAK} ${U} install test-missing-gpg-repo org.test.Hello 2> install-error-log; then
+     assert_not_reached "Should not be able to install with missing gpg key"
+ fi
+-assert_file_has_content install-error-log "GPG signatures found, but none are in trusted keyring"
++assert_file_has_content install-error-log "\(GPG signatures found, but none are in trusted keyring\|public key not found\)"
+ 
+ echo "ok fail with missing gpg key"
+ 
+ if ${FLATPAK} ${U} install test-wrong-gpg-repo org.test.Platform 2> install-error-log; then
+     assert_not_reached "Should not be able to install with wrong gpg key"
+ fi
+-assert_file_has_content install-error-log "GPG signatures found, but none are in trusted keyring"
++assert_file_has_content install-error-log "\(GPG signatures found, but none are in trusted keyring\|public key not found\)"
+ 
+ if ${FLATPAK} ${U} install test-wrong-gpg-repo org.test.Hello 2> install-error-log; then
+     assert_not_reached "Should not be able to install with wrong gpg key"
+ fi
+-assert_file_has_content install-error-log "GPG signatures found, but none are in trusted keyring"
++assert_file_has_content install-error-log "\(GPG signatures found, but none are in trusted keyring\|public key not found\)"
+ 
+ echo "ok fail with wrong gpg key"
+ 
+-- 
+2.20.1
+
