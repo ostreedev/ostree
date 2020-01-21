@@ -41,7 +41,7 @@ assert_not_reached () {
 # If we can't find the locale command assume we have support for C.UTF-8
 # (e.g. musl based systems)
 if type -p locale >/dev/null; then
-    export LC_ALL=$(locale -a | grep -Ee '\.(UTF-8|utf8)' | grep -iEe '^(C|en_US)' | head -1 || true)
+    export LC_ALL=$(locale -a | grep -iEe '^(C|en_US)\.(UTF-8|utf8)$' | head -n1 || true)
     if [ -z "${LC_ALL}" ]; then fatal "Can't find suitable UTF-8 locale"; fi
 else
     export LC_ALL=C.UTF-8
