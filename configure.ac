@@ -237,7 +237,7 @@ dnl to link to it directly.
     ],
     [
     AC_DEFINE([OSTREE_DISABLE_GPGME], 1, [Define to disable internal GPGME support])
-    with_gpgme=no
+    have_gpgme=no
     ]
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
