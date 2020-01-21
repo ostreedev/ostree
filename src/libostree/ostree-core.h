@@ -554,6 +554,11 @@ _OSTREE_PUBLIC
 void                    ostree_commit_sizes_entry_free (OstreeCommitSizesEntry *entry);
 
 _OSTREE_PUBLIC
+gboolean ostree_commit_get_object_sizes (GVariant   *commit_variant,
+                                         GPtrArray **out_sizes_entries,
+                                         GError    **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_check_version (guint required_year, guint required_release);
 
 G_END_DECLS

@@ -102,6 +102,9 @@ _ostree_checksum_inplace_from_bytes_v (GVariant *csum_v, char *buf)
  */
 #define _OSTREE_LOOSE_PATH_MAX (256)
 
+/* GVariant format for ostree.sizes metadata entries. */
+#define _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE "ay"
+
 char *
 _ostree_get_relative_object_path (const char        *checksum,
                                   OstreeObjectType   type,

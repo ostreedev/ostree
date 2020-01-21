@@ -347,7 +347,10 @@ tests_test_varint_LDADD = $(TESTS_LDADD)
 tests_test_bsdiff_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bsdiff_LDADD = libbsdiff.la $(TESTS_LDADD)
 
-tests_test_checksum_SOURCES = src/libostree/ostree-core.c tests/test-checksum.c
+tests_test_checksum_SOURCES = \
+	src/libostree/ostree-core.c \
+	src/libostree/ostree-varint.c \
+	tests/test-checksum.c
 tests_test_checksum_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags)
 tests_test_checksum_LDADD = $(TESTS_LDADD)
 

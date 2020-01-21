@@ -32,6 +32,7 @@
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-chain-input-stream.h"
+#include "ostree-varint.h"
 #include "otutil.h"
 
 /* Generic ABI checks */
@@ -2498,6 +2499,117 @@ ostree_commit_sizes_entry_free (OstreeCommitSizesEntry *entry)
 
   g_free (entry->checksum);
   g_free (entry);
+}
+
+static gboolean
+read_sizes_entry (GVariant                *entry,
+                  OstreeCommitSizesEntry **out_sizes,
+                  GError                 **error)
+{
+  gsize entry_size = g_variant_get_size (entry);
+  g_return_val_if_fail (entry_size >= OSTREE_SHA256_DIGEST_LEN + 2, FALSE);
+
+  const guchar *buffer = g_variant_get_data (entry);
+  if (buffer == NULL)
+    return glnx_throw (error, "Could not read ostree.sizes metadata entry");
+
+  char checksum[OSTREE_SHA256_STRING_LEN + 1];
+  ostree_checksum_inplace_from_bytes (buffer, checksum);
+  buffer += OSTREE_SHA256_DIGEST_LEN;
+  entry_size -= OSTREE_SHA256_DIGEST_LEN;
+
+  gsize bytes_read = 0;
+  guint64 archived = 0;
+  if (!_ostree_read_varuint64 (buffer, entry_size, &archived, &bytes_read))
+    return glnx_throw (error, "Unexpected EOF reading ostree.sizes varint");
+  buffer += bytes_read;
+  entry_size -= bytes_read;
+
+  guint64 unpacked = 0;
+  if (!_ostree_read_varuint64 (buffer, entry_size, &unpacked, &bytes_read))
+    return glnx_throw (error, "Unexpected EOF reading ostree.sizes varint");
+  buffer += bytes_read;
+  entry_size -= bytes_read;
+
+  /* On newer commits, an additional byte is used for the object type. */
+  OstreeObjectType objtype;
+  if (entry_size > 0)
+    {
+      objtype = *buffer;
+      if (objtype < OSTREE_OBJECT_TYPE_FILE || objtype > OSTREE_OBJECT_TYPE_LAST)
+        return glnx_throw (error, "Unexpected ostree.sizes object type %u",
+                           objtype);
+      buffer++;
+      entry_size--;
+    }
+  else
+    {
+      /* Assume the object is a file. */
+      objtype = OSTREE_OBJECT_TYPE_FILE;
+    }
+
+  g_autoptr(OstreeCommitSizesEntry) sizes = ostree_commit_sizes_entry_new (checksum,
+                                                                           objtype,
+                                                                           unpacked,
+                                                                           archived);
+
+  if (out_sizes != NULL)
+    *out_sizes = g_steal_pointer (&sizes);
+
+  return TRUE;
+}
+
+/**
+ * ostree_commit_get_object_sizes:
+ * @commit_variant: (not nullable): variant of type %OSTREE_OBJECT_TYPE_COMMIT
+ * @out_sizes_entries: (out) (element-type OstreeCommitSizesEntry) (transfer container) (optional):
+ *   return location for an array of object size entries
+ * @error: Error
+ *
+ * Reads a commit's "ostree.sizes" metadata and returns an array of
+ * #OstreeCommitSizesEntry in @out_sizes_entries. Each element
+ * represents an object in the commit. If the commit does not contain
+ * the "ostree.sizes" metadata, a %G_IO_ERROR_NOT_FOUND error will be
+ * returned.
+ *
+ * Since: 2019.7
+ */
+gboolean
+ostree_commit_get_object_sizes (GVariant   *commit_variant,
+                                GPtrArray **out_sizes_entries,
+                                GError    **error)
+{
+  g_return_val_if_fail (commit_variant != NULL, FALSE);
+
+  g_autoptr(GVariant) metadata = g_variant_get_child_value (commit_variant, 0);
+  g_autoptr(GVariant) sizes_variant =
+    g_variant_lookup_value (metadata, "ostree.sizes",
+                            G_VARIANT_TYPE ("a" _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE));
+  if (sizes_variant == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No metadata key ostree.sizes in commit");
+      return FALSE;
+    }
+
+  g_autoptr(GPtrArray) sizes_entries =
+    g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_commit_sizes_entry_free);
+  g_autoptr(GVariant) entry = NULL;
+  GVariantIter entry_iter;
+  g_variant_iter_init (&entry_iter, sizes_variant);
+  while ((entry = g_variant_iter_next_value (&entry_iter)))
+    {
+      OstreeCommitSizesEntry *sizes_entry = NULL;
+      if (!read_sizes_entry (entry, &sizes_entry, error))
+        return FALSE;
+      g_clear_pointer (&entry, g_variant_unref);
+      g_ptr_array_add (sizes_entries, sizes_entry);
+    }
+
+  if (out_sizes_entries != NULL)
+    *out_sizes_entries = g_steal_pointer (&sizes_entries);
+
+  return TRUE;
 }
 
 /* Used in pull/deploy to validate we're not being downgraded */
