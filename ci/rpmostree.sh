@@ -6,7 +6,7 @@ set -xeuo pipefail
 # Frozen to a tag for now to help predictability; it's
 # also useful to test building *older* versions since
 # that must work.
-RPMOSTREE_TAG=v2019.3
+RPMOSTREE_TAG=v2019.4
 
 dn=$(dirname $0)
 . ${dn}/libpaprci/libbuild.sh
@@ -18,12 +18,14 @@ pkg_install_buildroot
 pkg_builddep ostree rpm-ostree
 pkg_install rpm-ostree && rpm -e rpm-ostree
 
-# Duplicate of deps from build.sh in rpm-ostree for tests
-pkg_install ostree{,-devel,-grub2} createrepo_c /usr/bin/jq PyYAML \
-            libubsan libasan libtsan elfutils fuse sudo python-gobject-base \
-            selinux-policy-devel selinux-policy-targeted openssh-clients ansible
-# This one is in the papr.yml
-pkg_install rsync
+# Duplicate of deps from ci/installdeps.sh in rpm-ostree for tests
+pkg_install ostree{,-devel,-grub2} createrepo_c /usr/bin/jq python3-pyyaml \
+    libubsan libasan libtsan elfutils fuse sudo python3-gobject-base \
+    selinux-policy-devel selinux-policy-targeted python3-createrepo_c \
+    rsync python3-rpm parallel clang rustfmt-preview
+
+# From rpm-ostree/ci/vmcheck-provision.sh
+pkg_install openssh-clients ansible
 
 # build+install ostree
 cd ${codedir}
