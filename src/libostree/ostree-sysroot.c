@@ -988,30 +988,12 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
   return TRUE;
 }
 
-/**
- * ostree_sysroot_load_if_changed:
- * @self: #OstreeSysroot
- * @out_changed: (out caller-allocates):
- * @cancellable: Cancellable
- * @error: Error
- *
- * Since: 2016.4
- */
-gboolean
-ostree_sysroot_load_if_changed (OstreeSysroot  *self,
-                                gboolean       *out_changed,
-                                GCancellable   *cancellable,
-                                GError        **error)
+static gboolean
+sysroot_load_from_bootloader_configs (OstreeSysroot  *self,
+                                      GCancellable   *cancellable,
+                                      GError       **error)
 {
-  if (!ostree_sysroot_initialize (self, error))
-    return FALSE;
-
-  /* Here we also lazily initialize the repository.  We didn't do this
-   * previous to v2017.6, but we do now to support the error-free
-   * ostree_sysroot_repo() API.
-   */
-  if (!ensure_repo (self, error))
-    return FALSE;
+  struct stat stbuf;
 
   int bootversion = 0;
   if (!read_current_bootversion (self, &bootversion, cancellable, error))
@@ -1021,27 +1003,6 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion,
                                                     cancellable, error))
     return FALSE;
-
-  struct stat stbuf;
-  if (!glnx_fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0, error))
-    return FALSE;
-
-  if (out_changed)
-    {
-      if (self->loaded_ts.tv_sec == stbuf.st_mtim.tv_sec &&
-          self->loaded_ts.tv_nsec == stbuf.st_mtim.tv_nsec)
-        {
-          *out_changed = FALSE;
-          /* Note early return */
-          return TRUE;
-        }
-    }
-
-  g_clear_pointer (&self->deployments, g_ptr_array_unref);
-  g_clear_object (&self->booted_deployment);
-  g_clear_object (&self->staged_deployment);
-  self->bootversion = -1;
-  self->subbootversion = -1;
 
   g_autoptr(GPtrArray) boot_loader_configs = NULL;
   if (!_ostree_sysroot_read_boot_loader_configs (self, bootversion, &boot_loader_configs,
@@ -1120,8 +1081,58 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
 
   self->bootversion = bootversion;
   self->subbootversion = subbootversion;
-  self->deployments = deployments;
-  deployments = NULL; /* Transfer ownership */
+  self->deployments = g_steal_pointer (&deployments);
+
+  return TRUE;
+}
+
+/**
+ * ostree_sysroot_load_if_changed:
+ * @self: #OstreeSysroot
+ * @out_changed: (out caller-allocates):
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Since: 2016.4
+ */
+gboolean
+ostree_sysroot_load_if_changed (OstreeSysroot  *self,
+                                gboolean       *out_changed,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  if (!ostree_sysroot_initialize (self, error))
+    return FALSE;
+
+  /* Here we also lazily initialize the repository.  We didn't do this
+   * previous to v2017.6, but we do now to support the error-free
+   * ostree_sysroot_repo() API.
+   */
+  if (!ensure_repo (self, error))
+    return FALSE;
+
+  struct stat stbuf;
+  if (!glnx_fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0, error))
+    return FALSE;
+
+  if (self->loaded_ts.tv_sec == stbuf.st_mtim.tv_sec &&
+      self->loaded_ts.tv_nsec == stbuf.st_mtim.tv_nsec)
+    {
+      if (out_changed)
+        *out_changed = FALSE;
+      /* Note early return */
+      return TRUE;
+    }
+
+  g_clear_pointer (&self->deployments, g_ptr_array_unref);
+  g_clear_object (&self->booted_deployment);
+  g_clear_object (&self->staged_deployment);
+  self->bootversion = -1;
+  self->subbootversion = -1;
+
+  if (!sysroot_load_from_bootloader_configs (self, cancellable, error))
+    return FALSE;
+
   self->loaded_ts = stbuf.st_mtim;
 
   if (out_changed)
