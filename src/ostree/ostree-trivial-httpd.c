@@ -494,6 +494,7 @@ on_dir_changed (GFileMonitor  *mon,
 
   if (event == G_FILE_MONITOR_EVENT_DELETED)
     {
+      httpd_log (self, "root directory removed, exiting\n");
       self->running = FALSE;
       g_main_context_wakeup (NULL);
     }
@@ -507,6 +508,7 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
   const char *dirpath;
   OtTrivialHttpd appstruct = { 0, };
   OtTrivialHttpd *app = &appstruct;
+  int pipefd[2] = { -1, -1 };
   glnx_unref_object SoupServer *server = NULL;
   g_autoptr(GFileMonitor) dirmon = NULL;
 
@@ -540,17 +542,86 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
       goto out;
     }
 
+  if (opt_daemonize && (g_strcmp0 (opt_log, "-") == 0))
+    {
+      ot_util_usage_error (context, "Cannot use --log-file=- and --daemonize at the same time", error);
+      goto out;
+    }
+
+  /* Fork early before glib sets up its worker context and thread since they'll
+   * be gone once the parent exits. The parent waits on a pipe with the child to
+   * handle setup errors. The child writes a 0 when setup is successful and a 1
+   * otherwise.
+   */
+  if (opt_daemonize)
+    {
+      if (pipe (pipefd) == -1)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+
+      pid_t pid = fork();
+      if (pid == -1)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+      else if (pid > 0)
+        {
+          /* Parent, read the child status from the pipe */
+          glnx_close_fd (&pipefd[1]);
+          guint8 buf;
+          int res = TEMP_FAILURE_RETRY (read (pipefd[0], &buf, 1));
+          if (res < 0)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+          else if (res == 0)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Child process closed pipe without writing status");
+              goto out;
+            }
+
+          g_debug ("Read %u from child", buf);
+          if (buf > 0)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Child process failed during setup");
+              goto out;
+            }
+          glnx_close_fd (&pipefd[0]);
+
+          ret = TRUE;
+          goto out;
+        }
+
+      /* Child, continue */
+      glnx_close_fd (&pipefd[0]);
+    }
+  else
+    {
+      /* Since we're used for testing purposes, let's just do this by
+       * default.  This ensures we exit when our parent does.
+       */
+      if (prctl (PR_SET_PDEATHSIG, SIGTERM) != 0)
+        {
+          if (errno != ENOSYS)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+        }
+    }
+
   if (opt_log)
     {
       GOutputStream *stream = NULL;
 
       if (g_strcmp0 (opt_log, "-") == 0)
         {
-          if (opt_daemonize)
-            {
-              ot_util_usage_error (context, "Cannot use --log-file=- and --daemonize at the same time", error);
-              goto out;
-            }
           stream = G_OUTPUT_STREAM (g_unix_output_stream_new (STDOUT_FILENO, FALSE));
         }
       else
@@ -625,45 +696,39 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
 #if !SOUP_CHECK_VERSION(2, 48, 0)
   soup_server_run_async (server);
 #endif
-  
+
   if (opt_daemonize)
     {
-      pid_t pid = fork();
-      if (pid == -1)
+      /* Write back a 0 to the pipe to indicate setup was successful. */
+      guint8 buf = 0;
+      g_debug ("Writing %u to parent", buf);
+      if (TEMP_FAILURE_RETRY (write (pipefd[1], &buf, 1)) == -1)
         {
-          int errsv = errno;
-          g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errsv),
-                               g_strerror (errsv));
+          glnx_set_error_from_errno (error);
           goto out;
         }
-      else if (pid > 0)
-        {
-          ret = TRUE;
-          goto out;
-        }
-      /* Child, continue */
+      glnx_close_fd (&pipefd[1]);
+
       if (setsid () < 0)
-        err (1, "setsid");
+        {
+          glnx_set_prefix_error_from_errno (error, "%s", "setsid: ");
+          goto out;
+        }
       /* Daemonising: close stdout/stderr so $() et al work on us */
       if (freopen("/dev/null", "r", stdin) == NULL)
-        err (1, "freopen");
-      if (freopen("/dev/null", "w", stdout) == NULL)
-        err (1, "freopen");
-      if (freopen("/dev/null", "w", stderr) == NULL)
-        err (1, "freopen");
-    }
-  else
-    {
-      /* Since we're used for testing purposes, let's just do this by
-       * default.  This ensures we exit when our parent does.
-       */
-      if (prctl (PR_SET_PDEATHSIG, SIGTERM) != 0)
         {
-          if (errno != ENOSYS)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+          glnx_set_prefix_error_from_errno (error, "%s", "freopen: ");
+          goto out;
+        }
+      if (freopen("/dev/null", "w", stdout) == NULL)
+        {
+          glnx_set_prefix_error_from_errno (error, "%s", "freopen: ");
+          goto out;
+        }
+      if (freopen("/dev/null", "w", stderr) == NULL)
+        {
+          glnx_set_prefix_error_from_errno (error, "%s", "freopen: ");
+          goto out;
         }
     }
 
@@ -699,6 +764,21 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
 
   ret = TRUE;
  out:
+  if (pipefd[0] >= 0)
+    {
+      /* Read end in the parent. This should only be open on errors. */
+      g_assert_false (ret);
+      glnx_close_fd (&pipefd[0]);
+    }
+  if (pipefd[1] >= 0)
+    {
+      /* Write end in the child. This should only be open on errors. */
+      g_assert_false (ret);
+      guint8 buf = 1;
+      g_debug ("Writing %u to parent", buf);
+      (void) TEMP_FAILURE_RETRY (write (pipefd[1], &buf, 1));
+      glnx_close_fd (&pipefd[1]);
+    }
   if (app->root_dfd != -1)
     (void) close (app->root_dfd);
   g_clear_object (&app->log);
