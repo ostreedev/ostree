@@ -214,7 +214,7 @@ libostree_1_la_CFLAGS += $(OT_DEP_AVAHI_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_AVAHI_LIBS)
 endif
 
-if BUILDOPT_LIBSYSTEMD
+if BUILDOPT_SYSTEMD
 libostree_1_la_CFLAGS += $(LIBSYSTEMD_CFLAGS)
 libostree_1_la_LIBADD += $(LIBSYSTEMD_LIBS)
 endif

@@ -509,10 +509,8 @@ AS_IF([ test x$with_libsystemd != xno ], [
         with_libsystemd=no
     ])
 ], [ with_libsystemd=no ])
-AM_CONDITIONAL(BUILDOPT_LIBSYSTEMD, test $with_libsystemd != no)
 
-AS_IF([test "x$have_libsystemd" = "xyes"], [
-  with_systemd=yes
+AS_IF([test "x$with_libsystemd" = "xyes"], [
   AC_ARG_WITH([systemdsystemunitdir],
               AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
               [],
@@ -528,12 +526,12 @@ AS_IF([test "x$have_libsystemd" = "xyes"], [
     AC_SUBST([systemdsystemgeneratordir], [$with_systemdsystemgeneratordir])
   ])
 ])
-AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
+AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_libsystemd = xyes)
 dnl If we have both, we use the "new /var" model with ostree-system-generator
-AM_CONDITIONAL(BUILDOPT_SYSTEMD_AND_LIBMOUNT,[test x$with_systemd = xyes && test x$with_libmount = xyes])
+AM_CONDITIONAL(BUILDOPT_SYSTEMD_AND_LIBMOUNT,[test x$with_libsystemd = xyes && test x$with_libmount = xyes])
 AM_COND_IF(BUILDOPT_SYSTEMD_AND_LIBMOUNT,
   AC_DEFINE([BUILDOPT_LIBSYSTEMD_AND_LIBMOUNT], 1, [Define if systemd and libmount]))
-if test x$with_systemd != xno; then OSTREE_FEATURES="$OSTREE_FEATURES systemd"; fi
+if test x$with_libsystemd = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES systemd"; fi
 
 AC_ARG_WITH(builtin-grub2-mkconfig,
             AS_HELP_STRING([--with-builtin-grub2-mkconfig],
@@ -621,7 +619,7 @@ echo "
     \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
     SELinux:                                      $with_selinux
     cryptographic checksums:                      $with_crypto
-    systemd:                                      $have_libsystemd
+    systemd:                                      $with_libsystemd
     libmount:                                     $with_libmount
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                yes (always enabled now)
