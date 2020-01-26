@@ -95,6 +95,7 @@ typedef struct {
   /* Implementation of min-free-space-percent */
   gulong blocksize;
   fsblkcnt_t max_blocks;
+  gboolean disable_auto_summary;
 } OstreeRepoTxn;
 
 /**
