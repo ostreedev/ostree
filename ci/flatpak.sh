@@ -22,6 +22,12 @@ tmpd=$(mktemp -d)
 cd ${tmpd}
 git clone --recursive --depth=1 -b ${FLATPAK_TAG} https://github.com/flatpak/flatpak
 cd ${tmpd}/flatpak
+
+# Some of flatpak's tests assert GPG error strings from ostree, but
+# those have been changed. Patch the test assertions until this can get
+# into a tagged flatpak.
+git apply ${codedir}/ci/flatpak-1.4.1-ostree-gpg-errors.patch
+
 # This is a copy of flatpak/ci/build.sh, but we can't use that as we want to install
 # our built ostree over it.
 pkg_install sudo which attr fuse bison \

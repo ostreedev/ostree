@@ -36,6 +36,18 @@
     } \
   } G_STMT_END
 
+#define assert_str_contains(s1, s2) \
+  G_STMT_START { \
+    const char *__s1 = (s1), *__s2 = (s2); \
+    if (strstr (__s1, __s2) == NULL) { \
+      g_autoptr(GString) string = g_string_new ("assertion failed (" #s1 " contains " #s2 "): "); \
+      g_autofree char *__es1 = g_strescape (__s1, NULL); \
+      g_autofree char *__es2 = g_strescape (__s2, NULL); \
+      g_string_append_printf (string, "(\"%s\", \"%s\")", __es1, __es2); \
+      g_assertion_message (G_LOG_DOMAIN, __FILE__, __LINE__, G_STRFUNC, string->str); \
+    } \
+  } G_STMT_END
+
 typedef struct {
   OstreeGpgVerifyResult *result;
 } TestFixture;
@@ -53,12 +65,12 @@ static void
 test_fixture_setup (TestFixture *fixture,
                     gconstpointer user_data)
 {
+  const char * const *sig_files = user_data;
   gpgme_error_t gpg_error;
   gpgme_data_t data_buffer;
   gpgme_data_t signature_buffer;
   OstreeGpgVerifyResult *result;
   g_autofree char *homedir = NULL;
-  g_autofree char *filename = NULL;
   GError *local_error = NULL;
 
   /* Mimic what OstreeGpgVerifier does to create OstreeGpgVerifyResult.
@@ -74,15 +86,47 @@ test_fixture_setup (TestFixture *fixture,
                            NULL, &local_error, NULL);
   g_assert_no_error (local_error);
 
-  filename = g_build_filename (homedir, "lgpl2", NULL);
-  gpg_error = gpgme_data_new_from_file (&data_buffer, filename, 1);
-  assert_no_gpg_error (gpg_error, filename);
+  g_autofree char *data_filename = g_build_filename (homedir, "lgpl2", NULL);
+  gpg_error = gpgme_data_new_from_file (&data_buffer, data_filename, 1);
+  assert_no_gpg_error (gpg_error, data_filename);
 
-  g_clear_pointer (&filename, g_free);
+  if (sig_files == NULL)
+    {
+      /* No signature files specified, use full lgpl2.sig file */
+      g_autofree char *filename = g_build_filename (homedir, "lgpl2.sig", NULL);
+      gpg_error = gpgme_data_new_from_file (&signature_buffer, filename, 1);
+      assert_no_gpg_error (gpg_error, filename);
+    }
+  else
+    {
+      /* Read all the specified files into the signature buffer */
+      gpg_error = gpgme_data_new (&signature_buffer);
+      assert_no_gpg_error (gpg_error, NULL);
 
-  filename = g_build_filename (homedir, "lgpl2.sig", NULL);
-  gpg_error = gpgme_data_new_from_file (&signature_buffer, filename, 1);
-  assert_no_gpg_error (gpg_error, filename);
+      for (const char * const *name = sig_files; *name != NULL; name++)
+        {
+          g_autofree char *path = g_build_filename (homedir, *name, NULL);
+          g_autoptr(GFile) sig_file = g_file_new_for_path (path);
+
+          g_autofree char *contents = NULL;
+          gsize len;
+          g_assert_true (g_file_load_contents (sig_file, NULL, &contents,
+                                               &len, NULL, &local_error));
+          g_assert_no_error (local_error);
+
+          char *cur = contents;
+          while (len > 0)
+            {
+              ssize_t written = gpgme_data_write (signature_buffer, cur, len);
+              if (written == -1)
+                assert_no_gpg_error (gpgme_error_from_syserror (), path);
+              cur += written;
+              len -= written;
+            }
+        }
+
+      gpgme_data_seek (signature_buffer, 0, SEEK_SET);
+    }
 
   gpg_error = gpgme_op_verify (result->context,
                                signature_buffer, data_buffer, NULL);
@@ -115,7 +159,7 @@ test_check_counts (TestFixture *fixture,
   count_valid = ostree_gpg_verify_result_count_valid (fixture->result);
 
   g_assert_cmpint (count_all, ==, 5);
-  g_assert_cmpint (count_valid, ==, 2);
+  g_assert_cmpint (count_valid, ==, 1);
 }
 
 static void
@@ -123,7 +167,7 @@ test_signature_lookup (TestFixture *fixture,
                        gconstpointer user_data)
 {
   /* Checking the signature with the revoked key for this case. */
-  guint expected_signature_index = GPOINTER_TO_UINT (user_data);
+  guint expected_signature_index = 2;
 
   /* Lowercase letters to ensure OstreeGpgVerifyResult handles it. */
   const char *fingerprint = "68dcc2db4bec5811c2573590bd9d2a44b7f541a6";
@@ -215,7 +259,7 @@ static void
 test_valid_signature (TestFixture *fixture,
                       gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 0;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -249,7 +293,7 @@ static void
 test_expired_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 1;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -283,7 +327,7 @@ static void
 test_revoked_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 2;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -317,7 +361,7 @@ static void
 test_missing_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 3;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -351,7 +395,7 @@ static void
 test_expired_signature (TestFixture *fixture,
                         gconstpointer user_data)
 {
-  guint signature_index = GPOINTER_TO_UINT (user_data);
+  guint signature_index = 4;
   g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
@@ -373,12 +417,89 @@ test_expired_signature (TestFixture *fixture,
                  &key_missing,
                  &key_exp_timestamp);
 
-  g_assert_true (valid);
+  g_assert_false (valid);
   g_assert_true (sig_expired);
   g_assert_false (key_expired);
   g_assert_false (key_revoked);
   g_assert_false (key_missing);
   g_assert_cmpint (key_exp_timestamp, ==, 0);
+}
+
+static void
+test_require_valid_signature (TestFixture *fixture,
+                              gconstpointer user_data)
+{
+  GError *error = NULL;
+  gboolean res = ostree_gpg_verify_result_require_valid_signature (fixture->result,
+                                                                   &error);
+  g_assert_true (res);
+  g_assert_no_error (error);
+}
+
+static void
+test_require_valid_signature_expired_key (TestFixture *fixture,
+                                          gconstpointer user_data)
+{
+  GError *error = NULL;
+  gboolean res = ostree_gpg_verify_result_require_valid_signature (fixture->result,
+                                                                   &error);
+  g_assert_false (res);
+  g_assert_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_EXPIRED_KEY);
+  assert_str_contains (error->message, "Key expired");
+}
+
+static void
+test_require_valid_signature_revoked_key (TestFixture *fixture,
+                                          gconstpointer user_data)
+{
+  GError *error = NULL;
+  gboolean res = ostree_gpg_verify_result_require_valid_signature (fixture->result,
+                                                                   &error);
+  g_assert_false (res);
+  g_assert_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_REVOKED_KEY);
+  assert_str_contains (error->message, "Key revoked");
+}
+
+static void
+test_require_valid_signature_missing_key (TestFixture *fixture,
+                                          gconstpointer user_data)
+{
+  GError *error = NULL;
+  gboolean res = ostree_gpg_verify_result_require_valid_signature (fixture->result,
+                                                                   &error);
+  g_assert_false (res);
+  g_assert_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_MISSING_KEY);
+  assert_str_contains (error->message, "public key not found");
+}
+
+static void
+test_require_valid_signature_expired_signature (TestFixture *fixture,
+                                                gconstpointer user_data)
+{
+  GError *error = NULL;
+  gboolean res = ostree_gpg_verify_result_require_valid_signature (fixture->result,
+                                                                   &error);
+  g_assert_false (res);
+  g_assert_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_EXPIRED_SIGNATURE);
+  assert_str_contains (error->message, "Signature expired");
+}
+
+static void
+test_require_valid_signature_expired_missing_key (TestFixture *fixture,
+                                                  gconstpointer user_data)
+{
+  GError *error = NULL;
+  gboolean res = ostree_gpg_verify_result_require_valid_signature (fixture->result,
+                                                                   &error);
+  g_assert_false (res);
+
+  /*
+   * The error will be for the last signature, which is for a missing key, but
+   * the message should show both issues.
+   */
+  g_assert_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_MISSING_KEY);
+  assert_str_contains (error->message, "Key expired");
+  assert_str_contains (error->message, "public key not found");
 }
 
 int
@@ -397,7 +518,7 @@ main (int argc, char **argv)
 
   g_test_add ("/gpg-verify-result/signature-lookup",
               TestFixture,
-              GINT_TO_POINTER (2),
+              NULL,
               test_fixture_setup,
               test_signature_lookup,
               test_fixture_teardown);
@@ -411,37 +532,84 @@ main (int argc, char **argv)
 
   g_test_add ("/gpg-verify-result/valid-signature",
               TestFixture,
-              GINT_TO_POINTER (0),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_valid_signature,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/expired-key",
               TestFixture,
-              GINT_TO_POINTER (1),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_expired_key,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/revoked-key",
               TestFixture,
-              GINT_TO_POINTER (2),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_revoked_key,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/missing-key",
               TestFixture,
-              GINT_TO_POINTER (3),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_missing_key,
               test_fixture_teardown);
 
   g_test_add ("/gpg-verify-result/expired-signature",
               TestFixture,
-              GINT_TO_POINTER (4),  /* signature index */
+              NULL,
               test_fixture_setup,
               test_expired_signature,
+              test_fixture_teardown);
+
+  g_test_add ("/gpg-verify-result/require-valid-signature",
+              TestFixture,
+              NULL,
+              test_fixture_setup,
+              test_require_valid_signature,
+              test_fixture_teardown);
+
+  const char *expired_key_files[] = { "lgpl2.sig1", NULL };
+  g_test_add ("/gpg-verify-result/require-valid-signature-expired-key",
+              TestFixture,
+              expired_key_files,
+              test_fixture_setup,
+              test_require_valid_signature_expired_key,
+              test_fixture_teardown);
+
+  const char *revoked_key_files[] = { "lgpl2.sig2", NULL };
+  g_test_add ("/gpg-verify-result/require-valid-signature-revoked-key",
+              TestFixture,
+              revoked_key_files,
+              test_fixture_setup,
+              test_require_valid_signature_revoked_key,
+              test_fixture_teardown);
+
+  const char *missing_key_files[] = { "lgpl2.sig3", NULL };
+  g_test_add ("/gpg-verify-result/require-valid-signature-missing-key",
+              TestFixture,
+              missing_key_files,
+              test_fixture_setup,
+              test_require_valid_signature_missing_key,
+              test_fixture_teardown);
+
+  const char *expired_signature_files[] = { "lgpl2.sig4", NULL };
+  g_test_add ("/gpg-verify-result/require-valid-signature-expired-signature",
+              TestFixture,
+              expired_signature_files,
+              test_fixture_setup,
+              test_require_valid_signature_expired_signature,
+              test_fixture_teardown);
+
+  const char *expired_missing_key_files[] = { "lgpl2.sig1", "lgpl2.sig3", NULL };
+  g_test_add ("/gpg-verify-result/require-valid-signature-expired-missing-key",
+              TestFixture,
+              expired_missing_key_files,
+              test_fixture_setup,
+              test_require_valid_signature_expired_missing_key,
               test_fixture_teardown);
 
   return g_test_run ();

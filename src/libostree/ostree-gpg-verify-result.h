@@ -159,6 +159,11 @@ gboolean ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult
  * @OSTREE_GPG_ERROR_NO_SIGNATURE: A signature was expected, but not found.
  * @OSTREE_GPG_ERROR_INVALID_SIGNATURE: A signature was malformed.
  * @OSTREE_GPG_ERROR_MISSING_KEY: A signature was found, but was created with a key not in the configured keyrings.
+ * @OSTREE_GPG_ERROR_EXPIRED_SIGNATURE: A signature was expired. Since: 2019.7.
+ * @OSTREE_GPG_ERROR_EXPIRED_KEY: A signature was found, but the key used to
+ *   sign it has expired. Since: 2019.7.
+ * @OSTREE_GPG_ERROR_REVOKED_KEY: A signature was found, but the key used to
+ *   sign it has been revoked. Since: 2019.7.
  *
  * Errors returned by signature creation and verification operations in OSTree.
  * These may be returned by any API which creates or verifies signatures.
@@ -169,6 +174,9 @@ typedef enum {
   OSTREE_GPG_ERROR_NO_SIGNATURE = 0,
   OSTREE_GPG_ERROR_INVALID_SIGNATURE,
   OSTREE_GPG_ERROR_MISSING_KEY,
+  OSTREE_GPG_ERROR_EXPIRED_SIGNATURE,
+  OSTREE_GPG_ERROR_EXPIRED_KEY,
+  OSTREE_GPG_ERROR_REVOKED_KEY,
 } OstreeGpgError;
 
 /**

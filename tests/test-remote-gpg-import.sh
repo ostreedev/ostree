@@ -28,7 +28,12 @@ unset OSTREE_GPG_HOME
 
 setup_fake_remote_repo1 "archive"
 
-echo "1..4"
+# Some tests require an appropriate gpg
+num_non_gpg_tests=4
+num_gpg_tests=2
+num_tests=$((num_non_gpg_tests + num_gpg_tests))
+
+echo "1..${num_tests}"
 
 cd ${test_tmpdir}
 mkdir repo
@@ -163,7 +168,7 @@ ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/key1.asc,${test_tmp
 if ${OSTREE} pull R8:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with different key"
 fi
-assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+assert_file_has_content err.txt "public key not found"
 
 # Test gpgkeypath success with directory containing a valid key
 ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/ R9 $(cat httpd-address)/ostree/gnomerepo
@@ -243,7 +248,7 @@ ${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/key2.asc R6 $(cat h
 if ${OSTREE} pull R6:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling with different key"
 fi
-assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+assert_file_has_content err.txt "public key not found"
 
 echo "ok"
 
@@ -269,7 +274,7 @@ newrev=$(${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo rev-par
 if ${OSTREE} pull --require-static-deltas R1:main 2>err.txt; then
     assert_not_reached "Unexpectedly succeeded at pulling commit signed with untrusted key"
 fi
-assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+assert_file_has_content err.txt "public key not found"
 
 echo "ok gpg untrusted signed commit for delta upgrades"
 
@@ -280,3 +285,57 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u --gpg
 ${OSTREE} pull --require-static-deltas R1:main
 
 echo "ok gpg trusted signed commit for delta upgrades"
+
+# Run some more tests if an appropriate gpg is available
+GPG=$(which_gpg)
+if [ -z "${GPG}" ]; then
+  # Print a skip message per skipped test
+  for (( i = 0; i < num_gpg_tests; i++ )); do
+    echo "ok # SKIP this test requires gpg"
+  done
+else
+  # Create a commit signed with keyid 1
+  echo $(date) > workdir/testfile-for-key-mangling
+  ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main --gpg-sign ${TEST_GPG_KEYID_1} --gpg-homedir ${test_tmpdir}/gpghome workdir
+
+  # Re-add the remote
+  ${OSTREE} remote delete R1
+  ${OSTREE} remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc R1 $(cat httpd-address)/ostree/gnomerepo | grep -o 'Imported [[:digit:]] GPG key' > result
+  assert_file_has_content result 'Imported 1 GPG key'
+
+  # Expire key 1, wait for it to be expired and import the expired key. Only
+  # new keys are reported.
+  ${GPG} --homedir=${test_tmpdir}/gpghome --quick-set-expire ${TEST_GPG_KEYFPR_1} seconds=1
+  sleep 2
+  ${GPG} --homedir=${test_tmpdir}/gpghome --armor --export ${TEST_GPG_KEYID_1} > ${test_tmpdir}/key1expired.asc
+  ${OSTREE} remote gpg-import --keyring ${test_tmpdir}/key1expired.asc R1 | grep -o 'Imported [[:digit:]] GPG key' > result
+  assert_file_has_content result 'Imported 0 GPG key'
+
+  # Pulling should fail since the key is expired
+  rm repo/refs/remotes/* -rf
+  ${OSTREE} prune --refs-only
+  if ${OSTREE} pull R1:main 2>err.txt; then
+    assert_not_reached "Unexpectedly succeeded at pulling commit signed with expired key"
+  fi
+  assert_file_has_content err.txt "Key expired"
+
+  echo "ok imported expired key"
+
+  # Unexpire keyid 1 and revoke it. Revoking is done by importing the
+  # pre-generated revocation certificate.
+  ${GPG} --homedir=${test_tmpdir}/gpghome --quick-set-expire ${TEST_GPG_KEYFPR_1} seconds=0
+  ${GPG} --homedir=${TEST_GPG_KEYHOME} --import ${TEST_GPG_KEYHOME}/revocations/key1.rev
+  ${GPG} --homedir=${test_tmpdir}/gpghome --armor --export ${TEST_GPG_KEYID_1} > ${test_tmpdir}/key1revoked.asc
+  ${OSTREE} remote gpg-import --keyring ${test_tmpdir}/key1revoked.asc R1 | grep -o 'Imported [[:digit:]] GPG key' > result
+  assert_file_has_content result 'Imported 0 GPG key'
+
+  # Pulling should fail since the key is revoked
+  rm repo/refs/remotes/* -rf
+  ${OSTREE} prune --refs-only
+  if ${OSTREE} pull R1:main 2>err.txt; then
+    assert_not_reached "Unexpectedly succeeded at pulling commit signed with revoked key"
+  fi
+  assert_file_has_content err.txt "Key revoked"
+
+  echo "ok imported revoked key"
+fi

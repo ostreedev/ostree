@@ -548,14 +548,10 @@ append_expire_info (GString *output_buffer,
                     gint64 exp_timestamp,
                     gboolean expired)
 {
-  g_autoptr(GDateTime) date_time_utc = NULL;
-  g_autoptr(GDateTime) date_time_local = NULL;
-  g_autofree char *formatted_date_time = NULL;
-
   if (line_prefix != NULL)
     g_string_append (output_buffer, line_prefix);
 
-  date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
+  g_autoptr(GDateTime) date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
   if (date_time_utc == NULL)
     {
       g_string_append_printf (output_buffer,
@@ -565,8 +561,8 @@ append_expire_info (GString *output_buffer,
       return;
     }
 
-  date_time_local = g_date_time_to_local (date_time_utc);
-  formatted_date_time = g_date_time_format (date_time_local, "%c");
+  g_autoptr(GDateTime) date_time_local = g_date_time_to_local (date_time_utc);
+  g_autofree char *formatted_date_time = g_date_time_format (date_time_local, "%c");
 
   if (expired)
     {
@@ -773,8 +769,58 @@ ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
 
   if (ostree_gpg_verify_result_count_valid (result) == 0)
     {
-      g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_MISSING_KEY,
-                   "GPG signatures found, but none are in trusted keyring");
+      /*
+       * Join the description of each failed signature for the error message.
+       * Only one error code can be returned, so if there was more than one
+       * signature, use the error of the last one under the assumption that
+       * it's the most recent and hopefully most likely to be made with a
+       * valid key.
+       */
+      gint code = OSTREE_GPG_ERROR_NO_SIGNATURE;
+      g_autoptr(GString) buffer = g_string_sized_new (256);
+      guint nsigs = ostree_gpg_verify_result_count_all (result);
+
+      if (nsigs == 0)
+        /* In case an empty result was passed in */
+        g_string_append (buffer, "No GPG signatures found");
+      else
+        {
+          for (int i = nsigs - 1; i >= 0; i--)
+            {
+              g_autoptr(GVariant) info = ostree_gpg_verify_result_get_all (result, i);
+              ostree_gpg_verify_result_describe_variant (info, buffer, "",
+                                                         OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+
+              if (i == nsigs - 1)
+                {
+                  gboolean key_missing, key_revoked, key_expired, sig_expired;
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING,
+                                       "b", &key_missing);
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED,
+                                       "b", &key_revoked);
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
+                                       "b", &key_expired);
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED,
+                                       "b", &sig_expired);
+
+                  if (key_missing)
+                    code = OSTREE_GPG_ERROR_MISSING_KEY;
+                  else if (key_revoked)
+                    code = OSTREE_GPG_ERROR_REVOKED_KEY;
+                  else if (key_expired)
+                    code = OSTREE_GPG_ERROR_EXPIRED_KEY;
+                  else if (sig_expired)
+                    code = OSTREE_GPG_ERROR_EXPIRED_SIGNATURE;
+                  else
+                    /* Assume any other issue is a bad signature */
+                    code = OSTREE_GPG_ERROR_INVALID_SIGNATURE;
+                }
+            }
+        }
+
+      /* Strip any trailing newlines */
+      g_strchomp (buffer->str);
+      g_set_error_literal (error, OSTREE_GPG_ERROR, code, buffer->str);
       return FALSE;
     }
 

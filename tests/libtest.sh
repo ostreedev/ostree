@@ -78,16 +78,20 @@ unset TAR_OPTIONS
 # easily clean up.
 export OSTREE_SYSROOT_DEBUG=mutable-deployments
 
-export TEST_GPG_KEYID_1="472CDAFA"
-export TEST_GPG_KEYID_2="CA950D41"
-export TEST_GPG_KEYID_3="DF444D67"
+export TEST_GPG_KEYID_1="7FCA23D8472CDAFA"
+export TEST_GPG_KEYFPR_1="5E65DE75AB1C501862D476347FCA23D8472CDAFA"
+export TEST_GPG_KEYID_2="D8228CFECA950D41"
+export TEST_GPG_KEYFPR_2="7B3B1020D74479687FDB2273D8228CFECA950D41"
+export TEST_GPG_KEYID_3="0D15FAE7DF444D67"
+export TEST_GPG_KEYFPR_3="7D29CF060B8269CDF63BFBDD0D15FAE7DF444D67"
 
-# GPG when creating signatures demands a writable
+# GPG when creating signatures demands a private writable
 # homedir in order to create lockfiles.  Work around
 # this by copying locally.
 echo "Copying gpghome to ${test_tmpdir}"
 cp -a "${test_srcdir}/gpghome" ${test_tmpdir}
 chmod -R u+w "${test_tmpdir}"
+chmod 700 "${test_tmpdir}/gpghome"
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
