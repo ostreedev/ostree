@@ -31,8 +31,6 @@ G_BEGIN_DECLS
 
 #define OSTREE_DELTAPART_VERSION (0)
 
-#define _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE "ay"
-
 #define _OSTREE_SUMMARY_CACHE_DIR "summaries"
 #define _OSTREE_CACHE_DIR "cache"
 
@@ -143,6 +141,14 @@ struct OstreeRepo {
   guint zlib_compression_level;
   GHashTable *loose_object_devino_hash;
   GHashTable *updated_uncompressed_dirs;
+
+  /* FIXME: The object sizes hash table is really per-commit state, not repo
+   * state. Using a single table for the repo means that commits cannot be
+   * built simultaneously if they're adding size information. This data should
+   * probably be in OstreeMutableTree, but that's gone by the time the actual
+   * commit is constructed. At that point the only commit state is in the root
+   * OstreeRepoFile.
+   */
   GHashTable *object_sizes;
 
   /* Cache the repo's device/inode to use for comparisons elsewhere */
@@ -328,6 +334,10 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     const char               *path,
                                     GFileInfo                *file_info,
                                     GFileInfo               **out_modified_info);
+
+void
+_ostree_repo_setup_generate_sizes (OstreeRepo               *self,
+                                   OstreeRepoCommitModifier *modifier);
 
 gboolean
 _ostree_repo_remote_name_is_file (const char *remote_name);

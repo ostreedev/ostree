@@ -86,6 +86,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-pull-resume.sh \
 	tests/test-pull-basicauth.sh \
 	tests/test-pull-repeated.sh \
+	tests/test-pull-sizes.sh \
 	tests/test-pull-untrusted.sh \
 	tests/test-pull-override-url.sh \
 	tests/test-pull-localcache.sh \
@@ -354,7 +355,10 @@ tests_test_varint_LDADD = $(TESTS_LDADD)
 tests_test_bsdiff_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bsdiff_LDADD = libbsdiff.la $(TESTS_LDADD)
 
-tests_test_checksum_SOURCES = src/libostree/ostree-core.c tests/test-checksum.c
+tests_test_checksum_SOURCES = \
+	src/libostree/ostree-core.c \
+	src/libostree/ostree-varint.c \
+	tests/test-checksum.c
 tests_test_checksum_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags)
 tests_test_checksum_LDADD = $(TESTS_LDADD)
 

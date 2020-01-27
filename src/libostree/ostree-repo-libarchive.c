@@ -844,6 +844,8 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
     .modifier = modifier
   };
 
+  _ostree_repo_setup_generate_sizes (self, modifier);
+
   while (TRUE)
     {
       int r = archive_read_next_header (a, &aictx.entry);

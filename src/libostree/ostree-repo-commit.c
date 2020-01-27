@@ -322,16 +322,19 @@ commit_loose_regfile_object (OstreeRepo        *self,
 /* This is used by OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES */
 typedef struct
 {
+  OstreeObjectType objtype;
   goffset unpacked;
   goffset archived;
 } OstreeContentSizeCacheEntry;
 
 static OstreeContentSizeCacheEntry *
-content_size_cache_entry_new (goffset unpacked,
-                              goffset archived)
+content_size_cache_entry_new (OstreeObjectType objtype,
+                              goffset          unpacked,
+                              goffset          archived)
 {
   OstreeContentSizeCacheEntry *entry = g_slice_new0 (OstreeContentSizeCacheEntry);
 
+  entry->objtype = objtype;
   entry->unpacked = unpacked;
   entry->archived = archived;
 
@@ -345,19 +348,61 @@ content_size_cache_entry_free (gpointer entry)
     g_slice_free (OstreeContentSizeCacheEntry, entry);
 }
 
+void
+_ostree_repo_setup_generate_sizes (OstreeRepo               *self,
+                                   OstreeRepoCommitModifier *modifier)
+{
+  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
+    {
+      if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE)
+        {
+          self->generate_sizes = TRUE;
+
+          /* Clear any stale data in the object sizes hash table */
+          if (self->object_sizes != NULL)
+            g_hash_table_remove_all (self->object_sizes);
+        }
+      else
+        g_debug ("Not generating sizes for non-archive repo");
+    }
+}
+
 static void
-repo_store_size_entry (OstreeRepo       *self,
-                       const gchar      *checksum,
-                       goffset           unpacked,
-                       goffset           archived)
+repo_ensure_size_entries (OstreeRepo *self)
 {
   if (G_UNLIKELY (self->object_sizes == NULL))
     self->object_sizes = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                 g_free, content_size_cache_entry_free);
+}
 
+static gboolean
+repo_has_size_entry (OstreeRepo       *self,
+                     OstreeObjectType  objtype,
+                     const gchar      *checksum)
+{
+  /* Only file, dirtree and dirmeta objects appropriate for size metadata */
+  if (objtype > OSTREE_OBJECT_TYPE_DIR_META)
+    return TRUE;
+
+  repo_ensure_size_entries (self);
+  return (g_hash_table_lookup (self->object_sizes, checksum) != NULL);
+}
+
+static void
+repo_store_size_entry (OstreeRepo       *self,
+                       OstreeObjectType  objtype,
+                       const gchar      *checksum,
+                       goffset           unpacked,
+                       goffset           archived)
+{
+  /* Only file, dirtree and dirmeta objects appropriate for size metadata */
+  if (objtype > OSTREE_OBJECT_TYPE_DIR_META)
+    return;
+
+  repo_ensure_size_entries (self);
   g_hash_table_replace (self->object_sizes,
                         g_strdup (checksum),
-                        content_size_cache_entry_new (unpacked, archived));
+                        content_size_cache_entry_new (objtype, unpacked, archived));
 }
 
 static int
@@ -408,6 +453,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
             g_hash_table_lookup (self->object_sizes, e_checksum);
           _ostree_write_varuint64 (buffer, e_size->archived);
           _ostree_write_varuint64 (buffer, e_size->unpacked);
+          g_string_append_c (buffer, (gchar) e_size->objtype);
 
           g_variant_builder_add (&index_builder, "@ay",
                                  ot_gvariant_new_bytearray ((guint8*)buffer->str, buffer->len));
@@ -415,6 +461,9 @@ add_size_index_to_metadata (OstreeRepo        *self,
 
       g_variant_builder_add (builder, "{sv}", "ostree.sizes",
                              g_variant_builder_end (&index_builder));
+
+      /* Clear the object sizes hash table for a subsequent commit. */
+      g_hash_table_remove_all (self->object_sizes);
     }
 
   return g_variant_ref_sink (g_variant_builder_end (builder));
@@ -956,7 +1005,6 @@ write_content_object (OstreeRepo         *self,
   g_auto(OtCleanupUnlinkat) tmp_unlinker = { commit_tmp_dfd (self), NULL };
   g_auto(GLnxTmpfile) tmpf = { 0, };
   goffset unpacked_size = 0;
-  gboolean indexable = FALSE;
   /* Is it a symlink physically? */
   if (phys_object_is_symlink)
     {
@@ -981,9 +1029,6 @@ write_content_object (OstreeRepo         *self,
       g_autoptr(GOutputStream) temp_out = NULL;
 
       g_assert (repo_mode == OSTREE_REPO_MODE_ARCHIVE);
-
-      if (self->generate_sizes)
-        indexable = TRUE;
 
       if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY|O_CLOEXEC,
                                           &tmpf, error))
@@ -1013,6 +1058,11 @@ write_content_object (OstreeRepo         *self,
 
           unpacked_size = g_file_info_get_size (file_info);
         }
+      else
+        {
+          /* For a symlink, the size is the length of the target */
+          unpacked_size = strlen (g_file_info_get_symlink_target (file_info));
+        }
 
       if (!g_output_stream_flush (temp_out, cancellable, error))
         return FALSE;
@@ -1041,6 +1091,19 @@ write_content_object (OstreeRepo         *self,
     }
 
   g_assert (actual_checksum != NULL); /* Pacify static analysis */
+
+  /* Update size metadata if configured and entry missing */
+  if (self->generate_sizes &&
+      !repo_has_size_entry (self, OSTREE_OBJECT_TYPE_FILE, actual_checksum))
+    {
+      struct stat stbuf;
+
+      if (!glnx_fstat (tmpf.fd, &stbuf, error))
+        return FALSE;
+
+      repo_store_size_entry (self, OSTREE_OBJECT_TYPE_FILE, actual_checksum,
+                             unpacked_size, stbuf.st_size);
+    }
 
   /* See whether or not we have the object, now that we know the
    * checksum.
@@ -1107,17 +1170,6 @@ write_content_object (OstreeRepo         *self,
     }
   else
     {
-      /* Update size metadata if configured */
-      if (indexable && object_file_type == G_FILE_TYPE_REGULAR)
-        {
-          struct stat stbuf;
-
-          if (!glnx_fstat (tmpf.fd, &stbuf, error))
-            return FALSE;
-
-          repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
-        }
-
       /* Check if a file with the same payload is present in the repository,
          and in case try to reflink it */
       if (actual_payload_checksum && !_try_clone_from_payload_link (self, self, actual_payload_checksum, file_info, &tmpf, cancellable, error))
@@ -1309,6 +1361,11 @@ write_metadata_object (OstreeRepo         *self,
        */
       if (have_obj)
         {
+          /* Update size metadata if needed */
+          if (self->generate_sizes &&
+              !repo_has_size_entry (self, objtype, actual_checksum))
+            repo_store_size_entry (self, objtype, actual_checksum, len, len);
+
           g_mutex_lock (&self->txn_lock);
           self->txn.stats.metadata_objects_total++;
           g_mutex_unlock (&self->txn_lock);
@@ -1329,6 +1386,11 @@ write_metadata_object (OstreeRepo         *self,
   /* Ok, checksum is known, let's get the data */
   gsize len;
   const guint8 *bufp = g_bytes_get_data (buf, &len);
+
+  /* Update size metadata if needed */
+  if (self->generate_sizes &&
+      !repo_has_size_entry (self, objtype, actual_checksum))
+    repo_store_size_entry (self, objtype, actual_checksum, len, len);
 
   /* Write the metadata to a temporary file */
   g_auto(GLnxTmpfile) tmpf = { 0, };
@@ -2345,6 +2407,16 @@ ostree_repo_write_metadata (OstreeRepo         *self,
         return FALSE;
       if (have_obj)
         {
+          /* Update size metadata if needed */
+          if (self->generate_sizes &&
+              !repo_has_size_entry (self, objtype, expected_checksum))
+            {
+              /* Make sure we have a fully serialized object */
+              g_autoptr(GVariant) trusted = g_variant_get_normal_form (object);
+              gsize size = g_variant_get_size (trusted);
+              repo_store_size_entry (self, objtype, expected_checksum, size, size);
+            }
+
           if (out_csum)
             *out_csum = ostree_checksum_to_bytes (expected_checksum);
           return TRUE;
@@ -2620,8 +2692,11 @@ ostree_repo_write_content (OstreeRepo       *self,
 {
   /* First, if we have an expected checksum, see if we already have this
    * object.  This mirrors the same logic in ostree_repo_write_metadata().
+   *
+   * If size metadata is needed, fall through to write_content_object()
+   * where the entries are made.
    */
-  if (expected_checksum)
+  if (expected_checksum && !self->generate_sizes)
     {
       gboolean have_obj;
       if (!_ostree_repo_has_loose_object (self, expected_checksum,
@@ -3848,8 +3923,7 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
     }
   else
     {
-      if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
-        self->generate_sizes = TRUE;
+      _ostree_repo_setup_generate_sizes (self, modifier);
 
       g_autoptr(GPtrArray) path = g_ptr_array_new ();
       if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
@@ -3883,8 +3957,7 @@ ostree_repo_write_dfd_to_mtree (OstreeRepo                *self,
                                 GCancellable              *cancellable,
                                 GError                   **error)
 {
-  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
-    self->generate_sizes = TRUE;
+  _ostree_repo_setup_generate_sizes (self, modifier);
 
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))

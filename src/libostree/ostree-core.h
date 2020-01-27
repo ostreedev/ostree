@@ -521,6 +521,43 @@ guint64  ostree_commit_get_timestamp         (GVariant  *commit_variant);
 _OSTREE_PUBLIC
 gchar *  ostree_commit_get_content_checksum  (GVariant  *commit_variant);
 
+/**
+ * OstreeCommitSizesEntry:
+ * @checksum: (not nullable): object checksum
+ * @objtype: object type
+ * @unpacked: unpacked object size
+ * @archived: compressed object size
+ *
+ * Structure representing an entry in the "ostree.sizes" commit metadata. Each
+ * entry corresponds to an object in the associated commit.
+ *
+ * Since: 2019.5
+ */
+typedef struct {
+  gchar *checksum;
+  OstreeObjectType objtype;
+  guint64 unpacked;
+  guint64 archived;
+} OstreeCommitSizesEntry;
+
+_OSTREE_PUBLIC
+GType ostree_commit_sizes_entry_get_type (void);
+
+_OSTREE_PUBLIC
+OstreeCommitSizesEntry *ostree_commit_sizes_entry_new (const gchar      *checksum,
+                                                       OstreeObjectType  objtype,
+                                                       guint64           unpacked,
+                                                       guint64           archived);
+_OSTREE_PUBLIC
+OstreeCommitSizesEntry *ostree_commit_sizes_entry_copy (const OstreeCommitSizesEntry *entry);
+_OSTREE_PUBLIC
+void                    ostree_commit_sizes_entry_free (OstreeCommitSizesEntry *entry);
+
+_OSTREE_PUBLIC
+gboolean ostree_commit_get_object_sizes (GVariant   *commit_variant,
+                                         GPtrArray **out_sizes_entries,
+                                         GError    **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_check_version (guint required_year, guint required_release);
 
