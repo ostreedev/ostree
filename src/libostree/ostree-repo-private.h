@@ -22,6 +22,7 @@
 #pragma once
 
 #include <sys/statvfs.h>
+#include "config.h"
 #include "otutil.h"
 #include "ostree-ref.h"
 #include "ostree-repo.h"
@@ -95,6 +96,12 @@ typedef struct {
   fsblkcnt_t max_blocks;
 } OstreeRepoTxn;
 
+typedef enum {
+  _OSTREE_FEATURE_NO,
+  _OSTREE_FEATURE_MAYBE,
+  _OSTREE_FEATURE_YES,
+} _OstreeFeatureSupport;
+
 /**
  * OstreeRepo:
  *
@@ -125,6 +132,8 @@ struct OstreeRepo {
   GMutex txn_lock;
   OstreeRepoTxn txn;
   gboolean txn_locked;
+  _OstreeFeatureSupport fs_verity_wanted;
+  _OstreeFeatureSupport fs_verity_supported;
 
   GMutex cache_lock;
   guint dirmeta_cache_refcount;
@@ -480,5 +489,16 @@ OstreeRepoAutoLock * _ostree_repo_auto_lock_push (OstreeRepo          *self,
                                                   GError             **error);
 void          _ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, _ostree_repo_auto_lock_cleanup)
+
+gboolean
+_ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
+                            _OstreeFeatureSupport fsverity_requested,
+                            gboolean    *supported,
+                            GError     **error);
+
+gboolean
+_ostree_tmpf_fsverity (OstreeRepo *self,
+                       GLnxTmpfile *tmpf,
+                       GError    **error);
 
 G_END_DECLS

@@ -32,6 +32,10 @@
 #include <glib/gprintf.h>
 #include <sys/ioctl.h>
 #include <linux/fs.h>
+#include <ext2fs/ext2_fs.h>
+#ifdef HAVE_LINUX_FSVERITY_H
+#include <linux/fsverity.h>
+#endif
 
 #include "otutil.h"
 #include "ostree.h"
@@ -168,6 +172,113 @@ ot_security_smack_reset_fd (int fd)
 #endif
 }
 
+/* Wrapper around the fsverity ioctl, compressing the result to
+ * "success, unsupported or error".  This is used for /boot where
+ * we enable verity if supported.
+ * */
+gboolean
+_ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
+                            _OstreeFeatureSupport fsverity_requested,
+                            gboolean    *supported,
+                            GError     **error)
+{
+  /* Set this by default to simplify the code below */
+  if (supported)
+    *supported = FALSE;
+
+  if (fsverity_requested == _OSTREE_FEATURE_NO)
+    return TRUE;
+
+#ifdef HAVE_LINUX_FSVERITY_H
+  GLNX_AUTO_PREFIX_ERROR ("fsverity", error);
+
+  /* fs-verity requires a read-only file descriptor */
+  if (!glnx_tmpfile_reopen_rdonly (tmpf, error))
+    return FALSE;
+
+  struct fsverity_enable_arg arg = { 0, };
+  arg.version = 1;
+  arg.hash_algorithm =  FS_VERITY_HASH_ALG_SHA256;  /* TODO configurable? */
+  arg.block_size = 4096; /* FIXME query */
+  arg.salt_size = 0; /* TODO store salt in ostree repo config */
+  arg.salt_ptr = 0;
+  arg.sig_size = 0; /* We don't currently expect use of in-kernel signature verification */
+  arg.sig_ptr = 0;
+
+  if (ioctl (tmpf->fd, FS_IOC_ENABLE_VERITY, &arg) < 0)
+    {
+      switch (errno)
+        {
+          case ENOTTY:
+          case EOPNOTSUPP:
+            return TRUE;
+          default:
+            return glnx_throw_errno_prefix (error, "ioctl(FS_IOC_ENABLE_VERITY)");
+        }
+    }
+  
+  if (supported)
+    *supported = TRUE;
+#endif
+  return TRUE;
+}
+
+/* Enable verity on a file, respecting the "wanted" and "supported" states.
+ * The main idea here is to optimize out pointlessly calling the ioctl()
+ * over and over in cases where it's not supported for the repo's filesystem,
+ * as well as to support "opportunistic" use (requested and if filesystem supports).
+ * */
+gboolean
+_ostree_tmpf_fsverity (OstreeRepo  *self,
+                       GLnxTmpfile *tmpf,
+                       GError    **error)
+{
+#ifdef HAVE_LINUX_FSVERITY_H
+  g_mutex_lock (&self->txn_lock);
+  _OstreeFeatureSupport fsverity_wanted = self->fs_verity_wanted;
+  _OstreeFeatureSupport fsverity_supported = self->fs_verity_supported;
+  g_mutex_unlock (&self->txn_lock);
+
+  switch (fsverity_wanted)
+    {
+      case _OSTREE_FEATURE_YES:
+        {
+          if (fsverity_supported == _OSTREE_FEATURE_NO)
+            return glnx_throw (error, "fsverity required but filesystem does not support it");
+        }
+        break;
+      case _OSTREE_FEATURE_MAYBE:
+        break;
+      case _OSTREE_FEATURE_NO:
+        return TRUE;
+    }
+
+  gboolean supported = FALSE;
+  if (!_ostree_tmpf_fsverity_core (tmpf, fsverity_wanted, &supported, error))
+    return FALSE;
+
+  if (!supported)
+    {
+      if (G_UNLIKELY (fsverity_wanted == _OSTREE_FEATURE_YES))
+        return glnx_throw (error, "fsverity required but filesystem does not support it");
+
+      /* If we got here, we must be trying "opportunistic" use of fs-verity */
+      g_assert_cmpint (fsverity_wanted, ==, _OSTREE_FEATURE_MAYBE);
+      g_mutex_lock (&self->txn_lock);
+      self->fs_verity_supported = _OSTREE_FEATURE_NO;
+      g_mutex_unlock (&self->txn_lock);
+      return TRUE;
+    }
+  
+  g_mutex_lock (&self->txn_lock);
+  self->fs_verity_supported = _OSTREE_FEATURE_YES;
+  g_mutex_unlock (&self->txn_lock);
+#else
+  g_assert_cmpint (self->fs_verity_wanted, !=, _OSTREE_FEATURE_YES);
+#endif
+  return TRUE;
+}
+
 /* Given an O_TMPFILE regular file, link it into place. */
 gboolean
 _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
@@ -183,6 +294,9 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
   int dest_dfd = commit_dest_dfd (self);
   if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, tmpbuf,
                                             cancellable, error))
+    return FALSE;
+
+  if (!_ostree_tmpf_fsverity (self, tmpf, error))
     return FALSE;
 
   if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
