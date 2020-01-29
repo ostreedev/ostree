@@ -426,10 +426,9 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
   if (!_ostree_sign_ed25519_is_initialized (sign, error))
-    goto err;
+    return FALSE;
 
 #ifdef HAVE_LIBSODIUM
-  g_autofree char * hex = NULL;
   gpointer key = NULL;
   gsize n_elements = 0;
 
@@ -444,20 +443,14 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
     }
   else
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unknown ed25519 public key type");
-      goto err;
+      return glnx_throw (error, "Unknown ed25519 public key type");
     }
 
-  hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
+  g_autofree char *hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
   g_debug ("Read ed25519 public key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));
 
   if (n_elements != crypto_sign_PUBLICKEYBYTES)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Incorrect ed25519 public key");
-      goto err;
-    }
+    return glnx_throw (error, "Incorrect ed25519 public key");
 
   if (g_list_find_custom (sign->public_keys, key, _compare_ed25519_keys) == NULL)
     {
@@ -465,11 +458,8 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
       sign->public_keys = g_list_prepend (sign->public_keys, newkey);
     }
 
-  return TRUE;
 #endif /* HAVE_LIBSODIUM */
-
-err:
-  return FALSE;
+  return TRUE;
 }
 
 #ifdef HAVE_LIBSODIUM
@@ -482,32 +472,21 @@ _ed25519_add_revoked (OstreeSign *self,
   g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
+  if (!g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
+    return glnx_throw (error, "Unknown ed25519 revoked key type");
+
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
-  g_autofree char * hex = NULL;
-  gpointer key = NULL;
 
+  const gchar *rk_ascii = g_variant_get_string (revoked_key, NULL);
   gsize n_elements = 0;
+  gpointer key = g_base64_decode (rk_ascii, &n_elements);
 
-  if (g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
-    {
-      const gchar *rk_ascii = g_variant_get_string (revoked_key, NULL);
-      key = g_base64_decode (rk_ascii, &n_elements);
-    }
-  else
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unknown ed25519 revoked key type");
-      goto err;
-    }
-
-  hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
+  g_autofree char * hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
   g_debug ("Read ed25519 revoked key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));
 
   if (n_elements != crypto_sign_PUBLICKEYBYTES)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Incorrect ed25519 revoked key");
-      goto err;
+      return glnx_throw (error, "Incorrect ed25519 revoked key");
     }
 
   if (g_list_find_custom (sign->revoked_keys, key, _compare_ed25519_keys) == NULL)
@@ -517,9 +496,6 @@ _ed25519_add_revoked (OstreeSign *self,
     }
 
   return TRUE;
-
-err:
-  return FALSE;
 }
 #endif /* HAVE_LIBSODIUM */
 
