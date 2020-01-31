@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..6"
+echo "1..8"
 
 setup_fake_remote_repo1 "archive"
 
@@ -73,6 +73,8 @@ test_signed_pull "dummy" ""
 if ! has_libsodium; then
     echo "ok ed25519-key pull signed commit # SKIP due libsodium unavailability"
     echo "ok ed25519-key re-pull signature for stored commit # SKIP due libsodium unavailability"
+    echo "ok ed25519-key+file pull signed commit # SKIP due libsodium unavailability"
+    echo "ok ed25519-key+file re-pull signature for stored commit # SKIP due libsodium unavailability"
     echo "ok ed25519-file pull signed commit # SKIP due libsodium unavailability"
     echo "ok ed25519-file re-pull signature for stored commit # SKIP due libsodium unavailability"
     exit 0
@@ -98,6 +100,11 @@ for((i=0;i<100;i++)); do
     # Generate a list with some public signatures
     gen_ed25519_random_public
 done > ${PUBKEYS}
+
+# Test case with the file containing incorrect signatures and with the correct key set
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-file "${PUBKEYS}"
+test_signed_pull "ed25519" "key+file"
+
 # Add correct key into the list
 echo ${PUBLIC} >> ${PUBKEYS}
 
