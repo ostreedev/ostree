@@ -1,0 +1,36 @@
+// See https://github.com/jlebon/coreos-ci
+// This was originally copied from the rpm-ostree one
+@Library('github.com/coreos/coreos-ci-lib@master') _
+
+COSA_IMAGE = 'quay.io/coreos-assembler/coreos-assembler:latest'
+COSA_BUILDROOT_IMAGE = 'registry.svc.ci.openshift.org/coreos/cosa-buildroot:latest'
+
+stage("Build") {
+parallel rpms: {
+  coreos.pod(image: COSA_BUILDROOT_IMAGE, runAsUser: 0) {
+      checkout scm
+      sh """
+        set -xeuo pipefail
+        # fetch tags so `git describe` gives a nice NEVRA when building the RPM
+        git fetch origin --tags
+        git submodule update --init
+
+        env NOCONFIGURE=1 ./autogen.sh
+        ./configure --with-openssl --with-curl --with-selinux
+        make
+      """
+  }
+},
+codestyle: {
+  coreos.pod(image: COSA_IMAGE) {
+      checkout scm
+      sh """
+        set -xeuo pipefail
+        # Jenkins by default only fetches the branch it's testing. Explicitly fetch master
+        # for ci-commitmessage-submodules.sh
+        git fetch origin +refs/heads/master:refs/remotes/origin/master
+        ci/ci-commitmessage-submodules.sh
+      """
+  }
+}
+}
