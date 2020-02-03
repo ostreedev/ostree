@@ -29,8 +29,10 @@ cleanup_tmp() {
 }
 trap cleanup_tmp EXIT
 
-pkg_upgrade
-pkg_install git
+if ! [ -x /usr/bin/git ]; then
+    pkg_upgrade
+    pkg_install git
+fi
 
 gitdir=$(realpath $(pwd))
 # Create a temporary copy of this (using cp not git clone) so git doesn't
