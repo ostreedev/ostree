@@ -3,11 +3,10 @@ dist: trusty
 sudo: required
 
 env:
-  - ci_distro=ubuntu ci_suite=trusty ci_test=no  # TODO: use libcurl on this
-  - ci_docker=debian:stretch-slim ci_distro=debian ci_suite=stretch
-  - ci_docker=debian:stretch-slim ci_distro=debian ci_suite=stretch ci_configopts="--with-curl"
-  - ci_docker=debian:stretch-slim ci_distro=debian ci_suite=stretch ci_test=no  # TODO gpgme flake https://github.com/ostreedev/ostree/pull/664#issuecomment-276033383
+  - ci_docker=debian:buster-slim ci_distro=debian ci_suite=stretch
+  - ci_docker=debian:buster-slim ci_distro=debian ci_suite=stretch ci_configopts="--with-curl"
   - ci_docker=ubuntu:xenial ci_distro=ubuntu ci_suite=xenial
+  - ci_docker=ubuntu:bionic ci_distro=ubuntu ci_suite=bionic
 
 script:
   - ci/travis-install.sh
