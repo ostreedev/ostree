@@ -544,6 +544,12 @@ test_libarchive_selinux (gconstpointer data)
 
   if (skip_if_no_xattr (td))
     goto out;
+  if (getenv ("container"))
+    {
+      // FIXME dedup this with libtest.sh have_selinux_relabel
+      g_test_skip ("skip in containers for now");
+      goto out;
+    }
 
   if (td->skip_all != NULL)
     {

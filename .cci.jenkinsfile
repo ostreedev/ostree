@@ -6,17 +6,49 @@ COSA_IMAGE = 'quay.io/coreos-assembler/coreos-assembler:latest'
 COSA_BUILDROOT_IMAGE = 'registry.svc.ci.openshift.org/coreos/cosa-buildroot:latest'
 
 stage("Build") {
-parallel rpms: {
+parallel normal: {
   coreos.pod(image: COSA_BUILDROOT_IMAGE, runAsUser: 0) {
       checkout scm
+      stage("Core build") {
       sh """
         set -xeuo pipefail
         # fetch tags so `git describe` gives a nice NEVRA when building the RPM
         git fetch origin --tags
         git submodule update --init
 
+        env SKIP_INSTALLDEPS=1 ./ci/build.sh
+      """
+      }
+      stage("Unit tests") {
+      try {
+        sh """
+        make check
+        make syntax-check
+        """
+      } finally {
+          archiveArtifacts allowEmptyArchive: true, artifacts: 'test-suite.log'
+      }
+      }
+      sh """
+        make install DESTDIR=\$(pwd)/insttree/
+        tar -c -C insttree/ -zvf insttree.tar.gz .
+      """
+      stash includes: 'insttree.tar.gz', name: 'build'
+  }
+},
+// A minimal build, helps test our build options
+minimal: {
+  coreos.pod(image: COSA_BUILDROOT_IMAGE, runAsUser: 0) {
+      checkout scm
+      sh """
+        set -xeuo pipefail
+        git submodule update --init
+
         env NOCONFIGURE=1 ./autogen.sh
-        ./configure --with-openssl --with-curl --with-selinux
+        ./configure --without-curl --without-soup --disable-gtk-doc --disable-man \
+          --disable-rust --without-libarchive --without-selinux --without-smack \
+          --without-openssl --without-avahi --without-libmount --disable-rofiles-fuse \
+          --disable-experimental-api
         make
       """
   }
@@ -30,6 +62,56 @@ codestyle: {
         # for ci-commitmessage-submodules.sh
         git fetch origin +refs/heads/master:refs/remotes/origin/master
         ci/ci-commitmessage-submodules.sh
+      """
+  }
+}
+}
+
+// Build FCOS and do a kola basic run
+stage("More builds and test") {
+parallel fcos: {
+  coreos.pod(image: COSA_IMAGE, runAsUser: 0, kvm: true, memory: "2048Mi", cpu: "2") {
+    stage("Build FCOS") {
+      checkout scm
+      unstash 'build'
+      sh """
+        set -xeuo pipefail
+        mkdir insttree
+        tar -C insttree -xzvf insttree.tar.gz
+        rsync -rlv insttree/ /
+        coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
+        mkdir -p overrides/rootfs
+        mv insttree/* overrides/rootfs/
+        rmdir insttree
+        coreos-assembler build
+      """
+    }
+    stage("FCOS basic") {
+      timeout(time: 30, unit: 'MINUTES') {
+        sh """
+          set -xeuo pipefail
+          cosa kola run --basic-qemu-scenarios
+        """
+      }
+    }
+  }
+},
+buildopts: {
+  coreos.pod(image: COSA_BUILDROOT_IMAGE, runAsUser: 0) {
+      checkout scm
+      sh """
+        set -xeuo pipefail
+        git submodule update --init
+
+        git worktree add build-rust && cd build-rust
+        env CONFIGOPTS="--enable-rust" SKIP_INSTALLDEPS=1 ./ci/build.sh
+        make check TESTS=tests/test-rollsum
+        cd .. && rm -rf build-rust
+
+        git worktree add build-libsoup && cd build-libsoup
+        env CONFIGOPTS="--without-curl --without-openssl --with-soup" SKIP_INSTALLDEPS=1 ./ci/build.sh
+        make check
+        cd .. && rm -rf build-libsoup
       """
   }
 }
