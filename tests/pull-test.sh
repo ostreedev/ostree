@@ -54,12 +54,13 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
+num_tests=39
+# 3 tests needs GPG support
+num_gpg_tests=3
 if has_gpgme; then
-    echo "1..34"
-else
-    # 3 tests needs GPG support
-    echo "1..31"
+    num_tests=$((num_tests + num_gpg_tests))
 fi
+echo "1..${num_tests}"
 
 # Try both syntaxes
 repo_init --no-gpg-verify
@@ -604,3 +605,109 @@ if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
 fi
 assert_file_has_content_literal err.txt 'error: Fetching checksum for ref ((empty), main): Invalid rev lots of html here  lots of html here  lots of html here  lots of'
 echo "ok pull got HTML for a ref"
+
+# Restore ref for subsequent tests
+mv ostree-srv/gnomerepo/refs/heads/main{.orig,}
+
+# Test scratch deltas with partial current ref
+# https://github.com/ostreedev/ostree/issues/2004
+rm ostree-srv/gnomerepo/deltas -rf
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo refs --delete scratch
+rm scratch-files -rf
+mkdir scratch-files
+echo "stuff for rev1" > scratch-files/rev1
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b scratch -s rev1 scratch-files
+rev1=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse scratch)
+echo "stuff for rev2" > scratch-files/rev2
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b scratch -s rev2 scratch-files
+rev2=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse scratch)
+echo "stuff for rev3" > scratch-files/rev3
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b scratch -s rev3 scratch-files
+rev3=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse scratch)
+rm scratch-files -rf
+
+# Make a scratch delta and then corrupt it so we can tell when the pull is
+# fetching the delta and not falling back to an object pull.
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta --empty generate scratch
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+superblock=$(find ostree-srv/gnomerepo/deltas -name superblock)
+echo FAIL > ${superblock}
+
+# First pull with no existing ref. This should fail because it tries to
+# pull the scratch delta.
+repo_init --no-gpg-verify
+if ${CMD_PREFIX} ostree --repo=repo pull origin scratch 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (no existing ref)"
+
+# Pull with a partial HEAD ref. This should fail because it tries to pull the
+# scratch delta.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch
+if ${CMD_PREFIX} ostree --repo=repo pull origin scratch 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (partial HEAD only)"
+
+# Pull with a partial HEAD ref and partial parent. This should fail because it
+# tries to pull the scratch delta.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch@${rev2}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch
+if ${CMD_PREFIX} ostree --repo=repo pull origin scratch 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (partial HEAD and partial parent)"
+
+# Pull with a partial grandparent. This should fail
+# because it tries to pull the scratch delta. This is basically testing that
+# there aren't issues with a commit that has not parent.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch@${rev1}
+if ${CMD_PREFIX} ostree --repo=repo pull origin scratch 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (partial grandparent)"
+
+# Pull with a partial HEAD ref and normal parent. This should succeed with an
+# object pull.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev2}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch
+${CMD_PREFIX} ostree --repo=repo pull origin scratch
+echo "ok scratch delta (partial HEAD and normal parent)"
+
+# Pull with a partial HEAD ref, partial parent and normal grandparent. This
+# should succeed with an object pull.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev1}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch@${rev2}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch
+${CMD_PREFIX} ostree --repo=repo pull origin scratch
+echo "ok scratch delta (partial HEAD, partial parent and normal grandparent)"
+
+# Pull with a partial HEAD ref and normal grandparent. Ideally this
+# would use an object pull, but since the grandparent can't be reached
+# by the HEAD commit it will result in a scratch delta.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev1}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch
+if ${CMD_PREFIX} ostree --repo=repo pull origin scratch 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (partial HEAD and normal grandparent)"
+
+# Pull with a normal parent. This should succeed with an object pull.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev2}
+${CMD_PREFIX} ostree --repo=repo pull origin scratch
+echo "ok scratch delta (normal parent)"
+
+# Clean up the deltas so we don't leave a corrupt one around
+rm ostree-srv/gnomerepo/deltas -rf

@@ -2552,6 +2552,42 @@ process_one_static_delta (OtPullData                 *pull_data,
   return TRUE;
 }
 
+static gboolean
+normal_commit_reachable (OstreeRepo *self,
+                         const char *cur_revision)
+{
+  g_autofree char *rev = g_strdup (cur_revision);
+  while (rev != NULL)
+    {
+      g_autoptr(GVariant) commit = NULL;
+      OstreeRepoCommitState commitstate;
+      g_autoptr(GError) local_error = NULL;
+
+      if (!ostree_repo_load_commit (self, rev, &commit, &commitstate, &local_error))
+        {
+          /* Ignore issues with the commit since we're going to try to pull a
+           * scratch delta, anyways. Just dump out the error unless it's the
+           * likely issue that the parent commit didn't exist.
+           */
+          if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            g_debug ("Couldn't load commit %s: %s", rev, local_error->message);
+
+          g_clear_error (&local_error);
+          break;
+        }
+
+      /* Is this a normal commit? */
+      if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) == 0)
+        return TRUE;
+
+      g_free (rev);
+      rev = ostree_commit_get_parent (commit);
+    }
+
+  /* No normal commit found in history */
+  return FALSE;
+}
+
 /*
  * DELTA_SEARCH_RESULT_UNCHANGED:
  * We already have the commit.
@@ -2691,12 +2727,17 @@ get_best_static_delta_start_for (OtPullData         *pull_data,
     }
 
   /* If a from-scratch delta is available, we don’t want to use it if the ref
-   * already exists locally, since we are likely only a few commits out of
-   * date; so doing an object pull is likely more bandwidth efficient.
+   * or any of its ancestors already exists locally and is not partial. In
+   * that case only some of the objects in the new commit may be needed, so
+   * doing an object pull is likely more bandwidth efficient.
    */
   if (out_result->result == DELTA_SEARCH_RESULT_SCRATCH &&
-      cur_revision != NULL)
-    out_result->result = DELTA_SEARCH_RESULT_NO_MATCH;
+      cur_revision != NULL &&
+      normal_commit_reachable (pull_data->repo, cur_revision))
+    {
+      g_debug ("Found normal commit in history of %s", cur_revision);
+      out_result->result = DELTA_SEARCH_RESULT_NO_MATCH;
+    }
 
   return TRUE;
 }
