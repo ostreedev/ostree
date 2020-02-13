@@ -2582,11 +2582,12 @@ typedef struct {
  * See the enum in `DeltaSearchResult` for available result types.
  */
 static gboolean
-get_best_static_delta_start_for (OtPullData *pull_data,
-                                 const char *to_revision,
-                                 DeltaSearchResult   *out_result,
-                                 GCancellable *cancellable,
-                                 GError      **error)
+get_best_static_delta_start_for (OtPullData         *pull_data,
+                                 const char         *to_revision,
+                                 const char         *cur_revision,
+                                 DeltaSearchResult  *out_result,
+                                 GCancellable       *cancellable,
+                                 GError            **error)
 {
   /* Array<char*> of possible from checksums */
   g_autoptr(GPtrArray) candidates = g_ptr_array_new_with_free_func (g_free);
@@ -2688,6 +2689,15 @@ get_best_static_delta_start_for (OtPullData *pull_data,
       out_result->result = DELTA_SEARCH_RESULT_FROM;
       memcpy (out_result->from_revision, newest_candidate, OSTREE_SHA256_STRING_LEN+1);
     }
+
+  /* If a from-scratch delta is available, we don’t want to use it if the ref
+   * already exists locally, since we are likely only a few commits out of
+   * date; so doing an object pull is likely more bandwidth efficient.
+   */
+  if (out_result->result == DELTA_SEARCH_RESULT_SCRATCH &&
+      cur_revision != NULL)
+    out_result->result = DELTA_SEARCH_RESULT_NO_MATCH;
+
   return TRUE;
 }
 
@@ -3404,7 +3414,8 @@ initiate_request (OtPullData                 *pull_data,
       DeltaSearchResult deltares;
 
       /* Look for a delta to @to_revision in the summary data */
-      if (!get_best_static_delta_start_for (pull_data, to_revision, &deltares,
+      if (!get_best_static_delta_start_for (pull_data, to_revision,
+                                            delta_from_revision, &deltares,
                                             pull_data->cancellable, error))
         return FALSE;
 
@@ -3425,16 +3436,7 @@ initiate_request (OtPullData                 *pull_data,
           enqueue_one_static_delta_superblock_request (pull_data, deltares.from_revision, to_revision, ref);
           break;
         case DELTA_SEARCH_RESULT_SCRATCH:
-          {
-            /* If a from-scratch delta is available, we don’t want to use it if
-             * the ref already exists locally, since we are likely only a few
-             * commits out of date; so doing an object pull is likely more
-             * bandwidth efficient. */
-            if (delta_from_revision != NULL)
-              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
-            else
-              enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
-          }
+          enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
           break;
         case DELTA_SEARCH_RESULT_UNCHANGED:
           {
