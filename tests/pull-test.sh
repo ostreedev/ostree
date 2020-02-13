@@ -54,7 +54,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-num_tests=39
+num_tests=40
 # 3 tests needs GPG support
 num_gpg_tests=3
 if has_gpgme; then
@@ -708,6 +708,16 @@ repo_init --no-gpg-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev2}
 ${CMD_PREFIX} ostree --repo=repo pull origin scratch
 echo "ok scratch delta (normal parent)"
+
+# Pull with a normal parent but require static deltas. This should fail
+# because it tries to pull the scratch delta.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev2}
+if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin scratch 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (require static deltas with normal parent)"
 
 # Clean up the deltas so we don't leave a corrupt one around
 rm ostree-srv/gnomerepo/deltas -rf

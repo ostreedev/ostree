@@ -2726,12 +2726,14 @@ get_best_static_delta_start_for (OtPullData         *pull_data,
       memcpy (out_result->from_revision, newest_candidate, OSTREE_SHA256_STRING_LEN+1);
     }
 
-  /* If a from-scratch delta is available, we don’t want to use it if the ref
-   * or any of its ancestors already exists locally and is not partial. In
-   * that case only some of the objects in the new commit may be needed, so
-   * doing an object pull is likely more bandwidth efficient.
+  /* If a from-scratch delta is available and deltas aren't required, we don’t
+   * want to use it if the ref or any of its ancestors already exists locally
+   * and is not partial. In that case only some of the objects in the new
+   * commit may be needed, so doing an object pull is likely more bandwidth
+   * efficient.
    */
   if (out_result->result == DELTA_SEARCH_RESULT_SCRATCH &&
+      !pull_data->require_static_deltas &&
       cur_revision != NULL &&
       normal_commit_reachable (pull_data->repo, cur_revision))
     {
