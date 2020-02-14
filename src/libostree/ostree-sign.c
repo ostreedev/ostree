@@ -98,7 +98,6 @@ ostree_sign_default_init (OstreeSignInterface *iface)
 const gchar *
 ostree_sign_metadata_key (OstreeSign *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->metadata_key != NULL, NULL);
   return OSTREE_SIGN_GET_IFACE (self)->metadata_key (self);
@@ -119,7 +118,6 @@ ostree_sign_metadata_key (OstreeSign *self)
 const gchar *
 ostree_sign_metadata_format (OstreeSign *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->metadata_format != NULL, NULL);
   return OSTREE_SIGN_GET_IFACE (self)->metadata_format (self);
@@ -140,7 +138,6 @@ gboolean
 ostree_sign_clear_keys (OstreeSign *self,
                         GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   if (OSTREE_SIGN_GET_IFACE (self)->clear_keys == NULL)
     return TRUE;
@@ -168,7 +165,6 @@ ostree_sign_set_sk (OstreeSign *self,
                     GVariant *secret_key,
                     GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   if (OSTREE_SIGN_GET_IFACE (self)->set_sk == NULL)
     return TRUE;
@@ -197,7 +193,6 @@ ostree_sign_set_pk (OstreeSign *self,
                     GVariant *public_key,
                     GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   if (OSTREE_SIGN_GET_IFACE (self)->set_pk == NULL)
     return TRUE;
@@ -226,7 +221,6 @@ ostree_sign_add_pk (OstreeSign *self,
                     GVariant *public_key,
                     GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   if (OSTREE_SIGN_GET_IFACE (self)->add_pk == NULL)
     return TRUE;
@@ -266,7 +260,6 @@ ostree_sign_load_pk (OstreeSign *self,
                      GVariant *options,
                      GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   if (OSTREE_SIGN_GET_IFACE (self)->load_pk == NULL)
     return TRUE;
@@ -300,7 +293,6 @@ ostree_sign_data (OstreeSign *self,
                   GError **error)
 {
 
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->data != NULL, FALSE);
 
@@ -331,7 +323,6 @@ ostree_sign_data_verify (OstreeSign *self,
                          GVariant   *signatures,
                          GError     **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->data_verify != NULL, FALSE);
 
@@ -346,7 +337,6 @@ _sign_detached_metadata_append (OstreeSign *self,
                                 GVariant   *existing_metadata,
                                 GBytes     *signature_bytes)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (signature_bytes != NULL, FALSE);
 
   GVariantDict metadata_dict;
@@ -401,7 +391,6 @@ ostree_sign_commit_verify (OstreeSign     *self,
                            GError         **error)
 
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
   g_autoptr(GVariant) commit_variant = NULL;
@@ -455,7 +444,6 @@ ostree_sign_commit_verify (OstreeSign     *self,
 const gchar * 
 ostree_sign_get_name (OstreeSign *self)
 {
-    g_debug ("%s enter", __FUNCTION__);
     g_return_val_if_fail (OSTREE_IS_SIGN (self), NULL);
     g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->get_name != NULL, NULL);
 
@@ -487,7 +475,6 @@ ostree_sign_commit (OstreeSign     *self,
                     GCancellable   *cancellable,
                     GError         **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   g_autoptr(GBytes) commit_data = NULL;
   g_autoptr(GBytes) signature = NULL;
@@ -537,7 +524,6 @@ ostree_sign_commit (OstreeSign     *self,
 GStrv
 ostree_sign_list_names(void)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   GStrv names = g_new0 (char *, G_N_ELEMENTS(sign_types) + 1);
   gint i = 0;
@@ -567,7 +553,6 @@ ostree_sign_list_names(void)
 OstreeSign *
 ostree_sign_get_by_name (const gchar *name, GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   OstreeSign *sign = NULL;
 
@@ -616,7 +601,6 @@ ostree_sign_summary (OstreeSign    *self,
                      GCancellable  *cancellable,
                      GError       **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
 

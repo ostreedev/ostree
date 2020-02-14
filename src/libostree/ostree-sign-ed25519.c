@@ -68,7 +68,6 @@ G_DEFINE_TYPE_WITH_CODE (OstreeSignEd25519, _ostree_sign_ed25519, G_TYPE_OBJECT,
 static void
 ostree_sign_ed25519_iface_init (OstreeSignInterface *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   self->data = ostree_sign_ed25519_data;
   self->data_verify = ostree_sign_ed25519_data_verify;
@@ -85,13 +84,11 @@ ostree_sign_ed25519_iface_init (OstreeSignInterface *self)
 static void
 _ostree_sign_ed25519_class_init (OstreeSignEd25519Class *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
 }
 
 static void
 _ostree_sign_ed25519_init (OstreeSignEd25519 *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   self->state = ED25519_OK;
   self->secret_key = NULL;
@@ -133,7 +130,6 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
                                    GError **error)
 {
 
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
@@ -186,7 +182,6 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
                                           GVariant   *signatures,
                                           GError     **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (data != NULL, FALSE);
   gboolean ret = FALSE;
@@ -283,7 +278,6 @@ out:
 
 const gchar * ostree_sign_ed25519_get_name (OstreeSign *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
   return OSTREE_SIGN_ED25519_NAME;
@@ -291,14 +285,12 @@ const gchar * ostree_sign_ed25519_get_name (OstreeSign *self)
 
 const gchar * ostree_sign_ed25519_metadata_key (OstreeSign *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   return OSTREE_SIGN_METADATA_ED25519_KEY;
 }
 
 const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   return OSTREE_SIGN_METADATA_ED25519_TYPE;
 }
@@ -306,7 +298,6 @@ const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
 gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
                                          GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
@@ -352,7 +343,6 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
                                      GVariant *secret_key,
                                      GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
 
@@ -403,7 +393,6 @@ gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
                                      GVariant *public_key,
                                      GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
   if (!ostree_sign_ed25519_clear_keys (self, error))
@@ -420,7 +409,6 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
                                      GVariant *public_key,
                                      GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
@@ -469,7 +457,6 @@ _ed25519_add_revoked (OstreeSign *self,
                       GVariant *revoked_key,
                       GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
   if (!g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
@@ -506,7 +493,6 @@ _load_pk_from_stream (OstreeSign *self,
                       gboolean trusted,
                       GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_return_val_if_fail (key_data_in, FALSE);
 #ifdef HAVE_LIBSODIUM
   gboolean ret = FALSE;
@@ -558,7 +544,6 @@ _load_pk_from_file (OstreeSign *self,
                     gboolean trusted,
                     GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
   g_debug ("Processing file '%s'", filename);
 
   g_autoptr (GFile) keyfile = NULL;
@@ -602,7 +587,6 @@ _ed25519_load_pk (OstreeSign *self,
                   gboolean trusted,
                   GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   gboolean ret = FALSE;
   const gchar *custom_dir = NULL;
@@ -687,7 +671,6 @@ ostree_sign_ed25519_load_pk (OstreeSign *self,
                              GVariant *options,
                              GError **error)
 {
-  g_debug ("%s enter", __FUNCTION__);
 
   const gchar *filename = NULL;
 
