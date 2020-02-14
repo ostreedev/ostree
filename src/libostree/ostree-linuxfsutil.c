@@ -68,6 +68,10 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
     }
   else
     {
+      gboolean prev_immutable_state = (flags & EXT2_IMMUTABLE_FL) > 0;
+      if (prev_immutable_state == new_immutable_state)
+        return TRUE;  /* Nothing to do */
+
       if (new_immutable_state)
         flags |= EXT2_IMMUTABLE_FL;
       else
