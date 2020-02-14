@@ -160,25 +160,13 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
 
   OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
-  gboolean ret = FALSE;
-
   if (signatures == NULL)
-    {
-      g_set_error_literal (error,
-                           G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "signature: dummy: commit have no signatures of my type");
-      goto err;
-    }
-
+    return glnx_throw (error, "signature: dummy: commit have no signatures of my type");
 
   if (!g_variant_is_of_type (signatures, (GVariantType *) OSTREE_SIGN_METADATA_DUMMY_TYPE))
-    {
-      g_set_error_literal (error,
-                           G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "signature: dummy: wrong type passed for verification");
-      goto err;
-    }
+    return glnx_throw (error, "signature: dummy: wrong type passed for verification");
 
+  gboolean verified = FALSE;
   for (gsize i = 0; i < g_variant_n_children(signatures); i++)
     {
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
@@ -191,13 +179,12 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
       g_debug("Stored signature %d: %s", (gint)i, sign->pk_ascii);
 
       if (!g_strcmp0(sign_ascii, sign->pk_ascii))
-          ret = TRUE;
+        verified = TRUE;
+      else
+        return glnx_throw (error, "signature: dummy: incorrect signature %" G_GSIZE_FORMAT, i);
     }
-  if (ret == FALSE && *error == NULL)
-    g_set_error_literal (error,
-                         G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "signature: dummy: incorrect signature");
+  if (!verified)
+    return glnx_throw (error, "signature: dummy: no signatures");
 
-err:
-  return ret;
+  return TRUE;
 }
