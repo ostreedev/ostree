@@ -111,13 +111,9 @@ _ostree_sign_ed25519_is_initialized (OstreeSignEd25519 *self, GError **error)
     case ED25519_OK:
       break;
     case ED25519_NOT_SUPPORTED:
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "ed25519: engine is not supported");
-      return FALSE;
+      return glnx_throw(error, "ed25519: engine is not supported");
     case ED25519_FAILED_INITIALIZATION:
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "ed25519: libsodium library isn't initialized properly");
-      return FALSE;
+      return glnx_throw(error, "ed25519: libsodium library isn't initialized properly");
     }
 
   return TRUE;
@@ -138,14 +134,11 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
 #endif
 
   if (!_ostree_sign_ed25519_is_initialized (sign, error))
-      goto err;
+      return FALSE;
 
   if (sign->secret_key == NULL)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "secret key is not set");
-      goto err;
-    }
+    return glnx_throw (error, "Not able to sign: secret key is not set");
+
 #ifdef HAVE_LIBSODIUM
   unsigned long long sig_size = 0;
 
@@ -157,16 +150,12 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
                             g_bytes_get_size (data),
                             sign->secret_key))
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                          "fail to sign the object");
-      goto err;
+      return glnx_throw (error, "Not able to sign: fail to sign the object");
     }
 
   *signature = g_bytes_new_take (sig, sig_size);
   return TRUE;
 #endif /* HAVE_LIBSODIUM */
-err:
-  g_prefix_error (error, "Not able to sign: ");
   return FALSE;
 }
 
@@ -184,28 +173,17 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
 {
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (data != NULL, FALSE);
-  gboolean ret = FALSE;
 
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
   if (!_ostree_sign_ed25519_is_initialized (sign, error))
-    goto out;
+    return FALSE;
 
   if (signatures == NULL)
-    {
-      g_set_error_literal (error,
-                           G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "ed25519: commit have no signatures of my type");
-      goto out;
-    }
+    return glnx_throw (error, "ed25519: commit have no signatures of my type");
 
   if (!g_variant_is_of_type (signatures, (GVariantType *) OSTREE_SIGN_METADATA_ED25519_TYPE))
-    {
-      g_set_error_literal (error,
-                           G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "ed25519: wrong type passed for verification");
-      goto out;
-    }
+    return glnx_throw (error, "ed25519: wrong type passed for verification");
 
 #ifdef HAVE_LIBSODIUM
   /* If no keys pre-loaded then,
@@ -219,7 +197,7 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
       options = g_variant_builder_end (builder);
 
       if (!ostree_sign_ed25519_load_pk (self, options, error))
-        goto out;
+        return FALSE;
     }
 
   g_debug ("verify: data hash = 0x%x", g_bytes_hash(data));
@@ -257,23 +235,17 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
             }
           else
             {
-              ret = TRUE;
               g_debug ("Signature verified successfully with key '%s'",
                        sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, public_key->data, crypto_sign_PUBLICKEYBYTES));
-              break;
+              return TRUE;
             }
         }
     }
 
-  if (ret != TRUE)
-    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "no valid signatures found");
+  return glnx_throw (error, "Not able to verify: no valid signatures found");
 #endif /* HAVE_LIBSODIUM */
 
-out:
-  if (ret != TRUE)
-    g_prefix_error (error, "Not able to verify: ");
-  return ret;
+  return FALSE;
 }
 
 const gchar * ostree_sign_ed25519_get_name (OstreeSign *self)
@@ -303,7 +275,7 @@ gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
   if (!_ostree_sign_ed25519_is_initialized (sign, error))
-    goto err;
+    return FALSE;
 
 #ifdef HAVE_LIBSODIUM
   /* Clear secret key */
@@ -331,7 +303,6 @@ gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
   return TRUE;
 #endif /* HAVE_LIBSODIUM */
 
-err:
   return FALSE;
 }
 
@@ -347,7 +318,7 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
 
 
   if (!ostree_sign_ed25519_clear_keys (self, error))
-    goto err;
+    return FALSE;
 
 #ifdef HAVE_LIBSODIUM
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
@@ -365,23 +336,15 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
     }
   else
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unknown ed25519 secret key type");
-      goto err;
+     return glnx_throw (error, "Unknown ed25519 secret key type");
     }
-
 
   if (n_elements != crypto_sign_SECRETKEYBYTES)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Incorrect ed25519 secret key");
-      goto err;
-    }
+    return glnx_throw (error, "Incorrect ed25519 secret key");
 
   return TRUE;
 #endif /* HAVE_LIBSODIUM */
 
-err:
   return FALSE;
 }
 
@@ -506,10 +469,10 @@ _load_pk_from_stream (OstreeSign *self,
       gboolean added = FALSE;
 
       if (*error != NULL)
-        goto err;
+        return FALSE;
 
       if (line == NULL)
-        goto out;
+        return ret;
       
       /* Read the key itself */
       /* base64 encoded key */
@@ -529,11 +492,6 @@ _load_pk_from_stream (OstreeSign *self,
       if (added)
         ret = TRUE;
     }
-
-out:
-  return ret;
-
-err:
 #endif /* HAVE_LIBSODIUM */
   return FALSE;
 }
@@ -553,15 +511,13 @@ _load_pk_from_file (OstreeSign *self,
   if (!g_file_test (filename, G_FILE_TEST_IS_REGULAR))
     {
       g_debug ("Can't open file '%s' with public keys", filename);
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "File object '%s' is not a regular file", filename);
-      goto err;
+      return glnx_throw (error, "File object '%s' is not a regular file", filename);
     }
 
   keyfile = g_file_new_for_path (filename);
   key_stream_in = g_file_read (keyfile, NULL, error);
   if (key_stream_in == NULL)
-    goto err;
+    return FALSE;
  
   key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
   g_assert (key_data_in != NULL);
@@ -569,16 +525,12 @@ _load_pk_from_file (OstreeSign *self,
   if (!_load_pk_from_stream (self, key_data_in, trusted, error))
     {
       if (error == NULL || *error == NULL)
-        g_set_error (error,
-                     G_IO_ERROR, G_IO_ERROR_FAILED,
-                     "signature: ed25519: no valid keys in file '%s'",
-                     filename);
-      goto err;
+        return glnx_throw (error, 
+                           "signature: ed25519: no valid keys in file '%s'",
+                           filename);
     }
 
   return TRUE;
-err:
-  return FALSE;
 }
 
 static gboolean
@@ -639,21 +591,19 @@ _ed25519_load_pk (OstreeSign *self,
   /* Scan all well-known files */
   for (gint i=0; i < ed25519_files->len; i++)
     {
-    if (!_load_pk_from_file (self, (gchar *)g_ptr_array_index (ed25519_files, i), trusted, error))
-      {
-        g_debug ("Problem with loading ed25519 %s keys from `%s`",
-                 trusted ? "public" : "revoked",
-                 (gchar *)g_ptr_array_index (ed25519_files, i));
-        g_clear_error(error);
-      }
-    else
-      ret = TRUE;
+      if (!_load_pk_from_file (self, (gchar *)g_ptr_array_index (ed25519_files, i), trusted, error))
+        {
+          g_debug ("Problem with loading ed25519 %s keys from `%s`",
+                   trusted ? "public" : "revoked",
+                   (gchar *)g_ptr_array_index (ed25519_files, i));
+          g_clear_error(error);
+        }
+      else
+        ret = TRUE;
     }
 
   if (!ret && (error == NULL || *error == NULL))
-    g_set_error_literal (error,
-                         G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "signature: ed25519: no keys loaded");
+    return glnx_throw (error, "signature: ed25519: no keys loaded");
 
   return ret;
 }
