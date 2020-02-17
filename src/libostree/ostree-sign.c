@@ -604,37 +604,32 @@ ostree_sign_summary (OstreeSign    *self,
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
 
-  gboolean ret = FALSE;
-
   g_autoptr(GVariant) normalized = NULL;
   g_autoptr(GBytes) summary_data = NULL;
   g_autoptr(GVariant) metadata = NULL;
 
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (repo->repo_dir_fd, "summary", TRUE, &fd, error))
-    goto out;
+    return FALSE;
   summary_data = ot_fd_readall_or_mmap (fd, 0, error);
   if (!summary_data)
-    goto out;
+    return FALSE;
 
   /* Note that fd is reused below */
   glnx_close_fd (&fd);
 
   if (!ot_openat_ignore_enoent (repo->repo_dir_fd, "summary.sig", &fd, error))
-    goto out;
+    return FALSE;
+
   if (fd >= 0)
     {
       if (!ot_variant_read_fd (fd, 0, OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                FALSE, &metadata, error))
-        goto out;
+        return FALSE;
     }
 
   if (g_variant_n_children(keys) == 0)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "No keys passed for signing summary");
-      goto out;
-    }
+    return glnx_throw (error, "No keys passed for signing summary");
 
   GVariantIter *iter;
   GVariant *key;
@@ -645,14 +640,14 @@ ostree_sign_summary (OstreeSign    *self,
       g_autoptr (GBytes) signature = NULL;
 
       if (!ostree_sign_set_sk (self, key, error))
-        goto out;
+        return FALSE;
 
       if (!ostree_sign_data (self,
                              summary_data,
                              &signature,
                              cancellable,
                              error))
-        goto out;
+        return FALSE;
 
       g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
       metadata =
@@ -667,10 +662,7 @@ ostree_sign_summary (OstreeSign    *self,
                                            g_variant_get_data (normalized),
                                            g_variant_get_size (normalized),
                                            cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-
-out:
-  return ret;
+  return TRUE;
 }
