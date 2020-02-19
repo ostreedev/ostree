@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..8"
+echo "1..11"
 
 setup_fake_remote_repo1 "archive"
 
@@ -67,6 +67,31 @@ function test_signed_pull() {
 DUMMYSIGN="dummysign"
 COMMIT_ARGS="--sign=${DUMMYSIGN} --sign-type=dummy"
 repo_init --set=sign-verify=true
+
+# Check if verification-key and verification-file options throw error with wrong keys
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} \
+    -b main -s "A signed commit" --tree=ref=main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
+    assert_not_reached "pull without keys unexpectedly succeeded"
+fi
+echo "ok pull failure without keys preloaded"
+
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "somewrongkey"
+if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
+    assert_not_reached "pull with unknown key unexpectedly succeeded"
+fi
+echo "ok pull failure with incorrect key option"
+
+${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-key
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-file "/non/existing/file"
+if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
+    assert_not_reached "pull with unknown keys file unexpectedly succeeded"
+fi
+echo "ok pull failure with incorrect keys file option"
+
+# Test with correct dummy key
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${DUMMYSIGN}"
 test_signed_pull "dummy" ""
 
