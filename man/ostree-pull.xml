@@ -143,6 +143,14 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Description</title>
 
+      <para>
+	  Without --mirror, this command will create new refs
+	  under <literal>remotes/REMOTE/</literal> directory
+	  for each pulled branch unless they are already created. Such
+	  refs can be then referenced by <literal>REMOTE:BRANCH</literal> in
+	  <literal>ostree</literal> subcommands (e.g. <literal>ostree log origin:exampleos/x86_64/standard</literal>).
+      </para>
+
         <para>
 	  This command can retrieve just a specific commit, or go all
 	  the way to performing a full mirror of the remote
