@@ -92,8 +92,8 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 
   if (self->uncompressed_objects_dir_fd == -1)
     {
-      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, "uncompressed-objects-cache", 0755,
-                                   cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, "uncompressed-objects-cache",
+                                   DEFAULT_DIRECTORY_MODE, cancellable, error))
         return FALSE;
       if (!glnx_opendirat (self->repo_dir_fd, "uncompressed-objects-cache", TRUE,
                            &self->uncompressed_objects_dir_fd,

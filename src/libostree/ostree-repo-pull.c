@@ -2925,7 +2925,7 @@ _ostree_repo_cache_summary (OstreeRepo        *self,
   if (self->cache_dir_fd == -1)
     return TRUE;
 
-  if (!glnx_shutil_mkdir_p_at (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, 0775, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, DEFAULT_DIRECTORY_MODE, cancellable, error))
     return FALSE;
 
   const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote);
