@@ -18,24 +18,17 @@
 ***/
 
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
-LIBOSTREE_2019.7 {
+LIBOSTREE_2020.2 {
 global:
-  ostree_commit_get_object_sizes;
-  ostree_commit_sizes_entry_copy;
-  ostree_commit_sizes_entry_free;
-  ostree_commit_sizes_entry_get_type;
-  ostree_commit_sizes_entry_new;
-  ostree_sysroot_initialize;
-  ostree_sysroot_is_booted;
-  ostree_sysroot_set_mount_namespace_in_use;
-} LIBOSTREE_2019.6;
+  someostree_symbol_deleteme;
+} LIBOSTREE_2020.1;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
  * with whatever the next version with new symbols will be.
-LIBOSTREE_2019.$NEWVERSION {
+LIBOSTREE_2020.$NEWVERSION {
 global:
   someostree_symbol_deleteme;
-} LIBOSTREE_2019.$LASTSTABLE;
+} LIBOSTREE_2020.$LASTSTABLE;
 */

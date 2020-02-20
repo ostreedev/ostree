@@ -581,6 +581,18 @@ LIBOSTREE_2019.6 {
   ostree_async_progress_copy_state;
 } LIBOSTREE_2019.4;
 
+LIBOSTREE_2020.1 {
+global:
+  ostree_commit_get_object_sizes;
+  ostree_commit_sizes_entry_copy;
+  ostree_commit_sizes_entry_free;
+  ostree_commit_sizes_entry_get_type;
+  ostree_commit_sizes_entry_new;
+  ostree_sysroot_initialize;
+  ostree_sysroot_is_booted;
+  ostree_sysroot_set_mount_namespace_in_use;
+} LIBOSTREE_2019.6;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
