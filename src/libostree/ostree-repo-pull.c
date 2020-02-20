@@ -1470,7 +1470,7 @@ process_verify_result (OtPullData            *pull_data,
 }
 #endif /* OSTREE_DISABLE_GPGME */
 
-/* _remote_load_public_keys:
+/* _load_public_keys:
  *
  * Load public keys according remote's configuration:
  * inlined key passed via config option `verification-key` or
@@ -1493,6 +1493,9 @@ _load_public_keys (OstreeSign *sign,
   g_autofree gchar *pk_file = NULL;
   gboolean loaded_from_file = TRUE;
   gboolean loaded_inlined = TRUE;
+  g_autoptr (GError) verification_error = NULL;
+
+  glnx_throw (&verification_error, "no public keys loaded");
 
   ostree_repo_get_remote_option (repo,
                                  remote_name,
@@ -1521,6 +1524,7 @@ _load_public_keys (OstreeSign *sign,
 
   if (pk_file != NULL)
     {
+      g_autoptr (GError) local_error = NULL;
       g_autoptr (GVariantBuilder) builder = NULL;
       g_autoptr (GVariant) options = NULL;
 
@@ -1528,11 +1532,15 @@ _load_public_keys (OstreeSign *sign,
       g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
       options = g_variant_builder_end (builder);
 
-      if (ostree_sign_load_pk (sign, options, error))
+      if (ostree_sign_load_pk (sign, options, &local_error))
         loaded_from_file = TRUE;
       else
+        {
           g_debug("Unable to load public keys for '%s' from file '%s': %s",
-                  ostree_sign_get_name(sign), pk_file, (*error)->message);
+                  ostree_sign_get_name(sign), pk_file, local_error->message);
+          /* Save error message for better reason detection later if needed */
+          glnx_prefix_error (&verification_error, "%s", local_error->message);
+        }
     }
 
   if (pk_ascii != NULL)
@@ -1549,24 +1557,18 @@ _load_public_keys (OstreeSign *sign,
       if (!loaded_inlined)
         {
           g_debug("Unable to load public key '%s' for '%s': %s",
-                  pk_ascii, ostree_sign_get_name(sign), local_error->message);
+                  pk_ascii, ostree_sign_get_name (sign), local_error->message);
 
           /* Save error message for better reason detection later if needed */
-          if (*error == NULL)
-            g_propagate_error (error, g_steal_pointer (&local_error));
-          else
-            g_prefix_error (error, "%s; ", local_error->message);
+          glnx_prefix_error (&verification_error, "%s", local_error->message);
         }
     }
 
   /* Return true if able to load from any source */
   if (loaded_from_file || loaded_inlined)
-    {
-      g_clear_error (error);
-      return TRUE;
-    }
+    return TRUE;
 
-  return FALSE;
+  return glnx_throw (error, "%s", verification_error->message);
 }
 
 static gboolean
@@ -1578,6 +1580,10 @@ _ostree_repo_sign_verify (OstreeRepo *repo,
 {
   /* list all signature types in detached metadata and check if signed by any? */
   g_auto (GStrv) names = ostree_sign_list_names();
+  g_autoptr (GError) verification_error = NULL;
+
+  glnx_throw (&verification_error, "signed with unknown key");
+
   for (char **iter=names; iter && *iter; iter++)
     {
       g_autoptr (OstreeSign) sign = NULL;
@@ -1609,26 +1615,16 @@ _ostree_repo_sign_verify (OstreeRepo *repo,
                                        signed_data,
                                        signatures,
                                        &local_error))
-            {
-              g_clear_error (error);
-              return TRUE;
-            }
+            return TRUE;
         }
 
       /* Save error message for better reason detection later if needed */
-      if (*error == NULL)
-        g_propagate_error (error, g_steal_pointer (&local_error));
-      else
-        g_prefix_error (error, "%s; ", local_error->message);
+      glnx_prefix_error (&verification_error, "%s", local_error->message);
     }
 
   /* In case if there were no signatures of known type
    * or metadata contains invalid data */
-  if (*error == NULL)
-    g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                 "Metadata doesn't signed with supported type");
-
-  return FALSE;
+  return glnx_throw (error, "%s", verification_error->message);
 }
 
 static gboolean
@@ -1672,17 +1668,10 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
     {
       /* Nothing to check if detached metadata is absent */
       if (detached_metadata == NULL)
-        {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Can't verify commit without detached metadata");
-          return FALSE;
-        }
+        return glnx_throw (error, "Can't verify commit without detached metadata");
 
       if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata, error))
-        {
-          g_prefix_error (error, "Can't verify commit");
-          return FALSE;
-        }
+        return glnx_prefix_error (error, "Can't verify commit");
 
       /* Mark the commit as verified to avoid double verification
        * see process_verify_result () for rationale */
@@ -2022,6 +2011,8 @@ scan_commit_object (OtPullData                 *pull_data,
       !g_hash_table_contains (pull_data->verified_commits, checksum))
     {
       gboolean ret = FALSE;
+      g_autoptr (GError) verification_error = NULL;
+
       /* list all signature types in detached metadata and check if signed by any? */
       g_auto (GStrv) names = ostree_sign_list_names();
       for (char **iter=names; !ret && iter && *iter; iter++)
@@ -2042,29 +2033,16 @@ scan_commit_object (OtPullData                 *pull_data,
                                              checksum,
                                              cancellable,
                                              &local_error))
-                {
-                  ret = TRUE;
-                  g_clear_error (error);
-                }
+                ret = TRUE;
             }
 
           /* Save error message for better reason detection later if needed */
           if (!ret)
-            {
-              if (*error == NULL)
-                g_propagate_error (error, g_steal_pointer (&local_error));
-              else
-                g_prefix_error (error, "%s; ", local_error->message);
-            }
+            glnx_prefix_error (&verification_error, "%s", local_error->message);
          }
 
       if (!ret)
-        {
-          g_prefix_error (error, "Can't verify commit %s: ", checksum);
-          return FALSE;
-        }
-      /* Clear non-fatal error */
-      g_clear_error (error);
+        return glnx_throw (error, "Can't verify commit %s: %s", checksum, verification_error->message);
     }
 
   /* If we found a legacy transaction flag, assume we have to scan.
@@ -4444,8 +4422,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
             if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, &temp_error))
               {
-                gboolean ret = FALSE;
-
                 if (summary_from_cache)
                   {
                     /* The cached summary doesn't match, fetch a new one and verify again */
@@ -4473,16 +4449,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      cancellable, error))
                       goto out;
 
-                    if (_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, error))
-                      ret = TRUE;
+                    if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, error))
+                        goto out;
                   }
                 else
-                  g_propagate_error (error, g_steal_pointer (&temp_error));
-
-
-                if (!ret)
                   {
-                    g_prefix_error (error, "Can't verify summary: ");
+                    g_propagate_error (error, g_steal_pointer (&temp_error));
                     goto out;
                   }
               }
