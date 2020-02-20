@@ -242,7 +242,7 @@ ostree_sysroot_new_default (void)
  * If you invoke this function, it must be before ostree_sysroot_load(); it may
  * be invoked before or after ostree_sysroot_initialize().
  *
- * Since: 2019.7
+ * Since: 2020.1
  */
 void
 ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot  *self)
@@ -341,7 +341,7 @@ ostree_sysroot_get_fd (OstreeSysroot *self)
  * Can only be invoked after `ostree_sysroot_initialize()`.
  * 
  * Returns: %TRUE iff the sysroot points to a booted deployment
- * Since: 2019.7
+ * Since: 2020.1
  */
 gboolean
 ostree_sysroot_is_booted (OstreeSysroot *self)
@@ -890,7 +890,7 @@ ensure_repo (OstreeSysroot  *self,
  * It is not necessary to call this function if ostree_sysroot_load() is
  * invoked.
  *
- * Since: 2019.7
+ * Since: 2020.1
  */
 gboolean
 ostree_sysroot_initialize (OstreeSysroot  *self,
