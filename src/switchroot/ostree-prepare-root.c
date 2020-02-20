@@ -29,6 +29,28 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/* The high level goal of ostree-prepare-root.service is to run inside
+ * the initial ram disk (if one is in use) and set up the `/` mountpoint
+ * to be the deployment root, using the ostree= kernel commandline
+ * argument to find the target deployment root.
+ *
+ * It's really the heart of how ostree works - basically multiple
+ * hardlinked chroot() targets are maintained, this one does the equivalent
+ * of chroot().
+ *
+ * If using systemd, an excellent reference is `man bootup`.  This
+ * service runs Before=initrd-root-fs.target.  At this point it's
+ * assumed that the block storage and root filesystem are mounted at
+ * /sysroot - i.e. /sysroot points to the *physical* root before
+ * this service runs.  After, `/` is the deployment root.
+ *
+ * There is also a secondary mode for this service when an initrd isn't
+ * used - instead the binary must be statically linked (and the kernel
+ * must have mounted the rootfs itself) - then we set things up and
+ * exec the real init directly.  This can be popular in embedded
+ * systems to increase bootup speed.
+ */
+
 #include "config.h"
 
 #include <sys/mount.h>
