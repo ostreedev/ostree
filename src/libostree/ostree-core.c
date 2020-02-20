@@ -2445,7 +2445,7 @@ G_DEFINE_BOXED_TYPE (OstreeCommitSizesEntry, ostree_commit_sizes_entry,
  * commit's "ostree.sizes" metadata.
  *
  * Returns: (transfer full) (nullable): a new #OstreeCommitSizesEntry
- * Since: 2019.7
+ * Since: 2020.1
  */
 OstreeCommitSizesEntry *
 ostree_commit_sizes_entry_new (const gchar      *checksum,
@@ -2471,7 +2471,7 @@ ostree_commit_sizes_entry_new (const gchar      *checksum,
  * Create a copy of the given @entry.
  *
  * Returns: (transfer full) (nullable): a new copy of @entry
- * Since: 2019.7
+ * Since: 2020.1
  */
 OstreeCommitSizesEntry *
 ostree_commit_sizes_entry_copy (const OstreeCommitSizesEntry *entry)
@@ -2490,7 +2490,7 @@ ostree_commit_sizes_entry_copy (const OstreeCommitSizesEntry *entry)
  *
  * Free given @entry.
  *
- * Since: 2019.7
+ * Since: 2020.1
  */
 void
 ostree_commit_sizes_entry_free (OstreeCommitSizesEntry *entry)
@@ -2572,7 +2572,7 @@ read_sizes_entry (GVariant                *entry,
  * the "ostree.sizes" metadata, a %G_IO_ERROR_NOT_FOUND error will be
  * returned.
  *
- * Since: 2019.7
+ * Since: 2020.1
  */
 gboolean
 ostree_commit_get_object_sizes (GVariant   *commit_variant,

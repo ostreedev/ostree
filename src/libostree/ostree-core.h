@@ -531,7 +531,7 @@ gchar *  ostree_commit_get_content_checksum  (GVariant  *commit_variant);
  * Structure representing an entry in the "ostree.sizes" commit metadata. Each
  * entry corresponds to an object in the associated commit.
  *
- * Since: 2019.5
+ * Since: 2020.1
  */
 typedef struct {
   gchar *checksum;
