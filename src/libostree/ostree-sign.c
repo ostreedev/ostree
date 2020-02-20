@@ -138,9 +138,9 @@ gboolean
 ostree_sign_clear_keys (OstreeSign *self,
                         GError **error)
 {
-
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   if (OSTREE_SIGN_GET_IFACE (self)->clear_keys == NULL)
-    return TRUE;
+    return glnx_throw (error, "not implemented");
 
   return OSTREE_SIGN_GET_IFACE (self)->clear_keys (self, error);
 }
@@ -165,9 +165,9 @@ ostree_sign_set_sk (OstreeSign *self,
                     GVariant *secret_key,
                     GError **error)
 {
-
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   if (OSTREE_SIGN_GET_IFACE (self)->set_sk == NULL)
-    return TRUE;
+    return glnx_throw (error, "not implemented");
 
   return OSTREE_SIGN_GET_IFACE (self)->set_sk (self, secret_key, error);
 }
@@ -193,9 +193,9 @@ ostree_sign_set_pk (OstreeSign *self,
                     GVariant *public_key,
                     GError **error)
 {
-
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   if (OSTREE_SIGN_GET_IFACE (self)->set_pk == NULL)
-    return TRUE;
+    return glnx_throw (error, "not implemented");
 
   return OSTREE_SIGN_GET_IFACE (self)->set_pk (self, public_key, error);
 }
@@ -221,9 +221,9 @@ ostree_sign_add_pk (OstreeSign *self,
                     GVariant *public_key,
                     GError **error)
 {
-
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   if (OSTREE_SIGN_GET_IFACE (self)->add_pk == NULL)
-    return TRUE;
+    return glnx_throw (error, "not implemented");
 
   return OSTREE_SIGN_GET_IFACE (self)->add_pk (self, public_key, error);
 }
@@ -260,9 +260,9 @@ ostree_sign_load_pk (OstreeSign *self,
                      GVariant *options,
                      GError **error)
 {
-
+  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   if (OSTREE_SIGN_GET_IFACE (self)->load_pk == NULL)
-    return TRUE;
+    return glnx_throw (error, "not implemented");
 
   return OSTREE_SIGN_GET_IFACE (self)->load_pk (self, options, error);
 }
@@ -294,7 +294,8 @@ ostree_sign_data (OstreeSign *self,
 {
 
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-  g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->data != NULL, FALSE);
+  if (OSTREE_SIGN_GET_IFACE (self)->data == NULL)
+    return glnx_throw (error, "not implemented");
 
   return OSTREE_SIGN_GET_IFACE (self)->data (self, data, signature, cancellable, error);
 }
@@ -324,7 +325,8 @@ ostree_sign_data_verify (OstreeSign *self,
                          GError     **error)
 {
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-  g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->data_verify != NULL, FALSE);
+  if (OSTREE_SIGN_GET_IFACE (self)->data_verify == NULL)
+    return glnx_throw (error, "not implemented");
 
   return OSTREE_SIGN_GET_IFACE (self)->data_verify(self, data, signatures, error);
 }
