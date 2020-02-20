@@ -54,7 +54,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-num_tests=40
+num_tests=44
 # 3 tests needs GPG support
 num_gpg_tests=3
 if has_gpgme; then
@@ -718,6 +718,85 @@ if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin scratch 
 fi
 assert_file_has_content err.txt "Invalid checksum for static delta"
 echo "ok scratch delta (require static deltas with normal parent)"
+
+# Clean up the deltas so we don't leave a corrupt one around
+rm ostree-srv/gnomerepo/deltas -rf
+
+# Test using scratch deltas with unreachable commits but matching ref bindings.
+# Add a collection ID to the remote to make some commits with appropriate
+# bindings.
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo config set core.collection-id org.example.Repo
+rm ostree-srv/gnomerepo/deltas -rf
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo refs --delete scratch
+rm scratch-files -rf
+mkdir scratch-files
+echo "stuff for rev1" > scratch-files/rev1
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b scratch -s rev1 scratch-files
+rev1=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse scratch)
+echo "stuff for rev2" > scratch-files/rev2
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b scratch -s rev2 scratch-files
+rev2=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse scratch)
+echo "stuff for rev3" > scratch-files/rev3
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b scratch -s rev3 scratch-files
+rev3=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse scratch)
+rm scratch-files -rf
+
+# Make a scratch delta and then corrupt it so we can tell when the pull is
+# fetching the delta and not falling back to an object pull.
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta --empty generate scratch
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+superblock=$(find ostree-srv/gnomerepo/deltas -name superblock)
+echo FAIL > ${superblock}
+
+# Pull with a partial HEAD ref and partial unreachable commit with matching ref
+# bindings. This will search all commits for one bound to the requested ref and
+# find the partial grandparent. This should fail because it tries to pull the
+# scratch delta.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch@${rev1}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch
+if ${CMD_PREFIX} ostree --repo=repo pull origin scratch 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (partial HEAD and partial bound grandparent)"
+
+# Pull with a partial HEAD ref and normal unreachable commit with matching ref
+# bindings. This will search all commits for one bound to the requested ref and
+# find the normal grandparent. This will succeed with an object pull.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev1}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch
+${CMD_PREFIX} ostree --repo=repo pull origin scratch
+echo "ok scratch delta (partial HEAD and normal bound grandparent)"
+
+# Pull the HEAD by revision with a normal unreachable commit with matching ref
+# bindings but collection-id not set for the remote. Since the pull is by
+# revision, it will not have the collection ID set in the requested ref and the
+# search for the bound grandparent will fail. This should fail because it tries
+# to pull the scratch delta.
+repo_init --no-gpg-verify
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev1}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch@${rev3}
+if ${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev3} 2>err.txt; then
+    assert_not_reached "pull of corrupt scratch delta unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid checksum for static delta"
+echo "ok scratch delta (partial HEAD by revision, normal bound grandparent and no remote collection-id)"
+
+# Set the remote's collection ID and pull the HEAD by revision with a normal
+# unreachable commit with matching ref bindings but collection-id not set for
+# the remote. Since the pull is by revision, it will not have the collection ID
+# set in the requested ref, but the collection ref configured for the remote
+# will be used. This will succeed with an object pull.
+repo_init --no-gpg-verify --collection-id=org.example.Repo
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev1}
+${CMD_PREFIX} ostree --repo=repo pull origin --commit-metadata-only scratch@${rev3}
+${CMD_PREFIX} ostree --repo=repo pull origin scratch@${rev3}
+echo "ok scratch delta (partial HEAD by revision, normal bound grandparent and remote collection-id)"
+
+# Remove the remote repo's collection ID
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo config unset core.collection-id
 
 # Clean up the deltas so we don't leave a corrupt one around
 rm ostree-srv/gnomerepo/deltas -rf
