@@ -593,6 +593,8 @@ global:
   ostree_sysroot_set_mount_namespace_in_use;
 } LIBOSTREE_2019.6;
 
+/* No new symbols in 2020.2 */
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
