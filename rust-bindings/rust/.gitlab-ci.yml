@@ -33,7 +33,7 @@ check:
 build_all-features:
   stage: build
   script:
-  - cargo clippy --all --features latest -- -D warnings
+  - cargo clippy --all --features latest
   - cargo test --verbose --all --features latest
 
 build_default-features:
