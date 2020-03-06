@@ -107,6 +107,11 @@ pub fn commit_get_content_checksum(commit_variant: &glib::Variant) -> Option<GSt
     }
 }
 
+//#[cfg(any(feature = "v2020_1", feature = "dox"))]
+//pub fn commit_get_object_sizes(commit_variant: &glib::Variant, out_sizes_entries: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 21 }) -> Result<(), glib::Error> {
+//    unsafe { TODO: call ostree_sys:ostree_commit_get_object_sizes() }
+//}
+
 pub fn commit_get_parent(commit_variant: &glib::Variant) -> Option<GString> {
     unsafe {
         from_glib_full(ostree_sys::ostree_commit_get_parent(commit_variant.to_glib_none().0))
@@ -158,16 +163,16 @@ pub fn create_directory_metadata(dir_info: &gio::FileInfo, xattrs: Option<&glib:
     }
 }
 
-//pub fn diff_dirs<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 25 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, cancellable: Option<&R>) -> Result<(), glib::Error> {
+//pub fn diff_dirs<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 27 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, cancellable: Option<&R>) -> Result<(), glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_diff_dirs() }
 //}
 
 //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-//pub fn diff_dirs_with_options<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 25 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, options: /*Ignored*/Option<&mut DiffDirsOptions>, cancellable: Option<&R>) -> Result<(), glib::Error> {
+//pub fn diff_dirs_with_options<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(flags: DiffFlags, a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 27 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, options: /*Ignored*/Option<&mut DiffDirsOptions>, cancellable: Option<&R>) -> Result<(), glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_diff_dirs_with_options() }
 //}
 
-//pub fn diff_print<P: IsA<gio::File>, Q: IsA<gio::File>>(a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 25 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }) {
+//pub fn diff_print<P: IsA<gio::File>, Q: IsA<gio::File>>(a: &P, b: &Q, modified: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 27 }, removed: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }, added: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 4, id: 15 }) {
 //    unsafe { TODO: call ostree_sys:ostree_diff_print() }
 //}
 

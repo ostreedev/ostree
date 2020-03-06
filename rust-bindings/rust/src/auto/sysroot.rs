@@ -141,7 +141,7 @@ impl Sysroot {
         }
     }
 
-    //pub fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 20 } {
+    //pub fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 22 } {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_get_deployments() }
     //}
 
@@ -191,6 +191,22 @@ impl Sysroot {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_sysroot_init_osname(self.to_glib_none().0, osname.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2020_1", feature = "dox"))]
+    pub fn initialize(&self) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_sysroot_initialize(self.to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2020_1", feature = "dox"))]
+    pub fn is_booted(&self) -> bool {
+        unsafe {
+            from_glib(ostree_sys::ostree_sysroot_is_booted(self.to_glib_none().0))
         }
     }
 
@@ -252,6 +268,14 @@ impl Sysroot {
         }))
     }
 
+    pub fn lock_with_mount_namespace(&self) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_sysroot_lock_with_mount_namespace(self.to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     pub fn origin_new_from_refspec(&self, refspec: &str) -> Option<glib::KeyFile> {
         unsafe {
             from_glib_full(ostree_sys::ostree_sysroot_origin_new_from_refspec(self.to_glib_none().0, refspec.to_glib_none().0))
@@ -280,6 +304,13 @@ impl Sysroot {
     pub fn repo(&self) -> Option<Repo> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sysroot_repo(self.to_glib_none().0))
+        }
+    }
+
+    #[cfg(any(feature = "v2020_1", feature = "dox"))]
+    pub fn set_mount_namespace_in_use(&self) {
+        unsafe {
+            ostree_sys::ostree_sysroot_set_mount_namespace_in_use(self.to_glib_none().0);
         }
     }
 
@@ -323,12 +354,12 @@ impl Sysroot {
         }
     }
 
-    //pub fn write_deployments<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 20 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //pub fn write_deployments<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 22 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments() }
     //}
 
     //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 20 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 22 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments_with_options() }
     //}
 

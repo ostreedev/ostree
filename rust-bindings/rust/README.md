@@ -40,7 +40,7 @@ version as well:
 ```toml
 [dependencies.ostree]
 version = "0.7"
-features = ["v2019_6"]
+features = ["v2020_1"]
 ```
 
 ## Developing
