@@ -27,6 +27,7 @@ check:
   - cargo fmt --package ostree -- --check
   - rm -rf src/auto/
   - make gir
+  - git checkout -- sys/src/auto/versions.txt src/auto/versions.txt
   - git diff -R --exit-code
 
 # build

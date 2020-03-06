@@ -12,9 +12,7 @@ target/tools/bin/gir:
 
 gir: target/tools/bin/gir
 	target/tools/bin/gir -c conf/ostree-sys.toml
-	sed -i '/^from gir-files/d' sys/src/auto/versions.txt
 	target/tools/bin/gir -c conf/ostree.toml
-	sed -i '/^from gir-files/d' src/auto/versions.txt
 
 gir-report: gir
 	target/tools/bin/gir -c conf/ostree.toml -m not_bound
