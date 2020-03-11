@@ -5,8 +5,9 @@
 
 set -xeuo pipefail
 
-dn=$(dirname $0)
-. ${dn}/../libinsttest.sh
+. ${KOLA_EXT_DATA}/libinsttest.sh
+
+fatal "FIXME - need to also sync over the installed tests"
 
 date
 # These tests sort of bypass the installed-tests spec;

@@ -4,8 +4,9 @@
 
 set -xeuo pipefail
 
-dn=$(dirname $0)
-. ${dn}/../libinsttest.sh
+. ${KOLA_EXT_DATA}/libinsttest.sh
+
+require_writable_sysroot
 
 date
 # Create a new deployment
@@ -35,8 +36,8 @@ ostree admin undeploy 0
 
 cd /ostree/repo/tmp
 ostree checkout --fsync=0 -H ${host_commit} test-label
-rm test-label/usr/lib/ostree-boot/vmlinuz*
-rm test-label/usr/lib/ostree-boot/initramfs*
+rm -vf test-label/usr/lib/ostree-boot/vmlinuz*
+rm -vf test-label/usr/lib/ostree-boot/initramfs*
 cd test-label/usr/lib/modules/*
 rm initramfs.img
 echo new initramfs > initramfs.img

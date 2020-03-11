@@ -1,14 +1,21 @@
-# Test the deploy --stage functionality; first, we stage a deployment
-# reboot, and validate that it worked.
+#!/bin/bash
+set -xeuo pipefail
 
-# for now, until the preset propagates down
-- name: Start up path unit
-  shell: |
-    set -xeuo pipefail
+. ${KOLA_EXT_DATA}/libinsttest.sh
+
+require_writable_sysroot
+prepare_tmpdir
+
+n=$(nth_boot)
+case "${n}" in
+  1)
+    commit=${host_commit}
+  # Test the deploy --stage functionality; first, we stage a deployment
+  # reboot, and validate that it worked.
+  # for now, until the preset propagates down
+  # Start up path unit
     systemctl enable --now ostree-finalize-staged.path
-- name: Write staged-deploy commit
-  shell: |
-    set -xeuo pipefail
+  # Write staged-deploy commit
     export OSTREE_SYSROOT_DEBUG="test-staged-path"
     cd /ostree/repo/tmp
     # https://github.com/ostreedev/ostree/issues/1569
@@ -20,10 +27,7 @@
     systemctl show -p ActiveState ostree-finalize-staged.service | grep -q inactive
     systemctl show -p TriggeredBy ostree-finalize-staged.service | grep -q path
     ostree admin deploy --stage staged-deploy | tee out.txt
-    if ! grep -q 'test-staged-path: Not running' out.txt; then
-      cat out.txt
-      exit 1
-    fi
+    assert_file_has_content out.txt 'test-staged-path: Not running'
     systemctl show -p SubState ostree-finalize-staged.path | grep running
     systemctl show -p ActiveState ostree-finalize-staged.service | grep active
     new_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
@@ -37,24 +41,22 @@
     test -f deployment-ref-found
     rm deployment-ref-found
     if ostree admin pin 0 2>err.txt; then
-      echo "Pinned staged deployment"; exit 1
+      fatal "Pinned staged deployment"
     fi
-    grep -qFe 'Cannot pin staged deployment' err.txt
-  environment:
-    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
-- include_tasks: ../tasks/reboot.yml
-- name: Check that deploy-staged service worked
-  shell: |
-    set -xeuo pipefail
+    assert_file_has_content err.txt 'Cannot pin staged deployment'
+    kola_reboot
+    ;;
+  2) 
+    # Check that deploy-staged service worked
     rpm-ostree status
     # Assert that the previous boot had a journal entry for it
-    journalctl -b "-1" -u ostree-finalize-staged.service | grep -q -e 'Transaction complete'
+    journalctl -b "-1" -u ostree-finalize-staged.service > svc.txt
+    assert_file_has_content svc.txt 'Bootloader updated; bootconfig swap: yes; deployment count change: 1'
+    rm -f svc.txt
     # And there should not be a staged deployment
     test '!' -f /run/ostree/staged-deployment
 
-- name: Upgrade with staging
-  shell: |
-    set -xeuo pipefail
+    # Upgrade with staging
     test '!' -f /run/ostree/staged-deployment
     ostree admin deploy --stage staged-deploy
     test -f /run/ostree/staged-deployment
@@ -67,27 +69,25 @@
     test -f /run/ostree/staged-deployment
     # Debating bouncing back out to Ansible for this
     firstdeploycommit=$(rpm-ostree status |grep 'Commit:' |head -1|sed -e 's,^ *Commit: *,,')
-    test "${firstdeploycommit}" = "${newcommit}"
+    assert_streq "${firstdeploycommit}" "${newcommit}"
     # Cleanup
     rpm-ostree cleanup -rp
-- import_tasks: ../tasks/query-host.yml
+    echo "ok upgrade with staging"
 
-# Ensure we can unstage
-- name: Write staged-deploy commit, then unstage
-  shell: |
-    set -xeuo pipefail
+    # Ensure we can unstage
+    # Write staged-deploy commit, then unstage
     ostree admin deploy --stage staged-deploy
     ostree admin status > status.txt
-    grep -qFe '(staged)' status.txt
+    assert_file_has_content_literal status.txt '(staged)'
     test -f /run/ostree/staged-deployment
     ostree admin undeploy 0
     ostree admin status > status.txt
     grep -vqFe '(staged)' status.txt
     test '!' -f /run/ostree/staged-deployment
+    echo "ok unstage"
 
-- name: Staged should be overwritten by non-staged as first
-  shell: |
-    set -xeuo pipefail
+   # Staged should be overwritten by non-staged as first
+    commit=$(rpmostree_query_json '.deployments[0].checksum')
     ostree admin deploy --stage staged-deploy
     test -f /run/ostree/staged-deployment
     ostree --repo=/ostree/repo refs --create nonstaged-deploy "${commit}"
@@ -96,22 +96,23 @@
     grep -vqFe '(staged)' status.txt
     test '!' -f /run/ostree/staged-deployment
     ostree admin undeploy 0
-  environment:
-    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
+    echo "ok staged overwritten by non-staged"
 
-- name: Staged is retained when pushing rollback
-  shell: |
-    set -xeuo pipefail
+  # Staged is retained when pushing rollback
+    commit=$(rpmostree_query_json '.deployments[0].checksum')
     ostree admin deploy --stage staged-deploy
     test -f /run/ostree/staged-deployment
     ostree admin deploy --retain-pending --not-as-default nonstaged-deploy
     test -f /run/ostree/staged-deployment
     ostree admin status > status.txt
-    grep -qFe '(staged)' status.txt
+    assert_file_has_content_literal status.txt '(staged)'
     ostree admin undeploy 0
     ostree admin undeploy 1
-  environment:
-    commit: "{{ rpmostree_status['deployments'][0]['checksum'] }}"
+    echo "ok staged retained"
 
-- name: Cleanup refs
-  shell: ostree refs --delete staged-deploy nonstaged-deploy 
+    # Cleanup refs
+    ostree refs --delete staged-deploy nonstaged-deploy
+    echo "ok cleanup refs"
+    ;;
+  *) fatal "Unexpected boot count" ;;
+esac
