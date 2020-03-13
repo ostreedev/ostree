@@ -82,6 +82,15 @@ parallel fcos: {
         shwrap("cosa kola run --basic-qemu-scenarios")
       }
     }
+    stage("FCOS upgrades") {
+      timeout(time: 30, unit: 'MINUTES') {
+        shwrap("""
+          cosa kola --upgrades --no-test-exit-error
+          tar -cf - tmp/kola-upgrade | xz -c9 > kola-run-upgrade.tar.xz
+          """)
+        archiveArtifacts "kola-run-upgrade.tar.xz"
+      }
+    }
   }
 },
 buildopts: {
