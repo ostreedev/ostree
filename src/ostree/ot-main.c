@@ -28,6 +28,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/statvfs.h>
+#include <sys/mount.h>
+#include <linux/fs.h>
 
 #include "ot-main.h"
 #include "ostree.h"
@@ -98,6 +100,49 @@ ostree_usage (OstreeCommand *commands,
     g_print ("%s", help);
 
   return (is_error ? 1 : 0);
+}
+
+/* If we're running as root, booted into an OSTree system and have a read-only
+ * /sysroot, then assume we may need write access.  Create a new mount namespace
+ * if so, and return *out_ns = TRUE.  Otherwise, *out_ns = FALSE.
+ */
+static gboolean
+maybe_setup_mount_namespace (gboolean    *out_ns,
+                             GError     **error)
+{
+  *out_ns = FALSE;
+
+  /* If we're not root, then we almost certainly can't be remounting anything */
+  if (getuid () != 0)
+    return TRUE;
+
+  /* If the system isn't booted via libostree, also nothing to do */
+  if (!glnx_fstatat_allow_noent (AT_FDCWD, "/run/ostree-booted", NULL, 0, error))
+    return FALSE;
+  if (errno == ENOENT)
+    return TRUE;
+
+  glnx_autofd int sysroot_subdir_fd = glnx_opendirat_with_errno (AT_FDCWD, "/sysroot", TRUE);
+  if (sysroot_subdir_fd < 0)
+    {
+      if (errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "opendirat");
+      /* No /sysroot - nothing to do */
+      return TRUE;
+    }
+
+  struct statvfs stvfs;
+  if (fstatvfs (sysroot_subdir_fd, &stvfs) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs");
+  if (stvfs.f_flag & ST_RDONLY)
+    {
+      if (unshare (CLONE_NEWNS) < 0)
+        return glnx_throw_errno_prefix (error, "preparing writable sysroot: unshare (CLONE_NEWNS)");
+
+      *out_ns = TRUE;
+    }
+
+  return TRUE;
 }
 
 static void
@@ -219,6 +264,19 @@ parse_repo_option (GOptionContext *context,
                    GError        **error)
 {
   g_autoptr(OstreeRepo) repo = NULL;
+
+  /* This is a bit of a brutal hack; we set up a mount
+   * namespace if it appears that we may need it.  It'd
+   * be better to do this more precisely in the future.
+   */
+  gboolean setup_ns = FALSE;
+  if (!maybe_setup_mount_namespace (&setup_ns, error))
+    return FALSE;
+  if (setup_ns)
+    {
+      if (mount ("/sysroot", "/sysroot", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+        return glnx_null_throw_errno_prefix (error, "Remounting /sysroot read-write");
+    }
 
   if (repo_path == NULL)
     {
@@ -452,27 +510,11 @@ ostree_admin_option_context_parse (GOptionContext *context,
        */
       if (ostree_sysroot_is_booted (sysroot))
         {
-          int sysroot_fd = ostree_sysroot_get_fd (sysroot);
-          g_assert_cmpint (sysroot_fd, !=, -1);
-
-          glnx_autofd int sysroot_subdir_fd = glnx_opendirat_with_errno (sysroot_fd, "sysroot", TRUE);
-          if (sysroot_subdir_fd < 0)
-            {
-              if (errno != ENOENT)
-                return glnx_throw_errno_prefix (error, "opendirat");
-            }
-          else if (getuid () == 0)
-            {
-              struct statvfs stvfs;
-              if (fstatvfs (sysroot_subdir_fd, &stvfs) < 0)
-                return glnx_throw_errno_prefix (error, "fstatvfs");
-              if (stvfs.f_flag & ST_RDONLY)
-                {
-                  if (unshare (CLONE_NEWNS) < 0)
-                    return glnx_throw_errno_prefix (error, "preparing writable sysroot: unshare (CLONE_NEWNS)");
-                  ostree_sysroot_set_mount_namespace_in_use (sysroot);
-                }
-            }
+          gboolean setup_ns = FALSE;
+          if (!maybe_setup_mount_namespace (&setup_ns, error))
+            return FALSE;
+          if (setup_ns)
+            ostree_sysroot_set_mount_namespace_in_use (sysroot);
         }
 
       /* Released when sysroot is finalized, or on process exit */
