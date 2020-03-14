@@ -2,15 +2,15 @@ AC_PREREQ([2.63])
 dnl To do a release: follow the instructions to update libostree-released.sym from
 dnl libostree-devel.sym, update the checksum in test-symbols.sh, set is_release_build=yes
 dnl below. Then make another post-release commit to bump the version and set
-dnl is_release_build=yes
+dnl is_release_build=no.
 dnl Seed the release notes with `git-shortlog-with-prs <previous-release>..`. Then use
 dnl `git-evtag` to create the tag and push it. Finally, create a GitHub release and attach
 dnl the tarball from `make dist`.
 m4_define([year_version], [2020])
-m4_define([release_version], [3])
+m4_define([release_version], [4])
 m4_define([package_version], [year_version.release_version])
 AC_INIT([libostree], [package_version], [walters@verbum.org])
-is_release_build=yes
+is_release_build=no
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
