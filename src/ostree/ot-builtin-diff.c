@@ -142,7 +142,7 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
   g_autoptr(GPtrArray) removed = NULL;
   g_autoptr(GPtrArray) added = NULL;
 
-  context = g_option_context_new ("REV TARGETDIR");
+  context = g_option_context_new ("REV_OR_DIR REV_OR_DIR");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
