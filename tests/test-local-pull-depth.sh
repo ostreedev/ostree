@@ -34,21 +34,31 @@ ostree_repo_init repo2 --mode="archive"
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 find repo2/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
+find repo2/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=0 repo
 find repo2/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
+find repo2/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
+
+${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=1 --commit-metadata-only repo
+find repo2/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^2$"
+find repo2/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^1$"
 
 ${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=1 repo
 find repo2/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^2$"
-
-${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=1 repo
-find repo2/objects -name '*.commit' | wc -l > commitcount
-assert_file_has_content commitcount "^2$"
+find repo2/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=-1 repo
 find repo2/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^2$"
+find repo2/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 echo "ok local pull depth"
