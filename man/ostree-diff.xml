@@ -51,7 +51,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree diff</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">REV</arg> <arg choice="req">TARGETDIR</arg>
+              <command>ostree diff</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">REV_OR_DIR</arg> <arg choice="req">REV_OR_DIR</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -59,7 +59,7 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Compare directory TARGETDIR against revision REV.  Shows files and directories modified, added, and deleted.  If there is a file in TARGETDIR not in REV, it will show with an "A" for "added".  If a file in REV is not in TARGETDIR, it shows "D" for "deleted".  "M" for "modified" will also show.
+          Compare a directory or revision against another directory or revision. If REV_OR_DIR starts with `/` or `./`, it is interpreted as a directory, otherwise a revision. Shows files and directories modified, added, and deleted.  If there is a file in the second REV_OR_DIR not in the first, it will show with an "A" for "added".  If a file in the first REV_OR_DIR is not in the second, it shows "D" for "deleted".  "M" for "modified" will also show.
         </para>
     </refsect1>
 
