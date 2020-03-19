@@ -4719,6 +4719,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           if (!ostree_repo_mark_commit_partial (pull_data->repo, commit, FALSE, error))
             goto out;
         }
+
+      /* and finally any parent commits we might also have pulled because of depth>0 */
+      GLNX_HASH_TABLE_FOREACH (pull_data->commit_to_depth, const char*, commit)
+        {
+          if (!ostree_repo_mark_commit_partial (pull_data->repo, commit, FALSE, error))
+            goto out;
+        }
     }
 
   ret = TRUE;
