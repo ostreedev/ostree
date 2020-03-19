@@ -4,11 +4,12 @@
 
 set -xeuo pipefail
 
-dn=$(dirname $0)
-. ${dn}/../libinsttest.sh
+. ${KOLA_EXT_DATA}/libinsttest.sh
 
 echo "1..2"
 date
+
+require_writable_sysroot
 
 cd /ostree/repo/tmp
 rm co -rf

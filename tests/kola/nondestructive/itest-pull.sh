@@ -7,8 +7,7 @@ set -xeuo pipefail
 # FIXME: https://github.com/ostreedev/ostree/pull/1548
 exit 0
 
-dn=$(dirname $0)
-. ${dn}/../libinsttest.sh
+. ${KOLA_EXT_DATA}/libinsttest.sh
 date
 
 prepare_tmpdir /var/tmp

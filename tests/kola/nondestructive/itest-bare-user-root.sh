@@ -4,8 +4,7 @@
 
 set -xeuo pipefail
 
-dn=$(dirname $0)
-. ${dn}/../libinsttest.sh
+. ${KOLA_EXT_DATA}/libinsttest.sh
 
 echo "1..1"
 date

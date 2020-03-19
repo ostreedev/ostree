@@ -3,14 +3,10 @@
 
 set -xeuo pipefail
 
-dn=$(dirname $0)
-. ${dn}/../libinsttest.sh
+. ${KOLA_EXT_DATA}/libinsttest.sh
 date
 
 prepare_tmpdir
-trap _tmpdir_cleanup EXIT
-
-cd ${test_tmpdir}
 truncate -s 20MB testblk.img
 blkdev=$(losetup --find --show $(pwd)/testblk.img)
 mkfs.xfs ${blkdev}
@@ -51,9 +47,7 @@ rm -rf mnt/repo
 ostree --repo=mnt/repo init --mode=bare-user
 echo 'fsync=false' >> mnt/repo/config
 echo 'min-free-space-size=10MB' >> mnt/repo/config
-if ostree --repo=mnt/repo pull-local --commit-metadata-only /ostree/repo ${host_commit} 2>err.txt; then
-    fatal "could not write metadata objects even when min-free-space value should allow it"
-fi
+ostree --repo=mnt/repo pull-local --commit-metadata-only /ostree/repo ${host_commit}
 echo "ok metadata write even when free space is lower than min-free-space value"
 
 rm -rf mnt/repo
