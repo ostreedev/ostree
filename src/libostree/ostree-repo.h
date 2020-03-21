@@ -692,6 +692,13 @@ void ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier         
                                                OstreeSePolicy                        *sepolicy);
 
 _OSTREE_PUBLIC
+gboolean ostree_repo_commit_modifier_set_sepolicy_from_commit (OstreeRepoCommitModifier              *modifier,
+                                                               OstreeRepo                            *repo,
+                                                               const char                            *commit,
+                                                               GCancellable                          *cancellable,
+                                                               GError                               **error);
+
+_OSTREE_PUBLIC
 void ostree_repo_commit_modifier_set_devino_cache (OstreeRepoCommitModifier              *modifier,
                                                    OstreeRepoDevInoCache                 *cache);
 
