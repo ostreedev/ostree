@@ -4147,7 +4147,7 @@ content, the other types are metadata.</doc>
       </member>
     </enumeration>
     <constant name="RELEASE_VERSION"
-              value="2"
+              value="3"
               c:type="OSTREE_RELEASE_VERSION"
               version="2017.4">
       <doc xml:space="preserve"
@@ -15766,7 +15766,7 @@ users who had been using zero before.</doc>
       <source-position filename="ostree-tls-cert-interaction.h" line="35"/>
     </record>
     <constant name="VERSION"
-              value="2020.200000"
+              value="2020.300000"
               c:type="OSTREE_VERSION"
               version="2017.4">
       <doc xml:space="preserve"
@@ -15776,7 +15776,7 @@ users who had been using zero before.</doc>
       <type name="gdouble" c:type="gdouble"/>
     </constant>
     <constant name="VERSION_S"
-              value="2020.2"
+              value="2020.3"
               c:type="OSTREE_VERSION_S"
               version="2017.4">
       <doc xml:space="preserve"
