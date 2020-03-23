@@ -2326,10 +2326,7 @@ out:
 
   return ret;
 #else /* OSTREE_DISABLE_GPGME */
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "'%s': GPG feature is disabled in a build time",
-               __FUNCTION__);
-  return FALSE;
+  return glnx_throw (error, "GPG feature is disabled in a build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -4974,10 +4971,7 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
 
   return TRUE;
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "'%s': GPG feature is disabled in a build time",
-               __FUNCTION__);
-  return FALSE;
+  return glnx_throw (error, "GPG feature is disabled in a build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5129,7 +5123,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   return TRUE;
 #else
   /* FIXME: Return false until refactoring */
-  return FALSE;
+  return glnx_throw (error, "GPG feature is disabled in a build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5221,10 +5215,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
 
   return TRUE;
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-          "'%s': GPG feature is disabled in a build time",
-          __FUNCTION__);
-  return FALSE;
+  return glnx_throw (error, "GPG feature is disabled in a build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5498,10 +5489,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
   return TRUE;
 #else
   /* FIXME: Return false until refactoring */
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-          "'%s': GPG feature is disabled in a build time",
-          __FUNCTION__);
-  return FALSE;
+  return glnx_throw (error, "GPG feature is disabled in a build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5536,9 +5524,7 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                               cancellable,
                                               error);
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-          "'%s': GPG feature is disabled in a build time",
-          __FUNCTION__);
+  glnx_throw (error, "GPG feature is disabled in a build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
@@ -5575,9 +5561,7 @@ ostree_repo_verify_commit_for_remote (OstreeRepo    *self,
                                               cancellable,
                                               error);
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-          "'%s': GPG feature is disabled in a build time",
-          __FUNCTION__);
+  glnx_throw (error, "GPG feature is disabled in a build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
@@ -5627,9 +5611,7 @@ ostree_repo_gpg_verify_data (OstreeRepo    *self,
                                                 cancellable,
                                                 error);
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-          "'%s': GPG feature is disabled in a build time",
-          __FUNCTION__);
+  glnx_throw (error, "GPG feature is disabled in a build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
@@ -5675,9 +5657,7 @@ ostree_repo_verify_summary (OstreeRepo    *self,
                                                 cancellable,
                                                 error);
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-          "'%s': GPG feature is disabled in a build time",
-          __FUNCTION__);
+  glnx_throw (error, "GPG feature is disabled in a build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
