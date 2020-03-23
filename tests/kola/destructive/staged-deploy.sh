@@ -71,6 +71,8 @@ case "${n}" in
     firstdeploycommit=$(rpm-ostree status |grep 'Commit:' |head -1|sed -e 's,^ *Commit: *,,')
     assert_streq "${firstdeploycommit}" "${newcommit}"
     # Cleanup
+    ## TODO remove workaround for https://github.com/coreos/rpm-ostree/pull/2021
+    mkdir -p /var/lib/rpm-ostree/history
     rpm-ostree cleanup -rp
     echo "ok upgrade with staging"
 

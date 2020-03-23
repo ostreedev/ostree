@@ -5,6 +5,7 @@
 set -xeuo pipefail
 
 . ${KOLA_EXT_DATA}/libinsttest.sh
+require_writable_sysroot
 
 date
 cd /ostree/repo/tmp
