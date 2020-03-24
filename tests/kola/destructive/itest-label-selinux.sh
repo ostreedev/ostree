@@ -6,6 +6,7 @@ set -xeuo pipefail
 
 . ${KOLA_EXT_DATA}/libinsttest.sh
 require_writable_sysroot
+prepare_tmpdir /var/tmp
 
 date
 cd /ostree/repo/tmp
@@ -87,3 +88,19 @@ rm co -rf
 ostree refs --delete testbranch
 echo "ok checkout selinux and skip-list"
 date
+
+mkdir -p usr/{bin,lib,etc}
+echo 'somebinary' > usr/bin/somebinary
+ls -Z usr/bin/somebinary > lsz.txt
+assert_not_file_has_content lsz.txt ':bin_t:'
+rm -f lsz.txt
+echo 'somelib' > usr/lib/somelib.so
+echo 'someconf' > usr/etc/some.conf
+ostree commit -b newbase --selinux-policy-from-base --tree=ref=${host_refspec} --tree=dir=$(pwd)
+ostree ls -X newbase /usr/bin/somebinary > newls.txt
+assert_file_has_content newls.txt ':bin_t:'
+ostree ls -X newbase /usr/lib/somelib.so > newls.txt
+assert_file_has_content newls.txt ':lib_t:'
+ostree ls -X newbase /usr/etc/some.conf > newls.txt
+assert_file_has_content newls.txt ':etc_t:'
+echo "ok commit --selinux-policy-from-base"

@@ -20,7 +20,7 @@
 /* Add new symbols here.  Release commits should copy this section into -released.sym. */
 LIBOSTREE_2020.2 {
 global:
-  someostree_symbol_deleteme;
+  ostree_repo_commit_modifier_set_sepolicy_from_commit;
 } LIBOSTREE_2020.1;
 
 /* Stub section for the stable release *after* this development one; don't

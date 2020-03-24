@@ -76,6 +76,7 @@ struct OstreeRepoCommitModifier {
   GDestroyNotify xattr_destroy;
   gpointer xattr_user_data;
 
+  GLnxTmpDir sepolicy_tmpdir;
   OstreeSePolicy *sepolicy;
   GHashTable *devino_cache;
 };

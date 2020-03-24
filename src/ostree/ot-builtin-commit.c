@@ -53,6 +53,7 @@ static gboolean opt_tar_autocreate_parents;
 static char *opt_tar_pathname_filter;
 static gboolean opt_no_xattrs;
 static char *opt_selinux_policy;
+static gboolean opt_selinux_policy_from_base;
 static gboolean opt_canonical_permissions;
 static gboolean opt_consume;
 static gboolean opt_devino_canonical;
@@ -107,6 +108,7 @@ static GOptionEntry options[] = {
   { "canonical-permissions", 0, 0, G_OPTION_ARG_NONE, &opt_canonical_permissions, "Canonicalize permissions in the same way bare-user does for hardlinked files", NULL },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
   { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
+  { "selinux-policy-from-base", 'P', 0, G_OPTION_ARG_NONE, &opt_selinux_policy_from_base, "Set SELinux labels based on first --tree argument", NULL },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
   { "devino-canonical", 'I', 0, G_OPTION_ARG_NONE, &opt_devino_canonical, "Assume hardlinked objects are unmodified.  Implies --link-checkout-speedup", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
@@ -550,6 +552,11 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
+  if (opt_selinux_policy && opt_selinux_policy_from_base)
+    {
+      glnx_throw (error, "Cannot specify both --selinux-policy and --selinux-policy-from-base");
+      goto out;
+    }
 
   if (flags != 0
       || opt_owner_uid >= 0
@@ -557,25 +564,13 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       || opt_statoverride_file != NULL
       || opt_skiplist_file != NULL
       || opt_no_xattrs
-      || opt_selinux_policy)
+      || opt_selinux_policy
+      || opt_selinux_policy_from_base)
     {
       filter_data.mode_adds = mode_adds;
       filter_data.skip_list = skip_list;
       modifier = ostree_repo_commit_modifier_new (flags, commit_filter,
                                                   &filter_data, NULL);
-      if (opt_selinux_policy)
-        {
-          glnx_autofd int rootfs_dfd = -1;
-          if (!glnx_opendirat (AT_FDCWD, opt_selinux_policy, TRUE, &rootfs_dfd, error))
-            {
-              g_prefix_error (error, "selinux-policy: ");
-              goto out;
-            }
-          policy = ostree_sepolicy_new_at (rootfs_dfd, cancellable, error);
-          if (!policy)
-            goto out;
-          ostree_repo_commit_modifier_set_sepolicy (modifier, policy);
-        }
     }
 
   if (opt_editor)
@@ -621,6 +616,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_assert (opt_trees && *opt_trees);
   for (tree_iter = (const char *const*)opt_trees; *tree_iter; tree_iter++)
     {
+      const gboolean first = (tree_iter == (const char *const*)opt_trees);
       tree = *tree_iter;
 
       eq = strchr (tree, '=');
@@ -637,12 +633,33 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       g_clear_object (&object_to_commit);
       if (strcmp (tree_type, "dir") == 0)
         {
+          if (first && opt_selinux_policy_from_base)
+            {
+              opt_selinux_policy = g_strdup (tree);
+              opt_selinux_policy_from_base = FALSE;
+            }
+          if (first && opt_selinux_policy)
+            {
+              g_assert (modifier);
+              glnx_autofd int rootfs_dfd = -1;
+              if (!glnx_opendirat (AT_FDCWD, opt_selinux_policy, TRUE, &rootfs_dfd, error))
+                goto out;
+              policy = ostree_sepolicy_new_at (rootfs_dfd, cancellable, error);
+              if (!policy)
+                goto out;
+              ostree_repo_commit_modifier_set_sepolicy (modifier, policy);
+            }
           if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, tree, mtree, modifier,
                                                 cancellable, error))
             goto out;
         }
       else if (strcmp (tree_type, "tar") == 0)
         {
+          if (first && opt_selinux_policy_from_base)
+            {
+              glnx_throw (error, "Cannot use --selinux-policy-from-base with tar");
+              goto out;
+            }
           if (!opt_tar_pathname_filter)
             {
               if (strcmp (tree, "-") == 0)
@@ -707,6 +724,12 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
         }
       else if (strcmp (tree_type, "ref") == 0)
         {
+          if (first && opt_selinux_policy_from_base)
+            {
+              g_assert (modifier);
+              if (!ostree_repo_commit_modifier_set_sepolicy_from_commit (modifier, repo, tree, cancellable, error))
+                goto out;
+            }
           if (!ostree_repo_read_commit (repo, tree, &object_to_commit, NULL, cancellable, error))
             goto out;
 
