@@ -601,127 +601,125 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   mtree = ostree_mutable_tree_new ();
 
-  if (argc <= 1 && (opt_trees == NULL || opt_trees[0] == NULL))
+  /* Convert implicit . or explicit path via argv into
+   * --tree=dir= so that we only have one primary code path below.
+   */
+  if (opt_trees == NULL || opt_trees[0] == NULL)
     {
-      if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, ".", mtree, modifier,
-                                           cancellable, error))
-        goto out;
+      char *path;
+      if (argc <= 1)
+        path = ".";
+      else
+        path = argv[1];
+      opt_trees = g_new0 (char *, 2);
+      opt_trees[0] = g_strconcat ("dir=", path, NULL);
     }
-  else if (opt_trees != NULL)
+
+  const char *const*tree_iter;
+  const char *tree;
+  const char *eq;
+  g_assert (opt_trees && *opt_trees);
+  for (tree_iter = (const char *const*)opt_trees; *tree_iter; tree_iter++)
     {
-      const char *const*tree_iter;
-      const char *tree;
-      const char *eq;
+      tree = *tree_iter;
 
-      for (tree_iter = (const char *const*)opt_trees; *tree_iter; tree_iter++)
+      eq = strchr (tree, '=');
+      if (!eq)
         {
-          tree = *tree_iter;
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "Missing type in tree specification '%s'", tree);
+          goto out;
+        }
+      g_free (tree_type);
+      tree_type = g_strndup (tree, eq - tree);
+      tree = eq + 1;
 
-          eq = strchr (tree, '=');
-          if (!eq)
+      g_clear_object (&object_to_commit);
+      if (strcmp (tree_type, "dir") == 0)
+        {
+          if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, tree, mtree, modifier,
+                                                cancellable, error))
+            goto out;
+        }
+      else if (strcmp (tree_type, "tar") == 0)
+        {
+          if (!opt_tar_pathname_filter)
             {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Missing type in tree specification '%s'", tree);
-              goto out;
-            }
-          g_free (tree_type);
-          tree_type = g_strndup (tree, eq - tree);
-          tree = eq + 1;
-
-          g_clear_object (&object_to_commit);
-          if (strcmp (tree_type, "dir") == 0)
-            {
-              if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, tree, mtree, modifier,
-                                                   cancellable, error))
-                goto out;
-            }
-          else if (strcmp (tree_type, "tar") == 0)
-            {
-              if (!opt_tar_pathname_filter)
+              if (strcmp (tree, "-") == 0)
                 {
-                  if (strcmp (tree, "-") == 0)
-                    {
-                      if (!ostree_repo_write_archive_to_mtree_from_fd (repo, STDIN_FILENO, mtree, modifier,
-                                                                       opt_tar_autocreate_parents,
-                                                                       cancellable, error))
-                        goto out;
-                    }
-                  else
-                    {
-                      object_to_commit = g_file_new_for_path (tree);
-
-                      if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, mtree, modifier,
-                                                               opt_tar_autocreate_parents,
-                                                               cancellable, error))
-                        goto out;
-                    }
+                  if (!ostree_repo_write_archive_to_mtree_from_fd (repo, STDIN_FILENO, mtree, modifier,
+                                                                    opt_tar_autocreate_parents,
+                                                                    cancellable, error))
+                    goto out;
                 }
               else
                 {
-#ifdef HAVE_LIBARCHIVE
-                  const char *comma = strchr (opt_tar_pathname_filter, ',');
-                  if (!comma)
-                    {
-                      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                           "Missing ',' in --tar-pathname-filter");
-                      goto out;
-                    }
-                  const char *replacement = comma + 1;
-                  g_autofree char *regexp_text = g_strndup (opt_tar_pathname_filter, comma - opt_tar_pathname_filter);
-                  /* Use new API if we have a pathname filter */
-                  OstreeRepoImportArchiveOptions opts = { 0, };
-                  opts.autocreate_parents = opt_tar_autocreate_parents;
-                  opts.translate_pathname = handle_translate_pathname;
-                  g_autoptr(GRegex) regexp = g_regex_new (regexp_text, 0, 0, error);
-                  TranslatePathnameData tpdata = { regexp, replacement };
-                  if (!regexp)
-                    {
-                      g_prefix_error (error, "--tar-pathname-filter: ");
-                      goto out;
-                    }
-                  opts.translate_pathname_user_data = &tpdata;
+                  object_to_commit = g_file_new_for_path (tree);
 
-                  g_autoptr(OtAutoArchiveRead) archive;
-                  if (strcmp (tree, "-") == 0)
-                    archive = ot_open_archive_read_fd (STDIN_FILENO, error);
-                  else
-                    archive = ot_open_archive_read (tree, error);
-
-                  if (!archive)
+                  if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, mtree, modifier,
+                                                            opt_tar_autocreate_parents,
+                                                            cancellable, error))
                     goto out;
-                  if (!ostree_repo_import_archive_to_mtree (repo, &opts, archive, mtree,
-                                                            modifier, cancellable, error))
-                    goto out;
-#else
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                               "This version of ostree is not compiled with libarchive support");
-                  goto out;
-#endif
                 }
-            }
-          else if (strcmp (tree_type, "ref") == 0)
-            {
-              if (!ostree_repo_read_commit (repo, tree, &object_to_commit, NULL, cancellable, error))
-                goto out;
-
-              if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, modifier,
-                                                         cancellable, error))
-                goto out;
             }
           else
             {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Invalid tree type specification '%s'", tree_type);
+#ifdef HAVE_LIBARCHIVE
+              const char *comma = strchr (opt_tar_pathname_filter, ',');
+              if (!comma)
+                {
+                  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                        "Missing ',' in --tar-pathname-filter");
+                  goto out;
+                }
+              const char *replacement = comma + 1;
+              g_autofree char *regexp_text = g_strndup (opt_tar_pathname_filter, comma - opt_tar_pathname_filter);
+              /* Use new API if we have a pathname filter */
+              OstreeRepoImportArchiveOptions opts = { 0, };
+              opts.autocreate_parents = opt_tar_autocreate_parents;
+              opts.translate_pathname = handle_translate_pathname;
+              g_autoptr(GRegex) regexp = g_regex_new (regexp_text, 0, 0, error);
+              TranslatePathnameData tpdata = { regexp, replacement };
+              if (!regexp)
+                {
+                  g_prefix_error (error, "--tar-pathname-filter: ");
+                  goto out;
+                }
+              opts.translate_pathname_user_data = &tpdata;
+
+              g_autoptr(OtAutoArchiveRead) archive;
+              if (strcmp (tree, "-") == 0)
+                archive = ot_open_archive_read_fd (STDIN_FILENO, error);
+              else
+                archive = ot_open_archive_read (tree, error);
+
+              if (!archive)
+                goto out;
+              if (!ostree_repo_import_archive_to_mtree (repo, &opts, archive, mtree,
+                                                        modifier, cancellable, error))
+                goto out;
+#else
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                            "This version of ostree is not compiled with libarchive support");
               goto out;
+#endif
             }
         }
-    }
-  else
-    {
-      g_assert (argc > 1);
-      if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, argv[1], mtree, modifier,
-                                           cancellable, error))
-        goto out;
+      else if (strcmp (tree_type, "ref") == 0)
+        {
+          if (!ostree_repo_read_commit (repo, tree, &object_to_commit, NULL, cancellable, error))
+            goto out;
+
+          if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, modifier,
+                                                      cancellable, error))
+            goto out;
+        }
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "Invalid tree type specification '%s'", tree_type);
+          goto out;
+        }
     }
 
   if (mode_adds && g_hash_table_size (mode_adds) > 0)
