@@ -92,8 +92,8 @@ pushd ${test_tmpdir}
 ostree_repo_init repo --mode=archive
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
-# Using 8 network retries gives error rate of <0.5%, when --random-408s=50
-${CMD_PREFIX} ostree --repo=repo pull --mirror origin --network-retries=8 main
+# We limit 408s above to 100, so 100 retries should be enough always.
+${CMD_PREFIX} ostree --repo=repo pull --mirror origin --network-retries=100 main
 echo "Success with big number of network retries"
 
 ${CMD_PREFIX} ostree --repo=repo fsck
