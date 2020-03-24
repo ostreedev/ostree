@@ -284,6 +284,9 @@ gboolean
 _ostree_sysroot_ensure_writable (OstreeSysroot      *self,
                                  GError            **error)
 {
+  if (self->root_is_ostree_live)
+    return glnx_throw (error, "sysroot does not support persistent changes");
+
   /* Do nothing if no mount namespace is in use */
   if (!self->mount_namespace_in_use)
     return TRUE;
@@ -908,6 +911,9 @@ ostree_sysroot_initialize (OstreeSysroot  *self,
       if (!glnx_fstatat_allow_noent (AT_FDCWD, "/run/ostree-booted", NULL, 0, error))
         return FALSE;
       const gboolean ostree_booted = (errno == 0);
+      if (!glnx_fstatat_allow_noent (AT_FDCWD, OSTREE_SYSROOT_LIVE_PATH, NULL, 0, error))
+        return FALSE;
+      const gboolean ostree_live = (errno == 0);
 
       { struct stat root_stbuf;
         if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
@@ -925,6 +931,7 @@ ostree_sysroot_initialize (OstreeSysroot  *self,
          self->root_inode == self_stbuf.st_ino);
 
       self->root_is_ostree_booted = (ostree_booted && root_is_sysroot);
+      self->root_is_ostree_live = self->root_is_ostree_booted && ostree_live;
       self->loadstate = OSTREE_SYSROOT_LOAD_STATE_INIT;
     }
 
@@ -988,31 +995,11 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
   return TRUE;
 }
 
-/**
- * ostree_sysroot_load_if_changed:
- * @self: #OstreeSysroot
- * @out_changed: (out caller-allocates):
- * @cancellable: Cancellable
- * @error: Error
- *
- * Since: 2016.4
- */
-gboolean
-ostree_sysroot_load_if_changed (OstreeSysroot  *self,
-                                gboolean       *out_changed,
-                                GCancellable   *cancellable,
-                                GError        **error)
+static gboolean
+sysroot_load_from_bootloader_configs (OstreeSysroot  *self,
+                                      GCancellable   *cancellable,
+                                      GError       **error)
 {
-  if (!ostree_sysroot_initialize (self, error))
-    return FALSE;
-
-  /* Here we also lazily initialize the repository.  We didn't do this
-   * previous to v2017.6, but we do now to support the error-free
-   * ostree_sysroot_repo() API.
-   */
-  if (!ensure_repo (self, error))
-    return FALSE;
-
   int bootversion = 0;
   if (!read_current_bootversion (self, &bootversion, cancellable, error))
     return FALSE;
@@ -1021,27 +1008,6 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion,
                                                     cancellable, error))
     return FALSE;
-
-  struct stat stbuf;
-  if (!glnx_fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0, error))
-    return FALSE;
-
-  if (out_changed)
-    {
-      if (self->loaded_ts.tv_sec == stbuf.st_mtim.tv_sec &&
-          self->loaded_ts.tv_nsec == stbuf.st_mtim.tv_nsec)
-        {
-          *out_changed = FALSE;
-          /* Note early return */
-          return TRUE;
-        }
-    }
-
-  g_clear_pointer (&self->deployments, g_ptr_array_unref);
-  g_clear_object (&self->booted_deployment);
-  g_clear_object (&self->staged_deployment);
-  self->bootversion = -1;
-  self->subbootversion = -1;
 
   g_autoptr(GPtrArray) boot_loader_configs = NULL;
   if (!_ostree_sysroot_read_boot_loader_configs (self, bootversion, &boot_loader_configs,
@@ -1088,10 +1054,150 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
   if (self->staged_deployment)
     g_ptr_array_insert (deployments, 0, g_object_ref (self->staged_deployment));
 
-  /* And then set their index variables */
-  for (guint i = 0; i < deployments->len; i++)
+  self->bootversion = bootversion;
+  self->subbootversion = subbootversion;
+  self->deployments = g_steal_pointer (&deployments);
+
+  return TRUE;
+}
+
+static gboolean
+find_first_ent_at (int                dirfd,
+                   const char        *path,
+                   int                dtype,
+                   char             **ret_name,
+                   GCancellable      *cancellable,
+                   GError           **error)
+{
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+
+  if (!glnx_dirfd_iterator_init_at (dirfd, path, TRUE,
+                                    &dfd_iter, error))
+    return FALSE;
+
+  while (TRUE)
     {
-      OstreeDeployment *deployment = deployments->pdata[i];
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
+                                                       cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+
+      if (dent->d_type != dtype)
+        continue;
+
+      *ret_name = g_strdup (dent->d_name);
+      break;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+sysroot_load_live (OstreeSysroot  *self,
+                   GCancellable   *cancellable,
+                   GError       **error)
+{
+  g_autoptr(GString) bootlink = g_string_new ("/ostree/boot.1");
+
+  g_autofree char *osname = NULL;
+  if (!find_first_ent_at (AT_FDCWD, bootlink->str, DT_DIR, &osname, cancellable, error))
+    return FALSE;
+  if (!osname)
+    return glnx_throw (error, "failed to find /ostree/boot subdirectory");
+  g_string_append_c (bootlink, '/');
+  g_string_append (bootlink, osname);
+
+  g_autofree char *checksum = NULL;
+  if (!find_first_ent_at (AT_FDCWD, bootlink->str, DT_DIR, &checksum, cancellable, error))
+    return FALSE;
+  if (!checksum)
+    return glnx_throw (error, "failed to find /ostree/boot statedir");
+  g_string_append_c (bootlink, '/');
+  g_string_append (bootlink, checksum);
+
+  g_autofree char *treeserial = NULL;
+  if (!find_first_ent_at (AT_FDCWD, bootlink->str, DT_LNK, &treeserial, cancellable, error))
+    return FALSE;
+  if (!treeserial)
+    return glnx_throw (error, "failed to find /ostree/boot treeserial");
+  g_string_append_c (bootlink, '/');
+  g_string_append (bootlink, treeserial);
+
+  g_autoptr(OstreeDeployment) deployment = NULL;
+  if (!parse_deployment (self, bootlink->str, &deployment,
+                         cancellable, error))
+    return FALSE;
+  g_autoptr(GPtrArray) deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  g_ptr_array_add (deployments, g_object_ref (deployment));
+  self->deployments = g_steal_pointer (&deployments);
+  self->booted_deployment = g_steal_pointer (&deployment);
+
+  return TRUE;
+}
+
+/**
+ * ostree_sysroot_load_if_changed:
+ * @self: #OstreeSysroot
+ * @out_changed: (out caller-allocates):
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Since: 2016.4
+ */
+gboolean
+ostree_sysroot_load_if_changed (OstreeSysroot  *self,
+                                gboolean       *out_changed,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  if (!ostree_sysroot_initialize (self, error))
+    return FALSE;
+
+  /* Here we also lazily initialize the repository.  We didn't do this
+   * previous to v2017.6, but we do now to support the error-free
+   * ostree_sysroot_repo() API.
+   */
+  if (!ensure_repo (self, error))
+    return FALSE;
+
+  struct stat stbuf;
+  if (!glnx_fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0, error))
+    return FALSE;
+
+  if (self->loaded_ts.tv_sec == stbuf.st_mtim.tv_sec &&
+      self->loaded_ts.tv_nsec == stbuf.st_mtim.tv_nsec)
+    {
+      if (out_changed)
+        *out_changed = FALSE;
+      /* Note early return */
+      return TRUE;
+    }
+
+  g_clear_pointer (&self->deployments, g_ptr_array_unref);
+  g_clear_object (&self->booted_deployment);
+  g_clear_object (&self->staged_deployment);
+  self->bootversion = -1;
+  self->subbootversion = -1;
+
+  if (self->root_is_ostree_live)
+    {
+      if (!sysroot_load_live (self, cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      if (!sysroot_load_from_bootloader_configs (self, cancellable, error))
+        return FALSE;
+    }
+
+  /* Assign the index variables */
+  g_assert (self->deployments);
+  for (guint i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *deployment = self->deployments->pdata[i];
       ostree_deployment_set_index (deployment, i);
     }
 
@@ -1118,10 +1224,6 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
       self->loadstate = OSTREE_SYSROOT_LOAD_STATE_LOADED;
     }
 
-  self->bootversion = bootversion;
-  self->subbootversion = subbootversion;
-  self->deployments = deployments;
-  deployments = NULL; /* Transfer ownership */
   self->loaded_ts = stbuf.st_mtim;
 
   if (out_changed)

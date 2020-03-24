@@ -32,6 +32,16 @@ G_BEGIN_DECLS
 #define OSTREE_IS_SYSROOT(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_SYSROOT))
 
+/**
+ * OSTREE_SYSROOT_LIVE_PATH:
+ *
+ * The existence of this file declares that the system
+ * is booted "live" (fully in RAM).
+ *
+ * Since: 2020.1
+ **/
+#define OSTREE_SYSROOT_LIVE_PATH "/run/ostree-live"
+
 _OSTREE_PUBLIC
 GType ostree_sysroot_get_type (void);
 
