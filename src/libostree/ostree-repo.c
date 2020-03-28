@@ -3257,6 +3257,8 @@ ostree_repo_open (OstreeRepo    *self,
                   GCancellable  *cancellable,
                   GError       **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("opening repo", error);
+
   struct stat stbuf;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
@@ -3291,10 +3293,7 @@ ostree_repo_open (OstreeRepo    *self,
       g_assert (self->repodir);
       if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->repodir), TRUE,
                            &self->repo_dir_fd, error))
-        {
-          g_prefix_error (error, "%s: ", gs_file_get_path_cached (self->repodir));
-          return FALSE;
-        }
+        return FALSE;
     }
 
   if (!glnx_fstat (self->repo_dir_fd, &stbuf, error))
