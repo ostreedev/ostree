@@ -1003,6 +1003,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("loading sysroot", error);
   if (!ostree_sysroot_initialize (self, error))
     return FALSE;
 
