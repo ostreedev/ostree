@@ -62,7 +62,7 @@ codestyle: {
 // Build FCOS and do a kola basic run
 stage("More builds and test") {
 parallel fcos: {
-  cosaPod(runAsUser: 0, memory: "2048Mi", cpu: "2") {
+  cosaPod(buildroot: true, runAsUser: 0, memory: "3072Mi", cpu: "4") {
     stage("Build FCOS") {
       checkout scm
       unstash 'build'

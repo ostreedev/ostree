@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((89 + ${extra_basic_tests:-0}))"
+echo "1..$((86 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -1032,17 +1032,6 @@ assert_file_has_content deeper-mtime 0
 echo "ok content mtime"
 
 cd ${test_tmpdir}
-rm -rf test2-checkout
-mkdir -p test2-checkout
-cd test2-checkout
-mkfifo afifo
-if $OSTREE commit ${COMMIT_ARGS} -b test2 -s "Attempt to commit a FIFO" 2>../errmsg; then
-    assert_not_reached "Committing a FIFO unexpetedly succeeded!"
-    assert_file_has_content ../errmsg "Unsupported file type"
-fi
-echo "ok commit of fifo was rejected"
-
-cd ${test_tmpdir}
 rm repo2 -rf
 mkdir repo2
 ostree_repo_init repo2 --mode=archive
@@ -1180,22 +1169,3 @@ if test "$(id -u)" != "0"; then
 else
     echo "ok # SKIP not run when root"
 fi
-
-cd ${test_tmpdir}
-rm -rf test2-checkout
-mkdir -p test2-checkout
-cd test2-checkout
-touch blah
-stat --printf="%.Y\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-orig.txt
-$OSTREE commit ${COMMIT_ARGS} -b test2 -s "Should bump the mtime"
-stat --printf="%.Y\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-new.txt
-cd ..
-if cmp timestamp-{orig,new}.txt; then
-    assert_not_reached "failed to update mtime on repo"
-fi
-echo "ok mtime updated"
-
-cd ${test_tmpdir}
-$OSTREE init --mode=bare --repo=repo-extensions
-assert_has_dir repo-extensions/extensions
-echo "ok extensions dir"
