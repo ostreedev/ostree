@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..6'
+echo '1..7'
 
 cd ${test_tmpdir}
 
@@ -258,3 +258,15 @@ then
 fi
 
 echo "ok 6 pull refs from local repos"
+
+ostree_repo_init local-mirror
+do_remote_add local-mirror collection-repo --collection-id org.example.CollectionRepo
+# Generate a summary in the local mirror; don't use do_summary to avoid gpg
+${CMD_PREFIX} ostree --repo=local-mirror summary --update
+summarysig=$(sha256sum < local-mirror/summary | cut -f 1 -d ' ')
+# Mirror subset of refs: A collection-ref version of https://github.com/ostreedev/ostree/issues/846
+${CMD_PREFIX} ostree --repo=local-mirror find-remotes --pull --mirror --finders=config org.example.CollectionRepo goodcref1
+newsummarysig=$(sha256sum < local-mirror/summary | cut -f 1 -d ' ')
+assert_streq ${summarysig} ${newsummarysig}
+
+echo "ok 7 mirror pull subset of collection-refs with summary"

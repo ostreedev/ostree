@@ -35,6 +35,7 @@ static gchar *opt_cache_dir = NULL;
 static gchar *opt_finders = NULL;
 static gboolean opt_disable_fsync = FALSE;
 static gboolean opt_pull = FALSE;
+static gboolean opt_mirror = FALSE;
 
 static GOptionEntry options[] =
   {
@@ -42,6 +43,7 @@ static GOptionEntry options[] =
     { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
     { "finders", 0, 0, G_OPTION_ARG_STRING, &opt_finders, "Use the specified comma separated list of finders (e.g. config,lan,mount)", "FINDERS" },
     { "pull", 0, 0, G_OPTION_ARG_NONE, &opt_pull, "Pull the updates after finding them", NULL },
+    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Do a mirror pull (see ostree pull --mirror)", NULL},
     { NULL }
   };
 
@@ -188,6 +190,7 @@ ostree_builtin_find_remotes (int            argc,
   g_auto(OstreeRepoFinderResultv) results = NULL;
   g_auto(GLnxConsoleRef) console = { 0, };
   g_autoptr(GHashTable) refs_found = NULL;  /* set (element-type OstreeCollectionRef) */
+  g_autoptr(GVariant) pull_options = NULL;
 
   context = g_option_context_new ("COLLECTION-ID REF [COLLECTION-ID REF...]");
 
@@ -207,6 +210,12 @@ ostree_builtin_find_remotes (int            argc,
   if (argc % 2 == 0)
     {
       ot_util_usage_error (context, "Only complete COLLECTION-ID REF pairs may be specified", error);
+      return FALSE;
+    }
+
+  if (opt_mirror && !opt_pull)
+    {
+      ot_util_usage_error (context, "When --mirror is specified, --pull must also be", error);
       return FALSE;
     }
 
@@ -359,13 +368,24 @@ ostree_builtin_find_remotes (int            argc,
   if (!opt_pull)
     return TRUE;
 
+  {
+    GVariantBuilder builder;
+    g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
+
+    if (opt_mirror)
+      g_variant_builder_add (&builder, "{s@v}", "flags",
+                             g_variant_new_variant (g_variant_new_int32 (OSTREE_REPO_PULL_FLAGS_MIRROR)));
+
+    pull_options = g_variant_ref_sink (g_variant_builder_end (&builder));
+  }
+
   /* Run the pull operation. */
   if (console.is_tty)
     progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
 
   ostree_repo_pull_from_remotes_async (repo,
                                        (const OstreeRepoFinderResult * const *) results,
-                                       NULL,  /* no options */
+                                       pull_options,
                                        progress, cancellable,
                                        get_result_cb, &pull_result);
 

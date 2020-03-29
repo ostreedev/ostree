@@ -116,6 +116,16 @@ Boston, MA 02111-1307, USA.
                 </para></listitem>
             </varlistentry>
 
+            <varlistentry>
+                <term><option>--mirror</option></term>
+
+                <listitem><para>
+                  Do a mirror pull (see the documentation for
+                  <command>ostree pull --mirror</command>). This option can
+                  only be used in combination with <option>--pull</option>.
+                </para></listitem>
+            </varlistentry>
+
         </variablelist>
     </refsect1>
 
