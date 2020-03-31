@@ -17,30 +17,133 @@ cache:
   - sccache/
 
 stages:
+- check
 - build
 - publish
 
 # format and freshness checks
-check:
-  stage: build
+fmt:
+  stage: check
   script:
   - cargo fmt --package ostree -- --check
+
+gir:
+  stage: check
+  script:
   - rm -rf src/auto/
   - make gir
   - git checkout -- sys/src/auto/versions.txt src/auto/versions.txt
   - git diff -R --exit-code
 
-# build
-build_all-features:
-  stage: build
+clippy:
+  stage: check
   script:
-  - cargo clippy --all --features latest
-  - cargo test --verbose --all --features latest
+  - cargo clippy --all --all-features
 
+# build
 build_default-features:
   stage: build
   script:
-  - cargo test --verbose --all
+    - cargo test --verbose --all
+
+# all feature levels
+build_v2014_9:
+  stage: build
+  script: cargo test --verbose --all --features v2014_9
+build_v2015_7:
+  stage: build
+  script: cargo test --verbose --all --features v2015_7
+build_v2016_14:
+  stage: build
+  script: cargo test --verbose --all --features v2016_14
+build_v2016_4:
+  stage: build
+  script: cargo test --verbose --all --features v2016_4
+build_v2016_5:
+  stage: build
+  script: cargo test --verbose --all --features v2016_5
+build_v2016_6:
+  stage: build
+  script: cargo test --verbose --all --features v2016_6
+build_v2016_7:
+  stage: build
+  script: cargo test --verbose --all --features v2016_7
+build_v2016_8:
+  stage: build
+  script: cargo test --verbose --all --features v2016_8
+build_v2017_1:
+  stage: build
+  script: cargo test --verbose --all --features v2017_1
+build_v2017_10:
+  stage: build
+  script: cargo test --verbose --all --features v2017_10
+build_v2017_11:
+  stage: build
+  script: cargo test --verbose --all --features v2017_11
+build_v2017_12:
+  stage: build
+  script: cargo test --verbose --all --features v2017_12
+build_v2017_13:
+  stage: build
+  script: cargo test --verbose --all --features v2017_13
+build_v2017_15:
+  stage: build
+  script: cargo test --verbose --all --features v2017_15
+build_v2017_2:
+  stage: build
+  script: cargo test --verbose --all --features v2017_2
+build_v2017_3:
+  stage: build
+  script: cargo test --verbose --all --features v2017_3
+build_v2017_4:
+  stage: build
+  script: cargo test --verbose --all --features v2017_4
+build_v2017_6:
+  stage: build
+  script: cargo test --verbose --all --features v2017_6
+build_v2017_7:
+  stage: build
+  script: cargo test --verbose --all --features v2017_7
+build_v2017_8:
+  stage: build
+  script: cargo test --verbose --all --features v2017_8
+build_v2017_9:
+  stage: build
+  script: cargo test --verbose --all --features v2017_9
+build_v2018_2:
+  stage: build
+  script: cargo test --verbose --all --features v2018_2
+build_v2018_3:
+  stage: build
+  script: cargo test --verbose --all --features v2018_3
+build_v2018_5:
+  stage: build
+  script: cargo test --verbose --all --features v2018_5
+build_v2018_6:
+  stage: build
+  script: cargo test --verbose --all --features v2018_6
+build_v2018_7:
+  stage: build
+  script: cargo test --verbose --all --features v2018_7
+build_v2018_9:
+  stage: build
+  script: cargo test --verbose --all --features v2018_9
+build_v2019_2:
+  stage: build
+  script: cargo test --verbose --all --features v2019_2
+build_v2019_3:
+  stage: build
+  script: cargo test --verbose --all --features v2019_3
+build_v2019_4:
+  stage: build
+  script: cargo test --verbose --all --features v2019_4
+build_v2019_6:
+  stage: build
+  script: cargo test --verbose --all --features v2019_6
+build_v2020_1:
+  stage: build
+  script: cargo test --verbose --all --features v2020_1
+# all feature levels
 
 # docs
 docs:

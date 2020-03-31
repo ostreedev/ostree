@@ -3,7 +3,7 @@ RUSTDOC_STRIPPER_VERSION := 0.1.9
 
 all: gir
 
-.PHONY: gir gir-report update-gir-files remove-gir-files merge-lgpl-docs
+.PHONY: gir gir-report update-gir-files remove-gir-files merge-lgpl-docs ci-build-stages
 
 
 # -- gir generation --
@@ -47,3 +47,12 @@ gir-files:
 gir-files/OSTree-1.0.gir:
 	echo Best to build libostree with all features and use that
 	exit 1
+
+
+# CI config generation
+ci-build-stages:
+	@for tgt in `cargo read-manifest | jq -jr '.features | keys | map(select(. != "dox")) | map(. + " ") | .[]'`; do \
+  		echo "build_$$tgt:"; \
+  		echo "  stage: build"; \
+  		echo "  script: cargo test --verbose --all --features $$tgt"; \
+  	done
