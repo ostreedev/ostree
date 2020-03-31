@@ -50,9 +50,9 @@ pub use crate::object_name::*;
 mod repo;
 pub use crate::repo::*;
 
-#[cfg(any(feature = "v2018_2", feature = "dox"))]
+#[cfg(any(feature = "v2016_8", feature = "dox"))]
 mod repo_checkout_at_options;
-#[cfg(any(feature = "v2018_2", feature = "dox"))]
+#[cfg(any(feature = "v2016_8", feature = "dox"))]
 pub use crate::repo_checkout_at_options::*;
 
 mod se_policy;

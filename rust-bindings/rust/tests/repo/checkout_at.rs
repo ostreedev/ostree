@@ -2,7 +2,6 @@ use crate::util::*;
 use gio::NONE_CANCELLABLE;
 use ostree::*;
 use std::os::unix::io::AsRawFd;
-use std::path::PathBuf;
 
 #[test]
 fn should_checkout_at_with_none_options() {
@@ -60,12 +59,7 @@ fn should_checkout_at_with_options() {
                 mode: RepoCheckoutMode::User,
                 overwrite_mode: RepoCheckoutOverwriteMode::AddFiles,
                 enable_fsync: true,
-                force_copy: true,
-                force_copy_zerosized: true,
                 devino_to_csum_cache: Some(RepoDevInoCache::new()),
-                filter: RepoCheckoutFilter::new(|_repo, _path, _stat| {
-                    RepoCheckoutFilterResult::Allow
-                }),
                 ..Default::default()
             }),
             dirfd.as_raw_fd(),
@@ -79,7 +73,10 @@ fn should_checkout_at_with_options() {
 }
 
 #[test]
+#[cfg(feature = "v2018_2")]
 fn should_checkout_at_with_filter() {
+    use std::path::Path;
+
     let test_repo = TestRepo::new();
     let checksum = test_repo.test_commit("test");
     let checkout_dir = tempfile::tempdir().expect("checkout dir");
@@ -90,7 +87,7 @@ fn should_checkout_at_with_filter() {
         .checkout_at(
             Some(&RepoCheckoutAtOptions {
                 filter: RepoCheckoutFilter::new(|_repo, path, _stat| {
-                    if path == PathBuf::from("/testdir/testfile") {
+                    if path == Path::new("/testdir/testfile") {
                         RepoCheckoutFilterResult::Skip
                     } else {
                         RepoCheckoutFilterResult::Allow
