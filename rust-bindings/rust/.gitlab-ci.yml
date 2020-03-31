@@ -8,7 +8,7 @@ variables:
   RUSTC_WRAPPER: sccache
 
 before_script:
-- dnf install -y cargo rust rustfmt clippy ostree-devel
+- dnf install -y cargo rust ostree-devel
 - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
 
 cache:
@@ -17,35 +17,26 @@ cache:
   - sccache/
 
 stages:
-- check
 - build
 - publish
 
-# format and freshness checks
-fmt:
-  stage: check
+check:
+  stage: build
   script:
+  - dnf install -y make git clippy rustfmt
+  # fmt
   - cargo fmt --package ostree -- --check
-
-gir:
-  stage: check
-  script:
-  - dnf install -y make
+  # check generated code
   - rm -rf src/auto/
   - make gir
   - git checkout -- sys/src/auto/versions.txt src/auto/versions.txt
   - git diff -R --exit-code
-
-clippy:
-  stage: check
-  script:
+  # clippy
   - cargo clippy --all --all-features
 
-# build
 build_default-features:
   stage: build
-  script:
-    - cargo test --verbose --all
+  script: cargo test --verbose --all
 
 # all feature levels
 build_v2014_9:
@@ -147,8 +138,8 @@ build_v2020_1:
 # all feature levels
 
 # docs
-docs:
-  stage: build
+pages:
+  stage: publish
   image: rustlang/rust:nightly
   variables:
     RUSTDOC_OPTS: >-
@@ -164,17 +155,7 @@ docs:
   - make merge-lgpl-docs
   - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
   - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
-  artifacts:
-    paths:
-    - target/doc
-
-pages:
-  stage: publish
-  image: alpine
-  before_script: []
-  script:
   - cp -r target/doc public
-  cache: {}
   artifacts:
     paths:
     - public
