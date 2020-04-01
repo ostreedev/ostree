@@ -1358,7 +1358,7 @@ ostree_repo_finder_avahi_init (OstreeRepoFinderAvahi *self)
 }
 
 /**
- * ostree_repo-finder_avahi_new:
+ * ostree_repo_finder_avahi_new:
  * @context: (transfer none) (nullable): a #GMainContext for processing Avahi
  *    events in, or %NULL to use the current thread-default
  *
