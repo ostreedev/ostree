@@ -1,4 +1,6 @@
-/.idea
+.idea
+target
+cargo
+sccache
 **/*.rs.bk
-target/
 Cargo.lock
