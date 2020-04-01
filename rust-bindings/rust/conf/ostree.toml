@@ -36,7 +36,6 @@ generate = [
     "OSTree.RepoCommitState",
     "OSTree.RepoDevInoCache",
     "OSTree.RepoFile",
-    "OSTree.RepoFinder",
     "OSTree.RepoFinderAvahi",
     "OSTree.RepoFinderConfig",
     "OSTree.RepoFinderMount",
@@ -140,7 +139,7 @@ status = "generate"
     ignore = true
 
     [[object.function]]
-    # these fail because of issues with zero-terminated arrays
+    # these fail because of issues with arrays of dubious lifetimes
     pattern = "find_remotes_async|pull_from_remotes_async"
     ignore = true
 
@@ -150,7 +149,6 @@ status = "generate"
     ignore = true
 
     [[object.function]]
-    # TODO: see which of these annotations I can upstream
     name = "checkout_at"
     [[object.function.parameter]]
     name = "options"
@@ -158,6 +156,14 @@ status = "generate"
     [[object.function.parameter]]
     name = "destination_path"
     string_type = "filename"
+
+[[object]]
+name = "OSTree.RepoFinder"
+status = "generate"
+    [[object.function]]
+    # these fail because of issues with arrays of dubious lifetimes
+    pattern = "resolve_async|resolve_all_async"
+    ignore = true
 
 [[object]]
 name = "OSTree.RepoFinderResult"
