@@ -29,7 +29,7 @@ function repo_init() {
     ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo "$@"
 }
 
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 
 # See also the copy of this in basic-test.sh
 COMMIT_ARGS=""
@@ -48,7 +48,7 @@ fi
 
 echo "1..1"
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 prev_rev=$(ostree --repo=ostree-srv/repo rev-parse ${remote_ref}^)
 rev=$(ostree --repo=ostree-srv/repo rev-parse ${remote_ref})
 ${CMD_PREFIX} ostree --repo=ostree-srv/repo static-delta generate ${remote_ref}

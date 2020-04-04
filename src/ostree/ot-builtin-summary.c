@@ -27,10 +27,13 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ostree-sign.h"
 
 static gboolean opt_update, opt_view, opt_raw;
-static char **opt_key_ids;
+static char **opt_gpg_key_ids;
 static char *opt_gpg_homedir;
+static char **opt_key_ids;
+static char *opt_sign_name;
 static char **opt_metadata;
 
 /* ATTENTION:
@@ -42,8 +45,10 @@ static GOptionEntry options[] = {
   { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
   { "view", 'v', 0, G_OPTION_ARG_NONE, &opt_view, "View the local summary file", NULL },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "View the raw bytes of the summary file", NULL },
-  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the summary with", "KEY-ID"},
+  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_gpg_key_ids, "GPG Key ID to sign the summary with", "KEY-ID"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
+  { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Key ID to sign the summary with", "KEY-ID"},
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
   { "add-metadata", 'm', 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata, "Additional metadata field to add to the summary", "KEY=VALUE" },
   { NULL }
 };
@@ -87,12 +92,24 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (OstreeSign) sign = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 
   context = g_option_context_new ("");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
+
+  /* Initialize crypto system */
+  if (opt_key_ids)
+    {
+      if (!opt_sign_name)
+        opt_sign_name = "ed25519";
+
+      sign = ostree_sign_get_by_name (opt_sign_name, error);
+      if (sign == NULL)
+        return FALSE;
+    }
 
   if (opt_update)
     {
@@ -164,10 +181,9 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
                                          new_summary_commit, repo_file, &new_ostree_metadata_checksum,
                                          NULL, error))
             return FALSE;
-
-          if (opt_key_ids != NULL)
+          if (opt_gpg_key_ids != NULL)
             {
-              for (const char * const *iter = (const char * const *) opt_key_ids;
+              for (const char * const *iter = (const char * const *) opt_gpg_key_ids;
                    iter != NULL && *iter != NULL; iter++)
                 {
                   const char *key_id = *iter;
@@ -178,6 +194,27 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
                                                 opt_gpg_homedir,
                                                 cancellable,
                                                 error))
+                    return FALSE;
+                }
+            }
+
+          if (opt_key_ids)
+            {
+              char **iter;
+              for (iter = opt_key_ids; iter && *iter; iter++)
+                {
+                  const char *keyid = *iter;
+                  g_autoptr (GVariant) secret_key = NULL;
+
+                  secret_key = g_variant_new_string (keyid);
+                  if (!ostree_sign_set_sk (sign, secret_key, error))
+                    return FALSE;
+
+                  if (!ostree_sign_commit (sign,
+                                           repo,
+                                           new_ostree_metadata_checksum,
+                                           cancellable,
+                                           error))
                     return FALSE;
                 }
             }
@@ -194,16 +231,45 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
         return FALSE;
 
 #ifndef OSTREE_DISABLE_GPGME
-      if (opt_key_ids)
+      if (opt_gpg_key_ids)
         {
           if (!ostree_repo_add_gpg_signature_summary (repo,
-                                                      (const gchar **) opt_key_ids,
+                                                      (const gchar **) opt_gpg_key_ids,
                                                       opt_gpg_homedir,
                                                       cancellable,
                                                       error))
             return FALSE;
         }
 #endif
+      if (opt_key_ids)
+        {
+          g_autoptr (GVariant) secret_keys = NULL;
+          g_autoptr (GVariantBuilder) sk_builder = NULL;
+
+          sk_builder = g_variant_builder_new (G_VARIANT_TYPE_ARRAY);
+
+          char **iter;
+          for (iter = opt_key_ids; iter && *iter; iter++)
+            {
+              const char *keyid = *iter;
+              GVariant *secret_key = NULL;
+
+              /* Currently only strings are used as keys
+               * for supported signature types */
+              secret_key = g_variant_new_string (keyid);
+
+              g_variant_builder_add (sk_builder, "v", secret_key);
+            }
+
+          secret_keys = g_variant_builder_end (sk_builder);
+
+          if (! ostree_sign_summary (sign,
+                                     repo,
+                                     secret_keys,
+                                     cancellable,
+                                     error))
+            return FALSE;
+        }
     }
   else if (opt_view || opt_raw)
     {

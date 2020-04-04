@@ -31,6 +31,7 @@
 #include "parse-datetime.h"
 #include "ostree-repo-private.h"
 #include "ostree-libarchive-private.h"
+#include "ostree-sign.h"
 
 static char *opt_subject;
 static char *opt_body;
@@ -62,9 +63,11 @@ static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
 static gboolean opt_table_output;
 #ifndef OSTREE_DISABLE_GPGME
-static char **opt_key_ids;
+static char **opt_gpg_key_ids;
 static char *opt_gpg_homedir;
 #endif
+static char **opt_key_ids;
+static char *opt_sign_name;
 static gboolean opt_generate_sizes;
 static gboolean opt_disable_fsync;
 static char *opt_timestamp;
@@ -119,9 +122,11 @@ static GOptionEntry options[] = {
   { "consume", 0, 0, G_OPTION_ARG_NONE, &opt_consume, "Consume (delete) content after commit (for local directories)", NULL },
   { "table-output", 0, 0, G_OPTION_ARG_NONE, &opt_table_output, "Output more information in a KEY: VALUE format", NULL },
 #ifndef OSTREE_DISABLE_GPGME
-  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "KEY-ID"},
+  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_gpg_key_ids, "GPG Key ID to sign the commit with", "KEY-ID"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
 #endif
+  { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Sign the commit with", "KEY_ID"},
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
   { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
@@ -419,6 +424,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   OstreeRepoTransactionStats stats;
   struct CommitFilterData filter_data = { 0, };
   g_autofree char *commit_body = NULL;
+  g_autoptr (OstreeSign) sign = NULL;
 
   context = g_option_context_new ("[PATH]");
 
@@ -832,12 +838,42 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
             goto out;
         }
 
-#ifndef OSTREE_DISABLE_GPGME
       if (opt_key_ids)
         {
+          /* Initialize crypto system */
+          if (!opt_sign_name)
+            opt_sign_name = "ed25519";
+
+          sign = ostree_sign_get_by_name (opt_sign_name, error);
+          if (sign == NULL)
+            goto out;
+
           char **iter;
 
           for (iter = opt_key_ids; iter && *iter; iter++)
+            {
+              const char *keyid = *iter;
+              g_autoptr (GVariant) secret_key = NULL;
+
+              secret_key = g_variant_new_string (keyid);
+              if (!ostree_sign_set_sk (sign, secret_key, error))
+                  goto out;
+
+              if (!ostree_sign_commit (sign,
+                                       repo,
+                                       commit_checksum,
+                                       cancellable,
+                                       error))
+                goto out;
+            }
+        }
+
+#ifndef OSTREE_DISABLE_GPGME
+      if (opt_gpg_key_ids)
+        {
+          char **iter;
+
+          for (iter = opt_gpg_key_ids; iter && *iter; iter++)
             {
               const char *keyid = *iter;
 

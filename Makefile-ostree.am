@@ -43,6 +43,7 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-remote.c \
 	src/ostree/ot-builtin-reset.c \
 	src/ostree/ot-builtin-rev-parse.c \
+	src/ostree/ot-builtin-sign.c \
 	src/ostree/ot-builtin-summary.c \
 	src/ostree/ot-builtin-show.c \
 	src/ostree/ot-builtin-static-delta.c \
@@ -112,7 +113,6 @@ ostree_SOURCES += \
 	$(NULL)
 endif
 
-
 if USE_CURL_OR_SOUP
 ostree_SOURCES += src/ostree/ot-remote-builtin-add-cookie.c \
   src/ostree/ot-remote-builtin-delete-cookie.c \
@@ -162,3 +162,8 @@ if USE_LIBARCHIVE
 ostree_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
 ostree_LDADD += $(OT_DEP_LIBARCHIVE_LIBS)
 endif
+
+if USE_LIBSODIUM
+ostree_CFLAGS += $(OT_DEP_LIBSODIUM_CFLAGS)
+ostree_LDADD += $(OT_DEP_LIBSODIUM_LIBS)
+endif # USE_LIBSODIUM

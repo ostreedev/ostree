@@ -29,7 +29,7 @@ function repo_init() {
     ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo "$@"
 }
 
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 
 # See also the copy of this in basic-test.sh
 COMMIT_ARGS=""
@@ -62,7 +62,7 @@ else
 fi
 
 # Try both syntaxes
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main >out.txt
 assert_file_has_content out.txt "[1-9][0-9]* metadata, [1-9][0-9]* content objects fetched"
 ${CMD_PREFIX} ostree --repo=repo pull origin:main > out.txt
@@ -164,7 +164,7 @@ echo "ok pull (bareuseronly mirror)"
 
 # Corruption tests <https://github.com/ostreedev/ostree/issues/1211>
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 if ! is_bare_user_only_repo repo; then
 if ! skip_one_without_user_xattrs; then
     if is_bare_user_only_repo repo; then
@@ -216,7 +216,7 @@ if ! skip_one_without_user_xattrs; then
     done
 
     # And ensure the repo is reinitialized
-    repo_init --no-gpg-verify
+    repo_init --no-sign-verify
     echo "ok corruption"
 fi
 else
@@ -320,7 +320,7 @@ echo "ok pull specific commit"
 
 # test pull -T
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 origrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse main)
 # Check we can pull the same commit with timestamp checking enabled
@@ -350,7 +350,7 @@ ${CMD_PREFIX} ostree --repo=repo pull origin main
 echo "ok pull timestamp checking"
 
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 # Generate a delta from old to current, even though we aren't going to
@@ -375,7 +375,7 @@ ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 # Explicitly test delta fetches via ref name as well as commit hash
 for delta_target in main ${new_rev}; do
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin ${delta_target} >dry-run-pull.txt
 # Compression can vary, so we support 400-699
@@ -388,7 +388,7 @@ done
 
 # Test pull via file:/// - this should still use the deltas path for testing
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo remote delete origin
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
@@ -400,7 +400,7 @@ echo "ok pull file:// + deltas required"
 # Explicitly test delta fetches via ref name as well as commit hash
 for delta_target in main ${new_rev}; do
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin ${delta_target}
 if test ${delta_target} = main; then
@@ -414,12 +414,12 @@ done
 
 # Test no-op with deltas: https://github.com/ostreedev/ostree/issues/1321
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main
 
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --disable-static-deltas origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
@@ -437,7 +437,7 @@ cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate --swap-endianness main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas --dry-run origin main >byteswapped-dry-run-pull.txt
 ${CMD_PREFIX} ostree --repo=repo fsck
@@ -451,7 +451,7 @@ echo "ok pull byteswapped delta"
 cd ${test_tmpdir}
 rm ostree-srv/gnomerepo/deltas -rf
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
 fi
@@ -459,7 +459,7 @@ assert_file_has_content err.txt "deltas required, but none found"
 ${CMD_PREFIX} ostree --repo=repo fsck
 
 # Now test with a partial commit
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull --commit-metadata-only origin main@${prev_rev}
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
@@ -467,7 +467,7 @@ fi
 assert_file_has_content err.txt "deltas required, but none found"
 echo "ok delta required but don't exist"
 
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin ${new_rev} 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
@@ -595,7 +595,7 @@ if has_gpgme; then
 fi
 
 cd ${test_tmpdir}
-repo_init --no-gpg-verify
+repo_init --no-sign-verify
 mv ostree-srv/gnomerepo/refs/heads/main{,.orig}
 rm ostree-srv/gnomerepo/summary
 (for x in $(seq 20); do echo "lots of html here "; done) > ostree-srv/gnomerepo/refs/heads/main

@@ -28,6 +28,7 @@
 
 static char **opt_set;
 static gboolean opt_no_gpg_verify;
+static gboolean opt_no_sign_verify;
 static gboolean opt_if_not_exists;
 static gboolean opt_force;
 static char *opt_gpg_import;
@@ -44,6 +45,7 @@ static char *opt_repo;
 static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
+  { "no-sign-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_sign_verify, "Disable signature verification", NULL },
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Replace the provided remote if it exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
@@ -134,11 +136,17 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
     }
 
 #ifndef OSTREE_DISABLE_GPGME
-  if (opt_no_gpg_verify)
+  /* No signature verification implies no verification for GPG signature as well */
+  if (opt_no_gpg_verify || opt_no_sign_verify)
     g_variant_builder_add (optbuilder, "{s@v}",
                            "gpg-verify",
                            g_variant_new_variant (g_variant_new_boolean (FALSE)));
 #endif /* OSTREE_DISABLE_GPGME */
+
+  if (opt_no_sign_verify)
+    g_variant_builder_add (optbuilder, "{s@v}",
+                           "sign-verify",
+                           g_variant_new_variant (g_variant_new_boolean (FALSE)));
 
   if (opt_collection_id != NULL)
     g_variant_builder_add (optbuilder, "{s@v}", "collection-id",

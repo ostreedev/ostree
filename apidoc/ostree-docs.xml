@@ -21,6 +21,7 @@
 		<xi:include href="xml/ostree-sepolicy.xml"/>
 		<xi:include href="xml/ostree-sysroot-upgrader.xml"/>
 		<xi:include href="xml/ostree-gpg-verify-result.xml"/>
+		<xi:include href="xml/ostree-sign.xml"/>
 		<xi:include href="xml/ostree-bootconfig-parser.xml"/>
 		<xi:include href="xml/ostree-chain-input-stream.xml"/>
 		<xi:include href="xml/ostree-checksum-input-stream.xml"/>

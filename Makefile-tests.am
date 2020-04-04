@@ -137,6 +137,9 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-summary-collections.sh \
 	tests/test-pull-collections.sh \
 	tests/test-config.sh \
+	tests/test-signed-commit.sh \
+	tests/test-signed-pull.sh \
+	tests/test-signed-pull-summary.sh \
 	$(NULL)
 
 if USE_GPGME

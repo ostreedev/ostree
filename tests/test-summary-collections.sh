@@ -63,7 +63,7 @@ mkdir collection-repo
 ostree_repo_init collection-repo --collection-id org.example.RemoteCollection
 mkdir -p adir
 ${CMD_PREFIX} ostree --repo=collection-repo commit --branch=rcommit -m rcommit -s rcommit adir
-${CMD_PREFIX} ostree --repo=repo remote add --no-gpg-verify --collection-id org.example.RemoteCollection collection-repo-remote "file://${test_tmpdir}/collection-repo"
+${CMD_PREFIX} ostree --repo=repo remote add --no-sign-verify --collection-id org.example.RemoteCollection collection-repo-remote "file://${test_tmpdir}/collection-repo"
 ${CMD_PREFIX} ostree --repo=repo pull collection-repo-remote rcommit
 ${CMD_PREFIX} ostree --repo=repo summary --update
 
@@ -75,7 +75,7 @@ mkdir no-collection-repo
 ostree_repo_init no-collection-repo
 mkdir -p adir2
 ${CMD_PREFIX} ostree --repo=no-collection-repo commit --branch=rcommit2 -m rcommit2 -s rcommit2 adir2
-${CMD_PREFIX} ostree --repo=repo remote add --no-gpg-verify no-collection-repo-remote "file://${test_tmpdir}/no-collection-repo"
+${CMD_PREFIX} ostree --repo=repo remote add --no-sign-verify no-collection-repo-remote "file://${test_tmpdir}/no-collection-repo"
 ${CMD_PREFIX} ostree --repo=repo pull no-collection-repo-remote rcommit2
 ${CMD_PREFIX} ostree --repo=repo summary --update
 
