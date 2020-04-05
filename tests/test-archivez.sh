@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..12'
+echo '1..13'
 
 setup_test_repository "archive"
 

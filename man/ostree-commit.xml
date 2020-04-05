@@ -107,6 +107,15 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--base</option>="REV"</term>
+
+                <listitem><para>
+                    Start from the content in a commit.  This differs from <literal>--tree=ref=REV</literal> in that no commit modifiers are applied.  This is usually what you want when
+                    creating a derived commit.  This is also used for <literal>--selinux-policy-from-base</literal>.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--add-metadata-string</option>="KEY=VALUE"</term>
 
                 <listitem><para>

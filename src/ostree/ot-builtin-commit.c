@@ -58,6 +58,7 @@ static gboolean opt_selinux_policy_from_base;
 static gboolean opt_canonical_permissions;
 static gboolean opt_consume;
 static gboolean opt_devino_canonical;
+static char *opt_base;
 static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
@@ -101,6 +102,7 @@ static GOptionEntry options[] = {
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
   { "no-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_no_bindings, "Do not write any ref bindings", NULL },
   { "bind-ref", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_bind_refs, "Add a ref to ref binding commit metadata", "BRANCH" },
+  { "base", 0, 0, G_OPTION_ARG_STRING, &opt_base, "Start from the given commit as a base (no modifiers apply)" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-metadata", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_variants, "Add a key/value pair to metadata, where the KEY is a string, an VALUE is g_variant_parse() formatted", "KEY=VALUE" },
@@ -600,7 +602,32 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   if (opt_link_checkout_speedup && !ostree_repo_scan_hardlinks (repo, cancellable, error))
     goto out;
 
-  mtree = ostree_mutable_tree_new ();
+  if (opt_base)
+    {
+      g_autofree char *base_commit = NULL;
+      g_autoptr(GFile) root = NULL;
+      if (!ostree_repo_read_commit (repo, opt_base, &root, &base_commit, cancellable, error))
+        goto out;
+      OstreeRepoFile *rootf = (OstreeRepoFile*) root;
+
+      mtree = ostree_mutable_tree_new_from_checksum (repo,
+                                                     ostree_repo_file_tree_get_contents_checksum (rootf),
+                                                     ostree_repo_file_tree_get_metadata_checksum (rootf));
+
+      if (opt_selinux_policy_from_base)
+        {
+          g_assert (modifier);
+          if (!ostree_repo_commit_modifier_set_sepolicy_from_commit (modifier, repo, base_commit, cancellable, error))
+            goto out;
+          /* Don't try to handle it twice */
+          opt_selinux_policy_from_base = FALSE;
+        }
+    }
+  else
+    {
+      mtree = ostree_mutable_tree_new ();
+    }
+
 
   /* Convert implicit . or explicit path via argv into
    * --tree=dir= so that we only have one primary code path below.
