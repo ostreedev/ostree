@@ -23,6 +23,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+# Committing SELinux attributes throws off the hardcoded sizes below
+export OSTREE_NO_XATTRS=1
 setup_fake_remote_repo1 "archive" "--generate-sizes"
 
 echo '1..3'
