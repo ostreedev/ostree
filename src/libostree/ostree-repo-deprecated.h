@@ -24,8 +24,10 @@
 #include "ostree-core.h"
 #include "ostree-types.h"
 
+#ifndef __GI_SCANNER__
 #ifndef G_GNUC_DEPRECATED_FOR
 # define G_GNUC_DEPRECATED_FOR(x)
+#endif
 #endif
 
 G_BEGIN_DECLS

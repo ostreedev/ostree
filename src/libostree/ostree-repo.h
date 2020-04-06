@@ -694,7 +694,7 @@ void ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier         
 _OSTREE_PUBLIC
 gboolean ostree_repo_commit_modifier_set_sepolicy_from_commit (OstreeRepoCommitModifier              *modifier,
                                                                OstreeRepo                            *repo,
-                                                               const char                            *commit,
+                                                               const char                            *rev,
                                                                GCancellable                          *cancellable,
                                                                GError                               **error);
 
