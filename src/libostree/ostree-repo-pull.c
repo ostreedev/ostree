@@ -3856,7 +3856,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
 #ifdef OSTREE_DISABLE_GPGME
   /* Explicitly fail here if gpg verification is requested and we have no GPG support */
-  if (opt_gpg_verify_set || opt_gpg_verify_summary_set)
+  if (pull_data->gpg_verify || pull_data->gpg_verify_summary)
   {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
               "'%s': GPG feature is disabled in a build time",
