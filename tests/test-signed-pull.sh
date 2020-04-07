@@ -93,6 +93,7 @@ echo "ok pull failure with incorrect keys file option"
 
 # Test with correct dummy key
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${DUMMYSIGN}"
+${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-file
 test_signed_pull "dummy" ""
 
 if ! has_libsodium; then

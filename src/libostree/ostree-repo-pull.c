@@ -1488,14 +1488,10 @@ _load_public_keys (OstreeSign *sign,
                    const gchar *remote_name,
                    GError **error)
 {
-
   g_autofree gchar *pk_ascii = NULL;
   g_autofree gchar *pk_file = NULL;
   gboolean loaded_from_file = TRUE;
   gboolean loaded_inlined = TRUE;
-  g_autoptr (GError) verification_error = NULL;
-
-  glnx_throw (&verification_error, "no public keys loaded");
 
   ostree_repo_get_remote_option (repo,
                                  remote_name,
@@ -1536,10 +1532,8 @@ _load_public_keys (OstreeSign *sign,
         loaded_from_file = TRUE;
       else
         {
-          g_debug("Unable to load public keys for '%s' from file '%s': %s",
-                  ostree_sign_get_name(sign), pk_file, local_error->message);
-          /* Save error message for better reason detection later if needed */
-          glnx_prefix_error (&verification_error, "%s", local_error->message);
+          return glnx_throw (error, "Failed loading '%s' keys from '%s",
+                             ostree_sign_get_name (sign), pk_file);
         }
     }
 
@@ -1556,19 +1550,16 @@ _load_public_keys (OstreeSign *sign,
 
       if (!loaded_inlined)
         {
-          g_debug("Unable to load public key '%s' for '%s': %s",
-                  pk_ascii, ostree_sign_get_name (sign), local_error->message);
-
-          /* Save error message for better reason detection later if needed */
-          glnx_prefix_error (&verification_error, "%s", local_error->message);
+          return glnx_throw (error, "Failed loading '%s' keys from inline `verification-key`",
+                             ostree_sign_get_name (sign));
         }
     }
 
   /* Return true if able to load from any source */
-  if (loaded_from_file || loaded_inlined)
-    return TRUE;
+  if (!(loaded_from_file || loaded_inlined))
+    return glnx_throw (error, "No keys found");
 
-  return glnx_throw (error, "%s", verification_error->message);
+  return TRUE;
 }
 
 static gboolean
