@@ -26,6 +26,16 @@ if ! test -d /ostree/repo; then
     exit 0
 fi
 
+# Gracefully exit if the grub2 configuration has BLS enabled,
+# and the installed version has support for the blscfg module.
+# Since there is no need to create menu entries for that case.
+# See: https://src.fedoraproject.org/rpms/grub2/c/7c2bab5e98d
+. /etc/default/grub
+if test -f /boot/grub2/.grub2-blscfg-supported && \
+   test "${GRUB_ENABLE_BLSCFG}" = "true"; then
+   exit 0
+fi
+
 # Make sure we're in the right environment
 if ! test -n "${GRUB_DEVICE}"; then
     echo "This script must be run as a child of grub2-mkconfig" 1>&2
