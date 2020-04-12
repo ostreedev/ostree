@@ -115,7 +115,7 @@ do
     ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}
 
     cd ${test_tmpdir}
-    repo_reinit --set=verification-key=${PUBLIC_KEY}
+    repo_reinit --set=verification-${engine}-key=${PUBLIC_KEY}
     ${OSTREE} --repo=repo pull origin main
     assert_has_file repo/tmp/cache/summaries/origin
     assert_has_file repo/tmp/cache/summaries/origin.sig
@@ -136,7 +136,7 @@ do
     echo "ok ${engine} prune summary cache"
 
     cd ${test_tmpdir}
-    repo_reinit --set=verification-key=${PUBLIC_KEY}
+    repo_reinit --set=verification-${engine}-key=${PUBLIC_KEY}
     mkdir cachedir
     ${OSTREE} --repo=repo pull --cache-dir=cachedir origin main
     assert_not_has_file repo/tmp/cache/summaries/origin
@@ -152,13 +152,13 @@ do
     echo "ok ${engine} pull with signed summary and cachedir"
 
     cd ${test_tmpdir}
-    repo_reinit --set=verification-key=${PUBLIC_KEY}
+    repo_reinit --set=verification-${engine}-key=${PUBLIC_KEY}
     mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{,.good}
     echo invalid > ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
     if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
         assert_not_reached "Successful pull with invalid ${engine} signature"
     fi
-    assert_file_has_content err.txt "signed with unknown key"
+    assert_file_has_content err.txt "No signatures found"
     mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.good,}
     echo "ok ${engine} pull with invalid ${engine} summary signature fails"
 
@@ -167,7 +167,7 @@ do
     ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}
 
     cd ${test_tmpdir}
-    repo_reinit --set=verification-key=${PUBLIC_KEY}
+    repo_reinit --set=verification-${engine}-key=${PUBLIC_KEY}
     ${OSTREE} --repo=repo pull origin main
     echo "ok ${engine} pull delta with signed summary"
 
@@ -212,7 +212,7 @@ cd ${test_tmpdir}
 # Reset to the old valid summary and pull to cache it
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.1,}
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.1,}
-repo_reinit --set=verification-key=${PUBLIC_KEY}
+repo_reinit --set=verification-ed25519-key=${PUBLIC_KEY}
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
@@ -226,7 +226,7 @@ cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.2,}
 if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
     assert_not_reached "Successful pull with old summary"
 fi
-assert_file_has_content err.txt "signed with unknown key"
+assert_file_has_content err.txt "no valid ed25519 signatures found"
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
 cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.1 >&2
@@ -246,7 +246,7 @@ echo "ok ${engine} pull with signed summary remote old summary"
 # Reset to the old valid summary and pull to cache it
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.1,}
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.1,}
-repo_reinit --set=verification-key=${PUBLIC_KEY}
+repo_reinit --set=verification-ed25519-key=${PUBLIC_KEY}
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig

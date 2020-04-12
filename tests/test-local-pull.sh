@@ -121,27 +121,29 @@ if has_libsodium; then
 
     mkdir repo8
     ostree_repo_init repo8 --mode="archive"
-    ${CMD_PREFIX} ostree --repo=repo8 remote add --set=verification-key="${ED25519PUBLIC}" origin repo
+    ${CMD_PREFIX} ostree --repo=repo8 remote add --set=verification-ed25519-key="${ED25519PUBLIC}" origin repo
     cat repo8/config
 
-    if ${CMD_PREFIX} ostree --repo=repo8 pull-local --remote=origin --sign-verify repo test2 2>&1; then
+    if ${CMD_PREFIX} ostree --repo=repo8 pull-local --remote=origin --sign-verify repo test2 2>err.txt; then
         assert_not_reached "Ed25519 signature verification unexpectedly succeeded"
     fi
+    assert_file_has_content err.txt 'ed25519: commit have no signatures of my type'
     echo "ok --sign-verify with no signature"
 
     ${OSTREE} sign test2 ${ED25519SECRET}
 
     mkdir repo9
     ostree_repo_init repo9 --mode="archive"
-    ${CMD_PREFIX} ostree --repo=repo9 remote add --set=verification-key="$(gen_ed25519_random_public)" origin repo
-    if ${CMD_PREFIX} ostree --repo=repo9 pull-local --remote=origin --sign-verify repo test2 2>&1; then
+    ${CMD_PREFIX} ostree --repo=repo9 remote add --set=verification-ed25519-key="$(gen_ed25519_random_public)" origin repo
+    if ${CMD_PREFIX} ostree --repo=repo9 pull-local --remote=origin --sign-verify repo test2 2>err.txt; then
         assert_not_reached "Ed25519 signature verification unexpectedly succeeded"
     fi
+    assert_file_has_content err.txt 'no valid ed25519 signatures found'
     echo "ok --sign-verify with wrong signature"
 
     mkdir repo10
     ostree_repo_init repo10 --mode="archive"
-    ${CMD_PREFIX} ostree --repo=repo10 remote add --set=verification-key="${ED25519PUBLIC}" origin repo
+    ${CMD_PREFIX} ostree --repo=repo10 remote add --set=verification-ed25519-key="${ED25519PUBLIC}" origin repo
     ${CMD_PREFIX} ostree --repo=repo10 pull-local --remote=origin --sign-verify repo test2
     echo "ok --sign-verify"
 else
