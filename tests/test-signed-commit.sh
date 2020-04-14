@@ -23,7 +23,10 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..10"
+echo "1..11"
+
+# This is explicitly opt in for testing
+export OSTREE_DUMMY_SIGN_ENABLED=1
 
 mkdir ${test_tmpdir}/repo
 ostree_repo_init repo --mode="archive"
@@ -50,6 +53,14 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo commit -b main -s 'Signed with d
 COMMIT="$(ostree --repo=${test_tmpdir}/repo rev-parse main)"
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy --verify ${COMMIT} ${DUMMYSIGN}
 echo "ok commit with dummy signing"
+
+if ${CMD_PREFIX} env -u OSTREE_DUMMY_SIGN_ENABLED ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy --verify ${COMMIT} ${DUMMYSIGN} 2>err.txt; then
+    fatal "verified dummy signature without env"
+fi
+# FIXME the error message here is broken
+#assert_file_has_content_literal err.txt 'dummy signature type is only for ostree testing'
+assert_file_has_content_literal err.txt ' No valid signatures found'
+echo "ok dummy sig requires env"
 
 # tests below require libsodium support
 if ! has_libsodium; then

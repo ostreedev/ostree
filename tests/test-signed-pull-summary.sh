@@ -27,6 +27,9 @@ set -euo pipefail
 
 echo "1..14"
 
+# This is explicitly opt in for testing
+export OSTREE_DUMMY_SIGN_ENABLED=1
+
 repo_reinit () {
     ARGS="$*"
     cd ${test_tmpdir}
