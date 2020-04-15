@@ -53,6 +53,14 @@ ostree_sign_dummy_iface_init (OstreeSignInterface *self);
 G_DEFINE_TYPE_WITH_CODE (OstreeSignDummy, _ostree_sign_dummy, G_TYPE_OBJECT,
         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_SIGN, ostree_sign_dummy_iface_init));
 
+static gboolean
+check_dummy_sign_enabled (GError **error)
+{
+  if (g_strcmp0 (g_getenv ("OSTREE_DUMMY_SIGN_ENABLED"), "1") != 0)
+    return glnx_throw (error, "dummy signature type is only for ostree testing");
+  return TRUE;
+}
+
 static void
 ostree_sign_dummy_iface_init (OstreeSignInterface *self)
 {
@@ -83,6 +91,8 @@ _ostree_sign_dummy_init (OstreeSignDummy *self)
 
 gboolean ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **error)
 {
+  if (!check_dummy_sign_enabled (error))
+    return FALSE;
 
   OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
@@ -95,7 +105,6 @@ gboolean ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **err
 
 gboolean ostree_sign_dummy_set_pk (OstreeSign *self, GVariant *key, GError **error)
 {
-
   OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
 
   g_free(sign->pk_ascii);
@@ -111,6 +120,8 @@ gboolean ostree_sign_dummy_data (OstreeSign *self,
                                  GCancellable *cancellable,
                                  GError **error)
 {
+  if (!check_dummy_sign_enabled (error))
+    return FALSE;
 
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
@@ -145,6 +156,9 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
                                             GVariant   *signatures,
                                             GError     **error)
 {
+  if (!check_dummy_sign_enabled (error))
+    return FALSE;
+
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (data != NULL, FALSE);
 

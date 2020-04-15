@@ -25,6 +25,8 @@ set -euo pipefail
 
 echo "1..11"
 
+# This is explicitly opt in for testing
+export OSTREE_DUMMY_SIGN_ENABLED=1
 setup_fake_remote_repo1 "archive"
 
 repo_mode="archive"
