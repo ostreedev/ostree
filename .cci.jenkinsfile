@@ -77,7 +77,7 @@ parallel fcos: {
         coreos-assembler build
       """)
     }
-    fcosKola("${env.WORKSPACE}")
+    fcosKola(cosaDir: "${env.WORKSPACE}")
   }
 },
 buildopts: {
