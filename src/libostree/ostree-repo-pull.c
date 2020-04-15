@@ -1440,7 +1440,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
 #ifndef OSTREE_DISABLE_GPGME
 static gboolean
-process_verify_result (OtPullData            *pull_data,
+process_gpg_verify_result (OtPullData            *pull_data,
                        const char            *checksum,
                        OstreeGpgVerifyResult *result,
                        GError               **error)
@@ -1563,7 +1563,7 @@ _load_public_keys (OstreeSign *sign,
 }
 
 static gboolean
-_ostree_repo_sign_verify (OstreeRepo *repo,
+_sign_verify_for_remote (OstreeRepo *repo,
                           const gchar *remote_name,
                           GBytes *signed_data,
                           GVariant *metadata,
@@ -1629,7 +1629,7 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
 {
 
   if (pull_data->gpg_verify || pull_data->sign_verify)
-    /* Shouldn't happen, but see comment in process_verify_result() */
+    /* Shouldn't happen, but see comment in process_gpg_verify_result() */
     if (g_hash_table_contains (pull_data->verified_commits, checksum))
       return TRUE;
 
@@ -1650,7 +1650,7 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
                                                detached_metadata,
                                                keyring_remote,
                                                NULL, NULL, cancellable, error);
-      if (!process_verify_result (pull_data, checksum, result, error))
+      if (!process_gpg_verify_result (pull_data, checksum, result, error))
         return FALSE;
     }
 #endif /* OSTREE_DISABLE_GPGME */
@@ -1661,7 +1661,7 @@ ostree_verify_unwritten_commit (OtPullData                 *pull_data,
       if (detached_metadata == NULL)
         return glnx_throw (error, "Can't verify commit without detached metadata");
 
-      if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata, error))
+      if (!_sign_verify_for_remote (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata, error))
         return glnx_prefix_error (error, "Can't verify commit");
 
       /* Mark the commit as verified to avoid double verification
@@ -1993,7 +1993,7 @@ scan_commit_object (OtPullData                 *pull_data,
                                                      keyring_remote,
                                                      cancellable,
                                                      error);
-      if (!process_verify_result (pull_data, checksum, result, error))
+      if (!process_gpg_verify_result (pull_data, checksum, result, error))
         return FALSE;
     }
 #endif /* OSTREE_DISABLE_GPGME */
@@ -4411,7 +4411,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                    bytes_sig, FALSE);
 
 
-            if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, &temp_error))
+            if (!_sign_verify_for_remote (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, &temp_error))
               {
                 if (summary_from_cache)
                   {
@@ -4440,7 +4440,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      cancellable, error))
                       goto out;
 
-                    if (!_ostree_repo_sign_verify (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, error))
+                    if (!_sign_verify_for_remote (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, error))
                         goto out;
                   }
                 else
@@ -6547,7 +6547,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
           sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                                   signatures, FALSE);
 
-          if (!_ostree_repo_sign_verify (self, name, summary, sig_variant, error))
+          if (!_sign_verify_for_remote (self, name, summary, sig_variant, error))
             goto out;
         }
     }
