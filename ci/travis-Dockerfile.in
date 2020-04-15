@@ -2,7 +2,7 @@ FROM @ci_docker@
 ENV container docker
 
 ADD ci/travis-install.sh /travis-install.sh
-RUN ci_suite="@ci_suite@" ci_distro="@ci_distro@" ci_in_docker=yes /travis-install.sh
+RUN ci_suite="@ci_suite@" ci_distro="@ci_distro@" ci_pkgs="@ci_pkgs@" ci_in_docker=yes /travis-install.sh
 
 ADD . /home/user/ostree
 RUN chown -R user:user /home/user/ostree
