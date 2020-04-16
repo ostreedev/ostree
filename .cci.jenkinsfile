@@ -41,7 +41,7 @@ minimal: {
         ./configure --without-curl --without-soup --disable-gtk-doc --disable-man \
           --disable-rust --without-libarchive --without-selinux --without-smack \
           --without-openssl --without-avahi --without-libmount --disable-rofiles-fuse \
-          --disable-experimental-api
+          --disable-experimental-api --without-libsodium
         make
       """)
   }
