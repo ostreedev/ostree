@@ -85,7 +85,7 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 
 ../configure \
     --enable-always-build-tests \
-    ${ci_configopts}
+    ${ci_configopts} \
     "$@"
 
 ${make}
