@@ -51,7 +51,7 @@ do
             PUBLIC_KEY="dummysign"
             ;;
         ed25519)
-            if ! has_libsodium; then
+            if ! has_sign_ed25519; then
                 echo "ok ${engine} pull mirror summary # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with signed summary # SKIP due libsodium unavailability"
                 echo "ok ${engine} prune summary cache # SKIP due libsodium unavailability"
@@ -173,7 +173,7 @@ do
 
 done
 
-if ! has_libsodium; then
+if ! has_sign_ed25519; then
     echo "ok ${engine} pull with signed summary remote old summary # SKIP due libsodium unavailability"
     echo "ok ${engine} pull with signed summary broken cache # SKIP due libsodium unavailability"
     exit 0
