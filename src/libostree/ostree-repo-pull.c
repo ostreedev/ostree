@@ -1470,11 +1470,23 @@ process_gpg_verify_result (OtPullData            *pull_data,
 }
 #endif /* OSTREE_DISABLE_GPGME */
 
+static gboolean
+get_signapi_remote_option (OstreeRepo *repo,
+                           OstreeSign *sign,
+                           const char *remote_name,
+                           const char *keysuffix,
+                           char      **out_value,
+                           GError    **error)
+{
+  g_autofree char *key = g_strdup_printf ("verification-%s-%s", ostree_sign_get_name (sign), keysuffix);
+  return ostree_repo_get_remote_option (repo, remote_name, key, NULL, out_value, error);
+}
+
 /* _load_public_keys:
  *
  * Load public keys according remote's configuration:
- * inlined key passed via config option `verification-key` or
- * file name with public keys via `verification-file` option.
+ * inlined key passed via config option `verification-<signapi>-key` or
+ * file name with public keys via `verification-<signapi>-file` option.
  *
  * If both options are set then load all all public keys
  * both from file and inlined in config.
@@ -1493,15 +1505,10 @@ _load_public_keys (OstreeSign *sign,
   gboolean loaded_from_file = TRUE;
   gboolean loaded_inlined = TRUE;
 
-  ostree_repo_get_remote_option (repo,
-                                 remote_name,
-                                 "verification-file", NULL,
-                                 &pk_file, NULL);
-
-  ostree_repo_get_remote_option (repo,
-                                 remote_name,
-                                 "verification-key", NULL,
-                                 &pk_ascii, NULL);
+  if (!get_signapi_remote_option (repo, sign, remote_name, "file", &pk_file, error))
+    return FALSE;
+  if (!get_signapi_remote_option (repo, sign, remote_name, "key", &pk_ascii, error))
+    return FALSE;
 
   /* return TRUE if there is no configuration for remote */
   if ((pk_file == NULL) &&(pk_ascii == NULL))
@@ -1571,9 +1578,10 @@ _sign_verify_for_remote (OstreeRepo *repo,
 {
   /* list all signature types in detached metadata and check if signed by any? */
   g_auto (GStrv) names = ostree_sign_list_names();
-  g_autoptr (GError) verification_error = NULL;
-
-  glnx_throw (&verification_error, "signed with unknown key");
+  guint n_invalid_signatures = 0;
+  guint n_unknown_signatures = 0;
+  g_autoptr (GError) last_sig_error = NULL;
+  gboolean found_sig = FALSE;
 
   for (char **iter=names; iter && *iter; iter++)
     {
@@ -1581,10 +1589,12 @@ _sign_verify_for_remote (OstreeRepo *repo,
       g_autoptr (GVariant) signatures = NULL;
       const gchar *signature_key = NULL;
       GVariantType *signature_format = NULL;
-      g_autoptr (GError) local_error = NULL;
 
-      if ((sign = ostree_sign_get_by_name (*iter, &local_error)) == NULL)
-        continue;
+      if ((sign = ostree_sign_get_by_name (*iter, NULL)) == NULL)
+        {
+          n_unknown_signatures++;
+          continue;
+        }
 
       signature_key = ostree_sign_metadata_key (sign);
       signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
@@ -1598,24 +1608,37 @@ _sign_verify_for_remote (OstreeRepo *repo,
         continue;
 
       /* Try to load public key(s) according remote's configuration */
-      if (_load_public_keys (sign, repo, remote_name, &local_error))
-        {
-          /* Return true if any signature fit to pre-loaded public keys.
-           * If no keys configured -- then system configuration will be used */
-          if (ostree_sign_data_verify (sign,
-                                       signed_data,
-                                       signatures,
-                                       &local_error))
-            return TRUE;
-        }
+      if (!_load_public_keys (sign, repo, remote_name, error))
+        return FALSE;
 
-      /* Save error message for better reason detection later if needed */
-      glnx_prefix_error (&verification_error, "%s", local_error->message);
+      found_sig = TRUE;
+
+        /* Return true if any signature fit to pre-loaded public keys.
+          * If no keys configured -- then system configuration will be used */
+      if (!ostree_sign_data_verify (sign,
+                                    signed_data,
+                                    signatures,
+                                    last_sig_error ? NULL : &last_sig_error))
+        {
+          n_invalid_signatures++;
+          continue;
+        }
+      /* Accept the first valid signature */
+      return TRUE;
     }
 
-  /* In case if there were no signatures of known type
-   * or metadata contains invalid data */
-  return glnx_throw (error, "%s", verification_error->message);
+  if (!found_sig)
+    {
+      if (n_unknown_signatures > 0)
+        return glnx_throw (error, "No signatures found (%d unknown type)", n_unknown_signatures);
+      return glnx_throw (error, "No signatures found");
+    }
+
+  g_assert (last_sig_error);
+  g_propagate_error (error, g_steal_pointer (&last_sig_error));
+  if (n_invalid_signatures > 1)
+    glnx_prefix_error (error, "(%d other invalid signatures)", n_invalid_signatures-1);
+  return FALSE;
 }
 
 static gboolean
@@ -2001,39 +2024,46 @@ scan_commit_object (OtPullData                 *pull_data,
   if (pull_data->sign_verify &&
       !g_hash_table_contains (pull_data->verified_commits, checksum))
     {
-      gboolean ret = FALSE;
-      g_autoptr (GError) verification_error = NULL;
+      g_autoptr(GError) last_verification_error = NULL;
+      gboolean found_any_signature = FALSE;
+      gboolean found_valid_signature = FALSE;
 
       /* list all signature types in detached metadata and check if signed by any? */
       g_auto (GStrv) names = ostree_sign_list_names();
-      for (char **iter=names; !ret && iter && *iter; iter++)
+      for (char **iter=names; iter && *iter; iter++)
         {
           g_autoptr (OstreeSign) sign = NULL;
-          g_autoptr (GError) local_error = NULL;
 
-          if ((sign = ostree_sign_get_by_name (*iter, &local_error)) == NULL)
+          if ((sign = ostree_sign_get_by_name (*iter, NULL)) == NULL)
             continue;
 
           /* Try to load public key(s) according remote's configuration */
-          if (_load_public_keys (sign, pull_data->repo, pull_data->remote_name, &local_error))
+          if (!_load_public_keys (sign, pull_data->repo, pull_data->remote_name, error))
+            return FALSE;
+
+          found_any_signature = TRUE;
+
+          /* Set return to true if any sign fit */
+          if (ostree_sign_commit_verify (sign,
+                                          pull_data->repo,
+                                          checksum,
+                                          cancellable,
+                                          last_verification_error ? NULL : &last_verification_error))
             {
-
-              /* Set return to true if any sign fit */
-              if (ostree_sign_commit_verify (sign,
-                                             pull_data->repo,
-                                             checksum,
-                                             cancellable,
-                                             &local_error))
-                ret = TRUE;
+              found_valid_signature = TRUE;
+              break;
             }
-
-          /* Save error message for better reason detection later if needed */
-          if (!ret)
-            glnx_prefix_error (&verification_error, "%s", local_error->message);
          }
 
-      if (!ret)
-        return glnx_throw (error, "Can't verify commit %s: %s", checksum, verification_error->message);
+      if (!found_any_signature)
+        return glnx_throw (error, "No signatures found for commit %s", checksum);
+
+      if (!found_valid_signature)
+        {
+          g_assert (last_verification_error);
+          g_propagate_error (error, g_steal_pointer (&last_verification_error));
+          return glnx_prefix_error (error, "Can't verify commit %s", checksum);
+        }
     }
 
   /* If we found a legacy transaction flag, assume we have to scan.

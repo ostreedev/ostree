@@ -242,7 +242,7 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
         }
     }
 
-  return glnx_throw (error, "Not able to verify: no valid signatures found");
+  return glnx_throw (error, "no valid ed25519 signatures found");
 #endif /* HAVE_LIBSODIUM */
 
   return FALSE;

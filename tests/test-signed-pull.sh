@@ -80,22 +80,22 @@ if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
 fi
 echo "ok pull failure without keys preloaded"
 
-${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "somewrongkey"
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-dummy-key "somewrongkey"
 if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
     assert_not_reached "pull with unknown key unexpectedly succeeded"
 fi
 echo "ok pull failure with incorrect key option"
 
-${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-key
-${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-file "/non/existing/file"
+${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-dummy-key
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-dummy-file "/non/existing/file"
 if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
     assert_not_reached "pull with unknown keys file unexpectedly succeeded"
 fi
 echo "ok pull failure with incorrect keys file option"
 
 # Test with correct dummy key
-${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${DUMMYSIGN}"
-${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-file
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-dummy-key "${DUMMYSIGN}"
+${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-dummy-file
 test_signed_pull "dummy" ""
 
 if ! has_libsodium; then
@@ -117,7 +117,7 @@ SECRET=${ED25519SECRET}
 COMMIT_ARGS="--sign=${SECRET} --sign-type=ed25519"
 
 repo_init --set=sign-verify=true
-${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-key "${PUBLIC}"
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-ed25519-key "${PUBLIC}"
 test_signed_pull "ed25519" "key"
 
 # Prepare files with public ed25519 signatures
@@ -130,13 +130,13 @@ for((i=0;i<100;i++)); do
 done > ${PUBKEYS}
 
 # Test case with the file containing incorrect signatures and with the correct key set
-${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-file "${PUBKEYS}"
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-ed25519-file "${PUBKEYS}"
 test_signed_pull "ed25519" "key+file"
 
 # Add correct key into the list
 echo ${PUBLIC} >> ${PUBKEYS}
 
 repo_init --set=sign-verify=true
-${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-file "${PUBKEYS}"
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-ed25519-file "${PUBKEYS}"
 test_signed_pull "ed25519" "file"
 
