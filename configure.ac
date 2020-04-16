@@ -253,7 +253,7 @@ AS_IF([test x$with_libsodium != xno], [
     AS_IF([ test x$have_libsodium = xno ], [
        AC_MSG_ERROR([Need LIBSODIUM version $LIBSODIUM_DEPENDENCY or later])
     ])
-    OSTREE_FEATURES="$OSTREE_FEATURES libsodium"
+    OSTREE_FEATURES="$OSTREE_FEATURES sign-ed25519"
 ], with_libsodium=no )
 AM_CONDITIONAL(USE_LIBSODIUM, test "x$have_libsodium" = xyes)
 

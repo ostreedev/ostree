@@ -679,10 +679,10 @@ libtest_cleanup_gpg () {
 }
 libtest_exit_cmds+=(libtest_cleanup_gpg)
 
-has_libsodium () {
+has_sign_ed25519 () {
     local ret
     ${CMD_PREFIX} ostree --version > version.txt
-    grep -q -e '- libsodium' version.txt
+    grep -q -e '- sign-ed25519' version.txt
     ret=$?
     rm -f version.txt
     return ${ret}

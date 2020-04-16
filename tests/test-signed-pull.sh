@@ -98,7 +98,7 @@ ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-dummy
 ${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-dummy-file
 test_signed_pull "dummy" ""
 
-if ! has_libsodium; then
+if ! has_sign_ed25519; then
     echo "ok ed25519-key pull signed commit # SKIP due libsodium unavailability"
     echo "ok ed25519-key re-pull signature for stored commit # SKIP due libsodium unavailability"
     echo "ok ed25519-key+file pull signed commit # SKIP due libsodium unavailability"

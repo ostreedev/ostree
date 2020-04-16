@@ -116,7 +116,7 @@ for src_object in `find repo/objects -name '*.filez'`; do
 done
 echo "ok pull-local z2 to z2 default hardlink"
 
-if has_libsodium; then
+if has_sign_ed25519; then
     gen_ed25519_keys
 
     mkdir repo8
