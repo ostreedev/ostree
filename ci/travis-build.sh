@@ -85,13 +85,13 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 
 ../configure \
     --enable-always-build-tests \
-    ${ci_configopts}
+    ${ci_configopts} \
     "$@"
 
 ${make}
 [ "$ci_test" = no ] || ${make} check || maybe_fail_tests
 cat test-suite.log || :
-[ "$ci_test" = no ] || ${make} distcheck || maybe_fail_tests
+[ "$ci_test" = no ] || ${make} distcheck DISTCHECK_CONFIGURE_FLAGS="${ci_configopts}" || maybe_fail_tests
 cat test-suite.log || :
 
 ${make} install DESTDIR=$(pwd)/DESTDIR

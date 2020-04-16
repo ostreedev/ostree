@@ -53,6 +53,9 @@ NULL=
 # ci_configopts: Additional arguments for configure
 : "${ci_configopts:=}"
 
+# ci_pkgs: Additional packages to be installed
+: "${ci_pkgs:=}"
+
 if [ $(id -u) = 0 ]; then
     sudo=
 else
@@ -64,6 +67,7 @@ if [ -n "$ci_docker" ]; then
         -e "s/@ci_distro@/${ci_distro}/" \
         -e "s/@ci_docker@/${ci_docker}/" \
         -e "s/@ci_suite@/${ci_suite}/" \
+        -e "s/@ci_pkgs@/${ci_pkgs}/" \
         < ci/travis-Dockerfile.in > Dockerfile
     exec docker build -t ci-image .
 fi
@@ -111,6 +115,7 @@ case "$ci_distro" in
             procps \
             zlib1g-dev \
             python3-yaml \
+            ${ci_pkgs:-} \
             ${NULL}
 
         if [ "$ci_in_docker" = yes ]; then
