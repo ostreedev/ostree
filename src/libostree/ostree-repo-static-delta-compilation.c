@@ -1346,7 +1346,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                    GCancellable                 *cancellable,
                                    GError                      **error)
 {
-  gboolean ret = FALSE;
   OstreeStaticDeltaBuilder builder = { 0, };
   guint i;
   guint min_fallback_size;
@@ -1365,8 +1364,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GVariant) detached = NULL;
   gboolean inline_parts;
   guint endianness = G_BYTE_ORDER;
-  builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
-  builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  g_autoptr(GPtrArray) builder_parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
+  g_autoptr(GPtrArray) builder_fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
   g_autoptr(OtVariantBuilder) descriptor_builder = NULL;
 
@@ -1385,6 +1384,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_return_val_if_fail (endianness == G_BIG_ENDIAN || endianness == G_LITTLE_ENDIAN, FALSE);
 
   builder.swap_endian = endianness != G_BYTE_ORDER;
+  builder.parts = builder_parts;
+  builder.fallback_objects = builder_fallback_objects;
 
   { gboolean use_bsdiff;
     if (!g_variant_lookup (params, "bsdiff-enabled", "b", &use_bsdiff))
@@ -1408,7 +1409,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
                                  &to_commit, error))
-    goto out;
+    return FALSE;
 
   builder.delta_opts = delta_opts;
 
@@ -1419,7 +1420,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       descriptor_name = g_strdup (glnx_basename (opt_filename));
 
       if (!glnx_opendirat (AT_FDCWD, dn, TRUE, &descriptor_dfd, error))
-        goto out;
+        return FALSE;
     }
   else
     {
@@ -1428,9 +1429,9 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       const char *dn = dirname (dnbuf);
 
       if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, DEFAULT_DIRECTORY_MODE, cancellable, error))
-        goto out;
+        return FALSE;
       if (!glnx_opendirat (self->repo_dir_fd, dn, TRUE, &descriptor_dfd, error))
-        goto out;
+        return FALSE;
 
       descriptor_name = g_strdup (basename (descriptor_relpath));
     }
@@ -1439,17 +1440,17 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   /* Ignore optimization flags */
   if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
                                   cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_WRONLY | O_CLOEXEC,
                                       &descriptor_tmpf, error))
-    goto out;
+    return FALSE;
 
   descriptor_builder = ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT), descriptor_tmpf.fd);
 
   /* Open the metadata dict */
   if (!ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("a{sv}"), error))
-    goto out;
+    return FALSE;
 
   /* NOTE: Add user-supplied metadata first.  This is used by at least
    * flatpak as a way to provide MIME content sniffing, since the
@@ -1464,7 +1465,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       while ((item = g_variant_iter_next_value (&iter)))
         {
           if (!ot_variant_builder_add_value (descriptor_builder, item, error))
-            goto out;
+            return FALSE;
           g_variant_unref (item);
         }
     }
@@ -1483,7 +1484,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
         g_assert_not_reached ();
       }
     if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", "ostree.endianness", g_variant_new_byte (endianness_char)))
-      goto out;
+      return FALSE;
   }
 
   part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
@@ -1504,21 +1505,18 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
               !ot_variant_builder_add_from_fd (descriptor_builder, G_VARIANT_TYPE ("(yay)"), part_builder->part_tmpf.fd, part_builder->compressed_size, error) ||
               !ot_variant_builder_close (descriptor_builder, error) ||
               !ot_variant_builder_close (descriptor_builder, error))
-            goto out;
+            return FALSE;
         }
       else
         {
           g_autofree char *partstr = g_strdup_printf ("%u", i);
 
           if (fchmod (part_builder->part_tmpf.fd, 0644) < 0)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+            return glnx_throw_errno_prefix (error, "fchmod");
 
           if (!glnx_link_tmpfile_at (&part_builder->part_tmpf, GLNX_LINK_TMPFILE_REPLACE,
                                      descriptor_dfd, partstr, error))
-            goto out;
+            return FALSE;
         }
 
       g_variant_builder_add_value (part_headers, part_builder->header);
@@ -1529,21 +1527,21 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (!get_fallback_headers (self, &builder, &fallback_headers,
                              cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!ostree_repo_read_commit_detached_metadata (self, to, &detached, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (detached)
     {
       g_autofree char *detached_key = _ostree_get_relative_static_delta_path (from, to, "commitmeta");
       if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", detached_key, detached))
-        goto out;
+        return FALSE;
     }
 
   /* Close metadata dict */
   if (!ot_variant_builder_close (descriptor_builder, error))
-    goto out;
+    return FALSE;
 
   /* Generate OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
   {
@@ -1568,10 +1566,10 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                        g_variant_builder_end (part_headers), error) ||
         !ot_variant_builder_add_value (descriptor_builder,
                                        fallback_headers, error))
-      goto out;
+      return FALSE;
 
     if (!ot_variant_builder_end (descriptor_builder, error))
-      goto out;
+      return FALSE;
 
     g_date_time_unref (now);
   }
@@ -1589,18 +1587,11 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     }
 
   if (fchmod (descriptor_tmpf.fd, 0644) < 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
+    return glnx_throw_errno_prefix (error, "fchmod");
 
   if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE,
                              descriptor_dfd, descriptor_name, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
- out:
-  g_clear_pointer (&builder.parts, g_ptr_array_unref);
-  g_clear_pointer (&builder.fallback_objects, g_ptr_array_unref);
-  return ret;
+  return TRUE;
 }
