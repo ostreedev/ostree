@@ -53,6 +53,9 @@ NULL=
 # ci_configopts: Additional arguments for configure
 : "${ci_configopts:=}"
 
+# ci_pkgs: Additional packages to be installed
+: "${ci_pkgs:=}"
+
 if [ $(id -u) = 0 ]; then
     sudo=
 else
