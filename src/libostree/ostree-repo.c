@@ -6241,3 +6241,107 @@ ostree_repo_get_bootloader (OstreeRepo   *self)
 
   return self->bootloader;
 }
+
+
+/**
+ * _ostree_repo_verify_bindings:
+ * @collection_id: (nullable): Locally specified collection ID for the remote
+ *    the @commit was retrieved from, or %NULL if none is configured
+ * @ref_name: (nullable): Ref name the commit was retrieved using, or %NULL if
+ *    the commit was retrieved by checksum
+ * @commit: Commit data to check
+ * @error: Return location for a #GError, or %NULL
+ *
+ * Verify the ref and collection bindings.
+ *
+ * The ref binding is verified only if it exists. But if we have the
+ * collection ID specified in the remote configuration (@collection_id is
+ * non-%NULL) then the ref binding must exist, otherwise the verification will
+ * fail. Parts of the verification can be skipped by passing %NULL to the
+ * @ref_name parameter (in case we requested a checksum directly, without
+ * looking it up from a ref).
+ *
+ * The collection binding is verified only when we have collection ID
+ * specified in the remote configuration. If it is specified, then the
+ * binding must exist and must be equal to the remote repository
+ * collection ID.
+ *
+ * Returns: %TRUE if bindings are correct, %FALSE otherwise
+ * Since: 2017.14
+ */
+gboolean
+_ostree_repo_verify_bindings (const char  *collection_id,
+                              const char  *ref_name,
+                              GVariant    *commit,
+                              GError     **error)
+{
+  g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
+  g_autofree const char **refs = NULL;
+  if (!g_variant_lookup (metadata,
+                         OSTREE_COMMIT_META_KEY_REF_BINDING,
+                         "^a&s",
+                         &refs))
+    {
+      /* Early return here - if the remote collection ID is NULL, then
+       * we certainly will not verify the collection binding in the
+       * commit.
+       */
+      if (collection_id == NULL)
+        return TRUE;
+
+      return glnx_throw (error,
+                         "Expected commit metadata to have ref "
+                         "binding information, found none");
+    }
+
+  if (ref_name != NULL)
+    {
+      if (!g_strv_contains ((const char *const *) refs, ref_name))
+        {
+          g_autoptr(GString) refs_dump = g_string_new (NULL);
+          const char *refs_str;
+
+          if (refs != NULL && (*refs) != NULL)
+            {
+              for (const char **iter = refs; *iter != NULL; ++iter)
+                {
+                  const char *ref = *iter;
+
+                  if (refs_dump->len > 0)
+                    g_string_append (refs_dump, ", ");
+                  g_string_append_printf (refs_dump, "‘%s’", ref);
+                }
+
+              refs_str = refs_dump->str;
+            }
+          else
+            {
+              refs_str = "no refs";
+            }
+
+          return glnx_throw (error, "Commit has no requested ref ‘%s’ "
+                             "in ref binding metadata (%s)",
+                             ref_name, refs_str);
+        }
+    }
+
+  if (collection_id != NULL)
+    {
+      const char *collection_id_binding;
+      if (!g_variant_lookup (metadata,
+                             OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
+                             "&s",
+                             &collection_id_binding))
+        return glnx_throw (error,
+                           "Expected commit metadata to have collection ID "
+                           "binding information, found none");
+      if (!g_str_equal (collection_id_binding, collection_id))
+        return glnx_throw (error,
+                           "Commit has collection ID ‘%s’ in collection binding "
+                           "metadata, while the remote it came from has "
+                           "collection ID ‘%s’",
+                           collection_id_binding, collection_id);
+    }
+
+  return TRUE;
+}
