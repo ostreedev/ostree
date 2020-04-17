@@ -182,7 +182,7 @@ echo "ok sign with ed25519 keys file"
 mkdir -p ${test_tmpdir}/{trusted,revoked}.ed25519.d
 for((i=0;i<100;i++)); do
     # Generate some key files with random public signatures
-    gen_ed25519_random_public
+    gen_ed25519_random_public > ${test_tmpdir}/trusted.ed25519.d/signature_$i
 done
 # Check no valid public keys are available
 if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-dir=${test_tmpdir} ${COMMIT}; then
