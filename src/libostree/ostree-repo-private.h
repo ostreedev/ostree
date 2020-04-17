@@ -247,7 +247,7 @@ _ostree_repo_allocate_tmpdir (int           tmpdir_dfd,
                               GError      **error);
 
 gboolean
-_ostree_repo_is_locked_tmpdir (const char *filename);
+_ostree_repo_has_staging_prefix (const char *filename);
 
 gboolean
 _ostree_repo_try_lock_tmpdir (int            tmpdir_dfd,

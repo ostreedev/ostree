@@ -5959,7 +5959,7 @@ _ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
 }
 
 gboolean
-_ostree_repo_is_locked_tmpdir (const char *filename)
+_ostree_repo_has_staging_prefix (const char *filename)
 {
   return g_str_has_prefix (filename, OSTREE_REPO_TMPDIR_STAGING);
 }
@@ -6019,7 +6019,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
                               GCancellable *cancellable,
                               GError **error)
 {
-  g_return_val_if_fail (_ostree_repo_is_locked_tmpdir (tmpdir_prefix), FALSE);
+  g_return_val_if_fail (_ostree_repo_has_staging_prefix (tmpdir_prefix), FALSE);
 
   /* Look for existing tmpdir (with same prefix) to reuse */
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
