@@ -244,17 +244,17 @@ AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
 
 LIBSODIUM_DEPENDENCY="1.0.14"
-AC_ARG_WITH(libsodium,
-	    AS_HELP_STRING([--with-libsodium], [Use libsodium @<:@default=no@:>@]),
-	    [], [with_libsodium=no])
-AS_IF([test x$with_libsodium != xno], [
+AC_ARG_WITH(ed25519_libsodium,
+	    AS_HELP_STRING([--with-ed25519-libsodium], [Use libsodium for ed25519 @<:@default=no@:>@]),
+	    [], [with_ed25519_libsodium=no])
+AS_IF([test x$with_ed25519_libsodium != xno], [
     AC_DEFINE([HAVE_LIBSODIUM], 1, [Define if using libsodium])
     PKG_CHECK_MODULES(OT_DEP_LIBSODIUM, libsodium >= $LIBSODIUM_DEPENDENCY, have_libsodium=yes,  have_libsodium=no)
     AS_IF([ test x$have_libsodium = xno ], [
        AC_MSG_ERROR([Need LIBSODIUM version $LIBSODIUM_DEPENDENCY or later])
     ])
     OSTREE_FEATURES="$OSTREE_FEATURES sign-ed25519"
-], with_libsodium=no )
+], with_ed25519_libsodium=no )
 AM_CONDITIONAL(USE_LIBSODIUM, test "x$have_libsodium" = xyes)
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
@@ -641,7 +641,7 @@ echo "
     cryptographic checksums:                      $with_crypto
     systemd:                                      $with_libsystemd
     libmount:                                     $with_libmount
-    libsodium (ed25519 signatures):               $with_libsodium
+    libsodium (ed25519 signatures):               $with_ed25519_libsodium
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                yes (always enabled now)
     O_TMPFILE:                                    $enable_otmpfile
