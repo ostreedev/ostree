@@ -24,7 +24,6 @@
 #include "ostree-cmdprivate.h"
 #include "ostree-repo-private.h"
 #include "ostree-core-private.h"
-#include "ostree-repo-pull-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-sysroot-private.h"
 #include "ostree-bootloader-grub2.h"

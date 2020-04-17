@@ -502,4 +502,10 @@ _ostree_tmpf_fsverity (OstreeRepo *self,
                        GLnxTmpfile *tmpf,
                        GError    **error);
 
+gboolean
+_ostree_repo_verify_bindings (const char  *collection_id,
+                              const char  *ref_name,
+                              GVariant    *commit,
+                              GError     **error);
+
 G_END_DECLS
