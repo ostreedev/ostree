@@ -2011,7 +2011,7 @@ cleanup_tmpdir (OstreeRepo        *self,
         continue;
 
       /* Handle transaction tmpdirs */
-      if (_ostree_repo_has_staging_prefix (dent->d_name))
+      if (_ostree_repo_has_staging_prefix (dent->d_name) && S_ISDIR (stbuf.st_mode))
         {
           if (!cleanup_txn_dir (self, dfd_iter.fd, dent->d_name, cancellable, error))
             return FALSE;
