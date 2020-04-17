@@ -137,4 +137,32 @@ typedef struct {
   GSource *idle_src;
 } OtPullData;
 
+gboolean
+_sign_verify_for_remote (OstreeRepo *repo,
+                          const gchar *remote_name,
+                          GBytes *signed_data,
+                          GVariant *metadata,
+                          GError **error);
+
+gboolean
+_signapi_load_public_keys (OstreeSign *sign,
+                           OstreeRepo *repo,
+                           const gchar *remote_name,
+                           GError **error);
+
+gboolean
+_verify_unwritten_commit (OtPullData                 *pull_data,
+                          const char                 *checksum,
+                          GVariant                   *commit,
+                          GVariant                   *detached_metadata,
+                          const OstreeCollectionRef  *ref,
+                          GCancellable               *cancellable,
+                          GError                    **error);
+
+gboolean
+_process_gpg_verify_result (OtPullData            *pull_data,
+                            const char            *checksum,
+                            OstreeGpgVerifyResult *result,
+                            GError               **error);
+
 G_END_DECLS
