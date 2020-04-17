@@ -1943,6 +1943,9 @@ cleanup_txn_dir (OstreeRepo   *self,
                  GCancellable *cancellable,
                  GError      **error)
 {
+  const char *errprefix = glnx_strjoina ("Cleaning up txn dir ", path);
+  GLNX_AUTO_PREFIX_ERROR (errprefix, error);
+
   g_auto(GLnxLockFile) lockfile = { 0, };
   gboolean did_lock;
 
