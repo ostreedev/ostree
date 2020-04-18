@@ -29,16 +29,13 @@
 #include "libglnx.h"
 #include "ostree.h"
 #include "otutil.h"
-#include "ostree-repo-private.h"
+#include "ostree-repo-pull-private.h"
 
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
 
 #include "ostree-core-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-metalink.h"
-#include "ostree-fetcher-util.h"
-#include "ostree-remote-private.h"
-#include "ot-fs-utils.h"
 
 #include "ostree-repo-finder.h"
 #include "ostree-repo-finder-config.h"
@@ -53,8 +50,6 @@
 #include <systemd/sd-journal.h>
 #endif
 
-#include "ostree-sign.h"
-
 #define OSTREE_MESSAGE_FETCH_COMPLETE_ID SD_ID128_MAKE(75,ba,3d,eb,0a,f0,41,a9,a4,62,72,ff,85,d9,e7,3e)
 
 #define OSTREE_REPO_PULL_CONTENT_PRIORITY  (OSTREE_FETCHER_DEFAULT_PRIORITY)
@@ -65,116 +60,6 @@
  * _ostree_fetcher_should_retry_request(). This is the default value for the
  * `n-network-retries` pull option. */
 #define DEFAULT_N_NETWORK_RETRIES 5
-
-typedef enum {
-  OSTREE_FETCHER_SECURITY_STATE_CA_PINNED,
-  OSTREE_FETCHER_SECURITY_STATE_TLS,
-  OSTREE_FETCHER_SECURITY_STATE_INSECURE,
-} OstreeFetcherSecurityState;
-
-typedef struct {
-  OstreeRepo   *repo;
-  int           tmpdir_dfd;
-  OstreeRepoPullFlags flags;
-  char          *remote_name;
-  char          *remote_refspec_name;
-  OstreeRepoMode remote_mode;
-  OstreeFetcher *fetcher;
-  OstreeFetcherSecurityState fetcher_security_state;
-
-  GPtrArray     *meta_mirrorlist;    /* List of base URIs for fetching metadata */
-  GPtrArray     *content_mirrorlist; /* List of base URIs for fetching content */
-  OstreeRepo   *remote_repo_local;
-  GPtrArray    *localcache_repos; /* Array<OstreeRepo> */
-
-  GMainContext    *main_context;
-  GCancellable *cancellable;
-  OstreeAsyncProgress *progress;
-
-  GVariant         *extra_headers;
-  char             *append_user_agent;
-
-  gboolean      dry_run;
-  gboolean      dry_run_emitted_progress;
-  gboolean      legacy_transaction_resuming;
-  guint         n_network_retries;
-  enum {
-    OSTREE_PULL_PHASE_FETCHING_REFS,
-    OSTREE_PULL_PHASE_FETCHING_OBJECTS
-  }             phase;
-  gint          n_scanned_metadata;
-
-  gboolean          gpg_verify;
-  gboolean          gpg_verify_summary;
-  gboolean          sign_verify;
-  gboolean          sign_verify_summary;
-  gboolean          require_static_deltas;
-  gboolean          disable_static_deltas;
-  gboolean          has_tombstone_commits;
-
-  GBytes           *summary_data;
-  GBytes           *summary_data_sig;
-  GVariant         *summary;
-  GHashTable       *summary_deltas_checksums;
-  GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */
-  GHashTable       *verified_commits; /* Set<checksum> of commits that have been verified */
-  GHashTable       *ref_keyring_map; /* Maps OstreeCollectionRef to keyring remote name */
-  GPtrArray        *static_delta_superblocks;
-  GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
-  GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
-  GHashTable       *scanned_metadata; /* Maps object name to itself */
-  GHashTable       *fetched_detached_metadata; /* Map<checksum,GVariant> */
-  GHashTable       *requested_metadata; /* Maps object name to itself */
-  GHashTable       *requested_content; /* Maps checksum to itself */
-  GHashTable       *requested_fallback_content; /* Maps checksum to itself */
-  GHashTable       *pending_fetch_metadata; /* Map<ObjectName,FetchObjectData> */
-  GHashTable       *pending_fetch_content; /* Map<checksum,FetchObjectData> */
-  GHashTable       *pending_fetch_delta_superblocks; /* Set<FetchDeltaSuperData> */
-  GHashTable       *pending_fetch_deltaparts; /* Set<FetchStaticDeltaData> */
-  guint             n_outstanding_metadata_fetches;
-  guint             n_outstanding_metadata_write_requests;
-  guint             n_outstanding_content_fetches;
-  guint             n_outstanding_content_write_requests;
-  guint             n_outstanding_deltapart_fetches;
-  guint             n_outstanding_deltapart_write_requests;
-  guint             n_total_deltaparts;
-  guint             n_total_delta_fallbacks;
-  guint64           fetched_deltapart_size; /* How much of the delta we have now */
-  guint64           total_deltapart_size;
-  guint64           total_deltapart_usize;
-  gint              n_requested_metadata;
-  gint              n_requested_content;
-  guint             n_fetched_deltaparts;
-  guint             n_fetched_deltapart_fallbacks;
-  guint             n_fetched_metadata;
-  guint             n_fetched_content;
-  /* Objects imported via hardlink/reflink/copying or  --localcache-repo*/
-  guint             n_imported_metadata;
-  guint             n_imported_content;
-
-  gboolean          timestamp_check; /* Verify commit timestamps */
-  int               maxdepth;
-  guint64           max_metadata_size;
-  guint64           start_time;
-
-  gboolean          is_mirror;
-  gboolean          trusted_http_direct;
-  gboolean          is_commit_only;
-  OstreeRepoImportFlags importflags;
-
-  GPtrArray        *dirs;
-
-  gboolean      have_previous_bytes;
-  guint64       previous_bytes_sec;
-  guint64       previous_total_downloaded;
-
-  GError       *cached_async_error;
-  GError      **async_error;
-  gboolean      caught_error;
-
-  GQueue scan_object_queue;
-  GSource *idle_src;
-} OtPullData;
 
 typedef struct {
   OtPullData  *pull_data;
@@ -263,14 +148,6 @@ static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           GCancellable               *cancellable,
                                           GError                    **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
-static gboolean
-ostree_verify_unwritten_commit (OtPullData                 *pull_data,
-                                const char                 *checksum,
-                                GVariant                   *commit,
-                                GVariant                   *detached_metadata,
-                                const OstreeCollectionRef  *ref,
-                                GCancellable               *cancellable,
-                                GError                    **error);
 
 static gboolean
 update_progress (gpointer user_data)
@@ -1312,8 +1189,8 @@ meta_fetch_on_complete (GObject           *object,
            * metadata into this hash.
            */
           GVariant *detached_data = g_hash_table_lookup (pull_data->fetched_detached_metadata, checksum);
-          if (!ostree_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
-                                               fetch_data->requested_ref, pull_data->cancellable, error))
+          if (!_verify_unwritten_commit (pull_data, checksum, metadata, detached_data,
+                                         fetch_data->requested_ref, pull_data->cancellable, error))
             goto out;
 
           if (!ostree_repo_mark_commit_partial (pull_data->repo, checksum, TRUE, error))
@@ -1435,263 +1312,6 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
   if (free_fetch_data)
     g_clear_pointer (&fetch_data, fetch_static_delta_data_free);
-}
-
-#ifndef OSTREE_DISABLE_GPGME
-static gboolean
-process_gpg_verify_result (OtPullData            *pull_data,
-                       const char            *checksum,
-                       OstreeGpgVerifyResult *result,
-                       GError               **error)
-{
-  const char *error_prefix = glnx_strjoina ("Commit ", checksum);
-  GLNX_AUTO_PREFIX_ERROR(error_prefix, error);
-  if (result == NULL)
-    return FALSE;
-
-  /* Allow callers to output the results immediately. */
-  g_signal_emit_by_name (pull_data->repo,
-                         "gpg-verify-result",
-                         checksum, result);
-
-  if (!ostree_gpg_verify_result_require_valid_signature (result, error))
-    return FALSE;
-
-
-  /* We now check both *before* writing the commit, and after. Because the
-   * behavior used to be only verifiying after writing, we need to handle
-   * the case of "written but not verified". But we also don't want to check
-   * twice, as that'd result in duplicate signals.
-   */
-  g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
-
-  return TRUE;
-}
-#endif /* OSTREE_DISABLE_GPGME */
-
-static gboolean
-get_signapi_remote_option (OstreeRepo *repo,
-                           OstreeSign *sign,
-                           const char *remote_name,
-                           const char *keysuffix,
-                           char      **out_value,
-                           GError    **error)
-{
-  g_autofree char *key = g_strdup_printf ("verification-%s-%s", ostree_sign_get_name (sign), keysuffix);
-  return ostree_repo_get_remote_option (repo, remote_name, key, NULL, out_value, error);
-}
-
-/* _load_public_keys:
- *
- * Load public keys according remote's configuration:
- * inlined key passed via config option `verification-<signapi>-key` or
- * file name with public keys via `verification-<signapi>-file` option.
- *
- * If both options are set then load all all public keys
- * both from file and inlined in config.
- *
- * Returns: %FALSE if any source is configured but nothing has been loaded.
- * Returns: %TRUE if no configuration or any key loaded.
- * */
-static gboolean
-_load_public_keys (OstreeSign *sign,
-                   OstreeRepo *repo,
-                   const gchar *remote_name,
-                   GError **error)
-{
-  g_autofree gchar *pk_ascii = NULL;
-  g_autofree gchar *pk_file = NULL;
-  gboolean loaded_from_file = TRUE;
-  gboolean loaded_inlined = TRUE;
-
-  if (!get_signapi_remote_option (repo, sign, remote_name, "file", &pk_file, error))
-    return FALSE;
-  if (!get_signapi_remote_option (repo, sign, remote_name, "key", &pk_ascii, error))
-    return FALSE;
-
-  /* return TRUE if there is no configuration for remote */
-  if ((pk_file == NULL) &&(pk_ascii == NULL))
-    {
-      /* It is expected what remote may have verification file as
-       * a part of configuration. Hence there is not a lot of sense
-       * for automatic resolve of per-remote keystore file as it
-       * used in find_keyring () for GPG.
-       * If it is needed to add the similar mechanism, it is preferable
-       * to pass the path to ostree_sign_load_pk () via GVariant options
-       * and call it here for loading with method and file structure
-       * specific for signature type.
-       */
-      return TRUE;
-    }
-
-  if (pk_file != NULL)
-    {
-      g_autoptr (GError) local_error = NULL;
-      g_autoptr (GVariantBuilder) builder = NULL;
-      g_autoptr (GVariant) options = NULL;
-
-      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-      g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (pk_file));
-      options = g_variant_builder_end (builder);
-
-      if (ostree_sign_load_pk (sign, options, &local_error))
-        loaded_from_file = TRUE;
-      else
-        {
-          return glnx_throw (error, "Failed loading '%s' keys from '%s",
-                             ostree_sign_get_name (sign), pk_file);
-        }
-    }
-
-  if (pk_ascii != NULL)
-    {
-      g_autoptr (GError) local_error = NULL;
-      g_autoptr (GVariant) pk = g_variant_new_string(pk_ascii);
-
-      /* Add inlined public key */
-      if (loaded_from_file)
-        loaded_inlined = ostree_sign_add_pk (sign, pk, &local_error);
-      else
-        loaded_inlined = ostree_sign_set_pk (sign, pk, &local_error);
-
-      if (!loaded_inlined)
-        {
-          return glnx_throw (error, "Failed loading '%s' keys from inline `verification-key`",
-                             ostree_sign_get_name (sign));
-        }
-    }
-
-  /* Return true if able to load from any source */
-  if (!(loaded_from_file || loaded_inlined))
-    return glnx_throw (error, "No keys found");
-
-  return TRUE;
-}
-
-static gboolean
-_sign_verify_for_remote (OstreeRepo *repo,
-                          const gchar *remote_name,
-                          GBytes *signed_data,
-                          GVariant *metadata,
-                          GError **error)
-{
-  /* list all signature types in detached metadata and check if signed by any? */
-  g_auto (GStrv) names = ostree_sign_list_names();
-  guint n_invalid_signatures = 0;
-  guint n_unknown_signatures = 0;
-  g_autoptr (GError) last_sig_error = NULL;
-  gboolean found_sig = FALSE;
-
-  for (char **iter=names; iter && *iter; iter++)
-    {
-      g_autoptr (OstreeSign) sign = NULL;
-      g_autoptr (GVariant) signatures = NULL;
-      const gchar *signature_key = NULL;
-      GVariantType *signature_format = NULL;
-
-      if ((sign = ostree_sign_get_by_name (*iter, NULL)) == NULL)
-        {
-          n_unknown_signatures++;
-          continue;
-        }
-
-      signature_key = ostree_sign_metadata_key (sign);
-      signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
-
-      signatures = g_variant_lookup_value (metadata,
-                                           signature_key,
-                                           signature_format);
-
-      /* If not found signatures for requested signature subsystem */
-      if (!signatures)
-        continue;
-
-      /* Try to load public key(s) according remote's configuration */
-      if (!_load_public_keys (sign, repo, remote_name, error))
-        return FALSE;
-
-      found_sig = TRUE;
-
-        /* Return true if any signature fit to pre-loaded public keys.
-          * If no keys configured -- then system configuration will be used */
-      if (!ostree_sign_data_verify (sign,
-                                    signed_data,
-                                    signatures,
-                                    last_sig_error ? NULL : &last_sig_error))
-        {
-          n_invalid_signatures++;
-          continue;
-        }
-      /* Accept the first valid signature */
-      return TRUE;
-    }
-
-  if (!found_sig)
-    {
-      if (n_unknown_signatures > 0)
-        return glnx_throw (error, "No signatures found (%d unknown type)", n_unknown_signatures);
-      return glnx_throw (error, "No signatures found");
-    }
-
-  g_assert (last_sig_error);
-  g_propagate_error (error, g_steal_pointer (&last_sig_error));
-  if (n_invalid_signatures > 1)
-    glnx_prefix_error (error, "(%d other invalid signatures)", n_invalid_signatures-1);
-  return FALSE;
-}
-
-static gboolean
-ostree_verify_unwritten_commit (OtPullData                 *pull_data,
-                                const char                 *checksum,
-                                GVariant                   *commit,
-                                GVariant                   *detached_metadata,
-                                const OstreeCollectionRef  *ref,
-                                GCancellable               *cancellable,
-                                GError                    **error)
-{
-
-  if (pull_data->gpg_verify || pull_data->sign_verify)
-    /* Shouldn't happen, but see comment in process_gpg_verify_result() */
-    if (g_hash_table_contains (pull_data->verified_commits, checksum))
-      return TRUE;
-
-  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
-
-#ifndef OSTREE_DISABLE_GPGME
-  if (pull_data->gpg_verify)
-    {
-      const char *keyring_remote = NULL;
-
-      if (ref != NULL)
-        keyring_remote = g_hash_table_lookup (pull_data->ref_keyring_map, ref);
-      if (keyring_remote == NULL)
-        keyring_remote = pull_data->remote_name;
-
-      g_autoptr(OstreeGpgVerifyResult) result =
-        _ostree_repo_gpg_verify_with_metadata (pull_data->repo, signed_data,
-                                               detached_metadata,
-                                               keyring_remote,
-                                               NULL, NULL, cancellable, error);
-      if (!process_gpg_verify_result (pull_data, checksum, result, error))
-        return FALSE;
-    }
-#endif /* OSTREE_DISABLE_GPGME */
-
-  if (pull_data->sign_verify)
-    {
-      /* Nothing to check if detached metadata is absent */
-      if (detached_metadata == NULL)
-        return glnx_throw (error, "Can't verify commit without detached metadata");
-
-      if (!_sign_verify_for_remote (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata, error))
-        return glnx_prefix_error (error, "Can't verify commit");
-
-      /* Mark the commit as verified to avoid double verification
-       * see process_verify_result () for rationale */
-      g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
-    }
-
-  return TRUE;
 }
 
 static gboolean
@@ -1912,7 +1532,7 @@ scan_commit_object (OtPullData                 *pull_data,
                                                      keyring_remote,
                                                      cancellable,
                                                      error);
-      if (!process_gpg_verify_result (pull_data, checksum, result, error))
+      if (!_process_gpg_verify_result (pull_data, checksum, result, error))
         return FALSE;
     }
 #endif /* OSTREE_DISABLE_GPGME */
@@ -1934,7 +1554,7 @@ scan_commit_object (OtPullData                 *pull_data,
             continue;
 
           /* Try to load public key(s) according remote's configuration */
-          if (!_load_public_keys (sign, pull_data->repo, pull_data->remote_name, error))
+          if (!_signapi_load_public_keys (sign, pull_data->repo, pull_data->remote_name, error))
             return FALSE;
 
           found_any_signature = TRUE;
@@ -2546,8 +2166,8 @@ process_one_static_delta (OtPullData                 *pull_data,
           g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
           g_autoptr(GVariant) detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
 
-          if (!ostree_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
-                                               ref, cancellable, error))
+          if (!_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
+                                         ref, cancellable, error))
             return FALSE;
 
           if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
@@ -3776,7 +3396,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->gpg_verify || pull_data->gpg_verify_summary)
   {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-              "'%s': GPG feature is disabled in a build time",
+              "'%s': GPG feature is disabled at build time",
               __FUNCTION__);
       goto out;
   }
