@@ -74,6 +74,7 @@ parallel fcos: {
         mkdir -p overrides/rootfs
         mv insttree/* overrides/rootfs/
         rmdir insttree
+        coreos-assembler fetch
         coreos-assembler build
       """)
     }
