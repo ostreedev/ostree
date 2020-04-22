@@ -37,6 +37,7 @@ static gboolean opt_retain_pending;
 static gboolean opt_retain_rollback;
 static gboolean opt_not_as_default;
 static gboolean opt_no_prune;
+static gboolean opt_no_merge;
 static char **opt_kernel_argv;
 static char **opt_kernel_argv_append;
 static gboolean opt_kernel_proc_cmdline;
@@ -48,6 +49,7 @@ static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
   { "origin-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_origin_path, "Specify origin file", "FILENAME" },
   { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Don't prune the repo when done", NULL},
+  { "no-merge", 0, 0, G_OPTION_ARG_NONE, &opt_no_merge, "Do not apply configuration (/etc and kernel arguments) from booted deployment", NULL},
   { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployments", NULL },
   { "stage", 0, 0, G_OPTION_ARG_NONE, &opt_stage, "Complete deployment at OS shutdown", NULL },
   { "retain-pending", 0, 0, G_OPTION_ARG_NONE, &opt_retain_pending, "Do not delete pending deployments", NULL },
@@ -113,7 +115,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
     return FALSE;
 
   g_autoptr(OstreeDeployment) merge_deployment =
-    ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
+    opt_no_merge ? NULL : ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
 
   /* Here we perform cleanup of any leftover data from previous
    * partial failures.  This avoids having to call
