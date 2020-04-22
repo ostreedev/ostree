@@ -39,3 +39,11 @@ ExecStop=/usr/bin/ostree admin finalize-staged
 # here is that people don't get an upgrade.  We need to handle
 # cases with slow rotational media, etc.
 TimeoutStopSec=5m
+# OSTree should never touch /var at all...except, we need to remove
+# the /var/.updated flag, so we can't just `InaccessiblePaths=/var` right now.
+# For now, let's at least use ProtectHome just so we have some sandboxing
+# of that.
+ProtectHome=yes
+# And we shouldn't affect the current deployment's /etc.
+ReadOnlyPaths=/etc
+# We write to /sysroot and /boot of course.
