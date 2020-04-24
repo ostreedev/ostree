@@ -22,8 +22,9 @@ where file/content objects are checksummed and managed individually.
 
 The `archive` format simply gzip-compresses each content object.
 Metadata objects are stored uncompressed.  This means that it's easy
-to serve via static HTTP.  Note: this format used to be called `archive-z2`
-for historical reasons.
+to serve via static HTTP.  Note: the repo config file still uses the
+historical term `archive-z2` as mode. But this essentially indicates
+the modern `archive` format.
 
 When you commit new content, you will see new `.filez` files appearing
 in `objects/`.
