@@ -31,13 +31,16 @@ regenerate it from source code.
 A dirtree contains a sorted array of (filename, checksum)
 pairs for content objects, and a second sorted array of
 (filename, dirtree checksum, dirmeta checksum), which are
-subdirectories.
+subdirectories. These type of objects are stored as files
+ending with `.dirtree` in the objects directory.
 
 ### Dirmeta objects
 
 In git, tree objects contain the metadata such as permissions
 for their children.  But OSTree splits this into a separate
 object to avoid duplicating extended attribute listings.
+These type of objects are stored as files ending with `.dirmeta`
+in the objects directory.
 
 ### Content objects
 
@@ -45,7 +48,13 @@ Unlike the first three object types which are metadata, designed to be
 `mmap()`ed, the content object has a separate internal header and
 payload sections.  The header contains uid, gid, mode, and symbolic
 link target (for symlinks), as well as extended attributes.  After the
-header, for regular files, the content follows.
+header, for regular files, the content follows. These parts toghether
+form the SHA256 hash for content objects. The content type objects in
+this format exist only in `archive` OSTree repositories. Today the
+content part is gzip'ed and the objects are stored as files ending
+with `.filez` in the objects directory. Because the SHA256 hash is
+formed over the uncompressed content, these files do not match the
+hash they are named as.
 
 The OSTree data format intentionally does not contain timestamps. The reasoning
 is that data files may be downloaded at different times, and by different build
