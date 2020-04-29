@@ -9,6 +9,10 @@ prepare_tmpdir
 n=$(nth_boot)
 case "${n}" in
   1)
+  # Initial cleanup to handle the cosa fast-build case
+    ## TODO remove workaround for https://github.com/coreos/rpm-ostree/pull/2021
+    mkdir -p /var/lib/rpm-ostree/history
+    rpm-ostree cleanup -pr
     commit=${host_commit}
   # Test the deploy --stage functionality; first, we stage a deployment
   # reboot, and validate that it worked.
@@ -71,8 +75,6 @@ case "${n}" in
     firstdeploycommit=$(rpm-ostree status |grep 'Commit:' |head -1|sed -e 's,^ *Commit: *,,')
     assert_streq "${firstdeploycommit}" "${newcommit}"
     # Cleanup
-    ## TODO remove workaround for https://github.com/coreos/rpm-ostree/pull/2021
-    mkdir -p /var/lib/rpm-ostree/history
     rpm-ostree cleanup -rp
     echo "ok upgrade with staging"
 
