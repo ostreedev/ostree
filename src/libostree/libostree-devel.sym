@@ -32,6 +32,8 @@ global:
   ostree_sign_get_name;
   ostree_sign_clear_keys;
   ostree_sign_load_pk;
+  ostree_sign_metadata_format;
+  ostree_sign_metadata_key;
   ostree_sign_set_pk;
   ostree_sign_add_pk;
   ostree_sign_set_sk;
