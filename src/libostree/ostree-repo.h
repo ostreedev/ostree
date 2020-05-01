@@ -1174,9 +1174,9 @@ void ostree_repo_commit_traverse_iter_cleanup (void *p);
  * @OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: Do not traverse individual commit objects, only follow refs
  */
 typedef enum {
-  OSTREE_REPO_PRUNE_FLAGS_NONE,
-  OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE,
-  OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY
+  OSTREE_REPO_PRUNE_FLAGS_NONE = 0,
+  OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE = (1 << 0),
+  OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY = (1 << 1),
 } OstreeRepoPruneFlags;
 
 _OSTREE_PUBLIC

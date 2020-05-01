@@ -134,7 +134,7 @@ GVariant * ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
  * for future variations.
  **/
 typedef enum {
-  OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT = 0
+  OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT = (0 << 0),
 } OstreeGpgSignatureFormatFlags;
 
 _OSTREE_PUBLIC
