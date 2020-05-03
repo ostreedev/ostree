@@ -103,8 +103,7 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
   /* Initialize crypto system */
   if (opt_key_ids)
     {
-      if (!opt_sign_name)
-        opt_sign_name = "ed25519";
+      opt_sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
 
       sign = ostree_sign_get_by_name (opt_sign_name, error);
       if (sign == NULL)

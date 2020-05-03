@@ -62,7 +62,7 @@ typedef struct
 _sign_type sign_types[] =
 {
 #if defined(HAVE_LIBSODIUM)
-    {"ed25519", 0},
+    {OSTREE_SIGN_NAME_ED25519, 0},
 #endif
     {"dummy", 0}
 };

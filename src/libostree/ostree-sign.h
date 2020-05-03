@@ -49,6 +49,12 @@ static inline gboolean OSTREE_IS_SIGN (gpointer ptr) { return G_TYPE_CHECK_INSTA
 static inline OstreeSignInterface *OSTREE_SIGN_GET_IFACE (gpointer ptr) { return G_TYPE_INSTANCE_GET_INTERFACE (ptr, ostree_sign_get_type (), OstreeSignInterface); }
 G_GNUC_END_IGNORE_DEPRECATIONS
 
+/**
+ * OSTREE_SIGN_NAME_ED25519:
+ * The name of the default ed25519 signing type.
+ */
+#define OSTREE_SIGN_NAME_ED25519 "ed25519"
+
 /* Have to use glib-2.44 for this
 _OSTREE_PUBLIC
 G_DECLARE_INTERFACE (OstreeSign, ostree_sign, OSTREE, SIGN, GObject)
