@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((88 + ${extra_basic_tests:-0}))"
+echo "1..$((89 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -540,6 +540,24 @@ else
 fi
 assert_file_has_mode checkout-test2-override/a/readable-only 600
 echo "ok commit statoverride"
+
+cd ${test_tmpdir}
+rm test2-checkout -rf
+$OSTREE checkout test2 test2-checkout
+cd test2-checkout
+install -m 0755 /dev/null user-wx
+install -m 0575 /dev/null group-wx
+install -m 0775 /dev/null both-wx
+install -m 0555 /dev/null ugox
+install -m 0644 /dev/null user-writable
+cd ..
+$OSTREE commit ${COMMIT_ARGS} -b test2-w-xor-x --mode-ro-executables --tree=dir=test2-checkout
+$OSTREE ls test2-w-xor-x > ls.txt
+for x in /{user,group,both}-wx; do
+    assert_file_has_content ls.txt '^-00555 .*'$x
+done
+assert_file_has_content ls.txt '^-00644 .*/user-writable'
+echo "ok commit --mode-ro-executables"
 
 cd ${test_tmpdir}
 cat > test-skiplist.txt <<EOF

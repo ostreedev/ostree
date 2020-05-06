@@ -56,6 +56,7 @@ static gboolean opt_no_xattrs;
 static char *opt_selinux_policy;
 static gboolean opt_selinux_policy_from_base;
 static gboolean opt_canonical_permissions;
+static gboolean opt_ro_executables;
 static gboolean opt_consume;
 static gboolean opt_devino_canonical;
 static char *opt_base;
@@ -111,6 +112,7 @@ static GOptionEntry options[] = {
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
   { "canonical-permissions", 0, 0, G_OPTION_ARG_NONE, &opt_canonical_permissions, "Canonicalize permissions in the same way bare-user does for hardlinked files", NULL },
+  { "mode-ro-executables", 0, 0, G_OPTION_ARG_NONE, &opt_ro_executables, "Ensure executable files are not writable", NULL },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
   { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
   { "selinux-policy-from-base", 'P', 0, G_OPTION_ARG_NONE, &opt_selinux_policy_from_base, "Set SELinux labels based on first --tree argument", NULL },
@@ -194,13 +196,19 @@ commit_filter (OstreeRepo         *self,
     g_file_info_set_attribute_uint32 (file_info, "unix::uid", opt_owner_uid);
   if (opt_owner_gid >= 0)
     g_file_info_set_attribute_uint32 (file_info, "unix::gid", opt_owner_gid);
+  guint mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
+  if (S_ISREG (mode) && opt_ro_executables && (mode & (S_IXUSR | S_IXGRP | S_IXOTH)))
+    {
+      mode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
+      g_file_info_set_attribute_uint32 (file_info, "unix::mode", mode);
+    }
 
   if (mode_adds && g_hash_table_lookup_extended (mode_adds, path, NULL, &value))
     {
-      guint current_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
       guint mode_add = GPOINTER_TO_UINT (value);
       g_file_info_set_attribute_uint32 (file_info, "unix::mode",
-                                        current_mode | mode_add);
+                                        mode | mode_add);
       g_hash_table_remove (mode_adds, path);
     }
   else if (mode_overrides && g_hash_table_lookup_extended (mode_overrides, path, NULL, &value))
@@ -572,6 +580,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       || opt_statoverride_file != NULL
       || opt_skiplist_file != NULL
       || opt_no_xattrs
+      || opt_ro_executables
       || opt_selinux_policy
       || opt_selinux_policy_from_base)
     {
