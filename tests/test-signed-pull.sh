@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..11"
+echo "1..16"
 
 # This is explicitly opt in for testing
 export OSTREE_DUMMY_SIGN_ENABLED=1
@@ -54,7 +54,7 @@ function test_signed_pull() {
     localsig=repo/$objpath
     mv $remotesig $remotesig.bak
     if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main; then
-        assert_not_reached "pull with sign-verify unexpectedly succeeded?"
+        assert_not_reached "pull with sign-verify and no commitmeta unexpectedly succeeded?"
     fi
     # ok now check that we can pull correctly
     mv $remotesig.bak $remotesig
@@ -98,6 +98,25 @@ ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-dummy
 ${CMD_PREFIX} ostree --repo=repo config unset 'remote "origin"'.verification-dummy-file
 test_signed_pull "dummy" ""
 
+# Another test with the --verify option directly
+repo_init --sign-verify=dummy=inline:${DUMMYSIGN}
+test_signed_pull "dummy" "from remote opt"
+
+repo_init
+if ${CMD_PREFIX} ostree --repo=repo remote add other --sign-verify=trustme=inline:ok http://localhost 2>err.txt; then
+    assert_not_reached "remote add with invalid keytype succeeded"
+fi
+assert_file_has_content err.txt 'Requested signature type is not implemented'
+if ${CMD_PREFIX} ostree --repo=repo remote add other --sign-verify=dummy http://localhost 2>err.txt; then
+    assert_not_reached "remote add with invalid keytype succeeded"
+fi
+assert_file_has_content err.txt 'Failed to parse KEYTYPE'
+if ${CMD_PREFIX} ostree --repo=repo remote add other --sign-verify=dummy=foo:bar http://localhost 2>err.txt; then
+    assert_not_reached "remote add with invalid keytype succeeded"
+fi
+assert_file_has_content err.txt 'Invalid key reference'
+echo "ok remote add errs"
+
 if ! has_sign_ed25519; then
     echo "ok ed25519-key pull signed commit # SKIP due libsodium unavailability"
     echo "ok ed25519-key re-pull signature for stored commit # SKIP due libsodium unavailability"
@@ -105,6 +124,8 @@ if ! has_sign_ed25519; then
     echo "ok ed25519-key+file re-pull signature for stored commit # SKIP due libsodium unavailability"
     echo "ok ed25519-file pull signed commit # SKIP due libsodium unavailability"
     echo "ok ed25519-file re-pull signature for stored commit # SKIP due libsodium unavailability"
+    echo "ok ed25519-inline # SKIP due libsodium unavailability"
+    echo "ok ed25519-inline # SKIP due libsodium unavailability"
     exit 0
 fi
 
@@ -140,3 +161,5 @@ repo_init --set=sign-verify=true
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-ed25519-file "${PUBKEYS}"
 test_signed_pull "ed25519" "file"
 
+repo_init --sign-verify=ed25519=inline:"${ED25519PUBLIC}"
+test_signed_pull "ed25519" "--verify-ed25519"
