@@ -32,6 +32,7 @@ static gboolean opt_no_sign_verify;
 static gboolean opt_if_not_exists;
 static gboolean opt_force;
 static char *opt_gpg_import;
+static char **opt_sign_verify;
 static char *opt_contenturl;
 static char *opt_collection_id;
 static char *opt_sysroot;
@@ -46,6 +47,7 @@ static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
   { "no-sign-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_sign_verify, "Disable signature verification", NULL },
+  { "sign-verify", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_sign_verify, "Verify signatures using KEYTYPE=inline:PUBKEY or KEYTYPE=file:/path/to/key", "KEYTYPE=[inline|file]:PUBKEY" },
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Replace the provided remote if it exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
@@ -56,6 +58,42 @@ static GOptionEntry option_entries[] = {
   { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Use sysroot at PATH (overrides --repo)", "PATH" },
   { NULL }
 };
+
+static gboolean
+add_verify_opt (GVariantBuilder *builder,
+                const char *keyspec,
+                GError **error)
+{
+  g_auto(GStrv) parts = g_strsplit (keyspec, "=", 2);
+  g_assert (parts && *parts);
+  const char *keytype = parts[0];
+  if (!parts[1])
+    return glnx_throw (error, "Failed to parse KEYTYPE=[inline|file]:DATA in %s", keyspec);
+
+  g_autoptr(OstreeSign) sign = ostree_sign_get_by_name (keytype, error);
+  if (!sign)
+    return FALSE;
+
+  const char *rest = parts[1];
+  g_assert (!parts[2]);
+  g_auto(GStrv) keyparts = g_strsplit (rest, ":", 2);
+  g_assert (keyparts && *keyparts);
+  const char *keyref = keyparts[0];
+  g_assert (keyref);
+  g_autofree char *optname = NULL;
+  if (g_str_equal (keyref, "inline"))
+    optname = g_strdup_printf ("verification-%s-key", keytype);
+  else if (g_str_equal (keyref, "file"))
+    optname = g_strdup_printf ("verification-%s-file", keytype);
+  else
+    return glnx_throw (error, "Invalid key reference %s, expected inline|file", keyref);
+
+  g_assert (keyparts[1] && !keyparts[2]);
+  g_variant_builder_add (builder, "{s@v}",
+                         optname,
+                         g_variant_new_variant (g_variant_new_string (keyparts[1])));
+  return TRUE;
+}
 
 gboolean
 ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
@@ -144,9 +182,24 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
 #endif /* OSTREE_DISABLE_GPGME */
 
   if (opt_no_sign_verify)
+    {
+      if (opt_sign_verify)
+        return glnx_throw (error, "Cannot specify both --sign-verify and --no-sign-verify");
+      g_variant_builder_add (optbuilder, "{s@v}",
+                            "sign-verify",
+                            g_variant_new_variant (g_variant_new_boolean (FALSE)));
+    }
+
+  for (char **iter = opt_sign_verify; iter && *iter; iter++)
+    {
+      const char *keyspec = *iter;
+      if (!add_verify_opt (optbuilder, keyspec, error))
+        return FALSE;
+    }
+  if (opt_sign_verify)
     g_variant_builder_add (optbuilder, "{s@v}",
-                           "sign-verify",
-                           g_variant_new_variant (g_variant_new_boolean (FALSE)));
+                          "sign-verify",
+                          g_variant_new_variant (g_variant_new_boolean (TRUE)));
 
   if (opt_collection_id != NULL)
     g_variant_builder_add (optbuilder, "{s@v}", "collection-id",
