@@ -436,8 +436,6 @@ ostree_sign_commit_verify (OstreeSign     *self,
  *
  * Return the pointer to the name of currently used/selected signing engine.
  *
- * The list of available engines could be acquired with #ostree_sign_list_names.
- *
  * Returns: (transfer none): pointer to the name
  * @NULL in case of error (unlikely).
  *
@@ -515,28 +513,27 @@ ostree_sign_commit (OstreeSign     *self,
 }
 
 /**
- * ostree_sign_list_names:
+ * ostree_sign_get_all:
  *
- * Return an array with all available sign engines names.
+ * Return an array with newly allocated instances of all available
+ * signing engines; they will not be initialized.
  *
- * Returns: (transfer full): an array of strings, free when you used it
+ * Returns: (transfer full) (element-type OstreeSign): an array of signing engines
  *
  * Since: 2020.2
  */
-GStrv
-ostree_sign_list_names(void)
+GPtrArray *
+ostree_sign_get_all (void)
 {
+  g_autoptr(GPtrArray) engines = g_ptr_array_new_with_free_func (g_object_unref);
+  for (guint i = 0; i < G_N_ELEMENTS(sign_types); i++)
+    {
+      OstreeSign *engine = ostree_sign_get_by_name (sign_types[i].name, NULL);
+      g_assert (engine);
+      g_ptr_array_add (engines, engine);
+    }
 
-  GStrv names = g_new0 (char *, G_N_ELEMENTS(sign_types) + 1);
-  gint i = 0;
-
-  for (i=0; i < G_N_ELEMENTS(sign_types); i++)
-  {
-    names[i] = g_strdup(sign_types[i].name);
-    g_debug ("Found '%s' signing engine", names[i]);
-  }
-
-  return names;
+  return g_steal_pointer (&engines);
 }
 
 /**
@@ -544,11 +541,9 @@ ostree_sign_list_names(void)
  * @name: the name of desired signature engine
  * @error: return location for a #GError
  *
- * Tries to find and return proper signing engine by it's name.
+ * Create a new instance of a signing engine.
  *
- * The list of available engines could be acquired with #ostree_sign_list_names.
- *
- * Returns: (transfer full): a constant, free when you used it
+ * Returns: (transfer full): New signing engine, or %NULL if the engine is not known
  *
  * Since: 2020.2
  */

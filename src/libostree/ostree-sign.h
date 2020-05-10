@@ -153,7 +153,7 @@ gboolean ostree_sign_load_pk (OstreeSign *self,
 
 
 _OSTREE_PUBLIC
-GStrv ostree_sign_list_names(void);
+GPtrArray * ostree_sign_get_all(void);
 
 _OSTREE_PUBLIC
 OstreeSign * ostree_sign_get_by_name (const gchar *name, GError **error);

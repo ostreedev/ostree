@@ -709,7 +709,7 @@ ostree_kernel_args_to_string
 <SECTION>
 <FILE>ostree-sign</FILE>
 OstreeSign
-ostree_sign_list_names
+ostree_sign_get_all
 ostree_sign_commit
 ostree_sign_commit_verify
 ostree_sign_data
