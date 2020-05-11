@@ -1544,14 +1544,11 @@ scan_commit_object (OtPullData                 *pull_data,
       gboolean found_any_signature = FALSE;
       gboolean found_valid_signature = FALSE;
 
-      /* list all signature types in detached metadata and check if signed by any? */
-      g_auto (GStrv) names = ostree_sign_list_names();
-      for (char **iter=names; iter && *iter; iter++)
+      /* FIXME - dedup this with _sign_verify_for_remote() */
+      g_autoptr(GPtrArray) signers = ostree_sign_get_all ();
+      for (guint i = 0; i < signers->len; i++)
         {
-          g_autoptr (OstreeSign) sign = NULL;
-
-          if ((sign = ostree_sign_get_by_name (*iter, NULL)) == NULL)
-            continue;
+          OstreeSign *sign = signers->pdata[i];
 
           /* Try to load public key(s) according remote's configuration */
           if (!_signapi_load_public_keys (sign, pull_data->repo, pull_data->remote_name, error))

@@ -142,6 +142,9 @@ _signapi_load_public_keys (OstreeSign *sign,
   return TRUE;
 }
 
+/* Iterate over all known signing types, and check if the commit is signed
+ * by at least one.
+ */
 gboolean
 _sign_verify_for_remote (OstreeRepo *repo,
                           const gchar *remote_name,
@@ -149,32 +152,18 @@ _sign_verify_for_remote (OstreeRepo *repo,
                           GVariant *metadata,
                           GError **error)
 {
-  /* list all signature types in detached metadata and check if signed by any? */
-  g_auto (GStrv) names = ostree_sign_list_names();
   guint n_invalid_signatures = 0;
-  guint n_unknown_signatures = 0;
   g_autoptr (GError) last_sig_error = NULL;
   gboolean found_sig = FALSE;
 
-  for (char **iter=names; iter && *iter; iter++)
+  g_autoptr(GPtrArray) signers = ostree_sign_get_all ();
+  for (guint i = 0; i < signers->len; i++)
     {
-      g_autoptr (OstreeSign) sign = NULL;
-      g_autoptr (GVariant) signatures = NULL;
-      const gchar *signature_key = NULL;
-      GVariantType *signature_format = NULL;
-
-      if ((sign = ostree_sign_get_by_name (*iter, NULL)) == NULL)
-        {
-          n_unknown_signatures++;
-          continue;
-        }
-
-      signature_key = ostree_sign_metadata_key (sign);
-      signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
-
-      signatures = g_variant_lookup_value (metadata,
-                                           signature_key,
-                                           signature_format);
+      OstreeSign *sign = signers->pdata[i];
+      const gchar *signature_key = ostree_sign_metadata_key (sign);
+      GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
+      g_autoptr (GVariant) signatures =
+        g_variant_lookup_value (metadata, signature_key, signature_format);
 
       /* If not found signatures for requested signature subsystem */
       if (!signatures)
@@ -201,11 +190,7 @@ _sign_verify_for_remote (OstreeRepo *repo,
     }
 
   if (!found_sig)
-    {
-      if (n_unknown_signatures > 0)
-        return glnx_throw (error, "No signatures found (%d unknown type)", n_unknown_signatures);
-      return glnx_throw (error, "No signatures found");
-    }
+    return glnx_throw (error, "No signatures found");
 
   g_assert (last_sig_error);
   g_propagate_error (error, g_steal_pointer (&last_sig_error));
