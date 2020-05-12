@@ -1544,15 +1544,10 @@ scan_commit_object (OtPullData                 *pull_data,
       gboolean found_any_signature = FALSE;
       gboolean found_valid_signature = FALSE;
 
-      /* FIXME - dedup this with _sign_verify_for_remote() */
-      g_autoptr(GPtrArray) signers = ostree_sign_get_all ();
-      for (guint i = 0; i < signers->len; i++)
+      g_assert (pull_data->signapi_verifiers);
+      for (guint i = 0; i < pull_data->signapi_verifiers->len; i++)
         {
-          OstreeSign *sign = signers->pdata[i];
-
-          /* Try to load public key(s) according remote's configuration */
-          if (!_signapi_load_public_keys (sign, pull_data->repo, pull_data->remote_name, error))
-            return FALSE;
+          OstreeSign *sign = pull_data->signapi_verifiers->pdata[i];
 
           found_any_signature = TRUE;
 
@@ -3574,6 +3569,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
     }
 
+  if (pull_data->sign_verify || pull_data->sign_verify_summary)
+    {
+      g_assert (pull_data->remote_name != NULL);
+      pull_data->signapi_verifiers = _signapi_verifiers_for_remote (pull_data->repo, pull_data->remote_name, error);
+      if (!pull_data->signapi_verifiers)
+        goto out;
+      g_assert_cmpint (pull_data->signapi_verifiers->len, >=, 1);
+    }
+
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
   if (!reinitialize_fetcher (pull_data, remote_name_or_baseurl, error))
@@ -3954,7 +3958,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                    bytes_sig, FALSE);
 
 
-            if (!_sign_verify_for_remote (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, &temp_error))
+            g_assert (pull_data->signapi_verifiers);
+            if (!_sign_verify_for_remote (pull_data->signapi_verifiers, bytes_summary, signatures, &temp_error))
               {
                 if (summary_from_cache)
                   {
@@ -3983,7 +3988,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      cancellable, error))
                       goto out;
 
-                    if (!_sign_verify_for_remote (pull_data->repo, pull_data->remote_name, bytes_summary, signatures, error))
+                    if (!_sign_verify_for_remote (pull_data->signapi_verifiers, bytes_summary, signatures, error))
                         goto out;
                   }
                 else
@@ -4586,6 +4591,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_free (pull_data->remote_refspec_name);
   g_free (pull_data->remote_name);
   g_free (pull_data->append_user_agent);
+  g_clear_pointer (&pull_data->signapi_verifiers, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
@@ -6089,8 +6095,10 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
 
           sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                                   signatures, FALSE);
-
-          if (!_sign_verify_for_remote (self, name, summary, sig_variant, error))
+          g_autoptr(GPtrArray) signapi_verifiers = _signapi_verifiers_for_remote (self, name, error);
+          if (!signapi_verifiers)
+            goto out;
+          if (!_sign_verify_for_remote (signapi_verifiers, summary, sig_variant, error))
             goto out;
         }
     }
