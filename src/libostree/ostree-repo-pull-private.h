@@ -123,6 +123,8 @@ typedef struct {
   gboolean          is_commit_only;
   OstreeRepoImportFlags importflags;
 
+  GPtrArray        *signapi_verifiers;
+
   GPtrArray        *dirs;
 
   gboolean      have_previous_bytes;
@@ -137,18 +139,16 @@ typedef struct {
   GSource *idle_src;
 } OtPullData;
 
-gboolean
-_sign_verify_for_remote (OstreeRepo *repo,
-                          const gchar *remote_name,
-                          GBytes *signed_data,
-                          GVariant *metadata,
-                          GError **error);
+GPtrArray *
+_signapi_verifiers_for_remote (OstreeRepo *repo,
+                               const char *remote_name,
+                               GError    **error);
 
 gboolean
-_signapi_load_public_keys (OstreeSign *sign,
-                           OstreeRepo *repo,
-                           const gchar *remote_name,
-                           GError **error);
+_sign_verify_for_remote (GPtrArray *signers,
+                         GBytes *signed_data,
+                         GVariant *metadata,
+                         GError **error);
 
 gboolean
 _verify_unwritten_commit (OtPullData                 *pull_data,

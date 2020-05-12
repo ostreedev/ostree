@@ -67,7 +67,7 @@ get_signapi_remote_option (OstreeRepo *repo,
  * Returns: %FALSE if any source is configured but nothing has been loaded.
  * Returns: %TRUE if no configuration or any key loaded.
  * */
-gboolean
+static gboolean
 _signapi_load_public_keys (OstreeSign *sign,
                            OstreeRepo *repo,
                            const gchar *remote_name,
@@ -142,21 +142,40 @@ _signapi_load_public_keys (OstreeSign *sign,
   return TRUE;
 }
 
-/* Iterate over all known signing types, and check if the commit is signed
+/* Create a new array of OstreeSign objects and load the public
+ * keys as described by the remote configuration.
+ */
+GPtrArray *
+_signapi_verifiers_for_remote (OstreeRepo *repo,
+                               const char *remote_name,
+                               GError    **error)
+{
+  g_autoptr(GPtrArray) signers = ostree_sign_get_all ();
+  g_assert_cmpuint (signers->len, >=, 1);
+  for (guint i = 0; i < signers->len; i++)
+    {
+      OstreeSign *sign = signers->pdata[i];
+      /* Try to load public key(s) according remote's configuration */
+      if (!_signapi_load_public_keys (sign, repo, remote_name, error))
+        return FALSE;
+    }
+  return g_steal_pointer (&signers);
+}
+
+/* Iterate over the configured signers, and require the commit is signed
  * by at least one.
  */
 gboolean
-_sign_verify_for_remote (OstreeRepo *repo,
-                          const gchar *remote_name,
-                          GBytes *signed_data,
-                          GVariant *metadata,
-                          GError **error)
+_sign_verify_for_remote (GPtrArray *signers,
+                         GBytes *signed_data,
+                         GVariant *metadata,
+                         GError **error)
 {
   guint n_invalid_signatures = 0;
   g_autoptr (GError) last_sig_error = NULL;
   gboolean found_sig = FALSE;
 
-  g_autoptr(GPtrArray) signers = ostree_sign_get_all ();
+  g_assert_cmpuint (signers->len, >=, 1);
   for (guint i = 0; i < signers->len; i++)
     {
       OstreeSign *sign = signers->pdata[i];
@@ -168,10 +187,6 @@ _sign_verify_for_remote (OstreeRepo *repo,
       /* If not found signatures for requested signature subsystem */
       if (!signatures)
         continue;
-
-      /* Try to load public key(s) according remote's configuration */
-      if (!_signapi_load_public_keys (sign, repo, remote_name, error))
-        return FALSE;
 
       found_sig = TRUE;
 
@@ -275,7 +290,7 @@ _verify_unwritten_commit (OtPullData                 *pull_data,
       if (detached_metadata == NULL)
         return glnx_throw (error, "Can't verify commit without detached metadata");
 
-      if (!_sign_verify_for_remote (pull_data->repo, pull_data->remote_name, signed_data, detached_metadata, error))
+      if (!_sign_verify_for_remote (pull_data->signapi_verifiers, signed_data, detached_metadata, error))
         return glnx_prefix_error (error, "Can't verify commit");
 
       /* Mark the commit as verified to avoid double verification
