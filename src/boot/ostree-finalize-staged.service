@@ -23,7 +23,7 @@ Documentation=man:ostree(1)
 ConditionPathExists=/run/ostree-booted
 DefaultDependencies=no
 
-RequiresMountsFor=/sysroot
+RequiresMountsFor=/sysroot /boot
 After=local-fs.target
 Before=basic.target final.target
 # We want to make sure the transaction logs are persisted to disk:
