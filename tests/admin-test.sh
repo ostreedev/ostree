@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((27 + ${extra_admin_tests:-0}))"
+echo "1..$((28 + ${extra_admin_tests:-0}))"
 
 mkdir sysrootmin
 ${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
@@ -304,14 +304,32 @@ ${CMD_PREFIX} ostree pull --repo=sysroot/ostree/repo --commit-metadata-only --de
 head_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
 prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime^^^^)
 assert_not_streq ${head_rev} ${prev_rev}
+# check that we can't "upgrade" to an older commit without --allow-downgrade
+if ${CMD_PREFIX} ostree admin upgrade --os=testos --override-commit=${prev_rev} 2> err.txt; then
+    fatal "downgraded without --allow-downgrade?"
+fi
+assert_file_has_content err.txt "Upgrade.*is chronologically older"
 ${CMD_PREFIX} ostree admin upgrade --os=testos --override-commit=${prev_rev} --allow-downgrade
 curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
+
 assert_streq ${curr_rev} ${prev_rev}
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
 assert_streq ${curr_rev} ${head_rev}
 
 echo "ok upgrade with and without override-commit"
+
+# check that we can still upgrade to a rev that's not the tip of the branch but
+# that's still newer than the deployment
+sleep 1
+os_repository_new_commit
+sleep 1
+os_repository_new_commit
+${CMD_PREFIX} ostree pull --repo=sysroot/ostree/repo --commit-metadata-only --depth=-1 testos:testos/buildmaster/x86_64-runtime
+curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
+prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime^)
+${CMD_PREFIX} ostree admin upgrade --os=testos --override-commit=${prev_rev}
+echo "ok upgrade to newer version older than branch tip"
 
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" \
               --add-metadata-string 'ostree.source-title=libtest os_repository_new_commit()' -b testos/buildmaster/x86_64-runtime \
