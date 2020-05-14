@@ -76,6 +76,9 @@ parallel fcos: {
         rmdir insttree
         coreos-assembler fetch
         coreos-assembler build
+        # Install the tests, then be sure they're not run again
+        make -C tests/kola install
+        rm tests/kola -rf
       """)
     }
     fcosKola(cosaDir: "${env.WORKSPACE}")
