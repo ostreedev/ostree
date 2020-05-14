@@ -318,7 +318,7 @@ ${CMD_PREFIX} ostree --repo=parentpullrepo rev-parse origin:main > main.txt
 assert_file_has_content main.txt ${rev}
 echo "ok pull specific commit"
 
-# test pull -T
+# test pull -T and --timestamp-check-from-rev
 cd ${test_tmpdir}
 repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main
@@ -347,6 +347,28 @@ assert_file_has_content err.txt "Upgrade.*is chronologically older"
 assert_streq ${newrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
 # But we can pull it without timestamp checking
 ${CMD_PREFIX} ostree --repo=repo pull origin main
+# Now test --timestamp-check-from-rev. First, add two new commits with distinct
+# but newer timestamps.
+oldrev=${newrev2}
+middlerev=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main --tree=ref=main)
+sleep 1
+latestrev=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} -b main --tree=ref=main)
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+# OK, let's pull the latest now.
+${CMD_PREFIX} ostree --repo=repo pull -T origin main
+assert_streq ${latestrev} "$(${CMD_PREFIX} ostree --repo=repo rev-parse main)"
+# Check we can't pull the middle commit by overrides with ts checking on
+if ${CMD_PREFIX} ostree --repo=repo pull -T origin main@${middlerev} 2>err.txt; then
+    fatal "pulled older commit override with timestamp checking enabled?"
+fi
+assert_file_has_content err.txt "Upgrade.*is chronologically older"
+# Check we can't pull an older commit by override if it's newer than --timestamp-check-from-rev
+if ${CMD_PREFIX} ostree --repo=repo pull --timestamp-check-from-rev=${latestrev} origin main@${middlerev} 2>err.txt; then
+    fatal "pulled older commit override with timestamp checking enabled?"
+fi
+assert_file_has_content err.txt "Upgrade.*is chronologically older"
+# But we can pull it with --timestamp-check-from-rev when starting from the oldrev
+${CMD_PREFIX} ostree --repo=repo pull --timestamp-check-from-rev=${oldrev} origin main@${middlerev}
 echo "ok pull timestamp checking"
 
 cd ${test_tmpdir}

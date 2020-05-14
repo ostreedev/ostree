@@ -114,6 +114,7 @@ typedef struct {
   guint             n_imported_content;
 
   gboolean          timestamp_check; /* Verify commit timestamps */
+  char             *timestamp_check_from_rev;
   int               maxdepth;
   guint64           max_metadata_size;
   guint64           start_time;

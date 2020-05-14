@@ -37,6 +37,7 @@ static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
 static gboolean opt_http_trusted;
 static gboolean opt_timestamp_check;
+static char* opt_timestamp_check_from_rev;
 static gboolean opt_bareuseronly_files;
 static char** opt_subpaths;
 static char** opt_http_headers;
@@ -72,6 +73,7 @@ static GOptionEntry options[] = {
    { "network-retries", 0, 0, G_OPTION_ARG_INT, &opt_network_retries, "Specifies how many times each download should be retried upon error (default: 5)", "N"},
    { "localcache-repo", 'L', 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_localcache_repos, "Add REPO as local cache source for objects during this pull", "REPO" },
    { "timestamp-check", 'T', 0, G_OPTION_ARG_NONE, &opt_timestamp_check, "Require fetched commits to have newer timestamps", NULL },
+   { "timestamp-check-from-rev", 0, 0, G_OPTION_ARG_STRING, &opt_timestamp_check_from_rev, "Require fetched commits to have newer timestamps than given rev", NULL },
    /* let's leave this hidden for now; we just need it for tests */
    { "append-user-agent", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_STRING, &opt_append_user_agent, "Append string to user agent", NULL },
    { NULL }
@@ -313,6 +315,9 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
     if (opt_timestamp_check)
       g_variant_builder_add (&builder, "{s@v}", "timestamp-check",
                              g_variant_new_variant (g_variant_new_boolean (opt_timestamp_check)));
+    if (opt_timestamp_check_from_rev)
+      g_variant_builder_add (&builder, "{s@v}", "timestamp-check-from-rev",
+                             g_variant_new_variant (g_variant_new_string (opt_timestamp_check_from_rev)));
 
     if (override_commit_ids)
       g_variant_builder_add (&builder, "{s@v}", "override-commit-ids",

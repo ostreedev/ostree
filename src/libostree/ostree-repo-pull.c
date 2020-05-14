@@ -1593,6 +1593,7 @@ scan_commit_object (OtPullData                 *pull_data,
                                      commit, error))
     return glnx_prefix_error (error, "Commit %s", checksum);
 
+  guint64 new_ts = ostree_commit_get_timestamp (commit);
   if (pull_data->timestamp_check)
     {
       /* We don't support timestamp checking while recursing right now */
@@ -1611,10 +1612,21 @@ scan_commit_object (OtPullData                 *pull_data,
             return glnx_prefix_error (error, "Reading %s for timestamp-check", ref->ref_name);
 
           guint64 orig_ts = ostree_commit_get_timestamp (orig_commit);
-          guint64 new_ts = ostree_commit_get_timestamp (commit);
           if (!_ostree_compare_timestamps (orig_rev, orig_ts, checksum, new_ts, error))
             return FALSE;
         }
+    }
+  if (pull_data->timestamp_check_from_rev)
+    {
+      g_autoptr(GVariant) commit = NULL;
+      if (!ostree_repo_load_commit (pull_data->repo, pull_data->timestamp_check_from_rev,
+                                    &commit, NULL, error))
+        return glnx_prefix_error (error, "Reading %s for timestamp-check-from-rev",
+                                  pull_data->timestamp_check_from_rev);
+
+      guint64 ts = ostree_commit_get_timestamp (commit);
+      if (!_ostree_compare_timestamps (pull_data->timestamp_check_from_rev, ts, checksum, new_ts, error))
+        return FALSE;
     }
 
   /* If we found a legacy transaction flag, assume all commits are partial */
@@ -3270,6 +3282,7 @@ initiate_request (OtPullData                 *pull_data,
  *   * require-static-deltas (b): Require static deltas
  *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
  *   * timestamp-check (b): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
+ *   * timestamp-check-from-rev (s): Verify that all fetched commit timestamps are newer than timestamp of given rev; Since: 2020.4
  *   * metadata-size-restriction (t): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
  *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
  *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
@@ -3372,6 +3385,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "update-frequency", "u", &update_frequency);
       (void) g_variant_lookup (options, "localcache-repos", "^a&s", &opt_localcache_repos);
       (void) g_variant_lookup (options, "timestamp-check", "b", &pull_data->timestamp_check);
+      (void) g_variant_lookup (options, "timestamp-check-from-rev", "s", &pull_data->timestamp_check_from_rev);
       (void) g_variant_lookup (options, "max-metadata-size", "t", &pull_data->max_metadata_size);
       (void) g_variant_lookup (options, "append-user-agent", "s", &pull_data->append_user_agent);
       opt_n_network_retries_set =
@@ -4259,6 +4273,18 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                             g_steal_pointer (&checksum));
     }
 
+  /* Resolve refs to a checksum if necessary */
+  if (pull_data->timestamp_check_from_rev &&
+      !ostree_validate_checksum_string (pull_data->timestamp_check_from_rev, NULL))
+    {
+      g_autofree char *from_rev = NULL;
+      if (!ostree_repo_resolve_rev (pull_data->repo, pull_data->timestamp_check_from_rev, FALSE,
+                                    &from_rev, error))
+        goto out;
+      g_free (pull_data->timestamp_check_from_rev);
+      pull_data->timestamp_check_from_rev = g_steal_pointer (&from_rev);
+    }
+
   g_hash_table_unref (requested_refs_to_fetch);
   requested_refs_to_fetch = g_steal_pointer (&updated_requested_refs_to_fetch);
   if (g_hash_table_size (requested_refs_to_fetch) == 1)
@@ -4604,6 +4630,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->fetched_detached_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->ref_original_commits, (GDestroyNotify) g_hash_table_unref);
+  g_free (pull_data->timestamp_check_from_rev);
   g_clear_pointer (&pull_data->verified_commits, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->ref_keyring_map, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
