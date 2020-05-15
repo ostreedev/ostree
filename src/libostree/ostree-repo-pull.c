@@ -1537,17 +1537,16 @@ scan_commit_object (OtPullData                 *pull_data,
     }
 #endif /* OSTREE_DISABLE_GPGME */
 
-  if (pull_data->sign_verify &&
+  if (pull_data->signapi_commit_verifiers &&
       !g_hash_table_contains (pull_data->verified_commits, checksum))
     {
       g_autoptr(GError) last_verification_error = NULL;
       gboolean found_any_signature = FALSE;
       gboolean found_valid_signature = FALSE;
 
-      g_assert (pull_data->signapi_verifiers);
-      for (guint i = 0; i < pull_data->signapi_verifiers->len; i++)
+      for (guint i = 0; i < pull_data->signapi_commit_verifiers->len; i++)
         {
-          OstreeSign *sign = pull_data->signapi_verifiers->pdata[i];
+          OstreeSign *sign = pull_data->signapi_commit_verifiers->pdata[i];
 
           found_any_signature = TRUE;
 
@@ -3552,31 +3551,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         if (!ostree_repo_remote_get_gpg_verify_summary (self, pull_data->remote_name,
                                                         &pull_data->gpg_verify_summary, error))
           goto out;
-      /* signapi differs from GPG in that it can only be explicitly *disabled*
-       * transiently during pulls, not enabled.
-       */
-      if (disable_sign_verify)
-        {
-          pull_data->sign_verify = FALSE;
-        }
-      else
-        {
-          if (!ostree_repo_get_remote_boolean_option (self, pull_data->remote_name,
-                                                      "sign-verify", FALSE,
-                                                      &pull_data->sign_verify, error))
-            goto out;
-        }
-      if (disable_sign_verify_summary)
-        {
-          pull_data->sign_verify_summary = FALSE;
-        }
-      else
-        {
-          if (!ostree_repo_get_remote_boolean_option (self, pull_data->remote_name,
-                                                      "sign-verify-summary", FALSE,
-                                                      &pull_data->sign_verify_summary, error))
-            goto out;
-        }
 
       /* NOTE: If changing this, see the matching implementation in
        * ostree-sysroot-upgrader.c
@@ -3595,13 +3569,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
     }
 
-  if (pull_data->sign_verify || pull_data->sign_verify_summary)
+  if (pull_data->remote_name && !(disable_sign_verify && disable_sign_verify_summary))
     {
-      g_assert (pull_data->remote_name != NULL);
-      pull_data->signapi_verifiers = _signapi_verifiers_for_remote (pull_data->repo, pull_data->remote_name, error);
-      if (!pull_data->signapi_verifiers)
-        goto out;
-      g_assert_cmpint (pull_data->signapi_verifiers->len, >=, 1);
+      if (!_signapi_init_for_remote (pull_data->repo, pull_data->remote_name,
+                                     &pull_data->signapi_commit_verifiers,
+                                     &pull_data->signapi_summary_verifiers,
+                                     error))
+        return FALSE;
     }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
@@ -3967,9 +3941,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
 #endif /* OSTREE_DISABLE_GPGME */
 
-    if (pull_data->sign_verify_summary)
+    if (pull_data->signapi_summary_verifiers)
       {
-        if (!bytes_sig && pull_data->sign_verify_summary)
+        if (!bytes_sig && pull_data->signapi_summary_verifiers)
           {
             g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                          "Signatures verification enabled, but no summary.sig found (use sign-verify-summary=false in remote config to disable)");
@@ -3984,8 +3958,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                    bytes_sig, FALSE);
 
 
-            g_assert (pull_data->signapi_verifiers);
-            if (!_sign_verify_for_remote (pull_data->signapi_verifiers, bytes_summary, signatures, &temp_error))
+            g_assert (pull_data->signapi_summary_verifiers);
+            if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, &temp_error))
               {
                 if (summary_from_cache)
                   {
@@ -4014,7 +3988,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      cancellable, error))
                       goto out;
 
-                    if (!_sign_verify_for_remote (pull_data->signapi_verifiers, bytes_summary, signatures, error))
+                    if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, error))
                         goto out;
                   }
                 else
@@ -4536,7 +4510,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_string_append_printf (msg, "\nsecurity: GPG: %s ", gpg_verify_state);
 
       const char *sign_verify_state;
-      sign_verify_state = (pull_data->sign_verify ? "commit" : "disabled");
+      sign_verify_state = (pull_data->signapi_commit_verifiers ? "commit" : "disabled");
       g_string_append_printf (msg, "\nsecurity: SIGN: %s ", sign_verify_state);
 
       OstreeFetcherURI *first_uri = pull_data->meta_mirrorlist->pdata[0];
@@ -4629,7 +4603,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_free (pull_data->remote_refspec_name);
   g_free (pull_data->remote_name);
   g_free (pull_data->append_user_agent);
-  g_clear_pointer (&pull_data->signapi_verifiers, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&pull_data->signapi_commit_verifiers, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&pull_data->signapi_summary_verifiers, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
@@ -6050,7 +6025,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autoptr(GBytes) summary = NULL;
   g_autoptr(GBytes) signatures = NULL;
   gboolean gpg_verify_summary;
-  gboolean sign_verify_summary;
+  g_autoptr(GPtrArray) signapi_summary_verifiers = NULL;
   gboolean ret = FALSE;
   gboolean summary_is_from_cache;
 
@@ -6107,11 +6082,12 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
         }
     }
 
-  if (!ostree_repo_get_remote_boolean_option (self, name, "sign-verify-summary",
-                                              FALSE, &sign_verify_summary, error))
-      goto out;
+  if (!_signapi_init_for_remote (self, name, NULL,
+                                 &signapi_summary_verifiers,
+                                 error))
+    goto out;
 
-  if (sign_verify_summary)
+  if (signapi_summary_verifiers)
     {
       if (summary == NULL)
         {
@@ -6134,10 +6110,8 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
 
           sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                                   signatures, FALSE);
-          g_autoptr(GPtrArray) signapi_verifiers = _signapi_verifiers_for_remote (self, name, error);
-          if (!signapi_verifiers)
-            goto out;
-          if (!_sign_verify_for_remote (signapi_verifiers, summary, sig_variant, error))
+
+          if (!_sign_verify_for_remote (signapi_summary_verifiers, summary, sig_variant, error))
             goto out;
         }
     }

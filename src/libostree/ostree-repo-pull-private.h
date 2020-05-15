@@ -67,8 +67,6 @@ typedef struct {
 
   gboolean          gpg_verify;
   gboolean          gpg_verify_summary;
-  gboolean          sign_verify;
-  gboolean          sign_verify_summary;
   gboolean          require_static_deltas;
   gboolean          disable_static_deltas;
   gboolean          has_tombstone_commits;
@@ -124,7 +122,8 @@ typedef struct {
   gboolean          is_commit_only;
   OstreeRepoImportFlags importflags;
 
-  GPtrArray        *signapi_verifiers;
+  GPtrArray        *signapi_commit_verifiers;
+  GPtrArray        *signapi_summary_verifiers;
 
   GPtrArray        *dirs;
 
@@ -140,11 +139,12 @@ typedef struct {
   GSource *idle_src;
 } OtPullData;
 
-GPtrArray *
-_signapi_verifiers_for_remote (OstreeRepo *repo,
-                               const char *remote_name,
-                               GError    **error);
-
+gboolean
+_signapi_init_for_remote (OstreeRepo *repo,
+                          const char *remote_name,
+                          GPtrArray **out_commit_verifiers,
+                          GPtrArray **out_summary_verifiers,
+                          GError    **error);
 gboolean
 _sign_verify_for_remote (GPtrArray *signers,
                          GBytes *signed_data,

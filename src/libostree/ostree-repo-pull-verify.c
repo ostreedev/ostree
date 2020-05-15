@@ -71,6 +71,7 @@ static gboolean
 _signapi_load_public_keys (OstreeSign *sign,
                            OstreeRepo *repo,
                            const gchar *remote_name,
+                           gboolean required,
                            GError **error)
 {
   g_autofree gchar *pk_ascii = NULL;
@@ -95,6 +96,8 @@ _signapi_load_public_keys (OstreeSign *sign,
        * and call it here for loading with method and file structure
        * specific for signature type.
        */
+      if (required)
+        return glnx_throw (error, "No keys found for required signapi type %s", ostree_sign_get_name (sign));
       return TRUE;
     }
 
@@ -142,31 +145,120 @@ _signapi_load_public_keys (OstreeSign *sign,
   return TRUE;
 }
 
-/* Create a new array of OstreeSign objects and load the public
- * keys as described by the remote configuration.
- */
-GPtrArray *
-_signapi_verifiers_for_remote (OstreeRepo *repo,
-                               const char *remote_name,
-                               GError    **error)
+static gboolean
+string_is_gkeyfile_truthy (const char *value,
+                           gboolean   *out_truth)
 {
-  g_autoptr(GPtrArray) signers = ostree_sign_get_all ();
-  g_assert_cmpuint (signers->len, >=, 1);
-  for (guint i = 0; i < signers->len; i++)
+  /* See https://gitlab.gnome.org/GNOME/glib/-/blob/20fb5bf868added5aec53c013ae85ec78ba2eedc/glib/gkeyfile.c#L4528 */
+  if (g_str_equal (value, "true") || g_str_equal (value, "1"))
     {
-      OstreeSign *sign = signers->pdata[i];
-      /* Try to load public key(s) according remote's configuration */
-      if (!_signapi_load_public_keys (sign, repo, remote_name, error))
-        return FALSE;
+      *out_truth = TRUE;
+      return TRUE;
     }
-  return g_steal_pointer (&signers);
+  else if (g_str_equal (value, "false") || g_str_equal (value, "0"))
+    {
+      *out_truth = FALSE;
+      return TRUE;
+    }
+  return FALSE;
 }
 
-/* Iterate over the configured signers, and require the commit is signed
+static gboolean
+verifiers_from_config (OstreeRepo *repo,
+                       const char *remote_name,
+                       const char *key,
+                       GPtrArray **out_verifiers,
+                       GError    **error)
+{
+  g_autoptr(GPtrArray) verifiers = NULL;
+
+  g_autofree char *raw_value = NULL;
+  if (!ostree_repo_get_remote_option (repo, remote_name,
+                                      key, NULL,
+                                      &raw_value, error))
+    return FALSE;
+  if (raw_value == NULL || g_str_equal (raw_value, ""))
+    {
+      *out_verifiers = NULL;
+      return TRUE;
+    }
+  gboolean sign_verify_bool = FALSE;
+  /* Is the value "truthy" according to GKeyFile's rules?  If so,
+   * then we take this to be "accept signatures from any compiled
+   * type that happens to have keys configured".
+   */
+  if (string_is_gkeyfile_truthy (raw_value, &sign_verify_bool))
+    {
+      if (sign_verify_bool)
+        {
+          verifiers = ostree_sign_get_all ();
+          for (guint i = 0; i < verifiers->len; i++)
+            {
+              OstreeSign *sign = verifiers->pdata[i];
+              /* Try to load public key(s) according remote's configuration;
+               * this one is optional.
+               */
+              if (!_signapi_load_public_keys (sign, repo, remote_name, FALSE, error))
+                return FALSE;
+            }
+        }
+    }
+  else
+    {
+      /* If the value isn't "truthy", then it must be an explicit list */
+      g_auto(GStrv) sign_types = NULL;
+      if (!ostree_repo_get_remote_list_option (repo, remote_name,
+                                               key, &sign_types,
+                                               error))
+        return FALSE;
+      verifiers = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+      for (char **iter = sign_types; iter && *iter; iter++)
+        {
+          const char *sign_type = *iter;
+          OstreeSign *verifier = ostree_sign_get_by_name (sign_type, error);
+          if (!verifier)
+            return FALSE;
+          if (!_signapi_load_public_keys (verifier, repo, remote_name, TRUE, error))
+            return FALSE;
+          g_ptr_array_add (verifiers, verifier);
+        }
+      g_assert_cmpuint (verifiers->len, >=, 1);
+    }
+
+  *out_verifiers = g_steal_pointer (&verifiers);
+  return TRUE;
+}
+
+/* Create a new array of OstreeSign objects and load the public
+ * keys as described by the remote configuration.  If the
+ * remote does not have signing verification enabled, then
+ * the resulting verifier list will be NULL.
+ */
+gboolean
+_signapi_init_for_remote (OstreeRepo *repo,
+                          const char *remote_name,
+                          GPtrArray **out_commit_verifiers,
+                          GPtrArray **out_summary_verifiers,
+                          GError    **error)
+{
+  g_autoptr(GPtrArray) commit_verifiers = NULL;
+  g_autoptr(GPtrArray) summary_verifiers = NULL;
+
+  if (!verifiers_from_config (repo, remote_name, "sign-verify", &commit_verifiers, error))
+    return FALSE;
+  if (!verifiers_from_config (repo, remote_name, "sign-verify-summary", &summary_verifiers, error))
+    return FALSE;
+
+  ot_transfer_out_value (out_commit_verifiers, &commit_verifiers);
+  ot_transfer_out_value (out_summary_verifiers, &summary_verifiers);
+  return TRUE;
+}
+
+/* Iterate over the configured verifiers, and require the commit is signed
  * by at least one.
  */
 gboolean
-_sign_verify_for_remote (GPtrArray *signers,
+_sign_verify_for_remote (GPtrArray *verifiers,
                          GBytes *signed_data,
                          GVariant *metadata,
                          GError **error)
@@ -175,10 +267,10 @@ _sign_verify_for_remote (GPtrArray *signers,
   g_autoptr (GError) last_sig_error = NULL;
   gboolean found_sig = FALSE;
 
-  g_assert_cmpuint (signers->len, >=, 1);
-  for (guint i = 0; i < signers->len; i++)
+  g_assert_cmpuint (verifiers->len, >=, 1);
+  for (guint i = 0; i < verifiers->len; i++)
     {
-      OstreeSign *sign = signers->pdata[i];
+      OstreeSign *sign = verifiers->pdata[i];
       const gchar *signature_key = ostree_sign_metadata_key (sign);
       GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
       g_autoptr (GVariant) signatures =
@@ -257,7 +349,7 @@ _verify_unwritten_commit (OtPullData                 *pull_data,
                           GError                    **error)
 {
 
-  if (pull_data->gpg_verify || pull_data->sign_verify)
+  if (pull_data->gpg_verify || pull_data->signapi_commit_verifiers)
     /* Shouldn't happen, but see comment in process_gpg_verify_result() */
     if (g_hash_table_contains (pull_data->verified_commits, checksum))
       return TRUE;
@@ -284,13 +376,13 @@ _verify_unwritten_commit (OtPullData                 *pull_data,
     }
 #endif /* OSTREE_DISABLE_GPGME */
 
-  if (pull_data->sign_verify)
+  if (pull_data->signapi_commit_verifiers)
     {
       /* Nothing to check if detached metadata is absent */
       if (detached_metadata == NULL)
         return glnx_throw (error, "Can't verify commit without detached metadata");
 
-      if (!_sign_verify_for_remote (pull_data->signapi_verifiers, signed_data, detached_metadata, error))
+      if (!_sign_verify_for_remote (pull_data->signapi_commit_verifiers, signed_data, detached_metadata, error))
         return glnx_prefix_error (error, "Can't verify commit");
 
       /* Mark the commit as verified to avoid double verification
