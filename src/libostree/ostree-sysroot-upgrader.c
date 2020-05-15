@@ -530,8 +530,8 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
                              g_variant_new_variant (g_variant_new_int32 (flags)));
       /* Add the timestamp check, unless disabled */
       if ((upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER) == 0)
-        g_variant_builder_add (optbuilder, "{s@v}", "timestamp-check",
-                               g_variant_new_variant (g_variant_new_boolean (TRUE)));
+        g_variant_builder_add (optbuilder, "{s@v}", "timestamp-check-from-rev",
+                               g_variant_new_variant (g_variant_new_string (from_revision)));
 
       g_variant_builder_add (optbuilder, "{s@v}", "refs",
                              g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch, -1)));
