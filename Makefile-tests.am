@@ -456,3 +456,10 @@ else
 endif
 INSTALL_DATA_HOOKS += install-installed-tests-extra
 endif
+
+# Just forward these
+build-kola-tests:
+	$(MAKE) -C tests/kola
+
+install-kola-tests:
+	$(MAKE) -C tests/kola install
