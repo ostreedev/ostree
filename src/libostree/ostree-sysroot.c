@@ -747,9 +747,13 @@ parse_deployment (OstreeSysroot       *self,
   ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_NONE;
   g_autofree char *unlocked_development_path =
     _ostree_sysroot_get_runstate_path (ret_deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT);
+  g_autofree char *unlocked_transient_path =
+    _ostree_sysroot_get_runstate_path (ret_deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_TRANSIENT);
   struct stat stbuf;
   if (lstat (unlocked_development_path, &stbuf) == 0)
     ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
+  else if (lstat (unlocked_transient_path, &stbuf) == 0)
+    ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT;
   else
     {
       GKeyFile *origin = ostree_deployment_get_origin (ret_deployment);
@@ -1932,6 +1936,8 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
 
   const char *ovl_options = NULL;
   static const char hotfix_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
+  g_autofree char *unlock_ovldir = NULL;
+
   switch (unlocked_state)
     {
     case OSTREE_DEPLOYMENT_UNLOCKED_NONE:
@@ -1951,11 +1957,12 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
       }
       break;
     case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
+    case OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT:
       {
+        unlock_ovldir = g_strdup ("/var/tmp/ostree-unlock-ovl.XXXXXX");
         /* We're just doing transient development/hacking?  Okay,
          * stick the overlayfs bits in /var/tmp.
          */
-        char *development_ovldir = strdupa ("/var/tmp/ostree-unlock-ovl.XXXXXX");
         const char *development_ovl_upper;
         const char *development_ovl_work;
 
@@ -1966,14 +1973,14 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
                                                     "/usr", usr_mode, error))
             return FALSE;
 
-          if (g_mkdtemp_full (development_ovldir, 0755) == NULL)
+          if (g_mkdtemp_full (unlock_ovldir, 0755) == NULL)
             return glnx_throw_errno_prefix (error, "mkdtemp");
         }
 
-        development_ovl_upper = glnx_strjoina (development_ovldir, "/upper");
+        development_ovl_upper = glnx_strjoina (unlock_ovldir, "/upper");
         if (!mkdir_unmasked (AT_FDCWD, development_ovl_upper, usr_mode, cancellable, error))
           return FALSE;
-        development_ovl_work = glnx_strjoina (development_ovldir, "/work");
+        development_ovl_work = glnx_strjoina (unlock_ovldir, "/work");
         if (!mkdir_unmasked (AT_FDCWD, development_ovl_work, usr_mode, cancellable, error))
           return FALSE;
         ovl_options = glnx_strjoina ("lowerdir=usr,upperdir=", development_ovl_upper,
@@ -1996,6 +2003,9 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
       return glnx_throw_errno_prefix (error, "fork");
     else if (mount_child == 0)
       {
+        int mountflags = 0;
+        if (unlocked_state == OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT)
+          mountflags |= MS_RDONLY;
         /* Child process. Do NOT use any GLib API here; it's not generally fork() safe.
          *
          * TODO: report errors across a pipe (or use the journal?) rather than
@@ -2003,7 +2013,7 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
          */
         if (fchdir (deployment_dfd) < 0)
           err (1, "fchdir");
-        if (mount ("overlay", "/usr", "overlay", 0, ovl_options) < 0)
+        if (mount ("overlay", "/usr", "overlay", mountflags, ovl_options) < 0)
           err (1, "mount");
         exit (EXIT_SUCCESS);
       }
@@ -2036,15 +2046,19 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
         return FALSE;
       break;
     case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
+    case OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT:
       {
         g_autofree char *devpath =
-          _ostree_sysroot_get_runstate_path (deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT);
+          unlocked_state == OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT ?
+            _ostree_sysroot_get_runstate_path (deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT)
+          :
+            _ostree_sysroot_get_runstate_path (deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_TRANSIENT);
         g_autofree char *devpath_parent = dirname (g_strdup (devpath));
 
         if (!glnx_shutil_mkdir_p_at (AT_FDCWD, devpath_parent, 0755, cancellable, error))
           return FALSE;
 
-        if (!g_file_set_contents (devpath, "", 0, error))
+        if (!g_file_set_contents (devpath, unlock_ovldir, -1, error))
           return FALSE;
       }
     }

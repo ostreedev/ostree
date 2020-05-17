@@ -318,6 +318,8 @@ ostree_deployment_unlocked_state_to_string (OstreeDeploymentUnlockedState state)
       return "hotfix";
     case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
       return "development";
+    case OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT:
+      return "transient";
     }
   g_assert_not_reached ();
 }

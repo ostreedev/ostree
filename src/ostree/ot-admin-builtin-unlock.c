@@ -31,9 +31,11 @@
 #include <err.h>
 
 static gboolean opt_hotfix;
+static gboolean opt_transient;
 
 static GOptionEntry options[] = {
   { "hotfix", 0, 0, G_OPTION_ARG_NONE, &opt_hotfix, "Retain changes across reboots", NULL },
+  { "transient", 0, 0, G_OPTION_ARG_NONE, &opt_transient, "Mount overlayfs read-only by default", NULL },
   { NULL }
 };
 
@@ -67,7 +69,17 @@ ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocat
       goto out;
     }
 
-  target_state = opt_hotfix ? OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX : OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
+  if (opt_hotfix && opt_transient)
+    {
+      glnx_throw (error, "Cannot specify both --hotfix and --transient");
+      goto out;
+    }
+  else if (opt_hotfix)
+    target_state = OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX;
+  else if (opt_transient)
+    target_state = OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT;
+  else
+    target_state = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
 
   if (!ostree_sysroot_deployment_unlock (sysroot, booted_deployment,
                                          target_state, cancellable, error))
@@ -85,6 +97,10 @@ ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocat
       break;
     case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
       g_print ("Development mode enabled.  A writable overlayfs is now mounted on /usr.\n"
+               "All changes there will be discarded on reboot.\n");
+      break;
+    case OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT:
+      g_print ("A writable overlayfs is prepared for /usr, but is mounted read-only by default.\n"
                "All changes there will be discarded on reboot.\n");
       break;
     }
