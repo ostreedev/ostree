@@ -306,6 +306,8 @@ prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buil
 assert_not_streq ${head_rev} ${prev_rev}
 # check that we can't "upgrade" to an older commit without --allow-downgrade
 if ${CMD_PREFIX} ostree admin upgrade --os=testos --override-commit=${prev_rev} 2> err.txt; then
+    ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo show "${prev_rev}"
+    ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo show "${head_rev}"
     fatal "downgraded without --allow-downgrade?"
 fi
 assert_file_has_content err.txt "Upgrade.*is chronologically older"
