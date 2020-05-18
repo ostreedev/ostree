@@ -488,6 +488,11 @@ EOF
     cd ${oldpwd} 
 }
 
+timestamp_of_commit()
+{
+  date --date="$(ostree --repo=$1 show $2 | grep -Ee '^Date: ' | sed -e 's,^Date: *,,')" '+%s'
+}
+
 os_repository_new_commit ()
 {
     boot_checksum_iteration=${1:-0}
@@ -529,6 +534,13 @@ os_repository_new_commit ()
     echo "content iteration ${content_iteration}" > usr/bin/content-iteration
 
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b $branch -s "Build"
+    if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo rev-parse ${branch} 2>/dev/null; then
+        prevdate=$(timestamp_of_commit ${test_tmpdir}/testos-repo "${branch}"^)
+        newdate=$(timestamp_of_commit ${test_tmpdir}/testos-repo "${branch}")
+        if [ $((${prevdate} > ${newdate})) = 1 ]; then
+            fatal "clock skew detected writing commits: prev=${prevdate} new=${newdate}"
+        fi
+    fi
     cd ${test_tmpdir}
 }
 
