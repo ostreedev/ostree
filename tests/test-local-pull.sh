@@ -28,7 +28,7 @@ unset OSTREE_GPG_HOME
 
 skip_without_user_xattrs
 
-echo "1..11"
+echo "1..8"
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -115,39 +115,3 @@ for src_object in `find repo/objects -name '*.filez'`; do
     assert_files_hardlinked "$src_object" "$dst_object"
 done
 echo "ok pull-local z2 to z2 default hardlink"
-
-if has_sign_ed25519; then
-    gen_ed25519_keys
-
-    mkdir repo8
-    ostree_repo_init repo8 --mode="archive"
-    ${CMD_PREFIX} ostree --repo=repo8 remote add --set=verification-ed25519-key="${ED25519PUBLIC}" origin repo
-    cat repo8/config
-
-    if ${CMD_PREFIX} ostree --repo=repo8 pull-local --remote=origin --sign-verify repo test2 2>err.txt; then
-        assert_not_reached "Ed25519 signature verification unexpectedly succeeded"
-    fi
-    assert_file_has_content err.txt 'ed25519: commit have no signatures of my type'
-    echo "ok --sign-verify with no signature"
-
-    ${OSTREE} sign test2 ${ED25519SECRET}
-
-    mkdir repo9
-    ostree_repo_init repo9 --mode="archive"
-    ${CMD_PREFIX} ostree --repo=repo9 remote add --set=verification-ed25519-key="$(gen_ed25519_random_public)" origin repo
-    if ${CMD_PREFIX} ostree --repo=repo9 pull-local --remote=origin --sign-verify repo test2 2>err.txt; then
-        assert_not_reached "Ed25519 signature verification unexpectedly succeeded"
-    fi
-    assert_file_has_content err.txt 'no valid ed25519 signatures found'
-    echo "ok --sign-verify with wrong signature"
-
-    mkdir repo10
-    ostree_repo_init repo10 --mode="archive"
-    ${CMD_PREFIX} ostree --repo=repo10 remote add --set=verification-ed25519-key="${ED25519PUBLIC}" origin repo
-    ${CMD_PREFIX} ostree --repo=repo10 pull-local --remote=origin --sign-verify repo test2
-    echo "ok --sign-verify"
-else
-    echo "ok --sign-verify with no signature | # SKIP due libsodium unavailability"
-    echo "ok --sign-verify with wrong signature | # SKIP due libsodium unavailability"
-    echo "ok --sign-verify | # SKIP libsodium unavailability"
-fi
