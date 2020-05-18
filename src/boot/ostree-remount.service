@@ -26,9 +26,10 @@ Conflicts=umount.target
 After=-.mount var.mount
 After=systemd-remount-fs.service
 # But we run *before* most other core bootup services that need write access to /etc and /var
+# In the future we should try to somehow replace/augment systemd-remount-fs.service
 Before=local-fs.target umount.target
 Before=systemd-random-seed.service plymouth-read-write.service systemd-journal-flush.service
-Before=systemd-tmpfiles-setup.service
+Before=systemd-tmpfiles-setup.service systemd-hwdb-update.service
 
 [Service]
 Type=oneshot
