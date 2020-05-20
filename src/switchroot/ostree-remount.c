@@ -93,7 +93,10 @@ sysroot_is_configured_ro (void)
   if (!g_key_file_load_from_file (keyfile, config_path, 0, NULL))
     return false;
 
-  return g_key_file_get_boolean (keyfile, "sysroot", "readonly", NULL);
+  if (g_key_file_get_boolean (keyfile, "sysroot", "readonly", NULL))
+    puts ("Ignoring sysroot.readonly config; see https://github.com/coreos/fedora-coreos-tracker/issues/488.");
+
+  return false;
 }
 
 int
