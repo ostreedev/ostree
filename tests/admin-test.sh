@@ -300,6 +300,8 @@ echo "ok no duplicate version strings in title"
 
 # Test upgrade with and without --override-commit
 # See https://github.com/GNOME/ostree/pull/147
+sleep 1
+os_repository_new_commit
 ${CMD_PREFIX} ostree pull --repo=sysroot/ostree/repo --commit-metadata-only --depth=-1 testos:testos/buildmaster/x86_64-runtime
 head_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
 prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime^^^^)
