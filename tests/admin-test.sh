@@ -23,6 +23,8 @@ set -euo pipefail
 
 echo "1..$((28 + ${extra_admin_tests:-0}))"
 
+set -x
+
 mkdir sysrootmin
 ${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
 assert_has_dir sysrootmin/boot
