@@ -109,7 +109,7 @@ to override this, or set the `$OSTREE_REPO` environment variable.
 ## Refs
 
 Like git, OSTree uses the terminology "references" (abbreviated
-"refs") which are text files that name (refer to) to particular
+"refs") which are text files that name (refer to) particular
 commits.  See the
 [Git Documentation](https://git-scm.com/book/en/v2/Git-Internals-Git-References)
 for information on how git uses them.  Unlike git though, it doesn't
