@@ -81,24 +81,6 @@ do_remount (const char *target,
   printf ("Remounted %s: %s\n", writable ? "rw" : "ro", target);
 }
 
-static bool
-sysroot_is_configured_ro (void)
-{
-  struct stat stbuf;
-  static const char config_path[] = "/ostree/repo/config";
-  if (stat (config_path, &stbuf) != 0)
-    return false;
-
-  g_autoptr(GKeyFile) keyfile = g_key_file_new ();
-  if (!g_key_file_load_from_file (keyfile, config_path, 0, NULL))
-    return false;
-
-  if (g_key_file_get_boolean (keyfile, "sysroot", "readonly", NULL))
-    puts ("Ignoring sysroot.readonly config; see https://github.com/coreos/fedora-coreos-tracker/issues/488.");
-
-  return false;
-}
-
 int
 main(int argc, char *argv[])
 {
@@ -124,25 +106,10 @@ main(int argc, char *argv[])
       exit (EXIT_SUCCESS);
     }
 
-  /* Query the repository configuration - this is an operating system builder
-   * choice.
-   * */
-  const bool sysroot_readonly = sysroot_is_configured_ro ();
-
-  /* Mount the sysroot read-only if we're configured to do so.
-   * Note we only get here if / is already writable.
-   */
-  do_remount ("/sysroot", !sysroot_readonly);
-
-  if (sysroot_readonly)
+  /* Handle remounting /sysroot read-only now */
+  if (unlink (_OSTREE_SYSROOT_READONLY_STAMP) == 0)
     {
-      /* Now, /etc is not normally a bind mount, but remounting the
-       * sysroot above made it read-only since it's on the same filesystem.
-       * Make it a self-bind mount, so we can then mount it read-write.
-       */
-      if (mount ("/etc", "/etc", NULL, MS_BIND, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make /etc a bind mount");
-      do_remount ("/etc", true);
+      do_remount ("/sysroot", false);
     }
 
   /* If /var was created as as an OSTree default bind mount (instead of being a separate filesystem)

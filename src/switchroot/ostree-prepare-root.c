@@ -60,6 +60,7 @@
 #include <sys/syscall.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <assert.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -82,6 +83,47 @@
 
 /* Initialized early in main */
 static bool running_as_pid1;
+
+static inline bool
+sysroot_is_configured_ro (const char *sysroot)
+{
+  char * config_path = NULL;
+  assert (asprintf (&config_path, "%s/ostree/repo/config", sysroot) != -1);
+  FILE *f = fopen(config_path, "r");
+  if (!f)
+    {
+      fprintf (stderr, "Missing expected repo config: %s\n", config_path);
+      free (config_path);
+      return false;
+    }
+  free (config_path);
+
+  bool ret = false;
+  char *line = NULL;
+  size_t len = 0;
+  ssize_t nread;
+  /* Note getline() will reuse the previous buffer */
+  bool in_sysroot = false;
+  while ((nread = getline (&line, &len, f)) != -1)
+    {
+      /* This is an awful hack to avoid depending on GLib in the
+       * initramfs right now.
+       */
+      if (strstr (line, "[sysroot]") == line)
+        in_sysroot = true;
+      else if (*line == '[')
+        in_sysroot = false;
+      else if (in_sysroot && strstr (line, "readonly=true") == line)
+        {
+          ret = true;
+          break;
+        }
+    }
+
+  fclose (f);
+  free (line);
+  return ret;
+}
 
 static char*
 resolve_deploy_path (const char * root_mountpoint)
@@ -191,6 +233,33 @@ main(int argc, char *argv[])
    * below. */
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
+
+  /* Query the repository configuration - this is an operating system builder
+   * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
+   */
+  const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
+  const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
+
+#ifdef USE_LIBSYSTEMD
+      sd_journal_send ("MESSAGE=sysroot configured read-only: %d, currently writable: %d", 
+                      (int)sysroot_readonly, (int)sysroot_currently_writable, NULL);
+#endif
+  if (sysroot_readonly)
+    {
+      if (!sysroot_currently_writable)
+        errx (EXIT_FAILURE, "sysroot=readonly currently requires writable / in initramfs");
+      /* Now, /etc is not normally a bind mount, but if we have a readonly
+       * sysroot, we still need a writable /etc.  And to avoid race conditions
+       * we ensure it's writable in the initramfs, before we switchroot at all.
+       */
+      if (mount ("/etc", "/etc", NULL, MS_BIND, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make /etc a bind mount");
+      /* Pass on the fact that we discovered a readonly sysroot to ostree-remount.service */
+      int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+      if (fd < 0)
+        err (EXIT_FAILURE, "failed to create %s", _OSTREE_SYSROOT_READONLY_STAMP);
+      (void) close (fd);
+    }
 
   /* Default to true, but in the systemd case, default to false because it's handled by
    * ostree-system-generator. */
