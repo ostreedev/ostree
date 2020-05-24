@@ -23,7 +23,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..16"
+echo "1..20"
 
 # This is explicitly opt in for testing
 export OSTREE_DUMMY_SIGN_ENABLED=1
@@ -101,6 +101,31 @@ test_signed_pull "dummy" ""
 # Another test with the --verify option directly
 repo_init --sign-verify=dummy=inline:${DUMMYSIGN}
 test_signed_pull "dummy" "from remote opt"
+
+# And now explicitly limit it to dummy
+repo_init
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.sign-verify dummy
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-dummy-key "${DUMMYSIGN}"
+test_signed_pull "dummy" "explicit value"
+
+# dummy, but no key configured
+repo_init
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.sign-verify dummy
+if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
+    assert_not_reached "pull with nosuchsystem succeeded"
+fi
+assert_file_has_content err.txt 'No keys found for required signapi type dummy'
+echo "ok explicit dummy but unconfigured"
+
+# Set it to an unknown explicit value
+repo_init
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.sign-verify nosuchsystem;
+${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-dummy-key "${DUMMYSIGN}"
+if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>err.txt; then
+    assert_not_reached "pull with nosuchsystem succeeded"
+fi
+assert_file_has_content err.txt 'Requested signature type is not implemented'
+echo "ok pull failure for unknown system"
 
 repo_init
 if ${CMD_PREFIX} ostree --repo=repo remote add other --sign-verify=trustme=inline:ok http://localhost 2>err.txt; then
