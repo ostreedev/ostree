@@ -30,11 +30,13 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
+#define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
 
 static inline int
-path_is_on_readonly_fs (char *path)
+path_is_on_readonly_fs (const char *path)
 {
   struct statvfs stvfsbuf;
 
