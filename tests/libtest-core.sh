@@ -1,1 +1,1 @@
-kola/libtest-core.sh
+kolainst/libtest-core.sh
