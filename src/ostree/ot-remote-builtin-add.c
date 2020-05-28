@@ -59,7 +59,7 @@ static GOptionEntry option_entries[] = {
   { NULL }
 };
 
-static gboolean
+static char *
 add_verify_opt (GVariantBuilder *builder,
                 const char *keyspec,
                 GError **error)
@@ -68,11 +68,11 @@ add_verify_opt (GVariantBuilder *builder,
   g_assert (parts && *parts);
   const char *keytype = parts[0];
   if (!parts[1])
-    return glnx_throw (error, "Failed to parse KEYTYPE=[inline|file]:DATA in %s", keyspec);
+    return glnx_null_throw (error, "Failed to parse KEYTYPE=[inline|file]:DATA in %s", keyspec);
 
   g_autoptr(OstreeSign) sign = ostree_sign_get_by_name (keytype, error);
   if (!sign)
-    return FALSE;
+    return NULL;
 
   const char *rest = parts[1];
   g_assert (!parts[2]);
@@ -86,13 +86,13 @@ add_verify_opt (GVariantBuilder *builder,
   else if (g_str_equal (keyref, "file"))
     optname = g_strdup_printf ("verification-%s-file", keytype);
   else
-    return glnx_throw (error, "Invalid key reference %s, expected inline|file", keyref);
+    return glnx_null_throw (error, "Invalid key reference %s, expected inline|file", keyref);
 
   g_assert (keyparts[1] && !keyparts[2]);
   g_variant_builder_add (builder, "{s@v}",
                          optname,
                          g_variant_new_variant (g_variant_new_string (keyparts[1])));
-  return TRUE;
+  return g_strdup (ostree_sign_get_name (sign));
 }
 
 gboolean
@@ -101,6 +101,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeSysroot) sysroot = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr(GString) sign_verify = NULL;
   const char *remote_name;
   const char *remote_url;
   char **iter;
@@ -193,13 +194,23 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
   for (char **iter = opt_sign_verify; iter && *iter; iter++)
     {
       const char *keyspec = *iter;
-      if (!add_verify_opt (optbuilder, keyspec, error))
+      g_autofree char *signname = add_verify_opt (optbuilder, keyspec, error);
+      if (!signname)
         return FALSE;
+      if (!sign_verify)
+        {
+          sign_verify = g_string_new (signname);
+        }
+      else
+        {
+          g_string_append_c (sign_verify, ',');
+          g_string_append (sign_verify, signname);
+        }
     }
-  if (opt_sign_verify)
+  if (sign_verify != NULL)
     g_variant_builder_add (optbuilder, "{s@v}",
                           "sign-verify",
-                          g_variant_new_variant (g_variant_new_boolean (TRUE)));
+                          g_variant_new_variant (g_variant_new_string (sign_verify->str)));
 
   if (opt_collection_id != NULL)
     g_variant_builder_add (optbuilder, "{s@v}", "collection-id",
