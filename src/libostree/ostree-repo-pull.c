@@ -999,7 +999,10 @@ content_fetch_on_complete (GObject        *object,
       if (!ostree_content_stream_parse (TRUE, tmpf_input, stbuf.st_size, FALSE,
                                         &file_in, &file_info, &xattrs,
                                         cancellable, error))
-        goto out;
+        {
+          g_prefix_error (error, "Parsing %s: ", checksum_obj);
+          goto out;
+        }
 
       if (verifying_bareuseronly)
         {
