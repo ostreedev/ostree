@@ -1,0 +1,17 @@
+{
+  "ignition": {
+    "version": "3.0.0"
+  },
+  "storage": {
+    "files": [
+      {
+        "path": "/etc/ostree-destructive-test-ok",
+        "filesystem": "root",
+        "mode": 420,
+        "contents": {
+          "source": "data:text/plain;base64,"
+        }
+      }
+    ]
+  }
+}

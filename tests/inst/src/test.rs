@@ -3,9 +3,11 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::process::Command;
+use std::time;
 
 use anyhow::{bail, Context, Result};
 use linkme::distributed_slice;
+use rand::Rng;
 
 pub use itest_macro::itest;
 pub use with_procspawn_tempdir::with_procspawn_tempdir;
@@ -28,7 +30,9 @@ pub(crate) struct Test {
 pub(crate) type TestImpl = libtest_mimic::Test<&'static Test>;
 
 #[distributed_slice]
-pub(crate) static TESTS: [Test] = [..];
+pub(crate) static NONDESTRUCTIVE_TESTS: [Test] = [..];
+#[distributed_slice]
+pub(crate) static DESTRUCTIVE_TESTS: [Test] = [..];
 
 /// Run command and assert that its stderr contains pat
 pub(crate) fn cmd_fails_with<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Result<()> {
@@ -53,30 +57,10 @@ pub(crate) fn write_file<P: AsRef<Path>>(p: P, buf: &str) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn mkroot<P: AsRef<Path>>(p: P) -> Result<()> {
-    let p = p.as_ref();
-    for v in &["usr/bin", "etc"] {
-        std::fs::create_dir_all(p.join(v))?;
-    }
-    let verpath = p.join("etc/version");
-    let v: u32 = if verpath.exists() {
-        let s = std::fs::read_to_string(&verpath)?;
-        let v: u32 = s.trim_end().parse()?;
-        v + 1
-    } else {
-        0
-    };
-    write_file(&verpath, &format!("{}", v))?;
-    write_file(p.join("usr/bin/somebinary"), &format!("somebinary v{}", v))?;
-    write_file(p.join("etc/someconf"), &format!("someconf v{}", v))?;
-    write_file(p.join("usr/bin/vmod2"), &format!("somebinary v{}", v % 2))?;
-    write_file(p.join("usr/bin/vmod3"), &format!("somebinary v{}", v % 3))?;
-    Ok(())
-}
-
 #[derive(Default, Debug, Copy, Clone)]
 pub(crate) struct TestHttpServerOpts {
     pub(crate) basicauth: bool,
+    pub(crate) random_delay: Option<time::Duration>,
 }
 
 pub(crate) const TEST_HTTP_BASIC_AUTH: &'static str = "foouser:barpw";
@@ -105,6 +89,11 @@ pub(crate) async fn http_server<P: AsRef<Path>>(
         sv: Static,
         opts: TestHttpServerOpts,
     ) -> Result<Response<Body>> {
+        if let Some(random_delay) = opts.random_delay {
+            let slices = 100u32;
+            let n: u32 = rand::thread_rng().gen_range(0, slices);
+            std::thread::sleep((random_delay / slices) * n);
+        }
         if opts.basicauth {
             if let Some(ref authz) = req.headers().get(http::header::AUTHORIZATION) {
                 match validate_authz(authz.as_ref()) {
@@ -149,7 +138,8 @@ pub(crate) async fn http_server<P: AsRef<Path>>(
 pub(crate) fn with_webserver_in<P: AsRef<Path>, F>(
     path: P,
     opts: &TestHttpServerOpts,
-    f: F) -> Result<()> 
+    f: F,
+) -> Result<()>
 where
     F: FnOnce(&std::net::SocketAddr) -> Result<()>,
     F: Send + 'static,
@@ -160,6 +150,48 @@ where
         let addr = http_server(path, opts.clone()).await?;
         tokio::task::spawn_blocking(move || f(&addr)).await?
     })?;
+    Ok(())
+}
+
+/// Parse an environment variable as UTF-8
+pub(crate) fn getenv_utf8(n: &str) -> Result<Option<String>> {
+    if let Some(v) = std::env::var_os(n) {
+        Ok(Some(
+            v.to_str()
+                .ok_or_else(|| anyhow::anyhow!("{} is invalid UTF-8", n))?
+                .to_string(),
+        ))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Defined by the autopkgtest specification
+pub(crate) fn get_reboot_mark() -> Result<Option<String>> {
+    getenv_utf8("AUTOPKGTEST_REBOOT_MARK")
+}
+
+/// Initiate a clean reboot; on next boot get_reboot_mark() will return `mark`.
+#[allow(dead_code)]
+pub(crate) fn reboot<M: AsRef<str>>(mark: M) -> std::io::Error {
+    let mark = mark.as_ref();
+    use std::os::unix::process::CommandExt;
+    std::process::Command::new("/tmp/autopkgtest-reboot")
+        .arg(mark)
+        .exec()
+}
+
+/// Prepare a reboot - you should then initiate a reboot however you like.
+/// On next boot get_reboot_mark() will return `mark`.
+#[allow(dead_code)]
+pub(crate) fn prepare_reboot<M: AsRef<str>>(mark: M) -> Result<()> {
+    let mark = mark.as_ref();
+    let s = std::process::Command::new("/tmp/autopkgtest-reboot-prepare")
+        .arg(mark)
+        .status()?;
+    if !s.success() {
+        anyhow::bail!("{:?}", s);
+    }
     Ok(())
 }
 
