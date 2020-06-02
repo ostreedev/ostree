@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+# Generate a new qemu image and run tests
+top=$(git rev-parse --show-toplevel)
+cd ${top}
+make
+cosa build-fast
+image=$(ls fastbuild-*-qemu.qcow2 | head -1)
+if [ -z "${image}" ]; then 
+    echo "failed to find image"; exit 1
+fi
+if [ -z "$@" ]; then
+    set -- 'ext.ostree.*' "$@"
+fi
+set -x
+make -C tests/kolainst
+sudo make -C tests/kolainst install
+exec kola run -p qemu --qemu-image "${image}" -E ${top} "$@"

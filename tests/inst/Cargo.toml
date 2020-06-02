@@ -1,0 +1,42 @@
+[package]
+name = "ostree-test"
+version = "0.1.0"
+authors = ["Colin Walters <walters@verbum.org>"]
+edition = "2018"
+
+[[bin]]
+name = "ostree-test"
+path = "src/insttest.rs"
+
+[dependencies]
+clap = "2.32.0"
+structopt = "0.2"
+commandspec = "0.12.2"
+anyhow = "1.0"
+tempfile = "3.1.0"
+gio = "0.8"
+ostree = { version = "0.7.1", features = ["v2020_1"] }
+libtest-mimic = "0.2.0"
+twoway = "0.2.1"
+hyper = "0.13"
+futures = "0.3.4"
+http = "0.2.0"
+hyper-staticfile = "0.5.1"
+tokio = { version = "0.2", features = ["full"] }
+futures-util = "0.3.1"
+base64 = "0.12.0"
+procspawn = "0.8"
+proc-macro2 = "0.4"
+quote = "0.6"
+syn = "0.15"
+linkme = "0.2"
+
+itest-macro = { path = "itest-macro" }
+
+with-procspawn-tempdir = { git = "https://github.com/cgwalters/with-procspawn-tempdir" }
+#with-procspawn-tempdir = { path = "/var/srv/walters/src/github/cgwalters/with-procspawn-tempdir" }
+
+# See https://github.com/tcr/commandspec/pulls?q=is%3Apr+author%3Acgwalters+
+[patch.crates-io]
+commandspec = { git = "https://github.com/cgwalters/commandspec", branch = 'walters-master' }
+#commandspec = { path = "/var/srv/walters/src/github/tcr/commandspec" }
