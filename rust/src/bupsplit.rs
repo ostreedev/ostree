@@ -43,9 +43,9 @@ const ROLLSUM_CHAR_OFFSET: u32 = 31;
 
 // Previously in the header file
 const BUP_BLOBBITS: u32 = 13;
-const BUP_BLOBSIZE: u32 = (1<<BUP_BLOBBITS);
+const BUP_BLOBSIZE: u32 = 1 << BUP_BLOBBITS;
 const BUP_WINDOWBITS: u32 = 7;
-const BUP_WINDOWSIZE: u32 = (1<<(BUP_WINDOWBITS-1));
+const BUP_WINDOWSIZE: u32 = 1 << BUP_WINDOWBITS - 1;
 
 struct Rollsum {
     s1: u32,
@@ -56,10 +56,11 @@ struct Rollsum {
 
 impl Rollsum {
     pub fn new() -> Rollsum {
-        Rollsum { s1: BUP_WINDOWSIZE * ROLLSUM_CHAR_OFFSET,
-                  s2: BUP_WINDOWSIZE * (BUP_WINDOWSIZE-1) * ROLLSUM_CHAR_OFFSET,
-                  window: [0; 64],
-                  wofs: 0
+        Rollsum {
+            s1: BUP_WINDOWSIZE * ROLLSUM_CHAR_OFFSET,
+            s2: BUP_WINDOWSIZE * (BUP_WINDOWSIZE - 1) * ROLLSUM_CHAR_OFFSET,
+            window: [0; 64],
+            wofs: 0,
         }
     }
 
@@ -67,8 +68,13 @@ impl Rollsum {
     pub fn add(&mut self, drop: u8, add: u8) -> () {
         let drop_expanded = u32::from(drop);
         let add_expanded = u32::from(add);
-        self.s1 = self.s1.wrapping_add(add_expanded.wrapping_sub(drop_expanded));
-        self.s2 = self.s2.wrapping_add(self.s1.wrapping_sub(BUP_WINDOWSIZE * (drop_expanded + ROLLSUM_CHAR_OFFSET)));
+        self.s1 = self
+            .s1
+            .wrapping_add(add_expanded.wrapping_sub(drop_expanded));
+        self.s2 = self.s2.wrapping_add(
+            self.s1
+                .wrapping_sub(BUP_WINDOWSIZE * (drop_expanded + ROLLSUM_CHAR_OFFSET)),
+        );
     }
 
     pub fn roll(&mut self, ch: u8) -> () {
@@ -85,7 +91,7 @@ impl Rollsum {
 }
 
 #[no_mangle]
-pub extern fn bupsplit_sum(buf: *const u8, ofs: libc::size_t, len: libc::size_t) -> u32 {
+pub extern "C" fn bupsplit_sum(buf: *const u8, ofs: libc::size_t, len: libc::size_t) -> u32 {
     let sbuf = unsafe {
         assert!(!buf.is_null());
         slice::from_raw_parts(buf.offset(ofs as isize), (len - ofs) as usize)
@@ -99,9 +105,11 @@ pub extern fn bupsplit_sum(buf: *const u8, ofs: libc::size_t, len: libc::size_t)
 }
 
 #[no_mangle]
-pub extern fn bupsplit_find_ofs(buf: *const u8, len: libc::size_t,
-                                bits: *mut libc::c_int) -> libc::c_int
-{
+pub extern "C" fn bupsplit_find_ofs(
+    buf: *const u8,
+    len: libc::size_t,
+    bits: *mut libc::c_int,
+) -> libc::c_int {
     if buf.is_null() {
         return 0;
     }
@@ -110,10 +118,10 @@ pub extern fn bupsplit_find_ofs(buf: *const u8, len: libc::size_t,
     let mut r = Rollsum::new();
     for x in sbuf {
         r.roll(*x);
-	      if (r.s2 & (BUP_BLOBSIZE-1)) == ((u32::max_value()) & (BUP_BLOBSIZE-1)) {
-	          if !bits.is_null() {
+        if (r.s2 & (BUP_BLOBSIZE - 1)) == ((u32::max_value()) & (BUP_BLOBSIZE - 1)) {
+            if !bits.is_null() {
                 let mut sum = r.digest() >> BUP_BLOBBITS;
-                let mut rbits : libc::c_int = BUP_BLOBBITS as i32;
+                let mut rbits: libc::c_int = BUP_BLOBBITS as i32;
                 while sum & 1 != 0 {
                     sum >>= 1;
                     rbits += 1;
@@ -122,7 +130,7 @@ pub extern fn bupsplit_find_ofs(buf: *const u8, len: libc::size_t,
                     *bits = rbits;
                 }
             }
-            return len as i32
+            return len as i32;
         }
     }
     0
