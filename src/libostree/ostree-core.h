@@ -212,6 +212,19 @@ typedef enum {
  * Since: 2014.9
  */
 #define OSTREE_COMMIT_META_KEY_VERSION "version"
+
+/**
+ * OSTREE_COMMIT_META_KEY_ARCHITECTURE:
+ *
+ * GVariant type `s`.  Intended to describe the CPU architecture.  This is a freeform string, and some distributions
+ * which have existing package managers might want to match that schema.  If you
+ * don't have a prior schema, it's recommended to use `uname -m` by default (i.e. the Linux kernel schema).  In the future
+ * ostree might include a builtin function to compare architectures.
+ *
+ * Since: 2020.4
+ */
+#define OSTREE_COMMIT_META_KEY_ARCHITECTURE "ostree.architecture"
+
 /**
  * OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE:
  *
