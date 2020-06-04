@@ -15,6 +15,7 @@ use futures_util::future;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response};
 use hyper_staticfile::Static;
+use tokio::runtime::Runtime;
 
 pub(crate) type TestFn = fn() -> Result<()>;
 
@@ -143,6 +144,23 @@ pub(crate) async fn http_server<P: AsRef<Path>>(
         r
     });
     Ok(addr)
+}
+
+pub(crate) fn with_webserver_in<P: AsRef<Path>, F>(
+    path: P,
+    opts: &TestHttpServerOpts,
+    f: F) -> Result<()> 
+where
+    F: FnOnce(&std::net::SocketAddr) -> Result<()>,
+    F: Send + 'static,
+{
+    let path = path.as_ref();
+    let mut rt = Runtime::new()?;
+    rt.block_on(async move {
+        let addr = http_server(path, opts.clone()).await?;
+        tokio::task::spawn_blocking(move || f(&addr)).await?
+    })?;
+    Ok(())
 }
 
 // I put tests in your tests so you can test while you test

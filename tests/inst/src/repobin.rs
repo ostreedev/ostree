@@ -6,7 +6,6 @@ use std::path::Path;
 use crate::test::*;
 use anyhow::{Context, Result};
 use commandspec::{sh_command, sh_execute};
-use tokio::runtime::Runtime;
 use with_procspawn_tempdir::with_procspawn_tempdir;
 
 #[itest]
@@ -61,15 +60,16 @@ fn test_extensions() -> Result<()> {
     Ok(())
 }
 
-async fn impl_test_pull_basicauth() -> Result<()> {
+#[itest]
+#[with_procspawn_tempdir]
+fn test_pull_basicauth() -> Result<()> {
     let opts = TestHttpServerOpts {
         basicauth: true,
         ..Default::default()
     };
     let serverrepo = Path::new("server/repo");
     std::fs::create_dir_all(&serverrepo)?;
-    let addr = http_server(&serverrepo, opts).await?;
-    tokio::task::spawn_blocking(move || -> Result<()> {
+    with_webserver_in(&serverrepo, &opts, move |addr| {
         let baseuri = http::Uri::from_maybe_shared(format!("http://{}/", addr).into_bytes())?;
         let unauthuri =
             http::Uri::from_maybe_shared(format!("http://unknown:badpw@{}/", addr).into_bytes())?;
@@ -107,15 +107,6 @@ async fn impl_test_pull_basicauth() -> Result<()> {
         }
         sh_execute!(r#"ostree --repo=client/repo pull origin-goodauth os >/dev/null"#,)?;
         Ok(())
-    })
-    .await??;
-    Ok(())
-}
-
-#[itest]
-#[with_procspawn_tempdir]
-fn test_pull_basicauth() -> Result<()> {
-    let mut rt = Runtime::new()?;
-    rt.block_on(async move { impl_test_pull_basicauth().await })?;
+    })?;
     Ok(())
 }
