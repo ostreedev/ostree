@@ -103,7 +103,7 @@ static GOptionEntry options[] = {
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
   { "no-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_no_bindings, "Do not write any ref bindings", NULL },
   { "bind-ref", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_bind_refs, "Add a ref to ref binding commit metadata", "BRANCH" },
-  { "base", 0, 0, G_OPTION_ARG_STRING, &opt_base, "Start from the given commit as a base (no modifiers apply)" },
+  { "base", 0, 0, G_OPTION_ARG_STRING, &opt_base, "Start from the given commit as a base (no modifiers apply)", "REF" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-metadata", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_variants, "Add a key/value pair to metadata, where the KEY is a string, an VALUE is g_variant_parse() formatted", "KEY=VALUE" },
