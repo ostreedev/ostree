@@ -68,7 +68,7 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
-                <term><option>--user-mode</option>,<option> -u</option></term>
+                <term><option>--user-mode</option>, <option>-U</option></term>
 
                 <listitem><para>
                     Do not change file ownership or initialize extended attributes.
@@ -109,6 +109,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--whiteouts</option></term>
+
+                <listitem><para>
+                    Process whiteout files (Docker style).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--allow-noent</option></term>
 
                 <listitem><para>
@@ -129,6 +137,69 @@ Boston, MA 02111-1307, USA.
 
                 <listitem><para>
                     Process many checkouts from input file.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--fsync</option>="POLICY"</term>
+
+                <listitem><para>
+                    POLICY is a boolean which specifies whether fsync should be
+                    used or not. Default to true.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--require-hardlinks</option>,
+                <option>-H</option></term>
+
+                <listitem><para>
+                    Do not fall back to full copies if hardlinking fails.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--force-copy-zerosized</option>,
+                <option>-z</option></term>
+
+                <listitem><para>
+                    Do not hardlink zero-sized files.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--force-copy</option>, <option>-C</option></term>
+
+                <listitem><para>
+                    Never hardlink (but may reflink if available).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--bareuseronly-dirs</option>,
+                <option>-M</option></term>
+
+                <listitem><para>
+                    Suppress mode bits outside of 0775 for directories (suid,
+                    world writable, etc.).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--skip-list</option>="FILE"</term>
+
+                <listitem><para>
+                    Skip checking out the absolute file paths listed in FILE,
+                    one per line.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--selinux-policy</option></term>
+
+                <listitem><para>
+                    Set SELinux labels based on policy in root filesystem PATH
+                    (may be /). This implies <literal>--force-copy</literal>.
                 </para></listitem>
             </varlistentry>
         </variablelist>
