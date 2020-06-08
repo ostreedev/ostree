@@ -68,7 +68,7 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
-                <term><option>--user-mode</option>,<option> -u</option></term>
+                <term><option>--user-mode</option>, <option>-U</option></term>
 
                 <listitem><para>
                     Do not change file ownership or initialize extended attributes.
