@@ -87,7 +87,7 @@ static GOptionEntry options[] = {
   { "force-copy-zerosized", 'z', 0, G_OPTION_ARG_NONE, &opt_force_copy_zerosized, "Do not hardlink zero-sized files", NULL },
   { "force-copy", 'C', 0, G_OPTION_ARG_NONE, &opt_force_copy, "Never hardlink (but may reflink if available)", NULL },
   { "bareuseronly-dirs", 'M', 0, G_OPTION_ARG_NONE, &opt_bareuseronly_dirs, "Suppress mode bits outside of 0775 for directories (suid, world writable, etc.)", NULL },
-  { "skip-list", 0, 0, G_OPTION_ARG_FILENAME, &opt_skiplist_file, "File containing list of files to skip", "PATH" },
+  { "skip-list", 0, 0, G_OPTION_ARG_FILENAME, &opt_skiplist_file, "File containing list of files to skip", "FILE" },
   { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /); implies --force-copy", "PATH" },
   { "selinux-prefix", 0, 0, G_OPTION_ARG_STRING, &opt_selinux_prefix, "When setting SELinux labels, prefix all paths by PREFIX", "PREFIX" },
   { NULL }
