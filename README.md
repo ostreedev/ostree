@@ -147,7 +147,7 @@ New! See the docs online at [Read The Docs (OSTree)](https://ostree.readthedocs.
 Contributing
 ------------
 
-See [Contributing](CONTRIBUTING.md).
+See [Contributing](docs/CONTRIBUTING.md).
 
 
 Licensing
