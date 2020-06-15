@@ -140,6 +140,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-config.sh \
 	tests/test-signed-commit.sh \
 	tests/test-signed-pull.sh \
+	tests/test-pre-signed-pull.sh \
 	tests/test-signed-pull-summary.sh \
 	$(NULL)
 
@@ -201,6 +202,7 @@ dist_installed_test_data = tests/archive-test.sh \
 	tests/fah-deltadata-old.tar.xz \
 	tests/fah-deltadata-new.tar.xz \
 	tests/ostree-path-traverse.tar.gz \
+	tests/pre-signed-pull-data.tar.gz \
 	tests/libtest-core.sh \
 	$(NULL)
 
