@@ -226,7 +226,7 @@ cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.2,}
 if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
     assert_not_reached "Successful pull with old summary"
 fi
-assert_file_has_content err.txt "no valid ed25519 signatures found"
+assert_file_has_content err.txt "ed25519: Signature couldn't be verified with: key"
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
 cmp repo/tmp/cache/summaries/origin ${test_tmpdir}/ostree-srv/gnomerepo/summary.1 >&2

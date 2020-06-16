@@ -148,9 +148,10 @@ for((i=0;i<100;i++)); do
     gen_ed25519_random_public
 done > ${PUBKEYS}
 # Check if file contain no valid signatures
-if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}; then
-    exit 1
+if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT} 2>err.txt; then
+    fatal "validated with no signatures"
 fi
+assert_file_has_content err.txt 'error:.* ed25519: Signature couldn.t be verified; tried 100 keys'
 # Check if no valid signatures provided via args&file
 if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT} ${WRONG_PUBLIC}; then
     exit 1
