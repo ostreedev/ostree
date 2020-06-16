@@ -48,5 +48,5 @@ ostree --repo=repo remote add badupstream --set=gpg-verify=false --sign-verify=e
 if ostree --repo=repo pull badupstream:testref 2>err.txt; then
     fatal "pulled with wrong key"
 fi
-assert_file_has_content err.txt 'error:.* no valid ed25519 signatures found'
+assert_file_has_content err.txt 'error:.* ed25519: Signature couldn.t be verified with: key'
 echo "ok pre-signed pull"

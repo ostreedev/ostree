@@ -202,6 +202,9 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
 
   g_debug ("verify: data hash = 0x%x", g_bytes_hash(data));
 
+  g_autoptr(GString) invalid_signatures = NULL;
+  guint n_invalid_signatures = 0;
+
   for (gsize i = 0; i < g_variant_n_children(signatures); i++)
     {
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
@@ -230,8 +233,13 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
                                            public_key->data) != 0)
             {
               /* Incorrect signature! */
-              g_debug("Signature couldn't be verified with key '%s'",
-                      sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, public_key->data, crypto_sign_PUBLICKEYBYTES));
+              if (invalid_signatures == NULL)
+                invalid_signatures = g_string_new ("");
+              else
+                g_string_append (invalid_signatures, "; ");
+              n_invalid_signatures++;
+              g_string_append_printf (invalid_signatures, "key '%s'",
+                                      sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, public_key->data, crypto_sign_PUBLICKEYBYTES));
             }
           else
             {
@@ -242,7 +250,17 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
         }
     }
 
-  return glnx_throw (error, "no valid ed25519 signatures found");
+  if (invalid_signatures)
+    {
+      g_assert_cmpuint (n_invalid_signatures, >, 0);
+      /* The test suite has a key ring with 100 keys.  This seems insane, let's
+       * cap a reasonable error message at 3.
+       */
+      if (n_invalid_signatures > 3)
+        return glnx_throw (error, "ed25519: Signature couldn't be verified; tried %u keys", n_invalid_signatures);
+      return glnx_throw (error, "ed25519: Signature couldn't be verified with: %s", invalid_signatures->str);
+    }
+  return glnx_throw (error, "ed25519: no signatures found");
 #endif /* HAVE_LIBSODIUM */
 
   return FALSE;
