@@ -415,11 +415,11 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
       return glnx_throw (error, "Unknown ed25519 public key type");
     }
 
-  g_autofree char *hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
-  g_debug ("Read ed25519 public key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));
-
   if (n_elements != crypto_sign_PUBLICKEYBYTES)
     return glnx_throw (error, "Incorrect ed25519 public key");
+
+  g_autofree char *hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
+  g_debug ("Read ed25519 public key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));
 
   if (g_list_find_custom (sign->public_keys, key, _compare_ed25519_keys) == NULL)
     {
@@ -449,13 +449,13 @@ _ed25519_add_revoked (OstreeSign *self,
   gsize n_elements = 0;
   gpointer key = g_base64_decode (rk_ascii, &n_elements);
 
-  g_autofree char * hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
-  g_debug ("Read ed25519 revoked key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));
-
   if (n_elements != crypto_sign_PUBLICKEYBYTES)
     {
       return glnx_throw (error, "Incorrect ed25519 revoked key");
     }
+
+  g_autofree char * hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
+  g_debug ("Read ed25519 revoked key = %s", sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, key, n_elements));
 
   if (g_list_find_custom (sign->revoked_keys, key, _compare_ed25519_keys) == NULL)
     {
@@ -546,6 +546,8 @@ _load_pk_from_file (OstreeSign *self,
         return glnx_throw (error, 
                            "signature: ed25519: no valid keys in file '%s'",
                            filename);
+      else
+        return FALSE;
     }
 
   return TRUE;
