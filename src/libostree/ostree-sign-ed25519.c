@@ -546,6 +546,8 @@ _load_pk_from_file (OstreeSign *self,
         return glnx_throw (error, 
                            "signature: ed25519: no valid keys in file '%s'",
                            filename);
+      else
+        return FALSE;
     }
 
   return TRUE;
