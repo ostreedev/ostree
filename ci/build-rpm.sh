@@ -4,8 +4,7 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-paprcidir=${dn}/libpaprci
-. ${paprcidir}/libbuild.sh
+. ${dn}/libbuild.sh
 
 # Auto-provision bootstrap resources if run as root (normally in CI)
 if test "$(id -u)" == 0; then
@@ -34,13 +33,13 @@ case "${CONFIGOPTS:-}" in
 esac
 
 # TODO: Use some form of rpm's --build-in-place to skip archive-then-unpack?
-make -f ${paprcidir}/Makefile.dist-packaging srpm PACKAGE=libostree DISTGIT_NAME=ostree
+make -f ${dn}/Makefile.dist-packaging srpm PACKAGE=libostree DISTGIT_NAME=ostree
 if test "$(id -u)" == 0; then
     pkg_builddep *.src.rpm
 else
     echo "NOTE: Running as non-root, assuming build dependencies are installed"
 fi
-if ! ${paprcidir}/rpmbuild-cwd --rebuild *.src.rpm; then
+if ! ${dn}/rpmbuild-cwd --rebuild *.src.rpm; then
     find . -type f -name config.log -exec cat {} \;
     exit 1
 fi

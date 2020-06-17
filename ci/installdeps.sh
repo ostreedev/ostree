@@ -12,7 +12,7 @@ if [ -n "${SKIP_INSTALLDEPS:-}" ]; then
 fi
 
 dn=$(dirname $0)
-. ${dn}/libpaprci/libbuild.sh
+. ${dn}/libbuild.sh
 
 pkg_upgrade
 pkg_install_buildroot
