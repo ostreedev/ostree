@@ -21,6 +21,8 @@
 
 set -xeuo pipefail
 
+. $(dirname $0)/libtest.sh
+
 echo '1..3'
 
 released_syms=${G_TEST_SRCDIR}/src/libostree/libostree-released.sym
@@ -41,6 +43,16 @@ echo "Verifying all expected symbols are actually exported..."
 grep --no-filename ' ostree_[A-Za-z0-9_]*;' ${released_syms} ${devel_syms} ${experimental_sym} | sed -e 's,^ *\([A-Za-z0-9_]*\);,\1,' | sort -u > expected-symbols.txt
 eu-readelf -a ${G_TEST_BUILDDIR}/.libs/libostree-1.so | grep 'FUNC.*GLOBAL.*DEFAULT.*@@LIBOSTREE_' | sed -e 's,^.* \(ostree_[A-Za-z0-9_]*\)@@LIBOSTREE_[0-9A-Z_.]*,\1,' |sort -u > found-symbols.txt
 diff -u expected-symbols.txt found-symbols.txt
+
+echo "Checking that the example symbol wasn't copy-pasted..."
+if test -f ${devel_syms}; then
+  assert_file_has_content_once ${devel_syms} "someostree_symbol_deleteme"
+fi
+if test -f ${experimental_sym}; then
+  assert_not_file_has_content ${experimental_sym} "someostree_symbol_deleteme"
+fi
+assert_not_file_has_content ${released_syms} "someostree_symbol_deleteme"
+
 echo "ok exports"
 
 # cmd__private__ is private.  The fetcher symbol should not have been made public.
