@@ -70,6 +70,7 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
   g_autoptr (OstreeRepo) repo = NULL;
   g_autoptr (OstreeSign) sign = NULL;
   g_autofree char *resolved_commit = NULL;
+  g_autofree char *success_message = NULL;
   const char *commit;
   char **key_ids;
   int n_key_ids, ii;
@@ -130,9 +131,12 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
           if (ostree_sign_commit_verify (sign,
                                          repo,
                                          resolved_commit,
+                                         &success_message,
                                          cancellable,
                                          &local_error))
             {
+              g_assert (success_message);
+              g_print ("%s\n", success_message);
               ret = TRUE;
               goto out;
             }
@@ -180,9 +184,13 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
           if (ostree_sign_commit_verify (sign,
                                          repo,
                                          resolved_commit,
+                                         &success_message,
                                          cancellable,
                                          error))
-            ret = TRUE;
+            {
+              g_print ("%s\n", success_message);
+              ret = TRUE;
+            }
         } /* Check via file */
     }
   else

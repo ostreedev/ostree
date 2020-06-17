@@ -322,13 +322,14 @@ gboolean
 ostree_sign_data_verify (OstreeSign *self,
                          GBytes     *data,
                          GVariant   *signatures,
+                         char      **out_success_message,
                          GError     **error)
 {
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   if (OSTREE_SIGN_GET_IFACE (self)->data_verify == NULL)
     return glnx_throw (error, "not implemented");
 
-  return OSTREE_SIGN_GET_IFACE (self)->data_verify(self, data, signatures, error);
+  return OSTREE_SIGN_GET_IFACE (self)->data_verify(self, data, signatures, out_success_message, error);
 }
 
 /*
@@ -389,6 +390,7 @@ gboolean
 ostree_sign_commit_verify (OstreeSign     *self,
                            OstreeRepo     *repo,
                            const gchar    *commit_checksum,
+                           char          **out_success_message,
                            GCancellable   *cancellable,
                            GError         **error)
 
@@ -427,6 +429,7 @@ ostree_sign_commit_verify (OstreeSign     *self,
   return ostree_sign_data_verify (self,
                                   signed_data,
                                   signatures,
+                                  out_success_message,
                                   error);
 }
 

@@ -72,6 +72,7 @@ struct _OstreeSignInterface
   gboolean (* data_verify) (OstreeSign *self,
                             GBytes *data,
                             GVariant   *signatures,
+                            char      **out_success_message,
                             GError **error);
   const gchar *(* metadata_key) (OstreeSign *self);
   const gchar *(* metadata_format) (OstreeSign *self);
@@ -105,6 +106,7 @@ _OSTREE_PUBLIC
 gboolean ostree_sign_data_verify (OstreeSign *self,
                                   GBytes     *data,
                                   GVariant   *signatures,
+                                  char      **out_success_message,
                                   GError     **error);
 
 _OSTREE_PUBLIC
@@ -124,6 +126,7 @@ _OSTREE_PUBLIC
 gboolean ostree_sign_commit_verify (OstreeSign *self,
                                     OstreeRepo     *repo,
                                     const gchar    *commit_checksum,
+                                    char          **out_success_message,
                                     GCancellable   *cancellable,
                                     GError         **error);
 

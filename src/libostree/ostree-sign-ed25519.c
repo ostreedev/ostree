@@ -169,6 +169,7 @@ _compare_ed25519_keys(gconstpointer a, gconstpointer b) {
 gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
                                           GBytes     *data,
                                           GVariant   *signatures,
+                                          char      **out_success_message,
                                           GError     **error)
 {
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
@@ -243,8 +244,12 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
             }
           else
             {
-              g_debug ("Signature verified successfully with key '%s'",
-                       sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, public_key->data, crypto_sign_PUBLICKEYBYTES));
+              if (out_success_message)
+                {
+                  *out_success_message =
+                    g_strdup_printf ("ed25519: Signature verified successfully with key '%s'",
+                                     sodium_bin2hex (hex, crypto_sign_PUBLICKEYBYTES*2+1, public_key->data, crypto_sign_PUBLICKEYBYTES));
+                }
               return TRUE;
             }
         }

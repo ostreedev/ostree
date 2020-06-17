@@ -63,6 +63,7 @@ gboolean ostree_sign_dummy_data (OstreeSign *self,
 gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
                                         GBytes     *data,
                                         GVariant   *signatures,
+                                        char       **success_message,
                                         GError     **error);
 
 const gchar * ostree_sign_dummy_metadata_key (OstreeSign *self);
