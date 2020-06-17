@@ -21,7 +21,6 @@
 LIBOSTREE_2020.2 {
 global:
   ostree_repo_commit_modifier_set_sepolicy_from_commit;
-  someostree_symbol_deleteme;
   ostree_sign_get_type;
   ostree_sign_get_all;
   ostree_sign_commit;
