@@ -4,7 +4,7 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libpaprci/libbuild.sh
+. ${dn}/libbuild.sh
 
 ${dn}/installdeps.sh
 

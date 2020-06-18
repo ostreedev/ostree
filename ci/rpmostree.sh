@@ -9,7 +9,7 @@ set -xeuo pipefail
 RPMOSTREE_TAG=v2019.4
 
 dn=$(dirname $0)
-. ${dn}/libpaprci/libbuild.sh
+. ${dn}/libbuild.sh
 
 codedir=$(pwd)
 

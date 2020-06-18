@@ -4,7 +4,7 @@
 set -xeuo pipefail
 
 dn=$(dirname $0)
-. ${dn}/libpaprci/libbuild.sh
+. ${dn}/libbuild.sh
 pkg_upgrade
 pkg_install_buildroot
 pkg_install sudo which attr fuse strace \

@@ -9,7 +9,7 @@ set -xeuo pipefail
 FLATPAK_TAG=1.4.1
 
 dn=$(dirname $0)
-. ${dn}/libpaprci/libbuild.sh
+. ${dn}/libbuild.sh
 
 codedir=$(pwd)
 
