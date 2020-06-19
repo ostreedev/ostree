@@ -6,9 +6,8 @@ set -xeuo pipefail
 require_writable_sysroot
 prepare_tmpdir
 
-n=$(nth_boot)
-case "${n}" in
-  1)
+case "${AUTOPKGTEST_REBOOT_MARK:-}" in
+  "")
   # Initial cleanup to handle the cosa fast-build case
     ## TODO remove workaround for https://github.com/coreos/rpm-ostree/pull/2021
     mkdir -p /var/lib/rpm-ostree/history
@@ -48,9 +47,9 @@ case "${n}" in
       fatal "Pinned staged deployment"
     fi
     assert_file_has_content err.txt 'Cannot pin staged deployment'
-    kola_reboot
+    /tmp/autopkgtest-reboot "2"
     ;;
-  2) 
+  "2") 
     # Check that deploy-staged service worked
     rpm-ostree status
     # Assert that the previous boot had a journal entry for it
@@ -118,5 +117,5 @@ case "${n}" in
     ostree refs --delete staged-deploy nonstaged-deploy
     echo "ok cleanup refs"
     ;;
-  *) fatal "Unexpected boot count" ;;
+  *) fatal "Unexpected AUTOPKGTEST_REBOOT_MARK=${AUTOPKGTEST_REBOOT_MARK}" ;;
 esac

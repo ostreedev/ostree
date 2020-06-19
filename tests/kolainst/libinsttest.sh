@@ -66,13 +66,6 @@ nth_boot() {
     journalctl --list-boots | wc -l
 }
 
-kola_reboot() {
-    kill -TERM $$
-    sleep 2m
-    echo "failed to reboot?" 1>&2
-    exit 1
-}
-
 # Determine our origin refspec - we'll use this as a test base
 rpmostree=$(which rpm-ostree 2>/dev/null)
 if test -z "${rpmostree}"; then
