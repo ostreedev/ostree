@@ -2376,6 +2376,13 @@ ostree_commit_get_parent (GVariant  *commit_variant)
   return ostree_checksum_from_bytes_v (bytes);
 }
 
+/**
+ * ostree_commit_get_timestamp:
+ * @commit_variant: Commit object
+ *
+ * Returns: timestamp in seconds since the Unix epoch, UTC
+ * Since: 2016.3
+ */
 guint64
 ostree_commit_get_timestamp (GVariant  *commit_variant)
 {
