@@ -9,9 +9,8 @@ set -xeuo pipefail
 require_writable_sysroot
 prepare_tmpdir
 
-n=$(nth_boot)
-case "${n}" in
-1)
+case "${AUTOPKGTEST_REBOOT_MARK:-}" in
+"")
 dropin=/etc/systemd/system/ostree-finalize-staged.service.d/delay.conf
 mkdir -p $(dirname ${dropin})
 cat >"${dropin}" << 'EOF'
@@ -21,10 +20,10 @@ ExecStop=/bin/sh -c 'sleep 10 && if ! test -d /boot/loader/entries; then echo er
 EOF
 systemctl daemon-reload
 rpm-ostree kargs --append=somedummykarg=1
-kola_reboot
+/tmp/autopkgtest-reboot 2
 ;;
 
-2)
+"2")
 journalctl -b -1 -u ostree-finalize-staged > logs.txt
 assert_file_has_content_literal logs.txt 'ostree-finalize-staged found /boot/loader/entries'
 # older systemd doesn't output the success message
@@ -36,5 +35,6 @@ else
 fi
 assert_file_has_content_literal /proc/cmdline somedummykarg=1 
 ;;
+*) fatal "Unexpected AUTOPKGTEST_REBOOT_MARK=${AUTOPKGTEST_REBOOT_MARK}" ;;
 esac
 echo ok
