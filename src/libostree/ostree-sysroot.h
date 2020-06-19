@@ -102,9 +102,6 @@ _OSTREE_PUBLIC
 gboolean ostree_sysroot_lock (OstreeSysroot  *self, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sysroot_lock_with_mount_namespace (OstreeSysroot  *self, GError **error);
-
-_OSTREE_PUBLIC
 gboolean ostree_sysroot_try_lock (OstreeSysroot         *self,
                                   gboolean              *out_acquired,
                                   GError               **error);
