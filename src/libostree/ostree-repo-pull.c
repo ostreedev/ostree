@@ -1541,11 +1541,12 @@ scan_commit_object (OtPullData                 *pull_data,
 #endif /* OSTREE_DISABLE_GPGME */
 
   if (pull_data->signapi_commit_verifiers &&
-      !g_hash_table_contains (pull_data->verified_commits, checksum))
+      !g_hash_table_contains (pull_data->signapi_verified_commits, checksum))
     {
       g_autoptr(GError) last_verification_error = NULL;
       gboolean found_any_signature = FALSE;
       gboolean found_valid_signature = FALSE;
+      g_autofree char *success_message = NULL;
 
       for (guint i = 0; i < pull_data->signapi_commit_verifiers->len; i++)
         {
@@ -1557,6 +1558,7 @@ scan_commit_object (OtPullData                 *pull_data,
           if (ostree_sign_commit_verify (sign,
                                           pull_data->repo,
                                           checksum,
+                                          &success_message,
                                           cancellable,
                                           last_verification_error ? NULL : &last_verification_error))
             {
@@ -1574,6 +1576,8 @@ scan_commit_object (OtPullData                 *pull_data,
           g_propagate_error (error, g_steal_pointer (&last_verification_error));
           return glnx_prefix_error (error, "Can't verify commit %s", checksum);
         }
+      g_assert (success_message);
+      g_hash_table_insert (pull_data->signapi_verified_commits, g_strdup (checksum), g_steal_pointer (&success_message));
     }
 
   /* If we found a legacy transaction flag, assume we have to scan.
@@ -3469,6 +3473,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                            (GDestroyNotify)g_free);
   pull_data->verified_commits = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                        (GDestroyNotify)g_free, NULL);
+  pull_data->signapi_verified_commits = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                               (GDestroyNotify)g_free, NULL);
   pull_data->ref_keyring_map = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
                                                       (GDestroyNotify)ostree_collection_ref_free, (GDestroyNotify)g_free);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
@@ -3962,7 +3968,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
 
             g_assert (pull_data->signapi_summary_verifiers);
-            if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, &temp_error))
+            if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, NULL, &temp_error))
               {
                 if (summary_from_cache)
                   {
@@ -3991,7 +3997,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      cancellable, error))
                       goto out;
 
-                    if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, error))
+                    if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, NULL, error))
                         goto out;
                   }
                 else
@@ -4546,6 +4552,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       const guint n_seconds = (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC);
       g_autofree char *formatted_xferred = g_format_size (bytes_transferred);
       g_string_append_printf (msg, "\ntransfer: secs: %u size: %s", n_seconds, formatted_xferred);
+      if (pull_data->signapi_commit_verifiers)
+        {
+          g_assert_cmpuint (g_hash_table_size (pull_data->signapi_verified_commits), >, 0);
+        }
 
       ot_journal_send ("MESSAGE=%s", msg->str,
                        "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_MESSAGE_FETCH_COMPLETE_ID),
@@ -4622,6 +4632,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->ref_original_commits, (GDestroyNotify) g_hash_table_unref);
   g_free (pull_data->timestamp_check_from_rev);
   g_clear_pointer (&pull_data->verified_commits, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->signapi_verified_commits, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->ref_keyring_map, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
@@ -6114,7 +6125,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
           sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
                                                   signatures, FALSE);
 
-          if (!_sign_verify_for_remote (signapi_summary_verifiers, summary, sig_variant, error))
+          if (!_sign_verify_for_remote (signapi_summary_verifiers, summary, sig_variant, NULL, error))
             goto out;
         }
     }

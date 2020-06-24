@@ -77,6 +77,7 @@ typedef struct {
   GHashTable       *summary_deltas_checksums;
   GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */
   GHashTable       *verified_commits; /* Set<checksum> of commits that have been verified */
+  GHashTable       *signapi_verified_commits; /* Map<checksum,verification> of commits that have been signapi verified */
   GHashTable       *ref_keyring_map; /* Maps OstreeCollectionRef to keyring remote name */
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
@@ -149,6 +150,7 @@ gboolean
 _sign_verify_for_remote (GPtrArray *signers,
                          GBytes *signed_data,
                          GVariant *metadata,
+                         char    **out_success_message,
                          GError **error);
 
 gboolean

@@ -154,6 +154,7 @@ const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self)
 gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
                                             GBytes     *data,
                                             GVariant   *signatures,
+                                            char       **out_success_message,
                                             GError     **error)
 {
   if (!check_dummy_sign_enabled (error))
@@ -182,7 +183,11 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
       g_debug("Stored signature %d: %s", (gint)i, sign->pk_ascii);
 
       if (!g_strcmp0(sign_ascii, sign->pk_ascii))
-        return TRUE;
+        {
+          if (out_success_message)
+            *out_success_message = g_strdup ("dummy: Signature verified");
+          return TRUE;
+        }
       else
         return glnx_throw (error, "signature: dummy: incorrect signature %" G_GSIZE_FORMAT, i);
     }

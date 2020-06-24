@@ -61,6 +61,7 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
 gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
                                           GBytes     *data,
                                           GVariant   *signatures,
+                                          char      **out_success_message,
                                           GError     **error);
 
 const gchar * ostree_sign_ed25519_get_name (OstreeSign *self);

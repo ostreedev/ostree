@@ -121,8 +121,10 @@ done
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy ${COMMIT} ${DUMMYSIGN}
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=ed25519 ${COMMIT} ${SECRET}
 # and verify
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC}
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy --verify ${COMMIT} ${DUMMYSIGN}
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} ${PUBLIC} >out.txt
+assert_file_has_content out.txt "ed25519: Signature verified successfully with key"
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy --verify ${COMMIT} ${DUMMYSIGN} >out.txt
+assert_file_has_content out.txt "dummy: Signature verified"
 echo "ok multiple signing "
 
 # Prepare files with public ed25519 signatures
@@ -140,7 +142,8 @@ fi
 
 # Test with single key in list
 echo ${PUBLIC} > ${PUBKEYS}
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT}
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 --keys-file=${PUBKEYS} ${COMMIT} >out.txt
+assert_file_has_content out.txt 'ed25519: Signature verified successfully'
 
 # Test the file with multiple keys without a valid public key
 for((i=0;i<100;i++)); do

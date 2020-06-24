@@ -261,11 +261,14 @@ gboolean
 _sign_verify_for_remote (GPtrArray *verifiers,
                          GBytes *signed_data,
                          GVariant *metadata,
+                         char    **out_success_message,
                          GError **error)
 {
   guint n_invalid_signatures = 0;
   g_autoptr (GError) last_sig_error = NULL;
   gboolean found_sig = FALSE;
+
+  g_assert (out_success_message == NULL || *out_success_message == NULL);
 
   g_assert_cmpuint (verifiers->len, >=, 1);
   for (guint i = 0; i < verifiers->len; i++)
@@ -282,17 +285,21 @@ _sign_verify_for_remote (GPtrArray *verifiers,
 
       found_sig = TRUE;
 
+      g_autofree char *success_message = NULL;
         /* Return true if any signature fit to pre-loaded public keys.
           * If no keys configured -- then system configuration will be used */
       if (!ostree_sign_data_verify (sign,
                                     signed_data,
                                     signatures,
+                                    &success_message,
                                     last_sig_error ? NULL : &last_sig_error))
         {
           n_invalid_signatures++;
           continue;
         }
       /* Accept the first valid signature */
+      if (out_success_message)
+        *out_success_message = g_steal_pointer (&success_message);
       return TRUE;
     }
 
@@ -348,11 +355,10 @@ _verify_unwritten_commit (OtPullData                 *pull_data,
                           GCancellable               *cancellable,
                           GError                    **error)
 {
-
-  if (pull_data->gpg_verify || pull_data->signapi_commit_verifiers)
-    /* Shouldn't happen, but see comment in process_gpg_verify_result() */
-    if (g_hash_table_contains (pull_data->verified_commits, checksum))
-      return TRUE;
+  /* Shouldn't happen, but see comment in process_gpg_verify_result() */
+  if ((!pull_data->gpg_verify || g_hash_table_contains (pull_data->verified_commits, checksum))
+      && (!pull_data->signapi_commit_verifiers || g_hash_table_contains (pull_data->signapi_verified_commits, checksum)))
+    return TRUE;
 
   g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
 
@@ -382,12 +388,13 @@ _verify_unwritten_commit (OtPullData                 *pull_data,
       if (detached_metadata == NULL)
         return glnx_throw (error, "Can't verify commit without detached metadata");
 
-      if (!_sign_verify_for_remote (pull_data->signapi_commit_verifiers, signed_data, detached_metadata, error))
+      g_autofree char *success_message = NULL;
+      if (!_sign_verify_for_remote (pull_data->signapi_commit_verifiers, signed_data, detached_metadata, &success_message, error))
         return glnx_prefix_error (error, "Can't verify commit");
 
       /* Mark the commit as verified to avoid double verification
        * see process_verify_result () for rationale */
-      g_hash_table_add (pull_data->verified_commits, g_strdup (checksum));
+      g_hash_table_insert (pull_data->signapi_verified_commits, g_strdup (checksum), g_steal_pointer (&success_message));
     }
 
   return TRUE;
