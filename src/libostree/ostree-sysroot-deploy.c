@@ -217,6 +217,79 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
   return TRUE;
 }
 
+static gint
+str_sort_cb (gconstpointer name_ptr_a, gconstpointer name_ptr_b)
+{
+  const gchar *name_a = *((const gchar **) name_ptr_a);
+  const gchar *name_b = *((const gchar **) name_ptr_b);
+
+  return g_strcmp0 (name_a, name_b);
+}
+
+static gboolean
+checksum_dir_recurse (int          dfd,
+                  const char      *path,
+                  OtChecksum      *checksum,
+                  GCancellable    *cancellable,
+                  GError         **error)
+{
+  g_auto(GLnxDirFdIterator) dfditer = { 0, };
+  g_autoptr (GPtrArray) d_entries = g_ptr_array_new_with_free_func (g_free);
+
+  if (!glnx_dirfd_iterator_init_at (dfd, path, TRUE, &dfditer, error))
+    return FALSE;
+
+  while (TRUE)
+    {
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent (&dfditer, &dent, cancellable, error))
+        return FALSE;
+
+      if (dent == NULL)
+        break;
+
+      g_ptr_array_add (d_entries, g_strdup (dent->d_name));
+    }
+
+  /* File systems do not guarantee dir entry order, make sure this is
+   * reproducable
+   */
+  g_ptr_array_sort(d_entries, str_sort_cb);
+
+  for (gint i=0; i < d_entries->len; i++)
+    {
+      const gchar *d_name = (gchar *)g_ptr_array_index (d_entries, i);
+      struct stat stbuf;
+
+      if (!glnx_fstatat (dfditer.fd, d_name, &stbuf,
+                         AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
+
+      if (S_ISDIR (stbuf.st_mode))
+        {
+          if (!checksum_dir_recurse(dfditer.fd, d_name, checksum, cancellable, error))
+            return FALSE;
+        }
+      else
+        {
+          int fd;
+
+          if (!ot_openat_ignore_enoent (dfditer.fd, d_name, &fd, error))
+            return FALSE;
+          if (fd != -1)
+            {
+              g_autoptr(GInputStream) in = g_unix_input_stream_new (fd, FALSE);
+              if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+                return FALSE;
+            }
+        }
+
+    }
+
+  return TRUE;
+}
+
 static gboolean
 copy_dir_recurse (int              src_parent_dfd,
                   int              dest_parent_dfd,
@@ -1065,6 +1138,9 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
   g_clear_object (&in);
   glnx_close_fd (&fd);
 
+  /* Check for /usr/lib/modules/$kver/devicetree first, if it does not
+   * exist check for /usr/lib/modules/$kver/dtb/ directory.
+   */
   if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "devicetree", &fd, error))
     return FALSE;
   if (fd != -1)
@@ -1074,6 +1150,23 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
       in = g_unix_input_stream_new (fd, FALSE);
       if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
         return FALSE;
+    }
+  else
+    {
+      struct stat stbuf;
+      /* Check for dtb directory */
+      if (!glnx_fstatat_allow_noent (ret_layout->boot_dfd, "dtb", &stbuf, 0, error))
+        return FALSE;
+
+      if (errno == 0 && S_ISDIR (stbuf.st_mode))
+        {
+          /* devicetree_namever set to NULL indicates a complete directory */
+          ret_layout->devicetree_srcpath = g_strdup ("dtb");
+          ret_layout->devicetree_namever = NULL;
+
+          if (!checksum_dir_recurse(ret_layout->boot_dfd, "dtb", &checksum, cancellable, error))
+            return FALSE;
+        }
     }
 
   g_clear_object (&in);
@@ -1730,15 +1823,24 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   if (kernel_layout->devicetree_srcpath)
     {
-      g_assert (kernel_layout->devicetree_namever);
-      if (!glnx_fstatat_allow_noent (bootcsum_dfd, kernel_layout->devicetree_namever, &stbuf, 0, error))
-        return FALSE;
-      if (errno == ENOENT)
+      /* If devicetree_namever is set a single device tree is deployed */
+      if (kernel_layout->devicetree_namever)
         {
-          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
-                                  bootcsum_dfd, kernel_layout->devicetree_namever,
-                                  sysroot->debug_flags,
-                                  cancellable, error))
+          if (!glnx_fstatat_allow_noent (bootcsum_dfd, kernel_layout->devicetree_namever, &stbuf, 0, error))
+            return FALSE;
+          if (errno == ENOENT)
+            {
+              if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
+                                      bootcsum_dfd, kernel_layout->devicetree_namever,
+                                      sysroot->debug_flags,
+                                      cancellable, error))
+                return FALSE;
+            }
+        }
+      else
+        {
+          if (!copy_dir_recurse(kernel_layout->boot_dfd, bootcsum_dfd, kernel_layout->devicetree_srcpath,
+                                sysroot->debug_flags, cancellable, error))
             return FALSE;
         }
     }
@@ -1849,6 +1951,15 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     {
       g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_namever, NULL);
       ostree_bootconfig_parser_set (bootconfig, "devicetree", boot_relpath);
+    }
+  else if (kernel_layout->devicetree_srcpath)
+    {
+      /* If devicetree_srcpath is set but devicetree_namever is NULL, then we
+       * want to point to a whole directory of device trees.
+       * See: https://github.com/ostreedev/ostree/issues/1900
+       */
+      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_srcpath, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "fdtdir", boot_relpath);
     }
 
   /* Note this is parsed in ostree-impl-system-generator.c */

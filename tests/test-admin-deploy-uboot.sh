@@ -25,9 +25,11 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 # Exports OSTREE_SYSROOT so --sysroot not needed.
-setup_os_repository "archive" "uboot"
+kver="3.6.0"
+modulesdir="usr/lib/modules/${kver}"
+setup_os_repository "archive" "uboot" ${modulesdir}
 
-extra_admin_tests=1
+extra_admin_tests=2
 
 . $(dirname $0)/admin-test.sh
 
@@ -52,3 +54,27 @@ assert_file_has_content sysroot/boot/uEnv.txt "kernel_image2="
 assert_file_has_content sysroot/boot/uEnv.txt "kernel_image3="
 
 echo "ok merging uEnv.txt files"
+
+cd ${test_tmpdir}
+os_repository_new_commit "uboot test" "test with device tree directory"
+
+devicetree_path=osdata/${modulesdir}/dtb/asoc-board.dtb
+devicetree_overlay_path=osdata/${modulesdir}/dtb/overlays/overlay.dtbo
+
+mkdir -p osdata/${modulesdir}/dtb
+echo "a device tree" > ${devicetree_path}
+mkdir -p osdata/${modulesdir}/dtb/overlays
+echo "a device tree overlay" > ${devicetree_overlay_path}
+
+bootcsum=$(
+  (echo "new: a kernel uboot test" && echo "new: an initramfs uboot test" &&
+    cat ${devicetree_path} ${devicetree_overlay_path} ) |
+  sha256sum | cut -f 1 -d ' ')
+
+${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin upgrade --os=testos
+assert_file_has_content sysroot/boot/uEnv.txt "fdtdir="
+assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/dtb/asoc-board.dtb 'a device tree'
+assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/dtb/overlays/overlay.dtbo 'a device tree overlay'
+
+echo "ok deploying fdtdir"
