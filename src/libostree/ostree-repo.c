@@ -5980,7 +5980,9 @@ _ostree_repo_try_lock_tmpdir (int            tmpdir_dfd,
   if (!glnx_make_lock_file (tmpdir_dfd, lock_name, LOCK_EX | LOCK_NB,
                             file_lock_out, &local_error))
     {
-      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+      /* we need to handle EACCES too in the case of POSIX locks; see F_SETLK in fcntl(2) */
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)
+          || g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED))
         {
           did_lock = FALSE;
         }

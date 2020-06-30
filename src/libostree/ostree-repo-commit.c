@@ -1933,7 +1933,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
   return TRUE;
 }
 
-/* Try to lock a transaction stage directory created by
+/* Try to lock and delete a transaction stage directory created by
  * ostree_repo_prepare_transaction().
  */
 static gboolean
