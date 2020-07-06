@@ -1340,50 +1340,53 @@ _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
                                   GError           **error)
 {
   OstreeRepo *repo = ostree_sysroot_repo (sysroot);
-  g_autofree gchar *bootloader_config = ostree_repo_get_bootloader (repo);
+  OstreeCfgSysrootBootloaderOpt bootloader_config = repo->bootloader;
 
-  g_debug ("Using bootloader configuration: %s", bootloader_config);
+  g_debug ("Using bootloader configuration: %s",
+      CFG_SYSROOT_BOOTLOADER_OPTS_STR[bootloader_config]);
 
   g_autoptr(OstreeBootloader) ret_loader = NULL;
-  if (g_str_equal (bootloader_config, "none"))
+  switch (repo->bootloader)
     {
+    case CFG_SYSROOT_BOOTLOADER_OPT_NONE:
       /* No bootloader specified; do not query bootloaders to run. */
       ret_loader = NULL;
-    }
-  else if (g_str_equal (bootloader_config, "zipl"))
-    {
+      break;
+    case CFG_SYSROOT_BOOTLOADER_OPT_ZIPL:
       /* We never consider zipl as active by default, so it can only be created
        * if it's explicitly requested in the config */
       ret_loader = (OstreeBootloader*) _ostree_bootloader_zipl_new (sysroot);
-    }
-  else if (g_str_equal (bootloader_config, "auto"))
-    {
-      gboolean is_active;
-      ret_loader = (OstreeBootloader*)_ostree_bootloader_syslinux_new (sysroot);
-      if (!_ostree_bootloader_query (ret_loader, &is_active,
-                                     cancellable, error))
-        return FALSE;
+      break;
+    case CFG_SYSROOT_BOOTLOADER_OPT_AUTO:
+      {
+        gboolean is_active;
+        ret_loader = (OstreeBootloader*)_ostree_bootloader_syslinux_new (sysroot);
+        if (!_ostree_bootloader_query (ret_loader, &is_active,
+                                      cancellable, error))
+          return FALSE;
 
-      if (!is_active)
-        {
-          g_object_unref (ret_loader);
-          ret_loader = (OstreeBootloader*)_ostree_bootloader_grub2_new (sysroot);
-          if (!_ostree_bootloader_query (ret_loader, &is_active,
-                                         cancellable, error))
-            return FALSE;
-        }
-      if (!is_active)
-        {
-          g_object_unref (ret_loader);
-          ret_loader = (OstreeBootloader*)_ostree_bootloader_uboot_new (sysroot);
-          if (!_ostree_bootloader_query (ret_loader, &is_active, cancellable, error))
-            return FALSE;
-        }
-      if (!is_active)
-        g_clear_object (&ret_loader);
+        if (!is_active)
+          {
+            g_object_unref (ret_loader);
+            ret_loader = (OstreeBootloader*)_ostree_bootloader_grub2_new (sysroot);
+            if (!_ostree_bootloader_query (ret_loader, &is_active,
+                                          cancellable, error))
+              return FALSE;
+          }
+        if (!is_active)
+          {
+            g_object_unref (ret_loader);
+            ret_loader = (OstreeBootloader*)_ostree_bootloader_uboot_new (sysroot);
+            if (!_ostree_bootloader_query (ret_loader, &is_active, cancellable, error))
+              return FALSE;
+          }
+        if (!is_active)
+          g_clear_object (&ret_loader);
+        break;
+      }
+    default:
+      g_assert_not_reached ();
     }
-  else
-    g_assert_not_reached ();
 
   ot_transfer_out_value(out_bootloader, &ret_loader);
   return TRUE;

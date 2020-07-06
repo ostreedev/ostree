@@ -110,6 +110,22 @@ typedef enum {
   _OSTREE_FEATURE_YES,
 } _OstreeFeatureSupport;
 
+/* Possible values for the sysroot.bootloader configuration variable */
+typedef enum {
+  CFG_SYSROOT_BOOTLOADER_OPT_AUTO = 0,
+  CFG_SYSROOT_BOOTLOADER_OPT_NONE,
+  CFG_SYSROOT_BOOTLOADER_OPT_ZIPL,
+  /* Non-exhaustive */
+} OstreeCfgSysrootBootloaderOpt;
+
+static const char* const CFG_SYSROOT_BOOTLOADER_OPTS_STR[] = {
+  /* This must be kept in the same order as the enum */
+  "auto",
+  "none",
+  "zipl",
+  NULL,
+};
+
 /**
  * OstreeRepo:
  *
@@ -193,7 +209,7 @@ struct OstreeRepo {
   guint64 payload_link_threshold;
   gint fs_support_reflink; /* The underlying filesystem has support for ioctl (FICLONE..) */
   gchar **repo_finders;
-  gchar *bootloader; /* Configure which bootloader to use. */
+  OstreeCfgSysrootBootloaderOpt bootloader; /* Configure which bootloader to use. */
 
   OstreeRepo *parent_repo;
 };
