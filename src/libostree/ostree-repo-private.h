@@ -107,6 +107,9 @@ typedef enum {
 typedef enum {
   CFG_SYSROOT_BOOTLOADER_OPT_AUTO = 0,
   CFG_SYSROOT_BOOTLOADER_OPT_NONE,
+  CFG_SYSROOT_BOOTLOADER_OPT_GRUB2,
+  CFG_SYSROOT_BOOTLOADER_OPT_SYSLINUX,
+  CFG_SYSROOT_BOOTLOADER_OPT_UBOOT,
   CFG_SYSROOT_BOOTLOADER_OPT_ZIPL,
   /* Non-exhaustive */
 } OstreeCfgSysrootBootloaderOpt;
@@ -115,6 +118,9 @@ static const char* const CFG_SYSROOT_BOOTLOADER_OPTS_STR[] = {
   /* This must be kept in the same order as the enum */
   "auto",
   "none",
+  "grub2",
+  "syslinux",
+  "uboot",
   "zipl",
   NULL,
 };

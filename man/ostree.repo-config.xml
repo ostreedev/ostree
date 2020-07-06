@@ -347,7 +347,9 @@ Boston, MA 02111-1307, USA.
         <term><varname>bootloader</varname></term>
         <listitem><para>Configure the bootloader that OSTree uses when
         deploying the sysroot.  This may take the values
-        <literal>bootloader=none</literal> or <literal>bootloader=auto</literal>.
+        <literal>bootloader=none</literal>, <literal>bootloader=auto</literal>,
+        <literal>bootloader=grub2</literal>, <literal>bootloader=syslinux</literal>,
+        <literal>bootloader=uboot</literal> or <literal>bootloader=zipl</literal>.
         Default is <literal>auto</literal>.
         </para>
         <para>
@@ -361,6 +363,11 @@ Boston, MA 02111-1307, USA.
           uboot, and syslinux bootloaders.  If one of the bootloaders is found,
           then OSTree will generate a config for the bootloader found.  For
           example, <literal>grub2-mkconfig</literal> is run for the grub2 case.
+        </para>
+        <para>
+          A specific bootloader type may also be explicitly requested by choosing
+          <literal>grub2</literal>, <literal>syslinux</literal>, <literal>uboot</literal> or
+          <literal>zipl</literal>.
         </para>
         </listitem>
       </varlistentry>
