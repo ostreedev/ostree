@@ -44,7 +44,6 @@
 #include "ostree-repo-private.h"
 #include "ostree-sysroot-private.h"
 #include "ostree-sepolicy-private.h"
-#include "ostree-bootloader-zipl.h"
 #include "ostree-deployment-private.h"
 #include "ostree-core-private.h"
 #include "ostree-linuxfsutil.h"
@@ -2561,7 +2560,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   gboolean bootloader_is_atomic = FALSE;
   SyncStats syncstats = { 0, };
   g_autoptr(OstreeBootloader) bootloader = NULL;
-  const char *bootloader_config = NULL;
   if (!requires_new_bootversion)
     {
       if (!create_new_bootlinks (self, self->bootversion,
@@ -2593,29 +2591,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
             return glnx_throw_errno_prefix (error, "Remounting /boot read-write");
         }
 
-      OstreeRepo *repo = ostree_sysroot_repo (self);
-
-      bootloader_config = ostree_repo_get_bootloader (repo);
-
-      g_debug ("Using bootloader configuration: %s", bootloader_config);
-
-      if (g_str_equal (bootloader_config, "auto"))
-        {
-          if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
-            return FALSE;
-        }
-      else if (g_str_equal (bootloader_config, "none"))
-        {
-          /* No bootloader specified; do not query bootloaders to run. */
-        }
-      else if (g_str_equal (bootloader_config, "zipl"))
-        {
-          /* Because we do not mark zipl as active by default, lets creating one here,
-           * which is basically the same what _ostree_sysroot_query_bootloader() does
-           * for other bootloaders if being activated.
-           * */
-          bootloader = (OstreeBootloader*) _ostree_bootloader_zipl_new (self);
-        }
+      if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
+        return FALSE;
 
       bootloader_is_atomic = bootloader != NULL && _ostree_bootloader_is_atomic (bootloader);
 
@@ -2646,6 +2623,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                        (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
                        requires_new_bootversion ? "yes" : "no",
                        new_deployments->len - self->deployments->len);
+    const gchar *bootloader_config = ostree_repo_get_bootloader (ostree_sysroot_repo (self));
     ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_DEPLOYMENT_COMPLETE_ID),
                      "MESSAGE=%s", msg,
                      "OSTREE_BOOTLOADER=%s", bootloader ? _ostree_bootloader_get_name (bootloader) : "none",
