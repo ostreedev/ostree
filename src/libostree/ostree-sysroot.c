@@ -1352,6 +1352,15 @@ _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
       /* No bootloader specified; do not query bootloaders to run. */
       ret_loader = NULL;
       break;
+    case CFG_SYSROOT_BOOTLOADER_OPT_GRUB2:
+      ret_loader = (OstreeBootloader*) _ostree_bootloader_grub2_new (sysroot);
+      break;
+    case CFG_SYSROOT_BOOTLOADER_OPT_SYSLINUX:
+      ret_loader = (OstreeBootloader*) _ostree_bootloader_syslinux_new (sysroot);
+      break;
+    case CFG_SYSROOT_BOOTLOADER_OPT_UBOOT:
+      ret_loader = (OstreeBootloader*) _ostree_bootloader_uboot_new (sysroot);
+      break;
     case CFG_SYSROOT_BOOTLOADER_OPT_ZIPL:
       /* We never consider zipl as active by default, so it can only be created
        * if it's explicitly requested in the config */
