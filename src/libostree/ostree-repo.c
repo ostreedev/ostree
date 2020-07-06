@@ -6233,7 +6233,7 @@ ostree_repo_get_default_repo_finders (OstreeRepo *self)
  * Get the bootloader configured. See the documentation for the
  * "sysroot.bootloader" config key.
  *
- * Returns: bootloader configuration for the sysroot
+ * Returns: (transfer none): bootloader configuration for the sysroot
  * Since: 2019.2
  */
 const gchar *
