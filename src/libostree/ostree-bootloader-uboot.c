@@ -105,14 +105,19 @@ append_system_uenv (OstreeBootloaderUboot   *self,
 
 static gboolean
 create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
-                                        int                    bootversion,
-                                        GPtrArray             *new_lines,
-                                        GCancellable          *cancellable,
-                                        GError               **error)
+                                        int                        bootversion,
+                                        GPtrArray                 *new_lines,
+                                        GCancellable              *cancellable,
+                                        GError                   **error)
 {
   g_autoptr(GPtrArray) boot_loader_configs = NULL;
   OstreeBootconfigParser *config;
   const char *val;
+
+  g_autofree const char *boot_path_on_disk = _ostree_sysroot_get_boot_path_on_disk (
+      self->sysroot, error);
+  if (boot_path_on_disk == NULL)
+    return FALSE;
 
   if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
                                                  cancellable, error))
@@ -134,11 +139,11 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
                        "No \"linux\" key in bootloader config");
           return FALSE;
         }
-      g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image%s=%s", index_suffix, val));
+      g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image%s=%s%s", index_suffix, boot_path_on_disk, val));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image%s=%s", index_suffix, val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image%s=%s%s", index_suffix, boot_path_on_disk, val));
 
       val = ostree_bootconfig_parser_get (config, "devicetree");
       if (val)

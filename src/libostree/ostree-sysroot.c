@@ -2140,3 +2140,40 @@ ostree_sysroot_deployment_set_pinned (OstreeSysroot     *self,
 
   return TRUE;
 }
+
+/**
+ * _ostree_sysroot_get_boot_path_on_disk
+ *
+ * We need to provide absolute paths to the bootloader for the location of the
+ * kernel to boot into, but this needs to be relative to root on the filesystem
+ * that the kernel is on, rather than relative to root of the root filesystem.
+ * If boot is on a seperate filesystem to root this will typically return "/",
+ * otherwise it will typically be "/boot".
+ */
+char *
+_ostree_sysroot_get_boot_path_on_disk (OstreeSysroot *sysroot, GError **error)
+{
+  GKeyFile * config = ostree_repo_get_config (sysroot->repo);
+
+  g_autofree char * boot_path_on_disk = NULL;
+  if (!ot_keyfile_get_value_with_default_group_optional (config, "sysroot",
+                                                         "boot_path_on_disk", "auto",
+                                                         &boot_path_on_disk, error))
+    return NULL;
+
+  if (g_str_equal (boot_path_on_disk, "auto"))
+    {
+      /* TODO: Be smarter about working this out automatically */
+      g_free (boot_path_on_disk);
+      boot_path_on_disk = g_strdup ("/");
+    }
+
+  if (!boot_path_on_disk || boot_path_on_disk[0] != '/')
+    {
+      g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED, "sysroot.boot_path_on_disk "
+          "must be an absolute path.  It is \"%s\"", boot_path_on_disk);
+      return NULL;
+    }
+
+  return g_steal_pointer (&boot_path_on_disk);
+}

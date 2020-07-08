@@ -167,4 +167,7 @@ gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot,
                                            GCancellable  *cancellable,
                                            GError       **error);
 
+char * _ostree_sysroot_get_boot_path_on_disk (OstreeSysroot *sysroot,
+                                              GError **error);
+
 G_END_DECLS

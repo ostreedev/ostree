@@ -66,6 +66,7 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
                                    gboolean               regenerate_default,
                                    int                    bootversion,
                                    GPtrArray             *new_lines,
+                                   const char            *boot_path_on_disk,
                                    GCancellable          *cancellable,
                                    GError               **error)
 {
@@ -89,15 +90,22 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
       val = ostree_bootconfig_parser_get (config, "linux");
       if (!val)
         return glnx_throw (error, "No \"linux\" key in bootloader config");
-      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL %s", val));
+      g_autofree gchar *kernel = g_build_path ("/", boot_path_on_disk, val, NULL);
+      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL %s", kernel));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s", val));
+        {
+          g_autofree gchar *initrd = g_build_path ("/", boot_path_on_disk, val, NULL);
+          g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s", initrd));
+        }
 
       val = ostree_bootconfig_parser_get (config, "devicetree");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("\tDEVICETREE %s", val));
+        {
+          g_autofree gchar *devicetree = g_build_path ("/", boot_path_on_disk, val, NULL);
+          g_ptr_array_add (new_lines, g_strdup_printf ("\tDEVICETREE %s", devicetree));
+        }
 
       val = ostree_bootconfig_parser_get (config, "options");
       if (val)
@@ -130,6 +138,11 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
   g_autoptr(GPtrArray) new_lines = g_ptr_array_new_with_free_func (g_free);
   g_autoptr(GPtrArray) tmp_lines = g_ptr_array_new_with_free_func (g_free);
 
+  g_autofree const char *boot_path_on_disk = _ostree_sysroot_get_boot_path_on_disk (
+      self->sysroot, error);
+  if (boot_path_on_disk == NULL)
+    return FALSE;
+
   g_autofree char *kernel_arg = NULL;
   gboolean saw_default = FALSE;
   gboolean regenerate_default = FALSE;
@@ -142,6 +155,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
     {
       const char *line = *iter;
       gboolean skip = FALSE;
+      g_autofree char *nonostree_prefix = g_build_path ("/", boot_path_on_disk, "/ostree/", NULL);
 
       if (parsing_label &&
           (line == NULL || !g_str_has_prefix (line, "\t")))
@@ -153,7 +167,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
           /* If this is a non-ostree kernel, just emit the lines
            * we saw.
            */
-          if (!g_str_has_prefix (kernel_arg, "/ostree/"))
+          if (!g_str_has_prefix (kernel_arg, nonostree_prefix))
             {
               for (guint i = 0; i < tmp_lines->len; i++)
                 {
@@ -211,6 +225,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
 
   if (!append_config_from_loader_entries (self, regenerate_default,
                                           bootversion, new_lines,
+                                          boot_path_on_disk,
                                           cancellable, error))
     return FALSE;
 
