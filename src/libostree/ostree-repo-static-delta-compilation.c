@@ -36,6 +36,8 @@
 #include "libglnx.h"
 #include "ostree-varint.h"
 #include "bsdiff/bsdiff.h"
+#include "ostree-autocleanups.h"
+#include "ostree-sign.h"
 
 #define CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT (30)
 
@@ -1335,6 +1337,8 @@ get_fallback_headers (OstreeRepo               *self,
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
  *   - endianness: b: Deltas use host byte order by default; this option allows choosing (G_BIG_ENDIAN or G_LITTLE_ENDIAN)
  *   - filename: ay: Save delta superblock to this filename, and parts in the same directory.  Default saves to repository.
+ *   - sign-name: ay: Signature type to use.
+ *   - sign-key-ids: as: Array of keys used to sign delta superblock.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo                   *self,
@@ -1368,6 +1372,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GPtrArray) builder_fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
   g_autoptr(OtVariantBuilder) descriptor_builder = NULL;
+  const char *opt_sign_name;
+  const char **opt_key_ids;
 
   if (!g_variant_lookup (params, "min-fallback-size", "u", &min_fallback_size))
     min_fallback_size = 4;
@@ -1407,6 +1413,12 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!g_variant_lookup (params, "filename", "^&ay", &opt_filename))
     opt_filename = NULL;
 
+  if (!g_variant_lookup (params, "sign-name", "^&ay", &opt_sign_name))
+    opt_sign_name = NULL;
+
+  if (!g_variant_lookup (params, "sign-key-ids", "^a&s", &opt_key_ids))
+    opt_key_ids = NULL;
+
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
                                  &to_commit, error))
     return FALSE;
@@ -1442,7 +1454,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                   cancellable, error))
     return FALSE;
 
-  if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_WRONLY | O_CLOEXEC,
+  if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_RDWR | O_CLOEXEC,
                                       &descriptor_tmpf, error))
     return FALSE;
 
@@ -1586,12 +1598,85 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_printerr ("bsdiff=%u objects\n", builder.n_bsdiff);
     }
 
-  if (fchmod (descriptor_tmpf.fd, 0644) < 0)
-    return glnx_throw_errno_prefix (error, "fchmod");
+  if (opt_sign_name != NULL && opt_key_ids != NULL)
+    {
+      g_autoptr(GBytes) tmpdata = NULL;
+      g_autoptr(OstreeSign) sign = NULL;
+      const gchar *signature_key = NULL;
+      g_autoptr(GVariantBuilder) signature_builder = NULL;
+      g_auto(GLnxTmpfile) descriptor_sign_tmpf = { 0, };
+      g_autoptr(OtVariantBuilder) descriptor_sign_builder = NULL;
 
-  if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                             descriptor_dfd, descriptor_name, error))
-    return FALSE;
+      lseek (descriptor_tmpf.fd, 0, SEEK_SET);
+      tmpdata = glnx_fd_readall_bytes (descriptor_tmpf.fd, cancellable, error);
+      if (!tmpdata)
+        return FALSE;
+
+      sign = ostree_sign_get_by_name (opt_sign_name, error);
+      if (sign == NULL)
+        return FALSE;
+
+      signature_key = ostree_sign_metadata_key (sign);
+      const gchar *signature_format = ostree_sign_metadata_format (sign);
+
+      signature_builder = g_variant_builder_new (G_VARIANT_TYPE (signature_format));
+
+      for (const char **iter = opt_key_ids; iter && *iter; iter++)
+        {
+          const char *keyid = *iter;
+          g_autoptr(GVariant) secret_key = NULL;
+          g_autoptr(GBytes) signature_bytes = NULL;
+
+          secret_key = g_variant_new_string (keyid);
+          if (!ostree_sign_set_sk (sign, secret_key, error))
+              return FALSE;
+
+          if (!ostree_sign_data (sign, tmpdata, &signature_bytes,
+                                 NULL, error))
+            return FALSE;
+
+          g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
+        }
+
+      if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                          &descriptor_sign_tmpf, error))
+        return FALSE;
+
+      descriptor_sign_builder = ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SIGNED_FORMAT),
+                                                        descriptor_sign_tmpf.fd);
+
+      if (!ot_variant_builder_add (descriptor_sign_builder, error, "t",
+                                   GUINT64_TO_BE (OSTREE_STATIC_DELTA_SIGNED_MAGIC)))
+        return FALSE;
+      if (!ot_variant_builder_add (descriptor_sign_builder, error, "@ay", ot_gvariant_new_ay_bytes (tmpdata)))
+        return FALSE;
+      if (!ot_variant_builder_open (descriptor_sign_builder, G_VARIANT_TYPE ("a{sv}"), error))
+        return FALSE;
+      if (!ot_variant_builder_add (descriptor_sign_builder, error, "{sv}",
+                                   signature_key, g_variant_builder_end(signature_builder)))
+        return FALSE;
+      if (!ot_variant_builder_close (descriptor_sign_builder, error))
+        return FALSE;
+
+      if (!ot_variant_builder_end (descriptor_sign_builder, error))
+        return FALSE;
+
+      if (fchmod (descriptor_sign_tmpf.fd, 0644) < 0)
+        return glnx_throw_errno_prefix (error, "fchmod");
+
+      if (!glnx_link_tmpfile_at (&descriptor_sign_tmpf, GLNX_LINK_TMPFILE_REPLACE,
+                                 descriptor_dfd, descriptor_name, error))
+        return FALSE;
+    }
+  else
+    {
+      if (fchmod (descriptor_tmpf.fd, 0644) < 0)
+        return glnx_throw_errno_prefix (error, "fchmod");
+
+      if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE,
+                                 descriptor_dfd, descriptor_name, error))
+        return FALSE;
+    }
 
   return TRUE;
 }
