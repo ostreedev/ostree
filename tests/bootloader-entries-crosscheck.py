@@ -45,7 +45,7 @@ def get_ostree_option(optionstring):
     for o in optionstring.split():
         if o.startswith('ostree='):
             return o[8:]
-    raise ValueError('ostree= not found')
+    raise ValueError('ostree= not found in %r' % (optionstring,))
             
 entries = []
 syslinux_entries = []
@@ -98,7 +98,7 @@ def assert_matches_key(a, b, key):
     aval = a[key]
     bval = b[key]
     if aval != bval:
-        fatal("Mismatch on {0}: {1} != {2}".format(key, aval, bval))
+        fatal("Mismatch on {0}: entry: {1} != syslinux: {2}".format(key, aval, bval))
 
 for i,(entry,syslinuxentry) in enumerate(zip(entries, syslinux_entries)):
     assert_matches_key(entry, syslinuxentry, 'linux')
