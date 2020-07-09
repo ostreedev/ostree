@@ -380,7 +380,7 @@ fetcher_queue_is_full (OtPullData *pull_data)
       ((pull_data->n_outstanding_metadata_write_requests +
         pull_data->n_outstanding_content_write_requests +
         pull_data->n_outstanding_deltapart_write_requests) >=
-         _OSTREE_MAX_OUTSTANDING_WRITE_REQUESTS);
+         pull_data->max_outstanding_write_requests);
   return fetch_full || deltas_full || writes_full;
 }
 
@@ -3455,6 +3455,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (!opt_n_network_retries_set)
     pull_data->n_network_retries = DEFAULT_N_NETWORK_RETRIES;
+
+  {
+    const char *writes = getenv ("OSTREE_PULL_MAX_OUTSTANDING_WRITES");
+    if (writes != NULL)
+      pull_data->max_outstanding_write_requests = g_ascii_strtoull (writes, NULL, 10);
+    else
+      pull_data->max_outstanding_write_requests = _OSTREE_MAX_OUTSTANDING_WRITE_REQUESTS;
+  }
 
   pull_data->repo = self;
   pull_data->progress = progress;

@@ -91,6 +91,7 @@ typedef struct {
   GHashTable       *pending_fetch_content; /* Map<checksum,FetchObjectData> */
   GHashTable       *pending_fetch_delta_superblocks; /* Set<FetchDeltaSuperData> */
   GHashTable       *pending_fetch_deltaparts; /* Set<FetchStaticDeltaData> */
+  guint             max_outstanding_write_requests;
   guint             n_outstanding_metadata_fetches;
   guint             n_outstanding_metadata_write_requests;
   guint             n_outstanding_content_fetches;

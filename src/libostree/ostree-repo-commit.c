@@ -420,7 +420,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
   /* Ensure that in case of a power cut, these files have the data we
    * want.   See http://lwn.net/Articles/322823/
    */
-  if (!self->in_transaction && !self->disable_fsync)
+  if (!self->disable_fsync && (self->per_object_fsync || !self->in_transaction))
     {
       if (fsync (tmpf->fd) == -1)
         return glnx_throw_errno_prefix (error, "fsync");
