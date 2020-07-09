@@ -49,7 +49,7 @@ function validate_bootloader() {
 assert_ostree_deployment_refs() {
     ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo refs ostree | sort > ostree-refs.txt
     (for v in "$@"; do echo $v; done) | sort > ostree-refs-expected.txt
-    diff -u ostree-refs{-expected,}.txt
+    diff -u ostree-refs{-expected,}.txt >&2
 }
 
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
