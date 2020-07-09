@@ -819,6 +819,8 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 GError                       **error)
 {
   glnx_autofd int superblock_fd = -1;
+  g_autoptr(GVariant) delta = NULL;
+  g_autoptr(GVariant) delta_superblock = NULL;
 
   if (strchr (delta_id, '/'))
     {
@@ -837,13 +839,28 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
         return FALSE;
     }
 
-  g_autoptr(GVariant) delta_superblock = NULL;
-  if (!ot_variant_read_fd (superblock_fd, 0,
-                           (GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
-                           TRUE, &delta_superblock, error))
-    return FALSE;
+  gboolean is_signed = _ostree_repo_static_delta_is_signed(self, superblock_fd, NULL, NULL);
+  if (is_signed)
+    {
+      if (!ot_variant_read_fd (superblock_fd, 0, (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
+                               TRUE, &delta, error))
+        return FALSE;
+
+      g_autoptr(GVariant) child = g_variant_get_child_value (delta, 1);
+      g_autoptr(GBytes) bytes = g_variant_get_data_as_bytes(child);
+      delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                                                   bytes, FALSE);
+    }
+  else
+    {
+      if (!ot_variant_read_fd (superblock_fd, 0,
+                               (GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                               TRUE, &delta_superblock, error))
+        return FALSE;
+    }
 
   g_print ("Delta: %s\n", delta_id);
+  g_print ("Signed: %s\n", is_signed ? "yes" : "no");
   g_autoptr(GVariant) from_commit_v = NULL;
   g_variant_get_child (delta_superblock, 2, "@ay", &from_commit_v);
   g_autofree char *from_commit = NULL;
