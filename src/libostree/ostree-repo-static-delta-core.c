@@ -286,6 +286,8 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                                           GError                      **error)
 {
   g_autofree char *basename = NULL;
+  g_autoptr(GVariant) delta = NULL;
+  g_autoptr(GVariant) meta = NULL;
 
   const char *dir_or_file_path = gs_file_get_path_cached (dir_or_file);
 
@@ -311,10 +313,24 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   if (meta_fd < 0)
     return glnx_throw_errno_prefix (error, "openat(%s)", basename);
 
-  g_autoptr(GVariant) meta = NULL;
-  if (!ot_variant_read_fd (meta_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
-                           FALSE, &meta, error))
-    return FALSE;
+  gboolean is_signed = _ostree_repo_static_delta_is_signed (self, meta_fd, NULL, NULL);
+  if (is_signed)
+    {
+      if (!ot_variant_read_fd (meta_fd, 0, (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
+                               TRUE, &delta, error))
+        return FALSE;
+
+      g_autoptr(GVariant) child = g_variant_get_child_value (delta, 1);
+      g_autoptr(GBytes) bytes = g_variant_get_data_as_bytes (child);
+      meta = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                                       bytes, FALSE);
+    }
+  else
+    {
+      if (!ot_variant_read_fd (meta_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
+                               FALSE, &meta, error))
+        return FALSE;
+    }
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
 
