@@ -10,8 +10,7 @@ approvers:
   - cgwalters
   - jlebon
   - pwithnall
-  # Does not currently have affiliation public
-  # - wmanley
+  - wmanley
 reviewers:
   - lucab
   - mwleeds
