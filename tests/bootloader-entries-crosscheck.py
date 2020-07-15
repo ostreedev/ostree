@@ -73,21 +73,24 @@ with open(syslinuxpath) as f:
     syslinux_entry = None
     syslinux_default = None
     for line in f:
-        line = line.strip()
-        if line.startswith('DEFAULT '):
+        try:
+            k, v = line.strip().split(" ", 1)
+        except ValueError:
+            continue
+        if k == 'DEFAULT':
             if syslinux_entry is not None:
-                syslinux_default = line.split(' ', 1)[1]
-        elif line.startswith('LABEL '):
+                syslinux_default = v
+        elif k == 'LABEL':
             if syslinux_entry is not None:
                 syslinux_entries.append(syslinux_entry)
             syslinux_entry = {}
-            syslinux_entry['title'] = line.split(' ', 1)[1]
-        elif line.startswith('KERNEL '):
-            syslinux_entry['linux'] = line.split(' ', 1)[1]
-        elif line.startswith('INITRD '):
-            syslinux_entry['initrd'] = line.split(' ', 1)[1]
-        elif line.startswith('APPEND '):
-            syslinux_entry['options'] = line.split(' ', 1)[1]
+            syslinux_entry['title'] = v
+        elif k == 'KERNEL':
+            syslinux_entry['linux'] = v
+        elif k == 'INITRD':
+            syslinux_entry['initrd'] = v
+        elif k == 'APPEND':
+            syslinux_entry['options'] = v
     if syslinux_entry is not None:
         syslinux_entries.append(syslinux_entry)
 
