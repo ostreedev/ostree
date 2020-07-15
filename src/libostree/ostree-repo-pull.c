@@ -3273,37 +3273,37 @@ initiate_request (OtPullData                 *pull_data,
  * Like ostree_repo_pull(), but supports an extensible set of flags.
  * The following are currently defined:
  *
- *   * refs (as): Array of string refs
- *   * collection-refs (a(sss)): Array of (collection ID, ref name, checksum) tuples to pull;
+ *   * `refs` (`as`): Array of string refs
+ *   * `collection-refs` (`a(sss)`): Array of (collection ID, ref name, checksum) tuples to pull;
  *     mutually exclusive with `refs` and `override-commit-ids`. Checksums may be the empty
  *     string to pull the latest commit for that ref
- *   * flags (i): An instance of #OstreeRepoPullFlags
- *   * subdir (s): Pull just this subdirectory
- *   * subdirs (as): Pull just these subdirectories
- *   * override-remote-name (s): If local, add this remote to refspec
- *   * gpg-verify (b): GPG verify commits
- *   * gpg-verify-summary (b): GPG verify summary
- *   * disable-sign-verify (b): Disable signapi verification of commits
- *   * disable-sign-verify-summary (b): Disable signapi verification of the summary
- *   * depth (i): How far in the history to traverse; default is 0, -1 means infinite
- *   * per-object-fsync (b): Perform disk writes more slowly, avoiding a single large I/O sync
- *   * disable-static-deltas (b): Do not use static deltas
- *   * require-static-deltas (b): Require static deltas
- *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
- *   * timestamp-check (b): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
- *   * timestamp-check-from-rev (s): Verify that all fetched commit timestamps are newer than timestamp of given rev; Since: 2020.4
- *   * metadata-size-restriction (t): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
- *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
- *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
- *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
- *   * http-headers (a(ss)): Additional headers to add to all HTTP requests
- *   * update-frequency (u): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
- *   * localcache-repos (as): File paths for local repos to use as caches when doing remote fetches
- *   * append-user-agent (s): Additional string to append to the user agent
- *   * n-network-retries (u): Number of times to retry each download on receiving
+ *   * `flags` (`i`): An instance of #OstreeRepoPullFlags
+ *   * `subdir` (`s`): Pull just this subdirectory
+ *   * `subdirs` (`as`): Pull just these subdirectories
+ *   * `override-remote-name` (`s`): If local, add this remote to refspec
+ *   * `gpg-verify` (`b`): GPG verify commits
+ *   * `gpg-verify-summary` (`b`): GPG verify summary
+ *   * `disable-sign-verify` (`b`): Disable signapi verification of commits
+ *   * `disable-sign-verify-summary` (`b`): Disable signapi verification of the summary
+ *   * `depth` (`i`): How far in the history to traverse; default is 0, -1 means infinite
+ *   * `per-object-fsync` (`b`): Perform disk writes more slowly, avoiding a single large I/O sync
+ *   * `disable-static-deltas` (`b`): Do not use static deltas
+ *   * `require-static-deltas` (`b`): Require static deltas
+ *   * `override-commit-ids` (`as`): Array of specific commit IDs to fetch for refs
+ *   * `timestamp-check` (`b`): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
+ *   * `timestamp-check-from-rev` (`s`): Verify that all fetched commit timestamps are newer than timestamp of given rev; Since: 2020.4
+ *   * `metadata-size-restriction` (`t`): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
+ *   * `dry-run` (`b`): Only print information on what will be downloaded (requires static deltas)
+ *   * `override-url` (`s`): Fetch objects from this URL if remote specifies no metalink in options
+ *   * `inherit-transaction` (`b`): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
+ *   * `http-headers` (`a(ss)`): Additional headers to add to all HTTP requests
+ *   * `update-frequency` (`u`): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
+ *   * `localcache-repos` (`as`): File paths for local repos to use as caches when doing remote fetches
+ *   * `append-user-agent` (`s`): Additional string to append to the user agent
+ *   * `n-network-retries` (`u`): Number of times to retry each download on receiving
  *     a transient network error, such as a socket timeout; default is 5, 0
  *     means return errors without retrying. Since: 2018.6
- *   * ref-keyring-map (a(sss)): Array of (collection ID, ref name, keyring
+ *   * `ref-keyring-map` (`a(sss)`): Array of (collection ID, ref name, keyring
  *     remote name) tuples specifying which remote's keyring should be used when
  *     doing GPG verification of each collection-ref. This is useful to prevent a
  *     remote from serving malicious updates to refs which did not originate from
