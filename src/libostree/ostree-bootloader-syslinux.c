@@ -26,6 +26,7 @@
 #include <string.h>
 
 static const char syslinux_config_path[] = "boot/syslinux/syslinux.cfg";
+static const char extlinux_config_path[] = "boot/extlinux/extlinux.conf";
 
 struct _OstreeBootloaderSyslinux
 {
@@ -50,6 +51,13 @@ _ostree_bootloader_syslinux_query (OstreeBootloader *bootloader,
   struct stat stbuf;
 
   if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, syslinux_config_path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno == 0)
+    {
+      *out_is_active = TRUE;
+      return TRUE;
+    }
+  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, extlinux_config_path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
   *out_is_active = (errno == 0);
   return TRUE;
@@ -124,7 +132,19 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
     glnx_file_get_contents_utf8_at (self->sysroot->sysroot_fd, syslinux_config_path, NULL,
                                     cancellable, error);
   if (!config_contents)
-    return FALSE;
+    {
+      if (errno != ENOENT)
+        return FALSE;
+      else
+        {
+          g_clear_error (error);
+          config_contents =
+            glnx_file_get_contents_utf8_at (self->sysroot->sysroot_fd, extlinux_config_path, NULL,
+                                            cancellable, error);
+          if (!config_contents)
+            return FALSE;
+        }
+    }
 
   g_auto(GStrv) lines = g_strsplit (config_contents, "\n", -1);
   g_autoptr(GPtrArray) new_lines = g_ptr_array_new_with_free_func (g_free);
