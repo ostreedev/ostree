@@ -3286,6 +3286,7 @@ initiate_request (OtPullData                 *pull_data,
  *   * disable-sign-verify (b): Disable signapi verification of commits
  *   * disable-sign-verify-summary (b): Disable signapi verification of the summary
  *   * depth (i): How far in the history to traverse; default is 0, -1 means infinite
+ *   * per-object-fsync (b): Perform disk writes more slowly, avoiding a single large I/O sync
  *   * disable-static-deltas (b): Do not use static deltas
  *   * require-static-deltas (b): Require static deltas
  *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
@@ -3340,6 +3341,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autoptr(GVariantIter) collection_refs_iter = NULL;
   g_autofree char **override_commit_ids = NULL;
   g_autoptr(GSource) update_timeout = NULL;
+  gboolean opt_per_object_fsync = FALSE;
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
   gboolean opt_collection_refs_set = FALSE;
@@ -3385,6 +3387,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "require-static-deltas", "b", &pull_data->require_static_deltas);
       (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
       (void) g_variant_lookup (options, "dry-run", "b", &pull_data->dry_run);
+      (void) g_variant_lookup (options, "per-object-fsync", "b", &opt_per_object_fsync);
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
       (void) g_variant_lookup (options, "inherit-transaction", "b", &inherit_transaction);
       (void) g_variant_lookup (options, "http-headers", "@a(ss)", &pull_data->extra_headers);
@@ -3452,6 +3455,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
    * local to the `ostree_repo_pull*` operation rather than trying to transfer ownership. */
   pull_data->main_context = g_main_context_ref_thread_default ();
   pull_data->flags = flags;
+
+  /* TODO: Avoid mutating the repo object */
+  if (opt_per_object_fsync)
+    self->per_object_fsync = TRUE;
 
   if (!opt_n_network_retries_set)
     pull_data->n_network_retries = DEFAULT_N_NETWORK_RETRIES;

@@ -55,10 +55,10 @@ function verify_initial_contents() {
 }
 
 if has_gpgme; then
-    echo "1..34"
+    echo "1..35"
 else
     # 3 tests needs GPG support
-    echo "1..31"
+    echo "1..32"
 fi
 
 # Try both syntaxes
@@ -73,6 +73,16 @@ echo "ok pull"
 cd ${test_tmpdir}
 verify_initial_contents
 echo "ok pull contents"
+
+# And a test with incremental fsync
+repo_init --no-sign-verify
+${CMD_PREFIX} ostree --repo=repo pull --per-object-fsync origin main >out.txt
+assert_file_has_content out.txt "[1-9][0-9]* metadata, [1-9][0-9]* content objects fetched"
+${CMD_PREFIX} ostree --repo=repo pull --per-object-fsync origin:main > out.txt
+assert_not_file_has_content out.txt "[1-9][0-9]* content objects fetched"
+${CMD_PREFIX} ostree --repo=repo fsck
+verify_initial_contents
+echo "ok pull --per-object-fsync"
 
 cd ${test_tmpdir}
 mkdir mirrorrepo

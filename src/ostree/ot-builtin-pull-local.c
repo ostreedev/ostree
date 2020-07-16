@@ -34,6 +34,7 @@
 static char *opt_remote;
 static gboolean opt_commit_only;
 static gboolean opt_disable_fsync;
+static gboolean opt_per_object_fsync;
 static gboolean opt_untrusted;
 static gboolean opt_bareuseronly_files;
 static gboolean opt_require_static_deltas;
@@ -50,6 +51,7 @@ static GOptionEntry options[] = {
   { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+  { "per-object-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_per_object_fsync, "Perform writes in such a way that avoids stalling concurrent processes", NULL },
   { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Verify checksums of local sources (always enabled for HTTP pulls)", NULL },
   { "bareuseronly-files", 0, 0, G_OPTION_ARG_NONE, &opt_bareuseronly_files, "Reject regular files with mode outside of 0775 (world writable, suid, etc.)", NULL },
   { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
@@ -187,6 +189,9 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
     g_variant_builder_add (&builder, "{s@v}", "disable-sign-verify",
                            g_variant_new_variant (g_variant_new_boolean (TRUE)));
     g_variant_builder_add (&builder, "{s@v}", "disable-sign-verify-summary",
+                           g_variant_new_variant (g_variant_new_boolean (TRUE)));
+    if (opt_per_object_fsync)
+        g_variant_builder_add (&builder, "{s@v}", "per-object-fsync",
                            g_variant_new_variant (g_variant_new_boolean (TRUE)));
 
     if (console.is_tty)
