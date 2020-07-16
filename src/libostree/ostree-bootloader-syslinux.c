@@ -92,12 +92,13 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
       if (regenerate_default && i == 0)
         g_ptr_array_add (new_lines, g_strdup_printf ("DEFAULT %s", val));
 
-      g_ptr_array_add (new_lines, g_strdup_printf ("LABEL %s", val));
+      g_ptr_array_add (new_lines, g_strdup_printf ("\nLABEL %s", val));
+      g_ptr_array_add (new_lines, g_strdup_printf ("\tMENU LABEL %s", val));
 
       val = ostree_bootconfig_parser_get (config, "linux");
       if (!val)
         return glnx_throw (error, "No \"linux\" key in bootloader config");
-      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL /boot%s", val));
+      g_ptr_array_add (new_lines, g_strdup_printf ("\tLINUX /boot%s", val));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
@@ -206,6 +207,11 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
         {
           g_free (kernel_arg);
           kernel_arg = g_strdup (line + strlen ("\tKERNEL "));
+        }
+      else if (parsing_label && g_str_has_prefix (line, "\tLINUX "))
+        {
+          g_free (kernel_arg);
+          kernel_arg = g_strdup (line + strlen ("\tLINUX "));
         }
       else if (!parsing_label &&
                (g_str_has_prefix (line, "DEFAULT ")))
