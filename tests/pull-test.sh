@@ -64,7 +64,7 @@ fi
 # Try both syntaxes
 repo_init --no-sign-verify
 ${CMD_PREFIX} ostree --repo=repo pull origin main >out.txt
-assert_file_has_content out.txt "[1-9][0-9]* metadata, [1-9][0-9]* content objects fetched"
+assert_file_has_content out.txt "[1-9][0-9]* metadata, [1-9][0-9]* content objects fetched; [1-9][0-9]*.*written"
 ${CMD_PREFIX} ostree --repo=repo pull origin:main > out.txt
 assert_not_file_has_content out.txt "[1-9][0-9]* content objects fetched"
 ${CMD_PREFIX} ostree --repo=repo fsck
