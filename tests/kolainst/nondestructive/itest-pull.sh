@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# FIXME just for webserver
+# kola: { "tags": "needs-internet" }
 # Using the host ostree, test HTTP pulls
 
 set -xeuo pipefail
