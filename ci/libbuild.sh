@@ -10,7 +10,7 @@ pkg_upgrade() {
 }
 
 make() {
-    /usr/bin/make -j $(getconf _NPROCESSORS_ONLN) "$@"
+    /usr/bin/make -j ${MAKE_JOBS:-$(getconf _NPROCESSORS_ONLN)} "$@"
 }
 
 build() {

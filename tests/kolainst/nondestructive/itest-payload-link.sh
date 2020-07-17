@@ -1,4 +1,6 @@
 #!/bin/bash
+# FIXME just for webserver
+# kola: { "tags": "needs-internet" }
 #
 # Copyright (C) 2018 Red Hat, Inc.
 #

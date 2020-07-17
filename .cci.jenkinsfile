@@ -2,7 +2,8 @@
 
 stage("Build") {
 parallel normal: {
-  cosaPod(buildroot: true, runAsUser: 0) {
+  def n = 5
+  cosaPod(buildroot: true, runAsUser: 0, memory: "2Gi", cpu: "${n}") {
       checkout scm
       stage("Core build") {
         shwrap("""
@@ -10,7 +11,7 @@ parallel normal: {
           git fetch origin --tags
           git submodule update --init
 
-          env SKIP_INSTALLDEPS=1 ./ci/build.sh
+          env MAKE_JOBS=${n} SKIP_INSTALLDEPS=1 ./ci/build.sh
         """)
       }
       stage("Unit tests") {
@@ -84,18 +85,19 @@ parallel fcos: {
   }
 },
 buildopts: {
-  cosaPod(buildroot: true, runAsUser: 0) {
+  def n = 5
+  cosaPod(buildroot: true, runAsUser: 0, memory: "2Gi", cpu: "${n}") {
       checkout scm
       shwrap("""
         git submodule update --init
 
         git worktree add build-rust && cd build-rust
-        env CONFIGOPTS="--enable-rust" SKIP_INSTALLDEPS=1 ./ci/build.sh
+        env MAKE_JOBS=${n} CONFIGOPTS="--enable-rust" SKIP_INSTALLDEPS=1 ./ci/build.sh
         make check TESTS=tests/test-rollsum
         cd .. && rm -rf build-rust
 
         git worktree add build-libsoup && cd build-libsoup
-        env CONFIGOPTS="--without-curl --without-openssl --with-soup" SKIP_INSTALLDEPS=1 ./ci/build.sh
+        env MAKE_JOBS=${n} CONFIGOPTS="--without-curl --without-openssl --with-soup" SKIP_INSTALLDEPS=1 ./ci/build.sh
         make check
         cd .. && rm -rf build-libsoup
       """)
