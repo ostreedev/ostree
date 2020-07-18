@@ -2315,6 +2315,120 @@ process_one_static_delta (OtPullData                 *pull_data,
   return TRUE;
 }
 
+static gboolean
+normal_commit_reachable (OstreeRepo *self,
+                         const char *cur_revision)
+{
+  g_autofree char *rev = g_strdup (cur_revision);
+  while (rev != NULL)
+    {
+      g_autoptr(GVariant) commit = NULL;
+      OstreeRepoCommitState commitstate;
+      g_autoptr(GError) local_error = NULL;
+
+      if (!ostree_repo_load_commit (self, rev, &commit, &commitstate, &local_error))
+        {
+          /* Ignore issues with the commit since we're going to try to pull a
+           * scratch delta, anyways. Just dump out the error unless it's the
+           * likely issue that the parent commit didn't exist.
+           */
+          if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            g_debug ("Couldn't load commit %s: %s", rev, local_error->message);
+
+          g_clear_error (&local_error);
+          break;
+        }
+
+      /* Is this a normal commit? */
+      if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) == 0)
+        return TRUE;
+
+      g_free (rev);
+      rev = ostree_commit_get_parent (commit);
+    }
+
+  /* No normal commit found in history */
+  return FALSE;
+}
+
+static gboolean
+normal_bound_commit_exists (OtPullData                *pull_data,
+                            const OstreeCollectionRef *ref,
+                            GCancellable              *cancellable)
+{
+  g_return_val_if_fail (ref != NULL, FALSE);
+
+  g_autofree char *collection_id = NULL;
+  if (ref->collection_id != NULL)
+    collection_id = g_strdup (ref->collection_id);
+  else
+    {
+      collection_id = get_remote_repo_collection_id (pull_data);
+      if (collection_id == NULL)
+        return FALSE;
+    }
+
+  g_autoptr(GHashTable) objects = NULL;
+  g_autoptr(GError) list_error = NULL;
+  if (!ostree_repo_list_objects (pull_data->repo, OSTREE_REPO_LIST_OBJECTS_ALL,
+                                 &objects, cancellable, &list_error))
+    {
+      g_debug ("Couldn't list objects: %s", list_error->message);
+      return FALSE;
+    }
+
+  GLNX_HASH_TABLE_FOREACH (objects, GVariant*, serialized_key)
+    {
+      const char *checksum;
+      OstreeObjectType objtype;
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+      if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
+        continue;
+
+      g_autoptr(GVariant) commit = NULL;
+      OstreeRepoCommitState commitstate;
+      g_autoptr(GError) local_error = NULL;
+      if (!ostree_repo_load_commit (pull_data->repo, checksum, &commit,
+                                    &commitstate, &local_error))
+        {
+          /* Ignore issues with the commit since we're going to try to pull a
+           * scratch delta, anyways.
+           */
+          g_debug ("Couldn't load commit %s: %s", checksum, local_error->message);
+          continue;
+        }
+
+      /* Is this a partial commit? */
+      if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0)
+        continue;
+
+      /* If the commit has the same collection binding and the ref is included
+       * in the ref bindings, we have a match.
+       */
+      g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
+      const char *collection_id_binding;
+      if (!g_variant_lookup (metadata,
+                             OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
+                             "&s",
+                             &collection_id_binding))
+        continue;
+      if (!g_str_equal (collection_id_binding, collection_id))
+        continue;
+
+      g_autofree const char **ref_bindings = NULL;
+      if (!g_variant_lookup (metadata,
+                             OSTREE_COMMIT_META_KEY_REF_BINDING,
+                             "^a&s",
+                             &ref_bindings))
+        continue;
+      if (g_strv_contains ((const char *const *) ref_bindings, ref->ref_name))
+        return TRUE;
+    }
+
+  /* No normal commit found with same bindings */
+  return FALSE;
+}
+
 /*
  * DELTA_SEARCH_RESULT_UNCHANGED:
  * We already have the commit.
@@ -2345,11 +2459,13 @@ typedef struct {
  * See the enum in `DeltaSearchResult` for available result types.
  */
 static gboolean
-get_best_static_delta_start_for (OtPullData *pull_data,
-                                 const char *to_revision,
-                                 DeltaSearchResult   *out_result,
-                                 GCancellable *cancellable,
-                                 GError      **error)
+get_best_static_delta_start_for (OtPullData                 *pull_data,
+                                 const OstreeCollectionRef  *ref,
+                                 const char                 *to_revision,
+                                 const char                 *cur_revision,
+                                 DeltaSearchResult          *out_result,
+                                 GCancellable               *cancellable,
+                                 GError                    **error)
 {
   /* Array<char*> of possible from checksums */
   g_autoptr(GPtrArray) candidates = g_ptr_array_new_with_free_func (g_free);
@@ -2451,6 +2567,30 @@ get_best_static_delta_start_for (OtPullData *pull_data,
       out_result->result = DELTA_SEARCH_RESULT_FROM;
       memcpy (out_result->from_revision, newest_candidate, OSTREE_SHA256_STRING_LEN+1);
     }
+
+  /* If a from-scratch delta is available and deltas aren't required, we don’t
+   * want to use it if the ref or any of its ancestors already exists locally
+   * and is not partial. In that case only some of the objects in the new
+   * commit may be needed, so doing an object pull is likely more bandwidth
+   * efficient.
+   */
+  if (out_result->result == DELTA_SEARCH_RESULT_SCRATCH &&
+      !pull_data->require_static_deltas)
+    {
+       if (cur_revision != NULL &&
+          normal_commit_reachable (pull_data->repo, cur_revision))
+         {
+           g_debug ("Found normal commit in history of %s", cur_revision);
+           out_result->result = DELTA_SEARCH_RESULT_NO_MATCH;
+         }
+      else if (ref != NULL &&
+               normal_bound_commit_exists (pull_data, ref, cancellable))
+        {
+          g_debug ("Found normal commit with same bindings as %s", ref->ref_name);
+          out_result->result = DELTA_SEARCH_RESULT_NO_MATCH;
+        }
+    }
+
   return TRUE;
 }
 
@@ -3167,7 +3307,8 @@ initiate_request (OtPullData                 *pull_data,
       DeltaSearchResult deltares;
 
       /* Look for a delta to @to_revision in the summary data */
-      if (!get_best_static_delta_start_for (pull_data, to_revision, &deltares,
+      if (!get_best_static_delta_start_for (pull_data, ref, to_revision,
+                                            delta_from_revision, &deltares,
                                             pull_data->cancellable, error))
         return FALSE;
 
@@ -3188,16 +3329,7 @@ initiate_request (OtPullData                 *pull_data,
           enqueue_one_static_delta_superblock_request (pull_data, deltares.from_revision, to_revision, ref);
           break;
         case DELTA_SEARCH_RESULT_SCRATCH:
-          {
-            /* If a from-scratch delta is available, we don’t want to use it if
-             * the ref already exists locally, since we are likely only a few
-             * commits out of date; so doing an object pull is likely more
-             * bandwidth efficient. */
-            if (delta_from_revision != NULL)
-              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
-            else
-              enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
-          }
+          enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
           break;
         case DELTA_SEARCH_RESULT_UNCHANGED:
           {
