@@ -3358,6 +3358,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
    * value, otherwise NULL. Used for logging.
    */
   const char *the_ref_to_fetch = NULL;
+  OstreeRepoTransactionStats tstats = { 0, };
 
   /* Default */
   pull_data->max_metadata_size = OSTREE_MAX_METADATA_SIZE;
@@ -4444,7 +4445,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
 
   if (!inherit_transaction &&
-      !ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
+      !ostree_repo_commit_transaction (pull_data->repo, &tstats, cancellable, error))
     goto out;
 
   end_time = g_get_monotonic_time ();
@@ -4485,6 +4486,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                   (guint64)(bytes_transferred / shift),
                                   shift == 1 ? "B" : "KiB",
                                   (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
+        }
+      if (!inherit_transaction)
+        {
+          g_autofree char *bytes_written = g_format_size (tstats.content_bytes_written);
+          g_string_append_printf (buf, "; %s content written", bytes_written);
         }
 
       ostree_async_progress_set_status (pull_data->progress, buf->str);
