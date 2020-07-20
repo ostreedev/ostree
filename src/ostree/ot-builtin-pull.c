@@ -29,6 +29,7 @@
 #include "otutil.h"
 
 static gboolean opt_disable_fsync;
+static gboolean opt_per_object_fsync;
 static gboolean opt_mirror;
 static gboolean opt_commit_only;
 static gboolean opt_dry_run;
@@ -58,6 +59,7 @@ static GOptionEntry options[] = {
    { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
    { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
    { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+   { "per-object-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_per_object_fsync, "Perform writes in such a way that avoids stalling concurrent processes", NULL },
    { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas, "Do not use static deltas", NULL },
    { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror and fetches all refs if none provided", NULL },
@@ -325,7 +327,9 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
     if (opt_localcache_repos)
       g_variant_builder_add (&builder, "{s@v}", "localcache-repos",
                              g_variant_new_variant (g_variant_new_strv ((const char*const*)opt_localcache_repos, -1)));
-
+    if (opt_per_object_fsync)
+      g_variant_builder_add (&builder, "{s@v}", "per-object-fsync",
+                             g_variant_new_variant (g_variant_new_boolean (TRUE)));
     if (opt_http_headers)
       {
         GVariantBuilder hdr_builder;

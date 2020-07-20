@@ -51,15 +51,33 @@
 #define FICLONE _IOW(0x94, 9, int)
 #endif
 
-
-/* If fsync is enabled and we're in a txn, we write into a staging dir for
- * commit, but we also allow direct writes into objects/ for e.g. hardlink
- * imports.
+/* Understanding ostree's fsync strategy
+ * 
+ * A long time ago, ostree used to invoke fsync() on each object,
+ * then move it into the objects directory.  However, it turned
+ * out to be a *lot* faster to write the objects into a separate "staging"
+ * directory (letting the filesystem handle writeback how it likes)
+ * and then only walk over each of the files, fsync(), then rename()
+ * into place.  See also https://lwn.net/Articles/789024/
+ *
+ * (We also support a "disable fsync entirely" mode, where you don't
+ * care about integrity; e.g. test suites using disposable VMs).
+ *
+ * This "delayed fsync" pattern though is much worse for other concurrent processes
+ * like databases because it forces a lot to go through the filesystem
+ * journal at once once we do the sync.  So now we support a `per_object_fsync`
+ * option that again invokes `fsync()` directly.  This also notably
+ * provides "backpressure", ensuring we aren't queuing up a huge amount
+ * of I/O at once.
  */
+
+/* The directory where we place content */
 static int
 commit_dest_dfd (OstreeRepo *self)
 {
-  if (self->in_transaction && !self->disable_fsync)
+  if (self->per_object_fsync)
+    return self->objects_dir_fd;
+  else if (self->in_transaction && !self->disable_fsync)
     return self->commit_stagedir.fd;
   else
     return self->objects_dir_fd;
@@ -420,7 +438,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
   /* Ensure that in case of a power cut, these files have the data we
    * want.   See http://lwn.net/Articles/322823/
    */
-  if (!self->in_transaction && !self->disable_fsync)
+  if (!self->disable_fsync && self->per_object_fsync)
     {
       if (fsync (tmpf->fd) == -1)
         return glnx_throw_errno_prefix (error, "fsync");
@@ -1835,6 +1853,52 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   return TRUE;
 }
 
+/* Synchronize the directories holding the objects */
+static gboolean
+fsync_object_dirs (OstreeRepo        *self,
+                   GCancellable      *cancellable,
+                   GError           **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("fsync objdirs", error);
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+
+  if (self->disable_fsync)
+    return TRUE;  /* No fsync?  Nothing to do then. */
+
+  if (!glnx_dirfd_iterator_init_at (self->objects_dir_fd, ".", FALSE, &dfd_iter, error))
+    return FALSE;
+  while (TRUE)
+    {
+      struct dirent *dent;
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+      if (dent->d_type != DT_DIR)
+        continue;
+      /* All object directories only have two character entries */
+      if (strlen (dent->d_name) != 2)
+        continue;
+
+      glnx_autofd int target_dir_fd = -1;
+      if (!glnx_opendirat (self->objects_dir_fd, dent->d_name, FALSE,
+                           &target_dir_fd, error))
+        return FALSE;
+      /* This synchronizes the directory to ensure all the objects we wrote
+       * are there.  We need to do this before removing the .commitpartial
+       * stamp (or have a ref point to the commit).
+       */
+      if (fsync (target_dir_fd) == -1)
+        return glnx_throw_errno_prefix (error, "fsync");
+    }
+
+  /* In case we created any loose object subdirs, make sure they are on disk */
+  if (fsync (self->objects_dir_fd) == -1)
+    return glnx_throw_errno_prefix (error, "fsync");
+
+  return TRUE;
+}
+
 /* Called for commit, to iterate over the "staging" directory and rename all the
  * objects into the primary objects/ location. Notably this is called only after
  * syncfs() has potentially been invoked to ensure that all objects have been
@@ -1856,10 +1920,6 @@ rename_pending_loose_objects (OstreeRepo        *self,
   while (TRUE)
     {
       struct dirent *dent;
-      gboolean renamed_some_object = FALSE;
-      g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
-      char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
-
       if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         return FALSE;
       if (dent == NULL)
@@ -1872,10 +1932,12 @@ rename_pending_loose_objects (OstreeRepo        *self,
       if (strlen (dent->d_name) != 2)
         continue;
 
+      g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
       if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
                                         &child_dfd_iter, error))
         return FALSE;
 
+      char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
       loose_objpath[0] = dent->d_name[0];
       loose_objpath[1] = dent->d_name[1];
       loose_objpath[2] = '/';
@@ -1899,35 +1961,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
           if (!glnx_renameat (child_dfd_iter.fd, loose_objpath + 3,
                               self->objects_dir_fd, loose_objpath, error))
             return FALSE;
-
-          renamed_some_object = TRUE;
         }
-
-      if (renamed_some_object && !self->disable_fsync)
-        {
-          /* Ensure that in the case of a power cut all the directory metadata that
-             we want has reached the disk. In particular, we want this before we
-             update the refs to point to these objects. */
-          glnx_autofd int target_dir_fd = -1;
-
-          loose_objpath[2] = 0;
-
-          if (!glnx_opendirat (self->objects_dir_fd,
-                               loose_objpath, FALSE,
-                               &target_dir_fd,
-                               error))
-            return FALSE;
-
-          if (fsync (target_dir_fd) == -1)
-            return glnx_throw_errno_prefix (error, "fsync");
-        }
-    }
-
-  /* In case we created any loose object subdirs, make sure they are on disk */
-  if (!self->disable_fsync)
-    {
-      if (fsync (self->objects_dir_fd) == -1)
-        return glnx_throw_errno_prefix (error, "fsync");
     }
 
   return TRUE;
@@ -2375,6 +2409,9 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
     }
 
   if (!rename_pending_loose_objects (self, cancellable, error))
+    return FALSE;
+
+  if (!fsync_object_dirs (self, cancellable, error))
     return FALSE;
 
   g_debug ("txn commit %s", glnx_basename (self->commit_stagedir.path));

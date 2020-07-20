@@ -2922,6 +2922,10 @@ reload_core_config (OstreeRepo          *self,
       ostree_repo_set_disable_fsync (self, TRUE);
   }
 
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core", "per-object-fsync",
+                                            FALSE, &self->per_object_fsync, error))
+    return FALSE;
+
   /* See https://github.com/ostreedev/ostree/issues/758 */
   if (!ot_keyfile_get_boolean_with_default (self->config, "core", "disable-xattrs",
                                             FALSE, &self->disable_xattrs, error))
