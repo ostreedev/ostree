@@ -10,7 +10,7 @@ m4_define([year_version], [2020])
 m4_define([release_version], [4])
 m4_define([package_version], [year_version.release_version])
 AC_INIT([libostree], [package_version], [walters@verbum.org])
-is_release_build=no
+is_release_build=yes
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])

@@ -593,6 +593,28 @@ global:
   ostree_sysroot_set_mount_namespace_in_use;
 } LIBOSTREE_2019.6;
 
+/* Add new symbols here.  Release commits should copy this section into -released.sym. */
+LIBOSTREE_2020.4 {
+global:
+  ostree_repo_commit_modifier_set_sepolicy_from_commit;
+  ostree_sign_get_type;
+  ostree_sign_get_all;
+  ostree_sign_commit;
+  ostree_sign_commit_verify;
+  ostree_sign_data;
+  ostree_sign_data_verify;
+  ostree_sign_get_by_name;
+  ostree_sign_get_name;
+  ostree_sign_clear_keys;
+  ostree_sign_load_pk;
+  ostree_sign_metadata_format;
+  ostree_sign_metadata_key;
+  ostree_sign_set_pk;
+  ostree_sign_add_pk;
+  ostree_sign_set_sk;
+  ostree_sign_summary;
+} LIBOSTREE_2020.1;
+
 /* No new symbols in 2020.2 */
 
 /* NOTE: Only add more content here in release commits!  See the
