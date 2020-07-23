@@ -1,6 +1,7 @@
 use glib::translate::{from_glib_full, FromGlibPtrFull};
 use glib::GString;
 use glib_sys::{g_free, g_malloc, g_malloc0, gpointer};
+use libc::c_char;
 use std::fmt;
 use std::ptr::copy_nonoverlapping;
 
@@ -33,11 +34,11 @@ impl Checksum {
     /// string is not a valid SHA256 string, the program will abort!
     pub fn from_hex(checksum: &str) -> Checksum {
         // TODO: implement by hand to avoid stupid assertions?
-        assert!(checksum.len() == HEX_LEN);
+        assert_eq!(checksum.len(), HEX_LEN);
         unsafe {
             // We know checksum is at least as long as needed, trailing NUL is unnecessary.
             from_glib_full(ostree_sys::ostree_checksum_to_bytes(
-                checksum.as_ptr() as *const i8
+                checksum.as_ptr() as *const c_char
             ))
         }
     }
@@ -48,12 +49,12 @@ impl Checksum {
     /// likely 0.
     pub fn from_base64(b64_checksum: &str) -> Checksum {
         // TODO: implement by hand for better error reporting?
-        assert!(b64_checksum.len() == B64_LEN);
+        assert_eq!(b64_checksum.len(), B64_LEN);
         unsafe {
             let buf = g_malloc0(BYTES_LEN) as *mut [u8; BYTES_LEN];
             // We know b64_checksum is at least as long as needed, trailing NUL is unnecessary.
             ostree_sys::ostree_checksum_b64_inplace_to_bytes(
-                b64_checksum.as_ptr() as *const [i8; 32],
+                b64_checksum.as_ptr() as *const [c_char; 32],
                 buf as *mut u8,
             );
             from_glib_full(buf)
@@ -72,7 +73,7 @@ impl Checksum {
         unsafe {
             ostree_sys::ostree_checksum_b64_inplace_from_bytes(
                 self.bytes,
-                buf.as_mut_ptr() as *mut i8,
+                buf.as_mut_ptr() as *mut c_char,
             );
             // Assumption: 43 valid bytes are in the buffer.
             buf.set_len(B64_LEN);
