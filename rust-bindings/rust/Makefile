@@ -1,4 +1,5 @@
-GIR_VERSION := 60cbef05401bd73c3e8a0a7c0cbfb793394acfe7
+GIR_REPO := https://github.com/fkrull/gir.git
+GIR_VERSION := d7f05b3cba10b6e25d0504e492965e20466d091f
 RUSTDOC_STRIPPER_VERSION := 0.1.9
 
 all: gir
@@ -8,7 +9,7 @@ all: gir
 
 # -- gir generation --
 target/tools/bin/gir:
-	cargo install --root target/tools --git https://github.com/gtk-rs/gir.git --rev $(GIR_VERSION) -- gir
+	cargo install --root target/tools --git $(GIR_REPO) --rev $(GIR_VERSION) -- gir
 
 gir: target/tools/bin/gir
 	target/tools/bin/gir -c conf/ostree-sys.toml
