@@ -11,7 +11,7 @@ pub struct TestRepo {
 
 impl TestRepo {
     pub fn new() -> TestRepo {
-        TestRepo::new_with_mode(ostree::RepoMode::BareUser)
+        TestRepo::new_with_mode(ostree::RepoMode::Archive)
     }
 
     pub fn new_with_mode(repo_mode: ostree::RepoMode) -> TestRepo {
