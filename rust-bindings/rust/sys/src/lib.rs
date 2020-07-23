@@ -1377,6 +1377,7 @@ extern "C" {
     // OstreeRepoFinderAvahi
     //=========================================================================
     pub fn ostree_repo_finder_avahi_get_type() -> GType;
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_finder_avahi_new(context: *mut glib::GMainContext) -> *mut OstreeRepoFinderAvahi;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_finder_avahi_start(self_: *mut OstreeRepoFinderAvahi, error: *mut *mut glib::GError);

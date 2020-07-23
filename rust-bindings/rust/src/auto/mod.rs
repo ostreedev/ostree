@@ -33,8 +33,11 @@ pub use self::repo_finder::{RepoFinder, NONE_REPO_FINDER};
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::repo_finder::RepoFinderExt;
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod repo_finder_avahi;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::repo_finder_avahi::{RepoFinderAvahi, RepoFinderAvahiClass, NONE_REPO_FINDER_AVAHI};
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::repo_finder_avahi::RepoFinderAvahiExt;
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -160,6 +163,7 @@ pub mod traits {
     pub use super::RepoFileExt;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub use super::RepoFinderExt;
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub use super::RepoFinderAvahiExt;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub use super::RepoFinderMountExt;

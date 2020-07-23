@@ -12310,15 +12310,40 @@ Pass the results to ostree_repo_pull_from_remotes_async() to pull the given
            glib:type-name="OstreeRepoFinderAvahi"
            glib:get-type="ostree_repo_finder_avahi_get_type"
            glib:type-struct="RepoFinderAvahiClass">
-      <source-position filename="ostree-repo-finder-avahi.h" line="47"/>
+      <source-position filename="ostree/src/libostree/ostree-repo-finder-avahi.h"
+                       line="47"/>
       <implements name="RepoFinder"/>
-      <constructor name="new" c:identifier="ostree_repo_finder_avahi_new">
-        <source-position filename="ostree-repo-finder-avahi.h" line="54"/>
+      <constructor name="new"
+                   c:identifier="ostree_repo_finder_avahi_new"
+                   version="2018.6">
+        <doc xml:space="preserve"
+             filename="ostree/src/libostree/ostree-repo-finder-avahi.c"
+             line="1360">Create a new #OstreeRepoFinderAvahi instance. It is intended that one such
+instance be created per process, and it be used to answer all resolution
+requests from #OstreeRepos.
+
+The calling code is responsible for ensuring that @context is iterated while
+the #OstreeRepoFinderAvahi is running (after ostree_repo_finder_avahi_start()
+is called). This may be done from any thread.
+
+If @context is %NULL, the current thread-default #GMainContext is used.</doc>
+        <source-position filename="ostree/src/libostree/ostree-repo-finder-avahi.h"
+                         line="54"/>
         <return-value transfer-ownership="full">
+          <doc xml:space="preserve"
+               filename="ostree/src/libostree/ostree-repo-finder-avahi.c"
+               line="1375">a new #OstreeRepoFinderAvahi</doc>
           <type name="RepoFinderAvahi" c:type="OstreeRepoFinderAvahi*"/>
         </return-value>
         <parameters>
-          <parameter name="context" transfer-ownership="none">
+          <parameter name="context"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="ostree/src/libostree/ostree-repo-finder-avahi.c"
+                 line="1362">a #GMainContext for processing Avahi
+   events in, or %NULL to use the current thread-default</doc>
             <type name="GLib.MainContext" c:type="GMainContext*"/>
           </parameter>
         </parameters>

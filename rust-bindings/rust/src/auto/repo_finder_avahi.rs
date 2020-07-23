@@ -2,6 +2,7 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 use glib;
 use glib::object::IsA;
 use glib::translate::*;
@@ -20,7 +21,8 @@ glib_wrapper! {
 }
 
 impl RepoFinderAvahi {
-    pub fn new(context: &glib::MainContext) -> RepoFinderAvahi {
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    pub fn new(context: Option<&glib::MainContext>) -> RepoFinderAvahi {
         unsafe {
             from_glib_full(ostree_sys::ostree_repo_finder_avahi_new(context.to_glib_none().0))
         }
