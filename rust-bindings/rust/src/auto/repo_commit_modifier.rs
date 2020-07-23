@@ -31,7 +31,7 @@ impl RepoCommitModifier {
         let commit_filter_data: Box_<Option<Box_<dyn Fn(&Repo, &str, &gio::FileInfo) -> RepoCommitFilterResult + 'static>>> = Box_::new(commit_filter);
         unsafe extern "C" fn commit_filter_func(repo: *mut ostree_sys::OstreeRepo, path: *const libc::c_char, file_info: *mut gio_sys::GFileInfo, user_data: glib_sys::gpointer) -> ostree_sys::OstreeRepoCommitFilterResult {
             let repo = from_glib_borrow(repo);
-            let path: GString = from_glib_borrow(path);
+            let path: Borrowed<GString> = from_glib_borrow(path);
             let file_info = from_glib_borrow(file_info);
             let callback: &Option<Box_<dyn Fn(&Repo, &str, &gio::FileInfo) -> RepoCommitFilterResult + 'static>> = &*(user_data as *mut _);
             let res = if let Some(ref callback) = *callback {
@@ -69,7 +69,7 @@ impl RepoCommitModifier {
         let callback_data: Box_<P> = Box_::new(callback);
         unsafe extern "C" fn callback_func<P: Fn(&Repo, &str, &gio::FileInfo) -> glib::Variant + 'static>(repo: *mut ostree_sys::OstreeRepo, path: *const libc::c_char, file_info: *mut gio_sys::GFileInfo, user_data: glib_sys::gpointer) -> *mut glib_sys::GVariant {
             let repo = from_glib_borrow(repo);
-            let path: GString = from_glib_borrow(path);
+            let path: Borrowed<GString> = from_glib_borrow(path);
             let file_info = from_glib_borrow(file_info);
             let callback: &P = &*(user_data as *mut _);
             let res = (*callback)(&repo, path.as_str(), &file_info);

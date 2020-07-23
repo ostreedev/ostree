@@ -96,6 +96,7 @@ pub const OSTREE_REPO_COMMIT_ITER_RESULT_DIR: OstreeRepoCommitIterResult = 3;
 pub type OstreeRepoMode = c_int;
 pub const OSTREE_REPO_MODE_BARE: OstreeRepoMode = 0;
 pub const OSTREE_REPO_MODE_ARCHIVE: OstreeRepoMode = 1;
+pub const OSTREE_REPO_MODE_ARCHIVE_Z2: OstreeRepoMode = 1;
 pub const OSTREE_REPO_MODE_BARE_USER: OstreeRepoMode = 2;
 pub const OSTREE_REPO_MODE_BARE_USER_ONLY: OstreeRepoMode = 3;
 
@@ -914,6 +915,7 @@ extern "C" {
     //=========================================================================
     // OstreeCollectionRef
     //=========================================================================
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_collection_ref_get_type() -> GType;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_collection_ref_new(collection_id: *const c_char, ref_name: *const c_char) -> *mut OstreeCollectionRef;
@@ -933,6 +935,7 @@ extern "C" {
     //=========================================================================
     // OstreeCommitSizesEntry
     //=========================================================================
+    #[cfg(any(feature = "v2020_1", feature = "dox"))]
     pub fn ostree_commit_sizes_entry_get_type() -> GType;
     #[cfg(any(feature = "v2020_1", feature = "dox"))]
     pub fn ostree_commit_sizes_entry_new(checksum: *const c_char, objtype: OstreeObjectType, unpacked: u64, archived: u64) -> *mut OstreeCommitSizesEntry;
@@ -990,6 +993,7 @@ extern "C" {
     //=========================================================================
     // OstreeRemote
     //=========================================================================
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_remote_get_type() -> GType;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_remote_get_name(remote: *mut OstreeRemote) -> *const c_char;
@@ -1040,6 +1044,7 @@ extern "C" {
     //=========================================================================
     // OstreeRepoFinderResult
     //=========================================================================
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_finder_result_get_type() -> GType;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_finder_result_new(remote: *mut OstreeRemote, finder: *mut OstreeRepoFinder, priority: c_int, ref_to_checksum: *mut glib::GHashTable, ref_to_timestamp: *mut glib::GHashTable, summary_last_modified: u64) -> *mut OstreeRepoFinderResult;

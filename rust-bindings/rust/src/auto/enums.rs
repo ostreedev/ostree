@@ -8,6 +8,7 @@ use std::fmt;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum DeploymentUnlockedState {
     None,
     Development,
@@ -55,6 +56,7 @@ impl FromGlib<ostree_sys::OstreeDeploymentUnlockedState> for DeploymentUnlockedS
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum GpgSignatureAttr {
     Valid,
     SigExpired,
@@ -150,6 +152,7 @@ impl FromGlib<ostree_sys::OstreeGpgSignatureAttr> for GpgSignatureAttr {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum GpgSignatureFormatFlags {
     GpgSignatureFormatDefault,
     #[doc(hidden)]
@@ -189,6 +192,7 @@ impl FromGlib<ostree_sys::OstreeGpgSignatureFormatFlags> for GpgSignatureFormatF
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum ObjectType {
     File,
     DirTree,
@@ -253,6 +257,7 @@ impl FromGlib<ostree_sys::OstreeObjectType> for ObjectType {
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoCheckoutFilterResult {
     Allow,
     Skip,
@@ -299,6 +304,7 @@ impl FromGlib<ostree_sys::OstreeRepoCheckoutFilterResult> for RepoCheckoutFilter
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoCheckoutMode {
     None,
     User,
@@ -342,6 +348,7 @@ impl FromGlib<ostree_sys::OstreeRepoCheckoutMode> for RepoCheckoutMode {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoCheckoutOverwriteMode {
     None,
     UnionFiles,
@@ -393,6 +400,7 @@ impl FromGlib<ostree_sys::OstreeRepoCheckoutOverwriteMode> for RepoCheckoutOverw
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoCommitFilterResult {
     Allow,
     Skip,
@@ -436,6 +444,7 @@ impl FromGlib<ostree_sys::OstreeRepoCommitFilterResult> for RepoCommitFilterResu
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoCommitIterResult {
     Error,
     End,
@@ -487,6 +496,7 @@ impl FromGlib<ostree_sys::OstreeRepoCommitIterResult> for RepoCommitIterResult {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoMode {
     Bare,
     Archive,
@@ -538,6 +548,7 @@ impl FromGlib<ostree_sys::OstreeRepoMode> for RepoMode {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoPruneFlags {
     None,
     NoPrune,
@@ -585,6 +596,7 @@ impl FromGlib<ostree_sys::OstreeRepoPruneFlags> for RepoPruneFlags {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum RepoRemoteChange {
     Add,
     AddIfNotExists,
@@ -640,6 +652,7 @@ impl FromGlib<ostree_sys::OstreeRepoRemoteChange> for RepoRemoteChange {
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub enum StaticDeltaGenerateOpt {
     Lowlatency,
     Major,

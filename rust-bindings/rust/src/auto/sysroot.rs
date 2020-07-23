@@ -141,9 +141,11 @@ impl Sysroot {
         }
     }
 
-    //pub fn get_deployments(&self) -> /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 22 } {
-    //    unsafe { TODO: call ostree_sys:ostree_sysroot_get_deployments() }
-    //}
+    pub fn get_deployments(&self) -> Vec<Deployment> {
+        unsafe {
+            FromGlibPtrContainer::from_glib_container(ostree_sys::ostree_sysroot_get_deployments(self.to_glib_none().0))
+        }
+    }
 
     pub fn get_fd(&self) -> i32 {
         unsafe {
@@ -354,12 +356,16 @@ impl Sysroot {
         }
     }
 
-    //pub fn write_deployments<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 22 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
-    //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments() }
-    //}
+    pub fn write_deployments<P: IsA<gio::Cancellable>>(&self, new_deployments: &[Deployment], cancellable: Option<&P>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_sysroot_write_deployments(self.to_glib_none().0, new_deployments.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 22 }, opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: &[Deployment], opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments_with_options() }
     //}
 
@@ -386,7 +392,7 @@ impl Sysroot {
         unsafe {
             let f: Box_<F> = Box_::new(f);
             connect_raw(self.as_ptr() as *mut _, b"journal-msg\0".as_ptr() as *const _,
-                Some(transmute(journal_msg_trampoline::<F> as usize)), Box_::into_raw(f))
+                Some(transmute::<_, unsafe extern "C" fn()>(journal_msg_trampoline::<F> as *const ())), Box_::into_raw(f))
         }
     }
 }

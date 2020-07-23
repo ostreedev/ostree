@@ -360,9 +360,14 @@ impl Repo {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_refs_ext() }
     //}
 
-    //pub fn list_static_delta_names<P: IsA<gio::Cancellable>>(&self, out_deltas: /*Unknown conversion*//*Unimplemented*/PtrArray TypeId { ns_id: 0, id: 28 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_list_static_delta_names() }
-    //}
+    pub fn list_static_delta_names<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<Vec<GString>, glib::Error> {
+        unsafe {
+            let mut out_deltas = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_list_static_delta_names(self.to_glib_none().0, &mut out_deltas, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_container(out_deltas)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     #[cfg(any(feature = "v2015_7", feature = "dox"))]
     pub fn load_commit(&self, checksum: &str) -> Result<(glib::Variant, RepoCommitState), glib::Error> {
@@ -1050,7 +1055,7 @@ impl Repo {
         unsafe {
             let f: Box_<F> = Box_::new(f);
             connect_raw(self.as_ptr() as *mut _, b"gpg-verify-result\0".as_ptr() as *const _,
-                Some(transmute(gpg_verify_result_trampoline::<F> as usize)), Box_::into_raw(f))
+                Some(transmute::<_, unsafe extern "C" fn()>(gpg_verify_result_trampoline::<F> as *const ())), Box_::into_raw(f))
         }
     }
 }

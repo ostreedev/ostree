@@ -2,10 +2,32 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use gio;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use gio_sys;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use glib;
 use glib::object::IsA;
 use glib::translate::*;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use glib_sys;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use gobject_sys;
 use ostree_sys;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use std::boxed::Box as Box_;
 use std::fmt;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use std::pin::Pin;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use std::ptr;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use CollectionRef;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use Repo;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+use RepoFinderResult;
 
 glib_wrapper! {
     pub struct RepoFinder(Interface<ostree_sys::OstreeRepoFinder>);
@@ -16,72 +38,94 @@ glib_wrapper! {
 }
 
 impl RepoFinder {
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn resolve_all_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, glib::Error>) + Send + 'static>(finders: &[RepoFinder], refs: &[&CollectionRef], parent_repo: &Repo, cancellable: Option<&P>, callback: Q) {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_finder_resolve_all_async() }
-    //}
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    pub fn resolve_all_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result<Vec<RepoFinderResult>, glib::Error>) + Send + 'static>(finders: &[RepoFinder], refs: &[&CollectionRef], parent_repo: &Repo, cancellable: Option<&P>, callback: Q) {
+        let user_data: Box_<Q> = Box_::new(callback);
+        unsafe extern "C" fn resolve_all_async_trampoline<Q: FnOnce(Result<Vec<RepoFinderResult>, glib::Error>) + Send + 'static>(_source_object: *mut gobject_sys::GObject, res: *mut gio_sys::GAsyncResult, user_data: glib_sys::gpointer) {
+            let mut error = ptr::null_mut();
+            let ret = ostree_sys::ostree_repo_finder_resolve_all_finish(res, &mut error);
+            let result = if error.is_null() { Ok(FromGlibPtrContainer::from_glib_full(ret)) } else { Err(from_glib_full(error)) };
+            let callback: Box_<Q> = Box_::from_raw(user_data as *mut _);
+            callback(result);
+        }
+        let callback = resolve_all_async_trampoline::<Q>;
+        unsafe {
+            ostree_sys::ostree_repo_finder_resolve_all_async(finders.to_glib_none().0, refs.to_glib_none().0, parent_repo.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, Some(callback), Box_::into_raw(user_data) as *mut _);
+        }
+    }
 
-    //
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn resolve_all_async_future(finders: &[RepoFinder], refs: &[&CollectionRef], parent_repo: &Repo) -> Pin<Box_<dyn std::future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, glib::Error>> + 'static>> {
+    
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    pub fn resolve_all_async_future(finders: &[RepoFinder], refs: &[&CollectionRef], parent_repo: &Repo) -> Pin<Box_<dyn std::future::Future<Output = Result<Vec<RepoFinderResult>, glib::Error>> + 'static>> {
 
-        //let finders = finders.clone();
-        //let refs = refs.clone();
-        //let parent_repo = parent_repo.clone();
-        //Box_::pin(gio::GioFuture::new(&(), move |_obj, send| {
-        //    let cancellable = gio::Cancellable::new();
-        //    Self::resolve_all_async(
-        //        &finders,
-        //        &refs,
-        //        &parent_repo,
-        //        Some(&cancellable),
-        //        move |res| {
-        //            send.resolve(res);
-        //        },
-        //    );
+        let finders = finders.clone();
+        let refs = refs.clone();
+        let parent_repo = parent_repo.clone();
+        Box_::pin(gio::GioFuture::new(&(), move |_obj, send| {
+            let cancellable = gio::Cancellable::new();
+            Self::resolve_all_async(
+                &finders,
+                &refs,
+                &parent_repo,
+                Some(&cancellable),
+                move |res| {
+                    send.resolve(res);
+                },
+            );
 
-        //    cancellable
-        //}))
-    //}
+            cancellable
+        }))
+    }
 }
 
 pub const NONE_REPO_FINDER: Option<&RepoFinder> = None;
 
 pub trait RepoFinderExt: 'static {
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, glib::Error>) + Send + 'static>(&self, refs: &[&CollectionRef], parent_repo: &Repo, cancellable: Option<&P>, callback: Q);
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    fn resolve_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result<Vec<RepoFinderResult>, glib::Error>) + Send + 'static>(&self, refs: &[&CollectionRef], parent_repo: &Repo, cancellable: Option<&P>, callback: Q);
 
-    //
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Pin<Box_<dyn std::future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, glib::Error>> + 'static>>;
+    
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Pin<Box_<dyn std::future::Future<Output = Result<Vec<RepoFinderResult>, glib::Error>> + 'static>>;
 }
 
 impl<O: IsA<RepoFinder>> RepoFinderExt for O {
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, glib::Error>) + Send + 'static>(&self, refs: &[&CollectionRef], parent_repo: &Repo, cancellable: Option<&P>, callback: Q) {
-    //    unsafe { TODO: call ostree_sys:ostree_repo_finder_resolve_async() }
-    //}
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    fn resolve_async<P: IsA<gio::Cancellable>, Q: FnOnce(Result<Vec<RepoFinderResult>, glib::Error>) + Send + 'static>(&self, refs: &[&CollectionRef], parent_repo: &Repo, cancellable: Option<&P>, callback: Q) {
+        let user_data: Box_<Q> = Box_::new(callback);
+        unsafe extern "C" fn resolve_async_trampoline<Q: FnOnce(Result<Vec<RepoFinderResult>, glib::Error>) + Send + 'static>(_source_object: *mut gobject_sys::GObject, res: *mut gio_sys::GAsyncResult, user_data: glib_sys::gpointer) {
+            let mut error = ptr::null_mut();
+            let ret = ostree_sys::ostree_repo_finder_resolve_finish(_source_object as *mut _, res, &mut error);
+            let result = if error.is_null() { Ok(FromGlibPtrContainer::from_glib_full(ret)) } else { Err(from_glib_full(error)) };
+            let callback: Box_<Q> = Box_::from_raw(user_data as *mut _);
+            callback(result);
+        }
+        let callback = resolve_async_trampoline::<Q>;
+        unsafe {
+            ostree_sys::ostree_repo_finder_resolve_async(self.as_ref().to_glib_none().0, refs.to_glib_none().0, parent_repo.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, Some(callback), Box_::into_raw(user_data) as *mut _);
+        }
+    }
 
-    //
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Pin<Box_<dyn std::future::Future<Output = Result</*Unimplemented*/PtrArray TypeId { ns_id: 1, id: 2 }, glib::Error>> + 'static>> {
+    
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    fn resolve_async_future(&self, refs: &[&CollectionRef], parent_repo: &Repo) -> Pin<Box_<dyn std::future::Future<Output = Result<Vec<RepoFinderResult>, glib::Error>> + 'static>> {
 
-        //let refs = refs.clone();
-        //let parent_repo = parent_repo.clone();
-        //Box_::pin(gio::GioFuture::new(self, move |obj, send| {
-        //    let cancellable = gio::Cancellable::new();
-        //    obj.resolve_async(
-        //        &refs,
-        //        &parent_repo,
-        //        Some(&cancellable),
-        //        move |res| {
-        //            send.resolve(res);
-        //        },
-        //    );
+        let refs = refs.clone();
+        let parent_repo = parent_repo.clone();
+        Box_::pin(gio::GioFuture::new(self, move |obj, send| {
+            let cancellable = gio::Cancellable::new();
+            obj.resolve_async(
+                &refs,
+                &parent_repo,
+                Some(&cancellable),
+                move |res| {
+                    send.resolve(res);
+                },
+            );
 
-        //    cancellable
-        //}))
-    //}
+            cancellable
+        }))
+    }
 }
 
 impl fmt::Display for RepoFinder {

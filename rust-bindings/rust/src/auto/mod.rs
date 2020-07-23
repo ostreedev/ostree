@@ -26,8 +26,11 @@ mod repo_file;
 pub use self::repo_file::{RepoFile, RepoFileClass, NONE_REPO_FILE};
 pub use self::repo_file::RepoFileExt;
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod repo_finder;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::repo_finder::{RepoFinder, NONE_REPO_FINDER};
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::repo_finder::RepoFinderExt;
 
 mod repo_finder_avahi;
@@ -155,6 +158,7 @@ pub mod traits {
     pub use super::AsyncProgressExt;
     pub use super::MutableTreeExt;
     pub use super::RepoFileExt;
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub use super::RepoFinderExt;
     pub use super::RepoFinderAvahiExt;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
