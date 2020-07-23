@@ -33,18 +33,18 @@ members = [".", "sys"]
 
 [dependencies]
 libc = "0.2"
-bitflags = "1"
-glib = "0.9.0"
-gio = "0.8.0"
-glib-sys = "0.9.1"
-gobject-sys = "0.9.1"
-gio-sys = "0.9.1"
-once_cell = "1.0"
+bitflags = "1.2.1"
+glib = "0.10.1"
+gio = "0.9.0"
+glib-sys = "0.10.0"
+gobject-sys = "0.10.0"
+gio-sys = "0.10.0"
+once_cell = "1.4.0"
 ostree-sys = { version = "0.5.4", path = "sys" }
 
 [dev-dependencies]
-maplit = "1.0.1"
-openat = "0.1.17"
+maplit = "1.0.2"
+openat = "0.1.19"
 tempfile = "3"
 
 [features]
