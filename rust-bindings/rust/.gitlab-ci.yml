@@ -160,7 +160,7 @@ pages:
     paths:
     - public
   only:
-  - master
+  - main
 
 # publish
 publish_ostree-sys:

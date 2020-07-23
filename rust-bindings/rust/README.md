@@ -1,7 +1,7 @@
 # ostree-rs
-[![pipeline status](https://gitlab.com/fkrull/ostree-rs/badges/master/pipeline.svg)](https://gitlab.com/fkrull/ostree-rs/commits/master)
+[![pipeline status](https://gitlab.com/fkrull/ostree-rs/badges/main/pipeline.svg)](https://gitlab.com/fkrull/ostree-rs/commits/main)
 [![Crates.io](https://img.shields.io/crates/v/ostree.svg)](https://crates.io/crates/ostree)
-[![master-docs](https://img.shields.io/badge/docs-master-brightgreen.svg)](https://fkrull.gitlab.io/ostree-rs/ostree)
+[![main-docs](https://img.shields.io/badge/docs-main-brightgreen.svg)](https://fkrull.gitlab.io/ostree-rs/ostree)
 
 **Rust** bindings for [libostree](https://ostree.readthedocs.io).
 
