@@ -8,17 +8,17 @@ variables:
   RUSTC_WRAPPER: sccache
 
 before_script:
-- dnf install -y cargo rust ostree-devel
-- curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+  - dnf install -y cargo rust ostree-devel
+  - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
 
 cache:
   paths:
-  - cargo/
-  - sccache/
+    - cargo/
+    - sccache/
 
 stages:
-- build
-- publish
+  - build
+  - publish
 
 check:
   stage: build
@@ -137,6 +137,17 @@ build_v2020_1:
   script: cargo test --verbose --workspace --features v2020_1
 # all feature levels
 
+# non-x86 build
+build_aarch64:
+  stage: build
+  image: rust:buster
+  before_script:
+    - apt-get update && apt-get install -y libostree-dev
+    - rustup target add aarch64-unknown-linux-gnu
+    - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+  script:
+    - PKG_CONFIG_ALLOW_CROSS=1 cargo build --verbose --workspace --all-features --target aarch64-unknown-linux-gnu
+
 # docs
 pages:
   stage: publish
@@ -150,31 +161,31 @@ pages:
       --extern-html-root-url glib=https://gtk-rs.org/docs
       --extern-html-root-url gio=https://gtk-rs.org/docs
   before_script:
-  - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+    - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
   script:
-  - make merge-lgpl-docs
-  - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
-  - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
-  - cp -r target/doc public
+    - make merge-lgpl-docs
+    - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
+    - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
+    - cp -r target/doc public
   artifacts:
     paths:
-    - public
+      - public
   only:
-  - main
+    - main
 
 # publish
 publish_ostree-sys:
   stage: publish
   script:
-  - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
+    - cargo publish --verbose --manifest-path sys/Cargo.toml --token $CRATES_IO_TOKEN
   cache: {}
   only:
-  - /^ostree-sys\/.+$/
+    - /^ostree-sys\/.+$/
 
 publish_ostree:
   stage: publish
   script:
-  - cargo publish --verbose --token $CRATES_IO_TOKEN
+    - cargo publish --verbose --token $CRATES_IO_TOKEN
   cache: {}
   only:
-  - /^ostree\/.+$/
+    - /^ostree\/.+$/
