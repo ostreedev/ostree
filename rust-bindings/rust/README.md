@@ -82,6 +82,11 @@ parts).
 
 CI includes the LGPL docs in the documentation build.
 
+### Updating ostree
+* update the bundled `gir/OSTree-1.0.gir` file
+* `make gir` to regenerate the generated code
+* in `.gitlab-ci.yml`, update the "all feature levels" section with the output of `make ci-build-stages`
+
 ### Releases
 Releases can be done using the publish_* jobs in the pipeline. There's no
 versioning helper yet so version bumps need to be done manually.
