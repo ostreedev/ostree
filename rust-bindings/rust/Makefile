@@ -55,5 +55,5 @@ ci-build-stages:
 	@for tgt in `cargo read-manifest | jq -jr '.features | keys | map(select(. != "dox")) | map(. + " ") | .[]'`; do \
   		echo "build_$$tgt:"; \
   		echo "  stage: build"; \
-  		echo "  script: cargo test --verbose --all --features $$tgt"; \
+  		echo "  script: cargo test --verbose --workspace --features $$tgt"; \
   	done

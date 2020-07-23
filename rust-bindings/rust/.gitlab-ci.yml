@@ -23,118 +23,118 @@ stages:
 check:
   stage: build
   script:
-  - dnf install -y make git clippy rustfmt
-  # fmt
-  - cargo fmt --package ostree -- --check
-  # check generated code
-  - rm -rf src/auto/
-  - make gir
-  - git checkout -- sys/src/auto/versions.txt src/auto/versions.txt
-  - git diff -R --exit-code
-  # clippy
-  - cargo clippy --all --all-features
+    - dnf install -y make git clippy rustfmt
+    # fmt
+    - cargo fmt --package ostree -- --check
+    # check generated code
+    - rm -rf src/auto/
+    - make gir
+    - git checkout -- sys/src/auto/versions.txt src/auto/versions.txt
+    - git diff -R --exit-code
+    # clippy
+    - cargo clippy --workspace --all-features
 
 build_default-features:
   stage: build
-  script: cargo test --verbose --all
+  script: cargo test --verbose --workspace
 
 # all feature levels
 build_v2014_9:
   stage: build
-  script: cargo test --verbose --all --features v2014_9
+  script: cargo test --verbose --workspace --features v2014_9
 build_v2015_7:
   stage: build
-  script: cargo test --verbose --all --features v2015_7
+  script: cargo test --verbose --workspace --features v2015_7
 build_v2016_14:
   stage: build
-  script: cargo test --verbose --all --features v2016_14
+  script: cargo test --verbose --workspace --features v2016_14
 build_v2016_4:
   stage: build
-  script: cargo test --verbose --all --features v2016_4
+  script: cargo test --verbose --workspace --features v2016_4
 build_v2016_5:
   stage: build
-  script: cargo test --verbose --all --features v2016_5
+  script: cargo test --verbose --workspace --features v2016_5
 build_v2016_6:
   stage: build
-  script: cargo test --verbose --all --features v2016_6
+  script: cargo test --verbose --workspace --features v2016_6
 build_v2016_7:
   stage: build
-  script: cargo test --verbose --all --features v2016_7
+  script: cargo test --verbose --workspace --features v2016_7
 build_v2016_8:
   stage: build
-  script: cargo test --verbose --all --features v2016_8
+  script: cargo test --verbose --workspace --features v2016_8
 build_v2017_1:
   stage: build
-  script: cargo test --verbose --all --features v2017_1
+  script: cargo test --verbose --workspace --features v2017_1
 build_v2017_10:
   stage: build
-  script: cargo test --verbose --all --features v2017_10
+  script: cargo test --verbose --workspace --features v2017_10
 build_v2017_11:
   stage: build
-  script: cargo test --verbose --all --features v2017_11
+  script: cargo test --verbose --workspace --features v2017_11
 build_v2017_12:
   stage: build
-  script: cargo test --verbose --all --features v2017_12
+  script: cargo test --verbose --workspace --features v2017_12
 build_v2017_13:
   stage: build
-  script: cargo test --verbose --all --features v2017_13
+  script: cargo test --verbose --workspace --features v2017_13
 build_v2017_15:
   stage: build
-  script: cargo test --verbose --all --features v2017_15
+  script: cargo test --verbose --workspace --features v2017_15
 build_v2017_2:
   stage: build
-  script: cargo test --verbose --all --features v2017_2
+  script: cargo test --verbose --workspace --features v2017_2
 build_v2017_3:
   stage: build
-  script: cargo test --verbose --all --features v2017_3
+  script: cargo test --verbose --workspace --features v2017_3
 build_v2017_4:
   stage: build
-  script: cargo test --verbose --all --features v2017_4
+  script: cargo test --verbose --workspace --features v2017_4
 build_v2017_6:
   stage: build
-  script: cargo test --verbose --all --features v2017_6
+  script: cargo test --verbose --workspace --features v2017_6
 build_v2017_7:
   stage: build
-  script: cargo test --verbose --all --features v2017_7
+  script: cargo test --verbose --workspace --features v2017_7
 build_v2017_8:
   stage: build
-  script: cargo test --verbose --all --features v2017_8
+  script: cargo test --verbose --workspace --features v2017_8
 build_v2017_9:
   stage: build
-  script: cargo test --verbose --all --features v2017_9
+  script: cargo test --verbose --workspace --features v2017_9
 build_v2018_2:
   stage: build
-  script: cargo test --verbose --all --features v2018_2
+  script: cargo test --verbose --workspace --features v2018_2
 build_v2018_3:
   stage: build
-  script: cargo test --verbose --all --features v2018_3
+  script: cargo test --verbose --workspace --features v2018_3
 build_v2018_5:
   stage: build
-  script: cargo test --verbose --all --features v2018_5
+  script: cargo test --verbose --workspace --features v2018_5
 build_v2018_6:
   stage: build
-  script: cargo test --verbose --all --features v2018_6
+  script: cargo test --verbose --workspace --features v2018_6
 build_v2018_7:
   stage: build
-  script: cargo test --verbose --all --features v2018_7
+  script: cargo test --verbose --workspace --features v2018_7
 build_v2018_9:
   stage: build
-  script: cargo test --verbose --all --features v2018_9
+  script: cargo test --verbose --workspace --features v2018_9
 build_v2019_2:
   stage: build
-  script: cargo test --verbose --all --features v2019_2
+  script: cargo test --verbose --workspace --features v2019_2
 build_v2019_3:
   stage: build
-  script: cargo test --verbose --all --features v2019_3
+  script: cargo test --verbose --workspace --features v2019_3
 build_v2019_4:
   stage: build
-  script: cargo test --verbose --all --features v2019_4
+  script: cargo test --verbose --workspace --features v2019_4
 build_v2019_6:
   stage: build
-  script: cargo test --verbose --all --features v2019_6
+  script: cargo test --verbose --workspace --features v2019_6
 build_v2020_1:
   stage: build
-  script: cargo test --verbose --all --features v2020_1
+  script: cargo test --verbose --workspace --features v2020_1
 # all feature levels
 
 # docs
