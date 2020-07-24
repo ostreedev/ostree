@@ -102,9 +102,9 @@ The version needs to be changed in the following places (if applicable):
 * in `Cargo.toml` for the main crate version
 * in `README.md` in the *Installing* section in case of major version bumps
 
- Then tag the commit as `ostree/x.y.z` and/or `ostree-sys/x.y.z`. This will run
- the crates.io deployment jobs. Main and -sys crate don't have to be released in
- lockstep.
+Then tag the commit as `ostree/x.y.z` and/or `ostree-sys/x.y.z`. This will run
+the crates.io deployment jobs. Main and -sys crate don't have to be released in
+lockstep.
 
 ## License
 The `ostree` crate is licensed under the MIT license. See the LICENSE file for
