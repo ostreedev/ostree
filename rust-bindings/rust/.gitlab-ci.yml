@@ -153,7 +153,7 @@ pages:
   stage: publish
   image: rustlang/rust:nightly
   variables:
-    RUSTDOC_OPTS: >-
+    RUSTDOCFLAGS: >-
       -Z unstable-options
       --extern-html-root-url glib_sys=https://gtk-rs.org/docs
       --extern-html-root-url gobject_sys=https://gtk-rs.org/docs
@@ -164,8 +164,7 @@ pages:
     - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
   script:
     - make merge-lgpl-docs
-    - cargo rustdoc --verbose --package ostree-sys --features dox -- ${RUSTDOC_OPTS}
-    - cargo rustdoc --verbose --package ostree --features dox -- ${RUSTDOC_OPTS}
+    - cargo doc --verbose --workspace --features dox --no-deps
     - cp -r target/doc public
   artifacts:
     paths:
