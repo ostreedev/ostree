@@ -1,5 +1,5 @@
-GIR_REPO := https://github.com/fkrull/gir.git
-GIR_VERSION := d7f05b3cba10b6e25d0504e492965e20466d091f
+GIR_REPO := https://github.com/gtk-rs/gir.git
+GIR_VERSION := 2d1ffab19eb5f9a2f0d7a294dbf07517dab4d989
 RUSTDOC_STRIPPER_VERSION := 0.1.9
 
 all: gir
