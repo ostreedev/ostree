@@ -1,0 +1,29 @@
+.sccache:
+  variables:
+    SCCACHE_URL: https://github.com/mozilla/sccache/releases/download/0.2.13/sccache-0.2.13-x86_64-unknown-linux-musl.tar.gz
+    CARGO_TARGET_DIR: ${CI_PROJECT_DIR}/target
+    CARGO_HOME: ${CI_PROJECT_DIR}/cargo
+    SCCACHE_DIR: ${CI_PROJECT_DIR}/sccache
+    RUSTC_WRAPPER: sccache
+  cache:
+    paths:
+      - cargo/
+      - sccache/
+  before_script:
+    - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+
+.fedora-ostree-devel:
+  image: fedora:rawhide
+  extends: .sccache
+  before_script:
+    - dnf install -y cargo rust ostree-devel
+    - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+
+.rust-ostree-devel:
+  image: rust
+  extends: .sccache
+  before_script:
+    - apt-get update
+    - apt-get install -y libostree-dev
+    - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+
