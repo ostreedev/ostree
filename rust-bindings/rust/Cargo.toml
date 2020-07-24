@@ -1,6 +1,6 @@
 [package]
 name = "ostree"
-version = "0.7.2"
+version = "0.8.0"
 authors = ["Felix Krull"]
 
 license = "MIT"
@@ -40,7 +40,7 @@ glib-sys = "0.10.0"
 gobject-sys = "0.10.0"
 gio-sys = "0.10.0"
 once_cell = "1.4.0"
-ostree-sys = { version = "0.5.4", path = "sys" }
+ostree-sys = { version = "0.6.0", path = "sys" }
 
 [dev-dependencies]
 maplit = "1.0.2"
