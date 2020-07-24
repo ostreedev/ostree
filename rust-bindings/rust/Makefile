@@ -38,7 +38,7 @@ update-gir-files: \
 	gir-files/OSTree-1.0.gir
 
 remove-gir-files:
-	rm -f gir-files/G*-2.0.gir
+	rm -f gir-files/*.gir
 
 gir-files:
 	mkdir -p gir-files
