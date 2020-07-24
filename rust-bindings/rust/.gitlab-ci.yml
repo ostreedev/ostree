@@ -55,7 +55,7 @@ build_aarch64:
 # docs
 pages:
   stage: publish
-  extends: .sccache
+  extends: .rust-ostree-devel
   image: rustlang/rust:nightly
   variables:
     RUSTDOCFLAGS: >-

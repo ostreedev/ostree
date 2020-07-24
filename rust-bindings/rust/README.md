@@ -20,10 +20,15 @@ bindings. These will most likely be added on an as-needed basis.
 
 ### Requirements
 The `ostree` crate requires libostree and the libostree development headers.
-On Debian/Ubuntu, they can be installed with:
 
+On Debian and Ubuntu:
 ```ShellSession
 $ sudo apt-get install libostree-1 libostree-dev
+```
+
+On Fedora and CentOS:
+```ShellSession
+$ sudo dnf install ostree-libs ostree-devel
 ```
 
 ### Installing
@@ -63,7 +68,7 @@ $ make update-gir-files
 ```
 
 The `OSTree-1.0.gir` file needs to be updated manually, either from a recent
-Debian package (`libostree-dev`) or by building from source.
+distribution package or by building from source.
 
 ### Documentation
 The libostree API documentation is not included in the code by default because
@@ -85,11 +90,11 @@ CI includes the LGPL docs in the documentation build.
 ### Updating ostree
 * update the bundled `gir/OSTree-1.0.gir` file
 * `make gir` to regenerate the generated code
-* in `.gitlab-ci.yml`, update the "all feature levels" section with the output of `make ci-build-stages`
+* update the example feature level in `README.md` in case of a new feature level
 
 ### Releases
 Releases can be done using the publish_* jobs in the pipeline. There's no
-versioning helper yet so version bumps need to be done manually.
+versioning helper so version bumps need to be done manually.
 
 The version needs to be changed in the following places (if applicable):
 * in `sys/Cargo.toml` for the -sys crate version
