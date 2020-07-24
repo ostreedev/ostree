@@ -34,7 +34,8 @@ update-gir-files: \
 	gir-files \
 	gir-files/GLib-2.0.gir \
 	gir-files/Gio-2.0.gir \
-	gir-files/GObject-2.0.gir
+	gir-files/GObject-2.0.gir \
+	gir-files/OSTree-1.0.gir
 
 remove-gir-files:
 	rm -f gir-files/G*-2.0.gir
@@ -46,5 +47,10 @@ gir-files:
 	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/master/${@F}
 
 gir-files/OSTree-1.0.gir:
-	echo Best to build libostree with all features and use that
-	exit 1
+	podman run \
+		--rm \
+		-v $(PWD)/gir-files:/gir-files \
+		fedora:rawhide \
+		bash -eu -c "\
+			dnf install -y ostree-devel && \
+			cp /usr/share/gir-1.0/OSTree-1.0.gir /gir-files/"
