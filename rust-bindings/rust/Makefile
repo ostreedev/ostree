@@ -47,10 +47,13 @@ gir-files:
 	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/master/${@F}
 
 gir-files/OSTree-1.0.gir:
+	podman build \
+		--build-arg FEDORA_VER=32 \
+		--build-arg OSTREE_VER=2020.4 \
+		-t ostree-build \
+		.
 	podman run \
 		--rm \
 		-v $(PWD)/gir-files:/gir-files \
-		fedora:rawhide \
-		bash -eu -c "\
-			dnf install -y ostree-devel && \
-			cp /usr/share/gir-1.0/OSTree-1.0.gir /gir-files/"
+		ostree-build \
+		bash -eu -c "cp /build/OSTree-1.0.gir /gir-files/"
