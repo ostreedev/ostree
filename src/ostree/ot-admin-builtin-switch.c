@@ -44,7 +44,7 @@ gboolean
 ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context =
-    g_option_context_new ("REF");
+    g_option_context_new ("REFSPEC");
   g_autoptr(OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
@@ -53,7 +53,7 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocat
 
   if (argc < 2)
     {
-      ot_util_usage_error (context, "REF must be specified", error);
+      ot_util_usage_error (context, "REFSPEC must be specified", error);
       return FALSE;
     }
 
