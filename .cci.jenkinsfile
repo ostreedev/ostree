@@ -77,11 +77,25 @@ parallel fcos: {
         rmdir insttree
         coreos-assembler fetch
         coreos-assembler build
+        coreos-assembler buildextend-metal
+        coreos-assembler buildextend-metal4k
+        coreos-assembler buildextend-live
         # Install the tests
         make -C tests/kolainst install
       """)
     }
-    fcosKola(cosaDir: "${env.WORKSPACE}")
+    stage("Test") {
+      parallel metal: {
+        try {
+          shwrap("cd /srv/fcos && kola testiso -S --scenarios pxe-install,iso-offline-install --output-dir tmp/kola-testiso-metal")
+        } finally {
+          shwrap("cd /srv/fcos && tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
+          archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso*.tar.xz'
+        }
+      }, kola: {
+        fcosKola(cosaDir: "${env.WORKSPACE}")
+      }
+    }
   }
 },
 buildopts: {
