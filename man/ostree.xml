@@ -484,6 +484,70 @@ Boston, MA 02111-1307, USA.
     </refsect1>
 
     <refsect1>
+        <title>Terminology</title>
+        <para>
+            The following terms are commonly used throughout the man pages. Terms in upper case letters
+            are literals used in command line arguments.
+        </para>
+        <glosslist>
+            <glossentry><glossterm><literal>BRANCH</literal></glossterm>
+                <glossdef>
+                    <para>
+                        Branch name. Part of a <glossterm><literal>REF</literal></glossterm>.
+                    </para>
+                </glossdef>
+            </glossentry>
+            <glossentry><glossterm><literal>CHECKSUM</literal></glossterm>
+                <glossdef>
+                    <para>
+                        A SHA256 hash of a object stored in the OSTree repository. This can be a content,
+                        a dirtree, a dirmeta or a commit object. If the SHA256 hash of a commit object is
+                        meant, the term <glossterm><literal>COMMIT</literal></glossterm> is used.
+                    </para>
+                </glossdef>
+            </glossentry>
+            <glossentry><glossterm><literal>COMMIT</literal></glossterm>
+                <glossdef>
+                    <para>
+                        A SHA256 hash of a commit object.
+                    </para>
+                </glossdef>
+            </glossentry>
+            <glossentry><glossterm><literal>REF</literal></glossterm>
+                <glossdef>
+                    <para>
+                        A reference to a particular commit. References are text files stored in
+                        <filename>refs/</filename> that name (refer to) a particular commit. A
+                        reference can only be the branch name part, in which case a local reference
+                        is used (e.g. <literal>mybranch/stable</literal>). If a remote branch
+                        is referred to, the remote name followed by a colon and the branch name
+                        needs to be used (e.g. <literal>myremote:mybranch/stable</literal>).
+                    </para>
+                </glossdef>
+            </glossentry>
+            <glossentry><glossterm><literal>REV</literal></glossterm> <glossterm><literal>REFSPEC</literal></glossterm>
+                <glossdef>
+                    <para>
+                        A specific revision, a commit. This can be anything which can be resolved to a
+                        commit, e.g. a <glossterm><literal>REF</literal></glossterm> or a
+                        <glossterm><literal>COMMIT</literal></glossterm>.
+                    </para>
+                </glossdef>
+            </glossentry>
+            <glossentry><glossterm>SHA256</glossterm>
+                <glossdef>
+                    <para>
+                        A cryptographic hash function used to store objects in the OSTree
+                        repository. The hashes have a length of 256 bites and are typically
+                        shown and passed to ostree in its 64 ASCII character long hexadecimal
+                        representation
+                        (e.g. 0fc70ed33cfd7d26fe99ae29afb7682ddd0e2157a4898bd8cfcdc8a03565b870).
+                    </para>
+                </glossdef>
+            </glossentry>
+        </glosslist>
+    </refsect1>
+    <refsect1>
         <title>See Also</title>
         <para>
             <citerefentry><refentrytitle>ostree.repo</refentrytitle><manvolnum>5</manvolnum></citerefentry>
