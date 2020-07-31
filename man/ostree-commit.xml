@@ -83,6 +83,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--body-file</option>, <option>-F</option>="FILE"</term>
+
+                <listitem><para>
+                    Full commit description from a file. (optional)
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--editor</option>, <option>-e</option></term>
 
                 <listitem><para>
@@ -95,6 +103,14 @@ Boston, MA 02111-1307, USA.
 
                 <listitem><para>
                     Branch.  Required, unless --orphan is given.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--parent</option>="COMMIT"</term>
+
+                <listitem><para>
+                    Parent checksum or "none" to explicitly use no parent.  If not specified, <literal>BRANCH</literal> is used as parent (no parent in case <literal>BRANCH</literal> does not exist).
                 </para></listitem>
             </varlistentry>
 
@@ -119,7 +135,23 @@ Boston, MA 02111-1307, USA.
                 <term><option>--add-metadata-string</option>="KEY=VALUE"</term>
 
                 <listitem><para>
-                    Add a key/value pair to metadata.
+                    Add a key/value pair to metadata. Can be specified multiple times.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--add-metadata</option>="KEY=VALUE"</term>
+
+                <listitem><para>
+                    Add a key/value pair to metadata, where the KEY is a string, and VALUE is g_variant_parse() formatted. Can be specified multiple times.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--keep-metadata</option>="KEY"</term>
+
+                <listitem><para>
+                    Keep metadata KEY and its associated VALUE from parent. Can be specified multiple times.
                 </para></listitem>
             </varlistentry>
 
