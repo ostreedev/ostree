@@ -173,6 +173,9 @@ assert_create_remote (Fixture     *fixture,
   glnx_shutil_mkdir_p_at (fixture->tmpdir.fd, repo_name, 0700, NULL, &error);
   g_assert_no_error (error);
 
+  glnx_shutil_mkdir_p_at (fixture->tmpdir.fd, "empty", 0700, NULL, &error);
+  g_assert_no_error (error);
+
   g_autoptr(GFile) repo_path = g_file_get_child (fixture->working_dir, repo_name);
   g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_path);
   ostree_repo_set_collection_id (repo, collection_id, &error);
@@ -193,7 +196,7 @@ assert_create_remote (Fixture     *fixture,
       g_autoptr(OstreeRepoFile) repo_file = NULL;
 
       mtree = ostree_mutable_tree_new ();
-      ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, ".", mtree, NULL, NULL, &error);
+      ostree_repo_write_dfd_to_mtree (repo, fixture->tmpdir.fd, "empty", mtree, NULL, NULL, &error);
       g_assert_no_error (error);
       ostree_repo_write_mtree (repo, mtree, (GFile **) &repo_file, NULL, &error);
       g_assert_no_error (error);
