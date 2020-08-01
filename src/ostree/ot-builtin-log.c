@@ -95,7 +95,7 @@ ostree_builtin_log (int           argc,
   g_autofree char *checksum = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 
-  context = g_option_context_new ("REF");
+  context = g_option_context_new ("REV");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
@@ -105,7 +105,7 @@ ostree_builtin_log (int           argc,
 
   if (argc <= 1)
     {
-      ot_util_usage_error (context, "A ref argument is required", error);
+      ot_util_usage_error (context, "A rev argument is required", error);
       goto out;
     }
   rev = argv[1];

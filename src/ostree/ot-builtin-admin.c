@@ -65,7 +65,7 @@ static OstreeCommand admin_subcommands[] = {
     "List deployments" },
   { "switch", OSTREE_BUILTIN_FLAG_NO_REPO,
     ot_admin_builtin_switch,
-    "Construct new tree from REF and deploy it" },
+    "Construct new tree from REFSPEC and deploy it" },
   { "undeploy", OSTREE_BUILTIN_FLAG_NO_REPO,
     ot_admin_builtin_undeploy,
     "Delete deployment INDEX" },
