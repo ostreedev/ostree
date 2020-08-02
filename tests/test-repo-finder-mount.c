@@ -190,6 +190,9 @@ assert_create_remote_va (Fixture *fixture,
   ostree_repo_create (repo, OSTREE_REPO_MODE_ARCHIVE, NULL, &error);
   g_assert_no_error (error);
 
+  glnx_shutil_mkdir_p_at (fixture->tmpdir.fd, "empty", 0700, NULL, &error);
+  g_assert_no_error (error);
+
   /* Set up the refs from @.... */
   for (const OstreeCollectionRef *ref = va_arg (args, const OstreeCollectionRef *);
        ref != NULL;
@@ -201,7 +204,7 @@ assert_create_remote_va (Fixture *fixture,
       gchar **out_checksum = va_arg (args, gchar **);
 
       mtree = ostree_mutable_tree_new ();
-      ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, ".", mtree, NULL, NULL, &error);
+      ostree_repo_write_dfd_to_mtree (repo, fixture->tmpdir.fd, "empty", mtree, NULL, NULL, &error);
       g_assert_no_error (error);
       ostree_repo_write_mtree (repo, mtree, (GFile **) &repo_file, NULL, &error);
       g_assert_no_error (error);
