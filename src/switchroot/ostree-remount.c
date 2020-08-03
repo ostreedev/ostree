@@ -106,11 +106,11 @@ main(int argc, char *argv[])
       exit (EXIT_SUCCESS);
     }
 
-  /* Handle remounting /sysroot read-only now */
-  if (unlink (_OSTREE_SYSROOT_READONLY_STAMP) == 0)
-    {
-      do_remount ("/sysroot", false);
-    }
+  /* Handle remounting /sysroot; if it's explicitly marked as read-only (opt in)
+   * then ensure it's readonly, otherwise mount writable, the same as /
+   */
+  bool sysroot_configured_readonly = unlink (_OSTREE_SYSROOT_READONLY_STAMP) == 0;
+  do_remount ("/sysroot", !sysroot_configured_readonly);
 
   /* If /var was created as as an OSTree default bind mount (instead of being a separate filesystem)
     * then remounting the root mount read-only also remounted it.
