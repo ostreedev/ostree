@@ -114,6 +114,7 @@ dump_commit (GVariant            *variant,
   const gchar *subject;
   const gchar *body;
   guint64 timestamp;
+  g_autofree char *parent = NULL;
   g_autofree char *str = NULL;
   g_autofree char *version = NULL;
   g_autoptr(GError) local_error = NULL;
@@ -129,6 +130,12 @@ dump_commit (GVariant            *variant,
       g_assert (local_error); /* Pacify static analysis */
       errx (1, "Failed to read commit: %s", local_error->message);
     }
+
+  if ((parent = ostree_commit_get_parent(variant)))
+    {
+      g_print ("Parent:  %s\n", parent);
+    }
+
   g_autofree char *contents = ostree_commit_get_content_checksum (variant) ?: "<invalid commit>";
   g_print ("ContentChecksum:  %s\n", contents);
   g_print ("Date:  %s\n", str);
