@@ -6,6 +6,11 @@ set -xeuo pipefail
 dn=$(dirname $0)
 . ${dn}/libbuild.sh
 
+if [ `umask` = 0000 ]; then
+  echo 'Your umask is broken, please use e.g. `umask 0022`' 1>&2
+  exit 1
+fi
+
 ${dn}/installdeps.sh
 
 # Default libcurl on by default in fedora unless libsoup is enabled
