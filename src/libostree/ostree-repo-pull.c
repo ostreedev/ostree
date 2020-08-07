@@ -3273,37 +3273,37 @@ initiate_request (OtPullData                 *pull_data,
  * Like ostree_repo_pull(), but supports an extensible set of flags.
  * The following are currently defined:
  *
- *   * refs (as): Array of string refs
- *   * collection-refs (a(sss)): Array of (collection ID, ref name, checksum) tuples to pull;
+ *   * `refs` (`as`): Array of string refs
+ *   * `collection-refs` (`a(sss)`): Array of (collection ID, ref name, checksum) tuples to pull;
  *     mutually exclusive with `refs` and `override-commit-ids`. Checksums may be the empty
  *     string to pull the latest commit for that ref
- *   * flags (i): An instance of #OstreeRepoPullFlags
- *   * subdir (s): Pull just this subdirectory
- *   * subdirs (as): Pull just these subdirectories
- *   * override-remote-name (s): If local, add this remote to refspec
- *   * gpg-verify (b): GPG verify commits
- *   * gpg-verify-summary (b): GPG verify summary
- *   * disable-sign-verify (b): Disable signapi verification of commits
- *   * disable-sign-verify-summary (b): Disable signapi verification of the summary
- *   * depth (i): How far in the history to traverse; default is 0, -1 means infinite
- *   * per-object-fsync (b): Perform disk writes more slowly, avoiding a single large I/O sync
- *   * disable-static-deltas (b): Do not use static deltas
- *   * require-static-deltas (b): Require static deltas
- *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
- *   * timestamp-check (b): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
- *   * timestamp-check-from-rev (s): Verify that all fetched commit timestamps are newer than timestamp of given rev; Since: 2020.4
- *   * metadata-size-restriction (t): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
- *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
- *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
- *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
- *   * http-headers (a(ss)): Additional headers to add to all HTTP requests
- *   * update-frequency (u): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
- *   * localcache-repos (as): File paths for local repos to use as caches when doing remote fetches
- *   * append-user-agent (s): Additional string to append to the user agent
- *   * n-network-retries (u): Number of times to retry each download on receiving
+ *   * `flags` (`i`): An instance of #OstreeRepoPullFlags
+ *   * `subdir` (`s`): Pull just this subdirectory
+ *   * `subdirs` (`as`): Pull just these subdirectories
+ *   * `override-remote-name` (`s`): If local, add this remote to refspec
+ *   * `gpg-verify` (`b`): GPG verify commits
+ *   * `gpg-verify-summary` (`b`): GPG verify summary
+ *   * `disable-sign-verify` (`b`): Disable signapi verification of commits
+ *   * `disable-sign-verify-summary` (`b`): Disable signapi verification of the summary
+ *   * `depth` (`i`): How far in the history to traverse; default is 0, -1 means infinite
+ *   * `per-object-fsync` (`b`): Perform disk writes more slowly, avoiding a single large I/O sync
+ *   * `disable-static-deltas` (`b`): Do not use static deltas
+ *   * `require-static-deltas` (`b`): Require static deltas
+ *   * `override-commit-ids` (`as`): Array of specific commit IDs to fetch for refs
+ *   * `timestamp-check` (`b`): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
+ *   * `timestamp-check-from-rev` (`s`): Verify that all fetched commit timestamps are newer than timestamp of given rev; Since: 2020.4
+ *   * `metadata-size-restriction` (`t`): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
+ *   * `dry-run` (`b`): Only print information on what will be downloaded (requires static deltas)
+ *   * `override-url` (`s`): Fetch objects from this URL if remote specifies no metalink in options
+ *   * `inherit-transaction` (`b`): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
+ *   * `http-headers` (`a(ss)`): Additional headers to add to all HTTP requests
+ *   * `update-frequency` (`u`): Frequency to call the async progress callback in milliseconds, if any; only values higher than 0 are valid
+ *   * `localcache-repos` (`as`): File paths for local repos to use as caches when doing remote fetches
+ *   * `append-user-agent` (`s`): Additional string to append to the user agent
+ *   * `n-network-retries` (`u`): Number of times to retry each download on receiving
  *     a transient network error, such as a socket timeout; default is 5, 0
  *     means return errors without retrying. Since: 2018.6
- *   * ref-keyring-map (a(sss)): Array of (collection ID, ref name, keyring
+ *   * `ref-keyring-map` (`a(sss)`): Array of (collection ID, ref name, keyring
  *     remote name) tuples specifying which remote's keyring should be used when
  *     doing GPG verification of each collection-ref. This is useful to prevent a
  *     remote from serving malicious updates to refs which did not originate from
@@ -3311,6 +3311,14 @@ initiate_request (OtPullData                 *pull_data,
  *     not being pulled will be ignored and any ref without a keyring remote
  *     will be verified with the keyring of the remote being pulled from.
  *     Since: 2019.2
+ *   * `summary-bytes` (`ay'): Contents of the `summary` file to use. If this is
+ *     specified, `summary-sig-bytes` must also be specified. This is
+ *     useful if doing multiple pull operations in a transaction, using
+ *     ostree_repo_remote_fetch_summary_with_options() beforehand to download
+ *     the `summary` and `summary.sig` once for the entire transaction. If not
+ *     specified, the `summary` will be downloaded from the remote. Since: 2020.5
+ *   * `summary-sig-bytes` (`ay`): Contents of the `summary.sig` file. If this
+ *     is specified, `summary-bytes` must also be specified. Since: 2020.5
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -3356,6 +3364,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   int i;
   g_autofree char **opt_localcache_repos = NULL;
   g_autoptr(GVariantIter) ref_keyring_map_iter = NULL;
+  g_autoptr(GVariant) summary_bytes_v = NULL;
+  g_autoptr(GVariant) summary_sig_bytes_v = NULL;
   /* If refs or collection-refs has exactly one value, this will point to that
    * value, otherwise NULL. Used for logging.
    */
@@ -3402,6 +3412,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         g_variant_lookup (options, "n-network-retries", "u", &pull_data->n_network_retries);
       opt_ref_keyring_map_set =
 	g_variant_lookup (options, "ref-keyring-map", "a(sss)", &ref_keyring_map_iter);
+      (void) g_variant_lookup (options, "summary-bytes", "@ay", &summary_bytes_v);
+      (void) g_variant_lookup (options, "summary-sig-bytes", "@ay", &summary_sig_bytes_v);
 
       if (pull_data->remote_refspec_name != NULL)
         pull_data->remote_name = g_strdup (pull_data->remote_refspec_name);
@@ -3438,6 +3450,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
    * in-advance information for bare fetches.
    */
   g_return_val_if_fail (!pull_data->dry_run || pull_data->require_static_deltas, FALSE);
+
+  /* summary-bytes and summary-sig-bytes must both be specified, or neither be
+   * specified, so we know they’re consistent */
+  g_return_val_if_fail ((summary_bytes_v == NULL) == (summary_sig_bytes_v == NULL), FALSE);
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
@@ -3651,6 +3667,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (!metalink_uri)
         goto out;
 
+      /* FIXME: Use summary_bytes_v/summary_sig_bytes_v to avoid unnecessary
+       * re-downloads here. Would require additional support for caching the
+       * metalink file or mirror list. */
+
       metalink = _ostree_metalink_new (pull_data->fetcher, "summary",
                                        OSTREE_MAX_METADATA_SIZE, metalink_uri,
                                        pull_data->n_network_retries);
@@ -3841,7 +3861,25 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_autoptr(GVariant) additional_metadata = NULL;
     gboolean summary_from_cache = FALSE;
 
-    if (!pull_data->summary_data_sig)
+    if (summary_sig_bytes_v)
+      {
+        /* Must both be specified */
+        g_assert (summary_bytes_v);
+
+        bytes_sig = g_variant_get_data_as_bytes (summary_sig_bytes_v);
+        bytes_summary = g_variant_get_data_as_bytes (summary_bytes_v);
+
+        if (!bytes_sig || !bytes_summary)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "summary-bytes or summary-sig-bytes set to invalid value");
+            goto out;
+          }
+
+        g_debug ("Loaded %s summary from options", remote_name_or_baseurl);
+      }
+
+    if (!bytes_sig)
       {
         if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                          pull_data->meta_mirrorlist,
@@ -3854,6 +3892,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
 
     if (bytes_sig &&
+        !bytes_summary &&
         !pull_data->remote_repo_local &&
         !_ostree_repo_load_cache_summary_if_same_sig (self,
                                                       remote_name_or_baseurl,
@@ -3863,7 +3902,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                       error))
       goto out;
 
-    if (bytes_summary)
+    if (bytes_summary && !summary_bytes_v)
       {
         g_debug ("Loaded %s summary from cache", remote_name_or_baseurl);
         summary_from_cache = TRUE;
