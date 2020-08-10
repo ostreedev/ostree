@@ -64,5 +64,5 @@ echo "ok view summary"
 ${OSTREE} summary --raw > raw-summary.txt
 assert_file_has_content_literal raw-summary.txt "('main', ("
 assert_file_has_content_literal raw-summary.txt "('other', ("
-assert_file_has_content_literal raw-summary.txt "{'ostree.summary.last-modified': <uint64"
+assert_file_has_content_literal raw-summary.txt "'ostree.summary.last-modified': <uint64"
 echo "ok view summary raw"

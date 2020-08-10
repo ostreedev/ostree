@@ -361,6 +361,22 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
           pretty_key = "Collection Map";
           value_str = g_strdup ("(printed above)");
         }
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_MODE) == 0)
+        {
+          OstreeRepoMode repo_mode;
+          const char *repo_mode_str = g_variant_get_string (value, NULL);
+
+          pretty_key = "Repository Mode";
+          if (!ostree_repo_mode_from_string (repo_mode_str, &repo_mode, NULL))
+            value_str = g_strdup_printf ("Invalid (‘%s’)", repo_mode_str);
+          else
+            value_str = g_strdup (repo_mode_str);
+        }
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_TOMBSTONE_COMMITS) == 0)
+        {
+          pretty_key = "Has Tombstone Commits";
+          value_str = g_strdup (g_variant_get_boolean (value) ? "Yes" : "No");
+        }
       else
         {
           value_str = g_variant_print (value, FALSE);
