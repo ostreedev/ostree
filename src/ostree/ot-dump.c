@@ -322,10 +322,11 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
   collection_map = g_variant_lookup_value (exts, OSTREE_SUMMARY_COLLECTION_MAP, G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
   if (collection_map != NULL)
     {
+      g_autoptr(GVariant) collection_refs = NULL;
       g_variant_iter_init (&iter, collection_map);
 
-      while (g_variant_iter_loop (&iter, "{&s@a(s(taya{sv}))}", &collection_id, &refs))
-        dump_summary_refs (collection_id, refs);
+      while (g_variant_iter_loop (&iter, "{&s@a(s(taya{sv}))}", &collection_id, &collection_refs))
+        dump_summary_refs (collection_id, collection_refs);
     }
 
   /* Print out the additional metadata. */
