@@ -2001,6 +2001,8 @@ start_fetch (OtPullData *pull_data,
                                       is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch);
 }
 
+/* Deprecated: code should load options from the `summary` file rather than
+ * downloading the remote’s `config` file, to save on network round trips. */
 static gboolean
 load_remote_repo_config (OtPullData    *pull_data,
                          GKeyFile     **out_keyfile,
@@ -3757,30 +3759,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (!ostree_repo_open (pull_data->remote_repo_local, cancellable, error))
         goto out;
     }
-  else
-    {
-      if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
-        goto out;
-
-      if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
-                                              &remote_mode_str, error))
-        goto out;
-
-      if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
-        goto out;
-
-      if (!ot_keyfile_get_boolean_with_default (remote_config, "core", "tombstone-commits", FALSE,
-                                                &pull_data->has_tombstone_commits, error))
-        goto out;
-
-      if (pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Can't pull from archives with mode \"%s\"",
-                       remote_mode_str);
-          goto out;
-        }
-    }
   }
 
   /* Change some option defaults if we're actually pulling from a local
@@ -3854,6 +3832,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_autoptr(GVariant) deltas = NULL;
     g_autoptr(GVariant) additional_metadata = NULL;
     gboolean summary_from_cache = FALSE;
+    gboolean remote_mode_loaded = FALSE;
+    gboolean tombstone_commits = FALSE;
 
     if (summary_sig_bytes_v)
       {
@@ -4166,6 +4146,46 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                  g_strdup (delta),
                                  csum_data);
           }
+      }
+
+    if (pull_data->summary &&
+        g_variant_lookup (additional_metadata, OSTREE_SUMMARY_MODE, "s", &remote_mode_str) &&
+        g_variant_lookup (additional_metadata, OSTREE_SUMMARY_TOMBSTONE_COMMITS, "b", &tombstone_commits))
+      {
+        if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
+          goto out;
+        pull_data->has_tombstone_commits = tombstone_commits;
+        remote_mode_loaded = TRUE;
+      }
+    else if (pull_data->remote_repo_local == NULL)
+      {
+        /* Fall-back path which loads the necessary config from the remote’s
+         * `config` file. Doing so is deprecated since it means an
+         * additional round trip to the remote for each pull. No need to do
+         * it for local pulls. */
+        if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
+          goto out;
+
+        if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
+                                                &remote_mode_str, error))
+          goto out;
+
+        if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
+          goto out;
+
+        if (!ot_keyfile_get_boolean_with_default (remote_config, "core", "tombstone-commits", FALSE,
+                                                  &pull_data->has_tombstone_commits, error))
+          goto out;
+
+        remote_mode_loaded = TRUE;
+      }
+
+    if (remote_mode_loaded && pull_data->remote_repo_local == NULL && pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Can't pull from archives with mode \"%s\"",
+                     remote_mode_str);
+        goto out;
       }
   }
 
