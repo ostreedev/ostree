@@ -87,7 +87,7 @@ parallel fcos: {
     stage("Test") {
       parallel metal: {
         try {
-          shwrap("kola testiso -S --scenarios pxe-install,iso-offline-install --output-dir tmp/kola-testiso-metal")
+          shwrap("kola testiso -S --scenarios pxe-install,iso-offline-install,pxe-offline-install --output-dir tmp/kola-testiso-metal")
         } finally {
           shwrap("tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
           archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso*.tar.xz'
