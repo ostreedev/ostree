@@ -77,7 +77,7 @@ fn test_pull_basicauth() -> Result<()> {
             format!("http://{}@{}/", TEST_HTTP_BASIC_AUTH, addr).into_bytes(),
         )?;
         let osroot = Path::new("osroot");
-        mkroot(&osroot)?;
+        crate::treegen::mkroot(&osroot)?;
         sh_execute!(
             r#"ostree --repo={serverrepo} init --mode=archive
         ostree --repo={serverrepo} commit -b os --tree=dir={osroot} >/dev/null

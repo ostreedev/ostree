@@ -81,6 +81,8 @@ parallel fcos: {
         coreos-assembler buildextend-metal4k
         coreos-assembler buildextend-live --fast
         # Install the tests
+        # Build and install the tests
+        make -C tests/kolainst
         make -C tests/kolainst install
       """)
     }
