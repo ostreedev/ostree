@@ -37,6 +37,8 @@ G_BEGIN_DECLS
  * @origin: How to construct an upgraded version of this tree
  * @unlocked: The unlocked state
  * @staged: TRUE iff this deployment is staged
+ * @overlay_initrds: Checksums of staged additional initrds for this deployment
+ * @overlay_initrds_id: Unique ID generated from initrd checksums; used to compare deployments
  */
 struct _OstreeDeployment
 {
@@ -52,8 +54,15 @@ struct _OstreeDeployment
   GKeyFile *origin;
   OstreeDeploymentUnlockedState unlocked;
   gboolean staged;
+  char **overlay_initrds;
+  char *overlay_initrds_id;
 };
 
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);
+
+void _ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
+                                             char **overlay_initrds);
+
+char** _ostree_deployment_get_overlay_initrds (OstreeDeployment *self);
 
 G_END_DECLS

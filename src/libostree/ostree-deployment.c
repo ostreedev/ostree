@@ -158,6 +158,34 @@ _ostree_deployment_set_bootcsum (OstreeDeployment *self,
   self->bootcsum = g_strdup (bootcsum);
 }
 
+void
+_ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
+                                        char            **overlay_initrds)
+{
+  g_clear_pointer (&self->overlay_initrds, g_strfreev);
+  g_clear_pointer (&self->overlay_initrds_id, g_free);
+
+  if (!overlay_initrds || g_strv_length (overlay_initrds) == 0)
+    return;
+
+  /* Generate a unique ID representing this combination of overlay initrds. This is so that
+   * ostree_sysroot_write_deployments_with_options() can easily compare initrds when
+   * comparing deployments for whether a bootswap is necessary. We could be fancier here but
+   * meh... this works. */
+  g_autoptr(GString) id = g_string_new (NULL);
+  for (char **it = overlay_initrds; it && *it; it++)
+    g_string_append (id, *it);
+
+  self->overlay_initrds = g_strdupv (overlay_initrds);
+  self->overlay_initrds_id = g_string_free (g_steal_pointer (&id), FALSE);
+}
+
+char**
+_ostree_deployment_get_overlay_initrds (OstreeDeployment *self)
+{
+  return self->overlay_initrds;
+}
+
 /**
  * ostree_deployment_clone:
  * @self: Deployment
@@ -174,6 +202,8 @@ ostree_deployment_clone (OstreeDeployment *self)
 
   new_bootconfig = ostree_bootconfig_parser_clone (self->bootconfig);
   ostree_deployment_set_bootconfig (ret, new_bootconfig);
+
+  _ostree_deployment_set_overlay_initrds (ret, self->overlay_initrds);
 
   if (self->origin)
     {
@@ -238,6 +268,8 @@ ostree_deployment_finalize (GObject *object)
   g_free (self->bootcsum);
   g_clear_object (&self->bootconfig);
   g_clear_pointer (&self->origin, g_key_file_unref);
+  g_strfreev (self->overlay_initrds);
+  g_free (self->overlay_initrds_id);
 
   G_OBJECT_CLASS (ostree_deployment_parent_class)->finalize (object);
 }

@@ -84,9 +84,13 @@ struct OstreeSysroot {
 /* We keep some transient state in /run */
 #define _OSTREE_SYSROOT_RUNSTATE_STAGED "/run/ostree/staged-deployment"
 #define _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED "/run/ostree/staged-deployment-locked"
+#define _OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR "/run/ostree/staged-initrds/"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_DIR "/run/ostree/deployment-state/"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT "unlocked-development"
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_TRANSIENT "unlocked-transient"
+
+#define _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS "ostree/initramfs-overlays"
+#define _OSTREE_SYSROOT_INITRAMFS_OVERLAYS "boot/" _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS
 
 gboolean
 _ostree_sysroot_ensure_writable (OstreeSysroot      *self,

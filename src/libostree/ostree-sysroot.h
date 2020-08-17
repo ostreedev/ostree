@@ -186,11 +186,19 @@ gboolean ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                                                         GCancellable      *cancellable,
                                                         GError           **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_sysroot_stage_overlay_initrd (OstreeSysroot  *self,
+                                              int             fd,
+                                              char          **out_checksum,
+                                              GCancellable   *cancellable,
+                                              GError        **error);
+
 typedef struct {
   gboolean unused_bools[8];
   int unused_ints[8];
   char **override_kernel_argv;
-  gpointer unused_ptrs[7];
+  char **overlay_initrds;
+  gpointer unused_ptrs[6];
 } OstreeSysrootDeployTreeOpts;
 
 _OSTREE_PUBLIC

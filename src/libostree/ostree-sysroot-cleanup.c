@@ -298,6 +298,8 @@ cleanup_old_deployments (OstreeSysroot       *self,
     g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   g_autoptr(GHashTable) active_boot_checksums =
     g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  g_autoptr(GHashTable) active_overlay_initrds =
+    g_hash_table_new (g_str_hash, g_str_equal); /* borrows from deployment's bootconfig */
   for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
@@ -306,6 +308,11 @@ cleanup_old_deployments (OstreeSysroot       *self,
       /* Transfer ownership */
       g_hash_table_replace (active_deployment_dirs, deployment_path, deployment_path);
       g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
+
+      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+      char **initrds = ostree_bootconfig_parser_get_overlay_initrds (bootconfig);
+      for (char **it = initrds; it && *it; it++)
+        g_hash_table_add (active_overlay_initrds, (char*)glnx_basename (*it));
     }
 
   /* Find all deployment directories, both active and inactive */
@@ -347,6 +354,42 @@ cleanup_old_deployments (OstreeSysroot       *self,
 
       if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (bootdir), cancellable, error))
         return FALSE;
+    }
+
+  /* Clean up overlay initrds */
+  glnx_autofd int overlays_dfd =
+    glnx_opendirat_with_errno (self->sysroot_fd, _OSTREE_SYSROOT_INITRAMFS_OVERLAYS, FALSE);
+  if (overlays_dfd < 0)
+    {
+      if (errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "open(initrd_overlays)");
+    }
+  else
+    {
+      g_autoptr(GPtrArray) initrds_to_delete = g_ptr_array_new_with_free_func (g_free);
+      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+      if (!glnx_dirfd_iterator_init_at (overlays_dfd, ".", TRUE, &dfd_iter, error))
+        return FALSE;
+      while (TRUE)
+        {
+          struct dirent *dent;
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+            return FALSE;
+          if (dent == NULL)
+            break;
+
+          /* there shouldn't be other file types there, but let's be conservative */
+          if (dent->d_type != DT_REG)
+            continue;
+
+          if (!g_hash_table_lookup (active_overlay_initrds, dent->d_name))
+            g_ptr_array_add (initrds_to_delete, g_strdup (dent->d_name));
+        }
+      for (guint i = 0; i < initrds_to_delete->len; i++)
+        {
+          if (!ot_ensure_unlinked_at (overlays_dfd, initrds_to_delete->pdata[i], error))
+            return FALSE;
+        }
     }
 
   return TRUE;
