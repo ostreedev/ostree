@@ -1935,8 +1935,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   if (kernel_layout->initramfs_namever)
     {
-      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
-      ostree_bootconfig_parser_set (bootconfig, "initrd", boot_relpath);
+      g_autofree char * initrd_boot_relpath =
+        g_strconcat ("/", bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "initrd", initrd_boot_relpath);
     }
   else
     {
