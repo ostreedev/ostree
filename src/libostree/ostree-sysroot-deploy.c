@@ -2699,10 +2699,8 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
                               cancellable, error))
     return FALSE;
 
-  g_autofree char *new_bootcsum = NULL;
   g_autoptr(OstreeDeployment) new_deployment =
-    ostree_deployment_new (0, osname, revision, new_deployserial,
-                           new_bootcsum, -1);
+    ostree_deployment_new (0, osname, revision, new_deployserial, NULL, -1);
   ostree_deployment_set_origin (new_deployment, origin);
 
   /* Check out the userspace tree onto the filesystem */
