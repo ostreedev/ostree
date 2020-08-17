@@ -111,7 +111,6 @@ install_into_boot (OstreeRepo *repo,
                    const char *src_subpath,
                    int         dest_dfd,
                    const char *dest_subpath,
-                   OstreeSysrootDebugFlags flags,
                    GCancellable  *cancellable,
                    GError       **error)
 {
@@ -1798,7 +1797,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     {
       if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->kernel_srcpath,
                               bootcsum_dfd, kernel_layout->kernel_namever,
-                              sysroot->debug_flags,
                               cancellable, error))
         return FALSE;
     }
@@ -1815,7 +1813,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
                                   bootcsum_dfd, kernel_layout->initramfs_namever,
-                                  sysroot->debug_flags,
                                   cancellable, error))
             return FALSE;
         }
@@ -1832,7 +1829,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
             {
               if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
                                       bootcsum_dfd, kernel_layout->devicetree_namever,
-                                      sysroot->debug_flags,
                                       cancellable, error))
                 return FALSE;
             }
@@ -1853,7 +1849,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->kernel_hmac_srcpath,
                                   bootcsum_dfd, kernel_layout->kernel_hmac_namever,
-                                  sysroot->debug_flags,
                                   cancellable, error))
             return FALSE;
         }
@@ -1935,8 +1930,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   if (kernel_layout->initramfs_namever)
     {
-      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
-      ostree_bootconfig_parser_set (bootconfig, "initrd", boot_relpath);
+      g_autofree char * initrd_boot_relpath =
+        g_strconcat ("/", bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "initrd", initrd_boot_relpath);
     }
   else
     {
@@ -2698,10 +2694,8 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
                               cancellable, error))
     return FALSE;
 
-  g_autofree char *new_bootcsum = NULL;
   g_autoptr(OstreeDeployment) new_deployment =
-    ostree_deployment_new (0, osname, revision, new_deployserial,
-                           new_bootcsum, -1);
+    ostree_deployment_new (0, osname, revision, new_deployserial, NULL, -1);
   ostree_deployment_set_origin (new_deployment, origin);
 
   /* Check out the userspace tree onto the filesystem */
@@ -2770,7 +2764,6 @@ get_var_dfd (OstreeSysroot      *self,
 static gboolean
 sysroot_finalize_deployment (OstreeSysroot     *self,
                              OstreeDeployment  *deployment,
-                             char             **override_kernel_argv,
                              OstreeDeployment  *merge_deployment,
                              GCancellable      *cancellable,
                              GError           **error)
@@ -2780,15 +2773,18 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &deployment_dfd, error))
     return FALSE;
 
-  /* Only use the merge if we didn't get an override */
-  if (!override_kernel_argv && merge_deployment)
+  OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+
+  /* If the kargs weren't set yet, then just pick it up from the merge deployment. In the
+   * deploy path, overrides are set as part of sysroot_initialize_deployment(). In the
+   * finalize-staged path, they're set by OstreeSysroot when reading the staged GVariant. */
+  if (merge_deployment && ostree_bootconfig_parser_get (bootconfig, "options") == NULL)
     {
-      /* Override the bootloader arguments */
       OstreeBootconfigParser *merge_bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
       if (merge_bootconfig)
         {
-          const char *opts = ostree_bootconfig_parser_get (merge_bootconfig, "options");
-          ostree_bootconfig_parser_set (ostree_deployment_get_bootconfig (deployment), "options", opts);
+          const char *kargs = ostree_bootconfig_parser_get (merge_bootconfig, "options");
+          ostree_bootconfig_parser_set (bootconfig, "options", kargs);
         }
 
     }
@@ -2860,8 +2856,8 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
  * Check out deployment tree with revision @revision, performing a 3
  * way merge with @provided_merge_deployment for configuration.
  *
- * While this API is not deprecated, you most likely want to use the
- * ostree_sysroot_stage_tree() API.
+ * When booted into the sysroot, you should use the
+ * ostree_sysroot_stage_tree() API instead.
  */
 gboolean
 ostree_sysroot_deploy_tree (OstreeSysroot     *self,
@@ -2882,8 +2878,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                       &deployment, cancellable, error))
     return FALSE;
 
-  if (!sysroot_finalize_deployment (self, deployment, override_kernel_argv,
-                                    provided_merge_deployment,
+  if (!sysroot_finalize_deployment (self, deployment, provided_merge_deployment,
                                     cancellable, error))
     return FALSE;
 
@@ -3149,8 +3144,6 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
                            ostree_deployment_get_csum (merge_deployment_stub),
                            ostree_deployment_get_deployserial (merge_deployment_stub));
     }
-  g_autofree char **kargs = NULL;
-  g_variant_lookup (self->staged_deployment_data, "kargs", "^a&s", &kargs);
 
   /* Unlink the staged state now; if we're interrupted in the middle,
    * we don't want e.g. deal with the partially written /etc merge.
@@ -3158,7 +3151,7 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
   if (!glnx_unlinkat (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED, 0, error))
     return FALSE;
 
-  if (!sysroot_finalize_deployment (self, self->staged_deployment, kargs, merge_deployment,
+  if (!sysroot_finalize_deployment (self, self->staged_deployment, merge_deployment,
                                     cancellable, error))
     return FALSE;
 
