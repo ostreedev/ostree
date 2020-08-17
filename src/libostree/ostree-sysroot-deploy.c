@@ -2856,8 +2856,8 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
  * Check out deployment tree with revision @revision, performing a 3
  * way merge with @provided_merge_deployment for configuration.
  *
- * While this API is not deprecated, you most likely want to use the
- * ostree_sysroot_stage_tree() API.
+ * When booted into the sysroot, you should use the
+ * ostree_sysroot_stage_tree() API instead.
  */
 gboolean
 ostree_sysroot_deploy_tree (OstreeSysroot     *self,
