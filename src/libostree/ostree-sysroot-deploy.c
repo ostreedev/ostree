@@ -111,7 +111,6 @@ install_into_boot (OstreeRepo *repo,
                    const char *src_subpath,
                    int         dest_dfd,
                    const char *dest_subpath,
-                   OstreeSysrootDebugFlags flags,
                    GCancellable  *cancellable,
                    GError       **error)
 {
@@ -1798,7 +1797,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     {
       if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->kernel_srcpath,
                               bootcsum_dfd, kernel_layout->kernel_namever,
-                              sysroot->debug_flags,
                               cancellable, error))
         return FALSE;
     }
@@ -1815,7 +1813,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
                                   bootcsum_dfd, kernel_layout->initramfs_namever,
-                                  sysroot->debug_flags,
                                   cancellable, error))
             return FALSE;
         }
@@ -1832,7 +1829,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
             {
               if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
                                       bootcsum_dfd, kernel_layout->devicetree_namever,
-                                      sysroot->debug_flags,
                                       cancellable, error))
                 return FALSE;
             }
@@ -1853,7 +1849,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->kernel_hmac_srcpath,
                                   bootcsum_dfd, kernel_layout->kernel_hmac_namever,
-                                  sysroot->debug_flags,
                                   cancellable, error))
             return FALSE;
         }
