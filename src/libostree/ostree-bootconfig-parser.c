@@ -30,6 +30,9 @@ struct _OstreeBootconfigParser
   const char   *separators;
 
   GHashTable   *options;
+
+  /* Additional initrds; the primary initrd is in options. */
+  char        **overlay_initrds;
 };
 
 typedef GObjectClass OstreeBootconfigParserClass;
@@ -49,6 +52,8 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
 
   GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
     g_hash_table_replace (parser->options, g_strdup (k), g_strdup (v));
+
+  parser->overlay_initrds = g_strdupv (self->overlay_initrds);
 
   return parser;
 }
@@ -76,6 +81,8 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
   if (!contents)
     return FALSE;
 
+  g_autoptr(GPtrArray) overlay_initrds = NULL;
+
   g_auto(GStrv) lines = g_strsplit (contents, "\n", -1);
   for (char **iter = lines; *iter; iter++)
     {
@@ -87,14 +94,31 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
           items = g_strsplit_set (line, self->separators, 2);
           if (g_strv_length (items) == 2 && items[0][0] != '\0')
             {
-              g_hash_table_insert (self->options, items[0], items[1]);
-              g_free (items); /* Transfer ownership */
+              if (g_str_equal (items[0], "initrd") &&
+                  g_hash_table_contains (self->options, "initrd"))
+                {
+                  if (!overlay_initrds)
+                    overlay_initrds = g_ptr_array_new_with_free_func (g_free);
+                  g_ptr_array_add (overlay_initrds, items[1]);
+                  g_free (items[0]);
+                }
+              else
+                {
+                  g_hash_table_insert (self->options, items[0], items[1]);
+                }
+              g_free (items); /* Free container; we stole the elements */
             }
           else
             {
               g_strfreev (items);
             }
         }
+    }
+
+  if (overlay_initrds)
+    {
+      g_ptr_array_add (overlay_initrds, NULL);
+      self->overlay_initrds = (char**)g_ptr_array_free (g_steal_pointer (&overlay_initrds), FALSE);
     }
 
   self->parsed = TRUE;
@@ -125,6 +149,41 @@ ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
                               const char      *key)
 {
   return g_hash_table_lookup (self->options, key);
+}
+
+/**
+ * ostree_bootconfig_parser_set_overlay_initrds:
+ * @self: Parser
+ * @initrds: (array zero-terminated=1) (transfer none) (allow-none): Array of overlay
+ *    initrds or %NULL to unset.
+ *
+ * These are rendered as additional `initrd` keys in the final bootloader configs. The
+ * base initrd is part of the primary keys.
+ *
+ * Since: 2020.7
+ */
+void
+ostree_bootconfig_parser_set_overlay_initrds (OstreeBootconfigParser  *self,
+                                              char                   **initrds)
+{
+  g_assert (g_hash_table_contains (self->options, "initrd"));
+  g_strfreev (self->overlay_initrds);
+  self->overlay_initrds = g_strdupv (initrds);
+}
+
+/**
+ * ostree_bootconfig_parser_get_overlay_initrds:
+ * @self: Parser
+ *
+ * Returns: (array zero-terminated=1) (transfer none) (nullable): Array of initrds or %NULL
+ * if none are set.
+ *
+ * Since: 2020.7
+ */
+char**
+ostree_bootconfig_parser_get_overlay_initrds (OstreeBootconfigParser  *self)
+{
+  return self->overlay_initrds;
 }
 
 static void
@@ -165,6 +224,15 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
         }
     }
 
+  /* Write overlay initrds */
+  if (self->overlay_initrds && (g_strv_length (self->overlay_initrds) > 0))
+    {
+      /* we should've written the primary initrd already */
+      g_assert (g_hash_table_contains (keys_written, "initrd"));
+      for (char **it = self->overlay_initrds; it && *it; it++)
+        write_key (self, buf, "initrd", *it);
+    }
+
   /* Write unknown fields */
   GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
     {
@@ -197,6 +265,7 @@ ostree_bootconfig_parser_finalize (GObject *object)
 {
   OstreeBootconfigParser *self = OSTREE_BOOTCONFIG_PARSER (object);
 
+  g_strfreev (self->overlay_initrds);
   g_hash_table_unref (self->options);
 
   G_OBJECT_CLASS (ostree_bootconfig_parser_parent_class)->finalize (object);

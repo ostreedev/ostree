@@ -37,6 +37,8 @@ ostree_bootconfig_parser_write
 ostree_bootconfig_parser_write_at
 ostree_bootconfig_parser_set
 ostree_bootconfig_parser_get
+ostree_bootconfig_parser_set_overlay_initrds
+ostree_bootconfig_parser_get_overlay_initrds
 <SUBSECTION Standard>
 OSTREE_BOOTCONFIG_PARSER
 OSTREE_IS_BOOTCONFIG_PARSER
