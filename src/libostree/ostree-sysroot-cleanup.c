@@ -295,9 +295,9 @@ cleanup_old_deployments (OstreeSysroot       *self,
 
   /* Load all active deployments referenced by bootloader configuration. */
   g_autoptr(GHashTable) active_deployment_dirs =
-    g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   g_autoptr(GHashTable) active_boot_checksums =
-    g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
+    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
