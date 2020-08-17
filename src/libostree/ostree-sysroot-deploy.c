@@ -2688,7 +2688,7 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
                                const char        *osname,
                                const char        *revision,
                                GKeyFile          *origin,
-                               char             **override_kernel_argv,
+                               OstreeSysrootDeployTreeOpts *opts,
                                OstreeDeployment **out_new_deployment,
                                GCancellable      *cancellable,
                                GError           **error)
@@ -2721,7 +2721,7 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
     return FALSE;
 
   _ostree_deployment_set_bootcsum (new_deployment, kernel_layout->bootcsum);
-  _ostree_deployment_set_bootconfig_from_kargs (new_deployment, override_kernel_argv);
+  _ostree_deployment_set_bootconfig_from_kargs (new_deployment, opts ? opts->override_kernel_argv : NULL);
 
   if (!prepare_deployment_etc (self, repo, new_deployment, deployment_dfd,
                                cancellable, error))
@@ -2853,6 +2853,53 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
 }
 
 /**
+ * ostree_sysroot_deploy_tree_with_options:
+ * @self: Sysroot
+ * @osname: (allow-none): osname to use for merge deployment
+ * @revision: Checksum to add
+ * @origin: (allow-none): Origin to use for upgrades
+ * @provided_merge_deployment: (allow-none): Use this deployment for merge path
+ * @opts: (allow-none): Options
+ * @out_new_deployment: (out): The new deployment path
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Check out deployment tree with revision @revision, performing a 3
+ * way merge with @provided_merge_deployment for configuration.
+ *
+ * When booted into the sysroot, you should use the
+ * ostree_sysroot_stage_tree() API instead.
+ *
+ * Since: 2020.7
+ */
+gboolean
+ostree_sysroot_deploy_tree_with_options (OstreeSysroot     *self,
+                                         const char        *osname,
+                                         const char        *revision,
+                                         GKeyFile          *origin,
+                                         OstreeDeployment  *provided_merge_deployment,
+                                         OstreeSysrootDeployTreeOpts *opts,
+                                         OstreeDeployment **out_new_deployment,
+                                         GCancellable      *cancellable,
+                                         GError           **error)
+{
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
+  g_autoptr(OstreeDeployment) deployment = NULL;
+  if (!sysroot_initialize_deployment (self, osname, revision, origin, opts,
+                                      &deployment, cancellable, error))
+    return FALSE;
+
+  if (!sysroot_finalize_deployment (self, deployment, provided_merge_deployment,
+                                    cancellable, error))
+    return FALSE;
+
+  *out_new_deployment = g_steal_pointer (&deployment);
+  return TRUE;
+}
+
+/**
  * ostree_sysroot_deploy_tree:
  * @self: Sysroot
  * @osname: (allow-none): osname to use for merge deployment
@@ -2864,11 +2911,9 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
  * @cancellable: Cancellable
  * @error: Error
  *
- * Check out deployment tree with revision @revision, performing a 3
- * way merge with @provided_merge_deployment for configuration.
+ * Older version of ostree_sysroot_stage_tree_with_options().
  *
- * When booted into the sysroot, you should use the
- * ostree_sysroot_stage_tree() API instead.
+ * Since: 2018.5
  */
 gboolean
 ostree_sysroot_deploy_tree (OstreeSysroot     *self,
@@ -2881,20 +2926,10 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                             GCancellable      *cancellable,
                             GError           **error)
 {
-  if (!_ostree_sysroot_ensure_writable (self, error))
-    return FALSE;
-
-  g_autoptr(OstreeDeployment) deployment = NULL;
-  if (!sysroot_initialize_deployment (self, osname, revision, origin, override_kernel_argv,
-                                      &deployment, cancellable, error))
-    return FALSE;
-
-  if (!sysroot_finalize_deployment (self, deployment, provided_merge_deployment,
-                                    cancellable, error))
-    return FALSE;
-
-  *out_new_deployment = g_steal_pointer (&deployment);
-  return TRUE;
+  OstreeSysrootDeployTreeOpts opts = { .override_kernel_argv = override_kernel_argv };
+  return ostree_sysroot_deploy_tree_with_options (self, osname, revision, origin,
+                                                  provided_merge_deployment, &opts,
+                                                  out_new_deployment, cancellable, error);
 }
 
 /* Serialize information about a deployment to a variant, used by the staging
@@ -2968,8 +3003,7 @@ _ostree_sysroot_deserialize_deployment_from_variant (GVariant *v,
  * @cancellable: Cancellable
  * @error: Error
  *
- * Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
- * shutdown time.
+ * Older version of ostree_sysroot_stage_tree_with_options().
  *
  * Since: 2018.5
  */
@@ -2983,6 +3017,41 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
                            OstreeDeployment **out_new_deployment,
                            GCancellable      *cancellable,
                            GError           **error)
+{
+  OstreeSysrootDeployTreeOpts opts = { .override_kernel_argv = override_kernel_argv };
+  return ostree_sysroot_stage_tree_with_options (self, osname, revision, origin,
+                                                 merge_deployment, &opts,
+                                                 out_new_deployment, cancellable, error);
+}
+
+
+/**
+ * ostree_sysroot_stage_tree_with_options:
+ * @self: Sysroot
+ * @osname: (allow-none): osname to use for merge deployment
+ * @revision: Checksum to add
+ * @origin: (allow-none): Origin to use for upgrades
+ * @merge_deployment: (allow-none): Use this deployment for merge path
+ * @opts: Options
+ * @out_new_deployment: (out): The new deployment path
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
+ * shutdown time.
+ *
+ * Since: 2020.7
+ */
+gboolean
+ostree_sysroot_stage_tree_with_options (OstreeSysroot     *self,
+                                        const char        *osname,
+                                        const char        *revision,
+                                        GKeyFile          *origin,
+                                        OstreeDeployment  *merge_deployment,
+                                        OstreeSysrootDeployTreeOpts *opts,
+                                        OstreeDeployment **out_new_deployment,
+                                        GCancellable      *cancellable,
+                                        GError           **error)
 {
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
@@ -3014,8 +3083,8 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
     } /* OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH */
 
   g_autoptr(OstreeDeployment) deployment = NULL;
-  if (!sysroot_initialize_deployment (self, osname, revision, origin, override_kernel_argv,
-                                      &deployment, cancellable, error))
+  if (!sysroot_initialize_deployment (self, osname, revision, origin, opts, &deployment,
+                                      cancellable, error))
     return FALSE;
 
   /* Write out the origin file using the sepolicy from the non-merged root for
@@ -3050,9 +3119,9 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
     g_variant_builder_add (builder, "{sv}", "merge-deployment",
                            serialize_deployment_to_variant (merge_deployment));
 
-  if (override_kernel_argv)
+  if (opts && opts->override_kernel_argv)
     g_variant_builder_add (builder, "{sv}", "kargs",
-                           g_variant_new_strv ((const char *const*)override_kernel_argv, -1));
+                           g_variant_new_strv ((const char *const*)opts->override_kernel_argv, -1));
 
   const char *parent = dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED));
   if (!glnx_shutil_mkdir_p_at (AT_FDCWD, parent, 0755, cancellable, error))
