@@ -1979,30 +1979,80 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   return TRUE;
 }
 
-/* We generate the symlink on disk, then potentially do a syncfs() to ensure
- * that it (and everything else we wrote) has hit disk. Only after that do we
- * rename it into place.
- */
 static gboolean
-prepare_new_bootloader_link (OstreeSysroot  *sysroot,
-                             int             current_bootversion,
-                             int             new_bootversion,
-                             GCancellable   *cancellable,
-                             GError        **error)
+prepare_new_bootloader_dir (OstreeSysroot  *sysroot,
+                            int             current_bootversion,
+                            int             new_bootversion,
+                            GCancellable   *cancellable,
+                            GError        **error)
 {
-  GLNX_AUTO_PREFIX_ERROR ("Preparing final bootloader swap", error);
+  glnx_autofd int boot_dfd = -1;
+
+  GLNX_AUTO_PREFIX_ERROR ("Preparing new bootloader directory", error);
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
 
-  g_autofree char *new_target = g_strdup_printf ("loader.%d", new_bootversion);
+  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+    return FALSE;
 
-  /* We shouldn't actually need to replace but it's easier to reuse
-     that code */
-  if (!symlink_at_replace (new_target, sysroot->sysroot_fd, "boot/loader.tmp",
-                           cancellable, error))
+  g_autofree char *loader_dir_name = g_strdup_printf ("loader.%d", new_bootversion);
+
+  if (!glnx_shutil_mkdir_p_at (boot_dfd, loader_dir_name, 0755,
+                               cancellable, error))
+    return FALSE;
+
+  g_autofree char *version_name = g_strdup_printf ("%s/version", loader_dir_name);
+
+  if (!glnx_file_replace_contents_at (boot_dfd, version_name,
+                                      (guint8*)loader_dir_name, strlen(loader_dir_name),
+                                      0, cancellable, error))
     return FALSE;
 
   return TRUE;
+}
+
+static gboolean
+renameat2_exchange (int         olddirfd,
+                    const char *oldpath,
+                    int         newdirfd,
+                    const char *newpath,
+                    gboolean   *is_atomic,
+                    GError    **error)
+{
+  if (renameat2(olddirfd, oldpath, newdirfd, newpath, RENAME_EXCHANGE) == 0)
+    return TRUE;
+  else
+    {
+      if ((errno == EINVAL)
+          || (errno == ENOSYS))
+        {
+          if (glnx_renameat2_exchange (olddirfd, oldpath, newdirfd, newpath) == 0)
+            {
+              is_atomic = FALSE;
+              return TRUE;
+            }
+        }
+    }
+
+  if (errno != ENOENT)
+    return glnx_throw_errno_prefix (error, "renameat2");
+
+  if (renameat2(olddirfd, oldpath, newdirfd, newpath, RENAME_NOREPLACE) == 0)
+    return TRUE;
+  else
+    {
+      if ((errno == EINVAL)
+          || (errno == ENOSYS))
+        {
+          if (glnx_renameat2_noreplace (olddirfd, oldpath, newdirfd, newpath) == 0)
+            {
+              is_atomic = FALSE;
+              return TRUE;
+            }
+        }
+    }
+
+  return glnx_throw_errno_prefix (error, "renameat2");
 }
 
 /* Update the /boot/loader symlink to point to /boot/loader.$new_bootversion */
@@ -2011,6 +2061,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
                  OstreeBootloader *bootloader,
                  int             current_bootversion,
                  int             new_bootversion,
+                 gboolean       *is_atomic,
                  GCancellable   *cancellable,
                  GError        **error)
 {
@@ -2023,11 +2074,8 @@ swap_bootloader (OstreeSysroot  *sysroot,
   if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
     return FALSE;
 
-  /* The symlink was already written, and we used syncfs() to ensure
-   * its data is in place.  Renaming now should give us atomic semantics;
-   * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
-   */
-  if (!glnx_renameat (boot_dfd, "loader.tmp", boot_dfd, "loader", error))
+  g_autofree char *new_target = g_strdup_printf ("loader.%d", new_bootversion);
+  if (!renameat2_exchange(boot_dfd, new_target, boot_dfd, "loader", is_atomic, error))
     return FALSE;
 
   /* Now we explicitly fsync this directory, even though it
@@ -2248,6 +2296,7 @@ write_deployments_bootswap (OstreeSysroot     *self,
                             OstreeSysrootWriteDeploymentsOpts *opts,
                             OstreeBootloader  *bootloader,
                             SyncStats         *out_syncstats,
+                            gboolean          *is_atomic,
                             GCancellable      *cancellable,
                             GError           **error)
 {
@@ -2310,15 +2359,16 @@ write_deployments_bootswap (OstreeSysroot     *self,
         return glnx_prefix_error (error, "Bootloader write config");
     }
 
-  if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion,
-                                    cancellable, error))
+  if (!prepare_new_bootloader_dir (self, self->bootversion, new_bootversion,
+                                   cancellable, error))
     return FALSE;
 
   if (!full_system_sync (self, out_syncstats, cancellable, error))
     return FALSE;
 
   if (!swap_bootloader (self, bootloader, self->bootversion, new_bootversion,
-                        cancellable, error))
+                        is_atomic, cancellable, error))
+
     return FALSE;
 
   return TRUE;
@@ -2559,7 +2609,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
 
       /* Note equivalent of try/finally here */
       gboolean success = write_deployments_bootswap (self, new_deployments, opts, bootloader,
-                                                     &syncstats, cancellable, error);
+                                                     &syncstats, &bootloader_is_atomic,
+                                                     cancellable, error);
       /* Below here don't set GError until the if (!success) check.
        * Note we only bother remounting if a mount namespace isn't in use.
        * */
