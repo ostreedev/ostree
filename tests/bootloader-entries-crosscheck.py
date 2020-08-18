@@ -73,36 +73,56 @@ with open(syslinuxpath) as f:
     syslinux_entry = None
     syslinux_default = None
     for line in f:
-        line = line.strip()
-        if line.startswith('DEFAULT '):
+        try:
+            k, v = line.strip().split(" ", 1)
+        except ValueError:
+            continue
+        if k == 'DEFAULT':
             if syslinux_entry is not None:
-                syslinux_default = line.split(' ', 1)[1]
-        elif line.startswith('LABEL '):
+                syslinux_default = v
+        elif k == 'LABEL':
             if syslinux_entry is not None:
                 syslinux_entries.append(syslinux_entry)
             syslinux_entry = {}
-            syslinux_entry['title'] = line.split(' ', 1)[1]
-        elif line.startswith('KERNEL '):
-            syslinux_entry['linux'] = line.split(' ', 1)[1]
-        elif line.startswith('INITRD '):
-            syslinux_entry['initrd'] = line.split(' ', 1)[1]
-        elif line.startswith('APPEND '):
-            syslinux_entry['options'] = line.split(' ', 1)[1]
+            syslinux_entry['title'] = v
+        elif k == 'KERNEL':
+            syslinux_entry['linux'] = v
+        elif k == 'INITRD':
+            syslinux_entry['initrd'] = v
+        elif k == 'APPEND':
+            syslinux_entry['options'] = v
     if syslinux_entry is not None:
         syslinux_entries.append(syslinux_entry)
 
 if len(entries) != len(syslinux_entries):
     fatal("Found {0} loader entries, but {1} SYSLINUX entries\n".format(len(entries), len(syslinux_entries)))
 
-def assert_matches_key(a, b, key):
+
+def assert_eq(a, b):
+    assert a == b, "%r == %r" % (a, b)
+
+
+def assert_key_same_file(a, b, key):
     aval = a[key]
     bval = b[key]
-    if aval != bval:
-        fatal("Mismatch on {0}: {1} != {2}".format(key, aval, bval))
+    sys.stderr.write("aval: %r\nbval: %r\n" % (aval, bval))
+
+    # Paths in entries are always relative to /boot
+    entry = os.stat(sysroot + "/boot" + aval)
+
+    # Syslinux entries can be relative to /boot (if it's on another filesystem)
+    # or relative to / if /boot is on /.
+    s1 = os.stat(sysroot + bval)
+    s2 = os.stat(sysroot + "/boot" + bval)
+
+    # A symlink ensures that no matter what they point at the same file
+    assert_eq(entry, s1)
+    assert_eq(entry, s2)
+
 
 for i,(entry,syslinuxentry) in enumerate(zip(entries, syslinux_entries)):
-    assert_matches_key(entry, syslinuxentry, 'linux')
-    assert_matches_key(entry, syslinuxentry, 'initrd')
+    assert_key_same_file(entry, syslinuxentry, 'linux')
+    assert_key_same_file(entry, syslinuxentry, 'initrd')
     entry_ostree = get_ostree_option(entry['options'])
     syslinux_ostree = get_ostree_option(syslinuxentry['options'])
     if entry_ostree != syslinux_ostree:

@@ -89,15 +89,15 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
       val = ostree_bootconfig_parser_get (config, "linux");
       if (!val)
         return glnx_throw (error, "No \"linux\" key in bootloader config");
-      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL %s", val));
+      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL /boot%s", val));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s", val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD /boot%s", val));
 
       val = ostree_bootconfig_parser_get (config, "devicetree");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("\tDEVICETREE %s", val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("\tDEVICETREE /boot%s", val));
 
       val = ostree_bootconfig_parser_get (config, "options");
       if (val)
@@ -150,10 +150,13 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
           if (kernel_arg == NULL)
             return glnx_throw (error, "No KERNEL argument found after LABEL");
 
-          /* If this is a non-ostree kernel, just emit the lines
-           * we saw.
+          /* If this is a non-ostree kernel, just emit the lines we saw.
+           *
+           * We check for /ostree (without /boot prefix) as well to support
+           * upgrading ostree from <v2020.4.
            */
-          if (!g_str_has_prefix (kernel_arg, "/ostree/"))
+          if (!g_str_has_prefix (kernel_arg, "/ostree/") &&
+              !g_str_has_prefix (kernel_arg, "/boot/ostree/"))
             {
               for (guint i = 0; i < tmp_lines->len; i++)
                 {

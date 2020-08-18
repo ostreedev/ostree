@@ -134,19 +134,19 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
                        "No \"linux\" key in bootloader config");
           return FALSE;
         }
-      g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image%s=%s", index_suffix, val));
+      g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image%s=/boot%s", index_suffix, val));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image%s=%s", index_suffix, val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image%s=/boot%s", index_suffix, val));
 
       val = ostree_bootconfig_parser_get (config, "devicetree");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("fdt_file%s=%s", index_suffix, val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("fdt_file%s=/boot%s", index_suffix, val));
 
       val = ostree_bootconfig_parser_get (config, "fdtdir");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("fdtdir%s=%s", index_suffix, val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("fdtdir%s=/boot%s", index_suffix, val));
 
       val = ostree_bootconfig_parser_get (config, "options");
       if (val)
