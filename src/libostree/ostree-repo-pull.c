@@ -436,8 +436,9 @@ ensure_idle_queued (OtPullData *pull_data)
   idle_src = g_idle_source_new ();
   g_source_set_callback (idle_src, idle_worker, pull_data, NULL);
   g_source_attach (idle_src, pull_data->main_context);
-  g_source_unref (idle_src);
   pull_data->idle_src = idle_src;
+  /* Ownership is transferred to pull_data */
+  g_source_unref (idle_src);
 }
 
 typedef struct {
