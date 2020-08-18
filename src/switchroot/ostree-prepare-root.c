@@ -101,10 +101,9 @@ sysroot_is_configured_ro (const char *sysroot)
   bool ret = false;
   char *line = NULL;
   size_t len = 0;
-  ssize_t nread;
   /* Note getline() will reuse the previous buffer */
   bool in_sysroot = false;
-  while ((nread = getline (&line, &len, f)) != -1)
+  while (getline (&line, &len, f) != -1)
     {
       /* This is an awful hack to avoid depending on GLib in the
        * initramfs right now.
