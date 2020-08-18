@@ -17,9 +17,9 @@ serde_json = "1.0"
 commandspec = "0.12.2"
 anyhow = "1.0"
 tempfile = "3.1.0"
-glib = "0.9.1"
-gio = "0.8"
-ostree = { version = "0.7.1", features = ["v2020_1"] }
+glib = "0.10"
+gio = "0.9"
+ostree = { version = "0.8.0", features = ["v2020_1"] }
 libtest-mimic = "0.3.0"
 twoway = "0.2.1"
 hyper = "0.13"
