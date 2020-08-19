@@ -26,7 +26,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
-echo "1..7"
+echo "1..8"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -101,6 +101,13 @@ assert_n_pinned 1
 ${CMD_PREFIX} ostree admin pin -u 0
 assert_n_pinned 0
 echo "ok pin unpin"
+
+for p in medal 0medal '' 5000 9999999999999999999999999999999999999; do
+    if ${CMD_PREFIX} ostree admin pin ${p}; then
+        fatal "created invalid pin ${p}"
+    fi
+done
+echo "ok invalid pin"
 
 ${CMD_PREFIX} ostree admin pin 0 1
 assert_n_pinned 2

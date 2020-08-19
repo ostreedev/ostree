@@ -55,7 +55,14 @@ ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation
   for (unsigned int i = 1; i < argc; i++)
     {
       const char *deploy_index_str = argv[i];
-      const int deploy_index = atoi (deploy_index_str);
+      char *endptr = NULL;
+
+      errno = 0;
+      const guint64 deploy_index = g_ascii_strtoull (deploy_index_str, &endptr, 10);
+      if (*endptr != '\0')
+        return glnx_throw (error, "Invalid index: %s", deploy_index_str);
+      if (errno == ERANGE)
+        return glnx_throw (error, "Index too large: %s", deploy_index_str);
 
       g_autoptr(OstreeDeployment) target_deployment = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
       if (!target_deployment)
