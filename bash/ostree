@@ -1532,6 +1532,9 @@ _ostree_static_delta_apply_offline() {
     "
 
     local options_with_args="
+        --sign-type
+        --keys-file
+        --keys-dir
         --repo
     "
 
