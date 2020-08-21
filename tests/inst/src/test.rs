@@ -49,6 +49,20 @@ pub(crate) fn cmd_fails_with<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Resu
     Ok(())
 }
 
+/// Run command and assert that its stdout contains pat
+pub(crate) fn cmd_has_output<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Result<()> {
+    let c = c.borrow_mut();
+    let o = c.output()?;
+    if !o.status.success() {
+        bail!("Command {:?} failed", c);
+    }
+    if !twoway::find_bytes(&o.stdout, pat.as_bytes()).is_some() {
+        dbg!(String::from_utf8_lossy(&o.stdout));
+        bail!("Command {:?} stdout did not match: {}", c, pat);
+    }
+    Ok(())
+}
+
 pub(crate) fn write_file<P: AsRef<Path>>(p: P, buf: &str) -> Result<()> {
     let p = p.as_ref();
     let mut f = File::create(p)?;
@@ -217,6 +231,15 @@ mod tests {
     fn test_fails_with_fails() {
         cmd_fails_with(Command::new("true"), "somepat").expect_err("true");
         cmd_fails_with(oops(), "nomatch").expect_err("nomatch");
+    }
+
+    #[test]
+    fn test_output() -> Result<()> {
+        cmd_has_output(Command::new("true"), "")?;
+        assert!(cmd_has_output(Command::new("true"), "foo").is_err());
+        cmd_has_output(commandspec::sh_command!("echo foobarbaz; echo fooblahbaz").unwrap(), "blah")?;
+        assert!(cmd_has_output(commandspec::sh_command!("echo foobarbaz").unwrap(), "blah").is_err());
+        Ok(())
     }
 
     #[test]
