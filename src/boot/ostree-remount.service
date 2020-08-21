@@ -35,8 +35,8 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/lib/ostree/ostree-remount
 StandardInput=null
-StandardOutput=syslog
-StandardError=syslog+console
+StandardOutput=journal
+StandardError=journal+console
 
 [Install]
 WantedBy=local-fs.target
