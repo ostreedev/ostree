@@ -27,7 +27,7 @@ skip_without_user_xattrs
 
 bindatafiles="bash true ostree"
 
-echo '1..3'
+echo '1..7'
 
 # This is explicitly opt in for testing
 export OSTREE_DUMMY_SIGN_ENABLED=1
@@ -129,3 +129,46 @@ ${CMD_PREFIX} ostree --repo=repo static-delta verify --sign-type=dummy ${origrev
 assert_file_has_content show-dummy-bad-inline-signed.txt "Verification fails"
 
 echo 'ok verification failed with dummy and bad key'
+
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-user
+
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline repo/deltas/${deltaprefix}/${deltadir}
+${CMD_PREFIX} ostree --repo=repo2 fsck
+${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
+
+echo 'ok apply offline with no signature verification and no key'
+
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-user
+
+${CMD_PREFIX} ostree --repo=repo2 config set core.sign-verify-deltas true
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline repo/deltas/${deltaprefix}/${deltadir} 2> apply-offline-verification-no-key.txt && exit 1
+assert_file_has_content apply-offline-verification-no-key.txt "Key is mandatory to check delta signature"
+
+echo 'ok apply offline failed with signature verification forced and no key'
+
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-user
+
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline --sign-type=dummy repo/deltas/${deltaprefix}/${deltadir} dummysign
+${CMD_PREFIX} ostree --repo=repo2 fsck
+${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
+
+echo 'ok apply offline with dummy'
+
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-user
+
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline --sign-type=dummy repo/deltas/${deltaprefix}/${deltadir} badsign 2> apply-offline-bad-key.txt && exit 1
+assert_file_has_content apply-offline-bad-key.txt "signature: dummy: incorrect signature"
+
+echo 'ok apply offline failed with dummy and bad key'

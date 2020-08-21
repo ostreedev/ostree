@@ -29,7 +29,7 @@ skip_without_sign_ed25519
 
 bindatafiles="bash true ostree"
 
-echo '1..9'
+echo '1..12'
 
 mkdir repo
 ostree_repo_init repo --mode=archive
@@ -281,3 +281,42 @@ ${CMD_PREFIX} ostree --repo=repo static-delta verify --sign-type=ed25519 ${origr
 assert_file_has_content show-ed25519-multiplekeys-inline-signed-4.txt "Verification OK"
 
 echo 'ok verified with ed25519 (multiple keys)'
+
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-user
+
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline --sign-type=ed25519 --keys-file=${PUBKEYS} repo/deltas/${deltaprefix}/${deltadir}
+${CMD_PREFIX} ostree --repo=repo2 fsck
+${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
+
+echo 'ok apply offline with ed25519 (keyfile)'
+
+mkdir -p ${test_tmpdir}/{trusted,revoked}.ed25519.d
+
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-user
+
+echo ${PUBLIC} > ${test_tmpdir}/trusted.ed25519.d/correct
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline --keys-dir=${test_tmpdir} repo/deltas/${deltaprefix}/${deltadir}
+${CMD_PREFIX} ostree --repo=repo2 fsck
+${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
+
+echo 'ok apply offline with ed25519 (keydir)'
+
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-user
+
+echo ${PUBLIC} > ${test_tmpdir}/revoked.ed25519.d/correct
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+if ${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline --keys-dir=${test_tmpdir} repo/deltas/${deltaprefix}/${deltadir}; then
+  exit 1
+fi
+
+rm -rf ${test_tmpdir}/{trusted,revoked}.ed25519.d
+
+echo 'ok apply offline with ed25519 revoking key mechanism (keydir)'
