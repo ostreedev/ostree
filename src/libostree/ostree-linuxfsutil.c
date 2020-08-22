@@ -55,7 +55,7 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
   if (g_atomic_int_get (&no_alter_immutable))
     return TRUE;
 
-  unsigned long flags;
+  int flags = 0;
   int r = ioctl (fd, EXT2_IOC_GETFLAGS, &flags);
   if (r == -1)
     {
