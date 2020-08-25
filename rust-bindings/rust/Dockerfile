@@ -1,17 +1,19 @@
 FROM registry.fedoraproject.org/fedora:latest
 
-RUN dnf install -y curl gcc make tar xz 'dnf-command(builddep)'
+RUN dnf install -y gcc git make 'dnf-command(builddep)'
 RUN dnf builddep -y ostree
 
-ARG OSTREE_VER
-ENV OSTREE_SRC=https://github.com/ostreedev/ostree/releases/download/v${OSTREE_VER}/libostree-${OSTREE_VER}.tar.xz
+ARG OSTREE_REPO
+ARG OSTREE_VERSION
 RUN mkdir /src && \
     cd /src && \
-    curl -L -o /ostree.tar.xz ${OSTREE_SRC} && \
-    tar -xa --strip-components=1 -f /ostree.tar.xz && \
-    rm -r /ostree.tar.xz
+    git init . && \
+    git fetch --depth 1 $OSTREE_REPO $OSTREE_VERSION && \
+    git checkout FETCH_HEAD && \
+    git submodule update --init
 RUN mkdir /build && \
     cd /build && \
+    NOCONFIGURE=1 /src/autogen.sh && \
     /src/configure \
         --with-openssl \
         --with-curl \
