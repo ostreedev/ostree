@@ -48,7 +48,6 @@ generate = [
     "OSTree.RepoPullFlags",
     "OSTree.RepoRemoteChange",
     "OSTree.RepoResolveRevExtFlags",
-    "OSTree.SePolicy",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
     "OSTree.Sysroot",
@@ -186,6 +185,14 @@ init_function_expression = "|_ptr| ()"
 clear_function_expression = "|_ptr| ()"
 
 [[object]]
+name = "OSTree.SePolicy"
+status = "generate"
+    [[object.function]]
+    # has an unused raw pointer parameter so we wrap it by hand
+    name = "fscreatecon_cleanup"
+    ignore = true
+
+[[object]]
 name = "OSTree.Sign"
 status = "generate"
     [[object.function]]
@@ -197,7 +204,7 @@ name = "OSTree.*"
 status = "generate"
     [[object.function]]
     # low-level functions with unsafe APIs
-    pattern = "cmp_checksum_bytes|checksum_inplace_to_bytes|hash_object_name"
+    pattern = "cmp_checksum_bytes|checksum_inplace_from_bytes|checksum_inplace_to_bytes|checksum_b64_inplace_from_bytes|checksum_b64_inplace_to_bytes|hash_object_name"
     ignore = true
 
     [[object.function]]

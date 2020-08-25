@@ -38,14 +38,6 @@ pub fn check_version(required_year: u32, required_release: u32) -> bool {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_b64_from_bytes() }
 //}
 
-//pub fn checksum_b64_inplace_from_bytes(csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, buf: &str) {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_b64_inplace_from_bytes() }
-//}
-
-//pub fn checksum_b64_inplace_to_bytes(checksum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 28 }; 32, buf: u8) {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_b64_inplace_to_bytes() }
-//}
-
 //#[cfg(any(feature = "v2016_8", feature = "dox"))]
 //pub fn checksum_b64_to_bytes(checksum: &str) -> /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32 {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_b64_to_bytes() }
@@ -85,10 +77,6 @@ pub fn checksum_from_bytes_v(csum_v: &glib::Variant) -> Option<GString> {
         from_glib_full(ostree_sys::ostree_checksum_from_bytes_v(csum_v.to_glib_none().0))
     }
 }
-
-//pub fn checksum_inplace_from_bytes(csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, buf: &str) {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_inplace_from_bytes() }
-//}
 
 //pub fn checksum_to_bytes(checksum: &str) -> /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32 {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_to_bytes() }

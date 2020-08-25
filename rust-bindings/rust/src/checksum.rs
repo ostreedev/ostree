@@ -45,7 +45,6 @@ impl Checksum {
     /// Unfortunately, the underlying libostree function has no way to report parsing errors. If the
     /// string is not a valid SHA256 string, the program will abort!
     pub fn from_hex(checksum: &str) -> Checksum {
-        // TODO: implement by hand to avoid stupid assertions?
         assert_eq!(checksum.len(), HEX_LEN);
         unsafe {
             // We know checksum is at least as long as needed, trailing NUL is unnecessary.
@@ -60,7 +59,6 @@ impl Checksum {
     /// Invalid base64 characters will not be reported, but will cause unknown output instead, most
     /// likely 0.
     pub fn from_base64(b64_checksum: &str) -> Checksum {
-        // TODO: implement by hand for better error reporting?
         assert_eq!(b64_checksum.len(), B64_LEN);
         unsafe {
             let buf = g_malloc0(BYTES_LEN) as *mut [u8; BYTES_LEN];

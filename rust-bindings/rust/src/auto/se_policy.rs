@@ -94,10 +94,6 @@ impl SePolicy {
             value.get().expect("Return Value for property `rootfs-dfd` getter").unwrap()
         }
     }
-
-    //pub fn fscreatecon_cleanup(unused: /*Unimplemented*/Option<Fundamental: Pointer>) {
-    //    unsafe { TODO: call ostree_sys:ostree_sepolicy_fscreatecon_cleanup() }
-    //}
 }
 
 impl fmt::Display for SePolicy {
