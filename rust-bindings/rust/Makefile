@@ -1,6 +1,7 @@
 GIR_REPO := https://github.com/gtk-rs/gir.git
 GIR_VERSION := 2d1ffab19eb5f9a2f0d7a294dbf07517dab4d989
 RUSTDOC_STRIPPER_VERSION := 0.1.13
+OSTREE_VER := 2020.4
 
 all: gir
 
@@ -48,8 +49,7 @@ gir-files:
 
 gir-files/OSTree-1.0.gir:
 	podman build \
-		--build-arg FEDORA_VER=32 \
-		--build-arg OSTREE_VER=2020.4 \
+		--build-arg OSTREE_VER=$(OSTREE_VER) \
 		-t ostree-build \
 		.
 	podman run \

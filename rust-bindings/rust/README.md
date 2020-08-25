@@ -87,9 +87,18 @@ parts).
 
 CI includes the LGPL docs in the documentation build.
 
-### Updating ostree
-* update the bundled `gir/OSTree-1.0.gir` file
+### Updating glib-rs
+* update `GIR_VERSION` in `Makefile` to the latest gir commit (matching the target glib-rs version)
 * `make gir` to regenerate the generated code
+* inspect differences in generated code
+* update glib-rs dependencies in `Cargo.toml` and `sys/Cargo.toml`
+
+### Updating ostree
+* update `OSTREE_VERSION` in `Makefile`
+* `make update-gir-files` to update all gir files
+* inspect differences in `OSTree-1.0.gir`
+* `make gir` to regenerate the generated code
+* add any new feature levels to `Cargo.toml`
 * update the example feature level in `README.md` in case of a new feature level
 
 ### Releases
