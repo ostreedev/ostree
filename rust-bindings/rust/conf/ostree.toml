@@ -47,9 +47,6 @@ generate = [
     "OSTree.RepoPullFlags",
     "OSTree.RepoRemoteChange",
     "OSTree.RepoResolveRevExtFlags",
-    "OSTree.Sign",
-    "OSTree.SignDummy",
-    "OSTree.SignEd25519",
     "OSTree.SePolicy",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
@@ -186,6 +183,13 @@ name = "OSTree.RepoTransactionStats"
 status = "generate"
 init_function_expression = "|_ptr| ()"
 clear_function_expression = "|_ptr| ()"
+
+[[object]]
+name = "OSTree.Sign"
+status = "generate"
+    [[object.function]]
+    pattern = "dummy_.+|ed25519_.+"
+    ignore = true
 
 [[object]]
 name = "OSTree.*"

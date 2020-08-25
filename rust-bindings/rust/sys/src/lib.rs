@@ -1618,41 +1618,23 @@ extern "C" {
     pub fn ostree_sign_data(self_: *mut OstreeSign, data: *mut glib::GBytes, signature: *mut *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_data_verify(self_: *mut OstreeSign, data: *mut glib::GBytes, signatures: *mut glib::GVariant, out_success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_add_pk(self_: *mut OstreeSign, key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_data(self_: *mut OstreeSign, data: *mut glib::GBytes, signature: *mut *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_data_verify(self_: *mut OstreeSign, data: *mut glib::GBytes, signatures: *mut glib::GVariant, success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_get_name(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_metadata_format(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_metadata_key(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_set_pk(self_: *mut OstreeSign, key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_dummy_set_sk(self_: *mut OstreeSign, key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_add_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_clear_keys(self_: *mut OstreeSign, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_data(self_: *mut OstreeSign, data: *mut glib::GBytes, signature: *mut *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_data_verify(self_: *mut OstreeSign, data: *mut glib::GBytes, signatures: *mut glib::GVariant, out_success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_get_name(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_load_pk(self_: *mut OstreeSign, options: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_metadata_format(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_metadata_key(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_set_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_ed25519_set_sk(self_: *mut OstreeSign, secret_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_get_name(self_: *mut OstreeSign) -> *const c_char;
@@ -1666,7 +1648,6 @@ extern "C" {
     pub fn ostree_sign_set_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_set_sk(self_: *mut OstreeSign, secret_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_summary(self_: *mut OstreeSign, repo: *mut OstreeRepo, keys: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
 
     //=========================================================================
