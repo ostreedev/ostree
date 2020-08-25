@@ -8,4 +8,6 @@ extern crate maplit;
 
 mod functions;
 mod repo;
+#[cfg(feature = "v2020_2")]
+mod sign;
 mod util;
