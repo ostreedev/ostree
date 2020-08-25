@@ -13452,7 +13452,8 @@ in bytes, counting only content objects.</doc>
     </constant>
     <constant name="SIGN_NAME_ED25519"
               value="ed25519"
-              c:type="OSTREE_SIGN_NAME_ED25519">
+              c:type="OSTREE_SIGN_NAME_ED25519"
+              version="2020.4">
       <doc xml:space="preserve"
            filename="ostree-sign.h"
            line="52">The name of the default ed25519 signing type.</doc>

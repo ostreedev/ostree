@@ -28,6 +28,7 @@ pub static META_KEY_DEPLOY_COLLECTION_ID: once_cell::sync::Lazy<&'static str> = 
 pub static ORIGIN_TRANSIENT_GROUP: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_ORIGIN_TRANSIENT_GROUP).to_str().unwrap()});
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub static REPO_METADATA_REF: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_REPO_METADATA_REF).to_str().unwrap()});
+#[cfg(any(feature = "v2020_4", feature = "dox"))]
 pub static SIGN_NAME_ED25519: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_SIGN_NAME_ED25519).to_str().unwrap()});
 pub static SUMMARY_GVARIANT_STRING: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_SUMMARY_GVARIANT_STRING).to_str().unwrap()});
 pub static SUMMARY_SIG_GVARIANT_STRING: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_SUMMARY_SIG_GVARIANT_STRING).to_str().unwrap()});

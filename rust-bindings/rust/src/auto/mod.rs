@@ -158,6 +158,7 @@ pub use self::constants::META_KEY_DEPLOY_COLLECTION_ID;
 pub use self::constants::ORIGIN_TRANSIENT_GROUP;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::constants::REPO_METADATA_REF;
+#[cfg(any(feature = "v2020_4", feature = "dox"))]
 pub use self::constants::SIGN_NAME_ED25519;
 pub use self::constants::SUMMARY_GVARIANT_STRING;
 pub use self::constants::SUMMARY_SIG_GVARIANT_STRING;
