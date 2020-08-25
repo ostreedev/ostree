@@ -62,6 +62,10 @@ pub use self::repo_finder_override::RepoFinderOverrideExt;
 mod se_policy;
 pub use self::se_policy::{SePolicy, SePolicyClass};
 
+mod sign;
+pub use self::sign::{Sign, NONE_SIGN};
+pub use self::sign::SignExt;
+
 mod sysroot;
 pub use self::sysroot::{Sysroot, SysrootClass};
 
@@ -98,7 +102,6 @@ pub use self::repo_transaction_stats::RepoTransactionStats;
 mod enums;
 pub use self::enums::DeploymentUnlockedState;
 pub use self::enums::GpgSignatureAttr;
-pub use self::enums::GpgSignatureFormatFlags;
 pub use self::enums::ObjectType;
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 pub use self::enums::RepoCheckoutFilterResult;
@@ -107,7 +110,6 @@ pub use self::enums::RepoCheckoutOverwriteMode;
 pub use self::enums::RepoCommitFilterResult;
 pub use self::enums::RepoCommitIterResult;
 pub use self::enums::RepoMode;
-pub use self::enums::RepoPruneFlags;
 pub use self::enums::RepoRemoteChange;
 pub use self::enums::StaticDeltaGenerateOpt;
 
@@ -115,12 +117,14 @@ mod flags;
 #[cfg(any(feature = "v2017_13", feature = "dox"))]
 pub use self::flags::ChecksumFlags;
 pub use self::flags::DiffFlags;
+pub use self::flags::GpgSignatureFormatFlags;
 pub use self::flags::RepoCommitModifierFlags;
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
 pub use self::flags::RepoCommitState;
 pub use self::flags::RepoCommitTraverseFlags;
 pub use self::flags::RepoListObjectsFlags;
 pub use self::flags::RepoListRefsExtFlags;
+pub use self::flags::RepoPruneFlags;
 pub use self::flags::RepoPullFlags;
 pub use self::flags::RepoResolveRevExtFlags;
 pub use self::flags::SePolicyRestoreconFlags;
@@ -132,6 +136,8 @@ pub mod functions;
 
 mod constants;
 pub use self::constants::COMMIT_GVARIANT_STRING;
+#[cfg(any(feature = "v2020_4", feature = "dox"))]
+pub use self::constants::COMMIT_META_KEY_ARCHITECTURE;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::constants::COMMIT_META_KEY_COLLECTION_BINDING;
 #[cfg(any(feature = "v2017_7", feature = "dox"))]
@@ -152,6 +158,7 @@ pub use self::constants::META_KEY_DEPLOY_COLLECTION_ID;
 pub use self::constants::ORIGIN_TRANSIENT_GROUP;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::constants::REPO_METADATA_REF;
+pub use self::constants::SIGN_NAME_ED25519;
 pub use self::constants::SUMMARY_GVARIANT_STRING;
 pub use self::constants::SUMMARY_SIG_GVARIANT_STRING;
 pub use self::constants::TREE_GVARIANT_STRING;
@@ -169,4 +176,5 @@ pub mod traits {
     pub use super::RepoFinderMountExt;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub use super::RepoFinderOverrideExt;
+    pub use super::SignExt;
 }

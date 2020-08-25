@@ -57,9 +57,6 @@ pub const OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY: OstreeGpgSignatureAttr 
 pub const OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP: OstreeGpgSignatureAttr = 13;
 pub const OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY: OstreeGpgSignatureAttr = 14;
 
-pub type OstreeGpgSignatureFormatFlags = c_int;
-pub const OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT: OstreeGpgSignatureFormatFlags = 0;
-
 pub type OstreeObjectType = c_int;
 pub const OSTREE_OBJECT_TYPE_FILE: OstreeObjectType = 1;
 pub const OSTREE_OBJECT_TYPE_DIR_TREE: OstreeObjectType = 2;
@@ -100,11 +97,6 @@ pub const OSTREE_REPO_MODE_ARCHIVE_Z2: OstreeRepoMode = 1;
 pub const OSTREE_REPO_MODE_BARE_USER: OstreeRepoMode = 2;
 pub const OSTREE_REPO_MODE_BARE_USER_ONLY: OstreeRepoMode = 3;
 
-pub type OstreeRepoPruneFlags = c_int;
-pub const OSTREE_REPO_PRUNE_FLAGS_NONE: OstreeRepoPruneFlags = 0;
-pub const OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE: OstreeRepoPruneFlags = 1;
-pub const OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: OstreeRepoPruneFlags = 2;
-
 pub type OstreeRepoRemoteChange = c_int;
 pub const OSTREE_REPO_REMOTE_CHANGE_ADD: OstreeRepoRemoteChange = 0;
 pub const OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS: OstreeRepoRemoteChange = 1;
@@ -118,6 +110,7 @@ pub const OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR: OstreeStaticDeltaGenerateOpt =
 
 // Constants
 pub const OSTREE_COMMIT_GVARIANT_STRING: *const c_char = b"(a{sv}aya(say)sstayay)\0" as *const u8 as *const c_char;
+pub const OSTREE_COMMIT_META_KEY_ARCHITECTURE: *const c_char = b"ostree.architecture\0" as *const u8 as *const c_char;
 pub const OSTREE_COMMIT_META_KEY_COLLECTION_BINDING: *const c_char = b"ostree.collection-binding\0" as *const u8 as *const c_char;
 pub const OSTREE_COMMIT_META_KEY_ENDOFLIFE: *const c_char = b"ostree.endoflife\0" as *const u8 as *const c_char;
 pub const OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE: *const c_char = b"ostree.endoflife-rebase\0" as *const u8 as *const c_char;
@@ -133,6 +126,7 @@ pub const OSTREE_ORIGIN_TRANSIENT_GROUP: *const c_char = b"libostree-transient\0
 pub const OSTREE_REPO_METADATA_REF: *const c_char = b"ostree-metadata\0" as *const u8 as *const c_char;
 pub const OSTREE_SHA256_DIGEST_LEN: c_int = 32;
 pub const OSTREE_SHA256_STRING_LEN: c_int = 64;
+pub const OSTREE_SIGN_NAME_ED25519: *const c_char = b"ed25519\0" as *const u8 as *const c_char;
 pub const OSTREE_SUMMARY_GVARIANT_STRING: *const c_char = b"(a(s(taya{sv}))a{sv})\0" as *const u8 as *const c_char;
 pub const OSTREE_SUMMARY_SIG_GVARIANT_STRING: *const c_char = b"a{sv}\0" as *const u8 as *const c_char;
 pub const OSTREE_TIMESTAMP: c_int = 0;
@@ -146,6 +140,9 @@ pub const OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS: OstreeChecksumFlags = 1;
 pub type OstreeDiffFlags = c_uint;
 pub const OSTREE_DIFF_FLAGS_NONE: OstreeDiffFlags = 0;
 pub const OSTREE_DIFF_FLAGS_IGNORE_XATTRS: OstreeDiffFlags = 1;
+
+pub type OstreeGpgSignatureFormatFlags = c_uint;
+pub const OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT: OstreeGpgSignatureFormatFlags = 0;
 
 pub type OstreeRepoCommitModifierFlags = c_uint;
 pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE: OstreeRepoCommitModifierFlags = 0;
@@ -175,6 +172,11 @@ pub const OSTREE_REPO_LIST_REFS_EXT_NONE: OstreeRepoListRefsExtFlags = 0;
 pub const OSTREE_REPO_LIST_REFS_EXT_ALIASES: OstreeRepoListRefsExtFlags = 1;
 pub const OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES: OstreeRepoListRefsExtFlags = 2;
 pub const OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS: OstreeRepoListRefsExtFlags = 4;
+
+pub type OstreeRepoPruneFlags = c_uint;
+pub const OSTREE_REPO_PRUNE_FLAGS_NONE: OstreeRepoPruneFlags = 0;
+pub const OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE: OstreeRepoPruneFlags = 1;
+pub const OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: OstreeRepoPruneFlags = 2;
 
 pub type OstreeRepoPullFlags = c_uint;
 pub const OSTREE_REPO_PULL_FLAGS_NONE: OstreeRepoPullFlags = 0;
@@ -724,6 +726,78 @@ impl ::std::fmt::Debug for OstreeRepoTransactionStats {
 }
 
 #[repr(C)]
+pub struct _OstreeSignDummy(c_void);
+
+pub type OstreeSignDummy = *mut _OstreeSignDummy;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct OstreeSignDummyClass {
+    pub parent_class: gobject::GObjectClass,
+}
+
+impl ::std::fmt::Debug for OstreeSignDummyClass {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.debug_struct(&format!("OstreeSignDummyClass @ {:?}", self as *const _))
+         .field("parent_class", &self.parent_class)
+         .finish()
+    }
+}
+
+#[repr(C)]
+pub struct _OstreeSignEd25519(c_void);
+
+pub type OstreeSignEd25519 = *mut _OstreeSignEd25519;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct OstreeSignEd25519Class {
+    pub parent_class: gobject::GObjectClass,
+}
+
+impl ::std::fmt::Debug for OstreeSignEd25519Class {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.debug_struct(&format!("OstreeSignEd25519Class @ {:?}", self as *const _))
+         .field("parent_class", &self.parent_class)
+         .finish()
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct OstreeSignInterface {
+    pub g_iface: gobject::GTypeInterface,
+    pub get_name: Option<unsafe extern "C" fn(*mut OstreeSign) -> *const c_char>,
+    pub data: Option<unsafe extern "C" fn(*mut OstreeSign, *mut glib::GBytes, *mut *mut glib::GBytes, *mut gio::GCancellable, *mut *mut glib::GError) -> gboolean>,
+    pub data_verify: Option<unsafe extern "C" fn(*mut OstreeSign, *mut glib::GBytes, *mut glib::GVariant, *mut *mut c_char, *mut *mut glib::GError) -> gboolean>,
+    pub metadata_key: Option<unsafe extern "C" fn(*mut OstreeSign) -> *const c_char>,
+    pub metadata_format: Option<unsafe extern "C" fn(*mut OstreeSign) -> *const c_char>,
+    pub clear_keys: Option<unsafe extern "C" fn(*mut OstreeSign, *mut *mut glib::GError) -> gboolean>,
+    pub set_sk: Option<unsafe extern "C" fn(*mut OstreeSign, *mut glib::GVariant, *mut *mut glib::GError) -> gboolean>,
+    pub set_pk: Option<unsafe extern "C" fn(*mut OstreeSign, *mut glib::GVariant, *mut *mut glib::GError) -> gboolean>,
+    pub add_pk: Option<unsafe extern "C" fn(*mut OstreeSign, *mut glib::GVariant, *mut *mut glib::GError) -> gboolean>,
+    pub load_pk: Option<unsafe extern "C" fn(*mut OstreeSign, *mut glib::GVariant, *mut *mut glib::GError) -> gboolean>,
+}
+
+impl ::std::fmt::Debug for OstreeSignInterface {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.debug_struct(&format!("OstreeSignInterface @ {:?}", self as *const _))
+         .field("g_iface", &self.g_iface)
+         .field("get_name", &self.get_name)
+         .field("data", &self.data)
+         .field("data_verify", &self.data_verify)
+         .field("metadata_key", &self.metadata_key)
+         .field("metadata_format", &self.metadata_format)
+         .field("clear_keys", &self.clear_keys)
+         .field("set_sk", &self.set_sk)
+         .field("set_pk", &self.set_pk)
+         .field("add_pk", &self.add_pk)
+         .field("load_pk", &self.load_pk)
+         .finish()
+    }
+}
+
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct OstreeSysrootWriteDeploymentsOpts {
     pub do_postclean: gboolean,
@@ -904,6 +978,15 @@ impl ::std::fmt::Debug for OstreeRepoFinder {
     }
 }
 
+#[repr(C)]
+pub struct OstreeSign(c_void);
+
+impl ::std::fmt::Debug for OstreeSign {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "OstreeSign @ {:?}", self as *const _)
+    }
+}
+
 
 extern "C" {
 
@@ -1019,6 +1102,7 @@ extern "C" {
     #[cfg(any(feature = "v2017_13", feature = "dox"))]
     pub fn ostree_repo_commit_modifier_set_devino_cache(modifier: *mut OstreeRepoCommitModifier, cache: *mut OstreeRepoDevInoCache);
     pub fn ostree_repo_commit_modifier_set_sepolicy(modifier: *mut OstreeRepoCommitModifier, sepolicy: *mut OstreeSePolicy);
+    pub fn ostree_repo_commit_modifier_set_sepolicy_from_commit(modifier: *mut OstreeRepoCommitModifier, repo: *mut OstreeRepo, rev: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_commit_modifier_set_xattr_callback(modifier: *mut OstreeRepoCommitModifier, callback: OstreeRepoCommitModifierXattrCallback, destroy: glib::GDestroyNotify, user_data: gpointer);
     pub fn ostree_repo_commit_modifier_unref(modifier: *mut OstreeRepoCommitModifier);
 
@@ -1465,7 +1549,6 @@ extern "C" {
     pub fn ostree_sysroot_lock(self_: *mut OstreeSysroot, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_sysroot_lock_async(self_: *mut OstreeSysroot, cancellable: *mut gio::GCancellable, callback: gio::GAsyncReadyCallback, user_data: gpointer);
     pub fn ostree_sysroot_lock_finish(self_: *mut OstreeSysroot, result: *mut gio::GAsyncResult, error: *mut *mut glib::GError) -> gboolean;
-    pub fn ostree_sysroot_lock_with_mount_namespace(self_: *mut OstreeSysroot, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_sysroot_origin_new_from_refspec(self_: *mut OstreeSysroot, refspec: *const c_char) -> *mut glib::GKeyFile;
     pub fn ostree_sysroot_prepare_cleanup(self_: *mut OstreeSysroot, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2017_7", feature = "dox"))]
@@ -1515,6 +1598,58 @@ extern "C" {
     pub fn ostree_repo_finder_resolve_finish(self_: *mut OstreeRepoFinder, result: *mut gio::GAsyncResult, error: *mut *mut glib::GError) -> *mut glib::GPtrArray;
 
     //=========================================================================
+    // OstreeSign
+    //=========================================================================
+    pub fn ostree_sign_get_type() -> GType;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_get_all() -> *mut glib::GPtrArray;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_get_by_name(name: *const c_char, error: *mut *mut glib::GError) -> *mut OstreeSign;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_add_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_clear_keys(self_: *mut OstreeSign, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_commit(self_: *mut OstreeSign, repo: *mut OstreeRepo, commit_checksum: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_commit_verify(self_: *mut OstreeSign, repo: *mut OstreeRepo, commit_checksum: *const c_char, out_success_message: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_data(self_: *mut OstreeSign, data: *mut glib::GBytes, signature: *mut *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_data_verify(self_: *mut OstreeSign, data: *mut glib::GBytes, signatures: *mut glib::GVariant, out_success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_dummy_add_pk(self_: *mut OstreeSign, key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_dummy_data(self_: *mut OstreeSign, data: *mut glib::GBytes, signature: *mut *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_dummy_data_verify(self_: *mut OstreeSign, data: *mut glib::GBytes, signatures: *mut glib::GVariant, success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_dummy_get_name(self_: *mut OstreeSign) -> *const c_char;
+    pub fn ostree_sign_dummy_metadata_format(self_: *mut OstreeSign) -> *const c_char;
+    pub fn ostree_sign_dummy_metadata_key(self_: *mut OstreeSign) -> *const c_char;
+    pub fn ostree_sign_dummy_set_pk(self_: *mut OstreeSign, key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_dummy_set_sk(self_: *mut OstreeSign, key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_ed25519_add_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_ed25519_clear_keys(self_: *mut OstreeSign, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_ed25519_data(self_: *mut OstreeSign, data: *mut glib::GBytes, signature: *mut *mut glib::GBytes, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_ed25519_data_verify(self_: *mut OstreeSign, data: *mut glib::GBytes, signatures: *mut glib::GVariant, out_success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_ed25519_get_name(self_: *mut OstreeSign) -> *const c_char;
+    pub fn ostree_sign_ed25519_load_pk(self_: *mut OstreeSign, options: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_ed25519_metadata_format(self_: *mut OstreeSign) -> *const c_char;
+    pub fn ostree_sign_ed25519_metadata_key(self_: *mut OstreeSign) -> *const c_char;
+    pub fn ostree_sign_ed25519_set_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_ed25519_set_sk(self_: *mut OstreeSign, secret_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_get_name(self_: *mut OstreeSign) -> *const c_char;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_load_pk(self_: *mut OstreeSign, options: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_metadata_format(self_: *mut OstreeSign) -> *const c_char;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_metadata_key(self_: *mut OstreeSign) -> *const c_char;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_set_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
+    pub fn ostree_sign_set_sk(self_: *mut OstreeSign, secret_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    pub fn ostree_sign_summary(self_: *mut OstreeSign, repo: *mut OstreeRepo, keys: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+
+    //=========================================================================
     // Other functions
     //=========================================================================
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
@@ -1548,6 +1683,7 @@ extern "C" {
     #[cfg(any(feature = "v2020_1", feature = "dox"))]
     pub fn ostree_commit_get_object_sizes(commit_variant: *mut glib::GVariant, out_sizes_entries: *mut *mut glib::GPtrArray, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_commit_get_parent(commit_variant: *mut glib::GVariant) -> *mut c_char;
+    #[cfg(any(feature = "v2016_3", feature = "dox"))]
     pub fn ostree_commit_get_timestamp(commit_variant: *mut glib::GVariant) -> u64;
     pub fn ostree_content_file_parse(compressed: gboolean, content_path: *mut gio::GFile, trusted: gboolean, out_input: *mut *mut gio::GInputStream, out_file_info: *mut *mut gio::GFileInfo, out_xattrs: *mut *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_content_file_parse_at(compressed: gboolean, parent_dfd: c_int, path: *const c_char, trusted: gboolean, out_input: *mut *mut gio::GInputStream, out_file_info: *mut *mut gio::GFileInfo, out_xattrs: *mut *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;

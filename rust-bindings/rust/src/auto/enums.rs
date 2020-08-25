@@ -153,46 +153,6 @@ impl FromGlib<ostree_sys::OstreeGpgSignatureAttr> for GpgSignatureAttr {
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 #[non_exhaustive]
-pub enum GpgSignatureFormatFlags {
-    GpgSignatureFormatDefault,
-    #[doc(hidden)]
-    __Unknown(i32),
-}
-
-impl fmt::Display for GpgSignatureFormatFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "GpgSignatureFormatFlags::{}", match *self {
-            GpgSignatureFormatFlags::GpgSignatureFormatDefault => "GpgSignatureFormatDefault",
-            _ => "Unknown",
-        })
-    }
-}
-
-#[doc(hidden)]
-impl ToGlib for GpgSignatureFormatFlags {
-    type GlibType = ostree_sys::OstreeGpgSignatureFormatFlags;
-
-    fn to_glib(&self) -> ostree_sys::OstreeGpgSignatureFormatFlags {
-        match *self {
-            GpgSignatureFormatFlags::GpgSignatureFormatDefault => ostree_sys::OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT,
-            GpgSignatureFormatFlags::__Unknown(value) => value
-        }
-    }
-}
-
-#[doc(hidden)]
-impl FromGlib<ostree_sys::OstreeGpgSignatureFormatFlags> for GpgSignatureFormatFlags {
-    fn from_glib(value: ostree_sys::OstreeGpgSignatureFormatFlags) -> Self {
-        match value {
-            0 => GpgSignatureFormatFlags::GpgSignatureFormatDefault,
-            value => GpgSignatureFormatFlags::__Unknown(value),
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[derive(Clone, Copy)]
-#[non_exhaustive]
 pub enum ObjectType {
     File,
     DirTree,
@@ -542,54 +502,6 @@ impl FromGlib<ostree_sys::OstreeRepoMode> for RepoMode {
             2 => RepoMode::BareUser,
             3 => RepoMode::BareUserOnly,
             value => RepoMode::__Unknown(value),
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[derive(Clone, Copy)]
-#[non_exhaustive]
-pub enum RepoPruneFlags {
-    None,
-    NoPrune,
-    RefsOnly,
-    #[doc(hidden)]
-    __Unknown(i32),
-}
-
-impl fmt::Display for RepoPruneFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoPruneFlags::{}", match *self {
-            RepoPruneFlags::None => "None",
-            RepoPruneFlags::NoPrune => "NoPrune",
-            RepoPruneFlags::RefsOnly => "RefsOnly",
-            _ => "Unknown",
-        })
-    }
-}
-
-#[doc(hidden)]
-impl ToGlib for RepoPruneFlags {
-    type GlibType = ostree_sys::OstreeRepoPruneFlags;
-
-    fn to_glib(&self) -> ostree_sys::OstreeRepoPruneFlags {
-        match *self {
-            RepoPruneFlags::None => ostree_sys::OSTREE_REPO_PRUNE_FLAGS_NONE,
-            RepoPruneFlags::NoPrune => ostree_sys::OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE,
-            RepoPruneFlags::RefsOnly => ostree_sys::OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY,
-            RepoPruneFlags::__Unknown(value) => value
-        }
-    }
-}
-
-#[doc(hidden)]
-impl FromGlib<ostree_sys::OstreeRepoPruneFlags> for RepoPruneFlags {
-    fn from_glib(value: ostree_sys::OstreeRepoPruneFlags) -> Self {
-        match value {
-            0 => RepoPruneFlags::None,
-            1 => RepoPruneFlags::NoPrune,
-            2 => RepoPruneFlags::RefsOnly,
-            value => RepoPruneFlags::__Unknown(value),
         }
     }
 }

@@ -62,6 +62,28 @@ impl FromGlib<ostree_sys::OstreeDiffFlags> for DiffFlags {
 }
 
 bitflags! {
+    pub struct GpgSignatureFormatFlags: u32 {
+        const GPG_SIGNATURE_FORMAT_DEFAULT = 0;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for GpgSignatureFormatFlags {
+    type GlibType = ostree_sys::OstreeGpgSignatureFormatFlags;
+
+    fn to_glib(&self) -> ostree_sys::OstreeGpgSignatureFormatFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeGpgSignatureFormatFlags> for GpgSignatureFormatFlags {
+    fn from_glib(value: ostree_sys::OstreeGpgSignatureFormatFlags) -> GpgSignatureFormatFlags {
+        GpgSignatureFormatFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
     pub struct RepoCommitModifierFlags: u32 {
         const NONE = 0;
         const SKIP_XATTRS = 1;
@@ -185,6 +207,30 @@ impl ToGlib for RepoListRefsExtFlags {
 impl FromGlib<ostree_sys::OstreeRepoListRefsExtFlags> for RepoListRefsExtFlags {
     fn from_glib(value: ostree_sys::OstreeRepoListRefsExtFlags) -> RepoListRefsExtFlags {
         RepoListRefsExtFlags::from_bits_truncate(value)
+    }
+}
+
+bitflags! {
+    pub struct RepoPruneFlags: u32 {
+        const NONE = 0;
+        const NO_PRUNE = 1;
+        const REFS_ONLY = 2;
+    }
+}
+
+#[doc(hidden)]
+impl ToGlib for RepoPruneFlags {
+    type GlibType = ostree_sys::OstreeRepoPruneFlags;
+
+    fn to_glib(&self) -> ostree_sys::OstreeRepoPruneFlags {
+        self.bits()
+    }
+}
+
+#[doc(hidden)]
+impl FromGlib<ostree_sys::OstreeRepoPruneFlags> for RepoPruneFlags {
+    fn from_glib(value: ostree_sys::OstreeRepoPruneFlags) -> RepoPruneFlags {
+        RepoPruneFlags::from_bits_truncate(value)
     }
 }
 

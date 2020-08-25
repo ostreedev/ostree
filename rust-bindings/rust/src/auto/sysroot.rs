@@ -270,14 +270,6 @@ impl Sysroot {
         }))
     }
 
-    pub fn lock_with_mount_namespace(&self) -> Result<(), glib::Error> {
-        unsafe {
-            let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_sysroot_lock_with_mount_namespace(self.to_glib_none().0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
     pub fn origin_new_from_refspec(&self, refspec: &str) -> Option<glib::KeyFile> {
         unsafe {
             from_glib_full(ostree_sys::ostree_sysroot_origin_new_from_refspec(self.to_glib_none().0, refspec.to_glib_none().0))

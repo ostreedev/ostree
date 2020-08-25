@@ -120,6 +120,7 @@ pub fn commit_get_parent(commit_variant: &glib::Variant) -> Option<GString> {
     }
 }
 
+#[cfg(any(feature = "v2016_3", feature = "dox"))]
 pub fn commit_get_timestamp(commit_variant: &glib::Variant) -> u64 {
     unsafe {
         ostree_sys::ostree_commit_get_timestamp(commit_variant.to_glib_none().0)

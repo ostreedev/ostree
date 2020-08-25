@@ -4,10 +4,12 @@
 
 use gio;
 use glib;
+use glib::object::IsA;
 use glib::translate::*;
 use glib::GString;
 use ostree_sys;
 use std::boxed::Box as Box_;
+use std::ptr;
 use Repo;
 use RepoCommitFilterResult;
 use RepoCommitModifierFlags;
@@ -62,6 +64,14 @@ impl RepoCommitModifier {
     pub fn set_sepolicy(&self, sepolicy: Option<&SePolicy>) {
         unsafe {
             ostree_sys::ostree_repo_commit_modifier_set_sepolicy(self.to_glib_none().0, sepolicy.to_glib_none().0);
+        }
+    }
+
+    pub fn set_sepolicy_from_commit<P: IsA<gio::Cancellable>>(&self, repo: &Repo, rev: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_commit_modifier_set_sepolicy_from_commit(self.to_glib_none().0, repo.to_glib_none().0, rev.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
