@@ -52,6 +52,8 @@ G_GNUC_END_IGNORE_DEPRECATIONS
 /**
  * OSTREE_SIGN_NAME_ED25519:
  * The name of the default ed25519 signing type.
+ *
+ * Since: 2020.4
  */
 #define OSTREE_SIGN_NAME_ED25519 "ed25519"
 

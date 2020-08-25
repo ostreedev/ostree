@@ -593,6 +593,8 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
  * Based on ostree_repo_add_gpg_signature_summary implementation.
  *
  * Returns: @TRUE if summary file has been signed with all provided keys
+ *
+ * Since: 2020.2
  */
 gboolean
 ostree_sign_summary (OstreeSign    *self,
