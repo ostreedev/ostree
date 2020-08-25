@@ -14408,6 +14408,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_add_pk"
               c:identifier="ostree_sign_dummy_add_pk"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="74"/>
         <return-value transfer-ownership="none">
@@ -14424,6 +14425,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_data"
               c:identifier="ostree_sign_dummy_data"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="57"/>
         <return-value transfer-ownership="none">
@@ -14449,6 +14451,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_data_verify"
               c:identifier="ostree_sign_dummy_data_verify"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="63"/>
         <return-value transfer-ownership="none">
@@ -14469,7 +14472,7 @@ or #ostree_sign_load_pk.</doc>
           </parameter>
         </parameters>
       </method>
-      <method name="dummy_get_name" c:identifier="ostree_sign_dummy_get_name">
+      <method name="dummy_get_name" c:identifier="ostree_sign_dummy_get_name" version="2020.2">
         <source-position filename="ostree-sign-dummy.h" line="55"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14481,7 +14484,8 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="dummy_metadata_format"
-              c:identifier="ostree_sign_dummy_metadata_format">
+              c:identifier="ostree_sign_dummy_metadata_format"
+              version="2020.2">
         <source-position filename="ostree-sign-dummy.h" line="70"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14493,7 +14497,8 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="dummy_metadata_key"
-              c:identifier="ostree_sign_dummy_metadata_key">
+              c:identifier="ostree_sign_dummy_metadata_key"
+              version="2020.2">
         <source-position filename="ostree-sign-dummy.h" line="69"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14506,6 +14511,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_set_pk"
               c:identifier="ostree_sign_dummy_set_pk"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="73"/>
         <return-value transfer-ownership="none">
@@ -14522,6 +14528,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_set_sk"
               c:identifier="ostree_sign_dummy_set_sk"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="72"/>
         <return-value transfer-ownership="none">
@@ -14538,6 +14545,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_add_pk"
               c:identifier="ostree_sign_ed25519_add_pk"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="82"/>
         <return-value transfer-ownership="none">
@@ -14554,6 +14562,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_clear_keys"
               c:identifier="ostree_sign_ed25519_clear_keys"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="71"/>
         <return-value transfer-ownership="none">
@@ -14567,6 +14576,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_data"
               c:identifier="ostree_sign_ed25519_data"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="55"/>
         <return-value transfer-ownership="none">
@@ -14592,6 +14602,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_data_verify"
               c:identifier="ostree_sign_ed25519_data_verify"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="61"/>
         <return-value transfer-ownership="none">
@@ -14613,7 +14624,8 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="ed25519_get_name"
-              c:identifier="ostree_sign_ed25519_get_name">
+              c:identifier="ostree_sign_ed25519_get_name"
+              version="2020.2">
         <source-position filename="ostree-sign-ed25519.h" line="67"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14626,6 +14638,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_load_pk"
               c:identifier="ostree_sign_ed25519_load_pk"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="86"/>
         <return-value transfer-ownership="none">
@@ -14641,7 +14654,8 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="ed25519_metadata_format"
-              c:identifier="ostree_sign_ed25519_metadata_format">
+              c:identifier="ostree_sign_ed25519_metadata_format"
+              version="2020.2">
         <source-position filename="ostree-sign-ed25519.h" line="69"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14653,7 +14667,8 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="ed25519_metadata_key"
-              c:identifier="ostree_sign_ed25519_metadata_key">
+              c:identifier="ostree_sign_ed25519_metadata_key"
+              version="2020.2">
         <source-position filename="ostree-sign-ed25519.h" line="68"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14666,6 +14681,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_set_pk"
               c:identifier="ostree_sign_ed25519_set_pk"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="78"/>
         <return-value transfer-ownership="none">
@@ -14682,6 +14698,7 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_set_sk"
               c:identifier="ostree_sign_ed25519_set_sk"
+              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="74"/>
         <return-value transfer-ownership="none">
@@ -14872,7 +14889,7 @@ The @secret_key argument depends of the particular engine implementation.</doc>
           </parameter>
         </parameters>
       </method>
-      <method name="summary" c:identifier="ostree_sign_summary" throws="1">
+      <method name="summary" c:identifier="ostree_sign_summary" version="2020.2" throws="1">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="584">Add a signature to a summary file.

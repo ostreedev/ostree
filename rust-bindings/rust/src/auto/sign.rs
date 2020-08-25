@@ -2,14 +2,19 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use gio;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use glib;
 use glib::object::IsA;
 use glib::translate::*;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use glib::GString;
 use ostree_sys;
 use std::fmt;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use std::ptr;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use Repo;
 
 glib_wrapper! {
@@ -59,40 +64,58 @@ pub trait SignExt: 'static {
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn data_verify(&self, data: &glib::Bytes, signatures: &glib::Variant, out_success_message: &str) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_add_pk(&self, key: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, signature: &glib::Bytes, cancellable: Option<&P>) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_data_verify(&self, data: &glib::Bytes, signatures: &glib::Variant, success_message: &str) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_get_name(&self) -> Option<GString>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_metadata_format(&self) -> Option<GString>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_metadata_key(&self) -> Option<GString>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_set_pk(&self, key: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_set_sk(&self, key: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_add_pk(&self, public_key: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_clear_keys(&self) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, signature: &glib::Bytes, cancellable: Option<&P>) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_data_verify(&self, data: &glib::Bytes, signatures: &glib::Variant, out_success_message: &str) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_get_name(&self) -> Option<GString>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_load_pk(&self, options: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_metadata_format(&self) -> Option<GString>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_metadata_key(&self) -> Option<GString>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_set_pk(&self, public_key: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_set_sk(&self, secret_key: &glib::Variant) -> Result<(), glib::Error>;
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
@@ -113,6 +136,7 @@ pub trait SignExt: 'static {
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn set_sk(&self, secret_key: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn summary<P: IsA<gio::Cancellable>>(&self, repo: &Repo, keys: &glib::Variant, cancellable: Option<&P>) -> Result<(), glib::Error>;
 }
 
@@ -171,6 +195,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_add_pk(&self, key: &glib::Variant) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -179,6 +204,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, signature: &glib::Bytes, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -187,6 +213,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_data_verify(&self, data: &glib::Bytes, signatures: &glib::Variant, success_message: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -195,24 +222,28 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_get_name(&self) -> Option<GString> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sign_dummy_get_name(self.as_ref().to_glib_none().0))
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_metadata_format(&self) -> Option<GString> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sign_dummy_metadata_format(self.as_ref().to_glib_none().0))
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_metadata_key(&self) -> Option<GString> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sign_dummy_metadata_key(self.as_ref().to_glib_none().0))
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_set_pk(&self, key: &glib::Variant) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -221,6 +252,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn dummy_set_sk(&self, key: &glib::Variant) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -229,6 +261,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_add_pk(&self, public_key: &glib::Variant) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -237,6 +270,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_clear_keys(&self) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -245,6 +279,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, signature: &glib::Bytes, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -253,6 +288,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_data_verify(&self, data: &glib::Bytes, signatures: &glib::Variant, out_success_message: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -261,12 +297,14 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_get_name(&self) -> Option<GString> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sign_ed25519_get_name(self.as_ref().to_glib_none().0))
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_load_pk(&self, options: &glib::Variant) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -275,18 +313,21 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_metadata_format(&self) -> Option<GString> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sign_ed25519_metadata_format(self.as_ref().to_glib_none().0))
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_metadata_key(&self) -> Option<GString> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sign_ed25519_metadata_key(self.as_ref().to_glib_none().0))
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_set_pk(&self, public_key: &glib::Variant) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -295,6 +336,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn ed25519_set_sk(&self, secret_key: &glib::Variant) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -351,6 +393,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn summary<P: IsA<gio::Cancellable>>(&self, repo: &Repo, keys: &glib::Variant, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();

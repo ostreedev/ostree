@@ -62,8 +62,11 @@ pub use self::repo_finder_override::RepoFinderOverrideExt;
 mod se_policy;
 pub use self::se_policy::{SePolicy, SePolicyClass};
 
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 mod sign;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 pub use self::sign::{Sign, NONE_SIGN};
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 pub use self::sign::SignExt;
 
 mod sysroot;
@@ -177,5 +180,6 @@ pub mod traits {
     pub use super::RepoFinderMountExt;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub use super::RepoFinderOverrideExt;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub use super::SignExt;
 }
