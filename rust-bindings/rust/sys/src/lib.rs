@@ -726,44 +726,6 @@ impl ::std::fmt::Debug for OstreeRepoTransactionStats {
 }
 
 #[repr(C)]
-pub struct _OstreeSignDummy(c_void);
-
-pub type OstreeSignDummy = *mut _OstreeSignDummy;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeSignDummyClass {
-    pub parent_class: gobject::GObjectClass,
-}
-
-impl ::std::fmt::Debug for OstreeSignDummyClass {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSignDummyClass @ {:?}", self as *const _))
-         .field("parent_class", &self.parent_class)
-         .finish()
-    }
-}
-
-#[repr(C)]
-pub struct _OstreeSignEd25519(c_void);
-
-pub type OstreeSignEd25519 = *mut _OstreeSignEd25519;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct OstreeSignEd25519Class {
-    pub parent_class: gobject::GObjectClass,
-}
-
-impl ::std::fmt::Debug for OstreeSignEd25519Class {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSignEd25519Class @ {:?}", self as *const _))
-         .field("parent_class", &self.parent_class)
-         .finish()
-    }
-}
-
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct OstreeSignInterface {
     pub g_iface: gobject::GTypeInterface,

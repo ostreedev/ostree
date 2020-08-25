@@ -282,8 +282,6 @@ const RUST_LAYOUTS: &[(&str, Layout)] = &[
     ("OstreeRepoResolveRevExtFlags", Layout {size: size_of::<OstreeRepoResolveRevExtFlags>(), alignment: align_of::<OstreeRepoResolveRevExtFlags>()}),
     ("OstreeRepoTransactionStats", Layout {size: size_of::<OstreeRepoTransactionStats>(), alignment: align_of::<OstreeRepoTransactionStats>()}),
     ("OstreeSePolicyRestoreconFlags", Layout {size: size_of::<OstreeSePolicyRestoreconFlags>(), alignment: align_of::<OstreeSePolicyRestoreconFlags>()}),
-    ("OstreeSignDummyClass", Layout {size: size_of::<OstreeSignDummyClass>(), alignment: align_of::<OstreeSignDummyClass>()}),
-    ("OstreeSignEd25519Class", Layout {size: size_of::<OstreeSignEd25519Class>(), alignment: align_of::<OstreeSignEd25519Class>()}),
     ("OstreeSignInterface", Layout {size: size_of::<OstreeSignInterface>(), alignment: align_of::<OstreeSignInterface>()}),
     ("OstreeStaticDeltaGenerateOpt", Layout {size: size_of::<OstreeStaticDeltaGenerateOpt>(), alignment: align_of::<OstreeStaticDeltaGenerateOpt>()}),
     ("OstreeSysrootSimpleWriteDeploymentFlags", Layout {size: size_of::<OstreeSysrootSimpleWriteDeploymentFlags>(), alignment: align_of::<OstreeSysrootSimpleWriteDeploymentFlags>()}),

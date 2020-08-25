@@ -21,6 +21,10 @@ ignore = [
     "OSTree.LzmaDecompressorClass",
     "OSTree.RepoFileEnumeratorClass",
     "OSTree.RollsumMatches",
+    "OSTree.SignDummy",
+    "OSTree.SignDummyClass",
+    "OSTree.SignEd25519",
+    "OSTree.SignEd25519Class",
 
     # version-dependent constants
     "OSTree.RELEASE_VERSION",
