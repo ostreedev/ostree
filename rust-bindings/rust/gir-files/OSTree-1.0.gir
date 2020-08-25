@@ -14872,7 +14872,10 @@ The @secret_key argument depends of the particular engine implementation.</doc>
           </parameter>
         </parameters>
       </method>
-      <method name="summary" c:identifier="ostree_sign_summary" throws="1">
+      <method name="summary"
+              c:identifier="ostree_sign_summary"
+              version="2020.2"
+              throws="1">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="584">Add a signature to a summary file.

@@ -1648,6 +1648,7 @@ extern "C" {
     pub fn ostree_sign_set_pk(self_: *mut OstreeSign, public_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_set_sk(self_: *mut OstreeSign, secret_key: *mut glib::GVariant, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     pub fn ostree_sign_summary(self_: *mut OstreeSign, repo: *mut OstreeRepo, keys: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
 
     //=========================================================================

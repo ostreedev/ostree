@@ -2,7 +2,9 @@
 // from gir-files (https://github.com/gtk-rs/gir-files)
 // DO NOT EDIT
 
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use gio;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use glib;
 use glib::object::IsA;
 use glib::translate::*;
@@ -10,7 +12,9 @@ use glib::translate::*;
 use glib::GString;
 use ostree_sys;
 use std::fmt;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use std::ptr;
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 use Repo;
 
 glib_wrapper! {
@@ -78,6 +82,7 @@ pub trait SignExt: 'static {
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn set_sk(&self, secret_key: &glib::Variant) -> Result<(), glib::Error>;
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn summary<P: IsA<gio::Cancellable>>(&self, repo: &Repo, keys: &glib::Variant, cancellable: Option<&P>) -> Result<(), glib::Error>;
 }
 
@@ -184,6 +189,7 @@ impl<O: IsA<Sign>> SignExt for O {
         }
     }
 
+    #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn summary<P: IsA<gio::Cancellable>>(&self, repo: &Repo, keys: &glib::Variant, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
