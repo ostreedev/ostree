@@ -31,6 +31,7 @@ pub type OstreeDeploymentUnlockedState = c_int;
 pub const OSTREE_DEPLOYMENT_UNLOCKED_NONE: OstreeDeploymentUnlockedState = 0;
 pub const OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT: OstreeDeploymentUnlockedState = 1;
 pub const OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX: OstreeDeploymentUnlockedState = 2;
+pub const OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT: OstreeDeploymentUnlockedState = 3;
 
 pub type OstreeGpgError = c_int;
 pub const OSTREE_GPG_ERROR_NO_SIGNATURE: OstreeGpgError = 0;

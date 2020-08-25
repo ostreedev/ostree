@@ -13,6 +13,7 @@ pub enum DeploymentUnlockedState {
     None,
     Development,
     Hotfix,
+    Transient,
     #[doc(hidden)]
     __Unknown(i32),
 }
@@ -23,6 +24,7 @@ impl fmt::Display for DeploymentUnlockedState {
             DeploymentUnlockedState::None => "None",
             DeploymentUnlockedState::Development => "Development",
             DeploymentUnlockedState::Hotfix => "Hotfix",
+            DeploymentUnlockedState::Transient => "Transient",
             _ => "Unknown",
         })
     }
@@ -37,6 +39,7 @@ impl ToGlib for DeploymentUnlockedState {
             DeploymentUnlockedState::None => ostree_sys::OSTREE_DEPLOYMENT_UNLOCKED_NONE,
             DeploymentUnlockedState::Development => ostree_sys::OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT,
             DeploymentUnlockedState::Hotfix => ostree_sys::OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX,
+            DeploymentUnlockedState::Transient => ostree_sys::OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT,
             DeploymentUnlockedState::__Unknown(value) => value
         }
     }
@@ -49,6 +52,7 @@ impl FromGlib<ostree_sys::OstreeDeploymentUnlockedState> for DeploymentUnlockedS
             0 => DeploymentUnlockedState::None,
             1 => DeploymentUnlockedState::Development,
             2 => DeploymentUnlockedState::Hotfix,
+            3 => DeploymentUnlockedState::Transient,
             value => DeploymentUnlockedState::__Unknown(value),
         }
     }
