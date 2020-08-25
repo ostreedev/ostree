@@ -11155,7 +11155,7 @@ ostree_repo_checkout_tree().</doc>
               version="2017.13">
         <doc xml:space="preserve"
              filename="ostree-repo-commit.c"
-             line="4378">See the documentation for
+             line="4380">See the documentation for
 `ostree_repo_devino_cache_new()`.  This function can
 then be used for later calls to
 `ostree_repo_write_directory_to_mtree()` to optimize commits.
@@ -11173,14 +11173,14 @@ should avoid further mutation of the cache.</doc>
           <instance-parameter name="modifier" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-commit.c"
-                 line="4380">Modifier</doc>
+                 line="4382">Modifier</doc>
             <type name="RepoCommitModifier"
                   c:type="OstreeRepoCommitModifier*"/>
           </instance-parameter>
           <parameter name="cache" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-commit.c"
-                 line="4381">A hash table caching device,inode to checksums</doc>
+                 line="4383">A hash table caching device,inode to checksums</doc>
             <type name="RepoDevInoCache" c:type="OstreeRepoDevInoCache*"/>
           </parameter>
         </parameters>
@@ -11222,8 +11222,8 @@ policy wins.</doc>
       </method>
       <method name="set_sepolicy_from_commit"
               c:identifier="ostree_repo_commit_modifier_set_sepolicy_from_commit"
-              throws="1"
-              version="2020.4">
+              version="2020.4"
+              throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-commit.c"
              line="4324">In many cases, one wants to create a "derived" commit from base commit.
@@ -13457,7 +13457,7 @@ in bytes, counting only content objects.</doc>
       <doc xml:space="preserve"
            filename="ostree-sign.h"
            line="52">The name of the default ed25519 signing type.</doc>
-      <source-position filename="ostree-sign.h" line="56"/>
+      <source-position filename="ostree-sign.h" line="58"/>
       <type name="utf8" c:type="gchar*"/>
     </constant>
     <constant name="SUMMARY_GVARIANT_STRING"
@@ -13800,7 +13800,7 @@ will be returned.</doc>
                glib:type-name="OstreeSign"
                glib:get-type="ostree_sign_get_type"
                glib:type-struct="SignInterface">
-      <source-position filename="ostree-sign.h" line="93"/>
+      <source-position filename="ostree-sign.h" line="95"/>
       <function name="get_all"
                 c:identifier="ostree_sign_get_all"
                 version="2020.2">
@@ -13808,7 +13808,7 @@ will be returned.</doc>
              filename="ostree-sign.c"
              line="518">Return an array with newly allocated instances of all available
 signing engines; they will not be initialized.</doc>
-        <source-position filename="ostree-sign.h" line="159"/>
+        <source-position filename="ostree-sign.h" line="161"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -13825,7 +13825,7 @@ signing engines; they will not be initialized.</doc>
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="542">Create a new instance of a signing engine.</doc>
-        <source-position filename="ostree-sign.h" line="162"/>
+        <source-position filename="ostree-sign.h" line="164"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -13851,7 +13851,7 @@ signing engines; they will not be initialized.</doc>
 adding all needed keys to be used for verification.
 
 The @public_key argument depends of the particular engine implementation.</doc>
-        <source-position filename="ostree-sign.h" line="87"/>
+        <source-position filename="ostree-sign.h" line="89"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -13881,7 +13881,7 @@ The @public_key argument depends of the particular engine implementation.</doc>
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="126">Clear all previously preloaded secret and public keys.</doc>
-        <source-position filename="ostree-sign.h" line="79"/>
+        <source-position filename="ostree-sign.h" line="81"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -13904,7 +13904,7 @@ The @public_key argument depends of the particular engine implementation.</doc>
 
 Depending of the signing engine used you will need to load
 the secret key with #ostree_sign_set_sk.</doc>
-        <source-position filename="ostree-sign.h" line="67"/>
+        <source-position filename="ostree-sign.h" line="69"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -13953,7 +13953,7 @@ the secret key with #ostree_sign_set_sk.</doc>
 Depending of the signing engine used you will need to load
 the public key(s) with #ostree_sign_set_pk, #ostree_sign_add_pk
 or #ostree_sign_load_pk.</doc>
-        <source-position filename="ostree-sign.h" line="72"/>
+        <source-position filename="ostree-sign.h" line="74"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -13989,7 +13989,7 @@ or #ostree_sign_load_pk.</doc>
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="436">Return the pointer to the name of currently used/selected signing engine.</doc>
-        <source-position filename="ostree-sign.h" line="66"/>
+        <source-position filename="ostree-sign.h" line="68"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14023,7 +14023,7 @@ For example, @ed25515 engine could use following string-formatted options:
   'trusted.ed25519.d' and 'revoked.ed25519.d' with appropriate
   public keys. Used for testing and re-definition of system-wide
   directories if defaults are not suitable for any reason.</doc>
-        <source-position filename="ostree-sign.h" line="90"/>
+        <source-position filename="ostree-sign.h" line="92"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14053,7 +14053,7 @@ For example, @ed25515 engine could use following string-formatted options:
              filename="ostree-sign.c"
              line="106">Return the pointer to the string with format used in (detached) metadata for
 current signing engine.</doc>
-        <source-position filename="ostree-sign.h" line="78"/>
+        <source-position filename="ostree-sign.h" line="80"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14077,7 +14077,7 @@ current signing engine.</doc>
              filename="ostree-sign.c"
              line="86">Return the pointer to the name of the key used in (detached) metadata for
 current signing engine.</doc>
-        <source-position filename="ostree-sign.h" line="77"/>
+        <source-position filename="ostree-sign.h" line="79"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14104,7 +14104,7 @@ current signing engine.</doc>
 previously pre-loaded public keys will be dropped.
 
 The @public_key argument depends of the particular engine implementation.</doc>
-        <source-position filename="ostree-sign.h" line="84"/>
+        <source-position filename="ostree-sign.h" line="86"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14136,7 +14136,7 @@ The @public_key argument depends of the particular engine implementation.</doc>
              line="148">Set the secret key to be used for signing data, commits and summary.
 
 The @secret_key argument depends of the particular engine implementation.</doc>
-        <source-position filename="ostree-sign.h" line="81"/>
+        <source-position filename="ostree-sign.h" line="83"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14169,7 +14169,7 @@ The @secret_key argument depends of the particular engine implementation.</doc>
 adding all needed keys to be used for verification.
 
 The @public_key argument depends of the particular engine implementation.</doc>
-        <source-position filename="ostree-sign.h" line="148"/>
+        <source-position filename="ostree-sign.h" line="150"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14199,7 +14199,7 @@ The @public_key argument depends of the particular engine implementation.</doc>
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="126">Clear all previously preloaded secret and public keys.</doc>
-        <source-position filename="ostree-sign.h" line="134"/>
+        <source-position filename="ostree-sign.h" line="136"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14225,7 +14225,7 @@ The @public_key argument depends of the particular engine implementation.</doc>
 
 Depending of the signing engine used you will need to load
 the secret key with #ostree_sign_set_sk.</doc>
-        <source-position filename="ostree-sign.h" line="119"/>
+        <source-position filename="ostree-sign.h" line="121"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14274,7 +14274,7 @@ the secret key with #ostree_sign_set_sk.</doc>
 Depending of the signing engine used you will need to load
 the public key(s) for verification with #ostree_sign_set_pk,
 #ostree_sign_add_pk and/or #ostree_sign_load_pk.</doc>
-        <source-position filename="ostree-sign.h" line="126"/>
+        <source-position filename="ostree-sign.h" line="128"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14325,7 +14325,7 @@ the public key(s) for verification with #ostree_sign_set_pk,
 
 Depending of the signing engine used you will need to load
 the secret key with #ostree_sign_set_sk.</doc>
-        <source-position filename="ostree-sign.h" line="99"/>
+        <source-position filename="ostree-sign.h" line="101"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14374,7 +14374,7 @@ the secret key with #ostree_sign_set_sk.</doc>
 Depending of the signing engine used you will need to load
 the public key(s) with #ostree_sign_set_pk, #ostree_sign_add_pk
 or #ostree_sign_load_pk.</doc>
-        <source-position filename="ostree-sign.h" line="106"/>
+        <source-position filename="ostree-sign.h" line="108"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14408,7 +14408,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_add_pk"
               c:identifier="ostree_sign_dummy_add_pk"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="74"/>
         <return-value transfer-ownership="none">
@@ -14425,7 +14424,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_data"
               c:identifier="ostree_sign_dummy_data"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="57"/>
         <return-value transfer-ownership="none">
@@ -14451,7 +14449,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_data_verify"
               c:identifier="ostree_sign_dummy_data_verify"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="63"/>
         <return-value transfer-ownership="none">
@@ -14472,7 +14469,7 @@ or #ostree_sign_load_pk.</doc>
           </parameter>
         </parameters>
       </method>
-      <method name="dummy_get_name" c:identifier="ostree_sign_dummy_get_name" version="2020.2">
+      <method name="dummy_get_name" c:identifier="ostree_sign_dummy_get_name">
         <source-position filename="ostree-sign-dummy.h" line="55"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14484,8 +14481,7 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="dummy_metadata_format"
-              c:identifier="ostree_sign_dummy_metadata_format"
-              version="2020.2">
+              c:identifier="ostree_sign_dummy_metadata_format">
         <source-position filename="ostree-sign-dummy.h" line="70"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14497,8 +14493,7 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="dummy_metadata_key"
-              c:identifier="ostree_sign_dummy_metadata_key"
-              version="2020.2">
+              c:identifier="ostree_sign_dummy_metadata_key">
         <source-position filename="ostree-sign-dummy.h" line="69"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14511,7 +14506,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_set_pk"
               c:identifier="ostree_sign_dummy_set_pk"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="73"/>
         <return-value transfer-ownership="none">
@@ -14528,7 +14522,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="dummy_set_sk"
               c:identifier="ostree_sign_dummy_set_sk"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-dummy.h" line="72"/>
         <return-value transfer-ownership="none">
@@ -14545,7 +14538,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_add_pk"
               c:identifier="ostree_sign_ed25519_add_pk"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="82"/>
         <return-value transfer-ownership="none">
@@ -14562,7 +14554,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_clear_keys"
               c:identifier="ostree_sign_ed25519_clear_keys"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="71"/>
         <return-value transfer-ownership="none">
@@ -14576,7 +14567,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_data"
               c:identifier="ostree_sign_ed25519_data"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="55"/>
         <return-value transfer-ownership="none">
@@ -14602,7 +14592,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_data_verify"
               c:identifier="ostree_sign_ed25519_data_verify"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="61"/>
         <return-value transfer-ownership="none">
@@ -14624,8 +14613,7 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="ed25519_get_name"
-              c:identifier="ostree_sign_ed25519_get_name"
-              version="2020.2">
+              c:identifier="ostree_sign_ed25519_get_name">
         <source-position filename="ostree-sign-ed25519.h" line="67"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14638,7 +14626,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_load_pk"
               c:identifier="ostree_sign_ed25519_load_pk"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="86"/>
         <return-value transfer-ownership="none">
@@ -14654,8 +14641,7 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="ed25519_metadata_format"
-              c:identifier="ostree_sign_ed25519_metadata_format"
-              version="2020.2">
+              c:identifier="ostree_sign_ed25519_metadata_format">
         <source-position filename="ostree-sign-ed25519.h" line="69"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14667,8 +14653,7 @@ or #ostree_sign_load_pk.</doc>
         </parameters>
       </method>
       <method name="ed25519_metadata_key"
-              c:identifier="ostree_sign_ed25519_metadata_key"
-              version="2020.2">
+              c:identifier="ostree_sign_ed25519_metadata_key">
         <source-position filename="ostree-sign-ed25519.h" line="68"/>
         <return-value transfer-ownership="none">
           <type name="utf8" c:type="const gchar*"/>
@@ -14681,7 +14666,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_set_pk"
               c:identifier="ostree_sign_ed25519_set_pk"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="78"/>
         <return-value transfer-ownership="none">
@@ -14698,7 +14682,6 @@ or #ostree_sign_load_pk.</doc>
       </method>
       <method name="ed25519_set_sk"
               c:identifier="ostree_sign_ed25519_set_sk"
-              version="2020.2"
               throws="1">
         <source-position filename="ostree-sign-ed25519.h" line="74"/>
         <return-value transfer-ownership="none">
@@ -14719,7 +14702,7 @@ or #ostree_sign_load_pk.</doc>
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="436">Return the pointer to the name of currently used/selected signing engine.</doc>
-        <source-position filename="ostree-sign.h" line="96"/>
+        <source-position filename="ostree-sign.h" line="98"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14753,7 +14736,7 @@ For example, @ed25515 engine could use following string-formatted options:
   'trusted.ed25519.d' and 'revoked.ed25519.d' with appropriate
   public keys. Used for testing and re-definition of system-wide
   directories if defaults are not suitable for any reason.</doc>
-        <source-position filename="ostree-sign.h" line="153"/>
+        <source-position filename="ostree-sign.h" line="155"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14783,7 +14766,7 @@ For example, @ed25515 engine could use following string-formatted options:
              filename="ostree-sign.c"
              line="106">Return the pointer to the string with format used in (detached) metadata for
 current signing engine.</doc>
-        <source-position filename="ostree-sign.h" line="116"/>
+        <source-position filename="ostree-sign.h" line="118"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14807,7 +14790,7 @@ current signing engine.</doc>
              filename="ostree-sign.c"
              line="86">Return the pointer to the name of the key used in (detached) metadata for
 current signing engine.</doc>
-        <source-position filename="ostree-sign.h" line="113"/>
+        <source-position filename="ostree-sign.h" line="115"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14834,7 +14817,7 @@ current signing engine.</doc>
 previously pre-loaded public keys will be dropped.
 
 The @public_key argument depends of the particular engine implementation.</doc>
-        <source-position filename="ostree-sign.h" line="143"/>
+        <source-position filename="ostree-sign.h" line="145"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14866,7 +14849,7 @@ The @public_key argument depends of the particular engine implementation.</doc>
              line="148">Set the secret key to be used for signing data, commits and summary.
 
 The @secret_key argument depends of the particular engine implementation.</doc>
-        <source-position filename="ostree-sign.h" line="138"/>
+        <source-position filename="ostree-sign.h" line="140"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14889,12 +14872,12 @@ The @secret_key argument depends of the particular engine implementation.</doc>
           </parameter>
         </parameters>
       </method>
-      <method name="summary" c:identifier="ostree_sign_summary" version="2020.2" throws="1">
+      <method name="summary" c:identifier="ostree_sign_summary" throws="1">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
              line="584">Add a signature to a summary file.
 Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
-        <source-position filename="ostree-sign.h" line="165"/>
+        <source-position filename="ostree-sign.h" line="167"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
@@ -14953,13 +14936,13 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
     <record name="SignInterface"
             c:type="OstreeSignInterface"
             glib:is-gtype-struct-for="Sign">
-      <source-position filename="ostree-sign.h" line="93"/>
+      <source-position filename="ostree-sign.h" line="95"/>
       <field name="g_iface">
         <type name="GObject.TypeInterface" c:type="GTypeInterface"/>
       </field>
       <field name="get_name">
         <callback name="get_name">
-          <source-position filename="ostree-sign.h" line="66"/>
+          <source-position filename="ostree-sign.h" line="68"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -14979,7 +14962,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="data">
         <callback name="data" throws="1">
-          <source-position filename="ostree-sign.h" line="67"/>
+          <source-position filename="ostree-sign.h" line="69"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15020,7 +15003,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="data_verify">
         <callback name="data_verify" throws="1">
-          <source-position filename="ostree-sign.h" line="72"/>
+          <source-position filename="ostree-sign.h" line="74"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15055,7 +15038,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="metadata_key">
         <callback name="metadata_key">
-          <source-position filename="ostree-sign.h" line="77"/>
+          <source-position filename="ostree-sign.h" line="79"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15075,7 +15058,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="metadata_format">
         <callback name="metadata_format">
-          <source-position filename="ostree-sign.h" line="78"/>
+          <source-position filename="ostree-sign.h" line="80"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15095,7 +15078,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="clear_keys">
         <callback name="clear_keys" throws="1">
-          <source-position filename="ostree-sign.h" line="79"/>
+          <source-position filename="ostree-sign.h" line="81"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15114,7 +15097,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="set_sk">
         <callback name="set_sk" throws="1">
-          <source-position filename="ostree-sign.h" line="81"/>
+          <source-position filename="ostree-sign.h" line="83"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15140,7 +15123,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="set_pk">
         <callback name="set_pk" throws="1">
-          <source-position filename="ostree-sign.h" line="84"/>
+          <source-position filename="ostree-sign.h" line="86"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15166,7 +15149,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="add_pk">
         <callback name="add_pk" throws="1">
-          <source-position filename="ostree-sign.h" line="87"/>
+          <source-position filename="ostree-sign.h" line="89"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -15192,7 +15175,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
       </field>
       <field name="load_pk">
         <callback name="load_pk" throws="1">
-          <source-position filename="ostree-sign.h" line="90"/>
+          <source-position filename="ostree-sign.h" line="92"/>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
@@ -19213,7 +19196,7 @@ for writing data to an #OstreeRepo.</doc>
            filename="ostree-sign.c"
            line="518">Return an array with newly allocated instances of all available
 signing engines; they will not be initialized.</doc>
-      <source-position filename="ostree-sign.h" line="159"/>
+      <source-position filename="ostree-sign.h" line="161"/>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
@@ -19231,7 +19214,7 @@ signing engines; they will not be initialized.</doc>
       <doc xml:space="preserve"
            filename="ostree-sign.c"
            line="542">Create a new instance of a signing engine.</doc>
-      <source-position filename="ostree-sign.h" line="162"/>
+      <source-position filename="ostree-sign.h" line="164"/>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
