@@ -271,7 +271,7 @@ ostree_sign_load_pk (OstreeSign *self,
  * ostree_sign_data:
  * @self: an #OstreeSign object
  * @data: the raw data to be signed with pre-loaded secret key
- * @signature: in case of success will contain signature
+ * @signature: (out): in case of success will contain signature
  * @cancellable: A #GCancellable
  * @error: a #GError
  *
@@ -305,6 +305,7 @@ ostree_sign_data (OstreeSign *self,
  * @self: an #OstreeSign object
  * @data: the raw data to check
  * @signatures: the signatures to be checked
+ * @out_success_message: (out) (nullable) (optional): success message returned by the signing engine
  * @error: a #GError
  *
  * Verify given data against signatures with pre-loaded public keys.
@@ -372,6 +373,7 @@ _sign_detached_metadata_append (OstreeSign *self,
  * @self: an #OstreeSign object
  * @repo: an #OsreeRepo object
  * @commit_checksum: SHA256 of given commit to verify
+ * @out_success_message: (out) (nullable) (optional): success message returned by the signing engine
  * @cancellable: A #GCancellable
  * @error: a #GError
  *
