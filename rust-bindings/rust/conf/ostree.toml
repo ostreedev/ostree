@@ -14,6 +14,7 @@ generate = [
     "OSTree.AsyncProgress",
     "OSTree.BootconfigParser",
     "OSTree.ChecksumFlags",
+    "OSTree.CommitSizesEntry",
     "OSTree.Deployment",
     "OSTree.DeploymentUnlockedState",
     "OSTree.DiffFlags",

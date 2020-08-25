@@ -80,6 +80,11 @@ mod collection_ref;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::collection_ref::CollectionRef;
 
+#[cfg(any(feature = "v2020_1", feature = "dox"))]
+mod commit_sizes_entry;
+#[cfg(any(feature = "v2020_1", feature = "dox"))]
+pub use self::commit_sizes_entry::CommitSizesEntry;
+
 mod diff_item;
 pub use self::diff_item::DiffItem;
 

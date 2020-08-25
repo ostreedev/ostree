@@ -1,9 +1,10 @@
-use glib::translate::{from_glib_full, FromGlibPtrFull};
-use glib::GString;
+use glib::{
+    translate::{from_glib_full, FromGlibPtrFull, FromGlibPtrNone},
+    GString,
+};
 use glib_sys::{g_free, g_malloc, g_malloc0, gpointer};
 use libc::c_char;
-use std::fmt;
-use std::ptr::copy_nonoverlapping;
+use std::{fmt, ptr::copy_nonoverlapping};
 
 const BYTES_LEN: usize = ostree_sys::OSTREE_SHA256_DIGEST_LEN as usize;
 const HEX_LEN: usize = ostree_sys::OSTREE_SHA256_STRING_LEN as usize;
@@ -16,6 +17,8 @@ pub struct Checksum {
 }
 
 impl Checksum {
+    pub const DIGEST_LEN: usize = BYTES_LEN;
+
     /// Create a `Checksum` value, taking ownership of the given memory location.
     ///
     /// # Safety
@@ -23,9 +26,18 @@ impl Checksum {
     /// `g_free` (this is e.g. the case if the memory was allocated with `g_malloc`). The value
     /// takes ownership of the memory, i.e. the memory is freed when the value is dropped. The
     /// memory must not be freed by other code.
-    unsafe fn new(bytes: *mut [u8; BYTES_LEN]) -> Checksum {
+    unsafe fn new(bytes: *mut [u8; Self::DIGEST_LEN]) -> Checksum {
         assert!(!bytes.is_null());
         Checksum { bytes }
+    }
+
+    /// Create a `Checksum` from a byte array.
+    pub fn from_bytes(checksum: &[u8; Self::DIGEST_LEN]) -> Checksum {
+        let ptr = checksum as *const [u8; BYTES_LEN] as *mut [u8; BYTES_LEN];
+        unsafe {
+            // Safety: we know this byte array is long enough.
+            Checksum::from_glib_none(ptr)
+        }
     }
 
     /// Create a `Checksum` from a hexadecimal SHA256 string.
@@ -93,12 +105,7 @@ impl Drop for Checksum {
 
 impl Clone for Checksum {
     fn clone(&self) -> Self {
-        unsafe {
-            let cloned = g_malloc(BYTES_LEN) as *mut [u8; BYTES_LEN];
-            // copy one array of 32 elements
-            copy_nonoverlapping::<[u8; BYTES_LEN]>(self.bytes, cloned, 1);
-            Checksum::new(cloned)
-        }
+        unsafe { Checksum::from_glib_none(self.bytes) }
     }
 }
 
@@ -140,6 +147,15 @@ impl FromGlibPtrFull<*mut u8> for Checksum {
     }
 }
 
+impl FromGlibPtrNone<*mut [u8; BYTES_LEN]> for Checksum {
+    unsafe fn from_glib_none(ptr: *mut [u8; BYTES_LEN]) -> Self {
+        let cloned = g_malloc(BYTES_LEN) as *mut [u8; BYTES_LEN];
+        // copy one array of 32 elements
+        copy_nonoverlapping::<[u8; BYTES_LEN]>(ptr, cloned, 1);
+        Checksum::new(cloned)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,6 +169,13 @@ mod tests {
     fn should_create_checksum_from_bytes() {
         let bytes = unsafe { g_malloc0(BYTES_LEN) } as *mut u8;
         let checksum: Checksum = unsafe { from_glib_full(bytes) };
+        assert_eq!(checksum.to_string(), "00".repeat(BYTES_LEN));
+    }
+
+    #[test]
+    fn should_create_checksum_from_bytes_copy() {
+        let bytes = [0u8; BYTES_LEN];
+        let checksum = Checksum::from_bytes(&bytes);
         assert_eq!(checksum.to_string(), "00".repeat(BYTES_LEN));
     }
 

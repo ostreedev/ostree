@@ -29,33 +29,30 @@ pub use crate::auto::*;
 // handwritten code
 mod checksum;
 pub use crate::checksum::*;
-
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod collection_ref;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use crate::collection_ref::*;
-
 mod functions;
 pub use crate::functions::*;
-
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 mod kernel_args;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 pub use crate::kernel_args::*;
-
 mod object_name;
 pub use crate::object_name::*;
-
 mod repo;
 pub use crate::repo::*;
-
 #[cfg(any(feature = "v2016_8", feature = "dox"))]
 mod repo_checkout_at_options;
 #[cfg(any(feature = "v2016_8", feature = "dox"))]
 pub use crate::repo_checkout_at_options::*;
-
 mod se_policy;
 pub use crate::se_policy::*;
+#[cfg(any(feature = "v2020_1", feature = "dox"))]
+mod commit_sizes_entry;
+#[cfg(any(feature = "v2020_1", feature = "dox"))]
+pub use crate::commit_sizes_entry::*;
 
 // tests
 #[cfg(test)]

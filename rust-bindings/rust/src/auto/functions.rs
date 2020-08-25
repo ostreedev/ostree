@@ -10,6 +10,8 @@ use glib::GString;
 use ostree_sys;
 use std::mem;
 use std::ptr;
+#[cfg(any(feature = "v2020_1", feature = "dox"))]
+use CommitSizesEntry;
 use DiffFlags;
 use DiffItem;
 use ObjectType;
@@ -105,10 +107,15 @@ pub fn commit_get_content_checksum(commit_variant: &glib::Variant) -> Option<GSt
     }
 }
 
-//#[cfg(any(feature = "v2020_1", feature = "dox"))]
-//pub fn commit_get_object_sizes(commit_variant: &glib::Variant, out_sizes_entries: /*Ignored*/Vec<CommitSizesEntry>) -> Result<(), glib::Error> {
-//    unsafe { TODO: call ostree_sys:ostree_commit_get_object_sizes() }
-//}
+#[cfg(any(feature = "v2020_1", feature = "dox"))]
+pub fn commit_get_object_sizes(commit_variant: &glib::Variant) -> Result<Vec<CommitSizesEntry>, glib::Error> {
+    unsafe {
+        let mut out_sizes_entries = ptr::null_mut();
+        let mut error = ptr::null_mut();
+        let _ = ostree_sys::ostree_commit_get_object_sizes(commit_variant.to_glib_none().0, &mut out_sizes_entries, &mut error);
+        if error.is_null() { Ok(FromGlibPtrContainer::from_glib_container(out_sizes_entries)) } else { Err(from_glib_full(error)) }
+    }
+}
 
 pub fn commit_get_parent(commit_variant: &glib::Variant) -> Option<GString> {
     unsafe {
