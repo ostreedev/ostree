@@ -1069,6 +1069,14 @@ gboolean ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                             GError                      **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
+                                                                  GFile        *dir_or_file,
+                                                                  OstreeSign   *sign,
+                                                                  gboolean     skip_validation,
+                                                                  GCancellable *cancellable,
+                                                                  GError       **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                                                    GFile                         *dir_or_file,
                                                    gboolean                       skip_validation,

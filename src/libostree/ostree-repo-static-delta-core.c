@@ -265,25 +265,68 @@ _ostree_repo_static_delta_is_signed (OstreeRepo       *self,
   return ret;
 }
 
+static gboolean
+_ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
+                                            int               fd,
+                                            OstreeSign       *sign,
+                                            char            **out_success_message,
+                                            GError          **error)
+{
+  g_autoptr(GVariantBuilder) desc_sign_builder = NULL;
+  g_autoptr(GVariant) delta_meta = NULL;
+  g_autoptr(GVariant) delta = NULL;
+
+  if (!ot_variant_read_fd (fd, 0,
+                           (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
+                           TRUE, &delta, error))
+    return FALSE;
+
+  /* Check if there are signatures for signature engine */
+  const gchar *signature_key = ostree_sign_metadata_key(sign);
+  GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(sign);
+  delta_meta = g_variant_get_child_value (delta, 2);
+  if (delta_meta == NULL)
+      return glnx_throw (error, "no metadata in static-delta superblock");
+  g_autoptr(GVariant) signatures = g_variant_lookup_value (delta_meta,
+                                                           signature_key,
+                                                           signature_format);
+  if (!signatures)
+      return glnx_throw (error, "no signature for '%s' in static-delta superblock", signature_key);
+
+  /* Get static delta superblock */
+  g_autoptr(GVariant) child = g_variant_get_child_value (delta, 1);
+  if (child == NULL)
+      return glnx_throw (error, "no metadata in static-delta superblock");
+  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes(child);
+
+  return ostree_sign_data_verify (sign, signed_data, signatures, out_success_message, error);
+}
+
 /**
- * ostree_repo_static_delta_execute_offline:
+ * ostree_repo_static_delta_execute_offline_with_signature:
  * @self: Repo
  * @dir_or_file: Path to a directory containing static delta data, or directly to the superblock
+ * @sign: Signature engine used to check superblock
  * @skip_validation: If %TRUE, assume data integrity
  * @cancellable: Cancellable
  * @error: Error
  *
  * Given a directory representing an already-downloaded static delta
- * on disk, apply it, generating a new commit.  The directory must be
- * named with the form "FROM-TO", where both are checksums, and it
- * must contain a file named "superblock", along with at least one part.
+ * on disk, apply it, generating a new commit.
+ * If sign is passed, the static delta signature is verified.
+ * If sign-verify-deltas configuration option is set and static delta is signed,
+ * signature verification will be mandatory before apply the static delta.
+ * The directory must be named with the form "FROM-TO", where both are
+ * checksums, and it must contain a file named "superblock", along with at least
+ * one part.
  */
 gboolean
-ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
-                                          GFile                         *dir_or_file,
-                                          gboolean                       skip_validation,
-                                          GCancellable                  *cancellable,
-                                          GError                      **error)
+ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
+                                                         GFile        *dir_or_file,
+                                                         OstreeSign   *sign,
+                                                         gboolean     skip_validation,
+                                                         GCancellable *cancellable,
+                                                         GError       **error)
 {
   g_autofree char *basename = NULL;
   g_autoptr(GVariant) delta = NULL;
@@ -316,6 +359,25 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   gboolean is_signed = _ostree_repo_static_delta_is_signed (self, meta_fd, NULL, NULL);
   if (is_signed)
     {
+      gboolean verify_deltas;
+      gboolean verified;
+
+      if (!ot_keyfile_get_boolean_with_default (self->config, "core", "sign-verify-deltas",
+                                                FALSE, &verify_deltas, error))
+        return FALSE;
+
+      if (verify_deltas && !sign)
+        return glnx_throw (error, "Key is mandatory to check delta signature");
+
+      if (sign)
+        {
+          verified = _ostree_repo_static_delta_verify_signature (self, meta_fd, sign, NULL, error);
+          if (*error)
+            return FALSE;
+          if (!verified)
+            return glnx_throw (error, "Delta signature verification failed");
+        }
+
       if (!ot_variant_read_fd (meta_fd, 0, (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
                                TRUE, &delta, error))
         return FALSE;
@@ -477,6 +539,32 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     }
 
   return TRUE;
+}
+
+/**
+ * ostree_repo_static_delta_execute_offline:
+ * @self: Repo
+ * @dir_or_file: Path to a directory containing static delta data, or directly to the superblock
+ * @skip_validation: If %TRUE, assume data integrity
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Given a directory representing an already-downloaded static delta
+ * on disk, apply it, generating a new commit.  The directory must be
+ * named with the form "FROM-TO", where both are checksums, and it
+ * must contain a file named "superblock", along with at least one part.
+ */
+gboolean
+ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
+                                          GFile                         *dir_or_file,
+                                          gboolean                       skip_validation,
+                                          GCancellable                  *cancellable,
+                                          GError                      **error)
+{
+  return ostree_repo_static_delta_execute_offline_with_signature(self, dir_or_file, NULL,
+                                                                 skip_validation,
+                                                                 cancellable,
+                                                                 error);
 }
 
 gboolean
@@ -1030,29 +1118,5 @@ ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
   if (!_ostree_repo_static_delta_is_signed (self, delta_fd, NULL, error))
     return FALSE;
 
-  g_autoptr(GVariant) delta = NULL;
-  if (!ot_variant_read_fd (delta_fd, 0,
-                           (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
-                           TRUE, &delta, error))
-    return FALSE;
-
-  /* Check if there are signatures for signature engine */
-  const gchar *signature_key = ostree_sign_metadata_key(sign);
-  GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(sign);
-  delta_meta = g_variant_get_child_value (delta, 2);
-  if (delta_meta == NULL)
-      return glnx_throw (error, "no metadata in static-delta superblock");
-  g_autoptr(GVariant) signatures = g_variant_lookup_value (delta_meta,
-                                                           signature_key,
-                                                           signature_format);
-  if (!signatures)
-      return glnx_throw (error, "no signature for '%s' in static-delta superblock", signature_key);
-
-  /* Get static delta superblock */
-  g_autoptr(GVariant) child = g_variant_get_child_value (delta, 1);
-  if (child == NULL)
-      return glnx_throw (error, "no metadata in static-delta superblock");
-  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes(child);
-
-  return ostree_sign_data_verify (sign, signed_data, signatures, out_success_message, error);
+  return _ostree_repo_static_delta_verify_signature (self, delta_fd, sign, out_success_message, error);
 }
