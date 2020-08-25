@@ -4,11 +4,13 @@
 
 use gio;
 use glib;
+#[cfg(any(feature = "v2020_4", feature = "dox"))]
 use glib::object::IsA;
 use glib::translate::*;
 use glib::GString;
 use ostree_sys;
 use std::boxed::Box as Box_;
+#[cfg(any(feature = "v2020_4", feature = "dox"))]
 use std::ptr;
 use Repo;
 use RepoCommitFilterResult;
@@ -67,6 +69,7 @@ impl RepoCommitModifier {
         }
     }
 
+    #[cfg(any(feature = "v2020_4", feature = "dox"))]
     pub fn set_sepolicy_from_commit<P: IsA<gio::Cancellable>>(&self, repo: &Repo, rev: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();

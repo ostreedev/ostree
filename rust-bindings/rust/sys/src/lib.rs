@@ -1102,6 +1102,7 @@ extern "C" {
     #[cfg(any(feature = "v2017_13", feature = "dox"))]
     pub fn ostree_repo_commit_modifier_set_devino_cache(modifier: *mut OstreeRepoCommitModifier, cache: *mut OstreeRepoDevInoCache);
     pub fn ostree_repo_commit_modifier_set_sepolicy(modifier: *mut OstreeRepoCommitModifier, sepolicy: *mut OstreeSePolicy);
+    #[cfg(any(feature = "v2020_4", feature = "dox"))]
     pub fn ostree_repo_commit_modifier_set_sepolicy_from_commit(modifier: *mut OstreeRepoCommitModifier, repo: *mut OstreeRepo, rev: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_commit_modifier_set_xattr_callback(modifier: *mut OstreeRepoCommitModifier, callback: OstreeRepoCommitModifierXattrCallback, destroy: glib::GDestroyNotify, user_data: gpointer);
     pub fn ostree_repo_commit_modifier_unref(modifier: *mut OstreeRepoCommitModifier);

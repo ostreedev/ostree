@@ -11222,7 +11222,8 @@ policy wins.</doc>
       </method>
       <method name="set_sepolicy_from_commit"
               c:identifier="ostree_repo_commit_modifier_set_sepolicy_from_commit"
-              throws="1">
+              throws="1"
+              version="2020.4">
         <doc xml:space="preserve"
              filename="ostree-repo-commit.c"
              line="4324">In many cases, one wants to create a "derived" commit from base commit.
