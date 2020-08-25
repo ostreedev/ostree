@@ -13806,13 +13806,13 @@ will be returned.</doc>
                 version="2020.2">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="518">Return an array with newly allocated instances of all available
+             line="520">Return an array with newly allocated instances of all available
 signing engines; they will not be initialized.</doc>
         <source-position filename="ostree-sign.h" line="161"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="524">an array of signing engines</doc>
+               line="526">an array of signing engines</doc>
           <array name="GLib.PtrArray" c:type="GPtrArray*">
             <type name="Sign"/>
           </array>
@@ -13824,19 +13824,19 @@ signing engines; they will not be initialized.</doc>
                 throws="1">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="542">Create a new instance of a signing engine.</doc>
+             line="544">Create a new instance of a signing engine.</doc>
         <source-position filename="ostree-sign.h" line="164"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="549">New signing engine, or %NULL if the engine is not known</doc>
+               line="551">New signing engine, or %NULL if the engine is not known</doc>
           <type name="Sign" c:type="OstreeSign*"/>
         </return-value>
         <parameters>
           <parameter name="name" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="544">the name of desired signature engine</doc>
+                 line="546">the name of desired signature engine</doc>
             <type name="utf8" c:type="const gchar*"/>
           </parameter>
         </parameters>
@@ -13957,7 +13957,7 @@ or #ostree_sign_load_pk.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="316">@TRUE if @data has been signed at least with any single valid key,
+               line="317">@TRUE if @data has been signed at least with any single valid key,
 @FALSE in case of error or no valid keys are available (@error will contain the reason).</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
@@ -13980,7 +13980,16 @@ or #ostree_sign_load_pk.</doc>
                  line="307">the signatures to be checked</doc>
             <type name="GLib.Variant" c:type="GVariant*"/>
           </parameter>
-          <parameter name="out_success_message" transfer-ownership="none">
+          <parameter name="out_success_message"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     nullable="1"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="ostree-sign.c"
+                 line="308">success message returned by the signing engine</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
         </parameters>
@@ -13988,12 +13997,12 @@ or #ostree_sign_load_pk.</doc>
       <virtual-method name="get_name" invoker="get_name" version="2020.2">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="436">Return the pointer to the name of currently used/selected signing engine.</doc>
+             line="438">Return the pointer to the name of currently used/selected signing engine.</doc>
         <source-position filename="ostree-sign.h" line="68"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="442">pointer to the name
+               line="444">pointer to the name
 @NULL in case of error (unlikely).</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -14001,7 +14010,7 @@ or #ostree_sign_load_pk.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="438">an #OstreeSign object</doc>
+                 line="440">an #OstreeSign object</doc>
             <type name="Sign" c:type="OstreeSign*"/>
           </instance-parameter>
         </parameters>
@@ -14221,7 +14230,7 @@ The @public_key argument depends of the particular engine implementation.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="456">Add a signature to a commit.
+             line="458">Add a signature to a commit.
 
 Depending of the signing engine used you will need to load
 the secret key with #ostree_sign_set_sk.</doc>
@@ -14229,7 +14238,7 @@ the secret key with #ostree_sign_set_sk.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="469">@TRUE if commit has been signed successfully,
+               line="471">@TRUE if commit has been signed successfully,
 @FALSE in case of error (@error will contain the reason).</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
@@ -14237,19 +14246,19 @@ the secret key with #ostree_sign_set_sk.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="458">an #OstreeSign object</doc>
+                 line="460">an #OstreeSign object</doc>
             <type name="Sign" c:type="OstreeSign*"/>
           </instance-parameter>
           <parameter name="repo" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="459">an #OsreeRepo object</doc>
+                 line="461">an #OsreeRepo object</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </parameter>
           <parameter name="commit_checksum" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="460">SHA256 of given commit to sign</doc>
+                 line="462">SHA256 of given commit to sign</doc>
             <type name="utf8" c:type="const gchar*"/>
           </parameter>
           <parameter name="cancellable"
@@ -14258,7 +14267,7 @@ the secret key with #ostree_sign_set_sk.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="461">A #GCancellable</doc>
+                 line="463">A #GCancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -14269,7 +14278,7 @@ the secret key with #ostree_sign_set_sk.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="370">Verify if commit is signed with known key.
+             line="371">Verify if commit is signed with known key.
 
 Depending of the signing engine used you will need to load
 the public key(s) for verification with #ostree_sign_set_pk,
@@ -14278,7 +14287,7 @@ the public key(s) for verification with #ostree_sign_set_pk,
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="384">@TRUE if commit has been verified successfully,
+               line="386">@TRUE if commit has been verified successfully,
 @FALSE in case of error or no valid keys are available (@error will contain the reason).</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
@@ -14286,22 +14295,31 @@ the public key(s) for verification with #ostree_sign_set_pk,
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="372">an #OstreeSign object</doc>
+                 line="373">an #OstreeSign object</doc>
             <type name="Sign" c:type="OstreeSign*"/>
           </instance-parameter>
           <parameter name="repo" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="373">an #OsreeRepo object</doc>
+                 line="374">an #OsreeRepo object</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </parameter>
           <parameter name="commit_checksum" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="374">SHA256 of given commit to verify</doc>
+                 line="375">SHA256 of given commit to verify</doc>
             <type name="utf8" c:type="const gchar*"/>
           </parameter>
-          <parameter name="out_success_message" transfer-ownership="none">
+          <parameter name="out_success_message"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     nullable="1"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="ostree-sign.c"
+                 line="376">success message returned by the signing engine</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
           <parameter name="cancellable"
@@ -14310,7 +14328,7 @@ the public key(s) for verification with #ostree_sign_set_pk,
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="375">A #GCancellable</doc>
+                 line="377">A #GCancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -14378,7 +14396,7 @@ or #ostree_sign_load_pk.</doc>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="316">@TRUE if @data has been signed at least with any single valid key,
+               line="317">@TRUE if @data has been signed at least with any single valid key,
 @FALSE in case of error or no valid keys are available (@error will contain the reason).</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
@@ -14401,7 +14419,16 @@ or #ostree_sign_load_pk.</doc>
                  line="307">the signatures to be checked</doc>
             <type name="GLib.Variant" c:type="GVariant*"/>
           </parameter>
-          <parameter name="out_success_message" transfer-ownership="none">
+          <parameter name="out_success_message"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     nullable="1"
+                     optional="1"
+                     allow-none="1">
+            <doc xml:space="preserve"
+                 filename="ostree-sign.c"
+                 line="308">success message returned by the signing engine</doc>
             <type name="utf8" c:type="char**"/>
           </parameter>
         </parameters>
@@ -14701,12 +14728,12 @@ or #ostree_sign_load_pk.</doc>
               version="2020.2">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="436">Return the pointer to the name of currently used/selected signing engine.</doc>
+             line="438">Return the pointer to the name of currently used/selected signing engine.</doc>
         <source-position filename="ostree-sign.h" line="98"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="442">pointer to the name
+               line="444">pointer to the name
 @NULL in case of error (unlikely).</doc>
           <type name="utf8" c:type="const gchar*"/>
         </return-value>
@@ -14714,7 +14741,7 @@ or #ostree_sign_load_pk.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="438">an #OstreeSign object</doc>
+                 line="440">an #OstreeSign object</doc>
             <type name="Sign" c:type="OstreeSign*"/>
           </instance-parameter>
         </parameters>
@@ -14878,32 +14905,32 @@ The @secret_key argument depends of the particular engine implementation.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="584">Add a signature to a summary file.
+             line="586">Add a signature to a summary file.
 Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
         <source-position filename="ostree-sign.h" line="167"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="595">@TRUE if summary file has been signed with all provided keys</doc>
+               line="597">@TRUE if summary file has been signed with all provided keys</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="586">Self</doc>
+                 line="588">Self</doc>
             <type name="Sign" c:type="OstreeSign*"/>
           </instance-parameter>
           <parameter name="repo" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="587">ostree repository</doc>
+                 line="589">ostree repository</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </parameter>
           <parameter name="keys" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="588">keys -- GVariant containing keys as GVarints specific to signature type.</doc>
+                 line="590">keys -- GVariant containing keys as GVarints specific to signature type.</doc>
             <type name="GLib.Variant" c:type="GVariant*"/>
           </parameter>
           <parameter name="cancellable"
@@ -14912,7 +14939,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="589">A #GCancellable</doc>
+                 line="591">A #GCancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -14949,7 +14976,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="442">pointer to the name
+                 line="444">pointer to the name
 @NULL in case of error (unlikely).</doc>
             <type name="utf8" c:type="const gchar*"/>
           </return-value>
@@ -14957,7 +14984,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
             <parameter name="self" transfer-ownership="none">
               <doc xml:space="preserve"
                    filename="ostree-sign.c"
-                   line="438">an #OstreeSign object</doc>
+                   line="440">an #OstreeSign object</doc>
               <type name="Sign" c:type="OstreeSign*"/>
             </parameter>
           </parameters>
@@ -15010,7 +15037,7 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
           <return-value transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
-                 line="316">@TRUE if @data has been signed at least with any single valid key,
+                 line="317">@TRUE if @data has been signed at least with any single valid key,
 @FALSE in case of error or no valid keys are available (@error will contain the reason).</doc>
             <type name="gboolean" c:type="gboolean"/>
           </return-value>
@@ -15033,7 +15060,16 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
                    line="307">the signatures to be checked</doc>
               <type name="GLib.Variant" c:type="GVariant*"/>
             </parameter>
-            <parameter name="out_success_message" transfer-ownership="none">
+            <parameter name="out_success_message"
+                       direction="out"
+                       caller-allocates="0"
+                       transfer-ownership="full"
+                       nullable="1"
+                       optional="1"
+                       allow-none="1">
+              <doc xml:space="preserve"
+                   filename="ostree-sign.c"
+                   line="308">success message returned by the signing engine</doc>
               <type name="utf8" c:type="char**"/>
             </parameter>
           </parameters>
@@ -19197,13 +19233,13 @@ for writing data to an #OstreeRepo.</doc>
               version="2020.2">
       <doc xml:space="preserve"
            filename="ostree-sign.c"
-           line="518">Return an array with newly allocated instances of all available
+           line="520">Return an array with newly allocated instances of all available
 signing engines; they will not be initialized.</doc>
       <source-position filename="ostree-sign.h" line="161"/>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="524">an array of signing engines</doc>
+             line="526">an array of signing engines</doc>
         <array name="GLib.PtrArray" c:type="GPtrArray*">
           <type name="Sign"/>
         </array>
@@ -19216,19 +19252,19 @@ signing engines; they will not be initialized.</doc>
               throws="1">
       <doc xml:space="preserve"
            filename="ostree-sign.c"
-           line="542">Create a new instance of a signing engine.</doc>
+           line="544">Create a new instance of a signing engine.</doc>
       <source-position filename="ostree-sign.h" line="164"/>
       <return-value transfer-ownership="full">
         <doc xml:space="preserve"
              filename="ostree-sign.c"
-             line="549">New signing engine, or %NULL if the engine is not known</doc>
+             line="551">New signing engine, or %NULL if the engine is not known</doc>
         <type name="Sign" c:type="OstreeSign*"/>
       </return-value>
       <parameters>
         <parameter name="name" transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-sign.c"
-               line="544">the name of desired signature engine</doc>
+               line="546">the name of desired signature engine</doc>
           <type name="utf8" c:type="const gchar*"/>
         </parameter>
       </parameters>
