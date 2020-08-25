@@ -12,7 +12,7 @@
 
 # config with sccache based on Fedora Rawhide, i.e. very recent libostree
 .fedora-ostree-devel:
-  image: fedora:rawhide
+  image: registry.fedoraproject.org/fedora:rawhide
   extends: .sccache
   before_script:
     - dnf install -y cargo rust ostree-devel

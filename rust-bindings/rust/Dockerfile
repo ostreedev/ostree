@@ -1,4 +1,4 @@
-FROM fedora:latest
+FROM registry.fedoraproject.org/fedora:latest
 
 RUN dnf install -y curl gcc make tar xz 'dnf-command(builddep)'
 RUN dnf builddep -y ostree
