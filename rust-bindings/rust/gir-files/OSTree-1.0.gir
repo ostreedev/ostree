@@ -13925,7 +13925,10 @@ the secret key with #ostree_sign_set_sk.</doc>
                  line="273">the raw data to be signed with pre-loaded secret key</doc>
             <type name="GLib.Bytes" c:type="GBytes*"/>
           </parameter>
-          <parameter name="signature" transfer-ownership="none">
+          <parameter name="signature"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
                  line="274">in case of success will contain signature</doc>
@@ -14364,7 +14367,10 @@ the secret key with #ostree_sign_set_sk.</doc>
                  line="273">the raw data to be signed with pre-loaded secret key</doc>
             <type name="GLib.Bytes" c:type="GBytes*"/>
           </parameter>
-          <parameter name="signature" transfer-ownership="none">
+          <parameter name="signature"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
             <doc xml:space="preserve"
                  filename="ostree-sign.c"
                  line="274">in case of success will contain signature</doc>
@@ -15013,7 +15019,10 @@ Based on ostree_repo_add_gpg_signature_summary implementation.</doc>
                    line="273">the raw data to be signed with pre-loaded secret key</doc>
               <type name="GLib.Bytes" c:type="GBytes*"/>
             </parameter>
-            <parameter name="signature" transfer-ownership="none">
+            <parameter name="signature"
+                       direction="out"
+                       caller-allocates="0"
+                       transfer-ownership="full">
               <doc xml:space="preserve"
                    filename="ostree-sign.c"
                    line="274">in case of success will contain signature</doc>

@@ -59,7 +59,7 @@ pub trait SignExt: 'static {
     fn commit_verify<P: IsA<gio::Cancellable>>(&self, repo: &Repo, commit_checksum: &str, cancellable: Option<&P>) -> Result<Option<GString>, glib::Error>;
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    fn data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, signature: &glib::Bytes, cancellable: Option<&P>) -> Result<(), glib::Error>;
+    fn data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, cancellable: Option<&P>) -> Result<glib::Bytes, glib::Error>;
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     fn data_verify(&self, data: &glib::Bytes, signatures: &glib::Variant) -> Result<Option<GString>, glib::Error>;
@@ -125,11 +125,12 @@ impl<O: IsA<Sign>> SignExt for O {
     }
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    fn data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, signature: &glib::Bytes, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    fn data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, cancellable: Option<&P>) -> Result<glib::Bytes, glib::Error> {
         unsafe {
+            let mut signature = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_sign_data(self.as_ref().to_glib_none().0, data.to_glib_none().0, signature.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+            let _ = ostree_sys::ostree_sign_data(self.as_ref().to_glib_none().0, data.to_glib_none().0, &mut signature, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(signature)) } else { Err(from_glib_full(error)) }
         }
     }
 
