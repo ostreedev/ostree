@@ -98,10 +98,6 @@ pub fn checksum_to_bytes_v(checksum: &str) -> Option<glib::Variant> {
     }
 }
 
-//pub fn cmd__private__() -> /*Ignored*/Option<CmdPrivateVTable> {
-//    unsafe { TODO: call ostree_sys:ostree_cmd__private__() }
-//}
-
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 pub fn commit_get_content_checksum(commit_variant: &glib::Variant) -> Option<GString> {
     unsafe {
@@ -191,10 +187,6 @@ pub fn gpg_error_quark() -> glib::Quark {
         from_glib(ostree_sys::ostree_gpg_error_quark())
     }
 }
-
-//pub fn hash_object_name(a: /*Unimplemented*/Option<Fundamental: Pointer>) -> u32 {
-//    unsafe { TODO: call ostree_sys:ostree_hash_object_name() }
-//}
 
 pub fn metadata_variant_type(objtype: ObjectType) -> Option<glib::VariantType> {
     unsafe {

@@ -195,8 +195,13 @@ status = "generate"
 name = "OSTree.*"
 status = "generate"
     [[object.function]]
-    # both too low-level to be generated safely
-    pattern = "cmp_checksum_bytes|checksum_inplace_to_bytes"
+    # low-level functions with unsafe APIs
+    pattern = "cmp_checksum_bytes|checksum_inplace_to_bytes|hash_object_name"
+    ignore = true
+
+    [[object.function]]
+    # private API
+    pattern = "cmd__private__"
     ignore = true
 
     [[object.constant]]
