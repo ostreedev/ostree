@@ -35,6 +35,6 @@ fn test_sysroot_ro() -> Result<()> {
 #[itest]
 fn test_immutable_bit() -> Result<()> {
     // https://bugzilla.redhat.com/show_bug.cgi?id=1867601
-    cmd_has_output(commandspec::sh_command!("lsattr -d /").unwrap(), "-i-")?;
+    cmd_has_output(sh_inline::bash_command!("lsattr -d /").unwrap(), "-i-")?;
     Ok(())
 }

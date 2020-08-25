@@ -20,7 +20,7 @@
 //! AUTOPKGTEST_REBOOT_MARK.
 
 use anyhow::{Context, Result};
-use commandspec::sh_execute;
+use sh_inline::bash;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -133,7 +133,7 @@ impl InterruptStrategy {
 /// TODO add readonly sysroot handling into base ostree
 fn testinit() -> Result<()> {
     assert!(std::path::Path::new("/run/ostree-booted").exists());
-    sh_execute!(
+    bash!(
         r"if ! test -w /sysroot; then
    mount -o remount,rw /sysroot
 fi"
@@ -152,7 +152,7 @@ fn generate_update(commit: &str) -> Result<()> {
     // Amortize the prune across multiple runs; we don't want to leak space,
     // but traversing all the objects is expensive.  So here we only prune 1/5 of the time.
     if rand::thread_rng().gen_ratio(1, 5) {
-        sh_execute!(
+        bash!(
             "ostree --repo={srvrepo} prune --refs-only --depth=1",
             srvrepo = SRVREPO
         )?;
@@ -165,7 +165,7 @@ fn generate_update(commit: &str) -> Result<()> {
 /// and then teach our webserver to redirect to the system for objects it doesn't
 /// have.
 fn generate_srv_repo(commit: &str) -> Result<()> {
-    sh_execute!(
+    bash!(
         r#"
         ostree --repo={srvrepo} init --mode=archive
         ostree --repo={srvrepo} config set archive.zlib-level 1
@@ -200,7 +200,7 @@ struct RebootStats {
 }
 
 fn upgrade_and_finalize() -> Result<()> {
-    sh_execute!(
+    bash!(
         "rpm-ostree upgrade
         systemctl start ostree-finalize-staged
         systemctl stop ostree-finalize-staged"
@@ -304,8 +304,8 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
 
 fn validate_pending_commit(pending_commit: &str, commitstates: &CommitStates) -> Result<()> {
     if pending_commit != commitstates.target {
-        sh_execute!("rpm-ostree status -v")?;
-        sh_execute!(
+        bash!("rpm-ostree status -v")?;
+        bash!(
             "ostree show {pending_commit}",
             pending_commit = pending_commit
         )?;
@@ -418,7 +418,7 @@ fn impl_transaction_test<M: AsRef<str>>(
         // If we've reached our target iterations, exit the test successfully
         if mark.iter == ITERATIONS {
             // TODO also add ostree admin fsck to check the deployment directories
-            sh_execute!(
+            bash!(
                 "echo Performing final validation...
                 ostree fsck"
             )?;
@@ -455,7 +455,7 @@ fn impl_transaction_test<M: AsRef<str>>(
         );
         // Reset the target ref to booted, and perform a cleanup
         // to ensure we're re-downloading objects each time
-        sh_execute!(
+        bash!(
             "
             systemctl stop rpm-ostreed
             systemctl stop ostree-finalize-staged
@@ -498,7 +498,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             // the interrupt strategy.
             match strategy {
                 InterruptStrategy::Force(ForceInterruptStrategy::Kill9) => {
-                    sh_execute!(
+                    bash!(
                         "systemctl kill -s KILL rpm-ostreed || true
                       systemctl kill -s KILL ostree-finalize-staged || true"
                     )?;
@@ -508,7 +508,7 @@ fn impl_transaction_test<M: AsRef<str>>(
                     mark.reboot_strategy = Some(strategy.clone());
                     prepare_reboot(serde_json::to_string(&mark)?)?;
                     // This is a forced reboot - no syncing of the filesystem.
-                    sh_execute!("reboot -ff")?;
+                    bash!("reboot -ff")?;
                     std::thread::sleep(time::Duration::from_secs(60));
                     // Shouldn't happen
                     anyhow::bail!("failed to reboot");
@@ -522,7 +522,7 @@ fn impl_transaction_test<M: AsRef<str>>(
                     // We either rebooted, or failed to reboot
                 }
                 InterruptStrategy::Polite(PoliteInterruptStrategy::Stop) => {
-                    sh_execute!(
+                    bash!(
                         "systemctl stop rpm-ostreed || true
                       systemctl stop ostree-finalize-staged || true"
                     )?;
@@ -566,7 +566,7 @@ fn transactionality() -> Result<()> {
     };
     with_webserver_in(&srvrepo, &webserver_opts, move |addr| {
         let url = format!("http://{}", addr);
-        sh_execute!(
+        bash!(
             "ostree remote delete --if-exists testrepo
              ostree remote add --set=gpg-verify=false testrepo {url}",
             url = url
@@ -576,13 +576,13 @@ fn transactionality() -> Result<()> {
             // Also disable some services (like zincati) because we don't want automatic updates
             // in our reboots, and it currently fails to start.  The less
             // we have in each reboot, the faster reboots are.
-            sh_execute!("systemctl disable --now zincati fedora-coreos-pinger")?;
+            bash!("systemctl disable --now zincati fedora-coreos-pinger")?;
             // And prepare for updates
-            sh_execute!("rpm-ostree cleanup -pr")?;
+            bash!("rpm-ostree cleanup -pr")?;
             generate_update(&commit)?;
             // Directly set the origin, so that we're not dependent on the pending deployment.
             // FIXME: make this saner
-            sh_execute!(
+            bash!(
                 "
                 ostree admin set-origin testrepo {url} {testref}
                 ostree refs --create testrepo:{testref} {commit}
@@ -608,7 +608,7 @@ fn transactionality() -> Result<()> {
             let mut f = std::io::BufWriter::new(std::fs::File::create(&TDATAPATH)?);
             serde_json::to_writer(&mut f, &tdata)?;
             f.flush()?;
-            sh_execute!("rpm-ostree status")?;
+            bash!("rpm-ostree status")?;
         }
 
         let tdata = {
