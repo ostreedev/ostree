@@ -5,12 +5,12 @@ use std::path::Path;
 
 use crate::test::*;
 use anyhow::{Context, Result};
-use commandspec::{sh_command, sh_execute};
+use sh_inline::{bash_command, bash};
 use with_procspawn_tempdir::with_procspawn_tempdir;
 
 #[itest]
 fn test_basic() -> Result<()> {
-    sh_execute!(r"ostree --help >/dev/null")?;
+    bash!(r"ostree --help >/dev/null")?;
     Ok(())
 }
 
@@ -18,14 +18,14 @@ fn test_basic() -> Result<()> {
 #[with_procspawn_tempdir]
 fn test_nofifo() -> Result<()> {
     assert!(std::path::Path::new(".procspawn-tmpdir").exists());
-    sh_execute!(
+    bash!(
         r"ostree --repo=repo init --mode=archive
     mkdir tmproot
     mkfifo tmproot/afile
 "
     )?;
     cmd_fails_with(
-        sh_command!(
+        bash_command!(
             r#"ostree --repo=repo commit -b fifotest -s "commit fifo" --tree=dir=./tmproot"#
         )
         .unwrap(),
@@ -37,7 +37,7 @@ fn test_nofifo() -> Result<()> {
 #[itest]
 #[with_procspawn_tempdir]
 fn test_mtime() -> Result<()> {
-    sh_execute!(
+    bash!(
         r"ostree --repo=repo init --mode=archive
     mkdir tmproot
     echo afile > tmproot/afile
@@ -45,7 +45,7 @@ fn test_mtime() -> Result<()> {
 "
     )?;
     let ts = Path::new("repo").metadata()?.modified().unwrap();
-    sh_execute!(
+    bash!(
         r#"ostree --repo=repo commit -b test -s "bump mtime" --tree=dir=tmproot >/dev/null"#
     )?;
     assert_ne!(ts, Path::new("repo").metadata()?.modified().unwrap());
@@ -55,7 +55,7 @@ fn test_mtime() -> Result<()> {
 #[itest]
 #[with_procspawn_tempdir]
 fn test_extensions() -> Result<()> {
-    sh_execute!(r"ostree --repo=repo init --mode=bare")?;
+    bash!(r"ostree --repo=repo init --mode=bare")?;
     assert!(Path::new("repo/extensions").exists());
     Ok(())
 }
@@ -78,7 +78,7 @@ fn test_pull_basicauth() -> Result<()> {
         )?;
         let osroot = Path::new("osroot");
         crate::treegen::mkroot(&osroot)?;
-        sh_execute!(
+        bash!(
             r#"ostree --repo={serverrepo} init --mode=archive
         ostree --repo={serverrepo} commit -b os --tree=dir={osroot} >/dev/null
         mkdir client
@@ -96,7 +96,7 @@ fn test_pull_basicauth() -> Result<()> {
         )?;
         for rem in &["unauth", "badauth"] {
             cmd_fails_with(
-                sh_command!(
+                bash_command!(
                     r#"ostree --repo=client/repo pull origin-{rem} os >/dev/null"#,
                     rem = *rem
                 )
@@ -105,7 +105,7 @@ fn test_pull_basicauth() -> Result<()> {
             )
             .context(rem)?;
         }
-        sh_execute!(r#"ostree --repo=client/repo pull origin-goodauth os >/dev/null"#,)?;
+        bash!(r#"ostree --repo=client/repo pull origin-goodauth os >/dev/null"#,)?;
         Ok(())
     })?;
     Ok(())

@@ -237,8 +237,8 @@ mod tests {
     fn test_output() -> Result<()> {
         cmd_has_output(Command::new("true"), "")?;
         assert!(cmd_has_output(Command::new("true"), "foo").is_err());
-        cmd_has_output(commandspec::sh_command!("echo foobarbaz; echo fooblahbaz").unwrap(), "blah")?;
-        assert!(cmd_has_output(commandspec::sh_command!("echo foobarbaz").unwrap(), "blah").is_err());
+        cmd_has_output(sh_inline::bash_command!("echo foobarbaz; echo fooblahbaz").unwrap(), "blah")?;
+        assert!(cmd_has_output(sh_inline::bash_command!("echo foobarbaz").unwrap(), "blah").is_err());
         Ok(())
     }
 

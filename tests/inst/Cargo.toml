@@ -14,7 +14,8 @@ structopt = "0.3"
 serde = "1.0.111"
 serde_derive = "1.0.111"
 serde_json = "1.0"
-commandspec = "0.12.2"
+# To be published on crates.io soon
+sh-inline = { git = "https://github.com/cgwalters/rust-sh-inline" }
 anyhow = "1.0"
 tempfile = "3.1.0"
 glib = "0.10"
@@ -43,8 +44,3 @@ with-procspawn-tempdir = { git = "https://github.com/cgwalters/with-procspawn-te
 
 # Internal crate for the test macro
 itest-macro = { path = "itest-macro" }
-
-[patch.crates-io]
-# See https://github.com/tcr/commandspec/pulls?q=is%3Apr+author%3Acgwalters+
-# If patches don't get reviewed I'll probably fork it.
-commandspec = { git = "https://github.com/cgwalters/commandspec", branch = 'walters-master' }
