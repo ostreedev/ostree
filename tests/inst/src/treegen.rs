@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
-use sh_inline::bash;
 use openat_ext::{FileExt, OpenatDirExt};
 use rand::Rng;
+use sh_inline::bash;
 use std::fs::File;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt as UnixFileExt;
@@ -141,8 +141,8 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
     assert!(mutated > 0);
     println!("Mutated ELF files: {}", mutated);
     bash!("ostree --repo={repo} commit --consume -b {ostref} --base={ostref} --tree=dir={tempdir} --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs",
-        repo = repo_path.to_str().unwrap(),
+        repo = repo_path,
         ostref = ostref,
-        tempdir = tempdir.path().to_str().unwrap()).context("Failed to commit updated content")?;
+        tempdir = tempdir.path()).context("Failed to commit updated content")?;
     Ok(())
 }

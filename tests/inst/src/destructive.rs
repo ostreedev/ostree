@@ -20,10 +20,10 @@
 //! AUTOPKGTEST_REBOOT_MARK.
 
 use anyhow::{Context, Result};
-use sh_inline::bash;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use sh_inline::bash;
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
@@ -305,10 +305,7 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
 fn validate_pending_commit(pending_commit: &str, commitstates: &CommitStates) -> Result<()> {
     if pending_commit != commitstates.target {
         bash!("rpm-ostree status -v")?;
-        bash!(
-            "ostree show {pending_commit}",
-            pending_commit = pending_commit
-        )?;
+        bash!("ostree show {pending_commit}", pending_commit)?;
         anyhow::bail!(
             "Expected target commit={} but pending={} ({:?})",
             commitstates.target,
@@ -455,6 +452,7 @@ fn impl_transaction_test<M: AsRef<str>>(
         );
         // Reset the target ref to booted, and perform a cleanup
         // to ensure we're re-downloading objects each time
+        let testref = TESTREF;
         bash!(
             "
             systemctl stop rpm-ostreed
@@ -462,8 +460,8 @@ fn impl_transaction_test<M: AsRef<str>>(
             ostree reset testrepo:{testref} {booted_commit}
             rpm-ostree cleanup -pbrm
             ",
-            testref = TESTREF,
-            booted_commit = booted_commit
+            testref,
+            booted_commit,
         )
         .with_context(|| {
             format!(
@@ -569,7 +567,7 @@ fn transactionality() -> Result<()> {
         bash!(
             "ostree remote delete --if-exists testrepo
              ostree remote add --set=gpg-verify=false testrepo {url}",
-            url = url
+            url
         )?;
 
         if firstrun {
@@ -582,16 +580,18 @@ fn transactionality() -> Result<()> {
             generate_update(&commit)?;
             // Directly set the origin, so that we're not dependent on the pending deployment.
             // FIXME: make this saner
+            let origref = ORIGREF;
+            let testref = TESTREF;
             bash!(
                 "
                 ostree admin set-origin testrepo {url} {testref}
                 ostree refs --create testrepo:{testref} {commit}
                 ostree refs --create={origref} {commit}
                 ",
-                url = url,
-                origref = ORIGREF,
-                testref = TESTREF,
-                commit = commit
+                url,
+                origref,
+                testref,
+                commit
             )?;
             // We gather a single "cycle time" at start as a way of gauging how
             // long an upgrade should take, so we know when to interrupt.  This
