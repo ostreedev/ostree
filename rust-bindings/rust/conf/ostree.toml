@@ -139,8 +139,8 @@ status = "generate"
 name = "OSTree.Repo"
 status = "generate"
     [[object.function]]
-    # [FAIL] this one generates a guchar** incorrectly
-    name = "write_content_async"
+    # [MANUAL] we special-case the checksum value
+    pattern = "write_content|write_content_async|write_metadata|write_metadata_async"
     ignore = true
 
     [[object.function]]
