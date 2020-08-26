@@ -1,14 +1,31 @@
-use glib::{
-    translate::{from_glib_full, FromGlibPtrFull, FromGlibPtrNone},
-    GString,
-};
-use glib_sys::{g_free, g_malloc, g_malloc0, gpointer};
-use libc::c_char;
-use std::{fmt, ptr::copy_nonoverlapping};
+use glib::translate::{FromGlibPtrFull, FromGlibPtrNone};
+use glib_sys::{g_free, g_malloc0, gpointer};
+use once_cell::sync::OnceCell;
+use std::ptr::copy_nonoverlapping;
 
 const BYTES_LEN: usize = ostree_sys::OSTREE_SHA256_DIGEST_LEN as usize;
-const HEX_LEN: usize = ostree_sys::OSTREE_SHA256_STRING_LEN as usize;
-const B64_LEN: usize = 43;
+
+static BASE64_CONFIG: OnceCell<radix64::CustomConfig> = OnceCell::new();
+
+fn base64_config() -> &'static radix64::CustomConfig {
+    BASE64_CONFIG.get_or_init(|| {
+        radix64::configs::CustomConfigBuilder::with_alphabet(
+            // modified base64 alphabet used by ostree (uses _ instead of /)
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_",
+        )
+        .no_padding()
+        .build()
+        .unwrap()
+    })
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ChecksumError {
+    #[error("invalid hex checksum string")]
+    InvalidHexString,
+    #[error("invalid base64 checksum string")]
+    InvalidBase64String,
+}
 
 /// A binary SHA256 checksum.
 #[derive(Debug)]
@@ -16,80 +33,64 @@ pub struct Checksum {
     bytes: *mut [u8; BYTES_LEN],
 }
 
+// Safety: just a pointer to some memory owned by the type itself.
+unsafe impl Send for Checksum {}
+
 impl Checksum {
-    pub const DIGEST_LEN: usize = BYTES_LEN;
-
-    /// Create a `Checksum` value, taking ownership of the given memory location.
-    ///
-    /// # Safety
-    /// `bytes` must point to a fully initialized 32-byte memory location that is freeable with
-    /// `g_free` (this is e.g. the case if the memory was allocated with `g_malloc`). The value
-    /// takes ownership of the memory, i.e. the memory is freed when the value is dropped. The
-    /// memory must not be freed by other code.
-    unsafe fn new(bytes: *mut [u8; Self::DIGEST_LEN]) -> Checksum {
-        assert!(!bytes.is_null());
-        Checksum { bytes }
-    }
-
-    /// Create a `Checksum` from a byte array.
-    pub fn from_bytes(checksum: &[u8; Self::DIGEST_LEN]) -> Checksum {
-        let ptr = checksum as *const [u8; BYTES_LEN] as *mut [u8; BYTES_LEN];
-        unsafe {
-            // Safety: we know this byte array is long enough.
-            Checksum::from_glib_none(ptr)
-        }
-    }
-
     /// Create a `Checksum` from a hexadecimal SHA256 string.
-    ///
-    /// Unfortunately, the underlying libostree function has no way to report parsing errors. If the
-    /// string is not a valid SHA256 string, the program will abort!
-    pub fn from_hex(checksum: &str) -> Checksum {
-        assert_eq!(checksum.len(), HEX_LEN);
-        unsafe {
-            // We know checksum is at least as long as needed, trailing NUL is unnecessary.
-            from_glib_full(ostree_sys::ostree_checksum_to_bytes(
-                checksum.as_ptr() as *const c_char
-            ))
+    pub fn from_hex(hex_checksum: &str) -> Result<Checksum, ChecksumError> {
+        let mut checksum = Checksum::zeroed();
+        match hex::decode_to_slice(hex_checksum, checksum.as_mut()) {
+            Ok(_) => Ok(checksum),
+            Err(_) => Err(ChecksumError::InvalidHexString),
         }
     }
 
     /// Create a `Checksum` from a base64-encoded String.
-    ///
-    /// Invalid base64 characters will not be reported, but will cause unknown output instead, most
-    /// likely 0.
-    pub fn from_base64(b64_checksum: &str) -> Checksum {
-        assert_eq!(b64_checksum.len(), B64_LEN);
-        unsafe {
-            let buf = g_malloc0(BYTES_LEN) as *mut [u8; BYTES_LEN];
-            // We know b64_checksum is at least as long as needed, trailing NUL is unnecessary.
-            ostree_sys::ostree_checksum_b64_inplace_to_bytes(
-                b64_checksum.as_ptr() as *const [c_char; 32],
-                buf as *mut u8,
-            );
-            from_glib_full(buf)
+    pub fn from_base64(b64_checksum: &str) -> Result<Checksum, ChecksumError> {
+        let mut checksum = Checksum::zeroed();
+        match base64_config().decode_slice(b64_checksum, checksum.as_mut()) {
+            Ok(BYTES_LEN) => Ok(checksum),
+            Ok(_) => Err(ChecksumError::InvalidBase64String),
+            Err(_) => Err(ChecksumError::InvalidBase64String),
         }
     }
 
     /// Convert checksum to hex-encoded string.
-    pub fn to_hex(&self) -> GString {
-        // This one returns a NUL-terminated string.
-        unsafe { from_glib_full(ostree_sys::ostree_checksum_from_bytes(self.bytes)) }
+    pub fn to_hex(&self) -> String {
+        hex::encode(self.as_slice())
     }
 
-    /// Convert checksum to base64.
+    /// Convert checksum to base64 string.
     pub fn to_base64(&self) -> String {
-        let mut buf: Vec<u8> = Vec::with_capacity(B64_LEN + 1);
-        unsafe {
-            ostree_sys::ostree_checksum_b64_inplace_from_bytes(
-                self.bytes,
-                buf.as_mut_ptr() as *mut c_char,
-            );
-            // Assumption: 43 valid bytes are in the buffer.
-            buf.set_len(B64_LEN);
-            // Assumption: all characters are ASCII, ergo valid UTF-8.
-            String::from_utf8_unchecked(buf)
-        }
+        base64_config().encode(self.as_slice())
+    }
+
+    /// Create a `Checksum` value, taking ownership of the given memory location.
+    ///
+    /// # Safety
+    /// `bytes` must point to an initialized 32-byte memory location that is freeable with
+    /// `g_free` (this is e.g. the case if the memory was allocated with `g_malloc`). The returned
+    /// value takes ownership of the memory and frees it on drop.
+    unsafe fn new(bytes: *mut [u8; BYTES_LEN]) -> Checksum {
+        assert!(!bytes.is_null());
+        Checksum { bytes }
+    }
+
+    /// Create a `Checksum` value initialized to 0.
+    fn zeroed() -> Checksum {
+        let bytes = unsafe { g_malloc0(BYTES_LEN) as *mut [u8; BYTES_LEN] };
+        Checksum { bytes }
+    }
+
+    /// Get a shared reference to the inner array.
+    fn as_slice(&self) -> &[u8; BYTES_LEN] {
+        unsafe { &(*self.bytes) }
+    }
+
+    /// Get a mutable reference to the inner array.
+    fn as_mut(&mut self) -> &mut [u8; BYTES_LEN] {
+        unsafe { &mut (*self.bytes) }
     }
 }
 
@@ -121,8 +122,8 @@ impl PartialEq for Checksum {
 
 impl Eq for Checksum {}
 
-impl fmt::Display for Checksum {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Display for Checksum {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_hex())
     }
 }
@@ -147,16 +148,17 @@ impl FromGlibPtrFull<*mut u8> for Checksum {
 
 impl FromGlibPtrNone<*mut [u8; BYTES_LEN]> for Checksum {
     unsafe fn from_glib_none(ptr: *mut [u8; BYTES_LEN]) -> Self {
-        let cloned = g_malloc(BYTES_LEN) as *mut [u8; BYTES_LEN];
-        // copy one array of 32 elements
-        copy_nonoverlapping::<[u8; BYTES_LEN]>(ptr, cloned, 1);
-        Checksum::new(cloned)
+        let checksum = Checksum::zeroed();
+        // copy one array of BYTES_LEN elements
+        copy_nonoverlapping(ptr, checksum.bytes, 1);
+        checksum
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use glib::translate::from_glib_full;
     use glib_sys::g_malloc0;
 
     const CHECKSUM_STRING: &str =
@@ -171,60 +173,53 @@ mod tests {
     }
 
     #[test]
-    fn should_create_checksum_from_bytes_copy() {
-        let bytes = [0u8; BYTES_LEN];
-        let checksum = Checksum::from_bytes(&bytes);
-        assert_eq!(checksum.to_string(), "00".repeat(BYTES_LEN));
-    }
-
-    #[test]
     fn should_parse_checksum_string_to_bytes() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING);
+        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
         assert_eq!(csum.to_string(), CHECKSUM_STRING);
     }
 
     #[test]
-    #[should_panic]
-    fn should_panic_for_too_short_hex_string() {
-        Checksum::from_hex(&"FF".repeat(31));
+    fn should_fail_for_too_short_hex_string() {
+        let result = Checksum::from_hex(&"FF".repeat(31));
+        assert!(result.is_err());
     }
 
     #[test]
     fn should_convert_checksum_to_base64() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING);
+        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
         assert_eq!(csum.to_base64(), CHECKSUM_BASE64);
     }
 
     #[test]
     fn should_convert_base64_string_to_checksum() {
-        let csum = Checksum::from_base64(CHECKSUM_BASE64);
+        let csum = Checksum::from_base64(CHECKSUM_BASE64).unwrap();
         assert_eq!(csum.to_base64(), CHECKSUM_BASE64);
         assert_eq!(csum.to_string(), CHECKSUM_STRING);
     }
 
     #[test]
-    #[should_panic]
-    fn should_panic_for_too_short_b64_string() {
-        Checksum::from_base64("abcdefghi");
+    fn should_fail_for_too_short_b64_string() {
+        let result = Checksum::from_base64("abcdefghi");
+        assert!(result.is_err());
     }
 
     #[test]
-    fn should_be_all_zeroes_for_invalid_base64_string() {
-        let csum = Checksum::from_base64(&"\n".repeat(43));
-        assert_eq!(csum.to_string(), "00".repeat(32));
+    fn should_fail_for_invalid_base64_string() {
+        let result = Checksum::from_base64(&"\n".repeat(43));
+        assert!(result.is_err());
     }
 
     #[test]
     fn should_compare_checksums() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING);
+        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
         assert_eq!(csum, csum);
-        let csum2 = Checksum::from_hex(CHECKSUM_STRING);
+        let csum2 = Checksum::from_hex(CHECKSUM_STRING).unwrap();
         assert_eq!(csum2, csum);
     }
 
     #[test]
     fn should_clone_value() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING);
+        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
         let csum2 = csum.clone();
         assert_eq!(csum2, csum);
         let csum3 = csum2.clone();
