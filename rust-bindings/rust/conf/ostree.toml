@@ -50,7 +50,6 @@ generate = [
     "OSTree.RepoResolveRevExtFlags",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
-    "OSTree.Sysroot",
     "OSTree.SysrootSimpleWriteDeploymentFlags",
     "OSTree.SysrootUpgrader",
     "OSTree.SysrootUpgraderFlags",
@@ -83,6 +82,7 @@ manual = [
     "OSTree.KernelArgs",
     "OSTree.RepoCheckoutAtOptions",
     "OSTree.RepoCheckoutFilter",
+    "OSTree.SysrootWriteDeploymentsOpts",
 ]
 
 ignore = [
@@ -198,6 +198,15 @@ status = "generate"
     [[object.function]]
     pattern = "dummy_.+|ed25519_.+"
     ignore = true
+
+[[object]]
+name = "OSTree.Sysroot"
+status = "generate"
+    [[object.function]]
+    name = "write_deployments_with_options"
+    [[object.function.parameter]]
+    name = "opts"
+    const = true
 
 [[object]]
 name = "OSTree.*"

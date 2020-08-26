@@ -53,6 +53,10 @@ pub use crate::se_policy::*;
 mod commit_sizes_entry;
 #[cfg(any(feature = "v2020_1", feature = "dox"))]
 pub use crate::commit_sizes_entry::*;
+#[cfg(any(feature = "v2017_4", feature = "dox"))]
+mod sysroot_write_deployments_opts;
+#[cfg(any(feature = "v2017_4", feature = "dox"))]
+pub use crate::sysroot_write_deployments_opts::*;
 
 // tests
 #[cfg(test)]

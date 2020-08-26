@@ -31,6 +31,8 @@ use Deployment;
 use DeploymentUnlockedState;
 use Repo;
 use SysrootSimpleWriteDeploymentFlags;
+#[cfg(any(feature = "v2017_4", feature = "dox"))]
+use SysrootWriteDeploymentsOpts;
 
 glib_wrapper! {
     pub struct Sysroot(Object<ostree_sys::OstreeSysroot, SysrootClass>);
@@ -356,10 +358,14 @@ impl Sysroot {
         }
     }
 
-    //#[cfg(any(feature = "v2017_4", feature = "dox"))]
-    //pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: &[Deployment], opts: /*Ignored*/&mut SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), glib::Error> {
-    //    unsafe { TODO: call ostree_sys:ostree_sysroot_write_deployments_with_options() }
-    //}
+    #[cfg(any(feature = "v2017_4", feature = "dox"))]
+    pub fn write_deployments_with_options<P: IsA<gio::Cancellable>>(&self, new_deployments: &[Deployment], opts: &SysrootWriteDeploymentsOpts, cancellable: Option<&P>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_sysroot_write_deployments_with_options(self.to_glib_none().0, new_deployments.to_glib_none().0, mut_override(opts.to_glib_none().0), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     pub fn write_origin_file<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, new_origin: Option<&glib::KeyFile>, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
