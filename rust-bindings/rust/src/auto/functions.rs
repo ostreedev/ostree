@@ -41,6 +41,18 @@ pub fn check_version(required_year: u32, required_release: u32) -> bool {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_bytes_peek_validate() }
 //}
 
+pub fn checksum_from_bytes_v(csum_v: &glib::Variant) -> Option<GString> {
+    unsafe {
+        from_glib_full(ostree_sys::ostree_checksum_from_bytes_v(csum_v.to_glib_none().0))
+    }
+}
+
+pub fn checksum_to_bytes_v(checksum: &str) -> Option<glib::Variant> {
+    unsafe {
+        from_glib_full(ostree_sys::ostree_checksum_to_bytes_v(checksum.to_glib_none().0))
+    }
+}
+
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 pub fn commit_get_content_checksum(commit_variant: &glib::Variant) -> Option<GString> {
     unsafe {

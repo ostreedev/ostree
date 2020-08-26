@@ -903,6 +903,14 @@ impl Repo {
         }
     }
 
+    pub fn write_content_trusted<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(&self, checksum: &str, object_input: &P, length: u64, cancellable: Option<&Q>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_write_content_trusted(self.to_glib_none().0, checksum.to_glib_none().0, object_input.as_ref().to_glib_none().0, length, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     pub fn write_dfd_to_mtree<P: IsA<MutableTree>, Q: IsA<gio::Cancellable>>(&self, dfd: i32, path: &str, mtree: &P, modifier: Option<&RepoCommitModifier>, cancellable: Option<&Q>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -915,6 +923,22 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_write_directory_to_mtree(self.to_glib_none().0, dir.as_ref().to_glib_none().0, mtree.as_ref().to_glib_none().0, modifier.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    pub fn write_metadata_stream_trusted<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(&self, objtype: ObjectType, checksum: &str, object_input: &P, length: u64, cancellable: Option<&Q>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_write_metadata_stream_trusted(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, object_input.as_ref().to_glib_none().0, length, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    pub fn write_metadata_trusted<P: IsA<gio::Cancellable>>(&self, objtype: ObjectType, checksum: &str, variant: &glib::Variant, cancellable: Option<&P>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_write_metadata_trusted(self.to_glib_none().0, objtype.to_glib(), checksum.to_glib_none().0, variant.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
