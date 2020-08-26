@@ -5,6 +5,6 @@ build() {
     add_binary /usr/lib/ostree/ostree-remount
 
     add_file /usr/lib/systemd/system/ostree-prepare-root.service
-    add_symlink /usr/lib/systemd/system/initrd-switch-root.target.wants/ostree-prepare-root.service \
+    add_symlink /usr/lib/systemd/system/initrd-root-fs.target.wants/ostree-prepare-root.service \
         /usr/lib/systemd/system/ostree-prepare-root.service
 }
