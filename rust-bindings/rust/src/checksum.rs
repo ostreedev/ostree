@@ -37,6 +37,15 @@ pub struct Checksum {
 unsafe impl Send for Checksum {}
 
 impl Checksum {
+    /// Create a `Checksum` from a byte array.
+    ///
+    /// This copies the array.
+    pub fn from_bytes(bytes: &[u8; BYTES_LEN]) -> Checksum {
+        let mut checksum = Checksum::zeroed();
+        checksum.as_mut().copy_from_slice(bytes);
+        checksum
+    }
+
     /// Create a `Checksum` from a hexadecimal SHA256 string.
     pub fn from_hex(hex_checksum: &str) -> Result<Checksum, ChecksumError> {
         let mut checksum = Checksum::zeroed();
@@ -161,21 +170,27 @@ mod tests {
     use glib::translate::from_glib_full;
     use glib_sys::g_malloc0;
 
-    const CHECKSUM_STRING: &str =
-        "bf875306783efdc5bcab37ea10b6ca4e9b6aea8b94580d0ca94af120565c0e8a";
+    const CHECKSUM_BYTES: &[u8; BYTES_LEN] = b"\xbf\x87S\x06x>\xfd\xc5\xbc\xab7\xea\x10\xb6\xcaN\x9bj\xea\x8b\x94X\r\x0c\xa9J\xf1 V\\\x0e\x8a";
+    const CHECKSUM_HEX: &str = "bf875306783efdc5bcab37ea10b6ca4e9b6aea8b94580d0ca94af120565c0e8a";
     const CHECKSUM_BASE64: &str = "v4dTBng+_cW8qzfqELbKTptq6ouUWA0MqUrxIFZcDoo";
 
     #[test]
-    fn should_create_checksum_from_bytes() {
+    fn should_create_checksum_from_bytes_taking_ownership() {
         let bytes = unsafe { g_malloc0(BYTES_LEN) } as *mut u8;
         let checksum: Checksum = unsafe { from_glib_full(bytes) };
         assert_eq!(checksum.to_string(), "00".repeat(BYTES_LEN));
     }
 
     #[test]
+    fn should_create_checksum_from_bytes() {
+        let checksum = Checksum::from_bytes(CHECKSUM_BYTES);
+        assert_eq!(checksum.to_hex(), CHECKSUM_HEX);
+    }
+
+    #[test]
     fn should_parse_checksum_string_to_bytes() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
-        assert_eq!(csum.to_string(), CHECKSUM_STRING);
+        let csum = Checksum::from_hex(CHECKSUM_HEX).unwrap();
+        assert_eq!(csum.to_string(), CHECKSUM_HEX);
     }
 
     #[test]
@@ -186,7 +201,7 @@ mod tests {
 
     #[test]
     fn should_convert_checksum_to_base64() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
+        let csum = Checksum::from_hex(CHECKSUM_HEX).unwrap();
         assert_eq!(csum.to_base64(), CHECKSUM_BASE64);
     }
 
@@ -194,7 +209,7 @@ mod tests {
     fn should_convert_base64_string_to_checksum() {
         let csum = Checksum::from_base64(CHECKSUM_BASE64).unwrap();
         assert_eq!(csum.to_base64(), CHECKSUM_BASE64);
-        assert_eq!(csum.to_string(), CHECKSUM_STRING);
+        assert_eq!(csum.to_string(), CHECKSUM_HEX);
     }
 
     #[test]
@@ -211,15 +226,15 @@ mod tests {
 
     #[test]
     fn should_compare_checksums() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
+        let csum = Checksum::from_hex(CHECKSUM_HEX).unwrap();
         assert_eq!(csum, csum);
-        let csum2 = Checksum::from_hex(CHECKSUM_STRING).unwrap();
+        let csum2 = Checksum::from_hex(CHECKSUM_HEX).unwrap();
         assert_eq!(csum2, csum);
     }
 
     #[test]
     fn should_clone_value() {
-        let csum = Checksum::from_hex(CHECKSUM_STRING).unwrap();
+        let csum = Checksum::from_hex(CHECKSUM_HEX).unwrap();
         let csum2 = csum.clone();
         assert_eq!(csum2, csum);
         let csum3 = csum2.clone();
