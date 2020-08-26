@@ -33,16 +33,6 @@ pub fn check_version(required_year: u32, required_release: u32) -> bool {
     }
 }
 
-//#[cfg(any(feature = "v2016_8", feature = "dox"))]
-//pub fn checksum_b64_from_bytes(csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32) -> Option<GString> {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_b64_from_bytes() }
-//}
-
-//#[cfg(any(feature = "v2016_8", feature = "dox"))]
-//pub fn checksum_b64_to_bytes(checksum: &str) -> /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32 {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_b64_to_bytes() }
-//}
-
 //pub fn checksum_bytes_peek(bytes: &glib::Variant) -> /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32 {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_bytes_peek() }
 //}
@@ -50,43 +40,6 @@ pub fn check_version(required_year: u32, required_release: u32) -> bool {
 //pub fn checksum_bytes_peek_validate(bytes: &glib::Variant) -> Result</*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, glib::Error> {
 //    unsafe { TODO: call ostree_sys:ostree_checksum_bytes_peek_validate() }
 //}
-
-//pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(f: &P, objtype: ObjectType, out_csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Option<&Q>) -> Result<(), glib::Error> {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_file() }
-//}
-
-//pub fn checksum_file_async<P: IsA<gio::File>, Q: IsA<gio::Cancellable>, R: FnOnce(Result<(), glib::Error>) + 'static>(f: &P, objtype: ObjectType, io_priority: i32, cancellable: Option<&Q>, callback: R) {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_file_async() }
-//}
-
-//#[cfg(any(feature = "v2017_13", feature = "dox"))]
-//pub fn checksum_file_at<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, stbuf: /*Unimplemented*/Option<Fundamental: Pointer>, objtype: ObjectType, flags: ChecksumFlags, out_checksum: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_file_at() }
-//}
-
-//pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(file_info: &gio::FileInfo, xattrs: Option<&glib::Variant>, in_: Option<&P>, objtype: ObjectType, out_csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32, cancellable: Option<&Q>) -> Result<(), glib::Error> {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_file_from_input() }
-//}
-
-//pub fn checksum_from_bytes(csum: /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32) -> Option<GString> {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_from_bytes() }
-//}
-
-pub fn checksum_from_bytes_v(csum_v: &glib::Variant) -> Option<GString> {
-    unsafe {
-        from_glib_full(ostree_sys::ostree_checksum_from_bytes_v(csum_v.to_glib_none().0))
-    }
-}
-
-//pub fn checksum_to_bytes(checksum: &str) -> /*Unimplemented*/FixedArray TypeId { ns_id: 0, id: 3 }; 32 {
-//    unsafe { TODO: call ostree_sys:ostree_checksum_to_bytes() }
-//}
-
-pub fn checksum_to_bytes_v(checksum: &str) -> Option<glib::Variant> {
-    unsafe {
-        from_glib_full(ostree_sys::ostree_checksum_to_bytes_v(checksum.to_glib_none().0))
-    }
-}
 
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 pub fn commit_get_content_checksum(commit_variant: &glib::Variant) -> Option<GString> {
