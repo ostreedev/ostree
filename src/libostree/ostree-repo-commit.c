@@ -4332,6 +4332,8 @@ ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              
  * In many cases, one wants to create a "derived" commit from base commit.
  * SELinux policy labels are part of that base commit.  This API allows
  * one to easily set up SELinux labeling from a base commit.
+ *
+ * Since: 2020.4
  */
 gboolean 
 ostree_repo_commit_modifier_set_sepolicy_from_commit (OstreeRepoCommitModifier              *modifier,
