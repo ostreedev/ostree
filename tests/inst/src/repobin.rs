@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::test::*;
 use anyhow::{Context, Result};
-use sh_inline::{bash_command, bash};
+use sh_inline::{bash, bash_command};
 use with_procspawn_tempdir::with_procspawn_tempdir;
 
 #[itest]
@@ -45,9 +45,7 @@ fn test_mtime() -> Result<()> {
 "
     )?;
     let ts = Path::new("repo").metadata()?.modified().unwrap();
-    bash!(
-        r#"ostree --repo=repo commit -b test -s "bump mtime" --tree=dir=tmproot >/dev/null"#
-    )?;
+    bash!(r#"ostree --repo=repo commit -b test -s "bump mtime" --tree=dir=tmproot >/dev/null"#)?;
     assert_ne!(ts, Path::new("repo").metadata()?.modified().unwrap());
     Ok(())
 }
@@ -88,8 +86,8 @@ fn test_pull_basicauth() -> Result<()> {
         ostree --repo=repo remote add --set=gpg-verify=false origin-badauth {unauthuri}
         ostree --repo=repo remote add --set=gpg-verify=false origin-goodauth {authuri}
         "#,
-            osroot = osroot.to_str(),
-            serverrepo = serverrepo.to_str(),
+            osroot = osroot,
+            serverrepo = serverrepo,
             baseuri = baseuri.to_string(),
             unauthuri = unauthuri.to_string(),
             authuri = authuri.to_string()
