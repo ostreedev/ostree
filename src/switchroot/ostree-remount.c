@@ -112,6 +112,11 @@ main(int argc, char *argv[])
   bool sysroot_configured_readonly = unlink (_OSTREE_SYSROOT_READONLY_STAMP) == 0;
   do_remount ("/sysroot", !sysroot_configured_readonly);
 
+  /* And also make sure to make /etc rw again. We make this conditional on
+   * sysroot_configured_readonly because only in that case is it a bind-mount. */
+  if (sysroot_configured_readonly)
+    do_remount ("/etc", true);
+
   /* If /var was created as as an OSTree default bind mount (instead of being a separate filesystem)
     * then remounting the root mount read-only also remounted it.
     * So just like /etc, we need to make it read-write by default.
