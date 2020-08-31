@@ -109,7 +109,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
             return FALSE;
           if (sub_dent == NULL)
             break;
-          if (dent->d_type != DT_DIR)
+          if (sub_dent->d_type != DT_DIR)
             continue;
 
           const char *name1 = dent->d_name;
