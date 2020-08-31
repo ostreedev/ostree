@@ -168,6 +168,8 @@ pivot_root(const char * new_root, const char * put_old)
 int
 main(int argc, char *argv[])
 {
+  char srcpath[PATH_MAX];
+
   /* If we're pid 1, that means there's no initramfs; in this situation
    * various defaults change:
    *
@@ -214,6 +216,16 @@ main(int argc, char *argv[])
         err (EXIT_FAILURE, "failed to umount proc from /proc");
     }
 
+  /* Query the repository configuration - this is an operating system builder
+   * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
+   */
+  const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
+  const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
+#ifdef USE_LIBSYSTEMD
+      sd_journal_send ("MESSAGE=sysroot configured read-only: %d, currently writable: %d", 
+                      (int)sysroot_readonly, (int)sysroot_currently_writable, NULL);
+#endif
+
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
    * MS_SHARED. Hence remount them MS_PRIVATE here as a
@@ -226,39 +238,31 @@ main(int argc, char *argv[])
   /* Make deploy_path a bind mount, so we can move it later */
   if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
     err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
-
-  /* chdir to our new root.  We need to do this after bind-mounting it over
-   * itself otherwise our cwd is still on the non-bind-mounted filesystem
-   * below. */
-  if (chdir (deploy_path) < 0)
-    err (EXIT_FAILURE, "failed to chdir to deploy_path");
-
-  /* Query the repository configuration - this is an operating system builder
-   * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
-   */
-  const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
-  const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
-
-#ifdef USE_LIBSYSTEMD
-      sd_journal_send ("MESSAGE=sysroot configured read-only: %d, currently writable: %d", 
-                      (int)sysroot_readonly, (int)sysroot_currently_writable, NULL);
-#endif
   if (sysroot_readonly)
     {
-      if (!sysroot_currently_writable)
-        errx (EXIT_FAILURE, "sysroot=readonly currently requires writable / in initramfs");
+      if (mount (deploy_path, deploy_path, NULL, MS_REMOUNT | MS_SILENT | MS_RDONLY, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make deploy bind mount read-only");
       /* Now, /etc is not normally a bind mount, but if we have a readonly
        * sysroot, we still need a writable /etc.  And to avoid race conditions
        * we ensure it's writable in the initramfs, before we switchroot at all.
        */
-      if (mount ("etc", "etc", NULL, MS_BIND, NULL) < 0)
+      snprintf (srcpath, sizeof(srcpath), "%s/etc", deploy_path);
+      if (mount (srcpath, srcpath, NULL, MS_BIND, NULL) < 0)
         err (EXIT_FAILURE, "failed to make /etc a bind mount");
+      if (mount (srcpath, srcpath, NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make /etc writable");
       /* Pass on the fact that we discovered a readonly sysroot to ostree-remount.service */
       int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
       if (fd < 0)
         err (EXIT_FAILURE, "failed to create %s", _OSTREE_SYSROOT_READONLY_STAMP);
       (void) close (fd);
     }
+
+  /* chdir to our new root.  We need to do this after bind-mounting it over
+   * itself otherwise our cwd is still on the non-bind-mounted filesystem
+   * below. */
+  if (chdir (deploy_path) < 0)
+    err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
   /* Default to true, but in the systemd case, default to false because it's handled by
    * ostree-system-generator. */
@@ -272,10 +276,12 @@ main(int argc, char *argv[])
     mount_var = true;
 
   /* Link to the deployment's /var */
-  if (mount_var && mount ("../../var", "var", NULL, MS_BIND, NULL) < 0)
-    err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+  if (mount_var)
+    {
+      if (mount ("../../var", "var", NULL, MS_BIND, NULL) < 0)
+        err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+    }
 
-  char srcpath[PATH_MAX];
   /* If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
   snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint);
@@ -363,6 +369,15 @@ main(int argc, char *argv[])
 
       if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
+
+      if (sysroot_readonly)
+        {
+          fprintf (stderr, "prepare-root: remounting sysroot readonly\n");
+          if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to bind mount (class:readonly) sysroot");
+          if (mount ("etc", "etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to bind mount (class:writable) etc");
+        }
 
       if (rmdir ("/sysroot.tmp") < 0)
         err (EXIT_FAILURE, "couldn't remove temporary sysroot /sysroot.tmp");
