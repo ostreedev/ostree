@@ -5793,25 +5793,18 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       {
         g_autofree char *from = NULL;
         g_autofree char *to = NULL;
+        GVariant *digest;
+
         if (!_ostree_parse_delta_name (delta_names->pdata[i], &from, &to, error))
           return FALSE;
 
-        g_autofree char *superblock = _ostree_get_relative_static_delta_superblock_path ((from && from[0]) ? from : NULL, to);
-        glnx_autofd int superblock_file_fd = -1;
-
-        if (!glnx_openat_rdonly (self->repo_dir_fd, superblock, TRUE, &superblock_file_fd, error))
+        digest = _ostree_repo_static_delta_superblock_digest (self,
+                                                              (from && from[0]) ? from : NULL,
+                                                              to, cancellable, error);
+        if (digest == NULL)
           return FALSE;
 
-        g_autoptr(GBytes) superblock_content = ot_fd_readall_or_mmap (superblock_file_fd, 0, error);
-        if (!superblock_content)
-          return FALSE;
-        g_auto(OtChecksum) hasher = { 0, };
-        ot_checksum_init (&hasher);
-        ot_checksum_update_bytes (&hasher, superblock_content);
-        guint8 digest[OSTREE_SHA256_DIGEST_LEN];
-        ot_checksum_get_digest (&hasher, digest, sizeof (digest));
-
-        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], ot_gvariant_new_bytearray (digest, sizeof (digest)));
+        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], digest);
       }
 
     if (delta_names->len > 0)
