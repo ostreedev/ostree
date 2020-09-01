@@ -1814,15 +1814,15 @@ _ostree_get_relative_object_path (const char         *checksum,
   return g_string_free (path, FALSE);
 }
 
-char *
-_ostree_get_relative_static_delta_path (const char *from,
-                                        const char *to,
-                                        const char *target)
+static GString *
+static_delta_path_base (const char *dir,
+                        const char *from,
+                        const char *to)
 {
   guint8 csum_to[OSTREE_SHA256_DIGEST_LEN];
   char to_b64[44];
   guint8 csum_to_copy[OSTREE_SHA256_DIGEST_LEN];
-  GString *ret = g_string_new ("deltas/");
+  GString *ret = g_string_new (dir);
 
   ostree_checksum_inplace_to_bytes (to, csum_to);
   ostree_checksum_b64_inplace_from_bytes (csum_to, to_b64);
@@ -1850,6 +1850,16 @@ _ostree_get_relative_static_delta_path (const char *from,
   if (from == NULL)
     g_string_append_c (ret, '/');
   g_string_append (ret, to_b64 + 2);
+
+  return ret;
+}
+
+char *
+_ostree_get_relative_static_delta_path (const char *from,
+                                        const char *to,
+                                        const char *target)
+{
+  GString *ret = static_delta_path_base ("deltas/", from, to);
 
   if (target != NULL)
     {
@@ -1881,6 +1891,16 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
 {
   g_autofree char *partstr = g_strdup_printf ("%u", i);
   return _ostree_get_relative_static_delta_path (from, to, partstr);
+}
+
+char *
+_ostree_get_relative_static_delta_index_path (const char *to)
+{
+  GString *ret = static_delta_path_base ("delta-indexes/", NULL, to);
+
+  g_string_append (ret, ".index");
+
+  return g_string_free (ret, FALSE);
 }
 
 gboolean

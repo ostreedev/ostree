@@ -135,6 +135,9 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
                                              const char        *to,
                                              guint              i);
 
+char *
+_ostree_get_relative_static_delta_index_path (const char        *to);
+
 static inline char * _ostree_get_commitpartial_path (const char *checksum)
 {
   return g_strconcat ("state/", checksum, ".commitpartial", NULL);
