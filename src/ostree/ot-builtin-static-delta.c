@@ -53,6 +53,8 @@ BUILTINPROTO(delete);
 BUILTINPROTO(generate);
 BUILTINPROTO(apply_offline);
 BUILTINPROTO(verify);
+BUILTINPROTO(indexes);
+BUILTINPROTO(reindex);
 
 #undef BUILTINPROTO
 
@@ -75,6 +77,12 @@ static OstreeCommand static_delta_subcommands[] = {
   { "verify", OSTREE_BUILTIN_FLAG_NONE,
     ot_static_delta_builtin_verify,
     "Verify static delta signatures" },
+  { "indexes", OSTREE_BUILTIN_FLAG_NONE,
+    ot_static_delta_builtin_indexes,
+    "List static delta indexes" },
+  { "reindex", OSTREE_BUILTIN_FLAG_NONE,
+    ot_static_delta_builtin_reindex,
+    "Regenerate static delta indexes" },
   { NULL, 0, NULL, NULL }
 };
 
@@ -123,6 +131,15 @@ static GOptionEntry verify_options[] = {
   { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
   { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir, "Redefine system-wide directories with public and revoked keys for verification", "NAME"},
 #endif
+  { NULL }
+};
+
+static GOptionEntry indexes_options[] = {
+  { NULL }
+};
+
+static GOptionEntry reindex_options[] = {
+  { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Only update delta index to revision REV", "REV" },
   { NULL }
 };
 
@@ -175,6 +192,46 @@ ot_static_delta_builtin_list (int argc, char **argv, OstreeCommandInvocation *in
 
   return TRUE;
 }
+
+static gboolean
+ot_static_delta_builtin_indexes (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+{
+  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  if (!ostree_option_context_parse (context, indexes_options, &argc, &argv,
+                                    invocation, &repo, cancellable, error))
+    return FALSE;
+
+  g_autoptr(GPtrArray) indexes = NULL;
+  if (!ostree_repo_list_static_delta_indexes (repo, &indexes, cancellable, error))
+    return FALSE;
+
+  if (indexes->len == 0)
+    g_print ("(No static deltas indexes)\n");
+  else
+    {
+      for (guint i = 0; i < indexes->len; i++)
+        g_print ("%s\n", (char*)indexes->pdata[i]);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+ot_static_delta_builtin_reindex (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+{
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
+
+  g_autoptr(OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, reindex_options, &argc, &argv, invocation, &repo, cancellable, error))
+    return FALSE;
+
+  if (!ostree_repo_static_delta_reindex (repo, 0, opt_to_rev, cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 
 static gboolean
 ot_static_delta_builtin_show (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
