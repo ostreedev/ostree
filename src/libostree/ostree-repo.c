@@ -5927,6 +5927,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     g_variant_ref_sink (summary);
   }
 
+  if (!_ostree_repo_static_delta_reindex (self, NULL, cancellable, error))
+    return FALSE;
+
   if (!_ostree_repo_file_replace_contents (self,
                                            self->repo_dir_fd,
                                            "summary",
