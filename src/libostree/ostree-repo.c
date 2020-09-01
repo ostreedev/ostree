@@ -5749,6 +5749,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
    * commits from working.
    */
   g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  gboolean no_deltas_in_summary = FALSE;
+
   lock = _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
                                       cancellable, error);
   if (!lock)
@@ -5781,35 +5783,41 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       }
   }
 
-  {
-    g_autoptr(GPtrArray) delta_names = NULL;
-    g_auto(GVariantDict) deltas_builder = OT_VARIANT_BUILDER_INITIALIZER;
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core",
+                                            "no-deltas-in-summary", FALSE,
+                                            &no_deltas_in_summary, error))
+    return FALSE;
 
-    if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
-      return FALSE;
+  if (!no_deltas_in_summary)
+    {
+      g_autoptr(GPtrArray) delta_names = NULL;
+      g_auto(GVariantDict) deltas_builder = OT_VARIANT_BUILDER_INITIALIZER;
 
-    g_variant_dict_init (&deltas_builder, NULL);
-    for (guint i = 0; i < delta_names->len; i++)
-      {
-        g_autofree char *from = NULL;
-        g_autofree char *to = NULL;
-        GVariant *digest;
+      if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
+        return FALSE;
 
-        if (!_ostree_parse_delta_name (delta_names->pdata[i], &from, &to, error))
-          return FALSE;
+      g_variant_dict_init (&deltas_builder, NULL);
+      for (guint i = 0; i < delta_names->len; i++)
+        {
+          g_autofree char *from = NULL;
+          g_autofree char *to = NULL;
+          GVariant *digest;
 
-        digest = _ostree_repo_static_delta_superblock_digest (self,
-                                                              (from && from[0]) ? from : NULL,
-                                                              to, cancellable, error);
-        if (digest == NULL)
-          return FALSE;
+          if (!_ostree_parse_delta_name (delta_names->pdata[i], &from, &to, error))
+            return FALSE;
 
-        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], digest);
-      }
+          digest = _ostree_repo_static_delta_superblock_digest (self,
+                                                                (from && from[0]) ? from : NULL,
+                                                                to, cancellable, error);
+          if (digest == NULL)
+            return FALSE;
 
-    if (delta_names->len > 0)
-      g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_STATIC_DELTAS, g_variant_dict_end (&deltas_builder));
-  }
+          g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], digest);
+        }
+
+      if (delta_names->len > 0)
+        g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_STATIC_DELTAS, g_variant_dict_end (&deltas_builder));
+    }
 
   {
     g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_LAST_MODIFIED,
