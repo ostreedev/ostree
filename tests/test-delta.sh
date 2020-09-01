@@ -28,7 +28,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..12'
+echo '1..13'
 
 mkdir repo
 ostree_repo_init repo --mode=archive
@@ -90,6 +90,11 @@ ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ${origrev} || exit 1
 ${CMD_PREFIX} ostree --repo=repo prune
 ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ${origrev} || exit 1
 
+${CMD_PREFIX} ostree --repo=repo static-delta reindex
+${CMD_PREFIX} ostree --repo=repo static-delta indexes | wc -l > indexcount
+assert_file_has_content indexcount "^1$"
+${CMD_PREFIX} ostree --repo=repo static-delta indexes | grep ${origrev} || exit 1
+
 permuteDirectory 1 files
 ${CMD_PREFIX} ostree --repo=repo commit -b test -s test --tree=dir=files
 
@@ -118,6 +123,12 @@ ${CMD_PREFIX} ostree --repo=repo static-delta generate --max-bsdiff-size=0 --fro
 ${CMD_PREFIX} ostree --repo=repo static-delta generate --max-bsdiff-size=10000 --from=${origrev} --to=${newrev} 2>&1 | grep "bsdiff=[1-9]"
 
 ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ${origrev}-${newrev} || exit 1
+
+${CMD_PREFIX} ostree --repo=repo static-delta reindex
+${CMD_PREFIX} ostree --repo=repo static-delta indexes | wc -l > indexcount
+assert_file_has_content indexcount "^2$"
+${CMD_PREFIX} ostree --repo=repo static-delta indexes | grep ${origrev} || exit 1
+${CMD_PREFIX} ostree --repo=repo static-delta indexes | grep ${newrev} || exit 1
 
 if ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} --empty 2>>err.txt; then
     assert_not_reached "static-delta generate --from=${origrev} --empty unexpectedly succeeded"
@@ -248,6 +259,41 @@ ${CMD_PREFIX} ostree --repo=repo2 fsck
 ${CMD_PREFIX} ostree --repo=repo2 ls ${samerev} >/dev/null
 
 echo 'ok pull empty delta part'
+
+rm -rf repo/delta-indexes
+${CMD_PREFIX} ostree --repo=repo summary -u
+${CMD_PREFIX} ostree summary -v --raw --repo=repo > summary.txt
+assert_file_has_content summary.txt "ostree\.static\-deltas"
+
+${CMD_PREFIX} ostree --repo=repo config set core.no-deltas-in-summary true
+${CMD_PREFIX} ostree --repo=repo summary -u
+
+${CMD_PREFIX} ostree summary -v --raw --repo=repo > summary.txt
+assert_not_file_has_content summary.txt "ostree\.static\-deltas"
+
+rm -rf repo2
+mkdir repo2 && ostree_repo_init repo2 --mode=bare-user
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${newrev}
+
+rm -rf repo/delta-indexes
+if ${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${samerev} &> no-delta.txt; then
+    assert_not_reached "failing pull with  --require-static-deltas unexpectedly succeeded"
+fi
+assert_file_has_content no-delta.txt "Static deltas required, but none found for"
+
+${CMD_PREFIX} ostree --repo=repo static-delta reindex
+${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${samerev}
+
+${CMD_PREFIX} ostree --repo=repo2 fsck
+${CMD_PREFIX} ostree --repo=repo2 ls ${samerev} >/dev/null
+
+${CMD_PREFIX} ostree --repo=repo config set core.no-deltas-in-summary false
+${CMD_PREFIX} ostree --repo=repo summary -u
+
+${CMD_PREFIX} ostree summary -v --raw --repo=repo > summary.txt
+assert_file_has_content summary.txt "ostree\.static\-deltas"
+
+echo 'ok pull delta part with delta index'
 
 # Make a new branch to test "rebase deltas"
 echo otherbranch-content > files/otherbranch-content
