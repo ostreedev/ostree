@@ -168,6 +168,93 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
   return TRUE;
 }
 
+/**
+ * ostree_repo_list_static_delta_indexes:
+ * @self: Repo
+ * @out_indexes: (out) (element-type utf8) (transfer container): String name of delta indexes (checksum)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * This function synchronously enumerates all static delta indexes in the
+ * repository, returning its result in @out_indexes.
+ *
+ * Since: 2020.7
+ */
+gboolean
+ostree_repo_list_static_delta_indexes (OstreeRepo                  *self,
+                                       GPtrArray                  **out_indexes,
+                                       GCancellable                *cancellable,
+                                       GError                     **error)
+{
+  g_autoptr(GPtrArray) ret_indexes = g_ptr_array_new_with_free_func (g_free);
+
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, "delta-indexes", &dfd_iter,
+                                     &exists, error))
+    return FALSE;
+  if (!exists)
+    {
+      /* Note early return */
+      ot_transfer_out_value (out_indexes, &ret_indexes);
+      return TRUE;
+    }
+
+  while (TRUE)
+    {
+      g_auto(GLnxDirFdIterator) sub_dfd_iter = { 0, };
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+      if (dent->d_type != DT_DIR)
+        continue;
+      if (strlen (dent->d_name) != 2)
+        continue;
+
+      if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
+                                        &sub_dfd_iter, error))
+        return FALSE;
+
+      while (TRUE)
+        {
+          struct dirent *sub_dent;
+
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&sub_dfd_iter, &sub_dent,
+                                                           cancellable, error))
+            return FALSE;
+          if (sub_dent == NULL)
+            break;
+          if (sub_dent->d_type != DT_REG)
+            continue;
+
+          const char *name1 = dent->d_name;
+          const char *name2 = sub_dent->d_name;
+
+          /* base64 len is 43, but 2 chars are in the parent dir name */
+          if (strlen (name2) != 41 + strlen(".index") ||
+              !g_str_has_suffix (name2, ".index"))
+            continue;
+
+          g_autoptr(GString) out = g_string_new (name1);
+          g_string_append_len (out, name2, 41);
+
+          char checksum[OSTREE_SHA256_STRING_LEN+1];
+          guchar csum[OSTREE_SHA256_DIGEST_LEN];
+
+          ostree_checksum_b64_inplace_to_bytes (out->str, csum);
+          ostree_checksum_inplace_from_bytes (csum, checksum);
+
+          g_ptr_array_add (ret_indexes, g_strdup (checksum));
+        }
+    }
+
+  ot_transfer_out_value (out_indexes, &ret_indexes);
+  return TRUE;
+}
+
 gboolean
 _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
                                                  GVariant               *checksum_array,

@@ -1046,6 +1046,12 @@ gboolean ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                               GCancellable                *cancellable,
                                               GError                     **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_repo_list_static_delta_indexes (OstreeRepo                  *self,
+                                                GPtrArray                  **out_indexes,
+                                                GCancellable                *cancellable,
+                                                GError                     **error);
+
 /**
  * OstreeStaticDeltaGenerateOpt:
  * @OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY: Optimize for speed of delta creation over space
