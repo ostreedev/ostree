@@ -4164,7 +4164,7 @@ content, the other types are metadata.</doc>
       </member>
     </enumeration>
     <constant name="RELEASE_VERSION"
-              value="5"
+              value="6"
               c:type="OSTREE_RELEASE_VERSION"
               version="2017.4">
       <doc xml:space="preserve"
@@ -5225,7 +5225,7 @@ file structure to @mtree.</doc>
               version="2018.6">
         <doc xml:space="preserve"
              filename="ostree-repo-pull.c"
-             line="4932">Find reachable remote URIs which claim to provide any of the given named
+             line="4933">Find reachable remote URIs which claim to provide any of the given named
 @refs. This will search for configured remotes (#OstreeRepoFinderConfig),
 mounted volumes (#OstreeRepoFinderMount) and (if enabled at compile time)
 local network peers (#OstreeRepoFinderAvahi). In order to use a custom
@@ -5273,13 +5273,13 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4934">an #OstreeRepo</doc>
+                 line="4935">an #OstreeRepo</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
           <parameter name="refs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4935">non-empty array of collection–ref pairs to find remotes for</doc>
+                 line="4936">non-empty array of collection–ref pairs to find remotes for</doc>
             <array c:type="const OstreeCollectionRef* const*">
               <type name="CollectionRef" c:type="OstreeCollectionRef*"/>
             </array>
@@ -5290,13 +5290,13 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4936">a GVariant `a{sv}` with an extensible set of flags</doc>
+                 line="4937">a GVariant `a{sv}` with an extensible set of flags</doc>
             <type name="GLib.Variant" c:type="GVariant*"/>
           </parameter>
           <parameter name="finders" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4937">non-empty array of
+                 line="4938">non-empty array of
    #OstreeRepoFinder instances to use, or %NULL to use the system defaults</doc>
             <array c:type="OstreeRepoFinder**">
               <type name="RepoFinder" c:type="OstreeRepoFinder*"/>
@@ -5308,7 +5308,7 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4939">an #OstreeAsyncProgress to update with the operation’s
+                 line="4940">an #OstreeAsyncProgress to update with the operation’s
    progress, or %NULL</doc>
             <type name="AsyncProgress" c:type="OstreeAsyncProgress*"/>
           </parameter>
@@ -5318,7 +5318,7 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4941">a #GCancellable, or %NULL</doc>
+                 line="4942">a #GCancellable, or %NULL</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
           <parameter name="callback"
@@ -5329,7 +5329,7 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
                      closure="6">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4942">asynchronous completion callback</doc>
+                 line="4943">asynchronous completion callback</doc>
             <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
           </parameter>
           <parameter name="user_data"
@@ -5338,7 +5338,7 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="4943">data to pass to @callback</doc>
+                 line="4944">data to pass to @callback</doc>
             <type name="gpointer" c:type="gpointer"/>
           </parameter>
         </parameters>
@@ -5349,13 +5349,13 @@ This will use the thread-default #GMainContext, but will not iterate it.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-pull.c"
-             line="5729">Finish an asynchronous pull operation started with
+             line="5730">Finish an asynchronous pull operation started with
 ostree_repo_find_remotes_async().</doc>
         <source-position filename="ostree-repo.h" line="1285"/>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-repo-pull.c"
-               line="5738">a potentially empty array
+               line="5739">a potentially empty array
    of #OstreeRepoFinderResults, followed by a %NULL terminator element; or
    %NULL on error</doc>
           <array c:type="OstreeRepoFinderResult**">
@@ -5366,13 +5366,13 @@ ostree_repo_find_remotes_async().</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5731">an #OstreeRepo</doc>
+                 line="5732">an #OstreeRepo</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
           <parameter name="result" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5732">the asynchronous result</doc>
+                 line="5733">the asynchronous result</doc>
             <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
           </parameter>
         </parameters>
@@ -7193,7 +7193,7 @@ one around this call.</doc>
               version="2018.6">
         <doc xml:space="preserve"
              filename="ostree-repo-pull.c"
-             line="5777">Pull refs from multiple remotes which have been found using
+             line="5778">Pull refs from multiple remotes which have been found using
 ostree_repo_find_remotes_async().
 
 @results are expected to be in priority order, with the best remotes to pull
@@ -7243,13 +7243,13 @@ The following @options are currently defined:
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5779">an #OstreeRepo</doc>
+                 line="5780">an #OstreeRepo</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
           <parameter name="results" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5780">%NULL-terminated array of remotes to
+                 line="5781">%NULL-terminated array of remotes to
    pull from, including the refs to pull from each</doc>
             <array c:type="const OstreeRepoFinderResult* const*">
               <type name="RepoFinderResult" c:type="OstreeRepoFinderResult*"/>
@@ -7261,7 +7261,7 @@ The following @options are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5782">A GVariant `a{sv}` with an extensible set of flags</doc>
+                 line="5783">A GVariant `a{sv}` with an extensible set of flags</doc>
             <type name="GLib.Variant" c:type="GVariant*"/>
           </parameter>
           <parameter name="progress"
@@ -7270,7 +7270,7 @@ The following @options are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5783">an #OstreeAsyncProgress to update with the operation’s
+                 line="5784">an #OstreeAsyncProgress to update with the operation’s
    progress, or %NULL</doc>
             <type name="AsyncProgress" c:type="OstreeAsyncProgress*"/>
           </parameter>
@@ -7280,7 +7280,7 @@ The following @options are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5785">a #GCancellable, or %NULL</doc>
+                 line="5786">a #GCancellable, or %NULL</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
           <parameter name="callback"
@@ -7291,7 +7291,7 @@ The following @options are currently defined:
                      closure="5">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5786">asynchronous completion callback</doc>
+                 line="5787">asynchronous completion callback</doc>
             <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
           </parameter>
           <parameter name="user_data"
@@ -7300,7 +7300,7 @@ The following @options are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="5787">data to pass to @callback</doc>
+                 line="5788">data to pass to @callback</doc>
             <type name="gpointer" c:type="gpointer"/>
           </parameter>
         </parameters>
@@ -7311,26 +7311,26 @@ The following @options are currently defined:
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-pull.c"
-             line="6030">Finish an asynchronous pull operation started with
+             line="6031">Finish an asynchronous pull operation started with
 ostree_repo_pull_from_remotes_async().</doc>
         <source-position filename="ostree-repo.h" line="1298"/>
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-repo-pull.c"
-               line="6039">%TRUE on success, %FALSE otherwise</doc>
+               line="6040">%TRUE on success, %FALSE otherwise</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6032">an #OstreeRepo</doc>
+                 line="6033">an #OstreeRepo</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
           <parameter name="result" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6033">the asynchronous result</doc>
+                 line="6034">the asynchronous result</doc>
             <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
           </parameter>
         </parameters>
@@ -7407,7 +7407,7 @@ subpath.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-pull.c"
-             line="3264">Like ostree_repo_pull(), but supports an extensible set of flags.
+             line="3265">Like ostree_repo_pull(), but supports an extensible set of flags.
 The following are currently defined:
 
   * `refs` (`as`): Array of string refs
@@ -7464,19 +7464,19 @@ The following are currently defined:
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="3266">Repo</doc>
+                 line="3267">Repo</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
           <parameter name="remote_name_or_baseurl" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="3267">Name of remote or file:// url</doc>
+                 line="3268">Name of remote or file:// url</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
           <parameter name="options" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="3268">A GVariant a{sv} with an extensible set of flags.</doc>
+                 line="3269">A GVariant a{sv} with an extensible set of flags.</doc>
             <type name="GLib.Variant" c:type="GVariant*"/>
           </parameter>
           <parameter name="progress"
@@ -7485,7 +7485,7 @@ The following are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="3269">Progress</doc>
+                 line="3270">Progress</doc>
             <type name="AsyncProgress" c:type="OstreeAsyncProgress*"/>
           </parameter>
           <parameter name="cancellable"
@@ -7494,7 +7494,7 @@ The following are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="3270">Cancellable</doc>
+                 line="3271">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -7965,7 +7965,7 @@ with #OSTREE_SUMMARY_GVARIANT_FORMAT as the format string.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-pull.c"
-             line="6055">Like ostree_repo_remote_fetch_summary(), but supports an extensible set of flags.
+             line="6056">Like ostree_repo_remote_fetch_summary(), but supports an extensible set of flags.
 The following are currently defined:
 
 - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
@@ -7978,20 +7978,20 @@ The following are currently defined:
         <return-value transfer-ownership="none">
           <doc xml:space="preserve"
                filename="ostree-repo-pull.c"
-               line="6077">%TRUE on success, %FALSE on failure</doc>
+               line="6078">%TRUE on success, %FALSE on failure</doc>
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6057">Self</doc>
+                 line="6058">Self</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
           <parameter name="name" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6058">name of a remote</doc>
+                 line="6059">name of a remote</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
           <parameter name="options"
@@ -8000,7 +8000,7 @@ The following are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6059">A GVariant a{sv} with an extensible set of flags</doc>
+                 line="6060">A GVariant a{sv} with an extensible set of flags</doc>
             <type name="GLib.Variant" c:type="GVariant*"/>
           </parameter>
           <parameter name="out_summary"
@@ -8011,7 +8011,7 @@ The following are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6060">return location for raw summary data, or
+                 line="6061">return location for raw summary data, or
               %NULL</doc>
             <type name="GLib.Bytes" c:type="GBytes**"/>
           </parameter>
@@ -8023,7 +8023,7 @@ The following are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6062">return location for raw summary
+                 line="6063">return location for raw summary
                  signature data, or %NULL</doc>
             <type name="GLib.Bytes" c:type="GBytes**"/>
           </parameter>
@@ -8033,7 +8033,7 @@ The following are currently defined:
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="6064">a #GCancellable</doc>
+                 line="6065">a #GCancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -8448,7 +8448,7 @@ ostree_repo_resolve_rev_ext() but for collection-refs.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-pull.c"
-             line="1393">Find the GPG keyring for the given @collection_id, using the local
+             line="1394">Find the GPG keyring for the given @collection_id, using the local
 configuration from the given #OstreeRepo. This will search the configured
 remotes for ones whose `collection-id` key matches @collection_id, and will
 return the first matching remote.
@@ -8462,7 +8462,7 @@ If no match can be found, a %G_IO_ERROR_NOT_FOUND error will be returned.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve"
                filename="ostree-repo-pull.c"
-               line="1411">#OstreeRemote containing the GPG keyring for
+               line="1412">#OstreeRemote containing the GPG keyring for
    @collection_id</doc>
           <type name="Remote" c:type="OstreeRemote*"/>
         </return-value>
@@ -8470,13 +8470,13 @@ If no match can be found, a %G_IO_ERROR_NOT_FOUND error will be returned.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="1395">an #OstreeRepo</doc>
+                 line="1396">an #OstreeRepo</doc>
             <type name="Repo" c:type="OstreeRepo*"/>
           </instance-parameter>
           <parameter name="collection_id" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="1396">the collection ID to look up a keyring for</doc>
+                 line="1397">the collection ID to look up a keyring for</doc>
             <type name="utf8" c:type="const gchar*"/>
           </parameter>
           <parameter name="cancellable"
@@ -8485,7 +8485,7 @@ If no match can be found, a %G_IO_ERROR_NOT_FOUND error will be returned.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-pull.c"
-                 line="1397">a #GCancellable, or %NULL</doc>
+                 line="1398">a #GCancellable, or %NULL</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -15443,7 +15443,7 @@ Locking: exclusive</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sysroot-deploy.c"
-             line="2844">Check out deployment tree with revision @revision, performing a 3
+             line="2850">Check out deployment tree with revision @revision, performing a 3
 way merge with @provided_merge_deployment for configuration.
 
 When booted into the sysroot, you should use the
@@ -15456,7 +15456,7 @@ ostree_sysroot_stage_tree() API instead.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2846">Sysroot</doc>
+                 line="2852">Sysroot</doc>
             <type name="Sysroot" c:type="OstreeSysroot*"/>
           </instance-parameter>
           <parameter name="osname"
@@ -15465,13 +15465,13 @@ ostree_sysroot_stage_tree() API instead.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2847">osname to use for merge deployment</doc>
+                 line="2853">osname to use for merge deployment</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
           <parameter name="revision" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2848">Checksum to add</doc>
+                 line="2854">Checksum to add</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
           <parameter name="origin"
@@ -15480,7 +15480,7 @@ ostree_sysroot_stage_tree() API instead.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2849">Origin to use for upgrades</doc>
+                 line="2855">Origin to use for upgrades</doc>
             <type name="GLib.KeyFile" c:type="GKeyFile*"/>
           </parameter>
           <parameter name="provided_merge_deployment"
@@ -15489,7 +15489,7 @@ ostree_sysroot_stage_tree() API instead.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2850">Use this deployment for merge path</doc>
+                 line="2856">Use this deployment for merge path</doc>
             <type name="Deployment" c:type="OstreeDeployment*"/>
           </parameter>
           <parameter name="override_kernel_argv"
@@ -15498,7 +15498,7 @@ ostree_sysroot_stage_tree() API instead.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2851">Use these as kernel arguments; if %NULL, inherit options from provided_merge_deployment</doc>
+                 line="2857">Use these as kernel arguments; if %NULL, inherit options from provided_merge_deployment</doc>
             <array c:type="char**">
               <type name="utf8"/>
             </array>
@@ -15509,7 +15509,7 @@ ostree_sysroot_stage_tree() API instead.</doc>
                      transfer-ownership="full">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2852">The new deployment path</doc>
+                 line="2858">The new deployment path</doc>
             <type name="Deployment" c:type="OstreeDeployment**"/>
           </parameter>
           <parameter name="cancellable"
@@ -15518,7 +15518,7 @@ ostree_sysroot_stage_tree() API instead.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2853">Cancellable</doc>
+                 line="2859">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -15528,7 +15528,7 @@ ostree_sysroot_stage_tree() API instead.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sysroot-deploy.c"
-             line="3185">Entirely replace the kernel arguments of @deployment with the
+             line="3191">Entirely replace the kernel arguments of @deployment with the
 values in @new_kargs.</doc>
         <source-position filename="ostree-sysroot.h" line="163"/>
         <return-value transfer-ownership="none">
@@ -15538,19 +15538,19 @@ values in @new_kargs.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3187">Sysroot</doc>
+                 line="3193">Sysroot</doc>
             <type name="Sysroot" c:type="OstreeSysroot*"/>
           </instance-parameter>
           <parameter name="deployment" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3188">A deployment</doc>
+                 line="3194">A deployment</doc>
             <type name="Deployment" c:type="OstreeDeployment*"/>
           </parameter>
           <parameter name="new_kargs" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3189">Replace deployment's kernel arguments</doc>
+                 line="3195">Replace deployment's kernel arguments</doc>
             <array c:type="char**">
               <type name="utf8"/>
             </array>
@@ -15561,7 +15561,7 @@ values in @new_kargs.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3190">Cancellable</doc>
+                 line="3196">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -15571,7 +15571,7 @@ values in @new_kargs.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sysroot-deploy.c"
-             line="3234">By default, deployment directories are not mutable.  This function
+             line="3240">By default, deployment directories are not mutable.  This function
 will allow making them temporarily mutable, for example to allow
 layering additional non-OSTree content.</doc>
         <source-position filename="ostree-sysroot.h" line="212"/>
@@ -15582,19 +15582,19 @@ layering additional non-OSTree content.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3236">Sysroot</doc>
+                 line="3242">Sysroot</doc>
             <type name="Sysroot" c:type="OstreeSysroot*"/>
           </instance-parameter>
           <parameter name="deployment" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3237">A deployment</doc>
+                 line="3243">A deployment</doc>
             <type name="Deployment" c:type="OstreeDeployment*"/>
           </parameter>
           <parameter name="is_mutable" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3238">Whether or not deployment's files can be changed</doc>
+                 line="3244">Whether or not deployment's files can be changed</doc>
             <type name="gboolean" c:type="gboolean"/>
           </parameter>
           <parameter name="cancellable"
@@ -15603,7 +15603,7 @@ layering additional non-OSTree content.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="3239">Cancellable</doc>
+                 line="3245">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -16445,7 +16445,7 @@ later, instead.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sysroot-deploy.c"
-             line="2948">Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
+             line="2954">Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
 shutdown time.</doc>
         <source-position filename="ostree-sysroot.h" line="201"/>
         <return-value transfer-ownership="none">
@@ -16455,7 +16455,7 @@ shutdown time.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2950">Sysroot</doc>
+                 line="2956">Sysroot</doc>
             <type name="Sysroot" c:type="OstreeSysroot*"/>
           </instance-parameter>
           <parameter name="osname"
@@ -16464,13 +16464,13 @@ shutdown time.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2951">osname to use for merge deployment</doc>
+                 line="2957">osname to use for merge deployment</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
           <parameter name="revision" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2952">Checksum to add</doc>
+                 line="2958">Checksum to add</doc>
             <type name="utf8" c:type="const char*"/>
           </parameter>
           <parameter name="origin"
@@ -16479,7 +16479,7 @@ shutdown time.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2953">Origin to use for upgrades</doc>
+                 line="2959">Origin to use for upgrades</doc>
             <type name="GLib.KeyFile" c:type="GKeyFile*"/>
           </parameter>
           <parameter name="merge_deployment"
@@ -16488,7 +16488,7 @@ shutdown time.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2954">Use this deployment for merge path</doc>
+                 line="2960">Use this deployment for merge path</doc>
             <type name="Deployment" c:type="OstreeDeployment*"/>
           </parameter>
           <parameter name="override_kernel_argv"
@@ -16497,7 +16497,7 @@ shutdown time.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2955">Use these as kernel arguments; if %NULL, inherit options from provided_merge_deployment</doc>
+                 line="2961">Use these as kernel arguments; if %NULL, inherit options from provided_merge_deployment</doc>
             <array c:type="char**">
               <type name="utf8"/>
             </array>
@@ -16508,7 +16508,7 @@ shutdown time.</doc>
                      transfer-ownership="full">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2956">The new deployment path</doc>
+                 line="2962">The new deployment path</doc>
             <type name="Deployment" c:type="OstreeDeployment**"/>
           </parameter>
           <parameter name="cancellable"
@@ -16517,7 +16517,7 @@ shutdown time.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2957">Cancellable</doc>
+                 line="2963">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -16602,7 +16602,7 @@ acquired.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sysroot-deploy.c"
-             line="2220">Older version of ostree_sysroot_write_deployments_with_options(). This
+             line="2226">Older version of ostree_sysroot_write_deployments_with_options(). This
 version will perform post-deployment cleanup by default.</doc>
         <source-position filename="ostree-sysroot.h" line="170"/>
         <return-value transfer-ownership="none">
@@ -16612,13 +16612,13 @@ version will perform post-deployment cleanup by default.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2222">Sysroot</doc>
+                 line="2228">Sysroot</doc>
             <type name="Sysroot" c:type="OstreeSysroot*"/>
           </instance-parameter>
           <parameter name="new_deployments" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2223">List of new deployments</doc>
+                 line="2229">List of new deployments</doc>
             <array name="GLib.PtrArray" c:type="GPtrArray*">
               <type name="Deployment"/>
             </array>
@@ -16629,7 +16629,7 @@ version will perform post-deployment cleanup by default.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2224">Cancellable</doc>
+                 line="2230">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -16640,7 +16640,7 @@ version will perform post-deployment cleanup by default.</doc>
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-sysroot-deploy.c"
-             line="2346">Assuming @new_deployments have already been deployed in place on disk via
+             line="2352">Assuming @new_deployments have already been deployed in place on disk via
 ostree_sysroot_deploy_tree(), atomically update bootloader configuration. By
 default, no post-transaction cleanup will be performed. You should invoke
 ostree_sysroot_cleanup() at some point after the transaction, or specify
@@ -16654,13 +16654,13 @@ if for example you want to control pruning of the repository.</doc>
           <instance-parameter name="self" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2348">Sysroot</doc>
+                 line="2354">Sysroot</doc>
             <type name="Sysroot" c:type="OstreeSysroot*"/>
           </instance-parameter>
           <parameter name="new_deployments" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2349">List of new deployments</doc>
+                 line="2355">List of new deployments</doc>
             <array name="GLib.PtrArray" c:type="GPtrArray*">
               <type name="Deployment"/>
             </array>
@@ -16668,7 +16668,7 @@ if for example you want to control pruning of the repository.</doc>
           <parameter name="opts" transfer-ownership="none">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2350">Options</doc>
+                 line="2356">Options</doc>
             <type name="SysrootWriteDeploymentsOpts"
                   c:type="OstreeSysrootWriteDeploymentsOpts*"/>
           </parameter>
@@ -16678,7 +16678,7 @@ if for example you want to control pruning of the repository.</doc>
                      allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-sysroot-deploy.c"
-                 line="2351">Cancellable</doc>
+                 line="2357">Cancellable</doc>
             <type name="Gio.Cancellable" c:type="GCancellable*"/>
           </parameter>
         </parameters>
@@ -17310,7 +17310,7 @@ users who had been using zero before.</doc>
       <source-position filename="ostree-tls-cert-interaction.h" line="35"/>
     </record>
     <constant name="VERSION"
-              value="2020.500000"
+              value="2020.600000"
               c:type="OSTREE_VERSION"
               version="2017.4">
       <doc xml:space="preserve"
@@ -17320,7 +17320,7 @@ users who had been using zero before.</doc>
       <type name="gdouble" c:type="gdouble"/>
     </constant>
     <constant name="VERSION_S"
-              value="2020.5"
+              value="2020.6"
               c:type="OSTREE_VERSION_S"
               version="2017.4">
       <doc xml:space="preserve"
