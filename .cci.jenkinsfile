@@ -72,12 +72,6 @@ parallel fcos: {
         tar -C insttree -xzvf insttree.tar.gz
         rsync -rlv insttree/ /
         coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
-        # XXX: We temporarily add these tests until they get merged into FCOS proper
-        (mkdir -p tests/kola/var-mount
-         cd tests/kola/var-mount
-         curl -L --remote-name-all \
-            https://raw.githubusercontent.com/jlebon/fedora-coreos-config/pr/var-mount/tests/kola/var-mount/{config.ign,test.sh}
-         chmod a+x test.sh)
         mkdir -p overrides/rootfs
         mv insttree/* overrides/rootfs/
         rmdir insttree
