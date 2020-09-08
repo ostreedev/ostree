@@ -2675,7 +2675,7 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                _OSTREE_METADATA_GPGSIGS_NAME,
                                g_variant_builder_end (signature_builder));
 
-  return g_variant_dict_end (&metadata_dict);
+  return g_variant_ref_sink (g_variant_dict_end (&metadata_dict));
 }
 #endif /* OSTREE_DISABLE_GPGME */
 
