@@ -313,7 +313,7 @@ copy_dir_recurse (int              src_parent_dfd,
 
   if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd_iter.fd, dest_dfd,
                                          flags, cancellable, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Copying attributes of %s", name);
 
   while (TRUE)
     {
@@ -340,7 +340,7 @@ copy_dir_recurse (int              src_parent_dfd,
                                   dest_dfd, dent->d_name,
                                   sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
                                   cancellable, error))
-            return FALSE;
+            return glnx_prefix_error (error, "Copying %s", dent->d_name);
         }
     }
 
@@ -488,7 +488,7 @@ copy_modified_config_file (int                 orig_etc_fd,
                               new_etc_fd, path,
                               sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
                               cancellable, error))
-        return FALSE;
+        return glnx_prefix_error (error, "Copying %s", path);
     }
   else
     {
