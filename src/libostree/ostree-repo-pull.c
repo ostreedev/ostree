@@ -3091,6 +3091,46 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
   return TRUE;
 }
 
+static gboolean
+compute_effective_mirrorlist (OstreeRepo    *self,
+                              const char    *remote_name_or_baseurl,
+                              const char    *url_override,
+                              OstreeFetcher *fetcher,
+                              guint          n_network_retries,
+                              GPtrArray    **out_mirrorlist,
+                              GCancellable *cancellable,
+                              GError      **error)
+{
+  g_autofree char *baseurl = NULL;
+
+  if (url_override != NULL)
+    baseurl = g_strdup (url_override);
+  else if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
+    return FALSE;
+
+  if (g_str_has_prefix (baseurl, "mirrorlist="))
+    {
+      if (!fetch_mirrorlist (fetcher,
+                             baseurl + strlen ("mirrorlist="),
+                             n_network_retries,
+                             out_mirrorlist,
+                             cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      g_autoptr(OstreeFetcherURI) baseuri = _ostree_fetcher_uri_parse (baseurl, error);
+
+      if (!baseuri)
+        return FALSE;
+
+      *out_mirrorlist =
+        g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
+      g_ptr_array_add (*out_mirrorlist, g_steal_pointer (&baseuri));
+    }
+  return TRUE;
+}
+
 /* Create the fetcher by unioning options from the remote config, plus
  * any options specific to this pull (such as extra headers).
  */
@@ -3618,33 +3658,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (!metalink_url_str)
     {
-      g_autofree char *baseurl = NULL;
-
-      if (url_override != NULL)
-        baseurl = g_strdup (url_override);
-      else if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
+      if (!compute_effective_mirrorlist (self, remote_name_or_baseurl,
+                                         url_override,
+                                         pull_data->fetcher,
+                                         pull_data->n_network_retries,
+                                         &pull_data->meta_mirrorlist,
+                                         cancellable, error))
         goto out;
-
-      if (g_str_has_prefix (baseurl, "mirrorlist="))
-        {
-          if (!fetch_mirrorlist (pull_data->fetcher,
-                                 baseurl + strlen ("mirrorlist="),
-                                 pull_data->n_network_retries,
-                                 &pull_data->meta_mirrorlist,
-                                 cancellable, error))
-            goto out;
-        }
-      else
-        {
-          g_autoptr(OstreeFetcherURI) baseuri = _ostree_fetcher_uri_parse (baseurl, error);
-
-          if (!baseuri)
-            goto out;
-
-          pull_data->meta_mirrorlist =
-            g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-          g_ptr_array_add (pull_data->meta_mirrorlist, g_steal_pointer (&baseuri));
-        }
     }
   else
     {
@@ -3703,27 +3723,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
     else
       {
-        if (g_str_has_prefix (contenturl, "mirrorlist="))
-          {
-            if (!fetch_mirrorlist (pull_data->fetcher,
-                                   contenturl + strlen ("mirrorlist="),
-                                   pull_data->n_network_retries,
-                                   &pull_data->content_mirrorlist,
-                                   cancellable, error))
-              goto out;
-          }
-        else
-          {
-            g_autoptr(OstreeFetcherURI) contenturi = _ostree_fetcher_uri_parse (contenturl, error);
-
-            if (!contenturi)
-              goto out;
-
-            pull_data->content_mirrorlist =
-              g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-            g_ptr_array_add (pull_data->content_mirrorlist,
-                             g_steal_pointer (&contenturi));
-          }
+        if (!compute_effective_mirrorlist (self, remote_name_or_baseurl,
+                                           contenturl,
+                                           pull_data->fetcher,
+                                           pull_data->n_network_retries,
+                                           &pull_data->content_mirrorlist,
+                                           cancellable, error))
+          goto out;
       }
   }
 
@@ -6118,34 +6124,20 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   if (fetcher == NULL)
     return FALSE;
 
-  {
-    g_autofree char *url_string = NULL;
-    if (metalink_url_string)
-      url_string = g_strdup (metalink_url_string);
-    else if (url_override)
-      url_string = g_strdup (url_override);
-    else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
-      return FALSE;
+  if (metalink_url_string)
+    {
+      g_autoptr(OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (metalink_url_string, error);
+      if (!uri)
+        return FALSE;
 
-    if (metalink_url_string == NULL &&
-        g_str_has_prefix (url_string, "mirrorlist="))
-      {
-        if (!fetch_mirrorlist (fetcher, url_string + strlen ("mirrorlist="),
-                               n_network_retries, &mirrorlist, cancellable, error))
-          return FALSE;
-      }
-    else
-      {
-        g_autoptr(OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (url_string, error);
-
-        if (!uri)
-          return FALSE;
-
-        mirrorlist =
-          g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-        g_ptr_array_add (mirrorlist, g_steal_pointer (&uri));
-      }
-  }
+      mirrorlist =
+        g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
+      g_ptr_array_add (mirrorlist, g_steal_pointer (&uri));
+    }
+  else if (!compute_effective_mirrorlist (self, name, url_override,
+                                          fetcher, n_network_retries,
+                                          &mirrorlist, cancellable, error))
+    return FALSE;
 
   /* FIXME: Send the ETag from the cache with the request for summary.sig to
    * avoid downloading summary.sig unnecessarily. This won’t normally provide
