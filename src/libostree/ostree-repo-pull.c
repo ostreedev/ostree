@@ -3083,121 +3083,6 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
   return TRUE;
 }
 
-static gboolean
-repo_remote_fetch_summary (OstreeRepo    *self,
-                           const char    *name,
-                           const char    *metalink_url_string,
-                           GVariant      *options,
-                           GBytes       **out_summary,
-                           GBytes       **out_signatures,
-                           gboolean      *out_from_cache,
-                           GCancellable  *cancellable,
-                           GError       **error)
-{
-  g_autoptr(OstreeFetcher) fetcher = NULL;
-  g_autoptr(GMainContextPopDefault) mainctx = NULL;
-  const char *url_override = NULL;
-  g_autoptr(GVariant) extra_headers = NULL;
-  g_autoptr(GPtrArray) mirrorlist = NULL;
-  const char *append_user_agent = NULL;
-  guint n_network_retries = DEFAULT_N_NETWORK_RETRIES;
-
-  if (options)
-    {
-      (void) g_variant_lookup (options, "override-url", "&s", &url_override);
-      (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
-      (void) g_variant_lookup (options, "append-user-agent", "&s", &append_user_agent);
-      (void) g_variant_lookup (options, "n-network-retries", "&u", &n_network_retries);
-    }
-
-  mainctx = _ostree_main_context_new_default ();
-
-  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, NULL, error);
-  if (fetcher == NULL)
-    return FALSE;
-
-  if (extra_headers)
-    _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
-
-  if (append_user_agent)
-    _ostree_fetcher_set_extra_user_agent (fetcher, append_user_agent);
-
-  {
-    g_autofree char *url_string = NULL;
-    if (metalink_url_string)
-      url_string = g_strdup (metalink_url_string);
-    else if (url_override)
-      url_string = g_strdup (url_override);
-    else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
-      return FALSE;
-
-    if (metalink_url_string == NULL &&
-        g_str_has_prefix (url_string, "mirrorlist="))
-      {
-        if (!fetch_mirrorlist (fetcher, url_string + strlen ("mirrorlist="),
-                               n_network_retries, &mirrorlist, cancellable, error))
-          return FALSE;
-      }
-    else
-      {
-        g_autoptr(OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (url_string, error);
-
-        if (!uri)
-          return FALSE;
-
-        mirrorlist =
-          g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-        g_ptr_array_add (mirrorlist, g_steal_pointer (&uri));
-      }
-  }
-
-  /* FIXME: Send the ETag from the cache with the request for summary.sig to
-   * avoid downloading summary.sig unnecessarily. This won’t normally provide
-   * any benefits (but won’t do any harm) since summary.sig is typically 500B
-   * in size. But if a repository has multiple keys, the signature file will
-   * grow and this optimisation may be useful. */
-  if (!_ostree_preload_metadata_file (self,
-                                      fetcher,
-                                      mirrorlist,
-                                      "summary.sig",
-                                      metalink_url_string ? TRUE : FALSE,
-                                      n_network_retries,
-                                      out_signatures,
-                                      cancellable,
-                                      error))
-    return FALSE;
-
-  if (*out_signatures)
-    {
-      if (!_ostree_repo_load_cache_summary_if_same_sig (self,
-                                                        name,
-                                                        *out_signatures,
-                                                        out_summary,
-                                                        cancellable,
-                                                        error))
-        return FALSE;
-    }
-
-  if (*out_summary)
-    *out_from_cache = TRUE;
-  else
-    {
-      *out_from_cache = FALSE;
-      if (!_ostree_preload_metadata_file (self,
-                                          fetcher,
-                                          mirrorlist,
-                                          "summary",
-                                          metalink_url_string ? TRUE : FALSE,
-                                          n_network_retries,
-                                          out_summary,
-                                          cancellable,
-                                          error))
-        return FALSE;
-    }
-
-  return TRUE;
-}
-
 /* Create the fetcher by unioning options from the remote config, plus
  * any options specific to this pull (such as extra headers).
  */
@@ -6191,7 +6076,14 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autoptr(GBytes) signatures = NULL;
   gboolean gpg_verify_summary;
   g_autoptr(GPtrArray) signapi_summary_verifiers = NULL;
-  gboolean summary_is_from_cache;
+  gboolean summary_is_from_cache = FALSE;
+  g_autoptr(OstreeFetcher) fetcher = NULL;
+  g_autoptr(GMainContextPopDefault) mainctx = NULL;
+  const char *url_override = NULL;
+  g_autoptr(GVariant) extra_headers = NULL;
+  g_autoptr(GPtrArray) mirrorlist = NULL;
+  const char *append_user_agent = NULL;
+  guint n_network_retries = DEFAULT_N_NETWORK_RETRIES;
 
   g_return_val_if_fail (OSTREE_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
@@ -6200,16 +6092,13 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                       &metalink_url_string, error))
     return FALSE;
 
-  if (!repo_remote_fetch_summary (self,
-                                  name,
-                                  metalink_url_string,
-                                  options,
-                                  &summary,
-                                  &signatures,
-                                  &summary_is_from_cache,
-                                  cancellable,
-                                  error))
-    return FALSE;
+  if (options)
+    {
+      (void) g_variant_lookup (options, "override-url", "&s", &url_override);
+      (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
+      (void) g_variant_lookup (options, "append-user-agent", "&s", &append_user_agent);
+      (void) g_variant_lookup (options, "n-network-retries", "&u", &n_network_retries);
+    }
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
     return FALSE;
@@ -6218,6 +6107,90 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                  &signapi_summary_verifiers,
                                  error))
     return FALSE;
+
+  mainctx = _ostree_main_context_new_default ();
+
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, NULL, error);
+  if (fetcher == NULL)
+    return FALSE;
+
+  if (extra_headers)
+    _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
+
+  if (append_user_agent)
+    _ostree_fetcher_set_extra_user_agent (fetcher, append_user_agent);
+
+  {
+    g_autofree char *url_string = NULL;
+    if (metalink_url_string)
+      url_string = g_strdup (metalink_url_string);
+    else if (url_override)
+      url_string = g_strdup (url_override);
+    else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
+      return FALSE;
+
+    if (metalink_url_string == NULL &&
+        g_str_has_prefix (url_string, "mirrorlist="))
+      {
+        if (!fetch_mirrorlist (fetcher, url_string + strlen ("mirrorlist="),
+                               n_network_retries, &mirrorlist, cancellable, error))
+          return FALSE;
+      }
+    else
+      {
+        g_autoptr(OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (url_string, error);
+
+        if (!uri)
+          return FALSE;
+
+        mirrorlist =
+          g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
+        g_ptr_array_add (mirrorlist, g_steal_pointer (&uri));
+      }
+  }
+
+  /* FIXME: Send the ETag from the cache with the request for summary.sig to
+   * avoid downloading summary.sig unnecessarily. This won’t normally provide
+   * any benefits (but won’t do any harm) since summary.sig is typically 500B
+   * in size. But if a repository has multiple keys, the signature file will
+   * grow and this optimisation may be useful. */
+  if (!_ostree_preload_metadata_file (self,
+                                      fetcher,
+                                      mirrorlist,
+                                      "summary.sig",
+                                      metalink_url_string ? TRUE : FALSE,
+                                      n_network_retries,
+                                      &signatures,
+                                      cancellable,
+                                      error))
+    return FALSE;
+
+  if (signatures)
+    {
+      if (!_ostree_repo_load_cache_summary_if_same_sig (self,
+                                                        name,
+                                                        signatures,
+                                                        &summary,
+                                                        cancellable,
+                                                        error))
+        return FALSE;
+    }
+
+  if (summary)
+    summary_is_from_cache = TRUE;
+  else
+    {
+      if (!_ostree_preload_metadata_file (self,
+                                          fetcher,
+                                          mirrorlist,
+                                          "summary",
+                                          metalink_url_string ? TRUE : FALSE,
+                                          n_network_retries,
+                                          &summary,
+                                          cancellable,
+                                          error))
+        return FALSE;
+    }
 
   if (!_ostree_repo_verify_summary (self, name,
                                     gpg_verify_summary, signapi_summary_verifiers,
