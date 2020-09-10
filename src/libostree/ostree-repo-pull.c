@@ -6200,7 +6200,6 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autoptr(GBytes) signatures = NULL;
   gboolean gpg_verify_summary;
   g_autoptr(GPtrArray) signapi_summary_verifiers = NULL;
-  gboolean ret = FALSE;
   gboolean summary_is_from_cache;
 
   g_return_val_if_fail (OSTREE_REPO (self), FALSE);
@@ -6208,7 +6207,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
 
   if (!ostree_repo_get_remote_option (self, name, "metalink", NULL,
                                       &metalink_url_string, error))
-    goto out;
+    return FALSE;
 
   if (!repo_remote_fetch_summary (self,
                                   name,
@@ -6219,21 +6218,21 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                   &summary_is_from_cache,
                                   cancellable,
                                   error))
-    goto out;
+    return FALSE;
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
-    goto out;
+    return FALSE;
 
   if (!_signapi_init_for_remote (self, name, NULL,
                                  &signapi_summary_verifiers,
                                  error))
-    goto out;
+    return FALSE;
 
   if (!_ostree_repo_verify_summary (self, name,
                                     gpg_verify_summary, signapi_summary_verifiers,
                                     summary, signatures,
                                     cancellable, error))
-      goto out;
+      return FALSE;
 
   if (!summary_is_from_cache && summary && signatures)
     {
@@ -6251,7 +6250,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
           else
             {
               g_propagate_error (error, g_steal_pointer (&temp_error));
-              goto out;
+              return FALSE;
             }
         }
     }
@@ -6262,10 +6261,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   if (out_signatures != NULL)
     *out_signatures = g_steal_pointer (&signatures);
 
-  ret = TRUE;
-
-out:
-  return ret;
+  return TRUE;
 }
 
 #else /* HAVE_LIBCURL_OR_LIBSOUP */
