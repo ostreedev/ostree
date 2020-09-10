@@ -2624,6 +2624,80 @@ validate_variant_is_csum (GVariant       *csum,
 }
 
 static gboolean
+_ostree_repo_verify_summary (OstreeRepo   *self,
+                             const char   *name,
+                             gboolean      gpg_verify_summary,
+                             GPtrArray    *signapi_summary_verifiers,
+                             GBytes       *summary,
+                             GBytes       *signatures,
+                             GCancellable *cancellable,
+                             GError      **error)
+{
+  if (gpg_verify_summary)
+    {
+      if (summary == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "GPG verification enabled, but no summary found (check that the configured URL in remote config is correct)");
+          return FALSE;
+        }
+
+      if (signatures == NULL)
+        {
+          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
+                       "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+          return FALSE;
+        }
+
+      /* Verify any summary signatures. */
+      if (summary != NULL && signatures != NULL)
+        {
+          g_autoptr(OstreeGpgVerifyResult) result = NULL;
+
+          result = ostree_repo_verify_summary (self,
+                                               name,
+                                               summary,
+                                               signatures,
+                                               cancellable,
+                                               error);
+          if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+            return FALSE;
+        }
+    }
+
+  if (signapi_summary_verifiers)
+    {
+      if (summary == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Signature verification enabled, but no summary found (check that the configured URL in remote config is correct)");
+          return FALSE;
+        }
+
+      if (signatures == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Signature verification enabled, but no summary signatures found (use sign-verify-summary=false in remote config to disable)");
+          return FALSE;
+        }
+
+      /* Verify any summary signatures. */
+      if (summary != NULL && signatures != NULL)
+        {
+          g_autoptr(GVariant) sig_variant = NULL;
+
+          sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                  signatures, FALSE);
+
+          if (!_sign_verify_for_remote (signapi_summary_verifiers, summary, sig_variant, NULL, error))
+            return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
+static gboolean
 _ostree_repo_load_cache_summary_file (OstreeRepo        *self,
                                       const char        *filename,
                                       const char        *extension,
@@ -6150,71 +6224,16 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
     goto out;
 
-  if (gpg_verify_summary)
-    {
-      if (summary == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "GPG verification enabled, but no summary found (check that the configured URL in remote config is correct)");
-          goto out;
-        }
-
-      if (signatures == NULL)
-        {
-          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
-                       "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
-          goto out;
-        }
-
-      /* Verify any summary signatures. */
-      if (summary != NULL && signatures != NULL)
-        {
-          g_autoptr(OstreeGpgVerifyResult) result = NULL;
-
-          result = ostree_repo_verify_summary (self,
-                                               name,
-                                               summary,
-                                               signatures,
-                                               cancellable,
-                                               error);
-          if (!ostree_gpg_verify_result_require_valid_signature (result, error))
-            goto out;
-        }
-    }
-
   if (!_signapi_init_for_remote (self, name, NULL,
                                  &signapi_summary_verifiers,
                                  error))
     goto out;
 
-  if (signapi_summary_verifiers)
-    {
-      if (summary == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Signature verification enabled, but no summary found (check that the configured URL in remote config is correct)");
-          goto out;
-        }
-
-      if (signatures == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Signature verification enabled, but no summary signatures found (use sign-verify-summary=false in remote config to disable)");
-          goto out;
-        }
-
-      /* Verify any summary signatures. */
-      if (summary != NULL && signatures != NULL)
-        {
-          g_autoptr(GVariant) sig_variant = NULL;
-
-          sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
-                                                  signatures, FALSE);
-
-          if (!_sign_verify_for_remote (signapi_summary_verifiers, summary, sig_variant, NULL, error))
-            goto out;
-        }
-    }
+  if (!_ostree_repo_verify_summary (self, name,
+                                    gpg_verify_summary, signapi_summary_verifiers,
+                                    summary, signatures,
+                                    cancellable, error))
+      goto out;
 
   if (!summary_is_from_cache && summary && signatures)
     {
