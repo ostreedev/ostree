@@ -52,6 +52,31 @@
 #define ot_journal_print(...) {}
 #endif
 
+typedef GMainContext GMainContextPopDefault;
+static inline void
+_ostree_main_context_pop_default_destroy (void *p)
+{
+  GMainContext *main_context = p;
+
+  if (main_context)
+    {
+      g_main_context_pop_thread_default (main_context);
+      g_main_context_unref (main_context);
+    }
+}
+
+static inline GMainContextPopDefault *
+_ostree_main_context_new_default (void)
+{
+  GMainContext *main_context = g_main_context_new ();
+
+  g_main_context_push_thread_default (main_context);
+  return main_context;
+}
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (GMainContextPopDefault, _ostree_main_context_pop_default_destroy)
+
+
 #include <ot-keyfile-utils.h>
 #include <ot-gio-utils.h>
 #include <ot-fs-utils.h>
