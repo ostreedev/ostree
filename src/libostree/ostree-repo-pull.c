@@ -3095,9 +3095,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                            GError       **error)
 {
   g_autoptr(OstreeFetcher) fetcher = NULL;
-  g_autoptr(GMainContext) mainctx = NULL;
-  gboolean ret = FALSE;
-  gboolean from_cache = FALSE;
+  g_autoptr(GMainContextPopDefault) mainctx = NULL;
   const char *url_override = NULL;
   g_autoptr(GVariant) extra_headers = NULL;
   g_autoptr(GPtrArray) mirrorlist = NULL;
@@ -3112,12 +3110,11 @@ repo_remote_fetch_summary (OstreeRepo    *self,
       (void) g_variant_lookup (options, "n-network-retries", "&u", &n_network_retries);
     }
 
-  mainctx = g_main_context_new ();
-  g_main_context_push_thread_default (mainctx);
+  mainctx = _ostree_main_context_new_default ();
 
   fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, NULL, error);
   if (fetcher == NULL)
-    goto out;
+    return FALSE;
 
   if (extra_headers)
     _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
@@ -3132,21 +3129,21 @@ repo_remote_fetch_summary (OstreeRepo    *self,
     else if (url_override)
       url_string = g_strdup (url_override);
     else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
-      goto out;
+      return FALSE;
 
     if (metalink_url_string == NULL &&
         g_str_has_prefix (url_string, "mirrorlist="))
       {
         if (!fetch_mirrorlist (fetcher, url_string + strlen ("mirrorlist="),
                                n_network_retries, &mirrorlist, cancellable, error))
-          goto out;
+          return FALSE;
       }
     else
       {
         g_autoptr(OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (url_string, error);
 
         if (!uri)
-          goto out;
+          return FALSE;
 
         mirrorlist =
           g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
@@ -3168,7 +3165,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                                       out_signatures,
                                       cancellable,
                                       error))
-    goto out;
+    return FALSE;
 
   if (*out_signatures)
     {
@@ -3178,13 +3175,14 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                                                         out_summary,
                                                         cancellable,
                                                         error))
-        goto out;
+        return FALSE;
     }
 
   if (*out_summary)
-    from_cache = TRUE;
+    *out_from_cache = TRUE;
   else
     {
+      *out_from_cache = FALSE;
       if (!_ostree_preload_metadata_file (self,
                                           fetcher,
                                           mirrorlist,
@@ -3194,17 +3192,10 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                                           out_summary,
                                           cancellable,
                                           error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
-
- out:
-  if (mainctx)
-    g_main_context_pop_thread_default (mainctx);
-
-  *out_from_cache = from_cache;
-  return ret;
+  return TRUE;
 }
 
 /* Create the fetcher by unioning options from the remote config, plus
