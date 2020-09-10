@@ -2513,10 +2513,7 @@ on_superblock_fetched (GObject   *src,
       const guchar *expected_summary_digest = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
       guint8 actual_summary_digest[OSTREE_SHA256_DIGEST_LEN];
 
-      g_auto(OtChecksum) hasher = { 0, };
-      ot_checksum_init (&hasher);
-      ot_checksum_update_bytes (&hasher, delta_superblock_data);
-      ot_checksum_get_digest (&hasher, actual_summary_digest, sizeof (actual_summary_digest));
+      ot_checksum_bytes (delta_superblock_data, actual_summary_digest);
 
 #ifndef OSTREE_DISABLE_GPGME
       /* At this point we've GPG verified the data, so in theory

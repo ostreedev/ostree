@@ -275,3 +275,13 @@ ot_checksum_file_at (int             dfd,
   ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof (hexdigest));
   return g_strdup (hexdigest);
 }
+
+void
+ot_checksum_bytes (GBytes *data,
+                   guint8 out_digest[_OSTREE_SHA256_DIGEST_LEN])
+{
+  g_auto(OtChecksum) hasher = { 0, };
+  ot_checksum_init (&hasher);
+  ot_checksum_update_bytes (&hasher, data);
+  ot_checksum_get_digest (&hasher, out_digest, _OSTREE_SHA256_DIGEST_LEN);
+}
