@@ -2824,6 +2824,8 @@ static OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,
                                  gboolean     gzip,
+                                 GVariant    *extra_headers,
+                                 const char  *append_user_agent,
                                  OstreeFetcherSecurityState *out_state,
                                  GError     **error)
 {
@@ -2936,6 +2938,12 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
       if (g_file_test (jar_path, G_FILE_TEST_IS_REGULAR))
         _ostree_fetcher_set_cookie_jar (fetcher, jar_path);
     }
+
+  if (extra_headers)
+    _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
+
+  if (append_user_agent)
+    _ostree_fetcher_set_extra_user_agent (fetcher, append_user_agent);
 
   success = TRUE;
 
@@ -3092,16 +3100,12 @@ reinitialize_fetcher (OtPullData *pull_data, const char *remote_name,
 {
   g_clear_object (&pull_data->fetcher);
   pull_data->fetcher = _ostree_repo_remote_new_fetcher (pull_data->repo, remote_name, FALSE,
+                                                        pull_data->extra_headers,
+                                                        pull_data->append_user_agent,
                                                         &pull_data->fetcher_security_state,
                                                         error);
   if (pull_data->fetcher == NULL)
     return FALSE;
-
-  if (pull_data->extra_headers)
-    _ostree_fetcher_set_extra_headers (pull_data->fetcher, pull_data->extra_headers);
-
-  if (pull_data->append_user_agent)
-    _ostree_fetcher_set_extra_user_agent (pull_data->fetcher, pull_data->append_user_agent);
 
   return TRUE;
 }
@@ -5454,7 +5458,7 @@ find_remotes_cb (GObject      *obj,
                 goto error;
 
               fetcher = _ostree_repo_remote_new_fetcher (self, result->remote->name,
-                                                         TRUE, NULL, &error);
+                                                         TRUE, NULL, NULL, NULL, &error);
               if (fetcher == NULL)
                 goto error;
 
@@ -6110,15 +6114,9 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
 
   mainctx = _ostree_main_context_new_default ();
 
-  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, NULL, error);
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, extra_headers, append_user_agent, NULL, error);
   if (fetcher == NULL)
     return FALSE;
-
-  if (extra_headers)
-    _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
-
-  if (append_user_agent)
-    _ostree_fetcher_set_extra_user_agent (fetcher, append_user_agent);
 
   {
     g_autofree char *url_string = NULL;
