@@ -2677,6 +2677,34 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
   return TRUE;
 }
 
+static gboolean
+_ostree_repo_save_cache_summary_file (OstreeRepo        *self,
+                                      const char        *filename,
+                                      const char        *extension,
+                                      GBytes            *data,
+                                      GCancellable      *cancellable,
+                                      GError           **error)
+{
+  const char *file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", filename, extension);
+  glnx_autofd int fd = -1;
+
+  if (self->cache_dir_fd == -1)
+    return TRUE;
+
+  if (!glnx_shutil_mkdir_p_at (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, DEFAULT_DIRECTORY_MODE, cancellable, error))
+    return FALSE;
+
+  if (!glnx_file_replace_contents_at (self->cache_dir_fd,
+                                      file,
+                                      g_bytes_get_data (data, NULL),
+                                      g_bytes_get_size (data),
+                                      self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                      cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /* Replace the current summary+signature with new versions */
 static gboolean
 _ostree_repo_cache_summary (OstreeRepo        *self,
@@ -2686,28 +2714,12 @@ _ostree_repo_cache_summary (OstreeRepo        *self,
                             GCancellable      *cancellable,
                             GError           **error)
 {
-  if (self->cache_dir_fd == -1)
-    return TRUE;
-
-  if (!glnx_shutil_mkdir_p_at (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, DEFAULT_DIRECTORY_MODE, cancellable, error))
+  if (!_ostree_repo_save_cache_summary_file (self, remote, NULL,
+                                             summary, cancellable, error))
     return FALSE;
 
-  const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote);
-  if (!glnx_file_replace_contents_at (self->cache_dir_fd,
-                                      summary_cache_file,
-                                      g_bytes_get_data (summary, NULL),
-                                      g_bytes_get_size (summary),
-                                      self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                      cancellable, error))
-    return FALSE;
-
-  const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote, ".sig");
-  if (!glnx_file_replace_contents_at (self->cache_dir_fd,
-                                      summary_cache_sig_file,
-                                      g_bytes_get_data (summary_sig, NULL),
-                                      g_bytes_get_size (summary_sig),
-                                      self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                      cancellable, error))
+  if (!_ostree_repo_save_cache_summary_file (self, remote, ".sig",
+                                             summary_sig, cancellable, error))
     return FALSE;
 
   return TRUE;
