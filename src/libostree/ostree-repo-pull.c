@@ -2626,54 +2626,78 @@ validate_variant_is_csum (GVariant       *csum,
   return ostree_validate_structureof_csum_v (csum, error);
 }
 
+static gboolean
+_ostree_repo_load_cache_summary_file (OstreeRepo        *self,
+                                      const char        *filename,
+                                      const char        *extension,
+                                      GBytes           **out_data,
+                                      GCancellable      *cancellable,
+                                      GError           **error)
+{
+  const char *file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", filename, extension);
+  glnx_autofd int fd = -1;
+  g_autoptr(GBytes) data = NULL;
+
+  *out_data = NULL;
+
+  if (self->cache_dir_fd == -1)
+    return TRUE;
+
+  fd = openat (self->cache_dir_fd, file, O_CLOEXEC | O_RDONLY);
+  if (fd < 0)
+    {
+      if (errno == ENOENT)
+        return TRUE;
+      return glnx_throw_errno_prefix (error, "openat(%s)", file);
+    }
+
+  data = ot_fd_readall_or_mmap (fd, 0, error);
+  if (!data)
+    return FALSE;
+
+  *out_data =g_steal_pointer (&data);
+  return TRUE;
+}
+
 /* Load the summary from the cache if the provided .sig file is the same as the
    cached version.  */
 static gboolean
 _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
                                              const char        *remote,
                                              GBytes            *summary_sig,
-                                             GBytes            **summary,
+                                             GBytes           **out_summary,
                                              GCancellable      *cancellable,
                                              GError           **error)
 {
-  if (self->cache_dir_fd == -1)
-    return TRUE;
+  g_autoptr(GBytes) old_sig_contents = NULL;
 
-  const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote, ".sig");
-  glnx_autofd int prev_fd = -1;
-  if (!ot_openat_ignore_enoent (self->cache_dir_fd, summary_cache_sig_file, &prev_fd, error))
-    return FALSE;
-  if (prev_fd < 0)
-    return TRUE; /* Note early return */
+  *out_summary = NULL;
 
-  g_autoptr(GBytes) old_sig_contents = ot_fd_readall_or_mmap (prev_fd, 0, error);
-  if (!old_sig_contents)
+  if (!_ostree_repo_load_cache_summary_file (self, remote, ".sig",
+                                             &old_sig_contents,
+                                             cancellable, error))
     return FALSE;
 
-  if (g_bytes_compare (old_sig_contents, summary_sig) == 0)
+  if (old_sig_contents != NULL &&
+      g_bytes_compare (old_sig_contents, summary_sig) == 0)
     {
-      const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote);
-      glnx_autofd int summary_fd = -1;
-      GBytes *summary_data;
+      g_autoptr(GBytes) summary_data = NULL;
 
-
-      summary_fd = openat (self->cache_dir_fd, summary_cache_file, O_CLOEXEC | O_RDONLY);
-      if (summary_fd < 0)
-        {
-          if (errno == ENOENT)
-            {
-              (void) unlinkat (self->cache_dir_fd, summary_cache_sig_file, 0);
-              return TRUE; /* Note early return */
-            }
-
-          return glnx_throw_errno_prefix (error, "openat(%s)", summary_cache_file);
-        }
-
-      summary_data = glnx_fd_readall_bytes (summary_fd, cancellable, error);
-      if (!summary_data)
+      if (!_ostree_repo_load_cache_summary_file (self, remote, NULL,
+                                                 &summary_data,
+                                                 cancellable, error))
         return FALSE;
-      *summary = summary_data;
+
+      if (summary_data == NULL)
+        {
+          /* Cached signature without cached summary, remove the signature */
+          const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote, ".sig");
+          (void) unlinkat (self->cache_dir_fd, summary_cache_sig_file, 0);
+        }
+      else
+        *out_summary = g_steal_pointer (&summary_data);
     }
+
   return TRUE;
 }
 
