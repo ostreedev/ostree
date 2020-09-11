@@ -2513,10 +2513,7 @@ on_superblock_fetched (GObject   *src,
       const guchar *expected_summary_digest = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
       guint8 actual_summary_digest[OSTREE_SHA256_DIGEST_LEN];
 
-      g_auto(OtChecksum) hasher = { 0, };
-      ot_checksum_init (&hasher);
-      ot_checksum_update_bytes (&hasher, delta_superblock_data);
-      ot_checksum_get_digest (&hasher, actual_summary_digest, sizeof (actual_summary_digest));
+      ot_checksum_bytes (delta_superblock_data, actual_summary_digest);
 
 #ifndef OSTREE_DISABLE_GPGME
       /* At this point we've GPG verified the data, so in theory
@@ -2626,54 +2623,180 @@ validate_variant_is_csum (GVariant       *csum,
   return ostree_validate_structureof_csum_v (csum, error);
 }
 
+static gboolean
+_ostree_repo_verify_summary (OstreeRepo   *self,
+                             const char   *name,
+                             gboolean      gpg_verify_summary,
+                             GPtrArray    *signapi_summary_verifiers,
+                             GBytes       *summary,
+                             GBytes       *signatures,
+                             GCancellable *cancellable,
+                             GError      **error)
+{
+  if (gpg_verify_summary)
+    {
+      if (summary == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "GPG verification enabled, but no summary found (check that the configured URL in remote config is correct)");
+          return FALSE;
+        }
+
+      if (signatures == NULL)
+        {
+          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
+                       "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+          return FALSE;
+        }
+
+      /* Verify any summary signatures. */
+      if (summary != NULL && signatures != NULL)
+        {
+          g_autoptr(OstreeGpgVerifyResult) result = NULL;
+
+          result = ostree_repo_verify_summary (self,
+                                               name,
+                                               summary,
+                                               signatures,
+                                               cancellable,
+                                               error);
+          if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+            return FALSE;
+        }
+    }
+
+  if (signapi_summary_verifiers)
+    {
+      if (summary == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Signature verification enabled, but no summary found (check that the configured URL in remote config is correct)");
+          return FALSE;
+        }
+
+      if (signatures == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Signature verification enabled, but no summary signatures found (use sign-verify-summary=false in remote config to disable)");
+          return FALSE;
+        }
+
+      /* Verify any summary signatures. */
+      if (summary != NULL && signatures != NULL)
+        {
+          g_autoptr(GVariant) sig_variant = NULL;
+
+          sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                  signatures, FALSE);
+
+          if (!_sign_verify_for_remote (signapi_summary_verifiers, summary, sig_variant, NULL, error))
+            return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_ostree_repo_load_cache_summary_file (OstreeRepo        *self,
+                                      const char        *filename,
+                                      const char        *extension,
+                                      GBytes           **out_data,
+                                      GCancellable      *cancellable,
+                                      GError           **error)
+{
+  const char *file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", filename, extension);
+  glnx_autofd int fd = -1;
+  g_autoptr(GBytes) data = NULL;
+
+  *out_data = NULL;
+
+  if (self->cache_dir_fd == -1)
+    return TRUE;
+
+  fd = openat (self->cache_dir_fd, file, O_CLOEXEC | O_RDONLY);
+  if (fd < 0)
+    {
+      if (errno == ENOENT)
+        return TRUE;
+      return glnx_throw_errno_prefix (error, "openat(%s)", file);
+    }
+
+  data = ot_fd_readall_or_mmap (fd, 0, error);
+  if (!data)
+    return FALSE;
+
+  *out_data =g_steal_pointer (&data);
+  return TRUE;
+}
+
 /* Load the summary from the cache if the provided .sig file is the same as the
    cached version.  */
 static gboolean
 _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
                                              const char        *remote,
                                              GBytes            *summary_sig,
-                                             GBytes            **summary,
+                                             GBytes           **out_summary,
                                              GCancellable      *cancellable,
                                              GError           **error)
 {
+  g_autoptr(GBytes) old_sig_contents = NULL;
+
+  *out_summary = NULL;
+
+  if (!_ostree_repo_load_cache_summary_file (self, remote, ".sig",
+                                             &old_sig_contents,
+                                             cancellable, error))
+    return FALSE;
+
+  if (old_sig_contents != NULL &&
+      g_bytes_compare (old_sig_contents, summary_sig) == 0)
+    {
+      g_autoptr(GBytes) summary_data = NULL;
+
+      if (!_ostree_repo_load_cache_summary_file (self, remote, NULL,
+                                                 &summary_data,
+                                                 cancellable, error))
+        return FALSE;
+
+      if (summary_data == NULL)
+        {
+          /* Cached signature without cached summary, remove the signature */
+          const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote, ".sig");
+          (void) unlinkat (self->cache_dir_fd, summary_cache_sig_file, 0);
+        }
+      else
+        *out_summary = g_steal_pointer (&summary_data);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_ostree_repo_save_cache_summary_file (OstreeRepo        *self,
+                                      const char        *filename,
+                                      const char        *extension,
+                                      GBytes            *data,
+                                      GCancellable      *cancellable,
+                                      GError           **error)
+{
+  const char *file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", filename, extension);
+  glnx_autofd int fd = -1;
+
   if (self->cache_dir_fd == -1)
     return TRUE;
 
-  const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote, ".sig");
-  glnx_autofd int prev_fd = -1;
-  if (!ot_openat_ignore_enoent (self->cache_dir_fd, summary_cache_sig_file, &prev_fd, error))
-    return FALSE;
-  if (prev_fd < 0)
-    return TRUE; /* Note early return */
-
-  g_autoptr(GBytes) old_sig_contents = ot_fd_readall_or_mmap (prev_fd, 0, error);
-  if (!old_sig_contents)
+  if (!glnx_shutil_mkdir_p_at (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, DEFAULT_DIRECTORY_MODE, cancellable, error))
     return FALSE;
 
-  if (g_bytes_compare (old_sig_contents, summary_sig) == 0)
-    {
-      const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote);
-      glnx_autofd int summary_fd = -1;
-      GBytes *summary_data;
+  if (!glnx_file_replace_contents_at (self->cache_dir_fd,
+                                      file,
+                                      g_bytes_get_data (data, NULL),
+                                      g_bytes_get_size (data),
+                                      self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                      cancellable, error))
+    return FALSE;
 
-
-      summary_fd = openat (self->cache_dir_fd, summary_cache_file, O_CLOEXEC | O_RDONLY);
-      if (summary_fd < 0)
-        {
-          if (errno == ENOENT)
-            {
-              (void) unlinkat (self->cache_dir_fd, summary_cache_sig_file, 0);
-              return TRUE; /* Note early return */
-            }
-
-          return glnx_throw_errno_prefix (error, "openat(%s)", summary_cache_file);
-        }
-
-      summary_data = glnx_fd_readall_bytes (summary_fd, cancellable, error);
-      if (!summary_data)
-        return FALSE;
-      *summary = summary_data;
-    }
   return TRUE;
 }
 
@@ -2686,28 +2809,12 @@ _ostree_repo_cache_summary (OstreeRepo        *self,
                             GCancellable      *cancellable,
                             GError           **error)
 {
-  if (self->cache_dir_fd == -1)
-    return TRUE;
-
-  if (!glnx_shutil_mkdir_p_at (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, DEFAULT_DIRECTORY_MODE, cancellable, error))
+  if (!_ostree_repo_save_cache_summary_file (self, remote, NULL,
+                                             summary, cancellable, error))
     return FALSE;
 
-  const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote);
-  if (!glnx_file_replace_contents_at (self->cache_dir_fd,
-                                      summary_cache_file,
-                                      g_bytes_get_data (summary, NULL),
-                                      g_bytes_get_size (summary),
-                                      self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                      cancellable, error))
-    return FALSE;
-
-  const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", remote, ".sig");
-  if (!glnx_file_replace_contents_at (self->cache_dir_fd,
-                                      summary_cache_sig_file,
-                                      g_bytes_get_data (summary_sig, NULL),
-                                      g_bytes_get_size (summary_sig),
-                                      self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                      cancellable, error))
+  if (!_ostree_repo_save_cache_summary_file (self, remote, ".sig",
+                                             summary_sig, cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -2717,6 +2824,8 @@ static OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,
                                  gboolean     gzip,
+                                 GVariant    *extra_headers,
+                                 const char  *append_user_agent,
                                  OstreeFetcherSecurityState *out_state,
                                  GError     **error)
 {
@@ -2829,6 +2938,12 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
       if (g_file_test (jar_path, G_FILE_TEST_IS_REGULAR))
         _ostree_fetcher_set_cookie_jar (fetcher, jar_path);
     }
+
+  if (extra_headers)
+    _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
+
+  if (append_user_agent)
+    _ostree_fetcher_set_extra_user_agent (fetcher, append_user_agent);
 
   success = TRUE;
 
@@ -2977,127 +3092,43 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
 }
 
 static gboolean
-repo_remote_fetch_summary (OstreeRepo    *self,
-                           const char    *name,
-                           const char    *metalink_url_string,
-                           GVariant      *options,
-                           GBytes       **out_summary,
-                           GBytes       **out_signatures,
-                           gboolean      *out_from_cache,
-                           GCancellable  *cancellable,
-                           GError       **error)
+compute_effective_mirrorlist (OstreeRepo    *self,
+                              const char    *remote_name_or_baseurl,
+                              const char    *url_override,
+                              OstreeFetcher *fetcher,
+                              guint          n_network_retries,
+                              GPtrArray    **out_mirrorlist,
+                              GCancellable *cancellable,
+                              GError      **error)
 {
-  g_autoptr(OstreeFetcher) fetcher = NULL;
-  g_autoptr(GMainContext) mainctx = NULL;
-  gboolean ret = FALSE;
-  gboolean from_cache = FALSE;
-  const char *url_override = NULL;
-  g_autoptr(GVariant) extra_headers = NULL;
-  g_autoptr(GPtrArray) mirrorlist = NULL;
-  const char *append_user_agent = NULL;
-  guint n_network_retries = DEFAULT_N_NETWORK_RETRIES;
+  g_autofree char *baseurl = NULL;
 
-  if (options)
+  if (url_override != NULL)
+    baseurl = g_strdup (url_override);
+  else if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
+    return FALSE;
+
+  if (g_str_has_prefix (baseurl, "mirrorlist="))
     {
-      (void) g_variant_lookup (options, "override-url", "&s", &url_override);
-      (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
-      (void) g_variant_lookup (options, "append-user-agent", "&s", &append_user_agent);
-      (void) g_variant_lookup (options, "n-network-retries", "&u", &n_network_retries);
+      if (!fetch_mirrorlist (fetcher,
+                             baseurl + strlen ("mirrorlist="),
+                             n_network_retries,
+                             out_mirrorlist,
+                             cancellable, error))
+        return FALSE;
     }
-
-  mainctx = g_main_context_new ();
-  g_main_context_push_thread_default (mainctx);
-
-  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, NULL, error);
-  if (fetcher == NULL)
-    goto out;
-
-  if (extra_headers)
-    _ostree_fetcher_set_extra_headers (fetcher, extra_headers);
-
-  if (append_user_agent)
-    _ostree_fetcher_set_extra_user_agent (fetcher, append_user_agent);
-
-  {
-    g_autofree char *url_string = NULL;
-    if (metalink_url_string)
-      url_string = g_strdup (metalink_url_string);
-    else if (url_override)
-      url_string = g_strdup (url_override);
-    else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
-      goto out;
-
-    if (metalink_url_string == NULL &&
-        g_str_has_prefix (url_string, "mirrorlist="))
-      {
-        if (!fetch_mirrorlist (fetcher, url_string + strlen ("mirrorlist="),
-                               n_network_retries, &mirrorlist, cancellable, error))
-          goto out;
-      }
-    else
-      {
-        g_autoptr(OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (url_string, error);
-
-        if (!uri)
-          goto out;
-
-        mirrorlist =
-          g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-        g_ptr_array_add (mirrorlist, g_steal_pointer (&uri));
-      }
-  }
-
-  /* FIXME: Send the ETag from the cache with the request for summary.sig to
-   * avoid downloading summary.sig unnecessarily. This won’t normally provide
-   * any benefits (but won’t do any harm) since summary.sig is typically 500B
-   * in size. But if a repository has multiple keys, the signature file will
-   * grow and this optimisation may be useful. */
-  if (!_ostree_preload_metadata_file (self,
-                                      fetcher,
-                                      mirrorlist,
-                                      "summary.sig",
-                                      metalink_url_string ? TRUE : FALSE,
-                                      n_network_retries,
-                                      out_signatures,
-                                      cancellable,
-                                      error))
-    goto out;
-
-  if (*out_signatures)
-    {
-      if (!_ostree_repo_load_cache_summary_if_same_sig (self,
-                                                        name,
-                                                        *out_signatures,
-                                                        out_summary,
-                                                        cancellable,
-                                                        error))
-        goto out;
-    }
-
-  if (*out_summary)
-    from_cache = TRUE;
   else
     {
-      if (!_ostree_preload_metadata_file (self,
-                                          fetcher,
-                                          mirrorlist,
-                                          "summary",
-                                          metalink_url_string ? TRUE : FALSE,
-                                          n_network_retries,
-                                          out_summary,
-                                          cancellable,
-                                          error))
-        goto out;
+      g_autoptr(OstreeFetcherURI) baseuri = _ostree_fetcher_uri_parse (baseurl, error);
+
+      if (!baseuri)
+        return FALSE;
+
+      *out_mirrorlist =
+        g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
+      g_ptr_array_add (*out_mirrorlist, g_steal_pointer (&baseuri));
     }
-
-  ret = TRUE;
-
- out:
-  if (mainctx)
-    g_main_context_pop_thread_default (mainctx);
-
-  *out_from_cache = from_cache;
-  return ret;
+  return TRUE;
 }
 
 /* Create the fetcher by unioning options from the remote config, plus
@@ -3109,16 +3140,12 @@ reinitialize_fetcher (OtPullData *pull_data, const char *remote_name,
 {
   g_clear_object (&pull_data->fetcher);
   pull_data->fetcher = _ostree_repo_remote_new_fetcher (pull_data->repo, remote_name, FALSE,
+                                                        pull_data->extra_headers,
+                                                        pull_data->append_user_agent,
                                                         &pull_data->fetcher_security_state,
                                                         error);
   if (pull_data->fetcher == NULL)
     return FALSE;
-
-  if (pull_data->extra_headers)
-    _ostree_fetcher_set_extra_headers (pull_data->fetcher, pull_data->extra_headers);
-
-  if (pull_data->append_user_agent)
-    _ostree_fetcher_set_extra_user_agent (pull_data->fetcher, pull_data->append_user_agent);
 
   return TRUE;
 }
@@ -3631,33 +3658,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (!metalink_url_str)
     {
-      g_autofree char *baseurl = NULL;
-
-      if (url_override != NULL)
-        baseurl = g_strdup (url_override);
-      else if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
+      if (!compute_effective_mirrorlist (self, remote_name_or_baseurl,
+                                         url_override,
+                                         pull_data->fetcher,
+                                         pull_data->n_network_retries,
+                                         &pull_data->meta_mirrorlist,
+                                         cancellable, error))
         goto out;
-
-      if (g_str_has_prefix (baseurl, "mirrorlist="))
-        {
-          if (!fetch_mirrorlist (pull_data->fetcher,
-                                 baseurl + strlen ("mirrorlist="),
-                                 pull_data->n_network_retries,
-                                 &pull_data->meta_mirrorlist,
-                                 cancellable, error))
-            goto out;
-        }
-      else
-        {
-          g_autoptr(OstreeFetcherURI) baseuri = _ostree_fetcher_uri_parse (baseurl, error);
-
-          if (!baseuri)
-            goto out;
-
-          pull_data->meta_mirrorlist =
-            g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-          g_ptr_array_add (pull_data->meta_mirrorlist, g_steal_pointer (&baseuri));
-        }
     }
   else
     {
@@ -3716,27 +3723,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
     else
       {
-        if (g_str_has_prefix (contenturl, "mirrorlist="))
-          {
-            if (!fetch_mirrorlist (pull_data->fetcher,
-                                   contenturl + strlen ("mirrorlist="),
-                                   pull_data->n_network_retries,
-                                   &pull_data->content_mirrorlist,
-                                   cancellable, error))
-              goto out;
-          }
-        else
-          {
-            g_autoptr(OstreeFetcherURI) contenturi = _ostree_fetcher_uri_parse (contenturl, error);
-
-            if (!contenturi)
-              goto out;
-
-            pull_data->content_mirrorlist =
-              g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-            g_ptr_array_add (pull_data->content_mirrorlist,
-                             g_steal_pointer (&contenturi));
-          }
+        if (!compute_effective_mirrorlist (self, remote_name_or_baseurl,
+                                           contenturl,
+                                           pull_data->fetcher,
+                                           pull_data->n_network_retries,
+                                           &pull_data->content_mirrorlist,
+                                           cancellable, error))
+          goto out;
       }
   }
 
@@ -5471,7 +5464,7 @@ find_remotes_cb (GObject      *obj,
                 goto error;
 
               fetcher = _ostree_repo_remote_new_fetcher (self, result->remote->name,
-                                                         TRUE, NULL, &error);
+                                                         TRUE, NULL, NULL, NULL, &error);
               if (fetcher == NULL)
                 goto error;
 
@@ -6093,95 +6086,107 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autoptr(GBytes) signatures = NULL;
   gboolean gpg_verify_summary;
   g_autoptr(GPtrArray) signapi_summary_verifiers = NULL;
-  gboolean ret = FALSE;
-  gboolean summary_is_from_cache;
+  gboolean summary_is_from_cache = FALSE;
+  g_autoptr(OstreeFetcher) fetcher = NULL;
+  g_autoptr(GMainContextPopDefault) mainctx = NULL;
+  const char *url_override = NULL;
+  g_autoptr(GVariant) extra_headers = NULL;
+  g_autoptr(GPtrArray) mirrorlist = NULL;
+  const char *append_user_agent = NULL;
+  guint n_network_retries = DEFAULT_N_NETWORK_RETRIES;
 
   g_return_val_if_fail (OSTREE_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
 
   if (!ostree_repo_get_remote_option (self, name, "metalink", NULL,
                                       &metalink_url_string, error))
-    goto out;
+    return FALSE;
 
-  if (!repo_remote_fetch_summary (self,
-                                  name,
-                                  metalink_url_string,
-                                  options,
-                                  &summary,
-                                  &signatures,
-                                  &summary_is_from_cache,
-                                  cancellable,
-                                  error))
-    goto out;
+  if (options)
+    {
+      (void) g_variant_lookup (options, "override-url", "&s", &url_override);
+      (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
+      (void) g_variant_lookup (options, "append-user-agent", "&s", &append_user_agent);
+      (void) g_variant_lookup (options, "n-network-retries", "&u", &n_network_retries);
+    }
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
-    goto out;
-
-  if (gpg_verify_summary)
-    {
-      if (summary == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "GPG verification enabled, but no summary found (check that the configured URL in remote config is correct)");
-          goto out;
-        }
-
-      if (signatures == NULL)
-        {
-          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
-                       "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
-          goto out;
-        }
-
-      /* Verify any summary signatures. */
-      if (summary != NULL && signatures != NULL)
-        {
-          g_autoptr(OstreeGpgVerifyResult) result = NULL;
-
-          result = ostree_repo_verify_summary (self,
-                                               name,
-                                               summary,
-                                               signatures,
-                                               cancellable,
-                                               error);
-          if (!ostree_gpg_verify_result_require_valid_signature (result, error))
-            goto out;
-        }
-    }
+    return FALSE;
 
   if (!_signapi_init_for_remote (self, name, NULL,
                                  &signapi_summary_verifiers,
                                  error))
-    goto out;
+    return FALSE;
 
-  if (signapi_summary_verifiers)
+  mainctx = _ostree_main_context_new_default ();
+
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, extra_headers, append_user_agent, NULL, error);
+  if (fetcher == NULL)
+    return FALSE;
+
+  if (metalink_url_string)
     {
-      if (summary == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Signature verification enabled, but no summary found (check that the configured URL in remote config is correct)");
-          goto out;
-        }
+      g_autoptr(OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (metalink_url_string, error);
+      if (!uri)
+        return FALSE;
 
-      if (signatures == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Signature verification enabled, but no summary signatures found (use sign-verify-summary=false in remote config to disable)");
-          goto out;
-        }
-
-      /* Verify any summary signatures. */
-      if (summary != NULL && signatures != NULL)
-        {
-          g_autoptr(GVariant) sig_variant = NULL;
-
-          sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
-                                                  signatures, FALSE);
-
-          if (!_sign_verify_for_remote (signapi_summary_verifiers, summary, sig_variant, NULL, error))
-            goto out;
-        }
+      mirrorlist =
+        g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
+      g_ptr_array_add (mirrorlist, g_steal_pointer (&uri));
     }
+  else if (!compute_effective_mirrorlist (self, name, url_override,
+                                          fetcher, n_network_retries,
+                                          &mirrorlist, cancellable, error))
+    return FALSE;
+
+  /* FIXME: Send the ETag from the cache with the request for summary.sig to
+   * avoid downloading summary.sig unnecessarily. This won’t normally provide
+   * any benefits (but won’t do any harm) since summary.sig is typically 500B
+   * in size. But if a repository has multiple keys, the signature file will
+   * grow and this optimisation may be useful. */
+  if (!_ostree_preload_metadata_file (self,
+                                      fetcher,
+                                      mirrorlist,
+                                      "summary.sig",
+                                      metalink_url_string ? TRUE : FALSE,
+                                      n_network_retries,
+                                      &signatures,
+                                      cancellable,
+                                      error))
+    return FALSE;
+
+  if (signatures)
+    {
+      if (!_ostree_repo_load_cache_summary_if_same_sig (self,
+                                                        name,
+                                                        signatures,
+                                                        &summary,
+                                                        cancellable,
+                                                        error))
+        return FALSE;
+    }
+
+  if (summary)
+    summary_is_from_cache = TRUE;
+  else
+    {
+      if (!_ostree_preload_metadata_file (self,
+                                          fetcher,
+                                          mirrorlist,
+                                          "summary",
+                                          metalink_url_string ? TRUE : FALSE,
+                                          n_network_retries,
+                                          &summary,
+                                          cancellable,
+                                          error))
+        return FALSE;
+    }
+
+  if (!_ostree_repo_verify_summary (self, name,
+                                    gpg_verify_summary, signapi_summary_verifiers,
+                                    summary, signatures,
+                                    cancellable, error))
+      return FALSE;
 
   if (!summary_is_from_cache && summary && signatures)
     {
@@ -6199,7 +6204,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
           else
             {
               g_propagate_error (error, g_steal_pointer (&temp_error));
-              goto out;
+              return FALSE;
             }
         }
     }
@@ -6210,10 +6215,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   if (out_signatures != NULL)
     *out_signatures = g_steal_pointer (&signatures);
 
-  ret = TRUE;
-
-out:
-  return ret;
+  return TRUE;
 }
 
 #else /* HAVE_LIBCURL_OR_LIBSOUP */

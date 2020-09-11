@@ -190,6 +190,12 @@ _ostree_repo_static_delta_query_exists (OstreeRepo                 *repo,
                                         gboolean                   *out_exists,
                                         GCancellable               *cancellable,
                                         GError                    **error);
+GVariant *
+_ostree_repo_static_delta_superblock_digest (OstreeRepo    *repo,
+                                             const char    *from,
+                                             const char    *to,
+                                             GCancellable  *cancellable,
+                                             GError       **error);
 
 gboolean
 _ostree_repo_static_delta_dump (OstreeRepo                 *repo,

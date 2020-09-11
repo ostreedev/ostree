@@ -96,4 +96,7 @@ char * ot_checksum_file_at (int             dfd,
                             GCancellable   *cancellable,
                             GError        **error);
 
+void ot_checksum_bytes (GBytes *data,
+                        guint8 out_digest[_OSTREE_SHA256_DIGEST_LEN]);
+
 G_END_DECLS

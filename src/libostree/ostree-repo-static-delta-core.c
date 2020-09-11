@@ -54,6 +54,28 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
   return TRUE;
 }
 
+GVariant *
+_ostree_repo_static_delta_superblock_digest (OstreeRepo    *repo,
+                                             const char    *from,
+                                             const char    *to,
+                                             GCancellable  *cancellable,
+                                             GError       **error)
+{
+  g_autofree char *superblock = _ostree_get_relative_static_delta_superblock_path ((from && from[0]) ? from : NULL, to);
+  glnx_autofd int superblock_file_fd = -1;
+  guint8 digest[OSTREE_SHA256_DIGEST_LEN];
+
+  if (!glnx_openat_rdonly (repo->repo_dir_fd, superblock, TRUE, &superblock_file_fd, error))
+    return NULL;
+
+  g_autoptr(GBytes) superblock_content = ot_fd_readall_or_mmap (superblock_file_fd, 0, error);
+  if (!superblock_content)
+    return NULL;
+
+  ot_checksum_bytes (superblock_content, digest);
+
+  return ot_gvariant_new_bytearray (digest, sizeof (digest));
+}
 
 /**
  * ostree_repo_list_static_delta_names:
@@ -109,7 +131,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
             return FALSE;
           if (sub_dent == NULL)
             break;
-          if (dent->d_type != DT_DIR)
+          if (sub_dent->d_type != DT_DIR)
             continue;
 
           const char *name1 = dent->d_name;
