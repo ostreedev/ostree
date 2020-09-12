@@ -134,7 +134,7 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
   else if (!strcmp (op, "get"))
     {
       GKeyFile *readonly_config = NULL;
-      g_autofree char *value = NULL;
+      g_autofree char *read_value = NULL;
       if (opt_group)
         {
           if (argc < 3)
@@ -160,11 +160,11 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
         }
 
       readonly_config = ostree_repo_get_config (repo);
-      value = g_key_file_get_string (readonly_config, section, key, error);
-      if (value == NULL)
+      read_value = g_key_file_get_string (readonly_config, section, key, error);
+      if (read_value == NULL)
         return FALSE;
 
-      g_print ("%s\n", value);
+      g_print ("%s\n", read_value);
     }
   else if (!strcmp (op, "unset"))
     {

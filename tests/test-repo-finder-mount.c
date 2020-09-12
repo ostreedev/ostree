@@ -317,7 +317,7 @@ test_repo_finder_mount_mixed_mounts (Fixture       *fixture,
   g_autoptr(OstreeRepoFinderMount) finder = NULL;
   g_autoptr(GVolumeMonitor) monitor = NULL;
   g_autoptr(GMainContext) context = NULL;
-  g_autoptr(GAsyncResult) result = NULL;
+  g_autoptr(GAsyncResult) async_result = NULL;
   g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
   g_autoptr(GError) error = NULL;
   g_autoptr(GList) mounts = NULL;  /* (element-type OstreeMockMount)  */
@@ -395,13 +395,13 @@ test_repo_finder_mount_mixed_mounts (Fixture       *fixture,
   /* Resolve the refs. */
   ostree_repo_finder_resolve_async (OSTREE_REPO_FINDER (finder), refs,
                                     fixture->parent_repo,
-                                    NULL, result_cb, &result);
+                                    NULL, result_cb, &async_result);
 
-  while (result == NULL)
+  while (async_result == NULL)
     g_main_context_iteration (context, TRUE);
 
   results = ostree_repo_finder_resolve_finish (OSTREE_REPO_FINDER (finder),
-                                               result, &error);
+                                               async_result, &error);
   g_assert_no_error (error);
   g_assert_nonnull (results);
   g_assert_cmpuint (results->len, ==, 4);
@@ -466,7 +466,7 @@ test_repo_finder_mount_well_known (Fixture       *fixture,
   g_autoptr(OstreeRepoFinderMount) finder = NULL;
   g_autoptr(GVolumeMonitor) monitor = NULL;
   g_autoptr(GMainContext) context = NULL;
-  g_autoptr(GAsyncResult) result = NULL;
+  g_autoptr(GAsyncResult) async_result = NULL;
   g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
   g_autoptr(GError) error = NULL;
   g_autoptr(GList) mounts = NULL;  /* (element-type OstreeMockMount)  */
@@ -507,13 +507,13 @@ test_repo_finder_mount_well_known (Fixture       *fixture,
   /* Resolve the refs. */
   ostree_repo_finder_resolve_async (OSTREE_REPO_FINDER (finder), refs,
                                     fixture->parent_repo,
-                                    NULL, result_cb, &result);
+                                    NULL, result_cb, &async_result);
 
-  while (result == NULL)
+  while (async_result == NULL)
     g_main_context_iteration (context, TRUE);
 
   results = ostree_repo_finder_resolve_finish (OSTREE_REPO_FINDER (finder),
-                                               result, &error);
+                                               async_result, &error);
   g_assert_no_error (error);
   g_assert_nonnull (results);
   g_assert_cmpuint (results->len, ==, 2);

@@ -614,10 +614,10 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   if (opt_base)
     {
       g_autofree char *base_commit = NULL;
-      g_autoptr(GFile) root = NULL;
-      if (!ostree_repo_read_commit (repo, opt_base, &root, &base_commit, cancellable, error))
+      g_autoptr(GFile) base_root = NULL;
+      if (!ostree_repo_read_commit (repo, opt_base, &base_root, &base_commit, cancellable, error))
         goto out;
-      OstreeRepoFile *rootf = (OstreeRepoFile*) root;
+      OstreeRepoFile *rootf = (OstreeRepoFile*) base_root;
 
       mtree = ostree_mutable_tree_new_from_checksum (repo,
                                                      ostree_repo_file_tree_get_contents_checksum (rootf),

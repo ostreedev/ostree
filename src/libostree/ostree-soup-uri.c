@@ -348,7 +348,7 @@ soup_uri_new_with_base (SoupURI *base, const char *uri_string)
 {
 	SoupURI *uri, fixed_base;
 	const char *end, *hash, *colon, *at, *path, *question;
-	const char *p, *hostend;
+	const char *c, *hostend;
 	gboolean remove_dot_segments = TRUE;
 	int len;
 
@@ -402,17 +402,17 @@ soup_uri_new_with_base (SoupURI *base, const char *uri_string)
 	}
 
 	/* Find scheme */
-	p = uri_string;
-	while (p < end && (g_ascii_isalpha (*p) ||
-			   (p > uri_string && (g_ascii_isdigit (*p) ||
-					       *p == '.' ||
-					       *p == '+' ||
-					       *p == '-'))))
-		p++;
+	c = uri_string;
+	while (c < end && (g_ascii_isalpha (*c) ||
+			   (c > uri_string && (g_ascii_isdigit (*c) ||
+					       *c == '.' ||
+					       *c == '+' ||
+					       *c == '-'))))
+		c++;
 
-	if (p > uri_string && *p == ':') {
-		uri->scheme = soup_uri_parse_scheme (uri_string, p - uri_string);
-		uri_string = p + 1;
+	if (c > uri_string && *c == ':') {
+		uri->scheme = soup_uri_parse_scheme (uri_string, c - uri_string);
+		uri_string = c + 1;
 	}
 
 	if (uri_string == end && !base && !uri->fragment) {

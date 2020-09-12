@@ -35,6 +35,7 @@ AS_IF([echo "$CFLAGS" | grep -q -E -e '-Werror($| )'], [], [
 CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
   -pipe \
   -Wall \
+  -Werror=shadow \
   -Werror=empty-body \
   -Werror=strict-prototypes \
   -Werror=missing-prototypes \

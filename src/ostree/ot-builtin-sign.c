@@ -167,7 +167,7 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
       if ((n_key_ids == 0) || opt_filename)
         {
           g_autoptr (GVariantBuilder) builder = NULL;
-          g_autoptr (GVariant) options = NULL;
+          g_autoptr (GVariant) sign_options = NULL;
 
           builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
           /* Use custom directory with public and revoked keys instead of system-wide directories */
@@ -176,9 +176,9 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
           /* The last chance for verification source -- system files */
           if (opt_filename)
             g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_filename));
-          options = g_variant_builder_end (builder);
+          sign_options = g_variant_builder_end (builder);
 
-          if (!ostree_sign_load_pk (sign, options, error))
+          if (!ostree_sign_load_pk (sign, sign_options, error))
             goto out;
 
           if (ostree_sign_commit_verify (sign,

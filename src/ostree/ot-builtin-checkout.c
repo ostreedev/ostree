@@ -135,14 +135,14 @@ process_one_checkout (OstreeRepo           *repo,
       opt_bareuseronly_dirs || opt_union_identical ||
       opt_skiplist_file || opt_selinux_policy || opt_selinux_prefix)
     {
-      OstreeRepoCheckoutAtOptions options = { 0, };
+      OstreeRepoCheckoutAtOptions checkout_options = { 0, };
 
       /* do this early so option checking also catches force copy conflicts */
       if (opt_selinux_policy)
         opt_force_copy = TRUE;
 
       if (opt_user_mode)
-        options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+        checkout_options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
       /* Can't union these */
       if (opt_union && opt_union_add)
         {
@@ -173,9 +173,9 @@ process_one_checkout (OstreeRepo           *repo,
           goto out;
         }
       else if (opt_union)
-        options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
+        checkout_options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
       else if (opt_union_add)
-        options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
+        checkout_options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES;
       else if (opt_union_identical)
         {
           if (!opt_require_hardlinks)
@@ -184,12 +184,12 @@ process_one_checkout (OstreeRepo           *repo,
                            "--union-identical requires --require-hardlinks");
               goto out;
             }
-          options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL;
+          checkout_options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL;
         }
       if (opt_whiteouts)
-        options.process_whiteouts = TRUE;
+        checkout_options.process_whiteouts = TRUE;
       if (subpath)
-        options.subpath = subpath;
+        checkout_options.subpath = subpath;
 
       g_autoptr(OstreeSePolicy) policy = NULL;
       if (opt_selinux_policy)
@@ -203,8 +203,8 @@ process_one_checkout (OstreeRepo           *repo,
           policy = ostree_sepolicy_new_at (rootfs_dfd, cancellable, error);
           if (!policy)
             goto out;
-          options.sepolicy = policy;
-          options.sepolicy_prefix = opt_selinux_prefix;
+          checkout_options.sepolicy = policy;
+          checkout_options.sepolicy_prefix = opt_selinux_prefix;
         }
 
       g_autoptr(GHashTable) skip_list =
@@ -214,16 +214,16 @@ process_one_checkout (OstreeRepo           *repo,
           if (!ot_parse_file_by_line (opt_skiplist_file, handle_skiplist_line, skip_list,
                                       cancellable, error))
             goto out;
-          options.filter = checkout_filter;
-          options.filter_user_data = skip_list;
+          checkout_options.filter = checkout_filter;
+          checkout_options.filter_user_data = skip_list;
         }
 
-      options.no_copy_fallback = opt_require_hardlinks;
-      options.force_copy = opt_force_copy;
-      options.force_copy_zerosized = opt_force_copy_zerosized;
-      options.bareuseronly_dirs = opt_bareuseronly_dirs;
+      checkout_options.no_copy_fallback = opt_require_hardlinks;
+      checkout_options.force_copy = opt_force_copy;
+      checkout_options.force_copy_zerosized = opt_force_copy_zerosized;
+      checkout_options.bareuseronly_dirs = opt_bareuseronly_dirs;
 
-      if (!ostree_repo_checkout_at (repo, &options,
+      if (!ostree_repo_checkout_at (repo, &checkout_options,
                                     AT_FDCWD, destination,
                                     resolved_commit,
                                     cancellable, error))

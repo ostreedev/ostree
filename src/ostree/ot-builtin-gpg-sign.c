@@ -171,9 +171,8 @@ delete_signatures (OstreeRepo *repo,
 
       while (!g_queue_is_empty (&signatures))
         {
-          GVariant *child = g_queue_pop_head (&signatures);
-          g_variant_builder_add_value (&signature_builder, child);
-          g_variant_unref (child);
+          g_autoptr(GVariant) sigchild = g_queue_pop_head (&signatures);
+          g_variant_builder_add_value (&signature_builder, sigchild);
         }
 
       g_variant_dict_insert_value (&metadata_dict,
