@@ -3943,11 +3943,9 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
                                   GCancellable                *cancellable,
                                   GError                     **error)
 {
-  g_autoptr(GFileInfo) child_info = NULL;
   g_autoptr(GFileInfo) modified_info = NULL;
   g_autoptr(GVariant) xattrs = NULL;
   g_autofree guchar *child_file_csum = NULL;
-  g_autofree char *tmp_checksum = NULL;
   g_autofree char *relpath = NULL;
   OstreeRepoCommitFilterResult filter_result;
   struct stat dir_stbuf;
@@ -3955,19 +3953,19 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   if (!glnx_fstat (src_dfd_iter->fd, &dir_stbuf, error))
     return FALSE;
 
-  child_info = _ostree_stbuf_to_gfileinfo (&dir_stbuf);
-
-  if (modifier != NULL)
-    {
-      relpath = ptrarray_path_join (path);
-
-      filter_result = _ostree_repo_commit_modifier_apply (self, modifier, relpath, child_info, &modified_info);
-    }
-  else
-    {
-      filter_result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
-      modified_info = g_object_ref (child_info);
-    }
+  {
+    g_autoptr(GFileInfo) child_info = _ostree_stbuf_to_gfileinfo (&dir_stbuf);
+    if (modifier != NULL)
+      {
+        relpath = ptrarray_path_join (path);
+        filter_result = _ostree_repo_commit_modifier_apply (self, modifier, relpath, child_info, &modified_info);
+      }
+    else
+      {
+        filter_result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
+        modified_info = g_object_ref (child_info);
+      }
+  }
 
   if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
     {
@@ -3979,8 +3977,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
                                               cancellable, error))
         return FALSE;
 
-      g_free (tmp_checksum);
-      tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
+      g_autofree char *tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
       ostree_mutable_tree_set_metadata_checksum (mtree, tmp_checksum);
     }
 
