@@ -617,6 +617,46 @@ merge_configuration_from (OstreeSysroot    *sysroot,
   return TRUE;
 }
 
+static gboolean
+try_update_old_deployment(OstreeSysroot               *sysroot,
+                          OstreeRepo                  *repo,
+                          const char                  *osname,
+                          int                          osdeploy_dfd,
+                          const char                  *checkout_target_tempname,
+                          const char                  *new_csum,
+                          GCancellable                *cancellable,
+                          GError                     **error)
+{
+  g_autoptr(OstreeDeployment) old_deployment = NULL;
+
+  g_autofree char * old_csum = NULL;
+  gboolean exists = FALSE;
+  if (!_ostree_sysroot_deploy_cache_steal_tree (
+        sysroot, osname, osdeploy_dfd, checkout_target_tempname, &old_csum,
+        &exists, cancellable, error))
+    return FALSE;
+  if (!exists)
+    return FALSE;
+
+  g_autofree char *old_etc = g_strdup_printf ("%s/etc", checkout_target_tempname);
+  if (!glnx_shutil_rm_rf_at (osdeploy_dfd, old_etc, cancellable, error))
+    return FALSE;
+
+  OstreeRepoCheckoutAtOptions checkout_opts = { 0, };
+  checkout_opts.overwrite_update_from_checksum = old_csum;
+  checkout_opts.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE;
+
+  if (!ostree_repo_checkout_at (repo, &checkout_opts, osdeploy_dfd,
+                                checkout_target_tempname, new_csum,
+                                cancellable, error))
+    return FALSE;
+
+  g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO,
+        "Deploy: Updated old deployment from csum %s to %s", old_csum, new_csum);
+
+  return TRUE;
+}
+
 /* Look up @revision in the repository, and check it out in
  * /ostree/deploy/OS/deploy/${treecsum}.${deployserial}.
  * A dfd for the result is returned in @out_deployment_dfd.
@@ -631,8 +671,9 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
 {
   GLNX_AUTO_PREFIX_ERROR ("Checking out deployment tree", error);
   /* Find the directory with deployments for this stateroot */
+  const char *osname = ostree_deployment_get_osname (deployment);
   g_autofree char *osdeploy_path =
-    g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
+    g_strconcat ("ostree/deploy/", osname, "/deploy", NULL);
   if (!glnx_shutil_mkdir_p_at (sysroot->sysroot_fd, osdeploy_path, 0775, cancellable, error))
     return FALSE;
 
@@ -647,11 +688,43 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   if (!glnx_shutil_rm_rf_at (osdeploy_dfd, checkout_target_name, cancellable, error))
     return FALSE;
 
-  /* Generate hardlink farm, then opendir it */
-  OstreeRepoCheckoutAtOptions checkout_opts = { 0, };
-  if (!ostree_repo_checkout_at (repo, &checkout_opts, osdeploy_dfd,
-                                checkout_target_name, csum,
-                                cancellable, error))
+  g_autofree char *checkout_target_tempname = g_strdup_printf (
+      "%s-wip", osdeploy_path);
+  if (!glnx_shutil_rm_rf_at (sysroot->sysroot_fd, checkout_target_tempname, cancellable, error))
+    return FALSE;
+
+  g_autoptr(GError) olddeploy_err = NULL;
+  if (!try_update_old_deployment(sysroot, repo, osname, sysroot->sysroot_fd,
+                                 checkout_target_tempname, csum, cancellable,
+                                 &olddeploy_err))
+    {
+      if (olddeploy_err)
+        g_printerr("Reusing old deployment failed: %s.  Falling back to "
+                   "fresh deploy\n", olddeploy_err->message);
+
+      if (!glnx_shutil_rm_rf_at (sysroot->sysroot_fd, checkout_target_tempname,
+                                 cancellable, error))
+        return FALSE;
+
+      /* Updating an old deployment failed, try a fresh one */
+      OstreeRepoCheckoutAtOptions checkout_opts = { 0, };
+      if (!ostree_repo_checkout_at (repo, &checkout_opts, sysroot->sysroot_fd,
+                                    checkout_target_tempname, csum,
+                                    cancellable, error))
+        return FALSE;
+
+      g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO,
+            "Deploy: Checkout from scratch. csum: %s", csum);
+    }
+
+  if (TEMP_FAILURE_RETRY(syncfs (osdeploy_dfd)) != 0)
+    {
+      glnx_throw_errno_prefix (error, "syncfs");
+      return FALSE;
+    }
+
+  if (!glnx_renameat (sysroot->sysroot_fd, checkout_target_tempname,
+                      osdeploy_dfd, checkout_target_name, error))
     return FALSE;
 
   return glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, out_deployment_dfd,

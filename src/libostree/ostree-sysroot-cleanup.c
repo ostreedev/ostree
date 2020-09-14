@@ -111,6 +111,138 @@ list_all_deployment_directories (OstreeSysroot       *self,
 }
 
 static gboolean
+deploy_cache_get_tree (OstreeSysroot  *self,
+                       const char     *osname,
+                       char          **csum_out,
+                       gboolean       *exists_out,
+                       GCancellable   *cancellable,
+                       GError        **error)
+{
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_autofree char *cachepath = g_strdup_printf (
+      "ostree/deploy/%s/cache", osname);
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (self->sysroot_fd, cachepath, &dfd_iter, &exists, error))
+    return FALSE;
+  if (!exists)
+    {
+      *exists_out = FALSE;
+      return TRUE;
+    }
+
+  while (TRUE)
+    {
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+
+      if (dent->d_type != DT_DIR)
+        continue;
+
+      g_autoptr(GError) csum_err = NULL;
+      g_autofree char *csum = g_path_get_basename (dent->d_name);
+      if (ostree_validate_structureof_checksum_string (csum, &csum_err))
+        {
+          if (csum_out)
+            *csum_out = g_steal_pointer(&csum);
+          *exists_out = TRUE;
+          return TRUE;
+        }
+      else
+        {
+          g_printerr ("Warning: Deploy cache dirname %s "
+                      "is not valid checksum: %s\n", dent->d_name,
+                      csum_err->message);
+        }
+    }
+  *exists_out = FALSE;
+  return TRUE;
+}
+
+gboolean
+_ostree_sysroot_deploy_cache_steal_tree (OstreeSysroot *self,
+                                         const char    *osname,
+                                         int            dest_fd,
+                                         const char    *destination,
+                                         char         **csum_out,
+                                         gboolean      *exists_out,
+                                         GCancellable  *cancellable,
+                                         GError       **error)
+{
+  g_autofree char *csum = NULL;
+  gboolean exists;
+  if (!deploy_cache_get_tree (self, osname, &csum, &exists, cancellable, error))
+    return FALSE;
+  if (!exists)
+    {
+      *exists_out = FALSE;
+      return TRUE;
+    }
+
+  g_autofree char *relpath = g_strdup_printf (
+      "ostree/deploy/%s/cache/%s", osname, csum);
+
+  g_autoptr(OstreeRepo) repo = NULL;
+  if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
+    return FALSE;
+  g_autofree char *ref = g_strdup_printf (
+      "ostree/deploy_cache/%s", osname);
+  if (!ostree_repo_set_ref_immediate (repo, NULL, ref, NULL, cancellable, error))
+    return FALSE;
+
+  if (!glnx_renameat(self->sysroot_fd, relpath, dest_fd, destination,
+                     error))
+    return FALSE;
+
+  *csum_out = g_steal_pointer (&csum);
+  *exists_out = TRUE;
+  return TRUE;
+}
+
+static gboolean
+deploy_cache_try_ingest(OstreeSysroot       *self,
+                        OstreeDeployment    *deployment,
+                        GCancellable        *cancellable,
+                        GError             **error)
+{
+  const char *osname = ostree_deployment_get_osname (deployment);
+  gboolean exists = FALSE;
+  g_autofree char *old_csum = NULL;
+  if (!deploy_cache_get_tree (self, osname, &old_csum, &exists, cancellable, error))
+    return FALSE;
+  if (exists)
+    return TRUE;
+
+  g_autofree char *cachepath = g_strdup_printf (
+      "ostree/deploy/%s/cache", osname);
+  if (!glnx_shutil_mkdir_p_at(self->sysroot_fd, cachepath, 0700, cancellable, error))
+    return FALSE;
+
+  const char* csum = ostree_deployment_get_csum (deployment);
+  g_autofree char *injested_path = g_strdup_printf ("%s/%s", cachepath, csum);
+
+  if (!glnx_renameat (self->sysroot_fd,
+                      ostree_sysroot_get_deployment_dirpath(self, deployment),
+                      self->sysroot_fd,
+                      injested_path,
+                      error))
+    return FALSE;
+
+  g_autoptr(OstreeRepo) repo = NULL;
+  if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
+    return FALSE;
+  g_autofree char *ref = g_strdup_printf (
+      "ostree/deploy_cache/%s", osname);
+  if (!ostree_repo_set_ref_immediate (repo, NULL, ref, csum, cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
 parse_bootdir_name (const char *name,
                     char      **out_osname,
                     char      **out_csum)
@@ -269,6 +401,8 @@ _ostree_sysroot_rmrf_deployment (OstreeSysroot *self,
   if (!_ostree_linuxfs_fd_alter_immutable_flag (deployment_fd, FALSE,
                                                 cancellable, error))
     return FALSE;
+  if (!deploy_cache_try_ingest (self, deployment, cancellable, error))
+    return FALSE;
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, origin_relpath, cancellable, error))
     return FALSE;
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deployment_path, cancellable, error))
@@ -317,8 +451,14 @@ cleanup_old_deployments (OstreeSysroot       *self,
   for (guint i = 0; i < all_deployment_dirs->len; i++)
     {
       OstreeDeployment *deployment = all_deployment_dirs->pdata[i];
-      g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
 
+      g_autofree char *deploy_wip = g_strdup_printf (
+          "ostree/deploy/%s/deploy-wip",
+          ostree_deployment_get_osname (deployment));
+      if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deploy_wip, cancellable, error))
+        return FALSE;
+
+      g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
       if (g_hash_table_lookup (active_deployment_dirs, deployment_path))
         continue;
 
