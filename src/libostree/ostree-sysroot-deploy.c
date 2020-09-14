@@ -1945,8 +1945,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   if (kernel_layout->devicetree_namever)
     {
-      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_namever, NULL);
-      ostree_bootconfig_parser_set (bootconfig, "devicetree", boot_relpath);
+      g_autofree char * dt_boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_namever, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "devicetree", dt_boot_relpath);
     }
   else if (kernel_layout->devicetree_srcpath)
     {
@@ -1954,8 +1954,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
        * want to point to a whole directory of device trees.
        * See: https://github.com/ostreedev/ostree/issues/1900
        */
-      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_srcpath, NULL);
-      ostree_bootconfig_parser_set (bootconfig, "fdtdir", boot_relpath);
+      g_autofree char * dt_boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_srcpath, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "fdtdir", dt_boot_relpath);
     }
 
   /* Note this is parsed in ostree-impl-system-generator.c */

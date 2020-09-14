@@ -1161,16 +1161,16 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
           {
             guint8 buf[8192];
             g_autoptr(GInputStream) file_in = NULL;
-            g_autoptr(GFileInfo) file_info = NULL;
+            g_autoptr(GFileInfo) regular_file_info = NULL;
             const char *checksum;
 
             checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)path);
 
-            if (!ostree_repo_load_file (self, checksum, &file_in, &file_info, NULL,
+            if (!ostree_repo_load_file (self, checksum, &file_in, &regular_file_info, NULL,
                                         cancellable, error))
               goto out;
 
-            archive_entry_set_size (entry, g_file_info_get_size (file_info));
+            archive_entry_set_size (entry, g_file_info_get_size (regular_file_info));
 
             if (archive_write_header (a, entry) != ARCHIVE_OK)
               {

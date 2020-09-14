@@ -93,16 +93,16 @@ main (int argc, char **argv)
 
   g_ptr_array_add (refs, NULL);  /* NULL terminator */
 
-  g_autoptr(GAsyncResult) result = NULL;
+  g_autoptr(GAsyncResult) async_result = NULL;
   ostree_repo_finder_resolve_async (OSTREE_REPO_FINDER (finder),
                                     (const OstreeCollectionRef * const *) refs->pdata,
-                                    parent_repo, NULL, result_cb, &result);
+                                    parent_repo, NULL, result_cb, &async_result);
 
-  while (result == NULL)
+  while (async_result == NULL)
     g_main_context_iteration (context, TRUE);
 
   g_autoptr(GPtrArray) results = ostree_repo_finder_resolve_finish (OSTREE_REPO_FINDER (finder),
-                                                                    result, &error);
+                                                                    async_result, &error);
   g_assert_no_error (error);
 
   /* Check that the results are correct: the invalid refs should have been

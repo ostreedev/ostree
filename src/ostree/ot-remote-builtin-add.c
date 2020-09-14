@@ -104,7 +104,6 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autoptr(GString) sign_verify = NULL;
   const char *remote_name;
   const char *remote_url;
-  char **iter;
   g_autoptr(GVariantBuilder) optbuilder = NULL;
   g_autoptr(GVariant) options = NULL;
   gboolean ret = FALSE;
@@ -161,7 +160,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
     g_variant_builder_add (optbuilder, "{s@v}",
                            "contenturl", g_variant_new_variant (g_variant_new_string (opt_contenturl)));
 
-  for (iter = opt_set; iter && *iter; iter++)
+  for (char **iter = opt_set; iter && *iter; iter++)
     {
       const char *keyvalue = *iter;
       g_autofree char *subkey = NULL;

@@ -1625,13 +1625,13 @@ scan_commit_object (OtPullData                 *pull_data,
     }
   if (pull_data->timestamp_check_from_rev)
     {
-      g_autoptr(GVariant) commit = NULL;
+      g_autoptr(GVariant) timestamp_commit = NULL;
       if (!ostree_repo_load_commit (pull_data->repo, pull_data->timestamp_check_from_rev,
-                                    &commit, NULL, error))
+                                    &timestamp_commit, NULL, error))
         return glnx_prefix_error (error, "Reading %s for timestamp-check-from-rev",
                                   pull_data->timestamp_check_from_rev);
 
-      guint64 ts = ostree_commit_get_timestamp (commit);
+      guint64 ts = ostree_commit_get_timestamp (timestamp_commit);
       if (!_ostree_compare_timestamps (pull_data->timestamp_check_from_rev, ts, checksum, new_ts, error))
         return FALSE;
     }
@@ -3389,7 +3389,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   const char *url_override = NULL;
   gboolean inherit_transaction = FALSE;
   g_autoptr(GHashTable) updated_requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
-  int i;
+  gsize i;
   g_autofree char **opt_localcache_repos = NULL;
   g_autoptr(GVariantIter) ref_keyring_map_iter = NULL;
   g_autoptr(GVariant) summary_bytes_v = NULL;
@@ -3849,7 +3849,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   {
     g_autoptr(GBytes) bytes_sig = NULL;
-    gsize i, n;
+    gsize n;
     g_autoptr(GVariant) refs = NULL;
     g_autoptr(GVariant) deltas = NULL;
     g_autoptr(GVariant) additional_metadata = NULL;
@@ -5227,7 +5227,7 @@ find_remotes_process_refs (OstreeRepo                        *self,
 
 static void
 find_remotes_cb (GObject      *obj,
-                 GAsyncResult *result,
+                 GAsyncResult *async_result,
                  gpointer      user_data)
 {
   OstreeRepo *self;
@@ -5259,7 +5259,7 @@ find_remotes_cb (GObject      *obj,
   /* progress = data->progress; */
 
   /* Finish finding the remotes. */
-  results = ostree_repo_finder_resolve_all_finish (result, &error);
+  results = ostree_repo_finder_resolve_all_finish (async_result, &error);
 
   if (results == NULL)
     {

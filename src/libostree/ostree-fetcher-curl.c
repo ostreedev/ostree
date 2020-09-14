@@ -341,14 +341,14 @@ check_multi_info (OstreeFetcher *fetcher)
 
               if (req->idx + 1 == req->mirrorlist->len)
                 {
-                  g_autofree char *msg = g_strdup_printf ("Server returned HTTP %lu", response);
+                  g_autofree char *response_msg = g_strdup_printf ("Server returned HTTP %lu", response);
                   g_task_return_new_error (task, G_IO_ERROR, giocode,
-                                           "%s", msg);
+                                           "%s", response_msg);
                   if (req->fetcher->remote_name &&
                       !((req->flags & OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT) > 0 &&
                         giocode == G_IO_ERROR_NOT_FOUND))
                     _ostree_fetcher_journal_failure (req->fetcher->remote_name,
-                                                     eff_url, msg);
+                                                     eff_url, response_msg);
 
                 }
               else

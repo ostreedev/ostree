@@ -230,7 +230,7 @@ test_repo_finder_config_mixed_configs (Fixture       *fixture,
 {
   g_autoptr(OstreeRepoFinderConfig) finder = NULL;
   g_autoptr(GMainContext) context = NULL;
-  g_autoptr(GAsyncResult) result = NULL;
+  g_autoptr(GAsyncResult) async_result = NULL;
   g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
   g_autoptr(GError) error = NULL;
   gsize i;
@@ -266,13 +266,13 @@ test_repo_finder_config_mixed_configs (Fixture       *fixture,
 
   /* Resolve the refs. */
   ostree_repo_finder_resolve_async (OSTREE_REPO_FINDER (finder), refs,
-                                    fixture->parent_repo, NULL, result_cb, &result);
+                                    fixture->parent_repo, NULL, result_cb, &async_result);
 
-  while (result == NULL)
+  while (async_result == NULL)
     g_main_context_iteration (context, TRUE);
 
   results = ostree_repo_finder_resolve_finish (OSTREE_REPO_FINDER (finder),
-                                               result, &error);
+                                               async_result, &error);
   g_assert_no_error (error);
   g_assert_nonnull (results);
   g_assert_cmpuint (results->len, ==, 3);

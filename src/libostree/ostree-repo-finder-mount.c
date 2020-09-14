@@ -336,7 +336,6 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder                  *finde
       g_autoptr(GHashTable) repo_to_refs = NULL;  /* (element-type UriAndKeyring GHashTable) */
       GHashTable *supported_ref_to_checksum;  /* (element-type OstreeCollectionRef utf8) */
       GHashTableIter iter;
-      UriAndKeyring *repo;
       g_autoptr(GError) local_error = NULL;
 
       mount_name = g_mount_get_name (mount);
@@ -525,6 +524,7 @@ G_GNUC_END_IGNORE_DEPRECATIONS
       /* Aggregate the results. */
       g_hash_table_iter_init (&iter, repo_to_refs);
 
+      UriAndKeyring *repo;
       while (g_hash_table_iter_next (&iter, (gpointer *) &repo, (gpointer *) &supported_ref_to_checksum))
         {
           g_autoptr(OstreeRemote) remote = NULL;

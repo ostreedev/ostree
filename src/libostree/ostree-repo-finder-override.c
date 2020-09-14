@@ -151,7 +151,6 @@ ostree_repo_finder_override_resolve_async (OstreeRepoFinder                  *fi
   GHashTable *supported_ref_to_checksum;  /* (element-type OstreeCollectionRef utf8) */
   GHashTableIter iter;
   const gchar *remote_uri;
-  OstreeRemote *remote;
 
   task = g_task_new (finder, cancellable, callback, user_data);
   g_task_set_source_tag (task, ostree_repo_finder_override_resolve_async);
@@ -242,6 +241,7 @@ ostree_repo_finder_override_resolve_async (OstreeRepoFinder                  *fi
   /* Aggregate the results. */
   g_hash_table_iter_init (&iter, repo_remote_to_refs);
 
+  OstreeRemote *remote;
   while (g_hash_table_iter_next (&iter, (gpointer *) &remote, (gpointer *) &supported_ref_to_checksum))
     g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, NULL, 0));
 

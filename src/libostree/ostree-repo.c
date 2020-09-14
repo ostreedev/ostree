@@ -3782,14 +3782,14 @@ load_metadata_internal (OstreeRepo       *self,
           g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (sha256);
           *out_state = 0;
 
-          glnx_autofd int fd = -1;
-          if (!ot_openat_ignore_enoent (self->repo_dir_fd, commitpartial_path, &fd, error))
+          glnx_autofd int commitpartial_fd = -1;
+          if (!ot_openat_ignore_enoent (self->repo_dir_fd, commitpartial_path, &commitpartial_fd, error))
             return FALSE;
-          if (fd != -1)
+          if (commitpartial_fd != -1)
             {
               *out_state |= OSTREE_REPO_COMMIT_STATE_PARTIAL;
                char reason;
-               if (read (fd, &reason, 1) == 1)
+               if (read (commitpartial_fd, &reason, 1) == 1)
                  {
                    if (reason == 'f')
                      *out_state |= OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL;
@@ -5831,19 +5831,19 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     collection_map = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
                                             (GDestroyNotify) g_hash_table_unref);
 
-    const OstreeCollectionRef *ref;
+    const OstreeCollectionRef *c_ref;
     const char *checksum;
-    while (g_hash_table_iter_next (&iter, (gpointer *) &ref, (gpointer *) &checksum))
+    while (g_hash_table_iter_next (&iter, (gpointer *) &c_ref, (gpointer *) &checksum))
       {
-        GHashTable *ref_map = g_hash_table_lookup (collection_map, ref->collection_id);
+        GHashTable *ref_map = g_hash_table_lookup (collection_map, c_ref->collection_id);
 
         if (ref_map == NULL)
           {
             ref_map = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
-            g_hash_table_insert (collection_map, ref->collection_id, ref_map);
+            g_hash_table_insert (collection_map, c_ref->collection_id, ref_map);
           }
 
-        g_hash_table_insert (ref_map, ref->ref_name, (gpointer) checksum);
+        g_hash_table_insert (ref_map, c_ref->ref_name, (gpointer) checksum);
       }
 
     g_autoptr(GVariantBuilder) collection_refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));

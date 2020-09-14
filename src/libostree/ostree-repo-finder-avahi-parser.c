@@ -91,14 +91,14 @@ parse_txt_record (const guint8  *txt,
 
 /* TODO: Docs. Return value is only valid as long as @txt is. Reference: RFC 6763, §6. */
 GHashTable *
-_ostree_txt_records_parse (AvahiStringList *txt)
+_ostree_txt_records_parse (AvahiStringList *txt_list)
 {
   AvahiStringList *l;
   g_autoptr(GHashTable) out = NULL;
 
   out = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) g_bytes_unref);
 
-  for (l = txt; l != NULL; l = avahi_string_list_get_next (l))
+  for (l = txt_list; l != NULL; l = avahi_string_list_get_next (l))
     {
       const guint8 *txt;
       gsize txt_len;
