@@ -5372,8 +5372,8 @@ find_remotes_cb (GObject      *obj,
 
       /* Check the metadata in the summary file, especially whether it contains
        * all the @refs we are interested in. */
-      summary_v = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                            summary_bytes, FALSE);
+      summary_v = g_variant_ref_sink (g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                                                summary_bytes, FALSE));
 
       /* Check the summary’s additional metadata and set up @commit_metadata
        * and @refs_and_remotes_table with the refs listed in the summary file,
