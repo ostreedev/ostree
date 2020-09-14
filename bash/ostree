@@ -254,6 +254,7 @@ _ostree_checkout() {
     local options_with_args="
         --from-file
         --fsync
+        --update
         --repo
         --subpath
     "
@@ -263,6 +264,10 @@ _ostree_checkout() {
     case "$prev" in
         --from-file)
             __ostree_compreply_all_files
+            return 0
+            ;;
+        --update)
+            __ostree_compreply_commits
             return 0
             ;;
         --repo|--subpath)

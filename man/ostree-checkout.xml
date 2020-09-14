@@ -59,7 +59,13 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Checks out the given commit into the filesystem under directory DESTINATION.  If DESTINATION is not specified, the COMMIT will become the destination checkout target.  If COMMIT destination already exists, command will error unless <option>--union</option> option is selected.
+            Checks out the given commit into the filesystem under directory
+            DESTINATION.  If DESTINATION is not specified, the COMMIT will
+            become the destination checkout target.  If COMMIT destination
+            already exists, command will error unless one of the
+            <option>--union</option>, <option>--union-add</option>,
+            <option>--union-identical</option> or <option>--update</option>
+            options are selected.
         </para>
     </refsect1>
 
@@ -113,6 +119,15 @@ Boston, MA 02111-1307, USA.
 
                 <listitem><para>
                     Process whiteout files (Docker style).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--update</option>="COMMIT"</term>
+
+                <listitem><para>
+                    Assume that the <literal>DESTINATION</literal> already has
+                    this commit checked out in it and modify it in-place.
                 </para></listitem>
             </varlistentry>
 

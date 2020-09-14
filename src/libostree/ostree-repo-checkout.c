@@ -246,6 +246,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
             case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
               return glnx_throw_errno_prefix (error, "symlinkat");
             case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
+            case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
               {
                 /* For unioning, we further bifurcate a bit; for the "process whiteouts"
                  * mode which is really "Docker/OCI", we need to match their semantics
@@ -343,6 +344,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
         case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
           /* Handled above */
           break;
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
           /* Special case OCI/Docker - see similar code in checkout_file_hardlink()
            * and above for symlinks.
@@ -492,6 +494,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
           break;
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
         case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
+        case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
           {
             /* In both union-files and union-identical, see if the src/target are
              * already hardlinked.  If they are, we're done.
@@ -538,7 +541,8 @@ checkout_file_hardlink (OstreeRepo                          *self,
               }
             if (is_identical)
               ret_result = HARDLINK_RESULT_SKIP_EXISTED;
-            else if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+            else if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES ||
+                     options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE)
               {
                 char *tmpname = strdupa ("checkout-union-XXXXXX");
                 /* Make a link with a temp name */
@@ -586,10 +590,6 @@ checkout_one_file_at (OstreeRepo                        *repo,
                       GCancellable                      *cancellable,
                       GError                           **error)
 {
-  /* Validate this up front to prevent path traversal attacks */
-  if (!ot_util_filename_validate (destination_name, error))
-    return FALSE;
-
   gboolean need_copy = TRUE;
   gboolean is_bare_user_symlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
@@ -854,16 +854,285 @@ pop_path_element (OstreeRepoCheckoutAtOptions *options,
     g_string_truncate (state->selabel_path_buf, state->selabel_path_buf->len - n);
 }
 
+#pragma GCC diagnostic ignored "-Waggregate-return"
+
+/* It can be easy to pass the wrong size to memset */
+#define CLEAR(p) memset((p), 0, sizeof(*(p)))
+
 /*
- * checkout_tree_at:
+ * Iterate through the directories in a dirtree
+ */
+typedef struct {
+  const char *name;
+  char dirtree_checksum[OSTREE_SHA256_STRING_LEN+1];
+  char dirmeta_checksum[OSTREE_SHA256_STRING_LEN+1];
+} DirDentry;
+
+typedef struct {
+  GVariantIter viter;
+  GVariant* dir_subdirs;
+
+  DirDentry entry;
+} DirDirectoryIter;
+
+static DirDirectoryIter
+dir_iter_init(GVariant *dirtree) {
+  DirDirectoryIter self;
+  CLEAR(&self);
+  if (dirtree)
+    {
+      self.dir_subdirs = g_variant_get_child_value (dirtree, 1);
+      g_variant_iter_init (&self.viter, self.dir_subdirs);
+    }
+  return self;
+}
+
+static void
+dir_iter_clear(DirDirectoryIter *self) {
+  if (self->dir_subdirs)
+    g_variant_unref(self->dir_subdirs);
+  CLEAR(self);
+}
+
+static DirDentry*
+dir_iter_next(DirDirectoryIter* self)
+{
+  g_autoptr(GVariant) subdirtree_csum_v = NULL;
+  g_autoptr(GVariant) subdirmeta_csum_v = NULL;
+
+  if (!self->dir_subdirs || !g_variant_iter_next (
+      &self->viter, "(&s@ay@ay)", &self->entry.name,
+      &subdirtree_csum_v, &subdirmeta_csum_v))
+    {
+      CLEAR(&self->entry);
+      return NULL;
+    }
+
+  _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, self->entry.dirtree_checksum);
+  _ostree_checksum_inplace_from_bytes_v (subdirmeta_csum_v, self->entry.dirmeta_checksum);
+
+  return &self->entry;
+}
+
+/*
+ * Iterate through the files in a dirtree
+ */
+typedef struct {
+  const char *name;
+  char checksum[OSTREE_SHA256_STRING_LEN+1];
+} FileDentry;
+
+typedef struct {
+  GVariantIter viter;
+  GVariant* files;
+
+  FileDentry entry;
+} FileDirectoryIter;
+
+static FileDirectoryIter
+file_iter_init(GVariant *dirtree) {
+  FileDirectoryIter self;
+  CLEAR(&self);
+  if (dirtree)
+    {
+      self.files = g_variant_get_child_value (dirtree, 0);
+      g_variant_iter_init (&self.viter, self.files);
+    }
+  return self;
+}
+
+static void
+file_iter_clear(FileDirectoryIter *self) {
+  if (self->files)
+    g_variant_unref(self->files);
+  CLEAR (self);
+}
+
+static FileDentry*
+file_iter_next(FileDirectoryIter* self)
+{
+  g_autoptr(GVariant) file_csum_v = NULL;
+
+  if (!self->files || !g_variant_iter_next (
+      &self->viter, "(&s@ay)", &self->entry.name, &file_csum_v))
+    {
+      CLEAR(&self->entry);
+      return NULL;
+    }
+
+  _ostree_checksum_inplace_from_bytes_v (file_csum_v, self->entry.checksum);
+
+  return &self->entry;
+}
+
+/*
+ * Diff a list dirtrees:
+ */
+
+typedef struct {
+  const char *name;
+  DirDentry *before;
+  DirDentry *after;
+} DirDiffItem;
+
+typedef struct {
+  DirDirectoryIter before_iter;
+  DirDirectoryIter after_iter;
+  int last_cmp;
+  DirDiffItem item;
+} DirDiffIter;
+
+static DirDiffIter
+dir_diff_iter_init(GVariant *before_dirtree, GVariant *after_dirtree) {
+  DirDiffIter self;
+  CLEAR(&self);
+  self.before_iter = dir_iter_init(before_dirtree);
+  self.after_iter = dir_iter_init(after_dirtree);
+  return self;
+}
+
+static void
+dir_diff_iter_clear(DirDiffIter *self) {
+  dir_iter_clear (&self->before_iter);
+  dir_iter_clear (&self->after_iter);
+  self->last_cmp = 0;
+  CLEAR(&self->item);
+}
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(DirDiffIter, dir_diff_iter_clear);
+
+static int
+dir_entry_cmp_by_name(DirDentry* before, DirDentry* after)
+{
+  /* NULL comes after all items as it's the list terminator */
+  if ((!before || !before->name) && (!after || !after->name))
+    return -2;
+  else if (!after || !after->name)
+    return -1;
+  else if (!before || !before->name)
+    return 1;
+  else
+    return MAX(-1, MIN(1, strcmp (before->name, after->name)));
+}
+
+static DirDiffItem*
+dir_diff_iter_next(DirDiffIter* self)
+{
+  if (self->last_cmp == 0 || self->last_cmp == -1)
+    dir_iter_next(&self->before_iter);
+  if (self->last_cmp == 0 || self->last_cmp == 1)
+    dir_iter_next(&self->after_iter);
+
+  self->last_cmp = dir_entry_cmp_by_name(&self->before_iter.entry,
+                                         &self->after_iter.entry);
+  if (self->last_cmp == -2)
+    return NULL;
+  if (self->last_cmp == 0 || self->last_cmp == -1)
+    {
+      self->item.name = self->before_iter.entry.name;
+      self->item.before = &self->before_iter.entry;
+    }
+  else
+    self->item.before = NULL;
+  if (self->last_cmp == 0 || self->last_cmp == 1)
+    {
+      self->item.name = self->after_iter.entry.name;
+      self->item.after = &self->after_iter.entry;
+    }
+  else
+    self->item.after = NULL;
+  return &self->item;
+}
+
+/*
+ * Diff a list files:
+ */
+
+typedef struct {
+  const char *name;
+  char *before_checksum;
+  char *after_checksum;
+} FileDiffItem;
+
+typedef struct {
+  FileDirectoryIter before_iter;
+  FileDirectoryIter after_iter;
+  int last_cmp;
+  FileDiffItem item;
+} FileDiffIter;
+
+static FileDiffIter
+file_diff_iter_init(GVariant *before_dirtree, GVariant *after_dirtree) {
+  FileDiffIter self;
+  CLEAR(&self);
+  self.before_iter = file_iter_init(before_dirtree);
+  self.after_iter = file_iter_init(after_dirtree);
+  return self;
+}
+
+static void
+file_diff_iter_clear(FileDiffIter *self) {
+  file_iter_clear (&self->before_iter);
+  file_iter_clear (&self->after_iter);
+  CLEAR(&self->item);
+}
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(FileDiffIter, file_diff_iter_clear);
+
+static int
+file_entry_cmp_by_name(FileDentry* before, FileDentry* after)
+{
+  /* NULL comes after all items as it's the list terminator */
+  if ((!before || !before->name) && (!after || !after->name))
+    return -2;
+  else if (!after || !after->name)
+    return -1;
+  else if (!before || !before->name)
+    return 1;
+  else
+    return MAX(-1, MIN(1, strcmp (before->name, after->name)));
+}
+
+static FileDiffItem*
+file_diff_iter_next(FileDiffIter* self)
+{
+  if (self->last_cmp == 0 || self->last_cmp == -1)
+    file_iter_next(&self->before_iter);
+  if (self->last_cmp == 0 || self->last_cmp == 1)
+    file_iter_next(&self->after_iter);
+
+  self->last_cmp = file_entry_cmp_by_name(&self->before_iter.entry,
+                                          &self->after_iter.entry);
+  if (self->last_cmp == -2)
+    return NULL;
+  if (self->last_cmp == 0 || self->last_cmp == -1)
+    {
+      self->item.name = self->before_iter.entry.name;
+      self->item.before_checksum = self->before_iter.entry.checksum;
+    }
+  else
+    self->item.before_checksum = NULL;
+  if (self->last_cmp == 0 || self->last_cmp == 1)
+    {
+      self->item.name = self->after_iter.entry.name;
+      self->item.after_checksum = self->after_iter.entry.checksum;
+    }
+  else
+    self->item.after_checksum = NULL;
+  return &self->item;
+}
+
+/*
+ * checkout_tree_at_recurse:
  * @self: Repo
- * @mode: Options controlling all files
+ * @options: Options controlling all files
  * @state: Any state we're carrying through
  * @overwrite_mode: Whether or not to overwrite files
  * @destination_parent_fd: Place tree here
  * @destination_name: Use this name for tree
- * @source: Source tree
- * @source_info: Source info
+ * @dirtree_checksum: dirtree checksum of the tree being checked out
+ * @dirmeta_checksum: dirmeta checksum of the tree being checked out
+ * @orig_dirtree_checksum: Used when overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -878,6 +1147,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
                           const char                        *destination_name,
                           const char                        *dirtree_checksum,
                           const char                        *dirmeta_checksum,
+                          const char                        *orig_dirtree_checksum,
                           GCancellable                      *cancellable,
                           GError                           **error)
 {
@@ -886,6 +1156,7 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
   const gboolean sepolicy_enabled = options->sepolicy && !self->disable_xattrs;
   g_autoptr(GVariant) dirtree = NULL;
   g_autoptr(GVariant) dirmeta = NULL;
+  g_autoptr(GVariant) orig_dirtree = NULL;
   g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GVariant) modified_xattrs = NULL;
 
@@ -895,6 +1166,10 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_DIR_META,
                                  dirmeta_checksum, &dirmeta, error))
     return FALSE;
+  if (orig_dirtree_checksum)
+    if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_DIR_TREE,
+                                   orig_dirtree_checksum, &orig_dirtree, error))
+      return FALSE;
 
   /* Parse OSTREE_OBJECT_TYPE_DIR_META */
   guint32 uid, gid, mode;
@@ -977,6 +1252,11 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
           case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
             did_exist = TRUE;
             break;
+          /* When replacing we pretend that we created the directory to ensure
+             the xattrs get updated. */
+          case OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE:
+            did_exist = FALSE;
+            break;
           }
       }
   }
@@ -1004,62 +1284,91 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
         return FALSE;
     }
 
-  /* Process files in this subdir */
-  { g_autoptr(GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
-    GVariantIter viter;
-    g_variant_iter_init (&viter, dir_file_contents);
-    const char *fname;
-    g_autoptr(GVariant) contents_csum_v = NULL;
-    while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, &contents_csum_v))
+
+  /* Delete files and directories that will be changing type - we can't
+     atomically replace their contents */
+  {
+    g_auto(FileDiffIter) iter = file_diff_iter_init(orig_dirtree, dirtree);
+    FileDiffItem* diff;
+    while ((diff = file_diff_iter_next(&iter)))
       {
-        push_path_element (options, state, fname, FALSE);
-
-        char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
-        _ostree_checksum_inplace_from_bytes_v (contents_csum_v, tmp_checksum);
-
-        if (!checkout_one_file_at (self, options, state,
-                                   tmp_checksum,
-                                   destination_dfd, fname,
-                                   cancellable, error))
+        /* Validate this up front to prevent path traversal attacks. */
+        if (!ot_util_filename_validate (diff->name, error))
           return FALSE;
 
-        pop_path_element (options, state, fname, FALSE);
+        if (!diff->after_checksum)
+          if (!glnx_unlinkat(destination_dfd, diff->name, 0, error))
+            return FALSE;
       }
-    contents_csum_v = NULL; /* iter_loop freed it */
+  }
+
+  {
+    g_auto(DirDiffIter) iter = dir_diff_iter_init(orig_dirtree, dirtree);
+    DirDiffItem* diff;
+    while ((diff = dir_diff_iter_next(&iter)))
+      {
+        /* Validate this up front to prevent path traversal attacks. */
+        if (!ot_util_filename_validate (diff->name, error))
+          return FALSE;
+
+        if (!diff->after)
+          if (!glnx_shutil_rm_rf_at (destination_dfd, diff->name, cancellable, error))
+            return FALSE;
+      }
+  }
+
+  /* Process files in this subdir */
+  {
+    g_auto(FileDiffIter) iter = file_diff_iter_init(orig_dirtree, dirtree);
+    FileDiffItem* diff;
+    while ((diff = file_diff_iter_next(&iter)))
+      {
+        if (diff->after_checksum && diff->before_checksum &&
+            strcmp(diff->after_checksum, diff->before_checksum) == 0)
+          /* File is unchanged */
+          continue;
+        else if (diff->after_checksum)
+          {
+            push_path_element (options, state, diff->name, FALSE);
+
+            if (!checkout_one_file_at (self, options, state,
+                                       diff->after_checksum,
+                                       destination_dfd, diff->name,
+                                       cancellable, error))
+              return FALSE;
+
+            pop_path_element (options, state, diff->name, FALSE);
+          }
+      }
   }
 
   /* Process subdirectories */
-  { g_autoptr(GVariant) dir_subdirs = g_variant_get_child_value (dirtree, 1);
-    const char *dname;
-    g_autoptr(GVariant) subdirtree_csum_v = NULL;
-    g_autoptr(GVariant) subdirmeta_csum_v = NULL;
-    GVariantIter viter;
-    g_variant_iter_init (&viter, dir_subdirs);
-    while (g_variant_iter_loop (&viter, "(&s@ay@ay)", &dname,
-                                &subdirtree_csum_v, &subdirmeta_csum_v))
+  {
+    g_auto(DirDiffIter) iter = dir_diff_iter_init(orig_dirtree, dirtree);
+    DirDiffItem* diff;
+    while ((diff = dir_diff_iter_next(&iter)))
       {
-        /* Validate this up front to prevent path traversal attacks. Note that
-         * we don't validate at the top of this function like we do for
-         * checkout_one_file_at() becuase I believe in some cases this function
-         * can be called *initially* with user-specified paths for the root
-         * directory.
-         */
-        if (!ot_util_filename_validate (dname, error))
-          return FALSE;
+        if (diff->before && diff->after &&
+            strcmp(diff->before->dirtree_checksum, diff->after->dirtree_checksum) == 0 &&
+            strcmp(diff->before->dirmeta_checksum, diff->after->dirmeta_checksum) == 0)
+          {
+            /* They're identical, leave it alone */
+            continue;
+          }
+        else if (diff->after)
+          {
+            push_path_element (options, state, diff->name, TRUE);
 
-        push_path_element (options, state, dname, TRUE);
+            if (!checkout_tree_at_recurse (self, options, state,
+                                           destination_dfd, diff->name,
+                                           diff->after->dirtree_checksum,
+                                           diff->after->dirmeta_checksum,
+                                           diff->before ? diff->before->dirtree_checksum : NULL,
+                                           cancellable, error))
+              return FALSE;
 
-        char subdirtree_checksum[OSTREE_SHA256_STRING_LEN+1];
-        _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, subdirtree_checksum);
-        char subdirmeta_checksum[OSTREE_SHA256_STRING_LEN+1];
-        _ostree_checksum_inplace_from_bytes_v (subdirmeta_csum_v, subdirmeta_checksum);
-        if (!checkout_tree_at_recurse (self, options, state,
-                                       destination_dfd, dname,
-                                       subdirtree_checksum, subdirmeta_checksum,
-                                       cancellable, error))
-          return FALSE;
-
-        pop_path_element (options, state, dname, TRUE);
+            pop_path_element (options, state, diff->name, TRUE);
+          }
       }
   }
 
@@ -1185,10 +1494,16 @@ checkout_tree_at (OstreeRepo                        *self,
       /* let's just ignore filter here; I can't think of a useful case for filtering when
        * only checking out one path */
       options->filter = NULL;
+
+      /* Validate this up front to prevent path traversal attacks. */
+      const char *name = g_file_info_get_name (source_info);
+      if (!ot_util_filename_validate (name, error))
+        return FALSE;
+
       return checkout_one_file_at (self, options, &state,
                                    ostree_repo_file_get_checksum (source),
                                    destination_dfd,
-                                   g_file_info_get_name (source_info),
+                                   name,
                                    cancellable, error);
     }
 
@@ -1201,9 +1516,22 @@ checkout_tree_at (OstreeRepo                        *self,
   g_assert_cmpint (g_file_info_get_file_type (source_info), ==, G_FILE_TYPE_DIRECTORY);
   const char *dirtree_checksum = ostree_repo_file_tree_get_contents_checksum (source);
   const char *dirmeta_checksum = ostree_repo_file_tree_get_metadata_checksum (source);
+  const char *overwrite_update_dirtree_checksum = NULL;
+  char csum_buf[OSTREE_SHA256_STRING_LEN+1];
+  if (options->overwrite_update_from_checksum) {
+    g_autoptr(GVariant) commit = NULL;
+    if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                   options->overwrite_update_from_checksum,
+                                   &commit, error))
+      return FALSE;
+    g_autoptr(GVariant) dirtree_v = g_variant_get_child_value (commit, 6);
+    _ostree_checksum_inplace_from_bytes_v (dirtree_v, csum_buf);
+    overwrite_update_dirtree_checksum = csum_buf;
+  }
   return checkout_tree_at_recurse (self, options, &state, destination_parent_fd,
                                    destination_name,
                                    dirtree_checksum, dirmeta_checksum,
+                                   overwrite_update_dirtree_checksum,
                                    cancellable, error);
 }
 
@@ -1354,6 +1682,8 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   /* union identical requires hardlink mode */
   g_return_val_if_fail (!(options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL &&
                           !options->no_copy_fallback), FALSE);
+  g_return_val_if_fail ((options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UPDATE) ==
+                        !!options->overwrite_update_from_checksum, FALSE);
 
   g_autoptr(GFile) commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
   if (!commit_root)
