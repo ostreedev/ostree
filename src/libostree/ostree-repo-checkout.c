@@ -466,10 +466,18 @@ checkout_file_hardlink (OstreeRepo                          *self,
     }
   else if (linkat (srcfd, loose_path, destination_dfd, destination_name, 0) == 0)
     ret_result = HARDLINK_RESULT_LINKED;
-  else if (!options->no_copy_fallback && (errno == EMLINK || errno == EXDEV || errno == EPERM))
+  else if (!options->no_copy_fallback && (errno == EXDEV || errno == EPERM))
     {
-      /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
+      /* In most cases, an ostree user will want hardlinks and will request
+       * it by setting the no_copy_fallback flag.  For the cases where
+       * that's not set, treat failure to hardlink as not-fatal; we just can't do the
        * optimization of hardlinking instead of copying.
+       */
+    }
+  else if (errno == EMLINK)
+    {
+      /* Cases like Python __init__.py being empty can cause us to hit EMLINK.
+       * In this case copying is preferable to not working at all.
        */
     }
   else if (allow_noent && errno == ENOENT)
