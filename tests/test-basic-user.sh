@@ -75,6 +75,8 @@ $OSTREE fsck
 rm test2-checkout -rf
 $OSTREE checkout -U -H test2-unreadable test2-checkout
 assert_file_has_mode test2-checkout/unreadable 400
+# Should not be hardlinked
+assert_streq $(stat -c "%h" test2-checkout/unreadable) 1
 echo "ok bare-user handled unreadable file"
 
 cd ${test_tmpdir}
