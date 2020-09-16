@@ -6127,7 +6127,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
       (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
       (void) g_variant_lookup (options, "append-user-agent", "&s", &append_user_agent);
-      (void) g_variant_lookup (options, "n-network-retries", "&u", &n_network_retries);
+      (void) g_variant_lookup (options, "n-network-retries", "u", &n_network_retries);
     }
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
