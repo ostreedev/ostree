@@ -613,9 +613,12 @@ checkout_one_file_at (OstreeRepo                        *repo,
     }
 
   const gboolean is_symlink = (g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK);
+  const guint32 source_mode = g_file_info_get_attribute_uint32 (source_info, "unix::mode");
+  const gboolean is_unreadable = (!is_symlink && (source_mode & S_IRUSR) == 0);
   const gboolean is_whiteout = (!is_symlink && options->process_whiteouts &&
                                 g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
   const gboolean is_reg_zerosized = (!is_symlink && g_file_info_get_size (source_info) == 0);
+  const gboolean override_user_unreadable = (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER && is_unreadable);
 
   /* First, see if it's a Docker whiteout,
    * https://github.com/docker/docker/blob/1a714e76a2cb9008cd19609059e9988ff1660b78/pkg/archive/whiteouts.go
@@ -634,7 +637,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       need_copy = FALSE;
     }
-  else if (options->force_copy_zerosized && is_reg_zerosized)
+  else if ((options->force_copy_zerosized && is_reg_zerosized) || override_user_unreadable)
     {
       need_copy = TRUE;
     }
@@ -735,7 +738,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   if (can_cache
       && !is_whiteout
       && !is_symlink
-      && !is_reg_zerosized
+      && !(is_reg_zerosized || override_user_unreadable)
       && need_copy
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE
       && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
@@ -799,12 +802,21 @@ checkout_one_file_at (OstreeRepo                        *repo,
        * succeeded at hardlinking above.
        */
       if (options->no_copy_fallback)
-        g_assert (is_bare_user_symlink || is_reg_zerosized);
+        g_assert (is_bare_user_symlink || is_reg_zerosized || override_user_unreadable);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
         return FALSE;
 
-      if (!create_file_copy_from_input_at (repo, options, state, checksum, source_info, xattrs, input,
+      GFileInfo *copy_source_info = source_info;
+      g_autoptr(GFileInfo) modified_info = NULL;
+      if (override_user_unreadable)
+        {
+          modified_info = g_file_info_dup (source_info);
+          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", (source_mode | S_IRUSR));
+          copy_source_info = modified_info;
+        }
+
+      if (!create_file_copy_from_input_at (repo, options, state, checksum, copy_source_info, xattrs, input,
                                            destination_dfd, destination_name,
                                            cancellable, error))
         return glnx_prefix_error (error, "Copy checkout of %s to %s", checksum, destination_name);
