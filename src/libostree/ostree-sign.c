@@ -365,7 +365,7 @@ _sign_detached_metadata_append (OstreeSign *self,
                                signature_key,
                                g_variant_builder_end (signature_builder));
 
-  return  g_variant_dict_end (&metadata_dict);
+  return  g_variant_ref_sink (g_variant_dict_end (&metadata_dict));
 }
 
 /**
