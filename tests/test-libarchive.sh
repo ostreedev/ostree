@@ -37,7 +37,7 @@ mkdir foo
 cd foo
 mkdir -p usr/bin usr/lib
 echo contents > usr/bin/foo
-touch usr/bin/foo0
+echo foo0 > usr/bin/foo0
 ln usr/bin/foo usr/bin/bar
 ln usr/bin/foo0 usr/bin/bar0
 ln -s foo usr/bin/sl
@@ -45,8 +45,8 @@ mkdir -p usr/local/bin
 ln usr/bin/foo usr/local/bin/baz
 ln usr/bin/foo0 usr/local/bin/baz0
 ln usr/bin/sl usr/local/bin/slhl
-touch usr/bin/setuidme
-touch usr/bin/skipme
+echo setuidme > usr/bin/setuidme
+echo skipme > usr/bin/skipme
 echo "a library" > usr/lib/libfoo.so
 echo "another library" > usr/lib/libbar.so
 
@@ -102,9 +102,9 @@ assert_valid_content () {
   assert_file_has_content usr/bin/foo contents
   assert_file_has_content usr/bin/bar contents
   assert_file_has_content usr/local/bin/baz contents
-  assert_file_empty usr/bin/foo0
-  assert_file_empty usr/bin/bar0
-  assert_file_empty usr/local/bin/baz0
+  assert_file_has_content usr/bin/foo0 foo0
+  assert_file_has_content usr/bin/bar0 foo0
+  assert_file_has_content usr/local/bin/baz0 foo0
   assert_file_has_content usr/lib/libfoo.so 'a library'
   assert_file_has_content usr/lib/libbar.so 'another library'
 
@@ -244,7 +244,7 @@ ${CMD_PREFIX} ostree --repo=repo2 commit \
   --generate-sizes \
   --tree=tar=foo.tar.gz
 ${CMD_PREFIX} ostree --repo=repo2 show --print-sizes test-tar > sizes.txt
-assert_file_has_content sizes.txt 'Compressed size (needed/total): 0[  ]bytes/1.1[  ]kB'
-assert_file_has_content sizes.txt 'Unpacked size (needed/total): 0[  ]bytes/900[  ]bytes'
-assert_file_has_content sizes.txt 'Number of objects (needed/total): 0/12'
+assert_file_has_content sizes.txt 'Compressed size (needed/total): 0[  ]bytes/1.2[  ]kB'
+assert_file_has_content sizes.txt 'Unpacked size (needed/total): 0[  ]bytes/921[  ]bytes'
+assert_file_has_content sizes.txt 'Number of objects (needed/total): 0/14'
 echo "ok tar sizes metadata"

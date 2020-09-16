@@ -84,7 +84,7 @@ static GOptionEntry options[] = {
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
   { "require-hardlinks", 'H', 0, G_OPTION_ARG_NONE, &opt_require_hardlinks, "Do not fall back to full copies if hardlinking fails", NULL },
-  { "force-copy-zerosized", 'z', 0, G_OPTION_ARG_NONE, &opt_force_copy_zerosized, "Do not hardlink zero-sized files", NULL },
+  { "force-copy-zerosized", 'z', G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_force_copy_zerosized, "Do not hardlink zero-sized files", NULL },
   { "force-copy", 'C', 0, G_OPTION_ARG_NONE, &opt_force_copy, "Never hardlink (but may reflink if available)", NULL },
   { "bareuseronly-dirs", 'M', 0, G_OPTION_ARG_NONE, &opt_bareuseronly_dirs, "Suppress mode bits outside of 0775 for directories (suid, world writable, etc.)", NULL },
   { "skip-list", 0, 0, G_OPTION_ARG_FILENAME, &opt_skiplist_file, "File containing list of files to skip", "FILE" },

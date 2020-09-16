@@ -750,15 +750,17 @@ rm files -rf && mkdir files
 touch files/anemptyfile
 touch files/anotheremptyfile
 $CMD_PREFIX ostree --repo=repo commit --consume -b tree-with-empty-files --tree=dir=files
+$CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} tree-with-empty-files tree-with-empty-files
+if files_are_hardlinked tree-with-empty-files/an{,other}emptyfile; then
+    fatal "--force-copy-zerosized failed"
+fi
+# And pass the now-defunct -z option to validate it does nothing
+rm tree-with-empty-files -rf
 $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} -z tree-with-empty-files tree-with-empty-files
 if files_are_hardlinked tree-with-empty-files/an{,other}emptyfile; then
     fatal "--force-copy-zerosized failed"
 fi
-rm tree-with-empty-files -rf
-$CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} tree-with-empty-files tree-with-empty-files
-assert_files_hardlinked tree-with-empty-files/an{,other}emptyfile
-rm tree-with-empty-files -rf
-echo "ok checkout --force-copy-zerosized"
+echo "ok checkout zero sized files are not hardlinked"
 
 # These should merge, they're identical
 $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-empty-files tree-with-empty-files
