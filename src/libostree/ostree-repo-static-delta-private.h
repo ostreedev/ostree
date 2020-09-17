@@ -122,8 +122,10 @@ typedef enum {
 #define OSTREE_STATIC_DELTA_N_OPS 7
 
 gboolean
-_ostree_static_delta_part_open (GInputStream   *part_in,
-                                GBytes         *inline_part_bytes,
+_ostree_static_delta_part_open (int             part_fd,
+                                gint64          part_offset,
+                                gint64          part_size,
+                                GBytes         *opt_part_bytes,
                                 OstreeStaticDeltaOpenFlags flags,
                                 const char     *expected_checksum,
                                 GVariant    **out_part,

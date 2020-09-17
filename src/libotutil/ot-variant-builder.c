@@ -24,6 +24,7 @@
 #include "config.h"
 
 #include "ot-variant-builder.h"
+#include "ot-variant-utils.h"
 #include "libglnx/libglnx.h"
 
 /*****************************************************************************************
@@ -136,6 +137,16 @@ static const GVariantTypeInfo g_variant_type_info_basic_table[24] = {
 #undef not_a_type
 #undef unaligned
 #undef aligned
+};
+
+/* We need to have type strings to return for the base types.  We store
+ * those in another array.  Since all base type strings are single
+ * characters this is easy.  By not storing pointers to strings into the
+ * GVariantTypeInfo itself, we save a bunch of relocations.
+ */
+static const char g_variant_type_info_basic_chars[24][2] = {
+  "b", " ", "d", " ", " ", "g", "h", "i", " ", " ", " ", " ",
+  "n", "o", " ", "q", " ", "s", "t", "u", "v", " ", "x", "y"
 };
 
 static GRecMutex g_variant_type_info_lock;
@@ -593,6 +604,21 @@ g_variant_type_info_unref (GVariantTypeInfo *info)
     }
 }
 
+static const gchar *
+g_variant_type_info_get_type_string (GVariantTypeInfo *info)
+{
+  if (info->container_class)
+    {
+      ContainerInfo *container = (ContainerInfo *) info;
+      return container->type_string;
+    }
+  else
+    {
+      gint index = info - g_variant_type_info_basic_table;
+      return g_variant_type_info_basic_chars[index];
+    }
+}
+
 static GVariantTypeInfo *
 g_variant_type_info_get (const GVariantType *type)
 {
@@ -709,6 +735,300 @@ gvs_calculate_total_size (gsize body_size,
     return body_size + 4 * offsets;
 
   return body_size + 8 * offsets;
+}
+
+static gboolean
+gvs_fd_read_all (int      fd,
+                 gint64   offset,
+                 gsize    size,
+                 guchar *dst,
+                 GError **error)
+{
+  ssize_t bytes_read;
+
+  while (size > 0)
+    {
+      bytes_read = TEMP_FAILURE_RETRY (pread (fd, dst, size, offset));
+      if (bytes_read < 0)
+        return glnx_throw_errno_prefix (error, "pread");
+      if (bytes_read == 0)
+        return glnx_throw (error, "Unexpected EOF in variant");
+      dst += bytes_read;
+      size -= bytes_read;
+      offset += bytes_read;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+gvs_fd_read_unaligned_le (int      fd,
+                          gint64   offset,
+                          gsize    size,
+                          guint64 *res,
+                          GError **error)
+{
+  union
+  {
+    guchar bytes[8];
+    guint64 integer;
+  } tmpvalue;
+
+  tmpvalue.integer = 0;
+
+  if (!gvs_fd_read_all (fd, offset, size, tmpvalue.bytes, error))
+    return FALSE;
+
+  *res = GUINT64_FROM_LE (tmpvalue.integer);
+  return TRUE;
+}
+
+/* It would be more natural for this to be in ot-variant-utils.c, but it depends on the internal
+ * copy of the glib variant type info code above so we put it here. */
+gboolean
+ot_variant_fd_get_child (int                  fd,
+                         gint64               offset,
+                         guint64              size,
+                         const GVariantType  *type,
+                         gsize                index,
+                         gint64              *child_offset,
+                         guint64             *child_size,
+                         const GVariantType **child_type,
+                         GError             **error)
+{
+  GVariantTypeInfo *type_info = g_variant_type_info_get (type);
+  GVariantTypeInfo *child_type_info = NULL;
+  const GVariantMemberInfo *member_info;
+  ArrayInfo *array_info;
+  gsize offset_size;
+  guint64 start, end, last_end;
+
+  switch (g_variant_type_info_get_type_char (type_info))
+    {
+    case G_VARIANT_TYPE_INFO_CHAR_TUPLE:
+    case G_VARIANT_TYPE_INFO_CHAR_DICT_ENTRY:
+      member_info = g_variant_type_info_member_info (type_info, index);
+
+      if (member_info == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Variant index %ld out of bounds", index);
+          return FALSE;
+        }
+
+      offset_size = gvs_get_offset_size (size);
+
+      /* Out of bounds check the offset table reads */
+      if (member_info->ending_type == G_VARIANT_MEMBER_ENDING_OFFSET)
+        {
+          if (offset_size * (member_info->i + 2) > size)
+            return glnx_throw (error, "Invalid gvariant");
+        }
+      else
+        {
+          if (offset_size * (member_info->i + 1) > size)
+            return glnx_throw (error, "Invalid gvariant");
+        }
+
+      if (member_info->i + 1)
+        {
+          if (!gvs_fd_read_unaligned_le (fd,
+                                         offset + size - offset_size * (member_info->i + 1),
+                                         offset_size,
+                                         &start, error))
+          return FALSE;
+        }
+      else
+        start = 0;
+
+      start += member_info->a;
+      start &= member_info->b;
+      start |= member_info->c;
+
+      if (member_info->ending_type == G_VARIANT_MEMBER_ENDING_LAST)
+        {
+          end = size - offset_size * (member_info->i + 1);
+        }
+      else if (member_info->ending_type == G_VARIANT_MEMBER_ENDING_FIXED)
+        {
+          end = start + member_info->type_info->fixed_size;
+        }
+      else /* G_VARIANT_MEMBER_ENDING_OFFSET */
+        {
+          if (!gvs_fd_read_unaligned_le (fd,
+                                         offset + size - offset_size * (member_info->i + 2),
+                                         offset_size,
+                                         &end, error))
+            return FALSE;
+        }
+
+      child_type_info = member_info->type_info;
+
+      break;
+    case G_VARIANT_TYPE_INFO_CHAR_ARRAY:
+      array_info = (ArrayInfo *)type_info;
+      child_type_info = array_info->element;
+
+      /* Special-case empty array, as it has no offset table */
+      if (size == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Variant index %ld out of bounds", index);
+          return FALSE;
+        }
+
+      if (child_type_info->fixed_size != 0)
+        {
+          if (size % child_type_info->fixed_size != 0)
+            return glnx_throw (error, "Invalid gvariant");
+
+          if (index >= size / child_type_info->fixed_size)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                           "Variant index %ld out of bounds", index);
+              return FALSE;
+            }
+
+          start = child_type_info->fixed_size * index;
+          end = start + child_type_info->fixed_size;
+        }
+      else
+        {
+          gsize offsets_array_size;
+
+          offset_size = gvs_get_offset_size (size);
+
+          if (!gvs_fd_read_unaligned_le (fd,
+                                         offset + size - offset_size,
+                                         offset_size,
+                                         &last_end, error))
+            return FALSE;
+
+          if (last_end > size)
+            return glnx_throw (error, "Invalid gvariant");
+
+          offsets_array_size = size - last_end;
+          if (offsets_array_size % offset_size != 0)
+            return glnx_throw (error, "Invalid gvariant");
+
+          if (index >= offsets_array_size / offset_size)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                           "Variant index %ld out of bounds", index);
+              return FALSE;
+            }
+
+          if (index > 0)
+            {
+              if (!gvs_fd_read_unaligned_le (fd,
+                                             offset + last_end + (offset_size * (index - 1)),
+                                             offset_size,
+                                             &start, error))
+                return FALSE;
+
+              start += (-start) & array_info->element->alignment;
+            }
+          else
+            start = 0;
+
+          if (!gvs_fd_read_unaligned_le (fd,
+                                         offset + last_end + (offset_size * index),
+                                         offset_size,
+                                         &end, error))
+            return FALSE;
+        }
+
+      break;
+
+    case G_VARIANT_TYPE_INFO_CHAR_VARIANT:
+      {
+        guchar buffer[1024+1];
+        gsize buffer_size, type_separator;
+        gsize child_size;
+        const gchar *type_string, *type_string_limit, *type_string_end;
+
+        if (index != 0)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                         "Variant index %ld out of bounds", index);
+            return FALSE;
+          }
+
+        /* First we need to find the type string, its zero-terminated starting from the end.
+         * To make this code simpler we assume the type string is < 1kb, which is fine for
+         * most cases and all the ostree ones. */
+
+        buffer_size = MIN (size, sizeof (buffer)-1); /* Ensure we always have place for zero terminator after buffer */
+        if (!gvs_fd_read_all (fd, offset + size - buffer_size, buffer_size, buffer, error))
+          return FALSE;
+
+        for (type_separator = buffer_size - 1; type_separator > 0 && buffer[type_separator] != 0; type_separator--)
+          ;
+        if (buffer[type_separator] != 0)
+          return glnx_throw (error, "Invalid gvariant, could not find variant type string");
+
+
+        child_size = size - buffer_size + type_separator;
+
+        type_string = (char *)buffer + type_separator + 1;
+        type_string_limit = (char *)buffer + buffer_size;
+        buffer[buffer_size] = 0; /* Ensure type string is zero terminated, we reserved space for this */
+
+        if (!g_variant_type_string_scan (type_string, type_string_limit, &type_string_end) ||
+            type_string_end != type_string_limit)
+          return glnx_throw (error, "Invalid gvariant");
+
+        if (!g_variant_type_is_definite (G_VARIANT_TYPE (type_string)))
+          return glnx_throw (error, "Invalid gvariant");
+
+        child_type_info = g_variant_type_info_get (G_VARIANT_TYPE (type_string));
+
+        if (child_type_info->fixed_size && child_size != child_type_info->fixed_size)
+          return glnx_throw (error, "Invalid gvariant");
+
+        start = 0;
+        end = child_size;
+      }
+
+      break;
+    case G_VARIANT_TYPE_INFO_CHAR_MAYBE:
+      /* Unsupported container types, fall through */
+    default:
+      return glnx_throw (error, "ot_variant_enumerate: Unsupported variant type %c", g_variant_type_info_get_type_char (type_info));
+    }
+
+  if (start > end || end > size)
+    return glnx_throw (error, "Invalid gvariant");
+
+  *child_offset = offset + start;
+  *child_size = end - start;
+
+  if (child_type)
+    *child_type = G_VARIANT_TYPE(g_variant_type_info_get_type_string (child_type_info));
+
+  return TRUE;
+}
+
+gboolean
+ot_variant_fd_read_child (int                  fd,
+                          gint64               offset,
+                          guint64              size,
+                          const GVariantType  *type,
+                          gsize                index,
+                          GVariant           **out_variant,
+                          GError             **error)
+{
+  gint64 child_offset;
+  guint64 child_size;
+  const GVariantType *child_type = NULL;
+
+  if (!ot_variant_fd_get_child (fd, offset, size, type, index,
+                                &child_offset, &child_size, &child_type,
+                                error))
+    return FALSE;
+
+  return ot_variant_read_sized_fd (fd, child_offset, child_size, child_type,
+                                   FALSE, out_variant, error);
 }
 
 

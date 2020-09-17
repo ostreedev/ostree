@@ -210,6 +210,160 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
   return TRUE;
 }
 
+typedef struct {
+  gint64 offset;
+  guint64 size;
+} DeltaPartLocation;
+
+static DeltaPartLocation *
+delta_part_location_new (gint64 offset, guint64 size)
+{
+  DeltaPartLocation *location = g_new (DeltaPartLocation, 1);
+  location->offset = offset;
+  location->size = size;
+  return location;
+}
+
+static void
+delta_part_location_free (DeltaPartLocation *location)
+{
+  g_free (location);
+}
+
+static gboolean
+superblock_key_is_delta_part (const char *key)
+{
+  const char *p;
+
+  if (!g_str_has_prefix (key, "deltas/"))
+    return FALSE;
+
+  for (p = strrchr (key, '/') + 1; *p != '\0'; p++)
+    {
+      if (!g_ascii_isdigit (*p))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+read_superblock_from_fd (int                    fd,
+                         GVariant             **out_superblock,
+                         GHashTable           **out_delta_parts,
+                         GError               **error)
+{
+  g_autoptr(GHashTable) delta_parts = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                             g_free, (GDestroyNotify)delta_part_location_free);
+  g_autoptr(GVariant) superblock = NULL;
+  g_autoptr(GError) local_error = NULL;
+  g_auto(GVariantBuilder) builder = OT_VARIANT_BUILDER_INITIALIZER;
+  g_auto(GVariantBuilder) metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
+  gint64 dict_element_offset;
+  guint64 dict_element_size;
+  gint64 metadata_offset;
+  guint64 metadata_size;
+  int i;
+  struct stat stbuf;
+
+  if (!glnx_fstat (fd, &stbuf, error))
+    return FALSE;
+
+  /* If delta-parts are included in the metadata, then just mapping the file can be a problem because it can be
+   * multi-gigabyte, running out of virtual memory. So, we read the metadata in a streaming fashion
+   * and avoid mmaping the delta parts all at the same time.
+   */
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT));
+
+  /* First read out the metadata, skipping delta parts */
+  if (!ot_variant_fd_get_child (fd, 0, stbuf.st_size,
+                                G_VARIANT_TYPE(OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
+                                0, &metadata_offset, &metadata_size, NULL,
+                                error))
+    return FALSE;
+
+  g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
+
+  i = 0;
+  while (ot_variant_fd_get_child (fd, metadata_offset, metadata_size,
+                                  G_VARIANT_TYPE("a{sv}"),
+                                  i++, &dict_element_offset, &dict_element_size, NULL,
+                                  &local_error))
+    {
+      gint64 value_offset;
+      guint64 value_size;
+      g_autoptr(GVariant) key_v = NULL;
+      g_autoptr(GVariant) value_v = NULL;
+      const char *key;
+
+      if (!ot_variant_fd_read_child (fd, dict_element_offset, dict_element_size,
+                                     G_VARIANT_TYPE("{sv}"), 0, &key_v, error) ||
+          !ot_variant_fd_get_child (fd, dict_element_offset, dict_element_size,
+                                    G_VARIANT_TYPE("{sv}"),
+                                    1, &value_offset, &value_size, NULL,
+                                    error))
+        return FALSE;
+
+      key = g_variant_get_string (key_v, NULL);
+      if (superblock_key_is_delta_part (key))
+        {
+          gint64 delta_part_offset;
+          guint64 delta_part_size;
+          const GVariantType *delta_part_type;
+
+          if (!ot_variant_fd_get_child (fd, value_offset, value_size,
+                                        G_VARIANT_TYPE("v"),
+                                        0, &delta_part_offset, &delta_part_size, &delta_part_type,
+                                        error))
+            return FALSE;
+
+          if (strcmp ((const char *)delta_part_type, "(yay)") != 0)
+            return glnx_throw (error, "Unexpected type %s for inline delta part", (const char *)delta_part_type);
+
+          g_hash_table_insert (delta_parts, g_strdup (key),
+                               delta_part_location_new (delta_part_offset, delta_part_size));
+        }
+      else
+        {
+          if (!ot_variant_read_sized_fd (fd, value_offset, value_size, G_VARIANT_TYPE("v"),
+                                         FALSE, &value_v, error))
+            return FALSE;
+          g_variant_builder_add (&metadata_builder, "{s@v}", key, value_v);
+        }
+    }
+
+  if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    {
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+  g_clear_error (&local_error);
+
+  /* Add metadata to the builder */
+  g_variant_builder_add_value (&builder, g_variant_builder_end (&metadata_builder));
+
+  /* Then read add of the superblock fields */
+  for (i = 1; i < 8; i++)
+    {
+      g_autoptr(GVariant) child_v = NULL;
+
+      if (!ot_variant_fd_read_child (fd, 0, stbuf.st_size,
+                                     G_VARIANT_TYPE(OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
+                                     i, &child_v, error))
+        return FALSE;
+
+      g_variant_builder_add_value (&builder, child_v);
+    }
+
+  superblock = g_variant_ref_sink (g_variant_builder_end (&builder));
+
+  *out_superblock = g_steal_pointer (&superblock);
+  *out_delta_parts = g_steal_pointer (&delta_parts);
+  return TRUE;
+}
+
+
 /**
  * ostree_repo_static_delta_execute_offline:
  * @self: Repo
@@ -231,6 +385,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                                           GError                      **error)
 {
   g_autofree char *basename = NULL;
+  g_autoptr(GHashTable) delta_parts = NULL;
 
   const char *dir_or_file_path = gs_file_get_path_cached (dir_or_file);
 
@@ -257,8 +412,8 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     return glnx_throw_errno_prefix (error, "openat(%s)", basename);
 
   g_autoptr(GVariant) meta = NULL;
-  if (!ot_variant_read_fd (meta_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
-                           FALSE, &meta, error))
+
+  if (!read_superblock_from_fd (meta_fd, &meta, &delta_parts, error))
     return FALSE;
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
@@ -362,12 +517,9 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       g_autofree char *deltapart_path =
         _ostree_get_relative_static_delta_part_path (from_checksum, to_checksum, i);
 
-      g_autoptr(GInputStream) part_in = NULL;
-      g_autoptr(GVariant) inline_part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE("(yay)"));
-      if (inline_part_data)
+      DeltaPartLocation *delta_part_location = g_hash_table_lookup (delta_parts, deltapart_path);
+      if (delta_part_location)
         {
-          g_autoptr(GBytes) inline_part_bytes = g_variant_get_data_as_bytes (inline_part_data);
-          part_in = g_memory_input_stream_new_from_bytes (inline_part_bytes);
 
           /* For inline parts, we don't checksum, because it's
            * included with the metadata, so we're not trying to
@@ -376,7 +528,10 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
            */
           delta_open_flags |= OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM;
 
-          if (!_ostree_static_delta_part_open (part_in, inline_part_bytes, 
+          if (!_ostree_static_delta_part_open (meta_fd,
+                                               delta_part_location->offset,
+                                               delta_part_location->size,
+                                               NULL,
                                                delta_open_flags,
                                                NULL,
                                                &part,
@@ -387,12 +542,11 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
         {
           g_autofree char *relpath = g_strdup_printf ("%u", i); /* TODO avoid malloc here */
           glnx_autofd int part_fd = openat (dfd, relpath, O_RDONLY | O_CLOEXEC);
+
           if (part_fd < 0)
             return glnx_throw_errno_prefix (error, "Opening deltapart '%s'", relpath);
 
-          part_in = g_unix_input_stream_new (part_fd, FALSE);
-
-          if (!_ostree_static_delta_part_open (part_in, NULL,
+          if (!_ostree_static_delta_part_open (part_fd, 0, -1, NULL,
                                                delta_open_flags,
                                                checksum,
                                                &part,
@@ -409,7 +563,9 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 }
 
 gboolean
-_ostree_static_delta_part_open (GInputStream   *part_in,
+_ostree_static_delta_part_open (int             part_fd,
+                                gint64          part_offset,
+                                gint64          part_size,
                                 GBytes         *inline_part_bytes,
                                 OstreeStaticDeltaOpenFlags flags,
                                 const char     *expected_checksum,
@@ -420,13 +576,35 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
   const gboolean trusted = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED) > 0;
   const gboolean skip_checksum = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM) > 0;
 
-  /* We either take a fd or a GBytes reference */
-  g_return_val_if_fail (G_IS_FILE_DESCRIPTOR_BASED (part_in) || inline_part_bytes != NULL, FALSE);
+  /* We take either a GBytes, or a fd */
+  g_return_val_if_fail (part_fd != -1 || inline_part_bytes != NULL, FALSE);
   g_return_val_if_fail (skip_checksum || expected_checksum != NULL, FALSE);
 
   g_autoptr(GChecksum) checksum = NULL;
   g_autoptr(GInputStream) checksum_in = NULL;
+  g_autoptr(GInputStream) part_in = NULL;
   GInputStream *source_in;
+
+  if (part_fd >= 0)
+    {
+      if (part_size < 0)
+        {
+          struct stat part_stbuf;
+          if (!glnx_fstat (part_fd, &part_stbuf, error))
+            return FALSE;
+          part_size = part_stbuf.st_size - part_offset;
+        }
+
+      if (lseek (part_fd, part_offset, SEEK_SET) < 0)
+        return glnx_throw_errno_prefix (error, "lseek");
+
+      part_in = g_unix_input_stream_new (part_fd, FALSE);
+    }
+  else
+    {
+      part_in = g_memory_input_stream_new_from_bytes (inline_part_bytes);
+    }
+
   if (!skip_checksum)
     {
       checksum = g_checksum_new (G_CHECKSUM_SHA256);
@@ -454,11 +632,10 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
     case 0:
       if (!inline_part_bytes)
         {
-          int part_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)part_in);
-
           /* No compression, no checksums - a fast path */
-          if (!ot_variant_read_fd (part_fd, 1, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
-                                   trusted, &ret_part, error))
+          if (!ot_variant_read_sized_fd (part_fd, part_offset + 1, part_size,
+                                         G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
+                                         trusted, &ret_part, error))
             return FALSE;
         }
       else
@@ -470,7 +647,7 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
           g_variant_ref_sink (ret_part);
         }
 
-      if (!skip_checksum)
+      if (checksum)
         g_checksum_update (checksum, g_variant_get_data (ret_part),
                            g_variant_get_size (ret_part));
 
@@ -536,10 +713,9 @@ show_one_part (OstreeRepo                    *self,
   glnx_autofd int part_fd = openat (self->repo_dir_fd, part_path, O_RDONLY | O_CLOEXEC);
   if (part_fd < 0)
     return glnx_throw_errno_prefix (error, "openat(%s)", part_path);
-  g_autoptr(GInputStream) part_in = g_unix_input_stream_new (part_fd, FALSE);
 
   g_autoptr(GVariant) part = NULL;
-  if (!_ostree_static_delta_part_open (part_in, NULL,
+  if (!_ostree_static_delta_part_open (part_fd, 0, -1, NULL,
                                        OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
                                        NULL,
                                        &part,

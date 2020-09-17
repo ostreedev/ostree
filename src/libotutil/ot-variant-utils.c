@@ -83,6 +83,23 @@ ot_variant_read_fd (int                    fd,
   return TRUE;
 }
 
+gboolean
+ot_variant_read_sized_fd (int                    fd,
+                          goffset                start,
+                          gsize                  size,
+                          const GVariantType    *type,
+                          gboolean               trusted,
+                          GVariant             **out_variant,
+                          GError               **error)
+{
+  g_autoptr(GBytes) bytes = ot_fd_readall_or_mmap_sized (fd, start, size, error);
+  if (!bytes)
+    return FALSE;
+
+  *out_variant = g_variant_ref_sink (g_variant_new_from_bytes (type, bytes, trusted));
+  return TRUE;
+}
+
 /* GVariants are immutable; this function allows generating an open builder
  * for a new variant, inherting the data from @variant.
  */
