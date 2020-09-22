@@ -206,7 +206,30 @@ ot_map_anonymous_tmpfile_from_content (GInputStream *instream,
 {
   g_auto(GLnxTmpfile) tmpf = { 0, };
   if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &tmpf, error))
-    return NULL;
+    {
+      /* glnx_open_anonymous_tmpfile hardcodes /var/tmp as a base directory.
+       * If it doesn't exist, such as in a NixOS build or other constrained
+       * systems, glnx_open_anonymous_tmpfile will fail.
+       *
+       * Therefore, we try again using the directory in $TMPDIR if possible.
+       */
+      if ((*error)->code == G_IO_ERROR_NOT_FOUND)
+        {
+          GError *tmp_error;
+          tmp_error = NULL;
+          const char *tmpdir = getenv("TMPDIR");
+          if (tmpdir == NULL
+              || !glnx_open_anonymous_tmpfile_full (O_RDWR | O_CLOEXEC,
+                                                    tmpdir, &tmpf, &tmp_error))
+            {
+              g_propagate_error (error, tmp_error);
+              return NULL;
+            }
+          g_clear_error(error);
+        }
+      else
+        return NULL;
+    }
 
   g_autoptr(GOutputStream) out = g_unix_output_stream_new (tmpf.fd, FALSE);
   gssize n_bytes_written = g_output_stream_splice (out, instream,
