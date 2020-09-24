@@ -190,6 +190,7 @@ ostree_sysroot_init (OstreeSysroot *self)
     { "test-fifreeze", OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE },
     { "no-xattrs", OSTREE_SYSROOT_DEBUG_NO_XATTRS },
     { "test-staged-path", OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH },
+    { "no-dtb", OSTREE_SYSROOT_DEBUG_TEST_NO_DTB },
   };
 
   self->debug_flags = g_parse_debug_string (g_getenv ("OSTREE_SYSROOT_DEBUG"),
