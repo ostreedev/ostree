@@ -40,6 +40,10 @@ static gboolean opt_swap_endianness;
 static gboolean opt_inline;
 static gboolean opt_disable_bsdiff;
 static gboolean opt_if_not_exists;
+static char **opt_key_ids;
+static char *opt_sign_name;
+static char *opt_keysfilename;
+static char *opt_keysdir;
 
 #define BUILTINPROTO(name) static gboolean ot_static_delta_builtin_ ## name (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 
@@ -48,6 +52,7 @@ BUILTINPROTO(show);
 BUILTINPROTO(delete);
 BUILTINPROTO(generate);
 BUILTINPROTO(apply_offline);
+BUILTINPROTO(verify);
 
 #undef BUILTINPROTO
 
@@ -67,6 +72,9 @@ static OstreeCommand static_delta_subcommands[] = {
   { "apply-offline", OSTREE_BUILTIN_FLAG_NONE,
     ot_static_delta_builtin_apply_offline,
     "Apply static delta file" },
+  { "verify", OSTREE_BUILTIN_FLAG_NONE,
+    ot_static_delta_builtin_verify,
+    "Verify static delta signatures" },
   { NULL, 0, NULL, NULL }
 };
 
@@ -88,14 +96,33 @@ static GOptionEntry generate_options[] = {
   { "max-bsdiff-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_bsdiff_size, "Maximum size in megabytes to consider bsdiff compression for input files", NULL},
   { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size, "Maximum size of delta chunks in megabytes", NULL},
   { "filename", 0, 0, G_OPTION_ARG_FILENAME, &opt_filename, "Write the delta content to PATH (a directory).  If not specified, the OSTree repository is used", "PATH"},
+  { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Sign the delta with", "KEY_ID"},
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
+#if defined(HAVE_LIBSODIUM)
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
+#endif
   { NULL }
 };
 
 static GOptionEntry apply_offline_options[] = {
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
+#if defined(HAVE_LIBSODIUM)
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
+  { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir, "Redefine system-wide directories with public and revoked keys for verification", "NAME"},
+#endif
   { NULL }
 };
 
 static GOptionEntry list_options[] = {
+  { NULL }
+};
+
+static GOptionEntry verify_options[] = {
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
+#if defined(HAVE_LIBSODIUM)
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
+  { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir, "Redefine system-wide directories with public and revoked keys for verification", "NAME"},
+#endif
   { NULL }
 };
 
@@ -326,6 +353,60 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
       if (opt_endianness || opt_swap_endianness)
         g_variant_builder_add (parambuilder, "{sv}", "endianness", g_variant_new_uint32 (endianness));
 
+      if (opt_key_ids || opt_keysfilename)
+        {
+          g_autoptr(GPtrArray) key_ids = g_ptr_array_new ();
+
+          for (char **iter = opt_key_ids; iter != NULL && *iter != NULL; ++iter)
+            g_ptr_array_add (key_ids, *iter);
+
+          if (opt_keysfilename)
+            {
+              g_autoptr (GFile) keyfile = NULL;
+              g_autoptr (GFileInputStream) key_stream_in = NULL;
+              g_autoptr (GDataInputStream) key_data_in = NULL;
+
+              if (!g_file_test (opt_keysfilename, G_FILE_TEST_IS_REGULAR))
+                {
+                  g_warning ("Can't open file '%s' with keys", opt_keysfilename);
+                  return glnx_throw (error, "File object '%s' is not a regular file", opt_keysfilename);
+                }
+
+              keyfile = g_file_new_for_path (opt_keysfilename);
+              key_stream_in = g_file_read (keyfile, NULL, error);
+              if (key_stream_in == NULL)
+                return FALSE;
+
+              key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
+              g_assert (key_data_in != NULL);
+
+              /* Use simple file format with just a list of base64 public keys per line */
+              while (TRUE)
+                {
+                  gsize len = 0;
+                  g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
+                  g_autoptr (GVariant) sk = NULL;
+
+                  if (*error != NULL)
+                    return FALSE;
+
+                  if (line == NULL)
+                    break;
+
+                  // Pass the key as a string
+                  g_ptr_array_add (key_ids, g_strdup (line));
+                }
+            }
+
+          g_autoptr(GVariant) key_ids_v = g_variant_new_strv ((const char *const *)key_ids->pdata,
+                                                              key_ids->len);
+          g_variant_builder_add (parambuilder, "{s@v}", "sign-key-ids",
+                                 g_variant_new_variant (g_steal_pointer (&key_ids_v)));
+        }
+      opt_sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
+      g_variant_builder_add (parambuilder, "{sv}", "sign-name",
+                             g_variant_new_bytestring (opt_sign_name));
+
       g_print ("Generating static delta:\n");
       g_print ("  From: %s\n", from_resolved ? from_resolved : "empty");
       g_print ("  To:   %s\n", to_resolved);
@@ -347,6 +428,9 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (OstreeSign) sign = NULL;
+  char **key_ids;
+  int n_key_ids;
 
   context = g_option_context_new ("");
   if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, invocation, &repo, cancellable, error))
@@ -362,19 +446,127 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
       return FALSE;
     }
 
+#if defined(HAVE_LIBSODIUM)
+  /* Initialize crypto system */
+  opt_sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
+#endif
+
+  if (opt_sign_name)
+    {
+      sign = ostree_sign_get_by_name (opt_sign_name, error);
+      if (!sign)
+        return glnx_throw (error, "Signing type %s is not supported", opt_sign_name);
+
+      key_ids = argv + 3;
+      n_key_ids = argc - 3;
+      for (int i = 0; i < n_key_ids; i++)
+        {
+          g_autoptr (GVariant) pk = g_variant_new_string(key_ids[i]);
+          if (!ostree_sign_add_pk(sign, pk, error))
+            return FALSE;
+        }
+      if ((n_key_ids == 0) || opt_keysfilename)
+        {
+          g_autoptr (GVariantBuilder) builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+          g_autoptr (GVariant) options = NULL;
+
+          /* Use custom directory with public and revoked keys instead of system-wide directories */
+          if (opt_keysdir)
+            g_variant_builder_add (builder, "{sv}", "basedir", g_variant_new_string (opt_keysdir));
+          /* The last chance for verification source -- system files */
+          if (opt_keysfilename)
+            g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_keysfilename));
+          options = g_variant_builder_end (builder);
+
+          if (!ostree_sign_load_pk (sign, options, error))
+            {
+              /* If it fails to load system default public keys, consider there no signature engine */
+              if (!opt_keysdir && !opt_keysfilename)
+                {
+                  g_clear_error(error);
+                  g_clear_object(&sign);
+                }
+              else
+                return FALSE;
+            }
+        }
+    }
+
   const char *patharg = argv[2];
   g_autoptr(GFile) path = g_file_new_for_path (patharg);
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     return FALSE;
 
-  if (!ostree_repo_static_delta_execute_offline (repo, path, FALSE, cancellable, error))
+  if (!ostree_repo_static_delta_execute_offline_with_signature (repo, path, sign, FALSE, cancellable, error))
     return FALSE;
 
   if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
     return FALSE;
 
   return TRUE;
+}
+
+static gboolean
+ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+{
+  g_autoptr (GOptionContext) context = g_option_context_new ("STATIC-DELTA-FILE [KEY-ID...]");
+  g_autoptr (OstreeRepo) repo = NULL;
+  gboolean verified;
+  char **key_ids;
+  int n_key_ids;
+
+  if (!ostree_option_context_parse (context, verify_options, &argc, &argv, invocation, &repo, cancellable, error))
+    return FALSE;
+
+  if (argc < 3)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "DELTA must be specified");
+      return FALSE;
+    }
+
+  opt_sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
+
+  const char *delta_id = argv[2];
+
+  g_autoptr (OstreeSign) sign = ostree_sign_get_by_name (opt_sign_name, error);
+  if (!sign)
+    {
+      g_print("Sign-type not supported\n");
+      return FALSE;
+    }
+
+  key_ids = argv + 3;
+  n_key_ids = argc - 3;
+  for (int i = 0; i < n_key_ids; i++)
+    {
+      g_autoptr (GVariant) pk = g_variant_new_string(key_ids[i]);
+      if (!ostree_sign_add_pk(sign, pk, error))
+        return FALSE;
+    }
+  if ((n_key_ids == 0) || opt_keysfilename)
+    {
+      g_autoptr (GVariantBuilder) builder = NULL;
+      g_autoptr (GVariant) options = NULL;
+
+      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+      /* Use custom directory with public and revoked keys instead of system-wide directories */
+      if (opt_keysdir)
+        g_variant_builder_add (builder, "{sv}", "basedir", g_variant_new_string (opt_keysdir));
+      /* The last chance for verification source -- system files */
+      if (opt_keysfilename)
+        g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_keysfilename));
+      options = g_variant_builder_end (builder);
+
+      if (!ostree_sign_load_pk (sign, options, error))
+        return FALSE;
+    }
+
+  verified = ostree_repo_static_delta_verify_signature (repo, delta_id, sign, NULL, error);
+  g_print ("Verification %s\n", verified ? "OK" : "fails");
+
+  return verified;
 }
 
 gboolean

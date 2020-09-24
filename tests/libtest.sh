@@ -700,6 +700,12 @@ has_sign_ed25519 () {
     return ${ret}
 }
 
+skip_without_sign_ed25519() {
+    if ! has_sign_ed25519; then
+        skip "no ed25519 support compiled in"
+    fi
+}
+
 # Keys for ed25519 signing tests
 ED25519PUBLIC=
 ED25519SEED=

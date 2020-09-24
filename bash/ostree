@@ -1532,6 +1532,9 @@ _ostree_static_delta_apply_offline() {
     "
 
     local options_with_args="
+        --sign-type
+        --keys-file
+        --keys-dir
         --repo
     "
 
@@ -1613,6 +1616,8 @@ _ostree_static_delta_generate() {
         --repo
         --set-endianness
         --to
+        --sign
+        --sign-type
     "
 
     local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
@@ -1628,6 +1633,9 @@ _ostree_static_delta_generate() {
             ;;
         --set-endianness)
             COMPREPLY=( $( compgen -W "l B" -- "$cur" ) )
+            return 0
+            ;;
+        $options_with_args_glob )
             return 0
             ;;
     esac
@@ -1686,6 +1694,40 @@ _ostree_static_delta_show() {
 
     case "$prev" in
         --repo)
+            __ostree_compreply_dirs_only
+            return 0
+            ;;
+        $options_with_args_glob )
+            return 0
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            local all_options="$boolean_options $options_with_args"
+            __ostree_compreply_all_options
+            ;;
+    esac
+
+    return 0
+}
+
+_ostree_static_delta_verify() {
+    local boolean_options="
+        $main_boolean_options
+    "
+
+    local options_with_args="
+        --sign-type
+        --keys-file
+        --keys-dir
+        --repo
+    "
+
+    local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
+
+    case "$prev" in
+        --keys-file|--keys-dir|--repo)
             __ostree_compreply_dirs_only
             return 0
             ;;
