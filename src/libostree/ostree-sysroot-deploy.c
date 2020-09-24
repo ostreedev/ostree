@@ -1028,7 +1028,8 @@ _ostree_kernel_layout_new (void)
 
 /* See get_kernel_from_tree() below */
 static gboolean
-get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
+get_kernel_from_tree_usrlib_modules (OstreeSysroot       *sysroot,
+                                     int                  deployment_dfd,
                                      OstreeKernelLayout **out_layout,
                                      GCancellable        *cancellable,
                                      GError             **error)
@@ -1137,37 +1138,41 @@ get_kernel_from_tree_usrlib_modules (int                  deployment_dfd,
   g_clear_object (&in);
   glnx_close_fd (&fd);
 
-  /* Check for /usr/lib/modules/$kver/devicetree first, if it does not
-   * exist check for /usr/lib/modules/$kver/dtb/ directory.
-   */
-  if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "devicetree", &fd, error))
-    return FALSE;
-  if (fd != -1)
+  /* Testing aid for https://github.com/ostreedev/ostree/issues/2154 */
+  const gboolean no_dtb = (sysroot->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_NO_DTB) > 0;
+  if (!no_dtb)
     {
-      ret_layout->devicetree_srcpath = g_strdup ("devicetree");
-      ret_layout->devicetree_namever = g_strdup_printf ("devicetree-%s", kver);
-      in = g_unix_input_stream_new (fd, FALSE);
-      if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
+      /* Check for /usr/lib/modules/$kver/devicetree first, if it does not
+      * exist check for /usr/lib/modules/$kver/dtb/ directory.
+      */
+      if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "devicetree", &fd, error))
         return FALSE;
-    }
-  else
-    {
-      struct stat stbuf;
-      /* Check for dtb directory */
-      if (!glnx_fstatat_allow_noent (ret_layout->boot_dfd, "dtb", &stbuf, 0, error))
-        return FALSE;
-
-      if (errno == 0 && S_ISDIR (stbuf.st_mode))
+      if (fd != -1)
         {
-          /* devicetree_namever set to NULL indicates a complete directory */
-          ret_layout->devicetree_srcpath = g_strdup ("dtb");
-          ret_layout->devicetree_namever = NULL;
-
-          if (!checksum_dir_recurse(ret_layout->boot_dfd, "dtb", &checksum, cancellable, error))
+          ret_layout->devicetree_srcpath = g_strdup ("devicetree");
+          ret_layout->devicetree_namever = g_strdup_printf ("devicetree-%s", kver);
+          in = g_unix_input_stream_new (fd, FALSE);
+          if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
             return FALSE;
         }
-    }
+      else
+        {
+          struct stat stbuf;
+          /* Check for dtb directory */
+          if (!glnx_fstatat_allow_noent (ret_layout->boot_dfd, "dtb", &stbuf, 0, error))
+            return FALSE;
 
+          if (errno == 0 && S_ISDIR (stbuf.st_mode))
+            {
+              /* devicetree_namever set to NULL indicates a complete directory */
+              ret_layout->devicetree_srcpath = g_strdup ("dtb");
+              ret_layout->devicetree_namever = NULL;
+
+              if (!checksum_dir_recurse(ret_layout->boot_dfd, "dtb", &checksum, cancellable, error))
+                return FALSE;
+            }
+        }
+    }
   g_clear_object (&in);
   glnx_close_fd (&fd);
 
@@ -1336,7 +1341,8 @@ get_kernel_from_tree_legacy_layouts (int                  deployment_dfd,
  * initramfs there, so we need to look in /usr/lib/ostree-boot first.
  */
 static gboolean
-get_kernel_from_tree (int                  deployment_dfd,
+get_kernel_from_tree (OstreeSysroot       *sysroot,
+                      int                  deployment_dfd,
                       OstreeKernelLayout **out_layout,
                       GCancellable        *cancellable,
                       GError             **error)
@@ -1345,7 +1351,7 @@ get_kernel_from_tree (int                  deployment_dfd,
   g_autoptr(OstreeKernelLayout) legacy_layout = NULL;
 
   /* First, gather from usr/lib/modules/$kver if it exists */
-  if (!get_kernel_from_tree_usrlib_modules (deployment_dfd, &usrlib_modules_layout, cancellable, error))
+  if (!get_kernel_from_tree_usrlib_modules (sysroot, deployment_dfd, &usrlib_modules_layout, cancellable, error))
     return FALSE;
 
   /* Gather the legacy layout */
@@ -1761,7 +1767,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   /* Find the kernel/initramfs/devicetree in the tree */
   g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
-  if (!get_kernel_from_tree (deployment_dfd, &kernel_layout,
+  if (!get_kernel_from_tree (sysroot, deployment_dfd, &kernel_layout,
                              cancellable, error))
     return FALSE;
 
@@ -1771,7 +1777,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-  g_assert_cmpstr (kernel_layout->bootcsum, ==, bootcsum);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
   g_autofree char *bootconf_name = g_strdup_printf ("ostree-%d-%s.conf",
@@ -2711,7 +2716,7 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
     return FALSE;
 
   g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
-  if (!get_kernel_from_tree (deployment_dfd, &kernel_layout,
+  if (!get_kernel_from_tree (self, deployment_dfd, &kernel_layout,
                              cancellable, error))
     return FALSE;
 
