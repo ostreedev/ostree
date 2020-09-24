@@ -272,8 +272,6 @@ _ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
                                             char            **out_success_message,
                                             GError          **error)
 {
-  g_autoptr(GVariantBuilder) desc_sign_builder = NULL;
-  g_autoptr(GVariant) delta_meta = NULL;
   g_autoptr(GVariant) delta = NULL;
 
   if (!ot_variant_read_fd (fd, 0,
@@ -284,19 +282,19 @@ _ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
   /* Check if there are signatures for signature engine */
   const gchar *signature_key = ostree_sign_metadata_key(sign);
   GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(sign);
-  delta_meta = g_variant_get_child_value (delta, 2);
+  g_autoptr(GVariant) delta_meta = g_variant_get_child_value (delta, 2);
   if (delta_meta == NULL)
-      return glnx_throw (error, "no metadata in static-delta superblock");
+    return glnx_throw (error, "no metadata in static-delta superblock");
   g_autoptr(GVariant) signatures = g_variant_lookup_value (delta_meta,
                                                            signature_key,
                                                            signature_format);
   if (!signatures)
-      return glnx_throw (error, "no signature for '%s' in static-delta superblock", signature_key);
+    return glnx_throw (error, "no signature for '%s' in static-delta superblock", signature_key);
 
   /* Get static delta superblock */
   g_autoptr(GVariant) child = g_variant_get_child_value (delta, 1);
   if (child == NULL)
-      return glnx_throw (error, "no metadata in static-delta superblock");
+    return glnx_throw (error, "no metadata in static-delta superblock");
   g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes(child);
 
   return ostree_sign_data_verify (sign, signed_data, signatures, out_success_message, error);
@@ -329,7 +327,6 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
                                                          GError       **error)
 {
   g_autofree char *basename = NULL;
-  g_autoptr(GVariant) delta = NULL;
   g_autoptr(GVariant) meta = NULL;
 
   const char *dir_or_file_path = gs_file_get_path_cached (dir_or_file);
@@ -378,6 +375,7 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
             return glnx_throw (error, "Delta signature verification failed");
         }
 
+      g_autoptr(GVariant) delta = NULL;
       if (!ot_variant_read_fd (meta_fd, 0, (GVariantType*)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
                                TRUE, &delta, error))
         return FALSE;
@@ -435,9 +433,8 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
     if (!have_to_commit)
       {
         g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_checksum, to_checksum, "commitmeta");
-        g_autoptr(GVariant) detached_data = NULL;
-
-        detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
+        g_autoptr(GVariant) detached_data =
+          g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
         if (detached_data && !ostree_repo_write_commit_detached_metadata (self,
                                                                           to_checksum,
                                                                           detached_data,
@@ -1094,7 +1091,6 @@ ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
                                            char            **out_success_message,
                                            GError          **error)
 {
-  g_autoptr(GVariantBuilder) desc_sign_builder = NULL;
   g_autoptr(GVariant) delta_meta = NULL;
   glnx_autofd int delta_fd = -1;
 
