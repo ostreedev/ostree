@@ -458,8 +458,9 @@ fetch_mirrored_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
   g_autoptr(GBytes) bytes = NULL;
   if (!_ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
                                                    filename, OSTREE_FETCHER_REQUEST_NUL_TERMINATION,
+                                                   NULL, 0,
                                                    n_network_retries,
-                                                   &bytes,
+                                                   &bytes, NULL, NULL, NULL,
                                                    OSTREE_MAX_METADATA_SIZE,
                                                    cancellable, error))
     return FALSE;
@@ -965,7 +966,7 @@ content_fetch_on_complete (GObject        *object,
   OstreeObjectType objtype;
   gboolean free_fetch_data = TRUE;
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, NULL, NULL, NULL, error))
     goto out;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
@@ -1105,7 +1106,7 @@ meta_fetch_on_complete (GObject           *object,
   g_debug ("fetch of %s%s complete", checksum_obj,
            fetch_data->is_detached_meta ? " (detached)" : "");
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, NULL, NULL, NULL, error))
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
@@ -1282,7 +1283,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
-  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, error))
+  if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, NULL, NULL, NULL, error))
     goto out;
 
   /* Transfer ownership of the fd */
@@ -1994,7 +1995,7 @@ start_fetch (OtPullData *pull_data,
   if (!is_meta && pull_data->trusted_http_direct)
     flags |= OSTREE_FETCHER_REQUEST_LINKABLE;
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher, mirrorlist,
-                                      obj_subpath, flags, expected_max_size,
+                                      obj_subpath, flags, NULL, 0, expected_max_size,
                                       is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
                                       : OSTREE_REPO_PULL_CONTENT_PRIORITY,
                                       pull_data->cancellable,
@@ -2119,7 +2120,7 @@ start_fetch_deltapart (OtPullData *pull_data,
   g_assert_cmpint (pull_data->n_outstanding_deltapart_fetches, <=, _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher,
                                       pull_data->content_mirrorlist,
-                                      deltapart_path, 0, fetch->size,
+                                      deltapart_path, 0, NULL, 0, fetch->size,
                                       OSTREE_FETCHER_DEFAULT_PRIORITY,
                                       pull_data->cancellable,
                                       static_deltapart_fetch_on_complete,
@@ -2494,6 +2495,7 @@ on_superblock_fetched (GObject   *src,
   if (!_ostree_fetcher_request_to_membuf_finish ((OstreeFetcher*)src,
                                                  res,
                                                  &delta_superblock_data,
+                                                 NULL, NULL, NULL,
                                                  error))
     {
       if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -2570,6 +2572,7 @@ start_fetch_delta_superblock (OtPullData          *pull_data,
   _ostree_fetcher_request_to_membuf (pull_data->fetcher,
                                      pull_data->content_mirrorlist,
                                      delta_name, OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                     NULL, 0,
                                      OSTREE_MAX_METADATA_SIZE,
                                      0, pull_data->cancellable,
                                      on_superblock_fetched,
@@ -3000,8 +3003,10 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
     {
       return _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, filename,
                                                          OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                         NULL, 0,
                                                          n_network_retries,
-                                                         out_bytes, OSTREE_MAX_METADATA_SIZE,
+                                                         out_bytes, NULL, NULL, NULL,
+                                                         OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error);
     }
 }
@@ -3858,8 +3863,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                          pull_data->meta_mirrorlist,
                                                          "summary.sig", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                         NULL, 0,
                                                          pull_data->n_network_retries,
                                                          &bytes_sig,
+                                                         NULL, NULL, NULL,
                                                          OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error))
           goto out;
@@ -3887,8 +3894,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                          pull_data->meta_mirrorlist,
                                                          "summary", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                         NULL, 0,
                                                          pull_data->n_network_retries,
                                                          &bytes_summary,
+                                                         NULL, NULL, NULL,
                                                          OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error))
           goto out;
@@ -3949,8 +3958,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                  pull_data->meta_mirrorlist,
                                                                  "summary",
                                                                  OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                                 NULL, 0,
                                                                  pull_data->n_network_retries,
                                                                  &bytes_summary,
+                                                                 NULL, NULL, NULL,
                                                                  OSTREE_MAX_METADATA_SIZE,
                                                                  cancellable, error))
                   goto out;
@@ -4012,8 +4023,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                                      pull_data->meta_mirrorlist,
                                                                      "summary",
                                                                      OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                                     NULL, 0,
                                                                      pull_data->n_network_retries,
                                                                      &bytes_summary,
+                                                                     NULL, NULL, NULL,
                                                                      OSTREE_MAX_METADATA_SIZE,
                                                                      cancellable, error))
                       goto out;
@@ -5499,8 +5512,10 @@ find_remotes_cb (GObject      *obj,
                                                                mirrorlist,
                                                                commit_filename,
                                                                OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                               NULL, 0,
                                                                data->n_network_retries,
                                                                &commit_bytes,
+                                                               NULL, NULL, NULL,
                                                                0,  /* no maximum size */
                                                                cancellable,
                                                                &error))

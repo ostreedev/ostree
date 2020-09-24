@@ -34,6 +34,9 @@
 typedef struct
 {
   GBytes          *result_buf;
+  gboolean         result_not_modified;
+  char            *result_etag;
+  guint64          result_last_modified;  /* second since the epoch */
   gboolean         done;
   GError         **error;
 }
@@ -48,6 +51,8 @@ fetch_uri_sync_on_complete (GObject        *object,
 
   (void)_ostree_fetcher_request_to_membuf_finish ((OstreeFetcher*)object,
                                                   result, &data->result_buf,
+                                                  &data->result_not_modified,
+                                                  &data->result_etag, &data->result_last_modified,
                                                   data->error);
   data->done = TRUE;
 }
@@ -57,7 +62,12 @@ _ostree_fetcher_mirrored_request_to_membuf_once  (OstreeFetcher              *fe
                                                   GPtrArray                  *mirrorlist,
                                                   const char                 *filename,
                                                   OstreeFetcherRequestFlags   flags,
+                                                  const char                 *if_none_match,
+                                                  guint64                     if_modified_since,
                                                   GBytes                    **out_contents,
+                                                  gboolean                   *out_not_modified,
+                                                  char                      **out_etag,
+                                                  guint64                    *out_last_modified,
                                                   guint64                     max_size,
                                                   GCancellable               *cancellable,
                                                   GError                    **error)
@@ -79,7 +89,7 @@ _ostree_fetcher_mirrored_request_to_membuf_once  (OstreeFetcher              *fe
   data.error = error;
 
   _ostree_fetcher_request_to_membuf (fetcher, mirrorlist, filename,
-                                     flags,
+                                     flags, if_none_match, if_modified_since,
                                      max_size, OSTREE_FETCHER_DEFAULT_PRIORITY,
                                      cancellable, fetch_uri_sync_on_complete, &data);
   while (!data.done)
@@ -94,6 +104,12 @@ _ostree_fetcher_mirrored_request_to_membuf_once  (OstreeFetcher              *fe
               g_clear_error (error);
               ret = TRUE;
               *out_contents = NULL;
+              if (out_not_modified != NULL)
+                *out_not_modified = FALSE;
+              if (out_etag != NULL)
+                *out_etag = NULL;
+              if (out_last_modified != NULL)
+                *out_last_modified = 0;
             }
         }
       goto out;
@@ -101,10 +117,17 @@ _ostree_fetcher_mirrored_request_to_membuf_once  (OstreeFetcher              *fe
 
   ret = TRUE;
   *out_contents = g_steal_pointer (&data.result_buf);
+  if (out_not_modified != NULL)
+    *out_not_modified = data.result_not_modified;
+  if (out_etag != NULL)
+    *out_etag = g_steal_pointer (&data.result_etag);
+  if (out_last_modified != NULL)
+    *out_last_modified = data.result_last_modified;
  out:
   if (mainctx)
     g_main_context_pop_thread_default (mainctx);
   g_clear_pointer (&data.result_buf, (GDestroyNotify)g_bytes_unref);
+  g_clear_pointer (&data.result_etag, g_free);
   return ret;
 }
 
@@ -113,8 +136,13 @@ _ostree_fetcher_mirrored_request_to_membuf  (OstreeFetcher              *fetcher
                                              GPtrArray                  *mirrorlist,
                                              const char                 *filename,
                                              OstreeFetcherRequestFlags   flags,
+                                             const char                 *if_none_match,
+                                             guint64                     if_modified_since,
                                              guint                       n_network_retries,
                                              GBytes                    **out_contents,
+                                             gboolean                   *out_not_modified,
+                                             char                      **out_etag,
+                                             guint64                    *out_last_modified,
                                              guint64                     max_size,
                                              GCancellable               *cancellable,
                                              GError                    **error)
@@ -127,7 +155,9 @@ _ostree_fetcher_mirrored_request_to_membuf  (OstreeFetcher              *fetcher
       g_clear_error (&local_error);
       if (_ostree_fetcher_mirrored_request_to_membuf_once (fetcher, mirrorlist,
                                                            filename, flags,
-                                                           out_contents, max_size,
+                                                           if_none_match, if_modified_since,
+                                                           out_contents, out_not_modified, out_etag,
+                                                           out_last_modified, max_size,
                                                            cancellable, &local_error))
         return TRUE;
     }
@@ -143,8 +173,13 @@ gboolean
 _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
                                        OstreeFetcherURI *uri,
                                        OstreeFetcherRequestFlags flags,
+                                       const char    *if_none_match,
+                                       guint64        if_modified_since,
                                        guint          n_network_retries,
                                        GBytes         **out_contents,
+                                       gboolean      *out_not_modified,
+                                       char         **out_etag,
+                                       guint64       *out_last_modified,
                                        guint64        max_size,
                                        GCancellable   *cancellable,
                                        GError         **error)
@@ -152,7 +187,9 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   g_autoptr(GPtrArray) mirrorlist = g_ptr_array_new ();
   g_ptr_array_add (mirrorlist, uri); /* no transfer */
   return _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, NULL, flags,
-                                                     n_network_retries, out_contents, max_size,
+                                                     if_none_match, if_modified_since,
+                                                     n_network_retries, out_contents,
+                                                     out_not_modified, out_etag, out_last_modified, max_size,
                                                      cancellable, error);
 }
 

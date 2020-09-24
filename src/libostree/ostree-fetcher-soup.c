@@ -90,9 +90,14 @@ typedef struct {
 
   gboolean is_membuf;
   OstreeFetcherRequestFlags flags;
+  char *if_none_match;  /* request ETag */
+  guint64 if_modified_since;  /* seconds since the epoch */
   GInputStream *request_body;
   GLnxTmpfile tmpf;
   GOutputStream *out_stream;
+  gboolean out_not_modified;  /* TRUE if the server gave a HTTP 304 Not Modified response, which we don’t propagate as an error */
+  char *out_etag;  /* response ETag */
+  guint64 out_last_modified;  /* response Last-Modified, seconds since the epoch */
 
   guint64 max_size;
   guint64 current_size;
@@ -196,8 +201,10 @@ pending_uri_unref (OstreeFetcherPendingURI *pending)
   g_free (pending->filename);
   g_clear_object (&pending->request);
   g_clear_object (&pending->request_body);
+  g_free (pending->if_none_match);
   glnx_tmpfile_clear (&pending->tmpf);
   g_clear_object (&pending->out_stream);
+  g_free (pending->out_etag);
   g_free (pending);
 }
 
@@ -431,6 +438,22 @@ create_pending_soup_request (OstreeFetcherPendingURI  *pending,
 
   pending->request = soup_session_request_uri (pending->thread_closure->session,
                                                (SoupURI*)(uri ? uri : next_mirror), error);
+
+  /* Add caching headers. */
+  if (SOUP_IS_REQUEST_HTTP (pending->request) && pending->if_none_match != NULL)
+    {
+      glnx_unref_object SoupMessage *msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
+      soup_message_headers_append (msg->request_headers, "If-None-Match", pending->if_none_match);
+    }
+
+  if (SOUP_IS_REQUEST_HTTP (pending->request) && pending->if_modified_since > 0)
+    {
+      glnx_unref_object SoupMessage *msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
+
+      g_autoptr(GDateTime) date_time = g_date_time_new_from_unix_utc (pending->if_modified_since);
+      g_autofree char *mod_date = g_date_time_format (date_time, "%a, %d %b %Y %H:%M:%S %Z");
+      soup_message_headers_append (msg->request_headers, "If-Modified-Since", mod_date);
+    }
 }
 
 static void
@@ -1050,7 +1073,14 @@ on_request_sent (GObject        *object,
   if (SOUP_IS_REQUEST_HTTP (object))
     {
       msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
-      if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
+      if (msg->status_code == SOUP_STATUS_NOT_MODIFIED &&
+          (pending->if_none_match != NULL || pending->if_modified_since > 0))
+        {
+          /* Version on the server is unchanged from the version we have cached locally;
+           * report this as an out-argument, a zero-length response buffer, and no error */
+          pending->out_not_modified = TRUE;
+        }
+      else if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
         {
           /* is there another mirror we can try? */
           if (pending->mirrorlist_idx + 1 < pending->mirrorlist->len)
@@ -1124,6 +1154,21 @@ on_request_sent (GObject        *object,
             }
           goto out;
         }
+
+      /* Grab cache properties from the response */
+      pending->out_etag = g_strdup (soup_message_headers_get_one (msg->response_headers, "ETag"));
+      pending->out_last_modified = 0;
+
+      const char *last_modified_str = soup_message_headers_get_one (msg->response_headers, "Last-Modified");
+      if (last_modified_str != NULL)
+        {
+          SoupDate *soup_date = soup_date_new_from_string (last_modified_str);
+          if (soup_date != NULL)
+            {
+              pending->out_last_modified = soup_date_to_time_t (soup_date);
+              soup_date_free (soup_date);
+            }
+        }
     }
 
   pending->state = OSTREE_FETCHER_STATE_DOWNLOADING;
@@ -1154,6 +1199,8 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
                                GPtrArray             *mirrorlist,
                                const char            *filename,
                                OstreeFetcherRequestFlags flags,
+                               const char            *if_none_match,
+                               guint64                if_modified_since,
                                gboolean               is_membuf,
                                guint64                max_size,
                                int                    priority,
@@ -1175,6 +1222,8 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
   pending->mirrorlist = g_ptr_array_ref (mirrorlist);
   pending->filename = g_strdup (filename);
   pending->flags = flags;
+  pending->if_none_match = g_strdup (if_none_match);
+  pending->if_modified_since = if_modified_since;
   pending->max_size = max_size;
   pending->is_membuf = is_membuf;
 
@@ -1196,13 +1245,16 @@ _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
                                     GPtrArray             *mirrorlist,
                                     const char            *filename,
                                     OstreeFetcherRequestFlags flags,
+                                    const char            *if_none_match,
+                                    guint64                if_modified_since,
                                     guint64                max_size,
                                     int                    priority,
                                     GCancellable          *cancellable,
                                     GAsyncReadyCallback    callback,
                                     gpointer               user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, FALSE,
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags,
+                                 if_none_match, if_modified_since, FALSE,
                                  max_size, priority, cancellable,
                                  callback, user_data);
 }
@@ -1211,6 +1263,9 @@ gboolean
 _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
                                            GAsyncResult  *result,
                                            GLnxTmpfile   *out_tmpf,
+                                           gboolean      *out_not_modified,
+                                           char         **out_etag,
+                                           guint64       *out_last_modified,
                                            GError       **error)
 {
   GTask *task;
@@ -1231,6 +1286,13 @@ _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
   *out_tmpf = pending->tmpf;
   pending->tmpf.initialized = FALSE; /* Transfer ownership */
 
+  if (out_not_modified != NULL)
+    *out_not_modified = pending->out_not_modified;
+  if (out_etag != NULL)
+    *out_etag = g_steal_pointer (&pending->out_etag);
+  if (out_last_modified != NULL)
+    *out_last_modified = pending->out_last_modified;
+
   return TRUE;
 }
 
@@ -1239,13 +1301,16 @@ _ostree_fetcher_request_to_membuf (OstreeFetcher         *self,
                                    GPtrArray             *mirrorlist,
                                    const char            *filename,
                                    OstreeFetcherRequestFlags flags,
+                                   const char            *if_none_match,
+                                   guint64                if_modified_since,
                                    guint64                max_size,
                                    int                    priority,
                                    GCancellable          *cancellable,
                                    GAsyncReadyCallback    callback,
                                    gpointer               user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, TRUE,
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags,
+                                 if_none_match, if_modified_since, TRUE,
                                  max_size, priority, cancellable,
                                  callback, user_data);
 }
@@ -1254,6 +1319,9 @@ gboolean
 _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
                                           GAsyncResult  *result,
                                           GBytes       **out_buf,
+                                          gboolean      *out_not_modified,
+                                          char         **out_etag,
+                                          guint64       *out_last_modified,
                                           GError       **error)
 {
   GTask *task;
@@ -1273,6 +1341,13 @@ _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
   g_assert (pending->is_membuf);
   g_assert (out_buf);
   *out_buf = ret;
+
+  if (out_not_modified != NULL)
+    *out_not_modified = pending->out_not_modified;
+  if (out_etag != NULL)
+    *out_etag = g_steal_pointer (&pending->out_etag);
+  if (out_last_modified != NULL)
+    *out_last_modified = pending->out_last_modified;
 
   return TRUE;
 }
