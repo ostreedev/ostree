@@ -620,6 +620,8 @@ global:
 
 /* No new symbols in 2020.5 */
 
+/* No new symbols in 2020.6 */
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
