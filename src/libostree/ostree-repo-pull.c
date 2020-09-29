@@ -46,6 +46,7 @@
 
 #include <gio/gunixinputstream.h>
 #include <sys/statvfs.h>
+#include <sys/time.h>
 #ifdef HAVE_LIBSYSTEMD
 #include <systemd/sd-journal.h>
 #endif
@@ -2702,6 +2703,64 @@ _ostree_repo_verify_summary (OstreeRepo   *self,
   return TRUE;
 }
 
+static void
+_ostree_repo_load_cache_summary_properties (OstreeRepo  *self,
+                                            const char  *filename,
+                                            const char  *extension,
+                                            char       **out_etag,
+                                            guint64     *out_last_modified)
+{
+  const char *file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_DIR, "/", filename, extension);
+  glnx_autofd int fd = -1;
+
+  if (self->cache_dir_fd == -1)
+    return;
+
+  if (!glnx_openat_rdonly (self->cache_dir_fd, file, TRUE, &fd, NULL))
+    return;
+
+  if (out_etag != NULL)
+    {
+      g_autoptr(GBytes) etag_bytes = glnx_fgetxattr_bytes (fd, "user.etag", NULL);
+      if (etag_bytes != NULL)
+        {
+          const guint8 *buf;
+          gsize buf_len;
+
+          buf = g_bytes_get_data (etag_bytes, &buf_len);
+
+          /* Loosely validate against https://tools.ietf.org/html/rfc7232#section-2.3
+           * by checking there are no embedded nuls. */
+          for (gsize i = 0; i < buf_len; i++)
+            {
+              if (buf[i] == 0)
+                {
+                  buf_len = 0;
+                  break;
+                }
+            }
+
+          /* Nul-terminate and return */
+          if (buf_len > 0)
+            *out_etag = g_strndup ((const char *) buf, buf_len);
+          else
+            *out_etag = NULL;
+        }
+      else
+        *out_etag = NULL;
+    }
+
+  if (out_last_modified != NULL)
+    {
+      struct stat statbuf;
+
+      if (glnx_fstatat (fd, "", &statbuf, AT_EMPTY_PATH, NULL))
+        *out_last_modified = statbuf.st_mtim.tv_sec;
+      else
+        *out_last_modified = 0;
+    }
+}
+
 static gboolean
 _ostree_repo_load_cache_summary_file (OstreeRepo        *self,
                                       const char        *filename,
@@ -2777,11 +2836,38 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
   return TRUE;
 }
 
+static void
+store_file_cache_properties (int         dir_fd,
+                             const char *filename,
+                             const char *etag,
+                             guint64     last_modified)
+{
+  glnx_autofd int fd = -1;
+  struct timespec time_vals[] =
+    {
+      { .tv_sec = last_modified, .tv_nsec = UTIME_OMIT },  /* access, leave unchanged */
+      { .tv_sec = last_modified, .tv_nsec = 0 },  /* modification */
+    };
+
+  if (!glnx_openat_rdonly (dir_fd, filename, TRUE, &fd, NULL))
+    return;
+
+  if (etag != NULL)
+    TEMP_FAILURE_RETRY (fsetxattr (fd, "user.etag", etag, strlen (etag), 0));
+  else
+    TEMP_FAILURE_RETRY (fremovexattr (fd, "user.etag"));
+
+  if (last_modified > 0)
+    TEMP_FAILURE_RETRY (futimens (fd, time_vals));
+}
+
 static gboolean
 _ostree_repo_save_cache_summary_file (OstreeRepo        *self,
                                       const char        *filename,
                                       const char        *extension,
                                       GBytes            *data,
+                                      const char        *etag,
+                                      guint64            last_modified,
                                       GCancellable      *cancellable,
                                       GError           **error)
 {
@@ -2802,6 +2888,9 @@ _ostree_repo_save_cache_summary_file (OstreeRepo        *self,
                                       cancellable, error))
     return FALSE;
 
+  /* Store the caching properties. This is non-fatal on failure. */
+  store_file_cache_properties (self->cache_dir_fd, file, etag, last_modified);
+
   return TRUE;
 }
 
@@ -2810,16 +2899,24 @@ static gboolean
 _ostree_repo_cache_summary (OstreeRepo        *self,
                             const char        *remote,
                             GBytes            *summary,
+                            const char        *summary_etag,
+                            guint64            summary_last_modified,
                             GBytes            *summary_sig,
+                            const char        *summary_sig_etag,
+                            guint64            summary_sig_last_modified,
                             GCancellable      *cancellable,
                             GError           **error)
 {
   if (!_ostree_repo_save_cache_summary_file (self, remote, NULL,
-                                             summary, cancellable, error))
+                                             summary,
+                                             summary_etag, summary_last_modified,
+                                             cancellable, error))
     return FALSE;
 
   if (!_ostree_repo_save_cache_summary_file (self, remote, ".sig",
-                                             summary_sig, cancellable, error))
+                                             summary_sig,
+                                             summary_sig_etag, summary_sig_last_modified,
+                                             cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -2967,8 +3064,13 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
                                GPtrArray     *mirrorlist,
                                const char    *filename,
                                gboolean      is_metalink,
+                               const char   *if_none_match,
+                               guint64       if_modified_since,
                                guint         n_network_retries,
                                GBytes        **out_bytes,
+                               gboolean      *out_not_modified,
+                               char          **out_etag,
+                               guint64       *out_last_modified,
                                GCancellable  *cancellable,
                                GError        **error)
 {
@@ -3003,9 +3105,9 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
     {
       return _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, filename,
                                                          OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                         NULL, 0,
+                                                         if_none_match, if_modified_since,
                                                          n_network_retries,
-                                                         out_bytes, NULL, NULL, NULL,
+                                                         out_bytes, out_not_modified, out_etag, out_last_modified,
                                                          OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error);
     }
@@ -3365,6 +3467,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 {
   gboolean ret = FALSE;
   g_autoptr(GBytes) bytes_summary = NULL;
+  gboolean summary_not_modified = FALSE;
+  g_autofree char *summary_etag = NULL;
+  guint64 summary_last_modified = 0;
   g_autofree char *metalink_url_str = NULL;
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   g_autoptr(GHashTable) commits_to_fetch = NULL;
@@ -3832,6 +3937,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   {
     g_autoptr(GBytes) bytes_sig = NULL;
+    gboolean summary_sig_not_modified = FALSE;
+    g_autofree char *summary_sig_etag = NULL;
+    guint64 summary_sig_last_modified = 0;
     gsize n;
     g_autoptr(GVariant) refs = NULL;
     g_autoptr(GVariant) deltas = NULL;
@@ -3860,16 +3968,47 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!bytes_sig)
       {
+        g_autofree char *summary_sig_if_none_match = NULL;
+        guint64 summary_sig_if_modified_since = 0;
+
+        /* Load the summary.sig from the network, but send its ETag and
+         * Last-Modified from the on-disk cache (if it exists) to reduce the
+         * download size if nothing’s changed. */
+        _ostree_repo_load_cache_summary_properties (self, remote_name_or_baseurl, ".sig",
+                                                    &summary_sig_if_none_match, &summary_sig_if_modified_since);
+
+        g_clear_pointer (&summary_sig_etag, g_free);
+        summary_sig_last_modified = 0;
         if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                          pull_data->meta_mirrorlist,
                                                          "summary.sig", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                         NULL, 0,
+                                                         summary_sig_if_none_match, summary_sig_if_modified_since,
                                                          pull_data->n_network_retries,
                                                          &bytes_sig,
-                                                         NULL, NULL, NULL,
+                                                         &summary_sig_not_modified, &summary_sig_etag, &summary_sig_last_modified,
                                                          OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error))
           goto out;
+
+        /* The server returned HTTP status 304 Not Modified, so we’re clear to
+         * load summary.sig from the cache. Also load summary, since
+         * `_ostree_repo_load_cache_summary_if_same_sig()` would just do that anyway. */
+        if (summary_sig_not_modified)
+          {
+            g_clear_pointer (&bytes_sig, g_bytes_unref);
+            g_clear_pointer (&bytes_summary, g_bytes_unref);
+            if (!_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, ".sig",
+                                                       &bytes_sig,
+                                                       cancellable, error))
+              goto out;
+
+            if (!bytes_summary &&
+                !pull_data->remote_repo_local &&
+                !_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, NULL,
+                                                       &bytes_summary,
+                                                       cancellable, error))
+              goto out;
+          }
       }
 
     if (bytes_sig &&
@@ -3891,16 +4030,35 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!pull_data->summary && !bytes_summary)
       {
+        g_autofree char *summary_if_none_match = NULL;
+        guint64 summary_if_modified_since = 0;
+
+        _ostree_repo_load_cache_summary_properties (self, remote_name_or_baseurl, NULL,
+                                                    &summary_if_none_match, &summary_if_modified_since);
+
+        g_clear_pointer (&summary_etag, g_free);
+        summary_last_modified = 0;
         if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                          pull_data->meta_mirrorlist,
                                                          "summary", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                         NULL, 0,
+                                                         summary_if_none_match, summary_if_modified_since,
                                                          pull_data->n_network_retries,
                                                          &bytes_summary,
-                                                         NULL, NULL, NULL,
+                                                         &summary_not_modified, &summary_etag, &summary_last_modified,
                                                          OSTREE_MAX_METADATA_SIZE,
                                                          cancellable, error))
           goto out;
+
+        /* The server returned HTTP status 304 Not Modified, so we’re clear to
+         * load summary from the cache. */
+        if (summary_not_modified)
+          {
+            g_clear_pointer (&bytes_summary, g_bytes_unref);
+            if (!_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, NULL,
+                                                       &bytes_summary,
+                                                       cancellable, error))
+              goto out;
+          }
       }
 
 #ifndef OSTREE_DISABLE_GPGME
@@ -3939,7 +4097,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           {
             if (summary_from_cache)
               {
-                /* The cached summary doesn't match, fetch a new one and verify again */
+                /* The cached summary doesn't match, fetch a new one and verify again.
+                 * Don’t set the cache headers in the HTTP request, to force a
+                 * full download. */
                 if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
                   {
                     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -3954,14 +4114,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
                 summary_from_cache = FALSE;
                 g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                g_clear_pointer (&summary_etag, g_free);
+                summary_last_modified = 0;
                 if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                                  pull_data->meta_mirrorlist,
                                                                  "summary",
                                                                  OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                                 NULL, 0,
+                                                                 NULL, 0,  /* no cache headers */
                                                                  pull_data->n_network_retries,
                                                                  &bytes_summary,
-                                                                 NULL, NULL, NULL,
+                                                                 &summary_not_modified, &summary_etag, &summary_last_modified,
                                                                  OSTREE_MAX_METADATA_SIZE,
                                                                  cancellable, error))
                   goto out;
@@ -4004,7 +4166,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               {
                 if (summary_from_cache)
                   {
-                    /* The cached summary doesn't match, fetch a new one and verify again */
+                    /* The cached summary doesn't match, fetch a new one and verify again.
+                     * Don’t set the cache headers in the HTTP request, to force a
+                     * full download. */
                     if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
                       {
                         g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -4019,14 +4183,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
                     summary_from_cache = FALSE;
                     g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                    g_clear_pointer (&summary_etag, g_free);
+                    summary_last_modified = 0;
                     if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
                                                                      pull_data->meta_mirrorlist,
                                                                      "summary",
                                                                      OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                                     NULL, 0,
+                                                                     NULL, 0,  /* no cache headers */
                                                                      pull_data->n_network_retries,
                                                                      &bytes_summary,
-                                                                     NULL, NULL, NULL,
+                                                                     &summary_not_modified, &summary_etag, &summary_last_modified,
                                                                      OSTREE_MAX_METADATA_SIZE,
                                                                      cancellable, error))
                       goto out;
@@ -4046,6 +4212,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     if (bytes_summary)
       {
         pull_data->summary_data = g_bytes_ref (bytes_summary);
+        pull_data->summary_etag = g_strdup (summary_etag);
+        pull_data->summary_last_modified = summary_last_modified;
         pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
 
         if (!g_variant_is_normal_form (pull_data->summary))
@@ -4063,7 +4231,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           }
 
         if (bytes_sig)
-          pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+          {
+            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+            pull_data->summary_sig_etag = g_strdup (summary_sig_etag);
+            pull_data->summary_sig_last_modified = summary_sig_last_modified;
+          }
       }
 
     if (!summary_from_cache && bytes_summary && bytes_sig)
@@ -4072,7 +4244,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             !_ostree_repo_cache_summary (self,
                                          remote_name_or_baseurl,
                                          bytes_summary,
+                                         summary_etag, summary_last_modified,
                                          bytes_sig,
+                                         summary_sig_etag, summary_sig_last_modified,
                                          cancellable,
                                          error))
           goto out;
@@ -4507,6 +4681,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                           cancellable, error))
         goto out;
 
+      store_file_cache_properties (pull_data->repo->repo_dir_fd, "summary",
+                                   pull_data->summary_etag, pull_data->summary_last_modified);
+
       if (pull_data->summary_data_sig)
         {
           buf = g_bytes_get_data (pull_data->summary_data_sig, &len);
@@ -4514,6 +4691,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                               buf, len, replaceflag,
                                               cancellable, error))
             goto out;
+
+          store_file_cache_properties (pull_data->repo->repo_dir_fd, "summary.sig",
+                                       pull_data->summary_sig_etag, pull_data->summary_sig_last_modified);
         }
     }
 
@@ -4700,7 +4880,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
+  g_clear_pointer (&pull_data->summary_etag, g_free);
   g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);
+  g_clear_pointer (&pull_data->summary_sig_etag, g_free);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
   g_clear_pointer (&pull_data->static_delta_superblocks, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
@@ -6129,6 +6311,16 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
   g_autoptr(GPtrArray) mirrorlist = NULL;
   const char *append_user_agent = NULL;
   guint n_network_retries = DEFAULT_N_NETWORK_RETRIES;
+  gboolean summary_sig_not_modified = FALSE;
+  g_autofree char *summary_sig_if_none_match = NULL;
+  g_autofree char *summary_sig_etag = NULL;
+  gboolean summary_not_modified = FALSE;
+  g_autofree char *summary_if_none_match = NULL;
+  g_autofree char *summary_etag = NULL;
+  guint64 summary_sig_if_modified_since = 0;
+  guint64 summary_sig_last_modified = 0;
+  guint64 summary_if_modified_since = 0;
+  guint64 summary_last_modified = 0;
 
   g_return_val_if_fail (OSTREE_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
@@ -6174,21 +6366,47 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                           &mirrorlist, cancellable, error))
     return FALSE;
 
-  /* FIXME: Send the ETag from the cache with the request for summary.sig to
+  /* Send the ETag from the cache with the request for summary.sig to
    * avoid downloading summary.sig unnecessarily. This won’t normally provide
-   * any benefits (but won’t do any harm) since summary.sig is typically 500B
-   * in size. But if a repository has multiple keys, the signature file will
+   * much benefit since summary.sig is typically 590B in size (vs a 0B HTTP 304
+   * response). But if a repository has multiple keys, the signature file will
    * grow and this optimisation may be useful. */
+  _ostree_repo_load_cache_summary_properties (self, name, ".sig",
+                                              &summary_sig_if_none_match, &summary_sig_if_modified_since);
+  _ostree_repo_load_cache_summary_properties (self, name, NULL,
+                                              &summary_if_none_match, &summary_if_modified_since);
+
   if (!_ostree_preload_metadata_file (self,
                                       fetcher,
                                       mirrorlist,
                                       "summary.sig",
                                       metalink_url_string ? TRUE : FALSE,
+                                      summary_sig_if_none_match, summary_sig_if_modified_since,
                                       n_network_retries,
                                       &signatures,
+                                      &summary_sig_not_modified, &summary_sig_etag, &summary_sig_last_modified,
                                       cancellable,
                                       error))
     return FALSE;
+
+  /* The server returned HTTP status 304 Not Modified, so we’re clear to
+   * load summary.sig from the cache. Also load summary, since
+   * `_ostree_repo_load_cache_summary_if_same_sig()` would just do that anyway. */
+  if (summary_sig_not_modified)
+    {
+      g_clear_pointer (&signatures, g_bytes_unref);
+      g_clear_pointer (&summary, g_bytes_unref);
+      if (!_ostree_repo_load_cache_summary_file (self, name, ".sig",
+                                                 &signatures,
+                                                 cancellable, error))
+        return FALSE;
+
+      if (!summary &&
+          !_ostree_repo_load_cache_summary_file (self, name, NULL,
+                                                 &summary,
+                                                 cancellable, error))
+        return FALSE;
+    }
 
   if (signatures)
     {
@@ -6210,11 +6428,25 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                           mirrorlist,
                                           "summary",
                                           metalink_url_string ? TRUE : FALSE,
+                                          summary_if_none_match, summary_if_modified_since,
                                           n_network_retries,
                                           &summary,
+                                          &summary_not_modified, &summary_etag, &summary_last_modified,
                                           cancellable,
                                           error))
         return FALSE;
+
+      /* The server returned HTTP status 304 Not Modified, so we’re clear to
+       * load summary.sig from the cache. Also load summary, since
+       * `_ostree_repo_load_cache_summary_if_same_sig()` would just do that anyway. */
+      if (summary_not_modified)
+        {
+          g_clear_pointer (&summary, g_bytes_unref);
+          if (!_ostree_repo_load_cache_summary_file (self, name, NULL,
+                                                     &summary,
+                                                     cancellable, error))
+            return FALSE;
+        }
     }
 
   if (!_ostree_repo_verify_summary (self, name,
@@ -6230,7 +6462,9 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
       if (!_ostree_repo_cache_summary (self,
                                        name,
                                        summary,
+                                       summary_etag, summary_last_modified,
                                        signatures,
+                                       summary_sig_etag, summary_sig_last_modified,
                                        cancellable,
                                        &temp_error))
         {
