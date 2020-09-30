@@ -317,6 +317,8 @@ _ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
  * The directory must be named with the form "FROM-TO", where both are
  * checksums, and it must contain a file named "superblock", along with at least
  * one part.
+ *
+ * Since: 2020.7
  */
 gboolean
 ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
@@ -1082,7 +1084,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
  * Returns: TRUE if the signature of static delta file is valid using the
  * signature engine provided, FALSE otherwise.
  *
- * Since: 2020.1
+ * Since: 2020.7
  */
 gboolean
 ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
