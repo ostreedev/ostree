@@ -1,5 +1,14 @@
-Submitting patches
-------------------
+---
+nav_order: 19
+---
+
+# Contributing
+{: .no_toc }
+
+1. TOC
+{:toc}
+
+## Submitting patches
 
 A majority of current maintainers prefer the GitHub pull request
 model, and this motivated moving the primary git repository to
@@ -26,8 +35,7 @@ Alternative methods if you don't like GitHub (also fully supported):
 It is likely however once a patch is ready to apply a maintainer
 will push it to a GitHub PR, and merge via Homu.
 
-Commit message style
---------------------
+## Commit message style
 
 Please look at `git log` and match the commit log style, which is very
 similar to the
@@ -66,15 +74,13 @@ For more information see [How to Write a Git Commit Message](https://chris.beams
 
 To edit the message from the most recent commit run `git commit --amend`. To change older commits on the branch use `git rebase -i`. For a successful rebase have the branch track `upstream master`. Once the changes have been made and saved, run `git push --force origin <branch-name>`.
 
-Running the test suite
-----------------------
+## Running the test suite
 
 OSTree uses both `make check` and supports the
 [Installed Tests](https://wiki.gnome.org/GnomeGoals/InstalledTests)
 model as well (if `--enable-installed-tests` is provided).
 
-Coding style
-------------
+## Coding style
 
 Indentation is GNU.  Files should start with the appropriate mode lines.
 
@@ -168,7 +174,6 @@ Instead do this:
           }
       }
 
-Contributing Tutorial
----------------------
+## Contributing Tutorial
 
 For a detailed walk-through on building, modifying, and testing, see this [tutorial on how to start contributing to OSTree](contributing-tutorial.md).
