@@ -5816,6 +5816,24 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                  g_variant_new_uint64 (GUINT64_TO_BE (g_get_real_time () / G_USEC_PER_SEC)));
   }
 
+  {
+    g_autofree char *remote_mode_str = NULL;
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "mode", "bare",
+                                            &remote_mode_str, error))
+      return FALSE;
+    g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_MODE,
+                                 g_variant_new_string (remote_mode_str));
+  }
+
+  {
+    gboolean tombstone_commits = FALSE;
+    if (!ot_keyfile_get_boolean_with_default (self->config, "core", "tombstone-commits", FALSE,
+                                              &tombstone_commits, error))
+      return FALSE;
+    g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_TOMBSTONE_COMMITS,
+                                 g_variant_new_boolean (tombstone_commits));
+  }
+
   /* Add refs which have a collection specified, which could be in refs/mirrors,
    * refs/heads, and/or refs/remotes. */
   {

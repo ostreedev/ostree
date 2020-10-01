@@ -322,10 +322,11 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
   collection_map = g_variant_lookup_value (exts, OSTREE_SUMMARY_COLLECTION_MAP, G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
   if (collection_map != NULL)
     {
+      g_autoptr(GVariant) collection_refs = NULL;
       g_variant_iter_init (&iter, collection_map);
 
-      while (g_variant_iter_loop (&iter, "{&s@a(s(taya{sv}))}", &collection_id, &refs))
-        dump_summary_refs (collection_id, refs);
+      while (g_variant_iter_loop (&iter, "{&s@a(s(taya{sv}))}", &collection_id, &collection_refs))
+        dump_summary_refs (collection_id, collection_refs);
     }
 
   /* Print out the additional metadata. */
@@ -360,6 +361,22 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
         {
           pretty_key = "Collection Map";
           value_str = g_strdup ("(printed above)");
+        }
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_MODE) == 0)
+        {
+          OstreeRepoMode repo_mode;
+          const char *repo_mode_str = g_variant_get_string (value, NULL);
+
+          pretty_key = "Repository Mode";
+          if (!ostree_repo_mode_from_string (repo_mode_str, &repo_mode, NULL))
+            value_str = g_strdup_printf ("Invalid (‘%s’)", repo_mode_str);
+          else
+            value_str = g_strdup (repo_mode_str);
+        }
+      else if (g_strcmp0 (key, OSTREE_SUMMARY_TOMBSTONE_COMMITS) == 0)
+        {
+          pretty_key = "Has Tombstone Commits";
+          value_str = g_strdup (g_variant_get_boolean (value) ? "Yes" : "No");
         }
       else
         {
