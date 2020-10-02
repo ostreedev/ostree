@@ -1,4 +1,12 @@
+---
+nav_order: 7
+---
+
 # OSTree data formats
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 ## On the topic of "smart servers"
 

@@ -1,4 +1,12 @@
+---
+nav_order: 6
+---
+
 # Adapting existing mainstream distributions
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 ## System layout
 

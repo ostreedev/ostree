@@ -1,4 +1,12 @@
+---
+nav_order: 5
+---
+
 # Atomic Upgrades
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 ## You can turn off the power anytime you want...
 
