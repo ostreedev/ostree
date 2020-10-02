@@ -73,5 +73,11 @@ _OSTREE_PUBLIC
 const char *ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
                                           const char      *key);
 
+_OSTREE_PUBLIC
+void ostree_bootconfig_parser_set_overlay_initrds (OstreeBootconfigParser  *self,
+                                                   char                   **initrds);
+
+_OSTREE_PUBLIC
+char** ostree_bootconfig_parser_get_overlay_initrds (OstreeBootconfigParser  *self);
 
 G_END_DECLS

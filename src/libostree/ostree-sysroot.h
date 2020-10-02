@@ -187,6 +187,21 @@ gboolean ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
                                                         GError           **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_stage_overlay_initrd (OstreeSysroot  *self,
+                                              int             fd,
+                                              char          **out_checksum,
+                                              GCancellable   *cancellable,
+                                              GError        **error);
+
+typedef struct {
+  gboolean unused_bools[8];
+  int unused_ints[8];
+  char **override_kernel_argv;
+  char **overlay_initrds;
+  gpointer unused_ptrs[6];
+} OstreeSysrootDeployTreeOpts;
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                      const char        *osname,
                                      const char        *revision,
@@ -198,6 +213,17 @@ gboolean ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                      GError           **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_deploy_tree_with_options (OstreeSysroot     *self,
+                                                  const char        *osname,
+                                                  const char        *revision,
+                                                  GKeyFile          *origin,
+                                                  OstreeDeployment  *provided_merge_deployment,
+                                                  OstreeSysrootDeployTreeOpts *opts,
+                                                  OstreeDeployment **out_new_deployment,
+                                                  GCancellable      *cancellable,
+                                                  GError           **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_stage_tree (OstreeSysroot     *self,
                                     const char        *osname,
                                     const char        *revision,
@@ -207,6 +233,18 @@ gboolean ostree_sysroot_stage_tree (OstreeSysroot     *self,
                                     OstreeDeployment **out_new_deployment,
                                     GCancellable      *cancellable,
                                     GError           **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_sysroot_stage_tree_with_options (OstreeSysroot     *self,
+                                                 const char        *osname,
+                                                 const char        *revision,
+                                                 GKeyFile          *origin,
+                                                 OstreeDeployment  *merge_deployment,
+                                                 OstreeSysrootDeployTreeOpts *opts,
+                                                 OstreeDeployment **out_new_deployment,
+                                                 GCancellable      *cancellable,
+                                                 GError           **error);
+
 
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,

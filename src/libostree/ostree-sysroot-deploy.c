@@ -1859,6 +1859,47 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         }
     }
 
+  g_autoptr(GPtrArray) overlay_initrds = NULL;
+  for (char **it = _ostree_deployment_get_overlay_initrds (deployment); it && *it; it++)
+    {
+      char *checksum = *it;
+
+      /* Overlay initrds are not part of the bootcsum dir; they're not part of the tree
+       * proper. Instead they're in /boot/ostree/initramfs-overlays/ named by their csum.
+       * Doing it this way allows sharing the same bootcsum dir for multiple deployments
+       * with the only change being in overlay initrds (or conversely, the same overlay
+       * across different boocsums). Eventually, it'd be nice to have an OSTree repo in
+       * /boot itself and drop the boocsum dir concept entirely. */
+
+      g_autofree char *destpath =
+        g_strdup_printf ("/" _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS "/%s.img", checksum);
+      const char *rel_destpath = destpath + 1;
+
+      /* lazily allocate array and create dir so we don't pollute /boot if not needed */
+      if (overlay_initrds == NULL)
+        {
+          overlay_initrds = g_ptr_array_new_with_free_func (g_free);
+
+          if (!glnx_shutil_mkdir_p_at (boot_dfd, _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS,
+                                       0755, cancellable, error))
+            return FALSE;
+        }
+
+      if (!glnx_fstatat_allow_noent (boot_dfd, rel_destpath, NULL, 0, error))
+        return FALSE;
+      if (errno == ENOENT)
+        {
+          g_autofree char *srcpath =
+            g_strdup_printf (_OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR "/%s", checksum);
+          if (!install_into_boot (repo, sepolicy, AT_FDCWD, srcpath, boot_dfd, rel_destpath,
+                                  cancellable, error))
+            return FALSE;
+        }
+
+      /* these are used lower down to populate the bootconfig */
+      g_ptr_array_add (overlay_initrds, g_steal_pointer (&destpath));
+    }
+
   g_autofree char *contents = NULL;
   if (!glnx_fstatat_allow_noent (deployment_dfd, "usr/lib/os-release", &stbuf, 0, error))
     return FALSE;
@@ -1938,6 +1979,12 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
       g_autofree char * initrd_boot_relpath =
         g_strconcat ("/", bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
       ostree_bootconfig_parser_set (bootconfig, "initrd", initrd_boot_relpath);
+
+      if (overlay_initrds)
+        {
+          g_ptr_array_add (overlay_initrds, NULL);
+          ostree_bootconfig_parser_set_overlay_initrds (bootconfig, (char**)overlay_initrds->pdata);
+        }
     }
   else
     {
@@ -2133,6 +2180,10 @@ deployment_bootconfigs_equal (OstreeRepo       *repo,
   const char *a_bootcsum = ostree_deployment_get_bootcsum (a);
   const char *b_bootcsum = ostree_deployment_get_bootcsum (b);
   if (strcmp (a_bootcsum, b_bootcsum) != 0)
+    return FALSE;
+
+  /* same initrd overlays? */
+  if (g_strcmp0 (a->overlay_initrds_id, b->overlay_initrds_id) != 0)
     return FALSE;
 
   /* same kargs? */
@@ -2688,7 +2739,7 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
                                const char        *osname,
                                const char        *revision,
                                GKeyFile          *origin,
-                               char             **override_kernel_argv,
+                               OstreeSysrootDeployTreeOpts *opts,
                                OstreeDeployment **out_new_deployment,
                                GCancellable      *cancellable,
                                GError           **error)
@@ -2721,7 +2772,8 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
     return FALSE;
 
   _ostree_deployment_set_bootcsum (new_deployment, kernel_layout->bootcsum);
-  _ostree_deployment_set_bootconfig_from_kargs (new_deployment, override_kernel_argv);
+  _ostree_deployment_set_bootconfig_from_kargs (new_deployment, opts ? opts->override_kernel_argv : NULL);
+  _ostree_deployment_set_overlay_initrds (new_deployment, opts ? opts->overlay_initrds : NULL);
 
   if (!prepare_deployment_etc (self, repo, new_deployment, deployment_dfd,
                                cancellable, error))
@@ -2853,6 +2905,53 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
 }
 
 /**
+ * ostree_sysroot_deploy_tree_with_options:
+ * @self: Sysroot
+ * @osname: (allow-none): osname to use for merge deployment
+ * @revision: Checksum to add
+ * @origin: (allow-none): Origin to use for upgrades
+ * @provided_merge_deployment: (allow-none): Use this deployment for merge path
+ * @opts: (allow-none): Options
+ * @out_new_deployment: (out): The new deployment path
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Check out deployment tree with revision @revision, performing a 3
+ * way merge with @provided_merge_deployment for configuration.
+ *
+ * When booted into the sysroot, you should use the
+ * ostree_sysroot_stage_tree() API instead.
+ *
+ * Since: 2020.7
+ */
+gboolean
+ostree_sysroot_deploy_tree_with_options (OstreeSysroot     *self,
+                                         const char        *osname,
+                                         const char        *revision,
+                                         GKeyFile          *origin,
+                                         OstreeDeployment  *provided_merge_deployment,
+                                         OstreeSysrootDeployTreeOpts *opts,
+                                         OstreeDeployment **out_new_deployment,
+                                         GCancellable      *cancellable,
+                                         GError           **error)
+{
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
+  g_autoptr(OstreeDeployment) deployment = NULL;
+  if (!sysroot_initialize_deployment (self, osname, revision, origin, opts,
+                                      &deployment, cancellable, error))
+    return FALSE;
+
+  if (!sysroot_finalize_deployment (self, deployment, provided_merge_deployment,
+                                    cancellable, error))
+    return FALSE;
+
+  *out_new_deployment = g_steal_pointer (&deployment);
+  return TRUE;
+}
+
+/**
  * ostree_sysroot_deploy_tree:
  * @self: Sysroot
  * @osname: (allow-none): osname to use for merge deployment
@@ -2864,11 +2963,9 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
  * @cancellable: Cancellable
  * @error: Error
  *
- * Check out deployment tree with revision @revision, performing a 3
- * way merge with @provided_merge_deployment for configuration.
+ * Older version of ostree_sysroot_stage_tree_with_options().
  *
- * When booted into the sysroot, you should use the
- * ostree_sysroot_stage_tree() API instead.
+ * Since: 2018.5
  */
 gboolean
 ostree_sysroot_deploy_tree (OstreeSysroot     *self,
@@ -2881,20 +2978,10 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                             GCancellable      *cancellable,
                             GError           **error)
 {
-  if (!_ostree_sysroot_ensure_writable (self, error))
-    return FALSE;
-
-  g_autoptr(OstreeDeployment) deployment = NULL;
-  if (!sysroot_initialize_deployment (self, osname, revision, origin, override_kernel_argv,
-                                      &deployment, cancellable, error))
-    return FALSE;
-
-  if (!sysroot_finalize_deployment (self, deployment, provided_merge_deployment,
-                                    cancellable, error))
-    return FALSE;
-
-  *out_new_deployment = g_steal_pointer (&deployment);
-  return TRUE;
+  OstreeSysrootDeployTreeOpts opts = { .override_kernel_argv = override_kernel_argv };
+  return ostree_sysroot_deploy_tree_with_options (self, osname, revision, origin,
+                                                  provided_merge_deployment, &opts,
+                                                  out_new_deployment, cancellable, error);
 }
 
 /* Serialize information about a deployment to a variant, used by the staging
@@ -2957,6 +3044,63 @@ _ostree_sysroot_deserialize_deployment_from_variant (GVariant *v,
 
 
 /**
+ * ostree_sysroot_stage_overlay_initrd:
+ * @self: Sysroot
+ * @fd: (transfer none): File descriptor to overlay initrd
+ * @out_checksum: (out) (transfer full): Overlay initrd checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Stage an overlay initrd to be used in an upcoming deployment. Returns a checksum which
+ * can be passed to ostree_sysroot_deploy_tree_with_options() or
+ * ostree_sysroot_stage_tree_with_options() via the `overlay_initrds` array option.
+ *
+ * Since: 2020.7
+ */
+gboolean
+ostree_sysroot_stage_overlay_initrd (OstreeSysroot  *self,
+                                     int             fd,
+                                     char          **out_checksum,
+                                     GCancellable   *cancellable,
+                                     GError        **error)
+{
+  g_return_val_if_fail (fd != -1, FALSE);
+  g_return_val_if_fail (out_checksum != NULL, FALSE);
+
+  if (!glnx_shutil_mkdir_p_at (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR,
+                               0755, cancellable, error))
+    return FALSE;
+
+  glnx_autofd int staged_initrds_dfd = -1;
+  if (!glnx_opendirat (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR, FALSE,
+                       &staged_initrds_dfd, error))
+    return FALSE;
+
+  g_auto(GLnxTmpfile) overlay_initrd = { 0, };
+  if (!glnx_open_tmpfile_linkable_at (staged_initrds_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                      &overlay_initrd, error))
+    return FALSE;
+
+  char checksum[_OSTREE_SHA256_STRING_LEN+1];
+  {
+    g_autoptr(GOutputStream) output = g_unix_output_stream_new (overlay_initrd.fd, FALSE);
+    g_autoptr(GInputStream) input = g_unix_input_stream_new (fd, FALSE);
+    g_autofree guchar *digest = NULL;
+    if (!ot_gio_splice_get_checksum (output, input, &digest, cancellable, error))
+      return FALSE;
+    ot_bin2hex (checksum, (guint8*)digest, _OSTREE_SHA256_DIGEST_LEN);
+  }
+
+  if (!glnx_link_tmpfile_at (&overlay_initrd, GLNX_LINK_TMPFILE_REPLACE,
+                             staged_initrds_dfd, checksum, error))
+    return FALSE;
+
+  *out_checksum = g_strdup (checksum);
+  return TRUE;
+}
+
+
+/**
  * ostree_sysroot_stage_tree:
  * @self: Sysroot
  * @osname: (allow-none): osname to use for merge deployment
@@ -2968,8 +3112,7 @@ _ostree_sysroot_deserialize_deployment_from_variant (GVariant *v,
  * @cancellable: Cancellable
  * @error: Error
  *
- * Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
- * shutdown time.
+ * Older version of ostree_sysroot_stage_tree_with_options().
  *
  * Since: 2018.5
  */
@@ -2983,6 +3126,41 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
                            OstreeDeployment **out_new_deployment,
                            GCancellable      *cancellable,
                            GError           **error)
+{
+  OstreeSysrootDeployTreeOpts opts = { .override_kernel_argv = override_kernel_argv };
+  return ostree_sysroot_stage_tree_with_options (self, osname, revision, origin,
+                                                 merge_deployment, &opts,
+                                                 out_new_deployment, cancellable, error);
+}
+
+
+/**
+ * ostree_sysroot_stage_tree_with_options:
+ * @self: Sysroot
+ * @osname: (allow-none): osname to use for merge deployment
+ * @revision: Checksum to add
+ * @origin: (allow-none): Origin to use for upgrades
+ * @merge_deployment: (allow-none): Use this deployment for merge path
+ * @opts: Options
+ * @out_new_deployment: (out): The new deployment path
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
+ * shutdown time.
+ *
+ * Since: 2020.7
+ */
+gboolean
+ostree_sysroot_stage_tree_with_options (OstreeSysroot     *self,
+                                        const char        *osname,
+                                        const char        *revision,
+                                        GKeyFile          *origin,
+                                        OstreeDeployment  *merge_deployment,
+                                        OstreeSysrootDeployTreeOpts *opts,
+                                        OstreeDeployment **out_new_deployment,
+                                        GCancellable      *cancellable,
+                                        GError           **error)
 {
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
@@ -3014,8 +3192,8 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
     } /* OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH */
 
   g_autoptr(OstreeDeployment) deployment = NULL;
-  if (!sysroot_initialize_deployment (self, osname, revision, origin, override_kernel_argv,
-                                      &deployment, cancellable, error))
+  if (!sysroot_initialize_deployment (self, osname, revision, origin, opts, &deployment,
+                                      cancellable, error))
     return FALSE;
 
   /* Write out the origin file using the sepolicy from the non-merged root for
@@ -3050,9 +3228,12 @@ ostree_sysroot_stage_tree (OstreeSysroot     *self,
     g_variant_builder_add (builder, "{sv}", "merge-deployment",
                            serialize_deployment_to_variant (merge_deployment));
 
-  if (override_kernel_argv)
+  if (opts && opts->override_kernel_argv)
     g_variant_builder_add (builder, "{sv}", "kargs",
-                           g_variant_new_strv ((const char *const*)override_kernel_argv, -1));
+                           g_variant_new_strv ((const char *const*)opts->override_kernel_argv, -1));
+  if (opts && opts->overlay_initrds)
+    g_variant_builder_add (builder, "{sv}", "overlay-initrds",
+                           g_variant_new_strv ((const char *const*)opts->overlay_initrds, -1));
 
   const char *parent = dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED));
   if (!glnx_shutil_mkdir_p_at (AT_FDCWD, parent, 0755, cancellable, error))

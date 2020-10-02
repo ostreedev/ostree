@@ -44,6 +44,7 @@ static gboolean opt_kernel_proc_cmdline;
 static char *opt_osname;
 static char *opt_origin_path;
 static gboolean opt_kernel_arg_none;
+static char **opt_overlay_initrds;
 
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
@@ -59,6 +60,7 @@ static GOptionEntry options[] = {
   { "karg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "NAME=VALUE" },
   { "karg-append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "NAME=VALUE" },
   { "karg-none", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_arg_none, "Do not import kernel arguments", NULL },
+  { "overlay-initrd", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_overlay_initrds, "Overlay iniramfs file", "FILE" },
   { NULL }
 };
 
@@ -167,24 +169,76 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
       ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
     }
 
-  g_autoptr(OstreeDeployment) new_deployment = NULL;
+  g_autoptr(GPtrArray) overlay_initrd_chksums = NULL;
+  for (char **it = opt_overlay_initrds; it && *it; it++)
+    {
+      const char *path = *it;
+
+      glnx_autofd int fd = -1;
+      if (!glnx_openat_rdonly (AT_FDCWD, path, TRUE, &fd, error))
+        return FALSE;
+
+      g_autofree char *chksum = NULL;
+      if (!ostree_sysroot_stage_overlay_initrd (sysroot, fd, &chksum, cancellable, error))
+        return FALSE;
+
+      if (!overlay_initrd_chksums)
+        overlay_initrd_chksums = g_ptr_array_new_full (g_strv_length (opt_overlay_initrds), g_free);
+      g_ptr_array_add (overlay_initrd_chksums, g_steal_pointer (&chksum));
+    }
+
+  if (overlay_initrd_chksums)
+    g_ptr_array_add (overlay_initrd_chksums, NULL);
+
   g_auto(GStrv) kargs_strv = kargs ? ostree_kernel_args_to_strv (kargs) : NULL;
+
+  OstreeSysrootDeployTreeOpts opts = {
+    .override_kernel_argv = kargs_strv,
+    .overlay_initrds = overlay_initrd_chksums ? (char**)overlay_initrd_chksums->pdata : NULL,
+  };
+
+  g_autoptr(OstreeDeployment) new_deployment = NULL;
   if (opt_stage)
     {
       if (opt_retain_pending || opt_retain_rollback)
         return glnx_throw (error, "--stage cannot currently be combined with --retain arguments");
       if (opt_not_as_default)
         return glnx_throw (error, "--stage cannot currently be combined with --not-as-default");
-      if (!ostree_sysroot_stage_tree (sysroot, opt_osname, revision, origin, merge_deployment,
-                                      kargs_strv, &new_deployment, cancellable, error))
-        return FALSE;
+      /* use old API if we can to exercise it in CI */
+      if (!overlay_initrd_chksums)
+        {
+          if (!ostree_sysroot_stage_tree (sysroot, opt_osname, revision, origin,
+                                          merge_deployment, kargs_strv, &new_deployment,
+                                          cancellable, error))
+            return FALSE;
+        }
+      else
+        {
+          if (!ostree_sysroot_stage_tree_with_options (sysroot, opt_osname, revision,
+                                                       origin, merge_deployment, &opts,
+                                                       &new_deployment, cancellable, error))
+            return FALSE;
+        }
       g_assert (new_deployment);
     }
   else
     {
-      if (!ostree_sysroot_deploy_tree (sysroot, opt_osname, revision, origin, merge_deployment,
-                                       kargs_strv, &new_deployment, cancellable, error))
-        return FALSE;
+      /* use old API if we can to exercise it in CI */
+      if (!overlay_initrd_chksums)
+        {
+          if (!ostree_sysroot_deploy_tree (sysroot, opt_osname, revision, origin,
+                                           merge_deployment, kargs_strv, &new_deployment,
+                                           cancellable, error))
+            return FALSE;
+        }
+      else
+        {
+          if (!ostree_sysroot_deploy_tree_with_options (sysroot, opt_osname, revision,
+                                                        origin, merge_deployment, &opts,
+                                                        &new_deployment, cancellable,
+                                                        error))
+            return FALSE;
+        }
       g_assert (new_deployment);
 
       OstreeSysrootSimpleWriteDeploymentFlags flags = OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
