@@ -1,0 +1,11 @@
+# build into f32-coreos-continuous on every commit to master
+jobs:
+    - job: production_build
+      trigger: commit
+      metadata:
+          branch: master
+          targets: f32-coreos-continuous
+specfile_path: ostree.spec
+actions:
+    # https://packit.dev/faq/#how-can-i-download-rpm-spec-file-if-it-is-not-part-of-upstream-repository
+    post-upstream-clone: "wget https://src.fedoraproject.org/rpms/ostree/raw/master/f/ostree.spec"
