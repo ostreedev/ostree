@@ -1,4 +1,12 @@
+---
+nav_order: 10
+---
+
 # Related Projects
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 OSTree is in many ways very evolutionary.  It builds on concepts and
 ideas introduced from many different projects such as

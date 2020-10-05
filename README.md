@@ -1,9 +1,4 @@
-libostree
----------
-
-New! See the docs online at [Read The Docs (OSTree)](https://ostree.readthedocs.org/en/latest/ )
-
------
+# libostree
 
 This project is now known as "libostree", though it is still appropriate to use
 the previous name: "OSTree" (or "ostree"). The focus is on projects which use
@@ -36,8 +31,12 @@ version of
    projects like [flatpak](https://github.com/flatpak/flatpak) which
    use libostree for applications, rather than hosts.
 
-Operating systems and distributions using OSTree
----------------------
+## Documentation
+
+For more information, see the [project documentation](docs/index.md) or the
+[project documentation website](https://ostreedev.github.io/ostree).
+
+## Operating systems and distributions using OSTree
 
 [Endless OS](https://endlessos.com/) uses libostree for their host system as
 well as flatpak. See
@@ -63,8 +62,7 @@ system for GNOME.
 [Liri OS](https://liri.io/download/silverblue/) has the option to install
 their distribution using ostree.
 
-Distribution build tools
-------------------------
+## Distribution build tools
 
 [meta-updater](https://github.com/advancedtelematic/meta-updater) is
 a layer available for [OpenEmbedded](http://www.openembedded.org/wiki/Main_Page)
@@ -79,8 +77,7 @@ integration tool supports importing and exporting from libostree repos.
 Fedora [coreos-assembler](https://github.com/coreos/coreos-assembler) is
 the build tool used to generate Fedora CoreOS derivatives.
 
-Projects linking to libostree
------------------------------
+## Projects linking to libostree
 
 [rpm-ostree](https://github.com/projectatomic/rpm-ostree) is used by the
 Fedora-derived operating systems listed above.  It is a full hybrid
@@ -98,8 +95,7 @@ use the "libostree host system" aspects (e.g. bootloader management), just the
 "git-like hardlink dedup". For example, flatpak supports a per-user OSTree
 repository.
 
-Language bindings
-----
+## Language bindings
 
 libostree is accessible via [GObject Introspection](https://gi.readthedocs.io/en/latest/);
 any language which has implemented the GI binding model should work.
@@ -114,8 +110,7 @@ for statically compiled languages.  Here's a list of such bindings:
  - [ostree-go](https://github.com/ostreedev/ostree-go/)
  - [ostree-rs](https://gitlab.com/fkrull/ostree-rs/)
 
-Building
---------
+## Building
 
 Releases are available as GPG signed git tags, and most recent
 versions support extended validation using
@@ -139,19 +134,11 @@ make
 make install DESTDIR=/path/to/dest
 ```
 
-More documentation
-------------------
-
-New! See the docs online at [Read The Docs (OSTree)](https://ostree.readthedocs.org/en/latest/ )
-
-Contributing
-------------
+## Contributing
 
 See [Contributing](docs/CONTRIBUTING.md).
 
-
-Licensing
--------
+## Licensing
 
 The licensing for the *code* of libostree can be canonically found in the individual files;
 and the overall status in the [COPYING](https://github.com/ostreedev/ostree/blob/master/COPYING)

@@ -1,4 +1,12 @@
+---
+nav_order: 3
+---
+
 # Anatomy of an OSTree repository
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 ## Core object types and data model
 

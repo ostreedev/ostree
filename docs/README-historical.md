@@ -1,6 +1,11 @@
-This file is outdated, but some of the text here is still useful for
+---
+nav_order: 99
+title: Historical OSTree README
+---
+
+**This file is outdated, but some of the text here is still useful for
 historical context.  I'm preserving it (explicitly still in the tree)
-for posterity.
+for posterity.**
 
 OSTree
 ======
@@ -49,7 +54,7 @@ Comparison with existing tools
     Now your system is in an undefined state.  You can use e.g. rpm
     -qV to try to find out what you overwrote, but neither dpkg nor
     rpm will help clean up any files left over that aren't shipped by
-    the old package.  
+    the old package.
 
     This is most realistic option for people hacking on system
     components currently, but ostree will be better.
@@ -205,7 +210,7 @@ handling of binaries is very generic and unoptimized.
 
 In contrast, ostree is explicitly designed for binaries, and in
 particular one type of binary - ELF executables (or it will be once we
-start using bsdiff).  
+start using bsdiff).
 
 Another big difference versus git is that ostree uses hard links
 between "checkouts" and the repository.  This means each checkout uses

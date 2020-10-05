@@ -1,4 +1,12 @@
+---
+nav_order: 9
+---
+
 # Managing content in OSTree repositories
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 Once you have a build system going, if you actually want client
 systems to retrieve the content, you will quickly feel a need for

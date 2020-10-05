@@ -1,21 +1,14 @@
+---
+nav_order: 20
+---
+
 # OSTree Contributing Tutorial
+{: .no_toc }
 
 The following guide is about OSTree forking, building, adding a command, testing the command, and submitting the change.
 
-- [Getting Started](#getting-started)
-- [Building OSTree](#building-ostree)
-    - [Install Build Dependencies](#install-build-dependencies)
-    - [OSTree Build Commands](#ostree-build-commands)
-- [Testing a Build](#testing-a-build)
-    - [Testing in a Container](#testing-in-a-container)
-    - [Testing in a Virtual Machine](#testing-in-a-virtual-machine)
-- [Tutorial: Adding a basic builtin command to OSTree](#tutorial-adding-a-basic-builtin-command-to-ostree)
-    - [Modifying OSTree](#modifying-ostree)
-    - [OSTree Tests](#ostree-tests)
-    - [Submitting a Patch](#submitting-a-patch)
-    - [Returning Workflow](#returning-workflow)
-
----
+1. TOC
+{:toc}
 
 ## Getting Started
 

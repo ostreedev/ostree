@@ -1,0 +1,40 @@
+title: ostreedev/ostree
+description: ostree documentation
+baseurl: "/ostree"
+url: "https://coreos.github.io"
+# Comment above and use below for local development
+# url: "http://localhost:4000"
+permalink: /:title/
+markdown: kramdown
+
+remote_theme: coreos/just-the-docs
+plugins:
+  - jekyll-remote-theme
+
+color_scheme: coreos
+
+# Aux links for the upper right navigation
+aux_links:
+  "OSTree on GitHub":
+    - "https://github.com/ostreedev/ostree"
+
+footer_content: "Copyright &copy; <a href=\"https://www.redhat.com\">Red Hat, Inc.</a> and <a href=\"https://github.com/ostreedev\">others</a>."
+
+# Footer last edited timestamp
+last_edit_timestamp: true
+last_edit_time_format: "%b %e %Y at %I:%M %p"
+
+# Footer "Edit this page on GitHub" link text
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/ostreedev/ostree"
+gh_edit_branch: "master"
+gh_edit_view_mode: "tree"
+
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  startings: []
+  blanklines: false
+  profile: false

@@ -1,4 +1,12 @@
+---
+nav_order: 8
+---
+
 # Writing a buildsystem and managing repositories
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 OSTree is not a package system.  It does not directly support building
 source code.  Rather, it is a tool for transporting and managing

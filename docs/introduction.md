@@ -1,4 +1,12 @@
+---
+nav_order: 2
+---
+
 # OSTree Overview
+{: .no_toc }
+
+1. TOC
+{:toc}
 
 ## Introduction
 
