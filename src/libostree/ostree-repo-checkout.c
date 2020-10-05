@@ -637,8 +637,12 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       need_copy = FALSE;
     }
-  else if ((options->force_copy_zerosized && is_reg_zerosized) || override_user_unreadable)
+  else if (is_reg_zerosized || override_user_unreadable)
     {
+      /* In https://github.com/ostreedev/ostree/commit/673cacd633f9d6b653cdea530657d3e780a41bbd we
+       * made this an option, but in order to avoid hitting EMLINK, we now force copy zerosized
+       * files unconditionally.
+       */
       need_copy = TRUE;
     }
   else if (!options->force_copy)
