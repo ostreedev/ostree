@@ -8,4 +8,7 @@ jobs:
 specfile_path: ostree.spec
 actions:
     # https://packit.dev/faq/#how-can-i-download-rpm-spec-file-if-it-is-not-part-of-upstream-repository
-    post-upstream-clone: "wget https://src.fedoraproject.org/rpms/ostree/raw/master/f/ostree.spec"
+    post-upstream-clone:
+        - "wget https://src.fedoraproject.org/rpms/ostree/raw/master/f/ostree.spec"
+        # we don't want any downstream patches
+        - "sed -ie 's/^Patch/# Patch/g' ostree.spec"
