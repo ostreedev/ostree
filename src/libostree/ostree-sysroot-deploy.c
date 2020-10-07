@@ -272,13 +272,13 @@ checksum_dir_recurse (int          dfd,
         }
       else
         {
-          int fd;
+          glnx_autofd int fd = -1;
 
           if (!ot_openat_ignore_enoent (dfditer.fd, d_name, &fd, error))
             return FALSE;
           if (fd != -1)
             {
-              g_autoptr(GInputStream) in = g_unix_input_stream_new (fd, FALSE);
+              g_autoptr(GInputStream) in = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
               if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
                 return FALSE;
             }
