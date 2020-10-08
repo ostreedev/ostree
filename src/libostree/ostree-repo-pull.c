@@ -5372,8 +5372,8 @@ find_remotes_cb (GObject      *obj,
 
       /* Check the metadata in the summary file, especially whether it contains
        * all the @refs we are interested in. */
-      summary_v = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                            summary_bytes, FALSE);
+      summary_v = g_variant_ref_sink (g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                                                summary_bytes, FALSE));
 
       /* Check the summary’s additional metadata and set up @commit_metadata
        * and @refs_and_remotes_table with the refs listed in the summary file,
@@ -6127,7 +6127,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
       (void) g_variant_lookup (options, "http-headers", "@a(ss)", &extra_headers);
       (void) g_variant_lookup (options, "append-user-agent", "&s", &append_user_agent);
-      (void) g_variant_lookup (options, "n-network-retries", "&u", &n_network_retries);
+      (void) g_variant_lookup (options, "n-network-retries", "u", &n_network_retries);
     }
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
