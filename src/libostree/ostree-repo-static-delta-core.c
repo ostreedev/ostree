@@ -1265,6 +1265,12 @@ ostree_repo_static_delta_reindex (OstreeRepo                 *repo,
   g_autoptr(GPtrArray) all_deltas = NULL;
   g_autoptr(GHashTable) deltas_to_commit_ht = NULL; /* map: to checksum -> ptrarray of from checksums (or NULL) */
 
+  /* Protect against parallel prune operation */
+  g_autoptr(OstreeRepoAutoLock) lock =
+    _ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_SHARED, cancellable, error);
+  if (!lock)
+    return FALSE;
+
   deltas_to_commit_ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)null_or_ptr_array_unref);
 
   if (opt_to_commit == NULL)
