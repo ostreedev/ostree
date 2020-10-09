@@ -82,6 +82,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-pull-mirror-summary.sh \
 	tests/test-pull-large-metadata.sh \
 	tests/test-pull-metalink.sh \
+	tests/test-pull-summary-caching.sh \
 	tests/test-pull-summary-sigs.sh \
 	tests/test-pull-resume.sh \
 	tests/test-pull-basicauth.sh \
