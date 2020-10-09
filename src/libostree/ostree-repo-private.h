@@ -57,6 +57,7 @@ G_BEGIN_DECLS
 #define OSTREE_SUMMARY_COLLECTION_MAP "ostree.summary.collection-map"
 #define OSTREE_SUMMARY_MODE "ostree.summary.mode"
 #define OSTREE_SUMMARY_TOMBSTONE_COMMITS "ostree.summary.tombstone-commits"
+#define OSTREE_SUMMARY_INDEXED_DELTAS "ostree.summary.indexed-deltas"
 
 #define _OSTREE_PAYLOAD_LINK_PREFIX "../"
 #define _OSTREE_PAYLOAD_LINK_PREFIX_LEN (sizeof (_OSTREE_PAYLOAD_LINK_PREFIX) - 1)

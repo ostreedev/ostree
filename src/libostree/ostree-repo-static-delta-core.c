@@ -1264,12 +1264,27 @@ ostree_repo_static_delta_reindex (OstreeRepo                 *repo,
 {
   g_autoptr(GPtrArray) all_deltas = NULL;
   g_autoptr(GHashTable) deltas_to_commit_ht = NULL; /* map: to checksum -> ptrarray of from checksums (or NULL) */
+  gboolean opt_indexed_deltas;
 
   /* Protect against parallel prune operation */
   g_autoptr(OstreeRepoAutoLock) lock =
     _ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_SHARED, cancellable, error);
   if (!lock)
     return FALSE;
+
+  /* Enusre that the "indexed-deltas" option is set on the config, so we know this when pulling */
+  if (!ot_keyfile_get_boolean_with_default (repo->config, "core",
+                                            "indexed-deltas", FALSE,
+                                            &opt_indexed_deltas, error))
+    return FALSE;
+
+  if (!opt_indexed_deltas)
+    {
+      g_autoptr(GKeyFile) config = ostree_repo_copy_config (repo);
+      g_key_file_set_boolean (config, "core", "indexed-deltas", TRUE);
+      if (!ostree_repo_write_config (repo, config, error))
+        return FALSE;
+    }
 
   deltas_to_commit_ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)null_or_ptr_array_unref);
 

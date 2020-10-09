@@ -5842,6 +5842,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                  g_variant_new_boolean (tombstone_commits));
   }
 
+  g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_INDEXED_DELTAS,
+                               g_variant_new_boolean (TRUE));
+
   /* Add refs which have a collection specified, which could be in refs/mirrors,
    * refs/heads, and/or refs/remotes. */
   {
