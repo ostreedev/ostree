@@ -1074,6 +1074,23 @@ gboolean ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                             GCancellable                 *cancellable,
                                             GError                      **error);
 
+/**
+ * OstreeStaticDeltaIndexFlags:
+ * @OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE: No special flags
+ *
+ * Flags controlling static delta index generation.
+ */
+typedef enum {
+  OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE = 0,
+} OstreeStaticDeltaIndexFlags;
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_static_delta_reindex (OstreeRepo                  *repo,
+                                           OstreeStaticDeltaIndexFlags flags,
+                                           const char                  *opt_to_commit,
+                                           GCancellable                *cancellable,
+                                           GError                     **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
                                                                   GFile        *dir_or_file,

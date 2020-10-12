@@ -20,6 +20,7 @@
 LIBOSTREE_2020.8 {
 global:
   ostree_repo_list_static_delta_indexes;
+  ostree_repo_static_delta_reindex;
 } LIBOSTREE_2020.7;
 
 /* Stub section for the stable release *after* this development one; don't

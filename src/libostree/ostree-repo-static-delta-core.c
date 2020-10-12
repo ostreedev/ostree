@@ -1238,11 +1238,29 @@ file_has_content (OstreeRepo   *repo,
   return g_bytes_equal (existing_data, data);
 }
 
+/**
+ * ostree_repo_static_delta_reindex:
+ * @repo: Repo
+ * @flags: Flags affecting the indexing operation
+ * @opt_to_commit: ASCII SHA256 checksum of target commit, or %NULL to index all targets
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * The delta index for a particular commit lists all the existing deltas that can be used
+ * when downloading that commit. This operation regenerates these indexes, either for
+ * a particular commit (if @opt_to_commit is non-%NULL), or for all commits that
+ * are reachable by an existing delta (if @opt_to_commit is %NULL).
+ *
+ * This is normally called automatically when the summary is updated in ostree_repo_regenerate_summary().
+ *
+ * Locking: shared
+ */
 gboolean
-_ostree_repo_static_delta_reindex (OstreeRepo                 *repo,
-                                   const char                 *opt_to_commit,
-                                   GCancellable               *cancellable,
-                                   GError                    **error)
+ostree_repo_static_delta_reindex (OstreeRepo                 *repo,
+                                  OstreeStaticDeltaIndexFlags flags,
+                                  const char                 *opt_to_commit,
+                                  GCancellable               *cancellable,
+                                  GError                    **error)
 {
   g_autoptr(GPtrArray) all_deltas = NULL;
   g_autoptr(GHashTable) deltas_to_commit_ht = NULL; /* map: to checksum -> ptrarray of from checksums (or NULL) */
