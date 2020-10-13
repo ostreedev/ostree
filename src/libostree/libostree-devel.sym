@@ -17,19 +17,9 @@
   Boston, MA 02111-1307, USA.
 ***/
 
-LIBOSTREE_2020.7 {
-global:
-  /* Add symbols here, and uncomment the bits in
-   * Makefile-libostree.am to enable this too.
-   */
-  ostree_repo_static_delta_execute_offline_with_signature;
-  ostree_repo_static_delta_verify_signature;
-  ostree_bootconfig_parser_get_overlay_initrds;
-  ostree_bootconfig_parser_set_overlay_initrds;
-  ostree_sysroot_deploy_tree_with_options;
-  ostree_sysroot_stage_tree_with_options;
-  ostree_sysroot_stage_overlay_initrd;
-} LIBOSTREE_2020.4;
+/* Copy the bits below and uncomment the include in Makefile-libostree.am
+   when adding a symbol.
+*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
