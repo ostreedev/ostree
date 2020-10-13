@@ -3046,7 +3046,7 @@ _ostree_sysroot_deserialize_deployment_from_variant (GVariant *v,
 /**
  * ostree_sysroot_stage_overlay_initrd:
  * @self: Sysroot
- * @fd: (transfer none): File descriptor to overlay initrd
+ * @fd: File descriptor to overlay initrd
  * @out_checksum: (out) (transfer full): Overlay initrd checksum
  * @cancellable: Cancellable
  * @error: Error
