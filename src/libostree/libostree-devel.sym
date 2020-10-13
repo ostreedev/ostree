@@ -17,6 +17,10 @@
   Boston, MA 02111-1307, USA.
 ***/
 
+/* Copy the bits below and uncomment the include in Makefile-libostree.am
+   when adding a symbol.
+*/
+
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
