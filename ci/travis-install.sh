@@ -64,10 +64,10 @@ fi
 
 if [ -n "$ci_docker" ]; then
     sed \
-        -e "s/@ci_distro@/${ci_distro}/" \
-        -e "s/@ci_docker@/${ci_docker}/" \
-        -e "s/@ci_suite@/${ci_suite}/" \
-        -e "s/@ci_pkgs@/${ci_pkgs}/" \
+        -e "s,@ci_distro@,${ci_distro}," \
+        -e "s,@ci_docker@,${ci_docker}," \
+        -e "s,@ci_suite@,${ci_suite}," \
+        -e "s,@ci_pkgs@,${ci_pkgs}," \
         < ci/travis-Dockerfile.in > Dockerfile
     exec docker build -t ci-image .
 fi
