@@ -3040,7 +3040,7 @@ initial reference count, if it is unowned, we instead can write:
 g_source_set_closure (source, g_cclosure_new (cb_func, cb_data));
 ]|
 
-Generally, this function is used together with g_closure_ref(). Ane example
+Generally, this function is used together with g_closure_ref(). An example
 of storing a closure for later notification looks like:
 |[&lt;!-- language="C" --&gt;
 static GClosure *notify_closure = NULL;
@@ -4745,7 +4745,9 @@ to the #GObject implementation and should never be accessed directly.</doc>
         <doc xml:space="preserve">Creates a new instance of a #GObject subtype and sets its properties.
 
 Construction parameters (see #G_PARAM_CONSTRUCT, #G_PARAM_CONSTRUCT_ONLY)
-which are not explicitly specified are set to their default values.
+which are not explicitly specified are set to their default values. Any
+private data for the object is guaranteed to be initialized with zeros, as
+per g_type_create_instance().
 
 Note that in C, small integer types in variable argument lists are promoted
 up to #gint or #guint as appropriate, and read back accordingly. #gint is 32
@@ -6126,7 +6128,7 @@ Note that the @destroy callback is not called if @data is %NULL.</doc>
       </method>
       <method name="set_qdata" c:identifier="g_object_set_qdata" introspectable="0">
         <doc xml:space="preserve">This sets an opaque, named pointer on an object.
-The name is specified through a #GQuark (retrived e.g. via
+The name is specified through a #GQuark (retrieved e.g. via
 g_quark_from_static_string()), and the pointer
 can be gotten back from the @object with g_object_get_qdata()
 until the @object is finalized.
@@ -6270,7 +6272,7 @@ object_add_to_user_list (GObject     *object,
 {
   // the quark, naming the object data
   GQuark quark_string_list = g_quark_from_static_string ("my-string-list");
-  // retrive the old string list
+  // retrieve the old string list
   GList *list = g_object_steal_qdata (object, quark_string_list);
 
   // prepend new string
@@ -7326,8 +7328,8 @@ required to specify parameters, such as e.g. #GObject properties.
 
 ## Parameter names # {#canonical-parameter-names}
 
-A property name consists of segments consisting of ASCII letters and
-digits, separated by either the `-` or `_` character. The first
+A property name consists of one or more segments consisting of ASCII letters
+and digits, separated by either the `-` or `_` character. The first
 character of a property name must be a letter. These are the same rules as
 for signal naming (see g_signal_new()).
 
@@ -7372,6 +7374,25 @@ e.g. a tooltip. The @nick and @blurb should ideally be localized.</doc>
           <parameter name="flags" transfer-ownership="none">
             <doc xml:space="preserve">a combination of #GParamFlags</doc>
             <type name="ParamFlags" c:type="GParamFlags"/>
+          </parameter>
+        </parameters>
+      </function>
+      <function name="is_valid_name" c:identifier="g_param_spec_is_valid_name" version="2.66">
+        <doc xml:space="preserve">Validate a property name for a #GParamSpec. This can be useful for
+dynamically-generated properties which need to be validated at run-time
+before actually trying to create them.
+
+See [canonical parameter names][canonical-parameter-names] for details of
+the rules for valid names.</doc>
+        
+        <return-value transfer-ownership="none">
+          <doc xml:space="preserve">%TRUE if @name is a valid property name, %FALSE otherwise.</doc>
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <parameter name="name" transfer-ownership="none">
+            <doc xml:space="preserve">the canonical name of the property</doc>
+            <type name="utf8" c:type="const gchar*"/>
           </parameter>
         </parameters>
       </function>
@@ -7998,7 +8019,7 @@ properties.</doc>
 another paramspec.  All operations other than getting or
 setting the value are redirected, including accessing the nick and
 blurb, validating a value, and so forth. See
-g_param_spec_get_redirect_target() for retrieving the overidden
+g_param_spec_get_redirect_target() for retrieving the overridden
 property. #GParamSpecOverride is used in implementing
 g_object_class_override_property(), and will not be directly useful
 unless you are implementing a new base type similar to GObject.</doc>
@@ -10676,10 +10697,26 @@ from type %G_TYPE_BOXED.</doc>
         </parameter>
       </parameters>
     </function-macro>
+    <constant name="VALUE_INTERNED_STRING" value="268435456" c:type="G_VALUE_INTERNED_STRING" version="2.66">
+      <doc xml:space="preserve">For string values, indicates that the string contained is canonical and will
+exist for the duration of the process. See g_value_set_interned_string().</doc>
+      
+      <type name="gint" c:type="gint"/>
+    </constant>
+    <function-macro name="VALUE_IS_INTERNED_STRING" c:identifier="G_VALUE_IS_INTERNED_STRING" version="2.66" introspectable="0">
+      <doc xml:space="preserve">Checks whether @value contains a string which is canonical.</doc>
+      
+      <parameters>
+        <parameter name="value">
+          <doc xml:space="preserve">a valid #GValue structure</doc>
+        </parameter>
+      </parameters>
+    </function-macro>
     <constant name="VALUE_NOCOPY_CONTENTS" value="134217728" c:type="G_VALUE_NOCOPY_CONTENTS">
       <doc xml:space="preserve">If passed to G_VALUE_COLLECT(), allocated data won't be copied
 but used verbatim. This does not affect ref-counted types like
-objects.</doc>
+objects. This does not affect usage of g_value_copy(), the data will
+be copied if it is not ref-counted.</doc>
       
       <type name="gint" c:type="gint"/>
     </constant>
@@ -11455,6 +11492,25 @@ value_table's collect_value() function.</doc>
           </parameter>
         </parameters>
       </method>
+      <method name="set_interned_string" c:identifier="g_value_set_interned_string" version="2.66">
+        <doc xml:space="preserve">Set the contents of a %G_TYPE_STRING #GValue to @v_string.  The string is
+assumed to be static and interned (canonical, for example from
+g_intern_string()), and is thus not duplicated when setting the #GValue.</doc>
+        
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="value" transfer-ownership="none">
+            <doc xml:space="preserve">a valid #GValue of type %G_TYPE_STRING</doc>
+            <type name="Value" c:type="GValue*"/>
+          </instance-parameter>
+          <parameter name="v_string" transfer-ownership="none" nullable="1" allow-none="1">
+            <doc xml:space="preserve">static string to be set</doc>
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </method>
       <method name="set_long" c:identifier="g_value_set_long">
         <doc xml:space="preserve">Set the contents of a %G_TYPE_LONG #GValue to @v_long.</doc>
         
@@ -11608,7 +11664,10 @@ when setting the #GValue.</doc>
       <method name="set_static_string" c:identifier="g_value_set_static_string">
         <doc xml:space="preserve">Set the contents of a %G_TYPE_STRING #GValue to @v_string.
 The string is assumed to be static, and is thus not duplicated
-when setting the #GValue.</doc>
+when setting the #GValue.
+
+If the the string is a canonical string, using g_value_set_interned_string()
+is more appropriate.</doc>
         
         <return-value transfer-ownership="none">
           <type name="none" c:type="void"/>
@@ -13559,6 +13618,35 @@ may change in the future.</doc>
         </parameter>
       </parameters>
     </function>
+    <docsection name="enumerations_flags">
+      <doc xml:space="preserve">The GLib type system provides fundamental types for enumeration and
+flags types. (Flags types are like enumerations, but allow their
+values to be combined by bitwise or). A registered enumeration or
+flags type associates a name and a nickname with each allowed
+value, and the methods g_enum_get_value_by_name(),
+g_enum_get_value_by_nick(), g_flags_get_value_by_name() and
+g_flags_get_value_by_nick() can look up values by their name or
+nickname.  When an enumeration or flags type is registered with the
+GLib type system, it can be used as value type for object
+properties, using g_param_spec_enum() or g_param_spec_flags().
+
+GObject ships with a utility called [glib-mkenums][glib-mkenums],
+that can construct suitable type registration functions from C enumeration
+definitions.
+
+Example of how to get a string representation of an enum value:
+|[&lt;!-- language="C" --&gt;
+GEnumClass *enum_class;
+GEnumValue *enum_value;
+
+enum_class = g_type_class_ref (MAMAN_TYPE_MY_ENUM);
+enum_value = g_enum_get_value (enum_class, MAMAN_MY_ENUM_FOO);
+
+g_print ("Name: %s\n", enum_value-&gt;value_name);
+
+g_type_class_unref (enum_class);
+]|</doc>
+    </docsection>
     <function name="flags_complete_type_info" c:identifier="g_flags_complete_type_info">
       <doc xml:space="preserve">This function is meant to be called from the complete_type_info()
 function of a #GTypePlugin implementation, see the example for
@@ -13687,12 +13775,231 @@ may change in the future.</doc>
         </parameter>
       </parameters>
     </function>
+    <docsection name="gboxed">
+      <doc xml:space="preserve">#GBoxed is a generic wrapper mechanism for arbitrary C structures. The only
+thing the type system needs to know about the structures is how to copy them
+(a #GBoxedCopyFunc) and how to free them (a #GBoxedFreeFunc) &#x2014; beyond that
+they are treated as opaque chunks of memory.
+
+Boxed types are useful for simple value-holder structures like rectangles or
+points. They can also be used for wrapping structures defined in non-#GObject
+based libraries. They allow arbitrary structures to be handled in a uniform
+way, allowing uniform copying (or referencing) and freeing (or unreferencing)
+of them, and uniform representation of the type of the contained structure.
+In turn, this allows any type which can be boxed to be set as the data in a
+#GValue, which allows for polymorphic handling of a much wider range of data
+types, and hence usage of such types as #GObject property values.
+
+#GBoxed is designed so that reference counted types can be boxed. Use the
+type&#x2019;s &#x2018;ref&#x2019; function as the #GBoxedCopyFunc, and its &#x2018;unref&#x2019; function as the
+#GBoxedFreeFunc. For example, for #GBytes, the #GBoxedCopyFunc is
+g_bytes_ref(), and the #GBoxedFreeFunc is g_bytes_unref().</doc>
+    </docsection>
+    <docsection name="generic_values">
+      <doc xml:space="preserve">The #GValue structure is basically a variable container that consists
+of a type identifier and a specific value of that type.
+The type identifier within a #GValue structure always determines the
+type of the associated value.
+To create an undefined #GValue structure, simply create a zero-filled
+#GValue structure. To initialize the #GValue, use the g_value_init()
+function. A #GValue cannot be used until it is initialized.
+The basic type operations (such as freeing and copying) are determined
+by the #GTypeValueTable associated with the type ID stored in the #GValue.
+Other #GValue operations (such as converting values between types) are
+provided by this interface.
+
+The code in the example program below demonstrates #GValue's
+features.
+
+|[&lt;!-- language="C" --&gt;
+#include &lt;glib-object.h&gt;
+
+static void
+int2string (const GValue *src_value,
+            GValue       *dest_value)
+{
+  if (g_value_get_int (src_value) == 42)
+    g_value_set_static_string (dest_value, "An important number");
+  else
+    g_value_set_static_string (dest_value, "What's that?");
+}
+
+int
+main (int   argc,
+      char *argv[])
+{
+  // GValues must be initialized
+  GValue a = G_VALUE_INIT;
+  GValue b = G_VALUE_INIT;
+  const gchar *message;
+
+  // The GValue starts empty
+  g_assert (!G_VALUE_HOLDS_STRING (&amp;a));
+
+  // Put a string in it
+  g_value_init (&amp;a, G_TYPE_STRING);
+  g_assert (G_VALUE_HOLDS_STRING (&amp;a));
+  g_value_set_static_string (&amp;a, "Hello, world!");
+  g_printf ("%s\n", g_value_get_string (&amp;a));
+
+  // Reset it to its pristine state
+  g_value_unset (&amp;a);
+
+  // It can then be reused for another type
+  g_value_init (&amp;a, G_TYPE_INT);
+  g_value_set_int (&amp;a, 42);
+
+  // Attempt to transform it into a GValue of type STRING
+  g_value_init (&amp;b, G_TYPE_STRING);
+
+  // An INT is transformable to a STRING
+  g_assert (g_value_type_transformable (G_TYPE_INT, G_TYPE_STRING));
+
+  g_value_transform (&amp;a, &amp;b);
+  g_printf ("%s\n", g_value_get_string (&amp;b));
+
+  // Attempt to transform it again using a custom transform function
+  g_value_register_transform_func (G_TYPE_INT, G_TYPE_STRING, int2string);
+  g_value_transform (&amp;a, &amp;b);
+  g_printf ("%s\n", g_value_get_string (&amp;b));
+  return 0;
+}
+]|</doc>
+    </docsection>
+    <docsection name="gtype">
+      <doc xml:space="preserve">The GType API is the foundation of the GObject system.  It provides the
+facilities for registering and managing all fundamental data types,
+user-defined object and interface types.
+
+For type creation and registration purposes, all types fall into one of
+two categories: static or dynamic.  Static types are never loaded or
+unloaded at run-time as dynamic types may be.  Static types are created
+with g_type_register_static() that gets type specific information passed
+in via a #GTypeInfo structure.
+
+Dynamic types are created with g_type_register_dynamic() which takes a
+#GTypePlugin structure instead. The remaining type information (the
+#GTypeInfo structure) is retrieved during runtime through #GTypePlugin
+and the g_type_plugin_*() API.
+
+These registration functions are usually called only once from a
+function whose only purpose is to return the type identifier for a
+specific class.  Once the type (or class or interface) is registered,
+it may be instantiated, inherited, or implemented depending on exactly
+what sort of type it is.
+
+There is also a third registration function for registering fundamental
+types called g_type_register_fundamental() which requires both a #GTypeInfo
+structure and a #GTypeFundamentalInfo structure but it is seldom used
+since most fundamental types are predefined rather than user-defined.
+
+Type instance and class structs are limited to a total of 64 KiB,
+including all parent types. Similarly, type instances' private data
+(as created by G_ADD_PRIVATE()) are limited to a total of
+64 KiB. If a type instance needs a large static buffer, allocate it
+separately (typically by using #GArray or #GPtrArray) and put a pointer
+to the buffer in the structure.
+
+As mentioned in the [GType conventions][gtype-conventions], type names must
+be at least three characters long. There is no upper length limit. The first
+character must be a letter (a&#x2013;z or A&#x2013;Z) or an underscore (&#x2018;_&#x2019;). Subsequent
+characters can be letters, numbers or any of &#x2018;-_+&#x2019;.</doc>
+    </docsection>
     <function name="gtype_get_type" c:identifier="g_gtype_get_type">
       
       <return-value transfer-ownership="none">
         <type name="GType" c:type="GType"/>
       </return-value>
     </function>
+    <docsection name="objects">
+      <doc xml:space="preserve">GObject is the fundamental type providing the common attributes and
+methods for all object types in GTK+, Pango and other libraries
+based on GObject.  The GObject class provides methods for object
+construction and destruction, property access methods, and signal
+support.  Signals are described in detail [here][gobject-Signals].
+
+For a tutorial on implementing a new GObject class, see [How to define and
+implement a new GObject][howto-gobject]. For a list of naming conventions for
+GObjects and their methods, see the [GType conventions][gtype-conventions].
+For the high-level concepts behind GObject, read [Instantiable classed types:
+Objects][gtype-instantiable-classed].
+
+## Floating references # {#floating-ref}
+
+**Note**: Floating references are a C convenience API and should not be
+used in modern GObject code. Language bindings in particular find the
+concept highly problematic, as floating references are not identifiable
+through annotations, and neither are deviations from the floating reference
+behavior, like types that inherit from #GInitiallyUnowned and still return
+a full reference from g_object_new().
+
+GInitiallyUnowned is derived from GObject. The only difference between
+the two is that the initial reference of a GInitiallyUnowned is flagged
+as a "floating" reference. This means that it is not specifically
+claimed to be "owned" by any code portion. The main motivation for
+providing floating references is C convenience. In particular, it
+allows code to be written as:
+|[&lt;!-- language="C" --&gt;
+container = create_container ();
+container_add_child (container, create_child());
+]|
+If container_add_child() calls g_object_ref_sink() on the passed-in child,
+no reference of the newly created child is leaked. Without floating
+references, container_add_child() can only g_object_ref() the new child,
+so to implement this code without reference leaks, it would have to be
+written as:
+|[&lt;!-- language="C" --&gt;
+Child *child;
+container = create_container ();
+child = create_child ();
+container_add_child (container, child);
+g_object_unref (child);
+]|
+The floating reference can be converted into an ordinary reference by
+calling g_object_ref_sink(). For already sunken objects (objects that
+don't have a floating reference anymore), g_object_ref_sink() is equivalent
+to g_object_ref() and returns a new reference.
+
+Since floating references are useful almost exclusively for C convenience,
+language bindings that provide automated reference and memory ownership
+maintenance (such as smart pointers or garbage collection) should not
+expose floating references in their API. The best practice for handling
+types that have initially floating references is to immediately sink those
+references after g_object_new() returns, by checking if the #GType
+inherits from #GInitiallyUnowned. For instance:
+
+|[&lt;!-- language="C" --&gt;
+GObject *res = g_object_new_with_properties (gtype,
+                                             n_props,
+                                             prop_names,
+                                             prop_values);
+
+// or: if (g_type_is_a (gtype, G_TYPE_INITIALLY_UNOWNED))
+if (G_IS_INITIALLY_UNOWNED (res))
+  g_object_ref_sink (res);
+
+return res;
+]|
+
+Some object implementations may need to save an objects floating state
+across certain code portions (an example is #GtkMenu), to achieve this,
+the following sequence can be used:
+
+|[&lt;!-- language="C" --&gt;
+// save floating state
+gboolean was_floating = g_object_is_floating (object);
+g_object_ref_sink (object);
+// protected code portion
+
+...
+
+// restore floating state
+if (was_floating)
+  g_object_force_floating (object);
+else
+  g_object_unref (object); // release previously acquired reference
+]|</doc>
+    </docsection>
     <function name="param_spec_boolean" c:identifier="g_param_spec_boolean">
       <doc xml:space="preserve">Creates a new #GParamSpecBoolean instance specifying a %G_TYPE_BOOLEAN
 property. In many cases, it may be more appropriate to use an enum with
@@ -14587,7 +14894,7 @@ g_param_value_validate().</doc>
           <type name="ParamSpec" c:type="GParamSpec*"/>
         </parameter>
         <parameter name="src_value" transfer-ownership="none">
-          <doc xml:space="preserve">souce #GValue</doc>
+          <doc xml:space="preserve">source #GValue</doc>
           <type name="Value" c:type="const GValue*"/>
         </parameter>
         <parameter name="dest_value" transfer-ownership="none">
@@ -14637,6 +14944,19 @@ without modifications</doc>
         </parameter>
       </parameters>
     </function>
+    <docsection name="param_value_types">
+      <doc xml:space="preserve">#GValue provides an abstract container structure which can be
+copied, transformed and compared while holding a value of any
+(derived) type, which is registered as a #GType with a
+#GTypeValueTable in its #GTypeInfo structure.  Parameter
+specifications for most value types can be created as #GParamSpec
+derived instances, to implement e.g. #GObject properties which
+operate on #GValue containers.
+
+Parameter names need to start with a letter (a-z or A-Z). Subsequent
+characters can be letters, numbers or a '-'.
+All other characters are replaced by a '-' during construction.</doc>
+    </docsection>
     <function name="param_value_validate" c:identifier="g_param_value_validate">
       <doc xml:space="preserve">Ensures that the contents of @value comply with the specifications
 set out by @pspec. For example, a #GParamSpecInt might require
@@ -14738,7 +15058,7 @@ One convenient usage of this function is in implementing property setters:
     <function-macro name="set_weak_pointer" c:identifier="g_set_weak_pointer" version="2.56" introspectable="0">
       <doc xml:space="preserve">Updates a pointer to weakly refer to @new_object. It assigns @new_object
 to @weak_pointer_location and ensures that @weak_pointer_location will
-automaticaly be set to %NULL if @new_object gets destroyed. The assignment
+automatically be set to %NULL if @new_object gets destroyed. The assignment
 is not atomic. The weak reference is not thread-safe, see
 g_object_add_weak_pointer() for details.
 
@@ -15276,7 +15596,7 @@ specified signal returns a value, but may be ignored otherwise.</doc>
     <function name="signal_handler_block" c:identifier="g_signal_handler_block">
       <doc xml:space="preserve">Blocks a handler of an instance so it will not be called during any
 signal emissions unless it is unblocked again. Thus "blocking" a
-signal handler means to temporarily deactive it, a signal handler
+signal handler means to temporarily deactivate it, a signal handler
 has to be unblocked exactly the same amount of times it has been
 blocked before to become active again.
 
@@ -15660,6 +15980,25 @@ of building the arguments.</doc>
         </parameter>
       </parameters>
     </function>
+    <function name="signal_is_valid_name" c:identifier="g_signal_is_valid_name" version="2.66">
+      <doc xml:space="preserve">Validate a signal name. This can be useful for dynamically-generated signals
+which need to be validated at run-time before actually trying to create them.
+
+See [canonical parameter names][canonical-parameter-names] for details of
+the rules for valid names. The rules for signal names are the same as those
+for property names.</doc>
+      
+      <return-value transfer-ownership="none">
+        <doc xml:space="preserve">%TRUE if @name is a valid signal name, %FALSE otherwise.</doc>
+        <type name="gboolean" c:type="gboolean"/>
+      </return-value>
+      <parameters>
+        <parameter name="name" transfer-ownership="none">
+          <doc xml:space="preserve">the canonical name of the signal</doc>
+          <type name="utf8" c:type="const gchar*"/>
+        </parameter>
+      </parameters>
+    </function>
     <function name="signal_list_ids" c:identifier="g_signal_list_ids">
       <doc xml:space="preserve">Lists the signals by id that a certain instance or interface type
 created. Further information about the signals can be acquired through
@@ -15813,7 +16152,7 @@ This is a variant of g_signal_new() that takes a C callback instead
 of a class offset for the signal's class handler. This function
 doesn't need a function pointer exposed in the class structure of
 an object definition, instead the function pointer is passed
-directly and can be overriden by derived classes with
+directly and can be overridden by derived classes with
 g_signal_override_class_closure() or
 g_signal_override_class_handler()and chained to with
 g_signal_chain_from_overridden() or
@@ -16224,6 +16563,92 @@ identified by @itype.</doc>
         </parameter>
       </parameters>
     </function>
+    <docsection name="signals">
+      <doc xml:space="preserve">The basic concept of the signal system is that of the emission
+of a signal. Signals are introduced per-type and are identified
+through strings. Signals introduced for a parent type are available
+in derived types as well, so basically they are a per-type facility
+that is inherited.
+
+A signal emission mainly involves invocation of a certain set of
+callbacks in precisely defined manner. There are two main categories
+of such callbacks, per-object ones and user provided ones.
+(Although signals can deal with any kind of instantiatable type, I'm
+referring to those types as "object types" in the following, simply
+because that is the context most users will encounter signals in.)
+The per-object callbacks are most often referred to as "object method
+handler" or "default (signal) handler", while user provided callbacks are
+usually just called "signal handler".
+
+The object method handler is provided at signal creation time (this most
+frequently happens at the end of an object class' creation), while user
+provided handlers are frequently connected and disconnected to/from a
+certain signal on certain object instances.
+
+A signal emission consists of five stages, unless prematurely stopped:
+
+1. Invocation of the object method handler for %G_SIGNAL_RUN_FIRST signals
+
+2. Invocation of normal user-provided signal handlers (where the @after
+   flag is not set)
+
+3. Invocation of the object method handler for %G_SIGNAL_RUN_LAST signals
+
+4. Invocation of user provided signal handlers (where the @after flag is set)
+
+5. Invocation of the object method handler for %G_SIGNAL_RUN_CLEANUP signals
+
+The user-provided signal handlers are called in the order they were
+connected in.
+
+All handlers may prematurely stop a signal emission, and any number of
+handlers may be connected, disconnected, blocked or unblocked during
+a signal emission.
+
+There are certain criteria for skipping user handlers in stages 2 and 4
+of a signal emission.
+
+First, user handlers may be blocked. Blocked handlers are omitted during
+callback invocation, to return from the blocked state, a handler has to
+get unblocked exactly the same amount of times it has been blocked before.
+
+Second, upon emission of a %G_SIGNAL_DETAILED signal, an additional
+@detail argument passed in to g_signal_emit() has to match the detail
+argument of the signal handler currently subject to invocation.
+Specification of no detail argument for signal handlers (omission of the
+detail part of the signal specification upon connection) serves as a
+wildcard and matches any detail argument passed in to emission.
+
+While the @detail argument is typically used to pass an object property name
+(as with #GObject::notify), no specific format is mandated for the detail
+string, other than that it must be non-empty.
+
+## Memory management of signal handlers # {#signal-memory-management}
+
+If you are connecting handlers to signals and using a #GObject instance as
+your signal handler user data, you should remember to pair calls to
+g_signal_connect() with calls to g_signal_handler_disconnect() or
+g_signal_handlers_disconnect_by_func(). While signal handlers are
+automatically disconnected when the object emitting the signal is finalised,
+they are not automatically disconnected when the signal handler user data is
+destroyed. If this user data is a #GObject instance, using it from a
+signal handler after it has been finalised is an error.
+
+There are two strategies for managing such user data. The first is to
+disconnect the signal handler (using g_signal_handler_disconnect() or
+g_signal_handlers_disconnect_by_func()) when the user data (object) is
+finalised; this has to be implemented manually. For non-threaded programs,
+g_signal_connect_object() can be used to implement this automatically.
+Currently, however, it is unsafe to use in threaded programs.
+
+The second is to hold a strong reference on the user data until after the
+signal is disconnected for other reasons. This can be implemented
+automatically using g_signal_connect_data().
+
+The first approach is recommended, as the second approach can result in
+effective memory leaks of the user data if the signal handler is never
+disconnected for some reason.</doc>
+    </docsection>
     <function name="source_set_closure" c:identifier="g_source_set_closure">
       <doc xml:space="preserve">Set the callback for a source as a #GClosure.
 
@@ -16638,7 +17063,7 @@ can be instantiated. The type system only performs basic allocation
 and structure setups for instances: actual instance creation should
 happen through functions supplied by the type's fundamental type
 implementation.  So use of g_type_create_instance() is reserved for
-implementators of fundamental types only. E.g. instances of the
+implementers of fundamental types only. E.g. instances of the
 #GObject hierarchy should be created via g_object_new() and never
 directly through g_type_create_instance() which doesn't handle things
 like singleton objects or object construction.
@@ -16684,7 +17109,7 @@ default interface vtable.</doc>
 and returns the default interface vtable for the type.
 
 If the type is not currently in use, then the default vtable
-for the type will be created and initalized by calling
+for the type will be created and initialized by calling
 the base interface init and default vtable init functions for
 the type (the @base_init and @class_init members of #GTypeInfo).
 Calling g_type_default_interface_ref() is useful when you
@@ -17395,6 +17820,29 @@ that implements or has internal knowledge of the implementation of
         </parameter>
       </parameters>
     </function>
+    <docsection name="value_arrays">
+      <doc xml:space="preserve">The prime purpose of a #GValueArray is for it to be used as an
+object property that holds an array of values. A #GValueArray wraps
+an array of #GValue elements in order for it to be used as a boxed
+type through %G_TYPE_VALUE_ARRAY.
+
+#GValueArray is deprecated in favour of #GArray since GLib 2.32. It
+is possible to create a #GArray that behaves like a #GValueArray by
+using the size of #GValue as the element size, and by setting
+g_value_unset() as the clear function using g_array_set_clear_func(),
+for instance, the following code:
+
+|[&lt;!-- language="C" --&gt;
+  GValueArray *array = g_value_array_new (10);
+]|
+
+can be replaced by:
+
+|[&lt;!-- language="C" --&gt;
+  GArray *array = g_array_sized_new (FALSE, TRUE, sizeof (GValue), 10);
+  g_array_set_clear_func (array, (GDestroyNotify) g_value_unset);
+]|</doc>
+    </docsection>
     <function name="value_register_transform_func" c:identifier="g_value_register_transform_func" moved-to="Value.register_transform_func" introspectable="0">
       <doc xml:space="preserve">Registers a value transformation function for use in g_value_transform().
 A previously registered transformation function for @src_type and @dest_type
