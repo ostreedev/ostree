@@ -103,12 +103,11 @@ Since static deltas may not exist, the client first needs to attempt
 to locate one.  Suppose a client wants to retrieve commit `${new}`
 while currently running `${current}`.
 
-The first thing to understand is that in order to save space, these
-two commits are "modified base64" - the `/` character is replaced with
-`_`.
+In order to save space, these two commits are "modified base64" - the 
+`/` character is replaced with `_`.
 
 Like the commit objects, a "prefix directory" is used to make
-management easier for filesystem tools
+management easier for filesystem tools.
 
 A delta is named `$(mbase64 $from)-$(mbase64 $to)`, for example
 `GpTyZaVut2jXFPWnO4LJiKEdRTvOw_mFUCtIKW1NIX0-L8f+VVDkEBKNc1Ncd+mDUrSVR4EyybQGCkuKtkDnTwk`,

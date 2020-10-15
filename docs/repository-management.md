@@ -106,8 +106,7 @@ want to "promote" that commit.  Let's create a new branch called
 complete system.  This might be where human testers get involved, for
 example.
 
-A basic way to "promote" the `buildmaster` commit that passed
-testing like this:
+This is a basic way to "promote" the `buildmaster` commit that passed testing:
 
 ```
 ostree commit -b exampleos/x86_64/smoketested/standard -s 'Passed tests' --tree=ref=aec070645fe53...

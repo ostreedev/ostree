@@ -26,7 +26,7 @@ at a time; each deployment is intended to be a target for
 Each deployment is grouped in exactly one "stateroot" (also known as an "osname");
 the former term is preferred.
 
-From above, you can see that an stateroot is physically represented in the
+From above, you can see that a stateroot is physically represented in the
 `/ostree/deploy/$stateroot` directory. For example, OSTree can allow parallel
 installing Debian in `/ostree/deploy/debian` and Red Hat Enterprise Linux in
 `/ostree/deploy/rhel` (subject to operating system support, present released

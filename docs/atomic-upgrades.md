@@ -30,14 +30,14 @@ the remote server.  Suppose we're tracking a ref named
 which contains a SHA256 checksum.  This determines the tree to deploy,
 and `/etc` will be merged from currently booted tree.
 
-If we do not have this commit, then, then we perform a pull process.
+If we do not have this commit, then we perform a pull process.
 At present (without static deltas), this involves quite simply just
 fetching each individual object that we do not have, asynchronously.
 Put in other words, we only download changed files (zlib-compressed).
 Each object has its checksum validated and is stored in `/ostree/repo/objects/`.
 
-Once the pull is complete, we have all the objects locally
-we need to perform a deployment.
+Once the pull is complete, we have downloaded all the objects that we need
+to perform a deployment.
 
 ## Upgrades via external tools (e.g. package managers)
 
@@ -50,7 +50,7 @@ locally, etc.
 
 At a practical level, most package managers today (`dpkg` and `rpm`)
 operate "live" on the currently booted filesystem.  The way they could
-work with OSTree is instead to take the list of installed packages in
+work with OSTree is to, instead, take the list of installed packages in
 the currently booted tree, and compute a new filesystem from that.  A
 later chapter describes in more details how this could work:
 [Adapting Existing Systems](adapting-existing.md).
