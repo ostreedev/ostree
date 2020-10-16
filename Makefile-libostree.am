@@ -68,6 +68,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-cmdprivate.c \
 	src/libostree/ostree-core-private.h \
 	src/libostree/ostree-core.c \
+	src/libostree/ostree-date-utils.c \
+	src/libostree/ostree-date-utils-private.h \
 	src/libostree/ostree-dummy-enumtypes.c \
 	src/libostree/ostree-checksum-input-stream.c \
 	src/libostree/ostree-checksum-input-stream.h \
