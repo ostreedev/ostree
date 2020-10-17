@@ -17,6 +17,8 @@
   before_script:
     - dnf install -y cargo rust ostree-devel
     - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+    # ??? This seems to not work correctly on Fedora Rawhide right now?
+    - ln -s /usr/bin/x86_64-redhat-linux-gnu-pkg-config /usr/bin/x86_64-redhat-linux-pkg-config
 
 # config with sccache based on Rust image, i.e. older libostree but shorter setup and rustup access
 .rust-ostree-devel:
