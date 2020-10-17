@@ -68,6 +68,7 @@ impl Sysroot {
     //    unsafe { TODO: call ostree_sys:ostree_sysroot_cleanup_prune_repo() }
     //}
 
+    #[cfg(any(feature = "v2018_5", feature = "dox"))]
     pub fn deploy_tree<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, provided_merge_deployment: Option<&Deployment>, override_kernel_argv: &[&str], cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
         unsafe {
             let mut out_new_deployment = ptr::null_mut();
@@ -76,6 +77,11 @@ impl Sysroot {
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
+
+    //#[cfg(any(feature = "v2020_7", feature = "dox"))]
+    //pub fn deploy_tree_with_options<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, provided_merge_deployment: Option<&Deployment>, opts: /*Ignored*/Option<&mut SysrootDeployTreeOpts>, cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
+    //    unsafe { TODO: call ostree_sys:ostree_sysroot_deploy_tree_with_options() }
+    //}
 
     pub fn deployment_set_kargs<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, new_kargs: &[&str], cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
@@ -318,6 +324,16 @@ impl Sysroot {
         }
     }
 
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn stage_overlay_initrd<P: IsA<gio::Cancellable>>(&self, fd: i32, cancellable: Option<&P>) -> Result<GString, glib::Error> {
+        unsafe {
+            let mut out_checksum = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_sysroot_stage_overlay_initrd(self.to_glib_none().0, fd, &mut out_checksum, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_checksum)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[cfg(any(feature = "v2018_5", feature = "dox"))]
     pub fn stage_tree<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, merge_deployment: Option<&Deployment>, override_kernel_argv: &[&str], cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
         unsafe {
@@ -327,6 +343,11 @@ impl Sysroot {
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
+
+    //#[cfg(any(feature = "v2020_7", feature = "dox"))]
+    //pub fn stage_tree_with_options<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, merge_deployment: Option<&Deployment>, opts: /*Ignored*/&mut SysrootDeployTreeOpts, cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
+    //    unsafe { TODO: call ostree_sys:ostree_sysroot_stage_tree_with_options() }
+    //}
 
     pub fn try_lock(&self) -> Result<bool, glib::Error> {
         unsafe {

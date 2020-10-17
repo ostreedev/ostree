@@ -38,6 +38,13 @@ impl BootconfigParser {
         }
     }
 
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn get_overlay_initrds(&self) -> Vec<GString> {
+        unsafe {
+            FromGlibPtrContainer::from_glib_none(ostree_sys::ostree_bootconfig_parser_get_overlay_initrds(self.to_glib_none().0))
+        }
+    }
+
     pub fn parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, path: &P, cancellable: Option<&Q>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -57,6 +64,13 @@ impl BootconfigParser {
     pub fn set(&self, key: &str, value: &str) {
         unsafe {
             ostree_sys::ostree_bootconfig_parser_set(self.to_glib_none().0, key.to_glib_none().0, value.to_glib_none().0);
+        }
+    }
+
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn set_overlay_initrds(&self, initrds: &[&str]) {
+        unsafe {
+            ostree_sys::ostree_bootconfig_parser_set_overlay_initrds(self.to_glib_none().0, initrds.to_glib_none().0);
         }
     }
 

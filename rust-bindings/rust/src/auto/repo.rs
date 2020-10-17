@@ -48,6 +48,8 @@ use RepoRemoteChange;
 #[cfg(any(feature = "v2016_7", feature = "dox"))]
 use RepoResolveRevExtFlags;
 use RepoTransactionStats;
+#[cfg(any(feature = "v2020_7", feature = "dox"))]
+use Sign;
 use StaticDeltaGenerateOpt;
 
 glib_wrapper! {
@@ -343,11 +345,11 @@ impl Repo {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_collection_refs() }
     //}
 
-    //pub fn list_commit_objects_starting_with<P: IsA<gio::Cancellable>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 187 }/TypeId { ns_id: 2, id: 187 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //pub fn list_commit_objects_starting_with<P: IsA<gio::Cancellable>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 194 }/TypeId { ns_id: 2, id: 194 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_commit_objects_starting_with() }
     //}
 
-    //pub fn list_objects<P: IsA<gio::Cancellable>>(&self, flags: RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 187 }/TypeId { ns_id: 2, id: 187 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //pub fn list_objects<P: IsA<gio::Cancellable>>(&self, flags: RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 194 }/TypeId { ns_id: 2, id: 194 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_objects() }
     //}
 
@@ -775,10 +777,28 @@ impl Repo {
         }
     }
 
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn static_delta_execute_offline_with_signature<P: IsA<gio::File>, Q: IsA<Sign>, R: IsA<gio::Cancellable>>(&self, dir_or_file: &P, sign: &Q, skip_validation: bool, cancellable: Option<&R>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_static_delta_execute_offline_with_signature(self.to_glib_none().0, dir_or_file.as_ref().to_glib_none().0, sign.as_ref().to_glib_none().0, skip_validation.to_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     pub fn static_delta_generate<P: IsA<gio::Cancellable>>(&self, opt: StaticDeltaGenerateOpt, from: &str, to: &str, metadata: Option<&glib::Variant>, params: Option<&glib::Variant>, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_static_delta_generate(self.to_glib_none().0, opt.to_glib(), from.to_glib_none().0, to.to_glib_none().0, metadata.to_glib_none().0, params.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn static_delta_verify_signature<P: IsA<Sign>>(&self, delta_id: &str, sign: &P, out_success_message: &str) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_static_delta_verify_signature(self.to_glib_none().0, delta_id.to_glib_none().0, sign.as_ref().to_glib_none().0, out_success_message.to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -802,7 +822,7 @@ impl Repo {
         }
     }
 
-    //pub fn traverse_commit<P: IsA<gio::Cancellable>>(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 187 }/TypeId { ns_id: 2, id: 187 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //pub fn traverse_commit<P: IsA<gio::Cancellable>>(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 194 }/TypeId { ns_id: 2, id: 194 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_repo_traverse_commit() }
     //}
 
@@ -816,7 +836,7 @@ impl Repo {
     //}
 
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //pub fn traverse_reachable_refs<P: IsA<gio::Cancellable>>(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 187 }/TypeId { ns_id: 2, id: 187 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //pub fn traverse_reachable_refs<P: IsA<gio::Cancellable>>(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 194 }/TypeId { ns_id: 2, id: 194 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_repo_traverse_reachable_refs() }
     //}
 
@@ -1001,11 +1021,11 @@ impl Repo {
     //}
 
     //#[cfg(any(feature = "v2018_5", feature = "dox"))]
-    //pub fn traverse_new_parents() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 187 }/TypeId { ns_id: 2, id: 187 } {
+    //pub fn traverse_new_parents() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 194 }/TypeId { ns_id: 2, id: 194 } {
     //    unsafe { TODO: call ostree_sys:ostree_repo_traverse_new_parents() }
     //}
 
-    //pub fn traverse_new_reachable() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 187 }/TypeId { ns_id: 2, id: 187 } {
+    //pub fn traverse_new_reachable() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 194 }/TypeId { ns_id: 2, id: 194 } {
     //    unsafe { TODO: call ostree_sys:ostree_repo_traverse_new_reachable() }
     //}
 

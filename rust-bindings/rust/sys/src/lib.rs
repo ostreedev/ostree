@@ -762,6 +762,28 @@ impl ::std::fmt::Debug for OstreeSignInterface {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct OstreeSysrootDeployTreeOpts {
+    pub unused_bools: [gboolean; 8],
+    pub unused_ints: [c_int; 8],
+    pub override_kernel_argv: *mut *mut c_char,
+    pub overlay_initrds: *mut *mut c_char,
+    pub unused_ptrs: [gpointer; 6],
+}
+
+impl ::std::fmt::Debug for OstreeSysrootDeployTreeOpts {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.debug_struct(&format!("OstreeSysrootDeployTreeOpts @ {:?}", self as *const _))
+         .field("unused_bools", &self.unused_bools)
+         .field("unused_ints", &self.unused_ints)
+         .field("override_kernel_argv", &self.override_kernel_argv)
+         .field("overlay_initrds", &self.overlay_initrds)
+         .field("unused_ptrs", &self.unused_ptrs)
+         .finish()
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct OstreeSysrootWriteDeploymentsOpts {
     pub do_postclean: gboolean,
     pub unused_bools: [gboolean; 7],
@@ -1143,9 +1165,13 @@ extern "C" {
     pub fn ostree_bootconfig_parser_new() -> *mut OstreeBootconfigParser;
     pub fn ostree_bootconfig_parser_clone(self_: *mut OstreeBootconfigParser) -> *mut OstreeBootconfigParser;
     pub fn ostree_bootconfig_parser_get(self_: *mut OstreeBootconfigParser, key: *const c_char) -> *const c_char;
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn ostree_bootconfig_parser_get_overlay_initrds(self_: *mut OstreeBootconfigParser) -> *mut *mut c_char;
     pub fn ostree_bootconfig_parser_parse(self_: *mut OstreeBootconfigParser, path: *mut gio::GFile, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_bootconfig_parser_parse_at(self_: *mut OstreeBootconfigParser, dfd: c_int, path: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_bootconfig_parser_set(self_: *mut OstreeBootconfigParser, key: *const c_char, value: *const c_char);
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn ostree_bootconfig_parser_set_overlay_initrds(self_: *mut OstreeBootconfigParser, initrds: *mut *mut c_char);
     pub fn ostree_bootconfig_parser_write(self_: *mut OstreeBootconfigParser, output: *mut gio::GFile, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_bootconfig_parser_write_at(self_: *mut OstreeBootconfigParser, dfd: c_int, path: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
 
@@ -1369,7 +1395,11 @@ extern "C" {
     pub fn ostree_repo_sign_commit(self_: *mut OstreeRepo, commit_checksum: *const c_char, key_id: *const c_char, homedir: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_sign_delta(self_: *mut OstreeRepo, from_commit: *const c_char, to_commit: *const c_char, key_id: *const c_char, homedir: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_static_delta_execute_offline(self_: *mut OstreeRepo, dir_or_file: *mut gio::GFile, skip_validation: gboolean, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn ostree_repo_static_delta_execute_offline_with_signature(self_: *mut OstreeRepo, dir_or_file: *mut gio::GFile, sign: *mut OstreeSign, skip_validation: gboolean, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_static_delta_generate(self_: *mut OstreeRepo, opt: OstreeStaticDeltaGenerateOpt, from: *const c_char, to: *const c_char, metadata: *mut glib::GVariant, params: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn ostree_repo_static_delta_verify_signature(self_: *mut OstreeRepo, delta_id: *const c_char, sign: *mut OstreeSign, out_success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_repo_transaction_set_collection_ref(self_: *mut OstreeRepo, ref_: *const OstreeCollectionRef, checksum: *const c_char);
     pub fn ostree_repo_transaction_set_ref(self_: *mut OstreeRepo, remote: *const c_char, ref_: *const c_char, checksum: *const c_char);
@@ -1481,7 +1511,10 @@ extern "C" {
     pub fn ostree_sysroot_cleanup(self_: *mut OstreeSysroot, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     pub fn ostree_sysroot_cleanup_prune_repo(sysroot: *mut OstreeSysroot, options: *mut OstreeRepoPruneOptions, out_objects_total: *mut c_int, out_objects_pruned: *mut c_int, out_pruned_object_size_total: *mut u64, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2018_5", feature = "dox"))]
     pub fn ostree_sysroot_deploy_tree(self_: *mut OstreeSysroot, osname: *const c_char, revision: *const c_char, origin: *mut glib::GKeyFile, provided_merge_deployment: *mut OstreeDeployment, override_kernel_argv: *mut *mut c_char, out_new_deployment: *mut *mut OstreeDeployment, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn ostree_sysroot_deploy_tree_with_options(self_: *mut OstreeSysroot, osname: *const c_char, revision: *const c_char, origin: *mut glib::GKeyFile, provided_merge_deployment: *mut OstreeDeployment, opts: *mut OstreeSysrootDeployTreeOpts, out_new_deployment: *mut *mut OstreeDeployment, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_sysroot_deployment_set_kargs(self_: *mut OstreeSysroot, deployment: *mut OstreeDeployment, new_kargs: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_sysroot_deployment_set_mutable(self_: *mut OstreeSysroot, deployment: *mut OstreeDeployment, is_mutable: gboolean, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2018_3", feature = "dox"))]
@@ -1522,8 +1555,12 @@ extern "C" {
     #[cfg(any(feature = "v2020_1", feature = "dox"))]
     pub fn ostree_sysroot_set_mount_namespace_in_use(self_: *mut OstreeSysroot);
     pub fn ostree_sysroot_simple_write_deployment(sysroot: *mut OstreeSysroot, osname: *const c_char, new_deployment: *mut OstreeDeployment, merge_deployment: *mut OstreeDeployment, flags: OstreeSysrootSimpleWriteDeploymentFlags, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn ostree_sysroot_stage_overlay_initrd(self_: *mut OstreeSysroot, fd: c_int, out_checksum: *mut *mut c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2018_5", feature = "dox"))]
     pub fn ostree_sysroot_stage_tree(self_: *mut OstreeSysroot, osname: *const c_char, revision: *const c_char, origin: *mut glib::GKeyFile, merge_deployment: *mut OstreeDeployment, override_kernel_argv: *mut *mut c_char, out_new_deployment: *mut *mut OstreeDeployment, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn ostree_sysroot_stage_tree_with_options(self_: *mut OstreeSysroot, osname: *const c_char, revision: *const c_char, origin: *mut glib::GKeyFile, merge_deployment: *mut OstreeDeployment, opts: *mut OstreeSysrootDeployTreeOpts, out_new_deployment: *mut *mut OstreeDeployment, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_sysroot_try_lock(self_: *mut OstreeSysroot, out_acquired: *mut gboolean, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_sysroot_unload(self_: *mut OstreeSysroot);
     pub fn ostree_sysroot_unlock(self_: *mut OstreeSysroot);
