@@ -9263,7 +9263,13 @@ signature engine provided, FALSE otherwise.</doc>
                  line="1078">Signature engine used to check superblock</doc>
             <type name="Sign" c:type="OstreeSign*"/>
           </parameter>
-          <parameter name="out_success_message" transfer-ownership="none">
+          <parameter name="out_success_message"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full"
+                     nullable="1"
+                     optional="1"
+                     allow-none="1">
             <doc xml:space="preserve"
                  filename="ostree-repo-static-delta-core.c"
                  line="1079">success message</doc>

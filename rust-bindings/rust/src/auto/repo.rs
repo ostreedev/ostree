@@ -795,11 +795,12 @@ impl Repo {
     }
 
     #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    pub fn static_delta_verify_signature<P: IsA<Sign>>(&self, delta_id: &str, sign: &P, out_success_message: &str) -> Result<(), glib::Error> {
+    pub fn static_delta_verify_signature<P: IsA<Sign>>(&self, delta_id: &str, sign: &P) -> Result<Option<GString>, glib::Error> {
         unsafe {
+            let mut out_success_message = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_static_delta_verify_signature(self.to_glib_none().0, delta_id.to_glib_none().0, sign.as_ref().to_glib_none().0, out_success_message.to_glib_none().0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+            let _ = ostree_sys::ostree_repo_static_delta_verify_signature(self.to_glib_none().0, delta_id.to_glib_none().0, sign.as_ref().to_glib_none().0, &mut out_success_message, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_success_message)) } else { Err(from_glib_full(error)) }
         }
     }
 
