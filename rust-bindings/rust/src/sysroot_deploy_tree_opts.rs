@@ -48,7 +48,7 @@ mod tests {
     use super::*;
     use std::{ffi::CStr, ptr::null_mut};
 
-    unsafe fn ptr_array_as_slice<'a, T>(ptr: *mut *mut T) -> &'a [*mut T] {
+    unsafe fn ptr_array_to_slice<'a, T>(ptr: *mut *mut T) -> &'a [*mut T] {
         let mut len = 0;
         while !(*ptr.offset(len)).is_null() {
             len += 1;
