@@ -30,6 +30,8 @@ use Deployment;
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use DeploymentUnlockedState;
 use Repo;
+#[cfg(any(feature = "v2020_7", feature = "dox"))]
+use SysrootDeployTreeOpts;
 use SysrootSimpleWriteDeploymentFlags;
 #[cfg(any(feature = "v2017_4", feature = "dox"))]
 use SysrootWriteDeploymentsOpts;
@@ -78,10 +80,15 @@ impl Sysroot {
         }
     }
 
-    //#[cfg(any(feature = "v2020_7", feature = "dox"))]
-    //pub fn deploy_tree_with_options<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, provided_merge_deployment: Option<&Deployment>, opts: /*Ignored*/Option<&mut SysrootDeployTreeOpts>, cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
-    //    unsafe { TODO: call ostree_sys:ostree_sysroot_deploy_tree_with_options() }
-    //}
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn deploy_tree_with_options<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, provided_merge_deployment: Option<&Deployment>, opts: Option<&SysrootDeployTreeOpts>, cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
+        unsafe {
+            let mut out_new_deployment = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_sysroot_deploy_tree_with_options(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, provided_merge_deployment.to_glib_none().0, mut_override(opts.to_glib_none().0), &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     pub fn deployment_set_kargs<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, new_kargs: &[&str], cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
@@ -344,10 +351,15 @@ impl Sysroot {
         }
     }
 
-    //#[cfg(any(feature = "v2020_7", feature = "dox"))]
-    //pub fn stage_tree_with_options<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, merge_deployment: Option<&Deployment>, opts: /*Ignored*/&mut SysrootDeployTreeOpts, cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
-    //    unsafe { TODO: call ostree_sys:ostree_sysroot_stage_tree_with_options() }
-    //}
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn stage_tree_with_options<P: IsA<gio::Cancellable>>(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, merge_deployment: Option<&Deployment>, opts: &SysrootDeployTreeOpts, cancellable: Option<&P>) -> Result<Deployment, glib::Error> {
+        unsafe {
+            let mut out_new_deployment = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_sysroot_stage_tree_with_options(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, merge_deployment.to_glib_none().0, mut_override(opts.to_glib_none().0), &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     pub fn try_lock(&self) -> Result<bool, glib::Error> {
         unsafe {

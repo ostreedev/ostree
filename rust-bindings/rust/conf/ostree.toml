@@ -88,6 +88,7 @@ manual = [
     "OSTree.RepoCheckoutAtOptions",
     "OSTree.RepoCheckoutFilter",
     "OSTree.SysrootWriteDeploymentsOpts",
+    "OSTree.SysrootDeployTreeOpts",
 ]
 
 ignore = [
@@ -208,6 +209,18 @@ status = "generate"
 [[object]]
 name = "OSTree.Sysroot"
 status = "generate"
+    [[object.function]]
+    name = "deploy_tree_with_options"
+    [[object.function.parameter]]
+    name = "opts"
+    const = true
+
+    [[object.function]]
+    name = "stage_tree_with_options"
+    [[object.function.parameter]]
+    name = "opts"
+    const = true
+
     [[object.function]]
     name = "write_deployments_with_options"
     [[object.function.parameter]]

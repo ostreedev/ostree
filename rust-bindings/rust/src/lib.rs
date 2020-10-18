@@ -60,6 +60,10 @@ pub use crate::commit_sizes_entry::*;
 mod sysroot_write_deployments_opts;
 #[cfg(any(feature = "v2017_4", feature = "dox"))]
 pub use crate::sysroot_write_deployments_opts::*;
+#[cfg(any(feature = "v2020_7", feature = "dox"))]
+mod sysroot_deploy_tree_opts;
+#[cfg(any(feature = "v2020_7", feature = "dox"))]
+pub use crate::sysroot_deploy_tree_opts::SysrootDeployTreeOpts;
 
 // tests
 #[cfg(test)]
