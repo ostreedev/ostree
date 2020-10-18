@@ -67,9 +67,6 @@ Run the following command to update the bundled gir files:
 $ make update-gir-files
 ```
 
-The `OSTree-1.0.gir` file needs to be updated manually, either from a recent
-distribution package or by building from source.
-
 ### Documentation
 The libostree API documentation is not included in the code by default because
 of its LGPL license. This means normal `cargo doc` runs don't include API docs
