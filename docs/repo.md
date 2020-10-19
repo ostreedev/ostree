@@ -39,7 +39,7 @@ regenerate it from source code.
 A dirtree contains a sorted array of (filename, checksum)
 pairs for content objects, and a second sorted array of
 (filename, dirtree checksum, dirmeta checksum), which are
-subdirectories. These type of objects are stored as files
+subdirectories. This type of object is stored as files
 ending with `.dirtree` in the objects directory.
 
 ### Dirmeta objects
@@ -56,7 +56,7 @@ Unlike the first three object types which are metadata, designed to be
 `mmap()`ed, the content object has a separate internal header and
 payload sections.  The header contains uid, gid, mode, and symbolic
 link target (for symlinks), as well as extended attributes.  After the
-header, for regular files, the content follows. These parts toghether
+header, for regular files, the content follows. These parts together
 form the SHA256 hash for content objects. The content type objects in
 this format exist only in `archive` OSTree repositories. Today the
 content part is gzip'ed and the objects are stored as files ending
@@ -102,7 +102,7 @@ systems.
 The `bare-user-only` mode is a variant to the `bare-user` mode. Unlike
 `bare-user`, neither ownership nor extended attributes are stored. These repos
 are meant to to be checked out in user mode (with the `-U` flag), where this
-information is not applied anyway. Hence this mode may loose metadata.
+information is not applied anyway. Hence this mode may lose metadata.
 The main advantage of `bare-user-only` is that repos can be stored on
 filesystems which do not support extended attributes, such as tmpfs.
 

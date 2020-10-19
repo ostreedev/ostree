@@ -21,10 +21,10 @@ primarily on server-side concerns.
 ## Build vs buy
 
 Therefore, you need to either pick an existing tool for writing
-content into an OSTree repository, or to write your own.  An example
-tool is [rpm-ostree](https://github.com/projectatomic/rpm-ostree) - it
-takes as input RPMs, and commits them (currently oriented for a server
-side, but aiming to do client side too).
+content into an OSTree repository, or write your own.  An example
+tool is [rpm-ostree](https://github.com/coreos/rpm-ostree) - it
+takes as input RPMs, and commits them (currently oriented for
+server-side, but aiming to do client-side too).
 
 ## Initializing
 
