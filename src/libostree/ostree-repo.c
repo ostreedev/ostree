@@ -5222,6 +5222,67 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
+
+/**
+ * ostree_repo_gpg_sign_data:
+ * @self: Self
+ * @data: Data as a #GBytes
+ * @old_signatures: Existing signatures to append to (or %NULL)
+ * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @out_signature: (out): in case of success will contain signature
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Sign the given @data with the specified keys in @key_id. Similar to
+ * ostree_repo_add_gpg_signature_summary() but can be used on any
+ * data.
+ *
+ * You can use ostree_repo_gpg_verify_data() to verify the signatures.
+ *
+ * Returns: @TRUE if @data has been signed successfully,
+ * @FALSE in case of error (@error will contain the reason).
+ *
+ * Since: 2020.8
+ */
+gboolean
+ostree_repo_gpg_sign_data (OstreeRepo     *self,
+                           GBytes         *data,
+                           GBytes         *old_signatures,
+                           const gchar   **key_id,
+                           const gchar    *homedir,
+                           GBytes        **out_signatures,
+                           GCancellable   *cancellable,
+                           GError        **error)
+{
+#ifndef OSTREE_DISABLE_GPGME
+  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr(GVariant) res = NULL;
+
+  if (old_signatures)
+    metadata = g_variant_ref_sink (g_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING), old_signatures, FALSE));
+
+  for (guint i = 0; key_id[i]; i++)
+    {
+      g_autoptr(GBytes) signature_data = NULL;
+      if (!sign_data (self, data, key_id[i], homedir,
+                      &signature_data,
+                      cancellable, error))
+        return FALSE;
+
+      g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
+      metadata = _ostree_detached_metadata_append_gpg_sig (old_metadata, signature_data);
+    }
+
+  res = g_variant_get_normal_form (metadata);
+  *out_signatures = g_variant_get_data_as_bytes (res);
+  return TRUE;
+#else
+  return glnx_throw (error, "GPG feature is disabled in a build time");
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
+
 #ifndef OSTREE_DISABLE_GPGME
 /* Special remote for _ostree_repo_gpg_verify_with_metadata() */
 static const char *OSTREE_ALL_REMOTES = "__OSTREE_ALL_REMOTES__";

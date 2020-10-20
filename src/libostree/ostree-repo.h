@@ -1417,6 +1417,16 @@ gboolean ostree_repo_append_gpg_signature (OstreeRepo     *self,
                                            GError        **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_repo_gpg_sign_data (OstreeRepo     *self,
+                                    GBytes         *data,
+                                    GBytes         *old_signatures,
+                                    const gchar   **key_id,
+                                    const gchar    *homedir,
+                                    GBytes        **out_signatures,
+                                    GCancellable   *cancellable,
+                                    GError        **error);
+
+_OSTREE_PUBLIC
 OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                                        const gchar   *commit_checksum,
                                                        GFile         *keyringdir,
