@@ -508,7 +508,7 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
            */
           delta_open_flags |= OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM;
 
-          if (!_ostree_static_delta_part_open (part_in, inline_part_bytes, 
+          if (!_ostree_static_delta_part_open (part_in, inline_part_bytes,
                                                delta_open_flags,
                                                NULL,
                                                &part,
@@ -1076,7 +1076,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
  * @self: Repo
  * @delta_id: delta path
  * @sign: Signature engine used to check superblock
- * @out_success_message: success message
+ * @out_success_message: (out) (nullable) (optional): success message
  * @error: Error
  *
  * Verify static delta file signature.
