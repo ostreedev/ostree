@@ -2145,6 +2145,7 @@ start_fetch_deltapart (OtPullData *pull_data,
                        FetchStaticDeltaData *fetch)
 {
   g_autofree char *deltapart_path = _ostree_get_relative_static_delta_part_path (fetch->from_revision, fetch->to_revision, fetch->i);
+  g_debug ("starting fetch of deltapart %s", deltapart_path);
   pull_data->n_outstanding_deltapart_fetches++;
   g_assert_cmpint (pull_data->n_outstanding_deltapart_fetches, <=, _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher,
@@ -2608,6 +2609,7 @@ start_fetch_delta_superblock (OtPullData          *pull_data,
   g_autofree char *delta_name =
     _ostree_get_relative_static_delta_superblock_path (fetch_data->from_revision,
                                                        fetch_data->to_revision);
+  g_debug ("starting fetch of delta superblock %s", delta_name);
   _ostree_fetcher_request_to_membuf (pull_data->fetcher,
                                      pull_data->content_mirrorlist,
                                      delta_name, OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
@@ -2760,6 +2762,7 @@ start_fetch_delta_index (OtPullData          *pull_data,
 {
   g_autofree char *delta_name =
     _ostree_get_relative_static_delta_index_path (fetch_data->to_revision);
+  g_debug ("starting fetch of delta index %s", delta_name);
   _ostree_fetcher_request_to_membuf (pull_data->fetcher,
                                      pull_data->content_mirrorlist,
                                      delta_name, OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
