@@ -436,8 +436,10 @@ try_one_url (OstreeMetalinkRequest *self,
 
   if (!_ostree_fetcher_request_uri_to_membuf (self->metalink->fetcher,
                                               uri, 0,
+                                              NULL, 0,
                                               self->metalink->n_network_retries,
                                               &bytes,
+                                              NULL, NULL, NULL,
                                               self->metalink->max_size,
                                               self->cancellable,
                                               error))
@@ -618,8 +620,9 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   request.parser = g_markup_parse_context_new (&metalink_parser, G_MARKUP_PREFIX_ERROR_POSITION, &request, NULL);
 
   if (!_ostree_fetcher_request_uri_to_membuf (self->fetcher, self->uri, 0,
+                                              NULL, 0,
                                               self->n_network_retries,
-                                              &contents, self->max_size,
+                                              &contents, NULL, NULL, NULL, self->max_size,
                                               cancellable, error))
     goto out;
 

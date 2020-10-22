@@ -72,7 +72,11 @@ typedef struct {
   gboolean          has_tombstone_commits;
 
   GBytes           *summary_data;
+  char             *summary_etag;
+  guint64           summary_last_modified;  /* seconds since the epoch */
   GBytes           *summary_data_sig;
+  char             *summary_sig_etag;
+  guint64           summary_sig_last_modified;  /* seconds since the epoch */
   GVariant         *summary;
   GHashTable       *summary_deltas_checksums;
   GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */

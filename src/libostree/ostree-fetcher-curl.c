@@ -45,6 +45,7 @@
 #define CURLPIPE_MULTIPLEX 0
 #endif
 
+#include "ostree-date-utils-private.h"
 #include "ostree-fetcher.h"
 #include "ostree-fetcher-util.h"
 #include "ostree-enumtypes.h"
@@ -99,10 +100,16 @@ struct FetcherRequest {
   guint64 current_size;
   guint64 max_size;
   OstreeFetcherRequestFlags flags;
+  struct curl_slist *req_headers;
+  char *if_none_match;  /* request ETag */
+  guint64 if_modified_since;  /* seconds since the epoch */
   gboolean is_membuf;
   GError *caught_write_error;
   GLnxTmpfile tmpf;
   GString *output_buf;
+  gboolean out_not_modified;  /* TRUE if the server gave a HTTP 304 Not Modified response, which we don’t propagate as an error */
+  char *out_etag;  /* response ETag */
+  guint64 out_last_modified;  /* response Last-Modified, seconds since the epoch */
 
   CURL *easy;
   char error[CURL_ERROR_SIZE];
@@ -335,7 +342,17 @@ check_multi_info (OstreeFetcher *fetcher)
       else
         {
           curl_easy_getinfo (easy, CURLINFO_RESPONSE_CODE, &response);
-          if (!is_file && !(response >= 200 && response < 300))
+
+          if (!is_file && response == 304 &&
+              (req->if_none_match != NULL || req->if_modified_since > 0))
+            {
+              /* Version on the server is unchanged from the version we have
+               * cached locally; report this as an out-argument, a zero-length
+               * response buffer, and no error. */
+              req->out_not_modified = TRUE;
+            }
+
+          if (!is_file && !(response >= 200 && response < 300) && response != 304)
             {
               GIOErrorEnum giocode = _ostree_fetcher_http_status_code_to_io_error (response);
 
@@ -575,6 +592,40 @@ write_cb (void *ptr, size_t size, size_t nmemb, void *data)
   return realsize;
 }
 
+/* CURLOPT_HEADERFUNCTION */
+static size_t
+response_header_cb (const char *buffer, size_t size, size_t n_items, void *user_data)
+{
+  const size_t real_size = size * n_items;
+  GTask *task = G_TASK (user_data);
+  FetcherRequest *req;
+
+  /* libcurl says that @size is always 1, but let’s check
+   * See https://curl.haxx.se/libcurl/c/CURLOPT_HEADERFUNCTION.html */
+  g_assert (size == 1);
+
+  req = g_task_get_task_data (task);
+
+  const char *etag_header = "ETag: ";
+  const char *last_modified_header = "Last-Modified: ";
+
+  if (real_size > strlen (etag_header) &&
+      strncasecmp (buffer, etag_header, strlen (etag_header)) == 0)
+    {
+      g_clear_pointer (&req->out_etag, g_free);
+      req->out_etag = g_strstrip (g_strdup (buffer + strlen (etag_header)));
+    }
+  else if (real_size > strlen (last_modified_header) &&
+           strncasecmp (buffer, last_modified_header, strlen (last_modified_header)) == 0)
+    {
+      g_autofree char *lm_buf = g_strstrip (g_strdup (buffer + strlen (last_modified_header)));
+      g_autoptr(GDateTime) dt = _ostree_parse_rfc2616_date_time (lm_buf, strlen (lm_buf));
+      req->out_last_modified = (dt != NULL) ? g_date_time_to_unix (dt) : 0;
+    }
+
+  return real_size;
+}
+
 /* CURLOPT_PROGRESSFUNCTION */
 static int
 prog_cb (void *p, double dltotal, double dlnow, double ult, double uln)
@@ -600,6 +651,9 @@ request_unref (FetcherRequest *req)
   glnx_tmpfile_clear (&req->tmpf);
   if (req->output_buf)
     g_string_free (req->output_buf, TRUE);
+  g_free (req->if_none_match);
+  g_free (req->out_etag);
+  g_clear_pointer (&req->req_headers, (GDestroyNotify)curl_slist_free_all);
   curl_easy_cleanup (req->easy);
 
   g_free (req);
@@ -721,8 +775,29 @@ initiate_next_curl_request (FetcherRequest *req,
 
   curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
                     self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
-  if (self->extra_headers)
-    curl_easy_setopt (req->easy, CURLOPT_HTTPHEADER, self->extra_headers);
+
+  /* Set caching request headers */
+  if (req->if_none_match != NULL)
+    {
+      g_autofree char *if_none_match = g_strconcat ("If-None-Match: ", req->if_none_match, NULL);
+      req->req_headers = curl_slist_append (req->req_headers, if_none_match);
+    }
+
+  if (req->if_modified_since > 0)
+    {
+      g_autoptr(GDateTime) date_time = g_date_time_new_from_unix_utc (req->if_modified_since);
+      g_autofree char *mod_date = g_date_time_format (date_time, "If-Modified-Since: %a, %d %b %Y %H:%M:%S %Z");
+
+      req->req_headers = curl_slist_append (req->req_headers, mod_date);
+    }
+
+  /* Append a copy of @extra_headers to @req_headers, as the former could change
+   * between requests or while a request is in flight */
+  for (const struct curl_slist *l = self->extra_headers; l != NULL; l = l->next)
+    req->req_headers = curl_slist_append (req->req_headers, l->data);
+
+  if (req->req_headers != NULL)
+    curl_easy_setopt (req->easy, CURLOPT_HTTPHEADER, req->req_headers);
 
   if (self->cookie_jar_path)
     {
@@ -796,6 +871,7 @@ initiate_next_curl_request (FetcherRequest *req,
     }
 
   curl_easy_setopt (req->easy, CURLOPT_WRITEFUNCTION, write_cb);
+  curl_easy_setopt (req->easy, CURLOPT_HEADERFUNCTION, response_header_cb);
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
     curl_easy_setopt (req->easy, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt (req->easy, CURLOPT_ERRORBUFFER, req->error);
@@ -815,6 +891,7 @@ initiate_next_curl_request (FetcherRequest *req,
   /* closure bindings -> task */
   curl_easy_setopt (req->easy, CURLOPT_PRIVATE, task);
   curl_easy_setopt (req->easy, CURLOPT_WRITEDATA, task);
+  curl_easy_setopt (req->easy, CURLOPT_HEADERDATA, task);
   curl_easy_setopt (req->easy, CURLOPT_PROGRESSDATA, task);
 
   CURLMcode multi_rc = curl_multi_add_handle (self->multi, req->easy);
@@ -826,6 +903,8 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
                                GPtrArray             *mirrorlist,
                                const char            *filename,
                                OstreeFetcherRequestFlags flags,
+                               const char            *if_none_match,
+                               guint64                if_modified_since,
                                gboolean               is_membuf,
                                guint64                max_size,
                                int                    priority,
@@ -859,6 +938,8 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
   req->filename = g_strdup (filename);
   req->max_size = max_size;
   req->flags = flags;
+  req->if_none_match = g_strdup (if_none_match);
+  req->if_modified_since = if_modified_since;
   req->is_membuf = is_membuf;
   /* We'll allocate the tmpfile on demand, so we handle
    * file I/O errors just in the write func.
@@ -882,13 +963,16 @@ _ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
                                     GPtrArray             *mirrorlist,
                                     const char            *filename,
                                     OstreeFetcherRequestFlags flags,
+                                    const char            *if_none_match,
+                                    guint64                if_modified_since,
                                     guint64                max_size,
                                     int                    priority,
                                     GCancellable          *cancellable,
                                     GAsyncReadyCallback    callback,
                                     gpointer               user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, FALSE,
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags,
+                                 if_none_match, if_modified_since, FALSE,
                                  max_size, priority, cancellable,
                                  callback, user_data);
 }
@@ -897,6 +981,9 @@ gboolean
 _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
                                            GAsyncResult  *result,
                                            GLnxTmpfile   *out_tmpf,
+                                           gboolean      *out_not_modified,
+                                           char         **out_etag,
+                                           guint64       *out_last_modified,
                                            GError       **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
@@ -912,6 +999,13 @@ _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
   *out_tmpf = req->tmpf;
   req->tmpf.initialized = FALSE; /* Transfer ownership */
 
+  if (out_not_modified != NULL)
+    *out_not_modified = req->out_not_modified;
+  if (out_etag != NULL)
+    *out_etag = g_steal_pointer (&req->out_etag);
+  if (out_last_modified != NULL)
+    *out_last_modified = req->out_last_modified;
+
   return TRUE;
 }
 
@@ -920,13 +1014,16 @@ _ostree_fetcher_request_to_membuf (OstreeFetcher         *self,
                                    GPtrArray             *mirrorlist,
                                    const char            *filename,
                                    OstreeFetcherRequestFlags flags,
+                                   const char            *if_none_match,
+                                   guint64                if_modified_since,
                                    guint64                max_size,
                                    int                    priority,
                                    GCancellable          *cancellable,
                                    GAsyncReadyCallback    callback,
                                    gpointer               user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, TRUE,
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags,
+                                 if_none_match, if_modified_since, TRUE,
                                  max_size, priority, cancellable,
                                  callback, user_data);
 }
@@ -935,6 +1032,9 @@ gboolean
 _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
                                           GAsyncResult  *result,
                                           GBytes       **out_buf,
+                                          gboolean      *out_not_modified,
+                                          char         **out_etag,
+                                          guint64       *out_last_modified,
                                           GError       **error)
 {
   GTask *task;
@@ -954,6 +1054,13 @@ _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
   g_assert (req->is_membuf);
   g_assert (out_buf);
   *out_buf = ret;
+
+  if (out_not_modified != NULL)
+    *out_not_modified = req->out_not_modified;
+  if (out_etag != NULL)
+    *out_etag = g_steal_pointer (&req->out_etag);
+  if (out_last_modified != NULL)
+    *out_last_modified = req->out_last_modified;
 
   return TRUE;
 }

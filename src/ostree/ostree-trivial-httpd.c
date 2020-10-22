@@ -206,6 +206,15 @@ close_socket (SoupMessage *msg, gpointer user_data)
 #endif
 }
 
+/* Returns the ETag including the surrounding quotes */
+static gchar *
+calculate_etag (GMappedFile *mapping)
+{
+  g_autoptr(GBytes) bytes = g_mapped_file_get_bytes (mapping);
+  g_autofree gchar *checksum = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, bytes);
+  return g_strconcat ("\"", checksum, "\"", NULL);
+}
+
 static void
 do_get (OtTrivialHttpd    *self,
         SoupServer        *server,
@@ -367,30 +376,40 @@ do_get (OtTrivialHttpd    *self,
           soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
           goto out;
         }
+
+      glnx_autofd int fd = openat (self->root_dfd, path, O_RDONLY | O_CLOEXEC);
+      if (fd < 0)
+        {
+          soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+          goto out;
+        }
+
+      g_autoptr(GMappedFile) mapping = g_mapped_file_new_from_fd (fd, FALSE, NULL);
+      if (!mapping)
+        {
+          soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+          goto out;
+        }
+      (void) close (fd); fd = -1;
+
+      /* Send caching headers */
+      g_autoptr(GDateTime) last_modified = g_date_time_new_from_unix_utc (stbuf.st_mtim.tv_sec);
+      if (last_modified != NULL)
+        {
+          g_autofree gchar *formatted = g_date_time_format (last_modified, "%a, %d %b %Y %H:%M:%S GMT");
+          soup_message_headers_append (msg->response_headers, "Last-Modified", formatted);
+        }
+
+      g_autofree gchar *etag = calculate_etag (mapping);
+      if (etag != NULL)
+        soup_message_headers_append (msg->response_headers, "ETag", etag);
       
       if (msg->method == SOUP_METHOD_GET)
         {
-          glnx_autofd int fd = -1;
-          g_autoptr(GMappedFile) mapping = NULL;
           gsize buffer_length, file_size;
           SoupRange *ranges;
           int ranges_length;
           gboolean have_ranges;
-
-          fd = openat (self->root_dfd, path, O_RDONLY | O_CLOEXEC);
-          if (fd < 0)
-            {
-              soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
-              goto out;
-            }
-
-          mapping = g_mapped_file_new_from_fd (fd, FALSE, NULL);
-          if (!mapping)
-            {
-              soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
-              goto out;
-            }
-          (void) close (fd); fd = -1;
 
           file_size = g_mapped_file_get_length (mapping);
           have_ranges = soup_message_headers_get_ranges(msg->request_headers, file_size, &ranges, &ranges_length);
@@ -447,7 +466,50 @@ do_get (OtTrivialHttpd    *self,
           soup_message_headers_append (msg->response_headers,
                                        "Content-Length", length);
         }
-      soup_message_set_status (msg, SOUP_STATUS_OK);
+
+      /* Check client’s caching headers. */
+      const gchar *if_modified_since = soup_message_headers_get_one (msg->request_headers,
+                                                                     "If-Modified-Since");
+      const gchar *if_none_match = soup_message_headers_get_one (msg->request_headers,
+                                                                 "If-None-Match");
+
+      if (if_none_match != NULL && etag != NULL)
+        {
+          if (g_strcmp0 (etag, if_none_match) == 0)
+            {
+              soup_message_set_status (msg, SOUP_STATUS_NOT_MODIFIED);
+              soup_message_body_truncate (msg->response_body);
+            }
+          else
+            {
+              soup_message_set_status (msg, SOUP_STATUS_OK);
+            }
+        }
+      else if (if_modified_since != NULL && last_modified != NULL)
+        {
+          SoupDate *if_modified_since_sd = soup_date_new_from_string (if_modified_since);
+          g_autoptr(GDateTime) if_modified_since_dt = NULL;
+
+          if (if_modified_since_sd != NULL)
+            if_modified_since_dt = g_date_time_new_from_unix_utc (soup_date_to_time_t (if_modified_since_sd));
+
+          if (if_modified_since_dt != NULL &&
+              g_date_time_compare (last_modified, if_modified_since_dt) <= 0)
+            {
+              soup_message_set_status (msg, SOUP_STATUS_NOT_MODIFIED);
+              soup_message_body_truncate (msg->response_body);
+            }
+          else
+            {
+              soup_message_set_status (msg, SOUP_STATUS_OK);
+            }
+
+          g_clear_pointer (&if_modified_since_sd, soup_date_free);
+        }
+      else
+        {
+          soup_message_set_status (msg, SOUP_STATUS_OK);
+        }
     }
  out:
   {
