@@ -80,6 +80,7 @@ typedef struct {
   GVariant         *summary;
   GHashTable       *summary_deltas_checksums; /* Filled from summary and delta indexes */
   gboolean          summary_has_deltas; /* True if the summary existed and had a delta index */
+  gboolean          has_indexed_deltas;
   GHashTable       *ref_original_commits; /* Maps checksum to commit, used by timestamp checks */
   GHashTable       *verified_commits; /* Set<checksum> of commits that have been verified */
   GHashTable       *signapi_verified_commits; /* Map<checksum,verification> of commits that have been signapi verified */
