@@ -104,6 +104,14 @@ typedef struct {
   guint n_retries_remaining;
 } FetchDeltaSuperData;
 
+typedef struct {
+  OtPullData *pull_data;
+  char *from_revision;
+  char *to_revision;
+  OstreeCollectionRef *requested_ref;  /* (nullable) */
+  guint n_retries_remaining;
+} FetchDeltaIndexData;
+
 static void
 variant_or_null_unref (gpointer data)
 {
@@ -116,6 +124,8 @@ static void start_fetch_deltapart (OtPullData *pull_data,
                                    FetchStaticDeltaData *fetch);
 static void start_fetch_delta_superblock (OtPullData          *pull_data,
                                           FetchDeltaSuperData *fetch_data);
+static void start_fetch_delta_index (OtPullData          *pull_data,
+                                     FetchDeltaIndexData *fetch_data);
 static gboolean fetcher_queue_is_full (OtPullData *pull_data);
 static void queue_scan_one_metadata_object (OtPullData                *pull_data,
                                             const char                *csum,
@@ -135,6 +145,8 @@ static void queue_scan_one_metadata_object_c (OtPullData                *pull_da
 
 static void enqueue_one_object_request_s (OtPullData      *pull_data,
                                           FetchObjectData *fetch_data);
+static void enqueue_one_static_delta_index_request_s (OtPullData          *pull_data,
+                                                      FetchDeltaIndexData *fetch_data);
 static void enqueue_one_static_delta_superblock_request_s (OtPullData          *pull_data,
                                                            FetchDeltaSuperData *fetch_data);
 static void enqueue_one_static_delta_part_request_s (OtPullData           *pull_data,
@@ -149,6 +161,11 @@ static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           GCancellable               *cancellable,
                                           GError                    **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
+static gboolean initiate_delta_request (OtPullData                *pull_data,
+                                        const OstreeCollectionRef *ref,
+                                        const char                *to_revision,
+                                        const char                 *delta_from_revision,
+                                        GError                    **error);
 
 static gboolean
 update_progress (gpointer user_data)
@@ -287,6 +304,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
       g_queue_foreach (&pull_data->scan_object_queue, (GFunc) scan_object_queue_data_free, NULL);
       g_queue_clear (&pull_data->scan_object_queue);
       g_hash_table_remove_all (pull_data->pending_fetch_metadata);
+      g_hash_table_remove_all (pull_data->pending_fetch_delta_indexes);
       g_hash_table_remove_all (pull_data->pending_fetch_delta_superblocks);
       g_hash_table_remove_all (pull_data->pending_fetch_deltaparts);
       g_hash_table_remove_all (pull_data->pending_fetch_content);
@@ -318,6 +336,16 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
           start_fetch (pull_data, fetch);
           /* And unref the key */
           g_variant_unref (objname);
+        }
+
+      /* Next, process delta index requests */
+      g_hash_table_iter_init (&hiter, pull_data->pending_fetch_delta_indexes);
+      while (!fetcher_queue_is_full (pull_data) &&
+             g_hash_table_iter_next (&hiter, &key, &value))
+        {
+          FetchDeltaIndexData *fetch = key;
+          g_hash_table_iter_steal (&hiter);
+          start_fetch_delta_index (pull_data, g_steal_pointer (&fetch));
         }
 
       /* Next, process delta superblock requests */
@@ -2117,6 +2145,7 @@ start_fetch_deltapart (OtPullData *pull_data,
                        FetchStaticDeltaData *fetch)
 {
   g_autofree char *deltapart_path = _ostree_get_relative_static_delta_part_path (fetch->from_revision, fetch->to_revision, fetch->i);
+  g_debug ("starting fetch of deltapart %s", deltapart_path);
   pull_data->n_outstanding_deltapart_fetches++;
   g_assert_cmpint (pull_data->n_outstanding_deltapart_fetches, <=, _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher,
@@ -2470,6 +2499,16 @@ fetch_delta_super_data_free (FetchDeltaSuperData *fetch_data)
 }
 
 static void
+fetch_delta_index_data_free (FetchDeltaIndexData *fetch_data)
+{
+  g_free (fetch_data->from_revision);
+  g_free (fetch_data->to_revision);
+  if (fetch_data->requested_ref)
+    ostree_collection_ref_free (fetch_data->requested_ref);
+  g_free (fetch_data);
+}
+
+static void
 set_required_deltas_error (GError **error,
                            const char *from_revision,
                            const char *to_revision)
@@ -2570,6 +2609,7 @@ start_fetch_delta_superblock (OtPullData          *pull_data,
   g_autofree char *delta_name =
     _ostree_get_relative_static_delta_superblock_path (fetch_data->from_revision,
                                                        fetch_data->to_revision);
+  g_debug ("starting fetch of delta superblock %s", delta_name);
   _ostree_fetcher_request_to_membuf (pull_data->fetcher,
                                      pull_data->content_mirrorlist,
                                      delta_name, OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
@@ -2627,6 +2667,147 @@ validate_variant_is_csum (GVariant       *csum,
                        g_variant_get_type_string (csum));
 
   return ostree_validate_structureof_csum_v (csum, error);
+}
+
+static gboolean
+collect_available_deltas_for_pull (OtPullData *pull_data,
+                                   GVariant   *deltas,
+                                   GError    **error)
+{
+  gsize n;
+
+  n = deltas ? g_variant_n_children (deltas) : 0;
+  for (gsize i = 0; i < n; i++)
+    {
+      const char *delta;
+      g_autoptr(GVariant) csum_v = NULL;
+      g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
+
+      g_variant_get_child (ref, 0, "&s", &delta);
+      g_variant_get_child (ref, 1, "v", &csum_v);
+
+      if (!validate_variant_is_csum (csum_v, error))
+        return FALSE;
+
+      guchar *csum_data = g_malloc (OSTREE_SHA256_DIGEST_LEN);
+      memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
+      g_hash_table_insert (pull_data->summary_deltas_checksums,
+                           g_strdup (delta),
+                           csum_data);
+    }
+
+  return TRUE;
+}
+
+static void
+on_delta_index_fetched (GObject   *src,
+                        GAsyncResult *res,
+                        gpointer      data)
+
+{
+  FetchDeltaIndexData *fetch_data = data;
+  OtPullData *pull_data = fetch_data->pull_data;
+  g_autoptr(GError) local_error = NULL;
+  GError **error = &local_error;
+  g_autoptr(GBytes) delta_index_data = NULL;
+  const char *from_revision = fetch_data->from_revision;
+  const char *to_revision = fetch_data->to_revision;
+
+  if (!_ostree_fetcher_request_to_membuf_finish ((OstreeFetcher*)src,
+                                                 res,
+                                                 &delta_index_data,
+                                                 NULL, NULL, NULL,
+                                                 error))
+    {
+      if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        goto out;
+      g_clear_error (&local_error);
+
+      /* below call to initiate_delta_request() will fail finding the delta and fall back to commit */
+    }
+  else
+    {
+      g_autoptr(GVariant) delta_index = g_variant_ref_sink (g_variant_new_from_bytes (G_VARIANT_TYPE_VARDICT, delta_index_data, FALSE));
+      g_autoptr(GVariant) deltas = g_variant_lookup_value (delta_index, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
+
+      if (!collect_available_deltas_for_pull (pull_data, deltas, error))
+        goto out;
+    }
+
+  if (!initiate_delta_request (pull_data,
+                               fetch_data->requested_ref,
+                               to_revision,
+                               from_revision,
+                               &local_error))
+    goto out;
+
+ out:
+  g_assert (pull_data->n_outstanding_metadata_fetches > 0);
+  pull_data->n_outstanding_metadata_fetches--;
+
+  if (local_error == NULL)
+    pull_data->n_fetched_metadata++;
+
+  if (_ostree_fetcher_should_retry_request (local_error, fetch_data->n_retries_remaining--))
+    enqueue_one_static_delta_index_request_s (pull_data, g_steal_pointer (&fetch_data));
+  else
+    check_outstanding_requests_handle_error (pull_data, &local_error);
+
+  g_clear_pointer (&fetch_data, fetch_delta_index_data_free);
+}
+
+static void
+start_fetch_delta_index (OtPullData          *pull_data,
+                         FetchDeltaIndexData *fetch_data)
+{
+  g_autofree char *delta_name =
+    _ostree_get_relative_static_delta_index_path (fetch_data->to_revision);
+  g_debug ("starting fetch of delta index %s", delta_name);
+  _ostree_fetcher_request_to_membuf (pull_data->fetcher,
+                                     pull_data->content_mirrorlist,
+                                     delta_name, OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                     NULL, 0,
+                                     OSTREE_MAX_METADATA_SIZE,
+                                     0, pull_data->cancellable,
+                                     on_delta_index_fetched,
+                                     g_steal_pointer (&fetch_data));
+  pull_data->n_outstanding_metadata_fetches++;
+  pull_data->n_requested_metadata++;
+}
+
+static void
+enqueue_one_static_delta_index_request_s (OtPullData          *pull_data,
+                                          FetchDeltaIndexData *fetch_data)
+{
+  if (fetcher_queue_is_full (pull_data))
+    {
+      g_debug ("queuing fetch of static delta index to %s",
+               fetch_data->to_revision);
+
+      g_hash_table_add (pull_data->pending_fetch_delta_indexes,
+                        g_steal_pointer (&fetch_data));
+    }
+  else
+    {
+      start_fetch_delta_index (pull_data, g_steal_pointer (&fetch_data));
+    }
+}
+
+/* Start a request for a static delta index */
+static void
+enqueue_one_static_delta_index_request (OtPullData                *pull_data,
+                                        const char                *to_revision,
+                                        const char                *from_revision,
+                                        const OstreeCollectionRef *ref)
+{
+  FetchDeltaIndexData *fdata = g_new0(FetchDeltaIndexData, 1);
+  fdata->pull_data = pull_data;
+  fdata->from_revision = g_strdup (from_revision);
+  fdata->to_revision = g_strdup (to_revision);
+  fdata->requested_ref = (ref != NULL) ? ostree_collection_ref_dup (ref) : NULL;
+  fdata->n_retries_remaining = pull_data->n_network_retries;
+
+  enqueue_one_static_delta_index_request_s (pull_data, g_steal_pointer (&fdata));
 }
 
 static gboolean
@@ -3259,6 +3440,65 @@ reinitialize_fetcher (OtPullData *pull_data, const char *remote_name,
   return TRUE;
 }
 
+static gboolean
+initiate_delta_request (OtPullData                *pull_data,
+                        const OstreeCollectionRef *ref,
+                        const char                *to_revision,
+                        const char                 *delta_from_revision,
+                        GError                    **error)
+{
+  DeltaSearchResult deltares;
+
+  /* Look for a delta to @to_revision in the summary data */
+  if (!get_best_static_delta_start_for (pull_data, to_revision, &deltares,
+                                        pull_data->cancellable, error))
+    return FALSE;
+
+  switch (deltares.result)
+    {
+    case DELTA_SEARCH_RESULT_NO_MATCH:
+      {
+        if (pull_data->require_static_deltas) /* No deltas found; are they required? */
+          {
+            set_required_deltas_error (error, (ref != NULL) ? ref->ref_name : "", to_revision);
+            return FALSE;
+          }
+        else /* No deltas, fall back to object fetches. */
+          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
+      }
+      break;
+    case DELTA_SEARCH_RESULT_FROM:
+      enqueue_one_static_delta_superblock_request (pull_data, deltares.from_revision, to_revision, ref);
+      break;
+    case DELTA_SEARCH_RESULT_SCRATCH:
+      {
+        /* If a from-scratch delta is available, we don’t want to use it if
+         * the ref already exists locally, since we are likely only a few
+         * commits out of date; so doing an object pull is likely more
+         * bandwidth efficient. */
+        if (delta_from_revision != NULL)
+          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
+        else
+          enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
+      }
+      break;
+    case DELTA_SEARCH_RESULT_UNCHANGED:
+      {
+        /* If we already have the commit, here things get a little special; we've historically
+         * fetched detached metadata, so let's keep doing that.  But in the --require-static-deltas
+         * path, we don't, under the assumption the user wants as little network traffic as
+         * possible.
+         */
+        if (pull_data->require_static_deltas)
+          break;
+        else
+          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
+      }
+    }
+
+  return TRUE;
+}
+
 /*
  * initiate_request:
  * @ref: Optional ref name and collection ID
@@ -3298,57 +3538,17 @@ initiate_request (OtPullData                 *pull_data,
         return FALSE;
     }
 
-  /* If we have a summary, we can use the newer logic */
-  if (pull_data->summary)
+  /* If we have a summary or delta index, we can use the newer logic.
+   * We prefer the index as it might have more deltas than the summary
+   * (i.e. leave some deltas out of summary to make it smaller). */
+  if (pull_data->has_indexed_deltas)
     {
-      DeltaSearchResult deltares;
-
-      /* Look for a delta to @to_revision in the summary data */
-      if (!get_best_static_delta_start_for (pull_data, to_revision, &deltares,
-                                            pull_data->cancellable, error))
+      enqueue_one_static_delta_index_request (pull_data, to_revision, delta_from_revision, ref);
+    }
+  else if (pull_data->summary_has_deltas)
+    {
+      if (!initiate_delta_request (pull_data, ref, to_revision, delta_from_revision, error))
         return FALSE;
-
-      switch (deltares.result)
-        {
-        case DELTA_SEARCH_RESULT_NO_MATCH:
-          {
-            if (pull_data->require_static_deltas) /* No deltas found; are they required? */
-              {
-                set_required_deltas_error (error, (ref != NULL) ? ref->ref_name : "", to_revision);
-                return FALSE;
-              }
-            else /* No deltas, fall back to object fetches. */
-              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
-          }
-          break;
-        case DELTA_SEARCH_RESULT_FROM:
-          enqueue_one_static_delta_superblock_request (pull_data, deltares.from_revision, to_revision, ref);
-          break;
-        case DELTA_SEARCH_RESULT_SCRATCH:
-          {
-            /* If a from-scratch delta is available, we don’t want to use it if
-             * the ref already exists locally, since we are likely only a few
-             * commits out of date; so doing an object pull is likely more
-             * bandwidth efficient. */
-            if (delta_from_revision != NULL)
-              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
-            else
-              enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, ref);
-          }
-          break;
-        case DELTA_SEARCH_RESULT_UNCHANGED:
-          {
-            /* If we already have the commit, here things get a little special; we've historically
-             * fetched detached metadata, so let's keep doing that.  But in the --require-static-deltas
-             * path, we don't, under the assumption the user wants as little network traffic as
-             * possible.
-             */
-            if (pull_data->require_static_deltas)
-              break;
-            else
-              queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0, ref);
-          }
-        }
     }
   else if (ref != NULL)
     {
@@ -3387,6 +3587,20 @@ initiate_request (OtPullData                 *pull_data,
        * doesn't work, it'll drop down to object requests.
        */
       enqueue_one_static_delta_superblock_request (pull_data, NULL, to_revision, NULL);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+all_requested_refs_have_commit (GHashTable *requested_refs /* (element-type OstreeCollectionRef utf8) */)
+{
+  GLNX_HASH_TABLE_FOREACH_KV (requested_refs, const OstreeCollectionRef*, ref,
+                              const char*, override_commitid)
+    {
+      /* Note: "" override means whatever is latest */
+      if (override_commitid == NULL || *override_commitid == 0)
+        return FALSE;
     }
 
   return TRUE;
@@ -3497,9 +3711,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean opt_ref_keyring_map_set = FALSE;
   gboolean disable_sign_verify = FALSE;
   gboolean disable_sign_verify_summary = FALSE;
+  gboolean need_summary = FALSE;
   const char *main_collection_id = NULL;
   const char *url_override = NULL;
   gboolean inherit_transaction = FALSE;
+  gboolean require_summary_for_mirror = FALSE;
   g_autoptr(GHashTable) updated_requested_refs_to_fetch = NULL;  /* (element-type OstreeCollectionRef utf8) */
   gsize i;
   g_autofree char **opt_localcache_repos = NULL;
@@ -3511,6 +3727,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
    */
   const char *the_ref_to_fetch = NULL;
   OstreeRepoTransactionStats tstats = { 0, };
+  gboolean remote_mode_loaded = FALSE;
 
   /* Default */
   pull_data->max_metadata_size = OSTREE_MAX_METADATA_SIZE;
@@ -3657,6 +3874,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->pending_fetch_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                              (GDestroyNotify)g_variant_unref,
                                                              (GDestroyNotify)fetch_object_data_free);
+  pull_data->pending_fetch_delta_indexes = g_hash_table_new_full (NULL, NULL, (GDestroyNotify) fetch_delta_index_data_free, NULL);
   pull_data->pending_fetch_delta_superblocks = g_hash_table_new_full (NULL, NULL, (GDestroyNotify) fetch_delta_super_data_free, NULL);
   pull_data->pending_fetch_deltaparts = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)fetch_static_delta_data_free, NULL);
 
@@ -3933,458 +4151,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->is_commit_only)
     pull_data->disable_static_deltas = TRUE;
 
-  pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
-
-  {
-    g_autoptr(GBytes) bytes_sig = NULL;
-    gboolean summary_sig_not_modified = FALSE;
-    g_autofree char *summary_sig_etag = NULL;
-    guint64 summary_sig_last_modified = 0;
-    gsize n;
-    g_autoptr(GVariant) refs = NULL;
-    g_autoptr(GVariant) deltas = NULL;
-    g_autoptr(GVariant) additional_metadata = NULL;
-    gboolean summary_from_cache = FALSE;
-    gboolean remote_mode_loaded = FALSE;
-    gboolean tombstone_commits = FALSE;
-
-    if (summary_sig_bytes_v)
-      {
-        /* Must both be specified */
-        g_assert (summary_bytes_v);
-
-        bytes_sig = g_variant_get_data_as_bytes (summary_sig_bytes_v);
-        bytes_summary = g_variant_get_data_as_bytes (summary_bytes_v);
-
-        if (!bytes_sig || !bytes_summary)
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "summary-bytes or summary-sig-bytes set to invalid value");
-            goto out;
-          }
-
-        g_debug ("Loaded %s summary from options", remote_name_or_baseurl);
-      }
-
-    if (!bytes_sig)
-      {
-        g_autofree char *summary_sig_if_none_match = NULL;
-        guint64 summary_sig_if_modified_since = 0;
-
-        /* Load the summary.sig from the network, but send its ETag and
-         * Last-Modified from the on-disk cache (if it exists) to reduce the
-         * download size if nothing’s changed. */
-        _ostree_repo_load_cache_summary_properties (self, remote_name_or_baseurl, ".sig",
-                                                    &summary_sig_if_none_match, &summary_sig_if_modified_since);
-
-        g_clear_pointer (&summary_sig_etag, g_free);
-        summary_sig_last_modified = 0;
-        if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
-                                                         pull_data->meta_mirrorlist,
-                                                         "summary.sig", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                         summary_sig_if_none_match, summary_sig_if_modified_since,
-                                                         pull_data->n_network_retries,
-                                                         &bytes_sig,
-                                                         &summary_sig_not_modified, &summary_sig_etag, &summary_sig_last_modified,
-                                                         OSTREE_MAX_METADATA_SIZE,
-                                                         cancellable, error))
-          goto out;
-
-        /* The server returned HTTP status 304 Not Modified, so we’re clear to
-         * load summary.sig from the cache. Also load summary, since
-         * `_ostree_repo_load_cache_summary_if_same_sig()` would just do that anyway. */
-        if (summary_sig_not_modified)
-          {
-            g_clear_pointer (&bytes_sig, g_bytes_unref);
-            g_clear_pointer (&bytes_summary, g_bytes_unref);
-            if (!_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, ".sig",
-                                                       &bytes_sig,
-                                                       cancellable, error))
-              goto out;
-
-            if (!bytes_summary &&
-                !pull_data->remote_repo_local &&
-                !_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, NULL,
-                                                       &bytes_summary,
-                                                       cancellable, error))
-              goto out;
-          }
-      }
-
-    if (bytes_sig &&
-        !bytes_summary &&
-        !pull_data->remote_repo_local &&
-        !_ostree_repo_load_cache_summary_if_same_sig (self,
-                                                      remote_name_or_baseurl,
-                                                      bytes_sig,
-                                                      &bytes_summary,
-                                                      cancellable,
-                                                      error))
-      goto out;
-
-    if (bytes_summary && !summary_bytes_v)
-      {
-        g_debug ("Loaded %s summary from cache", remote_name_or_baseurl);
-        summary_from_cache = TRUE;
-      }
-
-    if (!pull_data->summary && !bytes_summary)
-      {
-        g_autofree char *summary_if_none_match = NULL;
-        guint64 summary_if_modified_since = 0;
-
-        _ostree_repo_load_cache_summary_properties (self, remote_name_or_baseurl, NULL,
-                                                    &summary_if_none_match, &summary_if_modified_since);
-
-        g_clear_pointer (&summary_etag, g_free);
-        summary_last_modified = 0;
-        if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
-                                                         pull_data->meta_mirrorlist,
-                                                         "summary", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                         summary_if_none_match, summary_if_modified_since,
-                                                         pull_data->n_network_retries,
-                                                         &bytes_summary,
-                                                         &summary_not_modified, &summary_etag, &summary_last_modified,
-                                                         OSTREE_MAX_METADATA_SIZE,
-                                                         cancellable, error))
-          goto out;
-
-        /* The server returned HTTP status 304 Not Modified, so we’re clear to
-         * load summary from the cache. */
-        if (summary_not_modified)
-          {
-            g_clear_pointer (&bytes_summary, g_bytes_unref);
-            if (!_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, NULL,
-                                                       &bytes_summary,
-                                                       cancellable, error))
-              goto out;
-          }
-      }
-
-#ifndef OSTREE_DISABLE_GPGME
-    if (!bytes_summary && pull_data->gpg_verify_summary)
-      {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                     "GPG verification enabled, but no summary found (use gpg-verify-summary=false in remote config to disable)");
-        goto out;
-      }
-#endif /* OSTREE_DISABLE_GPGME */
-
-    if (!bytes_summary && pull_data->require_static_deltas)
-      {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                     "Fetch configured to require static deltas, but no summary found");
-        goto out;
-      }
-
-#ifndef OSTREE_DISABLE_GPGME
-    if (!bytes_sig && pull_data->gpg_verify_summary)
-      {
-        g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
-                     "GPG verification enabled, but no summary.sig found (use gpg-verify-summary=false in remote config to disable)");
-        goto out;
-      }
-
-    if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
-      {
-        g_autoptr(OstreeGpgVerifyResult) result = NULL;
-        g_autoptr(GError) temp_error = NULL;
-
-        result = ostree_repo_verify_summary (self, pull_data->remote_name,
-                                             bytes_summary, bytes_sig,
-                                             cancellable, &temp_error);
-        if (!ostree_gpg_verify_result_require_valid_signature (result, &temp_error))
-          {
-            if (summary_from_cache)
-              {
-                /* The cached summary doesn't match, fetch a new one and verify again.
-                 * Don’t set the cache headers in the HTTP request, to force a
-                 * full download. */
-                if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
-                  {
-                    g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                 "Remote %s cached summary invalid and "
-                                 "OSTREE_REPO_TEST_ERROR_INVALID_CACHE specified",
-                                 pull_data->remote_name);
-                    goto out;
-                  }
-                else
-                  g_debug ("Remote %s cached summary invalid, pulling new version",
-                           pull_data->remote_name);
-
-                summary_from_cache = FALSE;
-                g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
-                g_clear_pointer (&summary_etag, g_free);
-                summary_last_modified = 0;
-                if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
-                                                                 pull_data->meta_mirrorlist,
-                                                                 "summary",
-                                                                 OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                                 NULL, 0,  /* no cache headers */
-                                                                 pull_data->n_network_retries,
-                                                                 &bytes_summary,
-                                                                 &summary_not_modified, &summary_etag, &summary_last_modified,
-                                                                 OSTREE_MAX_METADATA_SIZE,
-                                                                 cancellable, error))
-                  goto out;
-
-                g_autoptr(OstreeGpgVerifyResult) retry =
-                  ostree_repo_verify_summary (self, pull_data->remote_name,
-                                              bytes_summary, bytes_sig,
-                                              cancellable, error);
-                if (!ostree_gpg_verify_result_require_valid_signature (retry, error))
-                  goto out;
-              }
-            else
-              {
-                g_propagate_error (error, g_steal_pointer (&temp_error));
-                goto out;
-              }
-          }
-      }
-#endif /* OSTREE_DISABLE_GPGME */
-
-    if (pull_data->signapi_summary_verifiers)
-      {
-        if (!bytes_sig && pull_data->signapi_summary_verifiers)
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "Signatures verification enabled, but no summary.sig found (use sign-verify-summary=false in remote config to disable)");
-            goto out;
-          }
-        if (bytes_summary && bytes_sig)
-          {
-            g_autoptr(GVariant) signatures = NULL;
-            g_autoptr(GError) temp_error = NULL;
-
-            signatures = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
-                                                   bytes_sig, FALSE);
-
-
-            g_assert (pull_data->signapi_summary_verifiers);
-            if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, NULL, &temp_error))
-              {
-                if (summary_from_cache)
-                  {
-                    /* The cached summary doesn't match, fetch a new one and verify again.
-                     * Don’t set the cache headers in the HTTP request, to force a
-                     * full download. */
-                    if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
-                      {
-                        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                     "Remote %s cached summary invalid and "
-                                     "OSTREE_REPO_TEST_ERROR_INVALID_CACHE specified",
-                                     pull_data->remote_name);
-                        goto out;
-                      }
-                    else
-                      g_debug ("Remote %s cached summary invalid, pulling new version",
-                               pull_data->remote_name);
-
-                    summary_from_cache = FALSE;
-                    g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
-                    g_clear_pointer (&summary_etag, g_free);
-                    summary_last_modified = 0;
-                    if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
-                                                                     pull_data->meta_mirrorlist,
-                                                                     "summary",
-                                                                     OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
-                                                                     NULL, 0,  /* no cache headers */
-                                                                     pull_data->n_network_retries,
-                                                                     &bytes_summary,
-                                                                     &summary_not_modified, &summary_etag, &summary_last_modified,
-                                                                     OSTREE_MAX_METADATA_SIZE,
-                                                                     cancellable, error))
-                      goto out;
-
-                    if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, NULL, error))
-                        goto out;
-                  }
-                else
-                  {
-                    g_propagate_error (error, g_steal_pointer (&temp_error));
-                    goto out;
-                  }
-              }
-          }
-      }
-
-    if (bytes_summary)
-      {
-        pull_data->summary_data = g_bytes_ref (bytes_summary);
-        pull_data->summary_etag = g_strdup (summary_etag);
-        pull_data->summary_last_modified = summary_last_modified;
-        pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
-
-        if (!g_variant_is_normal_form (pull_data->summary))
-          {
-            g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                 "Not normal form");
-            goto out;
-          }
-        if (!g_variant_is_of_type (pull_data->summary, OSTREE_SUMMARY_GVARIANT_FORMAT))
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "Doesn't match variant type '%s'",
-                         (char *)OSTREE_SUMMARY_GVARIANT_FORMAT);
-            goto out;
-          }
-
-        if (bytes_sig)
-          {
-            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
-            pull_data->summary_sig_etag = g_strdup (summary_sig_etag);
-            pull_data->summary_sig_last_modified = summary_sig_last_modified;
-          }
-      }
-
-    if (!summary_from_cache && bytes_summary && bytes_sig)
-      {
-        if (!pull_data->remote_repo_local &&
-            !_ostree_repo_cache_summary (self,
-                                         remote_name_or_baseurl,
-                                         bytes_summary,
-                                         summary_etag, summary_last_modified,
-                                         bytes_sig,
-                                         summary_sig_etag, summary_sig_last_modified,
-                                         cancellable,
-                                         error))
-          goto out;
-      }
-
-    if (pull_data->summary)
-      {
-        additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
-
-        if (!g_variant_lookup (additional_metadata, OSTREE_SUMMARY_COLLECTION_ID, "&s", &main_collection_id))
-          main_collection_id = NULL;
-        else if (!ostree_validate_collection_id (main_collection_id, error))
-          goto out;
-
-        refs = g_variant_get_child_value (pull_data->summary, 0);
-        for (i = 0, n = g_variant_n_children (refs); i < n; i++)
-          {
-            const char *refname;
-            g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
-
-            g_variant_get_child (ref, 0, "&s", &refname);
-
-            if (!ostree_validate_rev (refname, error))
-              goto out;
-
-            if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set)
-              {
-                g_hash_table_insert (requested_refs_to_fetch,
-                                     ostree_collection_ref_new (main_collection_id, refname), NULL);
-              }
-          }
-
-        g_autoptr(GVariant) collection_map = NULL;
-        collection_map = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP, G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
-        if (collection_map != NULL)
-          {
-            GVariantIter collection_map_iter;
-            const char *collection_id;
-            g_autoptr(GVariant) collection_refs = NULL;
-
-            g_variant_iter_init (&collection_map_iter, collection_map);
-
-            while (g_variant_iter_loop (&collection_map_iter, "{&s@a(s(taya{sv}))}", &collection_id, &collection_refs))
-              {
-                if (!ostree_validate_collection_id (collection_id, error))
-                  goto out;
-
-                for (i = 0, n = g_variant_n_children (collection_refs); i < n; i++)
-                  {
-                    const char *refname;
-                    g_autoptr(GVariant) ref = g_variant_get_child_value (collection_refs, i);
-
-                    g_variant_get_child (ref, 0, "&s", &refname);
-
-                    if (!ostree_validate_rev (refname, error))
-                      goto out;
-
-                    if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set)
-                      {
-                        g_hash_table_insert (requested_refs_to_fetch,
-                                             ostree_collection_ref_new (collection_id, refname), NULL);
-                      }
-                  }
-              }
-          }
-
-        deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
-        n = deltas ? g_variant_n_children (deltas) : 0;
-        for (i = 0; i < n; i++)
-          {
-            const char *delta;
-            g_autoptr(GVariant) csum_v = NULL;
-            g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
-
-            g_variant_get_child (ref, 0, "&s", &delta);
-            g_variant_get_child (ref, 1, "v", &csum_v);
-
-            if (!validate_variant_is_csum (csum_v, error))
-              goto out;
-
-            guchar *csum_data = g_malloc (OSTREE_SHA256_DIGEST_LEN);
-            memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
-            g_hash_table_insert (pull_data->summary_deltas_checksums,
-                                 g_strdup (delta),
-                                 csum_data);
-          }
-      }
-
-    if (pull_data->summary &&
-        g_variant_lookup (additional_metadata, OSTREE_SUMMARY_MODE, "s", &remote_mode_str) &&
-        g_variant_lookup (additional_metadata, OSTREE_SUMMARY_TOMBSTONE_COMMITS, "b", &tombstone_commits))
-      {
-        if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
-          goto out;
-        pull_data->has_tombstone_commits = tombstone_commits;
-        remote_mode_loaded = TRUE;
-      }
-    else if (pull_data->remote_repo_local == NULL)
-      {
-        /* Fall-back path which loads the necessary config from the remote’s
-         * `config` file. Doing so is deprecated since it means an
-         * additional round trip to the remote for each pull. No need to do
-         * it for local pulls. */
-        if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
-          goto out;
-
-        if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
-                                                &remote_mode_str, error))
-          goto out;
-
-        if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
-          goto out;
-
-        if (!ot_keyfile_get_boolean_with_default (remote_config, "core", "tombstone-commits", FALSE,
-                                                  &pull_data->has_tombstone_commits, error))
-          goto out;
-
-        remote_mode_loaded = TRUE;
-      }
-
-    if (remote_mode_loaded && pull_data->remote_repo_local == NULL && pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE)
-      {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                     "Can't pull from archives with mode \"%s\"",
-                     remote_mode_str);
-        goto out;
-      }
-  }
+  /* Compute the set of collection-refs (and optional commit id) to fetch */
 
   if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set && !configured_branches)
     {
-      if (!bytes_summary)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
-          goto out;
-        }
-
+      require_summary_for_mirror = TRUE;
     }
   else if (opt_collection_refs_set)
     {
@@ -4446,6 +4217,465 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           g_hash_table_insert (requested_refs_to_fetch,
                                ostree_collection_ref_new (NULL, branch), NULL);
         }
+    }
+
+  /* Deltas are necessary when mirroring or resolving a requested ref to a commit.
+   * We try to avoid loading the potentially large summary if it is not needed. */
+  need_summary = require_summary_for_mirror || !all_requested_refs_have_commit (requested_refs_to_fetch) || summary_sig_bytes_v != NULL;
+
+  /* If we don't have indexed deltas, we need the summary for deltas, so check
+   * the config file for support.
+   * NOTE: Avoid download if we don't need deltas */
+  if (!need_summary && !pull_data->disable_static_deltas)
+    {
+      if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
+        goto out;
+
+      /* Check if remote has delta indexes outside summary */
+      if (!ot_keyfile_get_boolean_with_default (remote_config, "core", "indexed-deltas", FALSE,
+                                                &pull_data->has_indexed_deltas, error))
+        goto out;
+
+      if (!pull_data->has_indexed_deltas)
+        need_summary = TRUE;
+   }
+
+  pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+
+  if (need_summary)
+    {
+      g_autoptr(GBytes) bytes_sig = NULL;
+      gboolean summary_sig_not_modified = FALSE;
+      g_autofree char *summary_sig_etag = NULL;
+      guint64 summary_sig_last_modified = 0;
+      gsize n;
+      g_autoptr(GVariant) refs = NULL;
+      g_autoptr(GVariant) deltas = NULL;
+      g_autoptr(GVariant) additional_metadata = NULL;
+      gboolean summary_from_cache = FALSE;
+      gboolean tombstone_commits = FALSE;
+
+      if (summary_sig_bytes_v)
+        {
+          /* Must both be specified */
+          g_assert (summary_bytes_v);
+
+          bytes_sig = g_variant_get_data_as_bytes (summary_sig_bytes_v);
+          bytes_summary = g_variant_get_data_as_bytes (summary_bytes_v);
+
+          if (!bytes_sig || !bytes_summary)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "summary-bytes or summary-sig-bytes set to invalid value");
+              goto out;
+            }
+
+          g_debug ("Loaded %s summary from options", remote_name_or_baseurl);
+        }
+
+      if (!bytes_sig)
+        {
+          g_autofree char *summary_sig_if_none_match = NULL;
+          guint64 summary_sig_if_modified_since = 0;
+
+          /* Load the summary.sig from the network, but send its ETag and
+           * Last-Modified from the on-disk cache (if it exists) to reduce the
+           * download size if nothing’s changed. */
+          _ostree_repo_load_cache_summary_properties (self, remote_name_or_baseurl, ".sig",
+                                                      &summary_sig_if_none_match, &summary_sig_if_modified_since);
+
+          g_clear_pointer (&summary_sig_etag, g_free);
+          summary_sig_last_modified = 0;
+          if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                           pull_data->meta_mirrorlist,
+                                                           "summary.sig", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                           summary_sig_if_none_match, summary_sig_if_modified_since,
+                                                           pull_data->n_network_retries,
+                                                           &bytes_sig,
+                                                           &summary_sig_not_modified, &summary_sig_etag, &summary_sig_last_modified,
+                                                           OSTREE_MAX_METADATA_SIZE,
+                                                           cancellable, error))
+            goto out;
+
+          /* The server returned HTTP status 304 Not Modified, so we’re clear to
+           * load summary.sig from the cache. Also load summary, since
+           * `_ostree_repo_load_cache_summary_if_same_sig()` would just do that anyway. */
+          if (summary_sig_not_modified)
+            {
+              g_clear_pointer (&bytes_sig, g_bytes_unref);
+              g_clear_pointer (&bytes_summary, g_bytes_unref);
+              if (!_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, ".sig",
+                                                         &bytes_sig,
+                                                         cancellable, error))
+                goto out;
+
+              if (!bytes_summary &&
+                  !pull_data->remote_repo_local &&
+                  !_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, NULL,
+                                                         &bytes_summary,
+                                                         cancellable, error))
+                goto out;
+            }
+        }
+
+      if (bytes_sig &&
+          !bytes_summary &&
+          !pull_data->remote_repo_local &&
+          !_ostree_repo_load_cache_summary_if_same_sig (self,
+                                                        remote_name_or_baseurl,
+                                                        bytes_sig,
+                                                        &bytes_summary,
+                                                        cancellable,
+                                                        error))
+        goto out;
+
+      if (bytes_summary && !summary_bytes_v)
+        {
+          g_debug ("Loaded %s summary from cache", remote_name_or_baseurl);
+          summary_from_cache = TRUE;
+        }
+
+      if (!pull_data->summary && !bytes_summary)
+        {
+          g_autofree char *summary_if_none_match = NULL;
+          guint64 summary_if_modified_since = 0;
+
+          _ostree_repo_load_cache_summary_properties (self, remote_name_or_baseurl, NULL,
+                                                      &summary_if_none_match, &summary_if_modified_since);
+
+          g_clear_pointer (&summary_etag, g_free);
+          summary_last_modified = 0;
+
+          if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                           pull_data->meta_mirrorlist,
+                                                           "summary", OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                           summary_if_none_match, summary_if_modified_since,
+                                                           pull_data->n_network_retries,
+                                                           &bytes_summary,
+                                                           &summary_not_modified, &summary_etag, &summary_last_modified,
+                                                           OSTREE_MAX_METADATA_SIZE,
+                                                           cancellable, error))
+            goto out;
+
+          /* The server returned HTTP status 304 Not Modified, so we’re clear to
+           * load summary from the cache. */
+          if (summary_not_modified)
+            {
+              g_clear_pointer (&bytes_summary, g_bytes_unref);
+              if (!_ostree_repo_load_cache_summary_file (self, remote_name_or_baseurl, NULL,
+                                                         &bytes_summary,
+                                                         cancellable, error))
+                goto out;
+            }
+        }
+
+#ifndef OSTREE_DISABLE_GPGME
+      if (!bytes_summary && pull_data->gpg_verify_summary)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "GPG verification enabled, but no summary found (use gpg-verify-summary=false in remote config to disable)");
+          goto out;
+        }
+#endif /* OSTREE_DISABLE_GPGME */
+
+      if (!bytes_summary && require_summary_for_mirror)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
+          goto out;
+        }
+
+#ifndef OSTREE_DISABLE_GPGME
+      if (!bytes_sig && pull_data->gpg_verify_summary)
+        {
+          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
+                       "GPG verification enabled, but no summary.sig found (use gpg-verify-summary=false in remote config to disable)");
+          goto out;
+        }
+
+      if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
+        {
+          g_autoptr(OstreeGpgVerifyResult) result = NULL;
+          g_autoptr(GError) temp_error = NULL;
+
+          result = ostree_repo_verify_summary (self, pull_data->remote_name,
+                                               bytes_summary, bytes_sig,
+                                               cancellable, &temp_error);
+          if (!ostree_gpg_verify_result_require_valid_signature (result, &temp_error))
+            {
+              if (summary_from_cache)
+                {
+                  /* The cached summary doesn't match, fetch a new one and verify again.
+                   * Don’t set the cache headers in the HTTP request, to force a
+                   * full download. */
+                  if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
+                    {
+                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Remote %s cached summary invalid and "
+                                   "OSTREE_REPO_TEST_ERROR_INVALID_CACHE specified",
+                                   pull_data->remote_name);
+                      goto out;
+                    }
+                  else
+                    g_debug ("Remote %s cached summary invalid, pulling new version",
+                             pull_data->remote_name);
+
+                  summary_from_cache = FALSE;
+                  g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                  g_clear_pointer (&summary_etag, g_free);
+                  summary_last_modified = 0;
+                  if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                                   pull_data->meta_mirrorlist,
+                                                                   "summary",
+                                                                   OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                                   NULL, 0,  /* no cache headers */
+                                                                   pull_data->n_network_retries,
+                                                                   &bytes_summary,
+                                                                   &summary_not_modified, &summary_etag, &summary_last_modified,
+                                                                   OSTREE_MAX_METADATA_SIZE,
+                                                                   cancellable, error))
+                    goto out;
+
+                  g_autoptr(OstreeGpgVerifyResult) retry =
+                    ostree_repo_verify_summary (self, pull_data->remote_name,
+                                                bytes_summary, bytes_sig,
+                                                cancellable, error);
+                  if (!ostree_gpg_verify_result_require_valid_signature (retry, error))
+                    goto out;
+                }
+              else
+                {
+                  g_propagate_error (error, g_steal_pointer (&temp_error));
+                  goto out;
+                }
+            }
+        }
+#endif /* OSTREE_DISABLE_GPGME */
+
+      if (pull_data->signapi_summary_verifiers)
+        {
+          if (!bytes_sig && pull_data->signapi_summary_verifiers)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Signatures verification enabled, but no summary.sig found (use sign-verify-summary=false in remote config to disable)");
+              goto out;
+            }
+          if (bytes_summary && bytes_sig)
+            {
+              g_autoptr(GVariant) signatures = NULL;
+              g_autoptr(GError) temp_error = NULL;
+
+              signatures = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                     bytes_sig, FALSE);
+
+              g_assert (pull_data->signapi_summary_verifiers);
+              if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, NULL, &temp_error))
+                {
+                  if (summary_from_cache)
+                    {
+                      /* The cached summary doesn't match, fetch a new one and verify again.
+                       * Don’t set the cache headers in the HTTP request, to force a
+                       * full download. */
+                      if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
+                        {
+                          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                       "Remote %s cached summary invalid and "
+                                       "OSTREE_REPO_TEST_ERROR_INVALID_CACHE specified",
+                                       pull_data->remote_name);
+                          goto out;
+                        }
+                      else
+                        g_debug ("Remote %s cached summary invalid, pulling new version",
+                                 pull_data->remote_name);
+
+                      summary_from_cache = FALSE;
+                      g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                      g_clear_pointer (&summary_etag, g_free);
+                      summary_last_modified = 0;
+                      if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                                       pull_data->meta_mirrorlist,
+                                                                       "summary",
+                                                                       OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT,
+                                                                       NULL, 0,  /* no cache headers */
+                                                                       pull_data->n_network_retries,
+                                                                       &bytes_summary,
+                                                                       &summary_not_modified, &summary_etag, &summary_last_modified,
+                                                                       OSTREE_MAX_METADATA_SIZE,
+                                                                       cancellable, error))
+                        goto out;
+
+                      if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary, signatures, NULL, error))
+                        goto out;
+                    }
+                  else
+                    {
+                      g_propagate_error (error, g_steal_pointer (&temp_error));
+                      goto out;
+                    }
+                }
+            }
+        }
+
+      if (bytes_summary)
+        {
+          pull_data->summary_data = g_bytes_ref (bytes_summary);
+          pull_data->summary_etag = g_strdup (summary_etag);
+          pull_data->summary_last_modified = summary_last_modified;
+          pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
+
+          if (!g_variant_is_normal_form (pull_data->summary))
+            {
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Not normal form");
+              goto out;
+            }
+          if (!g_variant_is_of_type (pull_data->summary, OSTREE_SUMMARY_GVARIANT_FORMAT))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Doesn't match variant type '%s'",
+                           (char *)OSTREE_SUMMARY_GVARIANT_FORMAT);
+              goto out;
+            }
+
+          if (bytes_sig)
+            {
+              pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+              pull_data->summary_sig_etag = g_strdup (summary_sig_etag);
+              pull_data->summary_sig_last_modified = summary_sig_last_modified;
+            }
+        }
+
+      if (!summary_from_cache && bytes_summary && bytes_sig)
+        {
+          if (!pull_data->remote_repo_local &&
+              !_ostree_repo_cache_summary (self,
+                                           remote_name_or_baseurl,
+                                           bytes_summary,
+                                           summary_etag, summary_last_modified,
+                                           bytes_sig,
+                                           summary_sig_etag, summary_sig_last_modified,
+                                           cancellable,
+                                           error))
+            goto out;
+        }
+
+      if (pull_data->summary)
+        {
+          additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+
+          if (!g_variant_lookup (additional_metadata, OSTREE_SUMMARY_COLLECTION_ID, "&s", &main_collection_id))
+            main_collection_id = NULL;
+          else if (!ostree_validate_collection_id (main_collection_id, error))
+            goto out;
+
+          refs = g_variant_get_child_value (pull_data->summary, 0);
+          for (i = 0, n = g_variant_n_children (refs); i < n; i++)
+            {
+              const char *refname;
+              g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
+
+              g_variant_get_child (ref, 0, "&s", &refname);
+
+              if (!ostree_validate_rev (refname, error))
+                goto out;
+
+              if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set)
+                {
+                  g_hash_table_insert (requested_refs_to_fetch,
+                                       ostree_collection_ref_new (main_collection_id, refname), NULL);
+                }
+            }
+
+          g_autoptr(GVariant) collection_map = NULL;
+          collection_map = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP, G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
+          if (collection_map != NULL)
+            {
+              GVariantIter collection_map_iter;
+              const char *collection_id;
+              g_autoptr(GVariant) collection_refs = NULL;
+
+              g_variant_iter_init (&collection_map_iter, collection_map);
+
+              while (g_variant_iter_loop (&collection_map_iter, "{&s@a(s(taya{sv}))}", &collection_id, &collection_refs))
+                {
+                  if (!ostree_validate_collection_id (collection_id, error))
+                    goto out;
+
+                  for (i = 0, n = g_variant_n_children (collection_refs); i < n; i++)
+                    {
+                      const char *refname;
+                      g_autoptr(GVariant) ref = g_variant_get_child_value (collection_refs, i);
+
+                      g_variant_get_child (ref, 0, "&s", &refname);
+
+                      if (!ostree_validate_rev (refname, error))
+                        goto out;
+
+                      if (pull_data->is_mirror && !refs_to_fetch && !opt_collection_refs_set)
+                        {
+                          g_hash_table_insert (requested_refs_to_fetch,
+                                               ostree_collection_ref_new (collection_id, refname), NULL);
+                        }
+                    }
+                }
+            }
+
+          deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
+          pull_data->summary_has_deltas = deltas != NULL && g_variant_n_children (deltas) > 0;
+          if (!collect_available_deltas_for_pull (pull_data, deltas, error))
+            goto out;
+
+          g_variant_lookup (additional_metadata, OSTREE_SUMMARY_INDEXED_DELTAS, "b", &pull_data->has_indexed_deltas);
+        }
+
+      if (pull_data->summary &&
+          g_variant_lookup (additional_metadata, OSTREE_SUMMARY_MODE, "s", &remote_mode_str) &&
+          g_variant_lookup (additional_metadata, OSTREE_SUMMARY_TOMBSTONE_COMMITS, "b", &tombstone_commits))
+        {
+          if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
+            goto out;
+          pull_data->has_tombstone_commits = tombstone_commits;
+          remote_mode_loaded = TRUE;
+        }
+    }
+
+  if (pull_data->require_static_deltas && !pull_data->has_indexed_deltas && !pull_data->summary_has_deltas)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "Fetch configured to require static deltas, but no summary deltas or delta index found");
+      goto out;
+    }
+
+  if (remote_mode_loaded && pull_data->remote_repo_local == NULL)
+      {
+        /* Fall-back path which loads the necessary config from the remote’s
+         * `config` file (unless we already read it above). Doing so is deprecated since it means an
+         * additional round trip to the remote for each pull. No need to do
+         * it for local pulls. */
+        if (remote_config == NULL &&
+            !load_remote_repo_config (pull_data, &remote_config, cancellable, error))
+          goto out;
+
+        if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
+                                                &remote_mode_str, error))
+          goto out;
+
+        if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
+          goto out;
+
+        if (!ot_keyfile_get_boolean_with_default (remote_config, "core", "tombstone-commits", FALSE,
+                                                  &pull_data->has_tombstone_commits, error))
+          goto out;
+
+        remote_mode_loaded = TRUE;
+      }
+
+  if (remote_mode_loaded && pull_data->remote_repo_local == NULL && pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Can't pull from archives with mode \"%s\"",
+                   remote_mode_str);
+      goto out;
     }
 
   /* Resolve the checksum for each ref. This has to be done into a new hash table,
@@ -4900,6 +5130,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_metadata, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->pending_fetch_delta_indexes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_delta_superblocks, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->pending_fetch_deltaparts, (GDestroyNotify) g_hash_table_unref);
   g_queue_foreach (&pull_data->scan_object_queue, (GFunc) scan_object_queue_data_free, NULL);

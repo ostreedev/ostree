@@ -5222,6 +5222,67 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
+
+/**
+ * ostree_repo_gpg_sign_data:
+ * @self: Self
+ * @data: Data as a #GBytes
+ * @old_signatures: Existing signatures to append to (or %NULL)
+ * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @out_signature: (out): in case of success will contain signature
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Sign the given @data with the specified keys in @key_id. Similar to
+ * ostree_repo_add_gpg_signature_summary() but can be used on any
+ * data.
+ *
+ * You can use ostree_repo_gpg_verify_data() to verify the signatures.
+ *
+ * Returns: @TRUE if @data has been signed successfully,
+ * @FALSE in case of error (@error will contain the reason).
+ *
+ * Since: 2020.8
+ */
+gboolean
+ostree_repo_gpg_sign_data (OstreeRepo     *self,
+                           GBytes         *data,
+                           GBytes         *old_signatures,
+                           const gchar   **key_id,
+                           const gchar    *homedir,
+                           GBytes        **out_signatures,
+                           GCancellable   *cancellable,
+                           GError        **error)
+{
+#ifndef OSTREE_DISABLE_GPGME
+  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr(GVariant) res = NULL;
+
+  if (old_signatures)
+    metadata = g_variant_ref_sink (g_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING), old_signatures, FALSE));
+
+  for (guint i = 0; key_id[i]; i++)
+    {
+      g_autoptr(GBytes) signature_data = NULL;
+      if (!sign_data (self, data, key_id[i], homedir,
+                      &signature_data,
+                      cancellable, error))
+        return FALSE;
+
+      g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
+      metadata = _ostree_detached_metadata_append_gpg_sig (old_metadata, signature_data);
+    }
+
+  res = g_variant_get_normal_form (metadata);
+  *out_signatures = g_variant_get_data_as_bytes (res);
+  return TRUE;
+#else
+  return glnx_throw (error, "GPG feature is disabled in a build time");
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
+
 #ifndef OSTREE_DISABLE_GPGME
 /* Special remote for _ostree_repo_gpg_verify_with_metadata() */
 static const char *OSTREE_ALL_REMOTES = "__OSTREE_ALL_REMOTES__";
@@ -5749,6 +5810,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
    * commits from working.
    */
   g_autoptr(OstreeRepoAutoLock) lock = NULL;
+  gboolean no_deltas_in_summary = FALSE;
+
   lock = _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
                                       cancellable, error);
   if (!lock)
@@ -5781,35 +5844,41 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       }
   }
 
-  {
-    g_autoptr(GPtrArray) delta_names = NULL;
-    g_auto(GVariantDict) deltas_builder = OT_VARIANT_BUILDER_INITIALIZER;
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core",
+                                            "no-deltas-in-summary", FALSE,
+                                            &no_deltas_in_summary, error))
+    return FALSE;
 
-    if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
-      return FALSE;
+  if (!no_deltas_in_summary)
+    {
+      g_autoptr(GPtrArray) delta_names = NULL;
+      g_auto(GVariantDict) deltas_builder = OT_VARIANT_BUILDER_INITIALIZER;
 
-    g_variant_dict_init (&deltas_builder, NULL);
-    for (guint i = 0; i < delta_names->len; i++)
-      {
-        g_autofree char *from = NULL;
-        g_autofree char *to = NULL;
-        GVariant *digest;
+      if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
+        return FALSE;
 
-        if (!_ostree_parse_delta_name (delta_names->pdata[i], &from, &to, error))
-          return FALSE;
+      g_variant_dict_init (&deltas_builder, NULL);
+      for (guint i = 0; i < delta_names->len; i++)
+        {
+          g_autofree char *from = NULL;
+          g_autofree char *to = NULL;
+          GVariant *digest;
 
-        digest = _ostree_repo_static_delta_superblock_digest (self,
-                                                              (from && from[0]) ? from : NULL,
-                                                              to, cancellable, error);
-        if (digest == NULL)
-          return FALSE;
+          if (!_ostree_parse_delta_name (delta_names->pdata[i], &from, &to, error))
+            return FALSE;
 
-        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], digest);
-      }
+          digest = _ostree_repo_static_delta_superblock_digest (self,
+                                                                (from && from[0]) ? from : NULL,
+                                                                to, cancellable, error);
+          if (digest == NULL)
+            return FALSE;
 
-    if (delta_names->len > 0)
-      g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_STATIC_DELTAS, g_variant_dict_end (&deltas_builder));
-  }
+          g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], digest);
+        }
+
+      if (delta_names->len > 0)
+        g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_STATIC_DELTAS, g_variant_dict_end (&deltas_builder));
+    }
 
   {
     g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_LAST_MODIFIED,
@@ -5833,6 +5902,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_TOMBSTONE_COMMITS,
                                  g_variant_new_boolean (tombstone_commits));
   }
+
+  g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_INDEXED_DELTAS,
+                               g_variant_new_boolean (TRUE));
 
   /* Add refs which have a collection specified, which could be in refs/mirrors,
    * refs/heads, and/or refs/remotes. */
@@ -5926,6 +5998,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     summary = g_variant_builder_end (summary_builder);
     g_variant_ref_sink (summary);
   }
+
+  if (!ostree_repo_static_delta_reindex (self, 0, NULL, cancellable, error))
+    return FALSE;
 
   if (!_ostree_repo_file_replace_contents (self,
                                            self->repo_dir_fd,

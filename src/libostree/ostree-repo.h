@@ -1046,6 +1046,12 @@ gboolean ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                               GCancellable                *cancellable,
                                               GError                     **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_repo_list_static_delta_indexes (OstreeRepo                  *self,
+                                                GPtrArray                  **out_indexes,
+                                                GCancellable                *cancellable,
+                                                GError                     **error);
+
 /**
  * OstreeStaticDeltaGenerateOpt:
  * @OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY: Optimize for speed of delta creation over space
@@ -1067,6 +1073,23 @@ gboolean ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                             GVariant                     *params,
                                             GCancellable                 *cancellable,
                                             GError                      **error);
+
+/**
+ * OstreeStaticDeltaIndexFlags:
+ * @OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE: No special flags
+ *
+ * Flags controlling static delta index generation.
+ */
+typedef enum {
+  OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE = 0,
+} OstreeStaticDeltaIndexFlags;
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_static_delta_reindex (OstreeRepo                  *repo,
+                                           OstreeStaticDeltaIndexFlags flags,
+                                           const char                  *opt_to_commit,
+                                           GCancellable                *cancellable,
+                                           GError                     **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
@@ -1392,6 +1415,16 @@ gboolean ostree_repo_append_gpg_signature (OstreeRepo     *self,
                                            GBytes         *signature_bytes,
                                            GCancellable   *cancellable,
                                            GError        **error);
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_gpg_sign_data (OstreeRepo     *self,
+                                    GBytes         *data,
+                                    GBytes         *old_signatures,
+                                    const gchar   **key_id,
+                                    const gchar    *homedir,
+                                    GBytes        **out_signatures,
+                                    GCancellable   *cancellable,
+                                    GError        **error);
 
 _OSTREE_PUBLIC
 OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,

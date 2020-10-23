@@ -55,10 +55,10 @@ function verify_initial_contents() {
 }
 
 if has_gpgme; then
-    echo "1..35"
+    echo "1..36"
 else
     # 3 tests needs GPG support
-    echo "1..32"
+    echo "1..33"
 fi
 
 # Try both syntaxes
@@ -380,6 +380,25 @@ assert_file_has_content err.txt "Upgrade.*is chronologically older"
 # But we can pull it with --timestamp-check-from-rev when starting from the oldrev
 ${CMD_PREFIX} ostree --repo=repo pull --timestamp-check-from-rev=${oldrev} origin main@${middlerev}
 echo "ok pull timestamp checking"
+
+# test pull without override commit use summary, but with doesn't use summary
+# We temporarily replace summary with broken one to detect if it is used
+mv ostree-srv/gnomerepo/summary ostree-srv/gnomerepo/summary.backup
+echo "broken" > ostree-srv/gnomerepo/summary
+
+repo_init --no-sign-verify
+rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main)
+# This will need summary, so will fail
+if ${CMD_PREFIX} ostree --repo=repo -v pull origin main; then
+  assert_not_reached "Should have failed with broken summary"
+fi
+# This won't need summary so will not fail
+${CMD_PREFIX} ostree --repo=repo pull origin main@${rev}
+
+# Restore summary
+mv ostree-srv/gnomerepo/summary.backup ostree-srv/gnomerepo/summary
+
+echo "ok pull with override id doesn't use summary"
 
 cd ${test_tmpdir}
 repo_init --no-sign-verify

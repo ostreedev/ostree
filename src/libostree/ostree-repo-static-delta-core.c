@@ -168,6 +168,93 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
   return TRUE;
 }
 
+/**
+ * ostree_repo_list_static_delta_indexes:
+ * @self: Repo
+ * @out_indexes: (out) (element-type utf8) (transfer container): String name of delta indexes (checksum)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * This function synchronously enumerates all static delta indexes in the
+ * repository, returning its result in @out_indexes.
+ *
+ * Since: 2020.7
+ */
+gboolean
+ostree_repo_list_static_delta_indexes (OstreeRepo                  *self,
+                                       GPtrArray                  **out_indexes,
+                                       GCancellable                *cancellable,
+                                       GError                     **error)
+{
+  g_autoptr(GPtrArray) ret_indexes = g_ptr_array_new_with_free_func (g_free);
+
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, "delta-indexes", &dfd_iter,
+                                     &exists, error))
+    return FALSE;
+  if (!exists)
+    {
+      /* Note early return */
+      ot_transfer_out_value (out_indexes, &ret_indexes);
+      return TRUE;
+    }
+
+  while (TRUE)
+    {
+      g_auto(GLnxDirFdIterator) sub_dfd_iter = { 0, };
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+      if (dent->d_type != DT_DIR)
+        continue;
+      if (strlen (dent->d_name) != 2)
+        continue;
+
+      if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
+                                        &sub_dfd_iter, error))
+        return FALSE;
+
+      while (TRUE)
+        {
+          struct dirent *sub_dent;
+
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&sub_dfd_iter, &sub_dent,
+                                                           cancellable, error))
+            return FALSE;
+          if (sub_dent == NULL)
+            break;
+          if (sub_dent->d_type != DT_REG)
+            continue;
+
+          const char *name1 = dent->d_name;
+          const char *name2 = sub_dent->d_name;
+
+          /* base64 len is 43, but 2 chars are in the parent dir name */
+          if (strlen (name2) != 41 + strlen(".index") ||
+              !g_str_has_suffix (name2, ".index"))
+            continue;
+
+          g_autoptr(GString) out = g_string_new (name1);
+          g_string_append_len (out, name2, 41);
+
+          char checksum[OSTREE_SHA256_STRING_LEN+1];
+          guchar csum[OSTREE_SHA256_DIGEST_LEN];
+
+          ostree_checksum_b64_inplace_to_bytes (out->str, csum);
+          ostree_checksum_inplace_from_bytes (csum, checksum);
+
+          g_ptr_array_add (ret_indexes, g_strdup (checksum));
+        }
+    }
+
+  ot_transfer_out_value (out_indexes, &ret_indexes);
+  return TRUE;
+}
+
 gboolean
 _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
                                                  GVariant               *checksum_array,
@@ -1117,4 +1204,208 @@ ostree_repo_static_delta_verify_signature (OstreeRepo       *self,
     return FALSE;
 
   return _ostree_repo_static_delta_verify_signature (self, delta_fd, sign, out_success_message, error);
+}
+
+static void
+null_or_ptr_array_unref (GPtrArray *array)
+{
+  if (array != NULL)
+    g_ptr_array_unref (array);
+}
+
+static gboolean
+file_has_content (OstreeRepo   *repo,
+                  const char   *subpath,
+                  GBytes       *data,
+                  GCancellable *cancellable)
+{
+  struct stat stbuf;
+  glnx_autofd int existing_fd = -1;
+
+  if (!glnx_fstatat (repo->repo_dir_fd, subpath, &stbuf, 0, NULL))
+    return FALSE;
+
+  if (stbuf.st_size != g_bytes_get_size (data))
+    return FALSE;
+
+  if (!glnx_openat_rdonly (repo->repo_dir_fd, subpath, TRUE, &existing_fd, NULL))
+    return FALSE;
+
+  g_autoptr(GBytes) existing_data = glnx_fd_readall_bytes (existing_fd, cancellable, NULL);
+  if (existing_data == NULL)
+    return FALSE;
+
+  return g_bytes_equal (existing_data, data);
+}
+
+/**
+ * ostree_repo_static_delta_reindex:
+ * @repo: Repo
+ * @flags: Flags affecting the indexing operation
+ * @opt_to_commit: ASCII SHA256 checksum of target commit, or %NULL to index all targets
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * The delta index for a particular commit lists all the existing deltas that can be used
+ * when downloading that commit. This operation regenerates these indexes, either for
+ * a particular commit (if @opt_to_commit is non-%NULL), or for all commits that
+ * are reachable by an existing delta (if @opt_to_commit is %NULL).
+ *
+ * This is normally called automatically when the summary is updated in ostree_repo_regenerate_summary().
+ *
+ * Locking: shared
+ */
+gboolean
+ostree_repo_static_delta_reindex (OstreeRepo                 *repo,
+                                  OstreeStaticDeltaIndexFlags flags,
+                                  const char                 *opt_to_commit,
+                                  GCancellable               *cancellable,
+                                  GError                    **error)
+{
+  g_autoptr(GPtrArray) all_deltas = NULL;
+  g_autoptr(GHashTable) deltas_to_commit_ht = NULL; /* map: to checksum -> ptrarray of from checksums (or NULL) */
+  gboolean opt_indexed_deltas;
+
+  /* Protect against parallel prune operation */
+  g_autoptr(OstreeRepoAutoLock) lock =
+    _ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_SHARED, cancellable, error);
+  if (!lock)
+    return FALSE;
+
+  /* Enusre that the "indexed-deltas" option is set on the config, so we know this when pulling */
+  if (!ot_keyfile_get_boolean_with_default (repo->config, "core",
+                                            "indexed-deltas", FALSE,
+                                            &opt_indexed_deltas, error))
+    return FALSE;
+
+  if (!opt_indexed_deltas)
+    {
+      g_autoptr(GKeyFile) config = ostree_repo_copy_config (repo);
+      g_key_file_set_boolean (config, "core", "indexed-deltas", TRUE);
+      if (!ostree_repo_write_config (repo, config, error))
+        return FALSE;
+    }
+
+  deltas_to_commit_ht = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)null_or_ptr_array_unref);
+
+  if (opt_to_commit == NULL)
+    {
+      g_autoptr(GPtrArray) old_indexes = NULL;
+
+      /* To ensure all old index files either is regenerated, or
+       * removed, we initialize all existing indexes to NULL in the
+       * hashtable. */
+      if (!ostree_repo_list_static_delta_indexes (repo, &old_indexes, cancellable, error))
+        return FALSE;
+
+      for (int i = 0; i < old_indexes->len; i++)
+        {
+          const char *old_index = g_ptr_array_index (old_indexes, i);
+          g_hash_table_insert (deltas_to_commit_ht, g_strdup (old_index), NULL);
+        }
+    }
+  else
+    {
+      if (!ostree_validate_checksum_string (opt_to_commit, error))
+        return FALSE;
+
+      /* We ensure the specific old index either is regenerated, or removed */
+      g_hash_table_insert (deltas_to_commit_ht, g_strdup (opt_to_commit), NULL);
+    }
+
+  if (!ostree_repo_list_static_delta_names (repo, &all_deltas, cancellable, error))
+    return FALSE;
+
+  for (int i = 0; i < all_deltas->len; i++)
+    {
+      const char *delta_name = g_ptr_array_index (all_deltas, i);
+      g_autofree char *from = NULL;
+      g_autofree char *to = NULL;
+      GPtrArray *deltas_to_commit = NULL;
+
+      if (!_ostree_parse_delta_name (delta_name, &from, &to, error))
+        return FALSE;
+
+      if (opt_to_commit != NULL && strcmp (to, opt_to_commit) != 0)
+        continue;
+
+      deltas_to_commit = g_hash_table_lookup (deltas_to_commit_ht, to);
+      if (deltas_to_commit == NULL)
+        {
+          deltas_to_commit = g_ptr_array_new_with_free_func (g_free);
+          g_hash_table_insert (deltas_to_commit_ht, g_steal_pointer (&to), deltas_to_commit);
+        }
+
+      g_ptr_array_add (deltas_to_commit, g_steal_pointer (&from));
+    }
+
+  GLNX_HASH_TABLE_FOREACH_KV (deltas_to_commit_ht, const char*, to, GPtrArray*, froms)
+    {
+      g_autofree char *index_path = _ostree_get_relative_static_delta_index_path (to);
+
+      if (froms == NULL)
+        {
+          /* No index to this checksum seen, delete if it exists */
+
+          g_debug ("Removing delta index for %s", to);
+          if (!ot_ensure_unlinked_at (repo->repo_dir_fd, index_path, error))
+            return FALSE;
+        }
+      else
+        {
+          g_auto(GVariantDict) index_builder = OT_VARIANT_BUILDER_INITIALIZER;
+          g_auto(GVariantDict) deltas_builder = OT_VARIANT_BUILDER_INITIALIZER;
+          g_autoptr(GVariant) index_variant = NULL;
+          g_autoptr(GBytes) index = NULL;
+
+          /* We sort on from here so that the index file is reproducible */
+          g_ptr_array_sort (froms, (GCompareFunc)g_strcmp0);
+
+          g_variant_dict_init (&deltas_builder, NULL);
+
+          for (int i = 0; i < froms->len; i++)
+            {
+              const char *from = g_ptr_array_index (froms, i);
+              g_autofree char *delta_name = NULL;
+              GVariant *digest;
+
+              digest = _ostree_repo_static_delta_superblock_digest (repo, from, to, cancellable, error);
+              if (digest == NULL)
+                return FALSE;
+
+              if (from != NULL)
+                delta_name = g_strconcat (from, "-", to, NULL);
+              else
+                delta_name = g_strdup (to);
+
+              g_variant_dict_insert_value (&deltas_builder, delta_name, digest);
+            }
+
+          /* The toplevel of the index is an a{sv} for extensibility, and we use same key name (and format) as when
+           * storing deltas in the summary. */
+          g_variant_dict_init (&index_builder, NULL);
+
+          g_variant_dict_insert_value (&index_builder, OSTREE_SUMMARY_STATIC_DELTAS, g_variant_dict_end (&deltas_builder));
+
+          index_variant = g_variant_ref_sink (g_variant_dict_end (&index_builder));
+          index = g_variant_get_data_as_bytes (index_variant);
+
+          g_autofree char *index_dirname = g_path_get_dirname (index_path);
+          if (!glnx_shutil_mkdir_p_at (repo->repo_dir_fd, index_dirname, DEFAULT_DIRECTORY_MODE, cancellable, error))
+            return FALSE;
+
+          /* delta indexes are generally small and static, so reading it back and comparing is cheap, and it will
+             lower the write load (and particular sync-load) on the disk during reindexing (i.e. summary updates), */
+          if (file_has_content (repo, index_path, index, cancellable))
+            continue;
+
+          g_debug ("Updating delta index for %s", to);
+          if (!glnx_file_replace_contents_at (repo->repo_dir_fd, index_path,
+                                              g_bytes_get_data (index, NULL), g_bytes_get_size (index),
+                                              0, cancellable, error))
+            return FALSE;
+        }
+    }
+
+  return TRUE;
 }

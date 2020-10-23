@@ -249,6 +249,20 @@ Boston, MA 02111-1307, USA.
         costly).
         </para></listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><varname>no-deltas-in-summary</varname></term>
+        <listitem><para>Boolean value controlling whether OSTree should skip
+        putting an index of available deltas in the summary file. Defaults to false.
+        </para>
+        <para>
+        Since 2020.7 OSTree can use delta indexes outside the summary file,
+        making the summary file smaller (especially for larger repositories). However
+        by default we still create the index in the summary file to make older clients
+        work. If you know all clients will be 2020.7 later you can enable this to
+        save network bandwidth.
+        </para></listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 
