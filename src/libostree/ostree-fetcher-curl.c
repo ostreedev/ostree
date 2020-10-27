@@ -433,7 +433,7 @@ timer_cb (gpointer data)
   if (fetcher->timer_event == orig_src)
     fetcher->timer_event = NULL;
 
-  return FALSE;
+  return G_SOURCE_REMOVE;
 }
 
 /* Update the event timer after curl_multi library calls */
