@@ -1345,6 +1345,9 @@ _ostree_sysroot_new_bootloader_by_type (
       /* We never consider zipl as active by default, so it can only be created
        * if it's explicitly requested in the config */
       return (OstreeBootloader*) _ostree_bootloader_zipl_new (sysroot);
+    case CFG_SYSROOT_BOOTLOADER_OPT_AUTO:
+      /* "auto" is handled by ostree_sysroot_query_bootloader so we should
+       * never get here: Fallthrough */
     default:
       g_assert_not_reached ();
     }
