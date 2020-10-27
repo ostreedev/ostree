@@ -426,14 +426,11 @@ static gboolean
 timer_cb (gpointer data)
 {
   OstreeFetcher *fetcher = data;
-  GSource *orig_src = fetcher->timer_event;
-
+  g_clear_pointer (&fetcher->timer_event, (GDestroyNotify)destroy_and_unref_source);
   (void)curl_multi_socket_action (fetcher->multi, CURL_SOCKET_TIMEOUT, 0, &fetcher->curl_running);
   check_multi_info (fetcher);
-  if (fetcher->timer_event == orig_src)
-    fetcher->timer_event = NULL;
 
-  return FALSE;
+  return G_SOURCE_REMOVE;
 }
 
 /* Update the event timer after curl_multi library calls */
