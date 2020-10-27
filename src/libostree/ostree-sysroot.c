@@ -1354,7 +1354,6 @@ _ostree_sysroot_new_bootloader_by_type (
  * ostree_sysroot_query_bootloader:
  * @sysroot: Sysroot
  * @out_bootloader: (out) (transfer full) (allow-none): Return location for bootloader, may be %NULL
- * @out_bootloader_config: (out) (transfer none) (allow-none): Return location for value of ostree repo config variable sysroot.bootloader, may be %NULL
  * @cancellable: Cancellable
  * @error: Error
  */
