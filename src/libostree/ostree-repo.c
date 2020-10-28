@@ -5229,7 +5229,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
  * @old_signatures: Existing signatures to append to (or %NULL)
  * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
  * @homedir: (allow-none): GPG home directory, or %NULL
- * @out_signature: (out): in case of success will contain signature
+ * @out_signatures: (out): in case of success will contain signature
  * @cancellable: A #GCancellable
  * @error: a #GError
  *
