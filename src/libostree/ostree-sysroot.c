@@ -36,6 +36,7 @@
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
 #include "ostree-bootloader-grub2.h"
+#include "ostree-bootloader-zipl.h"
 
 /**
  * SECTION:ostree-sysroot
@@ -1324,6 +1325,34 @@ ostree_sysroot_repo (OstreeSysroot *self)
   return self->repo;
 }
 
+static OstreeBootloader*
+_ostree_sysroot_new_bootloader_by_type (
+    OstreeSysroot                 *sysroot,
+    OstreeCfgSysrootBootloaderOpt  bl_type)
+{
+  switch (bl_type)
+    {
+    case CFG_SYSROOT_BOOTLOADER_OPT_NONE:
+      /* No bootloader specified; do not query bootloaders to run. */
+      return NULL;
+    case CFG_SYSROOT_BOOTLOADER_OPT_GRUB2:
+      return (OstreeBootloader*) _ostree_bootloader_grub2_new (sysroot);
+    case CFG_SYSROOT_BOOTLOADER_OPT_SYSLINUX:
+      return (OstreeBootloader*) _ostree_bootloader_syslinux_new (sysroot);
+    case CFG_SYSROOT_BOOTLOADER_OPT_UBOOT:
+      return (OstreeBootloader*) _ostree_bootloader_uboot_new (sysroot);
+    case CFG_SYSROOT_BOOTLOADER_OPT_ZIPL:
+      /* We never consider zipl as active by default, so it can only be created
+       * if it's explicitly requested in the config */
+      return (OstreeBootloader*) _ostree_bootloader_zipl_new (sysroot);
+    case CFG_SYSROOT_BOOTLOADER_OPT_AUTO:
+      /* "auto" is handled by ostree_sysroot_query_bootloader so we should
+       * never get here: Fallthrough */
+    default:
+      g_assert_not_reached ();
+    }
+}
+
 /**
  * ostree_sysroot_query_bootloader:
  * @sysroot: Sysroot
@@ -1337,32 +1366,38 @@ _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
                                   GCancellable      *cancellable,
                                   GError           **error)
 {
-  gboolean is_active;
-  g_autoptr(OstreeBootloader) ret_loader =
-    (OstreeBootloader*)_ostree_bootloader_syslinux_new (sysroot);
-  if (!_ostree_bootloader_query (ret_loader, &is_active,
-                                 cancellable, error))
-    return FALSE;
+  OstreeRepo *repo = ostree_sysroot_repo (sysroot);
+  OstreeCfgSysrootBootloaderOpt bootloader_config = repo->bootloader;
 
-  if (!is_active)
-    {
-      g_object_unref (ret_loader);
-      ret_loader = (OstreeBootloader*)_ostree_bootloader_grub2_new (sysroot);
-      if (!_ostree_bootloader_query (ret_loader, &is_active,
-                                     cancellable, error))
-        return FALSE;
-    }
-  if (!is_active)
-    {
-      g_object_unref (ret_loader);
-      ret_loader = (OstreeBootloader*)_ostree_bootloader_uboot_new (sysroot);
-      if (!_ostree_bootloader_query (ret_loader, &is_active, cancellable, error))
-        return FALSE;
-    }
-  if (!is_active)
-    g_clear_object (&ret_loader);
+  g_debug ("Using bootloader configuration: %s",
+      CFG_SYSROOT_BOOTLOADER_OPTS_STR[bootloader_config]);
 
-  ot_transfer_out_value(out_bootloader, &ret_loader);
+  g_autoptr(OstreeBootloader) ret_loader = NULL;
+  if (bootloader_config == CFG_SYSROOT_BOOTLOADER_OPT_AUTO)
+    {
+      OstreeCfgSysrootBootloaderOpt probe[] = {
+        CFG_SYSROOT_BOOTLOADER_OPT_SYSLINUX,
+        CFG_SYSROOT_BOOTLOADER_OPT_GRUB2,
+        CFG_SYSROOT_BOOTLOADER_OPT_UBOOT,
+      };
+      for (int i = 0; i < G_N_ELEMENTS (probe); i++)
+        {
+          g_autoptr(OstreeBootloader) bl = _ostree_sysroot_new_bootloader_by_type (
+              sysroot, probe[i]);
+          gboolean is_active = FALSE;
+          if (!_ostree_bootloader_query (bl, &is_active, cancellable, error))
+            return FALSE;
+          if (is_active)
+            {
+              ret_loader = g_steal_pointer (&bl);
+              break;
+            }
+        }
+    }
+  else
+    ret_loader = _ostree_sysroot_new_bootloader_by_type (sysroot, bootloader_config);
+
+  ot_transfer_out_value (out_bootloader, &ret_loader)
   return TRUE;
 }
 

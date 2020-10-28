@@ -1048,7 +1048,6 @@ ostree_repo_finalize (GObject *object)
   g_mutex_clear (&self->txn_lock);
   g_free (self->collection_id);
   g_strfreev (self->repo_finders);
-  g_free (self->bootloader);
 
   g_clear_pointer (&self->remotes, g_hash_table_destroy);
   g_mutex_clear (&self->remotes_lock);
@@ -3186,28 +3185,28 @@ reload_sysroot_config (OstreeRepo          *self,
                        GCancellable        *cancellable,
                        GError             **error)
 {
-  { g_autofree char *bootloader = NULL;
+  g_autofree char *bootloader = NULL;
 
-    if (!ot_keyfile_get_value_with_default_group_optional (self->config, "sysroot",
-                                                           "bootloader", "auto",
-                                                           &bootloader, error))
-      return FALSE;
+  if (!ot_keyfile_get_value_with_default_group_optional (self->config, "sysroot",
+                                                         "bootloader", "auto",
+                                                         &bootloader, error))
+    return FALSE;
 
-    /* TODO: possibly later add support for specifying a generic bootloader
-     * binary "x" in /usr/lib/ostree/bootloaders/x). See:
-     * https://github.com/ostreedev/ostree/issues/1719
-     * https://github.com/ostreedev/ostree/issues/1801
-     * Also, dedup these strings with the bootloader implementations
-     */
-    if (!(g_str_equal (bootloader, "auto") || g_str_equal (bootloader, "none")
-          || g_str_equal (bootloader, "zipl")))
-      return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
+  /* TODO: possibly later add support for specifying a generic bootloader
+   * binary "x" in /usr/lib/ostree/bootloaders/x). See:
+   * https://github.com/ostreedev/ostree/issues/1719
+   * https://github.com/ostreedev/ostree/issues/1801
+   */
+  for (int i = 0; CFG_SYSROOT_BOOTLOADER_OPTS_STR[i]; i++)
+    {
+      if (g_str_equal (bootloader, CFG_SYSROOT_BOOTLOADER_OPTS_STR[i]))
+        {
+          self->bootloader = (OstreeCfgSysrootBootloaderOpt) i;
+          return TRUE;
+        }
+    }
 
-    g_free (self->bootloader);
-    self->bootloader = g_steal_pointer (&bootloader);
-  }
-
-  return TRUE;
+  return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
 }
 
 /**
@@ -6323,7 +6322,7 @@ ostree_repo_get_default_repo_finders (OstreeRepo *self)
  * Get the bootloader configured. See the documentation for the
  * "sysroot.bootloader" config key.
  *
- * Returns: bootloader configuration for the sysroot
+ * Returns: (transfer none): bootloader configuration for the sysroot
  * Since: 2019.2
  */
 const gchar *
@@ -6331,7 +6330,7 @@ ostree_repo_get_bootloader (OstreeRepo   *self)
 {
   g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
 
-  return self->bootloader;
+  return CFG_SYSROOT_BOOTLOADER_OPTS_STR[self->bootloader];
 }
 
 
