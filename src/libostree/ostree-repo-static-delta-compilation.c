@@ -1313,10 +1313,10 @@ get_fallback_headers (OstreeRepo               *self,
  * ostree_repo_static_delta_generate:
  * @self: Repo
  * @opt: High level optimization choice
- * @from: ASCII SHA256 checksum of origin, or %NULL
+ * @from: (nullable): ASCII SHA256 checksum of origin, or %NULL
  * @to: ASCII SHA256 checksum of target
- * @metadata: (allow-none): Optional metadata
- * @params: (allow-none): Parameters, see below
+ * @metadata: (nullable): Optional metadata
+ * @params: (nullable): Parameters, see below
  * @cancellable: Cancellable
  * @error: Error
  *
