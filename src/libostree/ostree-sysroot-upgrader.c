@@ -682,9 +682,9 @@ ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
 GType
 ostree_sysroot_upgrader_flags_get_type (void)
 {
-  static volatile gsize g_define_type_id__volatile = 0;
+  static gsize static_g_define_type_id = 0;
 
-  if (g_once_init_enter (&g_define_type_id__volatile))
+  if (g_once_init_enter (&static_g_define_type_id))
     {
       static const GFlagsValue values[] = {
         { OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED, "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED", "ignore-unconfigured" },
@@ -692,8 +692,8 @@ ostree_sysroot_upgrader_flags_get_type (void)
       };
       GType g_define_type_id =
         g_flags_register_static (g_intern_static_string ("OstreeSysrootUpgraderFlags"), values);
-      g_once_init_leave (&g_define_type_id__volatile, g_define_type_id);
+      g_once_init_leave (&static_g_define_type_id, g_define_type_id);
     }
 
-  return g_define_type_id__volatile;
+  return static_g_define_type_id;
 }
