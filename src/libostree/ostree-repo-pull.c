@@ -4545,7 +4545,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
         }
 
-      if (!summary_from_cache && bytes_summary && bytes_sig)
+      if (!summary_from_cache && bytes_summary && bytes_sig && summary_sig_bytes_v == NULL)
         {
           if (!pull_data->remote_repo_local &&
               !_ostree_repo_cache_summary (self,
