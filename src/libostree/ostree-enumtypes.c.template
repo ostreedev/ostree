@@ -36,9 +36,9 @@
 GType
 _@enum_name@_get_type (void)
 {
-  static volatile gsize the_type__volatile = 0;
+  static gsize static_the_type = 0;
 
-  if (g_once_init_enter (&the_type__volatile))
+  if (g_once_init_enter (&static_the_type))
     {
       static const G@Type@Value values[] = {
 /*** END value-header ***/
@@ -57,10 +57,10 @@ _@enum_name@_get_type (void)
         g_intern_static_string ("@EnumName@"),
         values);
 
-      g_once_init_leave (&the_type__volatile, the_type);
+      g_once_init_leave (&static_the_type, the_type);
     }
 
-  return the_type__volatile;
+  return static_the_type;
 }
 
 /*** END value-tail ***/

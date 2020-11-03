@@ -41,7 +41,7 @@ G_BEGIN_DECLS
  * remote which this one inherits from, and is what should be used in refspecs
  * for pulls from this remote. If it’s %NULL, @name should be used instead. */
 struct OstreeRemote {
-  volatile int ref_count;
+  int ref_count;  /* atomic */
   char *name;  /* (not nullable) */
   char *refspec_name;  /* (nullable) */
   char *group;   /* group name in options (not nullable) */

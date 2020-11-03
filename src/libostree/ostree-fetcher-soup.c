@@ -49,7 +49,7 @@ typedef enum {
 } OstreeFetcherState;
 
 typedef struct {
-  volatile int ref_count;
+  int ref_count;  /* atomic */
 
   SoupSession *session;  /* not referenced */
   GMainContext *main_context;
@@ -77,7 +77,7 @@ typedef struct {
 } ThreadClosure;
 
 typedef struct {
-  volatile int ref_count;
+  int ref_count;  /* atomic */
 
   ThreadClosure *thread_closure;
   GPtrArray *mirrorlist; /* list of base URIs */

@@ -42,7 +42,7 @@ typedef enum {
 typedef struct _OstreeDiffItem OstreeDiffItem;
 struct _OstreeDiffItem
 {
-  volatile gint refcount;
+  gint refcount;  /* atomic */
 
   GFile *src;
   GFile *target;

@@ -72,7 +72,7 @@ typedef enum {
 } OstreeRepoTestErrorFlags;
 
 struct OstreeRepoCommitModifier {
-  volatile gint refcount;
+  gint refcount;  /* atomic */
 
   OstreeRepoCommitModifierFlags flags;
   OstreeRepoCommitFilter filter;
