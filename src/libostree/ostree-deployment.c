@@ -27,12 +27,24 @@ typedef GObjectClass OstreeDeploymentClass;
 
 G_DEFINE_TYPE (OstreeDeployment, ostree_deployment, G_TYPE_OBJECT)
 
+/*
+ * ostree_deployment_get_csum:
+ * @self: Deployment
+ *
+ * Returns: (not nullable): The OSTree commit used for this deployment.
+ */
 const char *
 ostree_deployment_get_csum (OstreeDeployment *self)
 {
   return self->csum;
 }
 
+/*
+ * ostree_deployment_get_bootcsum:
+ * @self: Deployment
+ *
+ * Returns: (not nullable): The "boot checksum" for content installed in `/boot/ostree`.
+ */
 const char *
 ostree_deployment_get_bootcsum (OstreeDeployment *self)
 {
@@ -41,9 +53,9 @@ ostree_deployment_get_bootcsum (OstreeDeployment *self)
 
 /*
  * ostree_deployment_get_osname:
- * @self: Deployemnt
+ * @self: Deployment
  *
- * Returns: The "stateroot" name, also known as an "osname"
+ * Returns: (not nullable): The "stateroot" name, also known as an "osname"
  */
 const char *
 ostree_deployment_get_osname (OstreeDeployment *self)
@@ -51,12 +63,24 @@ ostree_deployment_get_osname (OstreeDeployment *self)
   return self->osname;
 }
 
+/*
+ * ostree_deployment_get_deployserial:
+ * @self: Deployment
+ *
+ * Returns: An integer counter used to ensure multiple deployments of a commit are unique
+ */
 int
 ostree_deployment_get_deployserial (OstreeDeployment *self)
 {
   return self->deployserial;
 }
 
+/*
+ * ostree_deployment_get_bootserial:
+ * @self: Deployment
+ *
+ * Returns: An integer counter to index from shared kernels into deployments
+ */
 int
 ostree_deployment_get_bootserial (OstreeDeployment *self)
 {
@@ -87,24 +111,51 @@ ostree_deployment_get_origin (OstreeDeployment *self)
   return self->origin;
 }
 
+/**
+ * ostree_deployment_get_index:
+ * @self: Deployment
+ *
+ * Returns: The global index into the bootloader ordering
+ */
 int
 ostree_deployment_get_index (OstreeDeployment *self)
 {
   return self->index;
 }
 
+/**
+ * ostree_deployment_set_index:
+ * @self: Deployment
+ * @index: Index into bootloader ordering
+ *
+ * Sets the global index into the bootloader ordering.
+ */
 void
 ostree_deployment_set_index (OstreeDeployment *self, int index)
 {
   self->index = index;
 }
 
+/**
+ * ostree_deployment_set_bootserial:
+ * @self: Deployment
+ * @index: Don't use this
+ *
+ * Should never have been made public API; don't use this.
+ */
 void
 ostree_deployment_set_bootserial (OstreeDeployment *self, int index)
 {
   self->bootserial = index;
 }
 
+/**
+ * ostree_deployment_set_bootconfig:
+ * @self: Deployment
+ * @bootconfig: (nullable): Bootloader configuration object
+ *
+ * Set or clear the bootloader configuration.
+ */
 void
 ostree_deployment_set_bootconfig (OstreeDeployment *self, OstreeBootconfigParser *bootconfig)
 {
@@ -113,6 +164,14 @@ ostree_deployment_set_bootconfig (OstreeDeployment *self, OstreeBootconfigParser
     self->bootconfig = g_object_ref (bootconfig);
 }
 
+/**
+ * ostree_deployment_set_origin:
+ * @self: Deployment
+ * @origin: (nullable): Set the origin for this deployment
+ *
+ * Replace the "origin", which is a description of the source
+ * of the deployment and how to update to the next version.
+ */
 void
 ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
 {
@@ -190,7 +249,7 @@ _ostree_deployment_get_overlay_initrds (OstreeDeployment *self)
  * ostree_deployment_clone:
  * @self: Deployment
  *
- * Returns: (transfer full): New deep copy of @self
+ * Returns: (not nullable) (transfer full): New deep copy of @self
  */
 OstreeDeployment *
 ostree_deployment_clone (OstreeDeployment *self)
@@ -224,6 +283,12 @@ ostree_deployment_clone (OstreeDeployment *self)
   return ret;
 }
 
+/**
+ * ostree_deployment_hash:
+ * @v: (type OstreeDeployment): Deployment
+ *
+ * Returns: An integer suitable for use in a `GHashTable`
+ */
 guint
 ostree_deployment_hash (gconstpointer v)
 {
@@ -287,6 +352,17 @@ ostree_deployment_class_init (OstreeDeploymentClass *class)
   object_class->finalize = ostree_deployment_finalize;
 }
 
+/**
+ * ostree_deployment_new:
+ * @index: Global index into the bootloader entries
+ * @osname: "stateroot" for this deployment
+ * @csum: OSTree commit that will be deployed
+ * @deployserial: Unique counter
+ * @bootcsum: (nullable): Kernel/initrd checksum
+ * @bootserial: Unique index
+ *
+ * Returns: (transfer full) (not nullable): New deployment
+ */
 OstreeDeployment *
 ostree_deployment_new (int    index,
                    const char  *osname,
@@ -323,7 +399,7 @@ ostree_deployment_new (int    index,
  * access, it, you must either use fd-relative api such as openat(),
  * or concatenate it with the full ostree_sysroot_get_path().
  *
- * Returns: (transfer full): Path to deployment root directory, relative to sysroot
+ * Returns: (not nullable) (transfer full): Path to deployment root directory, relative to sysroot
  */
 char *
 ostree_deployment_get_origin_relpath (OstreeDeployment *self)
@@ -337,6 +413,7 @@ ostree_deployment_get_origin_relpath (OstreeDeployment *self)
 /**
  * ostree_deployment_unlocked_state_to_string:
  *
+ * Returns: (not nullable): Description of state
  * Since: 2016.4
  */
 const char *
