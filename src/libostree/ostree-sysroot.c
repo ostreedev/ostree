@@ -257,9 +257,9 @@ ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot  *self)
 
 /**
  * ostree_sysroot_get_path:
- * @self:
+ * @self: Sysroot
  *
- * Returns: (transfer none): Path to rootfs
+ * Returns: (transfer none) (not nullable): Path to rootfs
  */
 GFile *
 ostree_sysroot_get_path (OstreeSysroot  *self)
@@ -1186,7 +1186,7 @@ ostree_sysroot_get_subbootversion (OstreeSysroot   *self)
  * ostree_sysroot_get_booted_deployment:
  * @self: Sysroot
  *
- * Returns: (transfer none): The currently booted deployment, or %NULL if none
+ * Returns: (transfer none) (nullable): The currently booted deployment, or %NULL if none
  */
 OstreeDeployment *
 ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
@@ -1200,7 +1200,7 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
  * ostree_sysroot_get_staged_deployment:
  * @self: Sysroot
  *
- * Returns: (transfer none): The currently staged deployment, or %NULL if none
+ * Returns: (transfer none) (nullable): The currently staged deployment, or %NULL if none
  *
  * Since: 2018.5
  */
@@ -1238,7 +1238,7 @@ ostree_sysroot_get_deployments (OstreeSysroot  *self)
  * to access, it, you must either use fd-relative api such as openat(),
  * or concatenate it with the full ostree_sysroot_get_path().
  *
- * Returns: (transfer full): Path to deployment root directory, relative to sysroot
+ * Returns: (transfer full) (not nullable): Path to deployment root directory, relative to sysroot
  */
 char *
 ostree_sysroot_get_deployment_dirpath (OstreeSysroot    *self,
@@ -1313,7 +1313,7 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
  * returns a cached repository. Can only be called after ostree_sysroot_initialize()
  * or ostree_sysroot_load() has been invoked successfully.
  *
- * Returns: (transfer none): The OSTree repository in sysroot @self.
+ * Returns: (transfer none) (not nullable): The OSTree repository in sysroot @self.
  *
  * Since: 2017.7
  */
@@ -1356,7 +1356,7 @@ _ostree_sysroot_new_bootloader_by_type (
 /**
  * ostree_sysroot_query_bootloader:
  * @sysroot: Sysroot
- * @out_bootloader: (out) (transfer full) (allow-none): Return location for bootloader, may be %NULL
+ * @out_bootloader: (out) (transfer full) (optional) (nullable): Return location for bootloader, may be %NULL
  * @cancellable: Cancellable
  * @error: Error
  */
@@ -1489,7 +1489,7 @@ ostree_sysroot_query_deployments_for (OstreeSysroot     *self,
  * Find the deployment to use as a configuration merge source; this is
  * the first one in the current deployment list which matches osname.
  *
- * Returns: (transfer full): Configuration merge deployment
+ * Returns: (transfer full) (nullable): Configuration merge deployment
  */
 OstreeDeployment *
 ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
@@ -1520,7 +1520,7 @@ ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
  * @self: Sysroot
  * @refspec: A refspec
  *
- * Returns: (transfer full): A new config file which sets @refspec as an origin
+ * Returns: (transfer full) (not nullable): A new config file which sets @refspec as an origin
  */
 GKeyFile *
 ostree_sysroot_origin_new_from_refspec (OstreeSysroot  *self,
