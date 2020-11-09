@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((86 + ${extra_basic_tests:-0}))"
+echo "1..$((88 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -267,7 +267,7 @@ $OSTREE prune --refs-only
 if $OSTREE ls ${orphaned_rev} 2>err.txt; then
     assert_not_reached "Found orphaned commit"
 fi
-assert_file_has_content err.txt "No such metadata object"
+assert_file_has_content err.txt "error: No DIR_TREE or COMMIT found for sha "
 echo "ok commit orphaned"
 
 cd ${test_tmpdir}
@@ -299,11 +299,17 @@ fi
 
 cd ${test_tmpdir}
 $OSTREE diff test2^ test2 > diff-test2
-assert_file_has_content diff-test2 'D */a/5'
-assert_file_has_content diff-test2 'A */yet$'
-assert_file_has_content diff-test2 'A */yet/message$'
-assert_file_has_content diff-test2 'A */yet/another/tree/green$'
+assert_file_has_content diff-test2 'D *a/5'
+assert_file_has_content diff-test2 'A *yet$'
+assert_file_has_content diff-test2 'A *yet/message$'
+assert_file_has_content diff-test2 'A *yet/another/tree/green$'
 echo "ok diff revisions"
+
+$OSTREE diff :test2^:a :test2:yet > diff-test2
+assert_file_has_content diff-test2 'D *5'
+assert_file_has_content diff-test2 'A *message$'
+assert_file_has_content diff-test2 'A *another/tree/green$'
+echo "ok diff subdirs"
 
 cd ${test_tmpdir}/checkout-test2-4
 echo afile > oh-look-a-file
@@ -317,15 +323,15 @@ cd ${test_tmpdir}/checkout-test2-4
 $OSTREE diff ${DIFF_ARGS} test2 ./ > ${test_tmpdir}/diff-test2
 assert_file_empty ${test_tmpdir}/diff-test2
 $OSTREE diff ${DIFF_ARGS} test2 --owner-uid=$((`id -u`+1)) ./ > ${test_tmpdir}/diff-test2
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/message$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/another/tree/green$'
 echo "ok diff file with different uid"
 
 $OSTREE diff ${DIFF_ARGS} test2 --owner-gid=$((`id -g`+1)) ./ > ${test_tmpdir}/diff-test2
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/message$'
-assert_file_has_content ${test_tmpdir}/diff-test2 'M */yet/another/tree/green$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/message$'
+assert_file_has_content ${test_tmpdir}/diff-test2 'M *yet/another/tree/green$'
 echo "ok diff file with different gid"
 
 cd ${test_tmpdir}/checkout-test2-4
@@ -334,7 +340,7 @@ mkdir four
 touch four/other
 $OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2-2
 cd ${test_tmpdir}
-assert_file_has_content diff-test2-2 'M */four$'
+assert_file_has_content diff-test2-2 'M *four$'
 echo "ok diff file changing type"
 
 if ! skip_one_without_user_xattrs; then
@@ -518,6 +524,20 @@ assert_trees_identical test3-F test3-F2
 
 echo "ok commit combined ref trees"
 
+mkdir -p tree-G/many/subdirs/here
+echo contents1 >tree-G/many/subdirs/here/file1
+echo contents2 >tree-G/many/file2
+
+$OSTREE commit ${COMMIT_ARGS} -b test4-G --tree=dir=tree-G
+$OSTREE commit ${COMMIT_ARGS} -b test4-G-subdir --tree=dir=tree-G/many
+$OSTREE commit ${COMMIT_ARGS} -b test4-G-subtree --tree=ref=:test4-G:many
+
+assert_trees_identical test4-G-subtree test4-G-subdir
+
+! $OSTREE commit ${COMMIT_ARGS} -b test4-G-ref-file --tree=ref=:test4-G:many/file2 2>errmsg
+assert_file_has_content errmsg 'error: Bad treeish ":test4-G:many/file2": "file2" is a file, not a directory'
+echo "ok commit ref subtrees"
+
 # NB: The + is optional, but we need to make sure we support it
 cd ${test_tmpdir}
 cat > test-statoverride.txt <<EOF
@@ -597,6 +617,8 @@ done
 rm checkout-test2 -rf
 $OSTREE cat test2 /yet/another/tree/green > greenfile-contents
 assert_file_has_content greenfile-contents "leaf"
+$OSTREE cat :test2:yet/another/tree green > greenfile-contents
+assert_file_has_content greenfile-contents "leaf"
 $OSTREE checkout test2 checkout-test2
 ls -alR checkout-test2
 ln -sr checkout-test2/{four,four-link}
@@ -615,19 +637,27 @@ echo "ok cat-file"
 
 cd ${test_tmpdir}
 $OSTREE checkout --subpath /yet/another test2 checkout-test2-subpath
-cd checkout-test2-subpath
-assert_file_has_content tree/green "leaf"
-cd ${test_tmpdir}
-rm checkout-test2-subpath -rf
+assert_file_has_content checkout-test2-subpath/tree/green "leaf"
+$OSTREE checkout :test2:yet/another checkout-test2-subpath2
+assert_file_has_content checkout-test2-subpath2/tree/green "leaf"
+
+rm checkout-test2-subpath checkout-test2-subpath2 -rf
 $OSTREE ls -R test2
 # Test checking out a file
 $OSTREE checkout --subpath /baz/saucer test2 checkout-test2-subpath
 assert_file_has_content checkout-test2-subpath/saucer alien
+$OSTREE checkout :test2:baz/saucer checkout-test2-subpath2
+assert_file_has_content checkout-test2-subpath2/saucer alien
+
 # Test checking out a file without making a subdir
 mkdir t
 cd t
 $OSTREE checkout --subpath /baz/saucer test2 .
 assert_file_has_content saucer alien
+rm saucer
+$OSTREE checkout :test2:baz/saucer .
+assert_file_has_content saucer alien
+cd ..
 rm t -rf
 echo "ok checkout subpath"
 
@@ -878,8 +908,8 @@ EOF
 $OSTREE commit ${COMMIT_ARGS} --statoverride=statoverride.txt \
   --table-output --link-checkout-speedup -b test2-tmp test2-checkout > stats.txt
 $OSTREE diff test2 test2-tmp > diff-test2
-assert_file_has_content diff-test2 'M */baz/cow$'
-assert_not_file_has_content diff-test2 'M */baz/cowro$'
+assert_file_has_content diff-test2 'M *baz/cow$'
+assert_not_file_has_content diff-test2 'M *baz/cowro$'
 assert_not_file_has_content diff-test2 'baz/saucer'
 # only /baz/cow is a cache miss
 assert_file_has_content stats.txt '^Content Written: 1$'

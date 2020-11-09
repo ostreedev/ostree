@@ -4673,6 +4673,255 @@ ostree_repo_read_commit (OstreeRepo   *self,
   return TRUE;
 }
 
+
+static gboolean resolve_sha_to_tree (OstreeRepo       *self,
+                                     const char*       sha,
+                                     OstreeRepoFile  **out,
+                                     char            **out_commit_sha,
+                                     GCancellable     *cancellable,
+                                     GError           **error);
+static char* split_treeish_path (char *treeish);
+
+const char dirmeta_0755_0_0[] = "446a0ef11b7cc167f3b603e585c7eeeeb675faa412d5ec73f62988eb0b6c5488";
+
+/**
+ * _ostree_repo_open_file:
+ * @self: Repo
+ * @ref: ref, commit checksum, tree checksum with optional :path suffix
+ * @path: subpath under ref to return.  Many of the command-line utilities take
+ *     a --subpath or similar argument.  This is provided as a convenience to
+ *     handle those.  Set to %NULL if not needed.
+ * @flags: Specify what kind of file the caller is expecting - a tree, a blob
+ *     or either.
+ * @out_root: (out): An #OstreeRepoFile corresponding to the tree/blob.
+ * @out_commit_sha: (out): SHA of the commit that the file belongs to if any.
+ *    If the commit is unknown *out will be set to %NULL.
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * This is a helper for the command line utilities.  It's used to convert a
+ * reference to a tree or a file from the user into an OstreeRepoFile.  It takes
+ * care to provide good error messages.
+ *
+ * @ref can take the form:
+ *
+ *    REMOTE:REF[:PATH]
+ *    :REF[:PATH]
+ *    REF
+ *    COMMIT_SHA[:PATH]
+ *    TREE_SHA:PATH
+ *    TREE_SHA (but only if "path" parameter is also provided)
+ *
+ * Not currently supported (but could be implemented):
+ *
+ *    BLOB_SHA
+ *
+ * Note: if specifying `TREE_SHA` PATH must not be empty otherwise we won't have
+ * a valid metadata checksum for the directory.
+ */
+gboolean
+_ostree_repo_open_file (OstreeRepo               *self,
+                        const char               *ref,
+                        const char               *path,
+                        OstreeRepoOpenFileFlags   flags,
+                        OstreeRepoFile          **out,
+                        char                    **out_commit_sha,
+                        GCancellable             *cancellable,
+                        GError                  **error)
+{
+  g_return_val_if_fail (ref, FALSE);
+
+  g_autofree char * rev = g_strdup (ref);
+  char * ref_path = split_treeish_path (rev);
+  g_autofree char * commit_sha = NULL;
+
+  g_autofree char * sha = NULL;
+  /* ostree_repo_resolve_rev passes things that look like SHAs through, so we're
+   * safe passing tree SHAs in here. */
+  if (!ostree_repo_resolve_rev (self, rev, FALSE, &sha, error))
+    return FALSE;
+
+  g_autoptr (OstreeRepoFile) ret_out = NULL;
+  if (!resolve_sha_to_tree (self, sha, &ret_out, &commit_sha, cancellable,
+                            error))
+    return FALSE;
+
+  if (ref_path && g_strcmp0 (ref_path, "") != 0 &&
+      g_strcmp0 (ref_path, "/") != 0 && g_strcmp0 (path, "/.") != 0)
+    {
+      g_set_object (&ret_out, OSTREE_REPO_FILE (
+            g_file_resolve_relative_path ((GFile*) ret_out, ref_path)));
+      if (!ret_out)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "File \"%s\" not found", ref_path);
+          return FALSE;
+        }
+    }
+
+  if (path && g_strcmp0 (path, "") != 0 && g_strcmp0 (path, "/") != 0 &&
+      g_strcmp0 (path, "/.") != 0)
+    {
+      g_set_object (&ret_out, OSTREE_REPO_FILE (
+            g_file_resolve_relative_path ((GFile*) ret_out, path)));
+      if (!ret_out)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "File \"%s\" not found", path);
+          return FALSE;
+        }
+    }
+
+  GFileType type = g_file_query_file_type (
+      (GFile*)ret_out, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable);
+
+  switch (type)
+    {
+    case G_FILE_TYPE_DIRECTORY:
+      if (!(flags & OSTREE_REPO_OPEN_FILE_EXPECT_TREE))
+        {
+          g_autofree char * basename = g_file_get_basename ((GFile*) ret_out);
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_REGULAR_FILE,
+                       "Bad filespec \"%s\": \"%s\" is a directory, not a file",
+                       ref, basename);
+          return FALSE;
+        }
+      break;
+    case G_FILE_TYPE_REGULAR:
+    case G_FILE_TYPE_SYMBOLIC_LINK:
+      if (!(flags & OSTREE_REPO_OPEN_FILE_EXPECT_FILE))
+        {
+          g_autofree char * basename = g_file_get_basename ((GFile*) ret_out);
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY,
+                       "Bad treeish \"%s\": \"%s\" is a file, not a directory",
+                       ref, basename);
+          return FALSE;
+        }
+      break;
+    case G_FILE_TYPE_UNKNOWN:
+      {
+        g_autofree char * basename = g_file_get_basename ((GFile*) ret_out);
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                     "Bad ref \"%s\": \"%s\": No such file or directory",
+                     ref, basename);
+        return FALSE;
+      }
+      break;
+    default:
+      g_assert_not_reached ();
+    }
+
+  ot_transfer_out_value (out, &ret_out);
+  ot_transfer_out_value (out_commit_sha, &commit_sha);
+  return TRUE;
+}
+
+static gboolean
+resolve_sha_to_tree (OstreeRepo       *self,
+                     const char*       sha,
+                     OstreeRepoFile  **out,
+                     char            **out_commit_sha,
+                     GCancellable     *cancellable,
+                     GError           **error)
+{
+  gboolean has_object;
+  if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT, sha,
+                               &has_object, cancellable, error))
+    return FALSE;
+
+  if (has_object)
+    {
+      g_autoptr(GFile) root_gfile = NULL;
+      if (!ostree_repo_read_commit (self, sha, &root_gfile, NULL, cancellable,
+                                    error))
+        return FALSE;
+      g_autoptr(OstreeRepoFile) root = OSTREE_REPO_FILE (root_gfile);
+      g_return_val_if_fail (root, FALSE);
+      root_gfile = NULL;
+      if (out_commit_sha)
+        *out_commit_sha = g_strdup (sha);
+      ot_transfer_out_value (out, &root);
+      return TRUE;
+    }
+
+  if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_DIR_TREE, sha,
+                               &has_object, cancellable, error))
+    return FALSE;
+  if (has_object)
+    {
+      /* We're a bit cheeky here - we need to specify a metadata checksum but we
+       * don't have one, so we default to 0755 - generally a sensible option for
+       * directories */
+      g_autoptr(OstreeRepoFile) root =  _ostree_repo_file_new_root (
+          self, sha, dirmeta_0755_0_0);
+      if (!root)
+        return FALSE;
+      ot_transfer_out_value (out, &root);
+      if (out_commit_sha)
+        *out_commit_sha = NULL;
+      return TRUE;
+    }
+
+  if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_FILE, sha,
+                               &has_object, cancellable, error))
+    return FALSE;
+  if (has_object)
+    {
+      /* For now we can't construct a OstreeRepoFile that has no parent
+       * directory nor a name.  In the future we could enhance OstreeRepoFile a
+       * bit to enable that but it's left unimplemented for now. */
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "TODO: treeishes which are blobs not yet implemented: %s",
+                   sha);
+      return FALSE;
+    }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+               "No DIR_TREE or COMMIT found for sha %s", sha);
+  return FALSE;
+}
+
+/* Parses a treeish spliting the PATH from the end if present.
+ *
+ * treeish is modified in place, a ':' is replaced by '\0'.  The returned string
+ * is a substring of the original passed in treeish and need not be freed.
+ *
+ * There is not ambiguity between SHA:PATH and REMOTE:REF because REMOTE is not
+ * allowed to be a valid SHA.
+ */
+static char*
+split_treeish_path (char *treeish)
+{
+  if (ostree_validate_structureof_checksum_string (treeish, NULL))
+    /* TREE_SHA, BLOB_SHA or COMMIT_SHA */
+    return treeish + strlen (treeish);
+
+  char *colon = strchr (treeish, ':');
+
+  if (!colon)
+    /* REF */
+    return treeish + strlen (treeish);
+
+  *colon = '\0';
+
+  if (ostree_validate_structureof_checksum_string (treeish, NULL))
+    /* SHA:PATH */
+    return colon + 1;
+
+  *colon = ':';
+  char *colon2 = strchr (colon + 1, ':');
+
+  if (colon2)
+    {
+      /* [REMOTE]:REF:PATH */
+      *colon2 = '\0';
+      return colon2 + 1;
+    }
+
+  /* [REMOTE]:REF */
+  return treeish + strlen (treeish);
+}
+
 /**
  * ostree_repo_pull:
  * @self: Repo

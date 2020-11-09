@@ -463,15 +463,8 @@ print_diff_item (char        prefix,
                  GFile      *base,
                  GFile      *file)
 {
-  if (g_file_is_native (file))
-    {
-      g_autofree char *relpath = g_file_get_relative_path (base, file);
-      g_print ("%c    %s\n", prefix, relpath);
-    }
-  else
-    {
-      g_print ("%c    %s\n", prefix, gs_file_get_path_cached (file));
-    }
+  g_autofree char *relpath = g_file_get_relative_path (base, file);
+  g_print ("%c    %s\n", prefix, relpath);
 }
 
 /**

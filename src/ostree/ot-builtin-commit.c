@@ -30,6 +30,7 @@
 #include "otutil.h"
 #include "parse-datetime.h"
 #include "ostree-repo-private.h"
+#include "ostree-cmdprivate.h"
 #include "ostree-libarchive-private.h"
 #include "ostree-sign.h"
 
@@ -772,10 +773,14 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
               if (!ostree_repo_commit_modifier_set_sepolicy_from_commit (modifier, repo, tree, cancellable, error))
                 goto out;
             }
-          if (!ostree_repo_read_commit (repo, tree, &object_to_commit, NULL, cancellable, error))
+
+          g_autoptr (OstreeRepoFile) tree_in = NULL;
+          if (!ostree_cmd__private__ ()->ostree_repo_open_file (
+                  repo, tree, NULL, OSTREE_REPO_OPEN_FILE_EXPECT_TREE,
+                  &tree_in, NULL, cancellable, error))
             goto out;
 
-          if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, modifier,
+          if (!ostree_repo_write_directory_to_mtree (repo, (GFile*) tree_in, mtree, modifier,
                                                       cancellable, error))
             goto out;
         }

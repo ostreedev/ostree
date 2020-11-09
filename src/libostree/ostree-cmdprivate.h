@@ -22,6 +22,7 @@
 #pragma once
 
 #include "ostree-types.h"
+#include "ostree-repo-private.h"
 
 G_BEGIN_DECLS
 
@@ -35,6 +36,7 @@ typedef struct {
   gboolean (* ostree_static_delta_delete) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
   gboolean (* ostree_repo_verify_bindings) (const char *collection_id, const char *ref_name, GVariant *commit, GError **error);
   gboolean (* ostree_finalize_staged) (OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
+  gboolean (* ostree_repo_open_file) (OstreeRepo *self, const char *treeish, const char *path, OstreeRepoOpenFileFlags flags, OstreeRepoFile **out, char **out_commit_sha, GCancellable *cancellable, GError **error);
 } OstreeCmdPrivateVTable;
 
 /* Note this not really "public", we just export the symbol, but not the header */

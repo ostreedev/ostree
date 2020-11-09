@@ -178,7 +178,7 @@ ostree_parse_refspec (const char   *refspec,
   static gsize regex_initialized;
   if (g_once_init_enter (&regex_initialized))
     {
-      regex = g_regex_new ("^(" OSTREE_REMOTE_NAME_REGEXP ":)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
+      regex = g_regex_new ("^((" OSTREE_REMOTE_NAME_REGEXP ")?:)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
       g_assert (regex);
       g_once_init_leave (&regex_initialized, 1);
     }
@@ -187,21 +187,16 @@ ostree_parse_refspec (const char   *refspec,
   if (!g_regex_match (regex, refspec, 0, &match))
     return glnx_throw (error, "Invalid refspec %s", refspec);
 
-  g_autofree char *remote = g_match_info_fetch (match, 1);
+  g_autofree char *remote = g_match_info_fetch (match, 2);
   if (*remote == '\0')
     {
       g_clear_pointer (&remote, g_free);
-    }
-  else
-    {
-      /* Trim the : */
-      remote[strlen(remote)-1] = '\0';
     }
 
   if (out_remote)
     *out_remote = g_steal_pointer (&remote);
   if (out_ref != NULL)
-    *out_ref = g_match_info_fetch (match, 2);
+    *out_ref = g_match_info_fetch (match, 3);
   return TRUE;
 }
 

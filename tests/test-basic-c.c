@@ -478,6 +478,28 @@ test_big_metadata (void)
   g_assert (ret);
 }
 
+static void
+check_parse_refspec (const char* refspec, const char* expected_remote, const char* expected_ref)
+{
+  g_autofree char *remote = NULL;
+  g_autofree char *ref = NULL;
+  GError *error = NULL;
+  g_assert (ostree_parse_refspec (refspec, &remote, &ref, &error));
+  g_assert_cmpstr (remote, ==, expected_remote);
+  g_assert_cmpstr (ref, ==, expected_ref);
+}
+
+static void
+test_parse_refspec (void)
+{
+  check_parse_refspec ("gnome-ostree:gnome-ostree/buildmaster",
+                       "gnome-ostree", "gnome-ostree/buildmaster");
+  check_parse_refspec ("gnome-ostree/buildmaster",
+                       NULL, "gnome-ostree/buildmaster");
+  check_parse_refspec (":gnome-ostree/buildmaster",
+                       NULL, "gnome-ostree/buildmaster");
+}
+
 int main (int argc, char **argv)
 {
   g_autoptr(GError) error = NULL;
@@ -496,6 +518,7 @@ int main (int argc, char **argv)
   g_test_add_func ("/break-hardlink", test_break_hardlink);
   g_test_add_func ("/remotename", test_validate_remotename);
   g_test_add_func ("/big-metadata", test_big_metadata);
+  g_test_add_func ("/parse-refspec", test_parse_refspec);
 
   return g_test_run();
  out:

@@ -28,6 +28,7 @@
 #include "ostree.h"
 #include "ostree-repo-file.h"
 #include "otutil.h"
+#include "ostree-cmdprivate.h"
 
 static gboolean opt_dironly;
 static gboolean opt_recursive;
@@ -212,8 +213,11 @@ print_one_argument (OstreeRepo   *repo,
   g_autoptr(GFile) f = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
 
-  f = g_file_resolve_relative_path (root, arg);
-  
+  if (arg)
+    f = g_file_resolve_relative_path (root, arg);
+  else
+    f = g_object_ref (root);
+
   file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  cancellable, error);
@@ -247,9 +251,8 @@ ostree_builtin_ls (int argc, char **argv, OstreeCommandInvocation *invocation, G
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
   gboolean ret = FALSE;
-  const char *rev;
   int i;
-  g_autoptr(GFile) root = NULL;
+  g_autoptr(OstreeRepoFile) root = NULL;
 
   context = g_option_context_new ("COMMIT [PATH...]");
 
@@ -261,22 +264,23 @@ ostree_builtin_ls (int argc, char **argv, OstreeCommandInvocation *invocation, G
       ot_util_usage_error (context, "An COMMIT argument is required", error);
       goto out;
     }
-  rev = argv[1];
 
-  if (!ostree_repo_read_commit (repo, rev, &root, NULL, cancellable, error))
+  if (!ostree_cmd__private__ ()->ostree_repo_open_file (
+          repo, argv[1], NULL, OSTREE_REPO_OPEN_FILE_EXPECT_TREE |
+          OSTREE_REPO_OPEN_FILE_EXPECT_FILE, &root, NULL, cancellable, error))
     goto out;
 
   if (argc > 2)
     {
       for (i = 2; i < argc; i++)
         {
-          if (!print_one_argument (repo, root, argv[i], cancellable, error))
+          if (!print_one_argument (repo, (GFile*) root, argv[i], cancellable, error))
             goto out;
         }
     }
   else
     {
-      if (!print_one_argument (repo, root, "/", cancellable, error))
+      if (!print_one_argument (repo, (GFile*) root, NULL, cancellable, error))
         goto out;
     }
   
