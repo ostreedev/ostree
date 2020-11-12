@@ -123,8 +123,6 @@ process_one_checkout (OstreeRepo           *repo,
                       GCancellable         *cancellable,
                       GError              **error)
 {
-  gboolean ret = FALSE;
-
   /* This strange code structure is to preserve testing
    * coverage of both `ostree_repo_checkout_tree` and
    * `ostree_repo_checkout_at` until such time as we have a more
@@ -145,33 +143,15 @@ process_one_checkout (OstreeRepo           *repo,
         checkout_options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
       /* Can't union these */
       if (opt_union && opt_union_add)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Cannot specify both --union and --union-add");
-          goto out;
-        }
+        return glnx_throw (error, "Cannot specify both --union and --union-add");
       if (opt_union && opt_union_identical)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Cannot specify both --union and --union-identical");
-          goto out;
-        }
+        return glnx_throw (error, "Cannot specify both --union and --union-identical");
       if (opt_union_add && opt_union_identical)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Cannot specify both --union-add and --union-identical ");
-          goto out;
-        }
+        return glnx_throw (error, "Cannot specify both --union-add and --union-identical");
       if (opt_require_hardlinks && opt_force_copy)
-        {
-          glnx_throw (error, "Cannot specify both --require-hardlinks and --force-copy");
-          goto out;
-        }
+        return glnx_throw (error, "Cannot specify both --require-hardlinks and --force-copy");
       if (opt_selinux_prefix && !opt_selinux_policy)
-        {
-          glnx_throw (error, "Cannot specify --selinux-prefix without --selinux-policy");
-          goto out;
-        }
+        return glnx_throw (error, "Cannot specify --selinux-prefix without --selinux-policy");
       else if (opt_union)
         checkout_options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
       else if (opt_union_add)
@@ -179,11 +159,7 @@ process_one_checkout (OstreeRepo           *repo,
       else if (opt_union_identical)
         {
           if (!opt_require_hardlinks)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "--union-identical requires --require-hardlinks");
-              goto out;
-            }
+            return glnx_throw (error, "--union-identical requires --require-hardlinks");
           checkout_options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL;
         }
       if (opt_whiteouts)
@@ -196,13 +172,10 @@ process_one_checkout (OstreeRepo           *repo,
         {
           glnx_autofd int rootfs_dfd = -1;
           if (!glnx_opendirat (AT_FDCWD, opt_selinux_policy, TRUE, &rootfs_dfd, error))
-            {
-              g_prefix_error (error, "selinux-policy: ");
-              goto out;
-            }
+            return glnx_prefix_error (error, "selinux-policy: ");
           policy = ostree_sepolicy_new_at (rootfs_dfd, cancellable, error);
           if (!policy)
-            goto out;
+            return FALSE;
           checkout_options.sepolicy = policy;
           checkout_options.sepolicy_prefix = opt_selinux_prefix;
         }
@@ -213,7 +186,7 @@ process_one_checkout (OstreeRepo           *repo,
         {
           if (!ot_parse_file_by_line (opt_skiplist_file, handle_skiplist_line, skip_list,
                                       cancellable, error))
-            goto out;
+            return FALSE;
           checkout_options.filter = checkout_filter;
           checkout_options.filter_user_data = skip_list;
         }
@@ -227,25 +200,25 @@ process_one_checkout (OstreeRepo           *repo,
                                     AT_FDCWD, destination,
                                     resolved_commit,
                                     cancellable, error))
-        goto out;
+        return FALSE;
     }
   else
     {
       GError *tmp_error = NULL;
       g_autoptr(GFile) root = NULL;
-      g_autoptr(GFile) subtree = NULL;
-      g_autoptr(GFileInfo) file_info = NULL;
       g_autoptr(GFile) destination_file = g_file_new_for_path (destination);
 
       if (!ostree_repo_read_commit (repo, resolved_commit, &root, NULL, cancellable, error))
-        goto out;
+        return FALSE;
 
+      g_autoptr(GFile) subtree = NULL;
       if (subpath)
         subtree = g_file_resolve_relative_path (root, subpath);
       else
         subtree = g_object_ref (root);
 
-      file_info = g_file_query_info (subtree, OSTREE_GIO_FAST_QUERYINFO,
+      g_autoptr(GFileInfo) file_info
+        = g_file_query_info (subtree, OSTREE_GIO_FAST_QUERYINFO,
                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                      cancellable, &tmp_error);
       if (!file_info)
@@ -254,13 +227,14 @@ process_one_checkout (OstreeRepo           *repo,
               && g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
               g_clear_error (&tmp_error);
-              ret = TRUE;
+              /* Note early return */
+              return TRUE;
             }
           else
             {
               g_propagate_error (error, tmp_error);
+              return FALSE;
             }
-          goto out;
         }
 
       if (!ostree_repo_checkout_tree (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
@@ -268,12 +242,10 @@ process_one_checkout (OstreeRepo           *repo,
                                       destination_file,
                                       OSTREE_REPO_FILE (subtree), file_info,
                                       cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -352,56 +324,46 @@ process_many_checkouts (OstreeRepo         *repo,
 gboolean
 ostree_builtin_checkout (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("COMMIT [DESTINATION]");
   g_autoptr(OstreeRepo) repo = NULL;
-  gboolean ret = FALSE;
-  const char *commit;
-  const char *destination;
-  g_autofree char *resolved_commit = NULL;
-
-  context = g_option_context_new ("COMMIT [DESTINATION]");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
 
   if (argc < 2)
     {
-      gchar *help = g_option_context_get_help (context, TRUE, NULL);
+      g_autofree char *help = g_option_context_get_help (context, TRUE, NULL);
       g_printerr ("%s\n", help);
-      g_free (help);
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "COMMIT must be specified");
-      goto out;
+      return glnx_throw (error, "COMMIT must be specified");
     }
 
   if (opt_from_stdin || opt_from_file)
     {
-      destination = argv[1];
+      const char *destination = argv[1];
 
       if (!process_many_checkouts (repo, destination, cancellable, error))
-        goto out;
+        return FALSE;
     }
   else
     {
-      commit = argv[1];
+      const char *commit = argv[1];
+      const char *destination;
       if (argc < 3)
         destination = commit;
       else
         destination = argv[2];
 
+      g_autofree char *resolved_commit = NULL;
       if (!ostree_repo_resolve_rev (repo, commit, FALSE, &resolved_commit, error))
-        goto out;
+        return FALSE;
 
       if (!process_one_checkout (repo, resolved_commit, opt_subpath,
                                  destination,
                                  cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
