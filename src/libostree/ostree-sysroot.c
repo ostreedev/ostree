@@ -1428,8 +1428,8 @@ _ostree_sysroot_join_lines (GPtrArray  *lines)
  * ostree_sysroot_query_deployments_for:
  * @self: Sysroot
  * @osname: (allow-none): "stateroot" name
- * @out_pending: (out) (allow-none) (transfer full): The pending deployment
- * @out_rollback: (out) (allow-none) (transfer full): The rollback deployment
+ * @out_pending: (out) (nullable) (optional) (transfer full): The pending deployment
+ * @out_rollback: (out) (nullable) (optional) (transfer full): The rollback deployment
  *
  * Find the pending and rollback deployments for @osname. Pass %NULL for @osname
  * to use the booted deployment's osname. By default, pending deployment is the
