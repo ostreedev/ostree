@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 # Makes sure that is_release_build is only set to yes in a release commit. A
@@ -10,6 +10,7 @@ set -euo pipefail
 HEAD=${PAPR_COMMIT:-HEAD}
 
 git log --format=%B -n 1 $HEAD > log.txt
+trap "rm -f log.txt" EXIT
 
 if grep -q ^is_release_build=yes configure.ac; then
     echo "*** is_release_build is set to yes ***"
