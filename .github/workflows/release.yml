@@ -1,15 +1,14 @@
 ---
-name: Release sanity
+name: Release
 
 on:
   pull_request:
     branches: [master]
-    types: [labeled]
 
 jobs:
   ci-release-build:
     name: "Sanity check release commits"
-    if: ${{ github.event.label.name == 'kind/release' }}
+    if: ${{ github.event.label.name == 'kind/release' || startsWith(github.event.pull_request.title, 'Release') }}
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository
