@@ -1,0 +1,27 @@
+---
+name: Release sanity
+
+on:
+  pull_request:
+    branches: [master]
+    types: [labeled]
+
+jobs:
+  ci-release-build:
+    name: "Sanity check release commits"
+    if: ${{ github.event.label.name == 'kind/release' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+          fetch-depth: '0'
+      - name: Checkout (HEAD)
+        run: git checkout HEAD
+      - name: Check release sanity (HEAD)
+        run: ci/ci-release-build.sh
+      - name: Checkout (HEAD^)
+        run: git checkout HEAD^
+      - name: Check release sanity (HEAD^)
+        run: ci/ci-release-build.sh
