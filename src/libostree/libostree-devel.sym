@@ -15,14 +15,12 @@
   License along with this library; if not, write to the
   Free Software Foundation, Inc., 59 Temple Place - Suite 330,
   Boston, MA 02111-1307, USA.
-***/
 
-LIBOSTREE_2020.8 {
-global:
-  ostree_repo_list_static_delta_indexes;
-  ostree_repo_static_delta_reindex;
-  ostree_repo_gpg_sign_data;
-} LIBOSTREE_2020.7;
+  How to introduce the first new symbol for a development version:
+   - copy the stub content below to a new entry
+   - replace templated value as noted
+   - uncomment the include in Makefile-libostree.am
+*/
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
