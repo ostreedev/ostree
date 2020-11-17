@@ -458,12 +458,43 @@ aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
   g_autoptr(GVariant) xattrs = NULL;
   const char *cb_path = abspath;
 
+  gboolean no_xattrs = ctx->modifier &&
+      ctx->modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
+
+  if (!no_xattrs && archive_entry_xattr_count (ctx->entry) > 0)
+    {
+      const char *name;
+      const void *value;
+      size_t size;
+
+      g_autoptr(GVariantBuilder) builder =
+        ot_util_variant_builder_from_variant (xattrs,
+                                              G_VARIANT_TYPE ("a(ayay)"));
+
+      archive_entry_xattr_reset (ctx->entry);
+      while (archive_entry_xattr_next (
+               ctx->entry, &name, &value, &size) == ARCHIVE_OK)
+        {
+          g_variant_builder_add (builder, "(@ay@ay)",
+                                 g_variant_new_bytestring (name),
+                                 g_variant_new_fixed_array (G_VARIANT_TYPE("y"),
+                                                            value, size, 1));
+        }
+
+      xattrs = g_variant_builder_end (builder);
+      g_variant_ref_sink (xattrs);
+    }
+
   if (ctx->opts->callback_with_entry_pathname)
     cb_path = archive_entry_pathname (ctx->entry);
 
   if (ctx->modifier && ctx->modifier->xattr_callback)
-    xattrs = ctx->modifier->xattr_callback (ctx->repo, cb_path, file_info,
-                                            ctx->modifier->xattr_user_data);
+    {
+      if (xattrs)
+        g_variant_unref (xattrs);
+      xattrs = ctx->modifier->xattr_callback (ctx->repo, cb_path, file_info,
+                                              ctx->modifier->xattr_user_data);
+    }
 
   if (ctx->modifier && ctx->modifier->sepolicy)
     {

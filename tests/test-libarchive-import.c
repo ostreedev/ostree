@@ -95,6 +95,9 @@ test_data_init (TestData *td)
   archive_entry_set_uid (ae, uid);
   archive_entry_set_gid (ae, gid);
   archive_entry_set_size (ae, 4);
+  archive_entry_xattr_add_entry (ae, "user.a_key", "my value", 8);
+  archive_entry_xattr_add_entry (ae, "user.key2", "", 0);
+  archive_entry_xattr_add_entry (ae, "user.b_key", "contains\0nuls", 14);
   g_assert_cmpint (0, ==, archive_write_header (a, ae));
   g_assert_cmpint (4, ==, archive_write_data (a, "bar\n", 4));
   archive_entry_free (ae);
@@ -453,6 +456,90 @@ test_libarchive_xattr_callback (gconstpointer data)
   g_assert_no_error (error);
 }
 
+static void
+test_libarchive_xattr_import (gconstpointer data)
+{
+  TestData *td = (void*)data;
+  GError *error = NULL;
+  g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
+  OstreeRepoImportArchiveOptions opts = { 0 };
+  char buf[15] = { 0 };
+
+  if (skip_if_no_xattr (td))
+    goto out;
+
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      goto out;
+    }
+
+  test_archive_setup (td->fd, a);
+
+  opts.ignore_unsupported_content = TRUE;
+
+  if (!import_write_and_ref (td->repo, &opts, a, "baz", NULL, &error))
+    goto out;
+
+  /* check contents */
+  if (!spawn_cmdline ("ostree --repo=repo checkout baz import-checkout", NULL))
+    goto out;
+
+  spawn_cmdline ("ostree --repo=repo ls -R -X baz", NULL);
+  spawn_cmdline ("attr -l import-checkout/anotherfile", NULL);
+
+  ssize_t x = getxattr ("import-checkout/anotherfile", "user.a_key", buf, sizeof buf - 1);
+  g_assert_cmpint (x, ==, 8);
+  g_assert_cmpstr (buf, ==, "my value");
+
+  x = getxattr ("import-checkout/anotherfile", "user.key2", buf, sizeof buf - 1);
+  g_assert_cmpint (x, ==, 0);
+
+  x = getxattr ("import-checkout/anotherfile", "user.b_key", buf, sizeof buf - 1);
+  g_assert_cmpint (x, ==, 14);
+  g_assert (memcmp(buf, "contains\0nuls", 14) == 0);
+
+ out:
+  g_assert_no_error (error);
+}
+
+static void
+test_libarchive_xattr_import_skip_xattr (gconstpointer data)
+{
+  TestData *td = (void*)data;
+  GError *error = NULL;
+  g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
+  OstreeRepoImportArchiveOptions opts = { 0 };
+
+  if (skip_if_no_xattr (td))
+    goto out;
+
+  if (td->skip_all != NULL)
+    {
+      g_test_skip (td->skip_all->message);
+      goto out;
+    }
+
+  test_archive_setup (td->fd, a);
+
+  opts.ignore_unsupported_content = TRUE;
+
+  g_autoptr(OstreeRepoCommitModifier) modifier = ostree_repo_commit_modifier_new (
+      OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS, NULL, NULL, NULL);
+  if (!import_write_and_ref (td->repo, &opts, a, "baz", modifier, &error))
+    goto out;
+
+  /* check contents */
+  if (!spawn_cmdline ("ostree --repo=repo checkout baz import-checkout", NULL))
+    goto out;
+
+  ssize_t n_attrs = listxattr ("import-checkout/anotherfile", NULL, 0);
+  g_assert_cmpint (n_attrs, ==, 0);
+
+ out:
+  g_assert_no_error (error);
+}
+
 static GVariant*
 path_cb (OstreeRepo  *repo,
          const char  *path,
@@ -610,6 +697,8 @@ int main (int argc, char **argv)
   g_test_add_data_func ("/libarchive/error-device-file", &td, test_libarchive_error_device_file);
   g_test_add_data_func ("/libarchive/ignore-device-file", &td, test_libarchive_ignore_device_file);
   g_test_add_data_func ("/libarchive/ostree-convention", &td, test_libarchive_ostree_convention);
+  g_test_add_data_func ("/libarchive/xattr-import", &td, test_libarchive_xattr_import);
+  g_test_add_data_func ("/libarchive/xattr-import-skip-xattr", &td, test_libarchive_xattr_import_skip_xattr);
   g_test_add_data_func ("/libarchive/xattr-callback", &td, test_libarchive_xattr_callback);
   g_test_add_data_func ("/libarchive/no-use-entry-pathname", &td, test_libarchive_no_use_entry_pathname);
   g_test_add_data_func ("/libarchive/use-entry-pathname", &td, test_libarchive_use_entry_pathname);
