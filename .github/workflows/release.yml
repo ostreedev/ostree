@@ -4,6 +4,8 @@ name: Release
 on:
   pull_request:
     branches: [master]
+    paths:
+      - 'configure.ac'
 
 jobs:
   ci-release-build:
@@ -14,6 +16,7 @@ jobs:
       - name: Clone repository
         uses: actions/checkout@v2
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           submodules: 'recursive'
           fetch-depth: '0'
       - name: Checkout (HEAD)
