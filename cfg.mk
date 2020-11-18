@@ -39,4 +39,4 @@ sc_glnx_no_fd_close:
 show-vc-list-except:
 	@$(VC_LIST_EXCEPT)
 
-VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|cfg.mk|maint.mk|*.gpg|*.sig|.xz|.gz$$
+VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|cfg.mk|maint.mk|*.md|*.gpg|*.sig|.xz|.gz$$
