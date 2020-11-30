@@ -175,6 +175,8 @@ cd ${test_tmpdir}
 # Reset to the old valid summary and pull to cache it
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.1,}
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.1,}
+touch -t 200101010101 ${test_tmpdir}/ostree-srv/gnomerepo/summary
+touch -t 200101010101 ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
 repo_reinit
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
@@ -186,6 +188,7 @@ cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summ
 # summary signature since it was generated on the server between the
 # requests
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.2,}
+touch -t 200202020202 ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
 if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
     assert_not_reached "Successful pull with old summary"
 fi
@@ -197,6 +200,7 @@ cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summ
 
 # Publish correct summary and check that subsequent pull succeeds
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.2,}
+touch -t 200202020202 ${test_tmpdir}/ostree-srv/gnomerepo/summary
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
@@ -208,6 +212,8 @@ echo "ok pull with signed summary remote old summary"
 # Reset to the old valid summary and pull to cache it
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.1,}
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.1,}
+touch -t 200101010101 ${test_tmpdir}/ostree-srv/gnomerepo/summary
+touch -t 200101010101 ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
 repo_reinit
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
@@ -220,6 +226,7 @@ cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summ
 # is caching the old signature. This should succeed because the cached
 # old summary is used.
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.2,}
+touch -t 200202020202 ${test_tmpdir}/ostree-srv/gnomerepo/summary
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
@@ -228,6 +235,7 @@ cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summ
 
 # Publish correct signature and check that subsequent pull succeeds
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.2,}
+touch -t 200202020202 ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
@@ -239,6 +247,8 @@ echo "ok pull with signed summary remote old summary signature"
 # Reset to the old valid summary and pull to cache it
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.1,}
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.1,}
+touch -t 200101010101 ${test_tmpdir}/ostree-srv/gnomerepo/summary
+touch -t 200101010101 ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
 repo_reinit
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
@@ -273,6 +283,8 @@ cmp repo/tmp/cache/summaries/origin.sig ${test_tmpdir}/ostree-srv/gnomerepo/summ
 # Publish new signature and check that subsequent pull succeeds
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{.2,}
 cp ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.2,}
+touch -t 200202020202 ${test_tmpdir}/ostree-srv/gnomerepo/summary
+touch -t 200202020202 ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
 ${OSTREE} --repo=repo pull origin main
 assert_has_file repo/tmp/cache/summaries/origin
 assert_has_file repo/tmp/cache/summaries/origin.sig
