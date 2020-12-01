@@ -38,6 +38,10 @@ For more information, see the [project documentation](docs/index.md) or the
 
 ## Operating systems and distributions using OSTree
 
+[Apertis](https://www.apertis.org/) uses libostree for their host system as
+well as fatpak. See [update documentation](https://www.apertis.org/guides/ostree/) and
+[apertis-update-manager](https://gitlab.apertis.org/pkg/apertis-update-manager)
+
 [Endless OS](https://endlessos.com/) uses libostree for their host system as
 well as flatpak. See
 their [eos-updater](https://github.com/endlessm/eos-updater)
@@ -58,6 +62,9 @@ uses rpm-ostree as well.
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
 where OSTree was born - as a high performance continuous delivery/testing
 system for GNOME.
+
+[GNOME OS](https://os.gnome.org/) is a testing OS that uses libostree for
+their host system as well as flatpak.
 
 [Liri OS](https://liri.io/download/silverblue/) has the option to install
 their distribution using ostree.
