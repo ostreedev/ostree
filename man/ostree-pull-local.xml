@@ -90,6 +90,14 @@ Boston, MA 02111-1307, USA.
                     Do not trust source, verify checksums and don't hardlink into source.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--disable-verify-bindings</option></term>
+
+                <listitem><para>
+                    Disable verification of commit metadata bindings.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

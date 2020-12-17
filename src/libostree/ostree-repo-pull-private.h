@@ -70,6 +70,7 @@ typedef struct {
   gboolean          require_static_deltas;
   gboolean          disable_static_deltas;
   gboolean          has_tombstone_commits;
+  gboolean          disable_verify_bindings;
 
   GBytes           *summary_data;
   char             *summary_etag;
