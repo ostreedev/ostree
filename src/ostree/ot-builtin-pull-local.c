@@ -40,6 +40,7 @@ static gboolean opt_bareuseronly_files;
 static gboolean opt_require_static_deltas;
 static gboolean opt_gpg_verify;
 static gboolean opt_gpg_verify_summary;
+static gboolean opt_disable_verify_bindings;
 static int opt_depth = 0;
 
 /* ATTENTION:
@@ -57,6 +58,7 @@ static GOptionEntry options[] = {
   { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
   { "gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify, "GPG verify commits (must specify --remote)", NULL },
   { "gpg-verify-summary", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify_summary, "GPG verify summary (must specify --remote)", NULL },
+  { "disable-verify-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_disable_verify_bindings, "Do not verify commit bindings", NULL },
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
   { NULL }
 };
@@ -181,6 +183,8 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
     if (opt_gpg_verify_summary)
       g_variant_builder_add (&builder, "{s@v}", "gpg-verify-summary",
                              g_variant_new_variant (g_variant_new_boolean (TRUE)));
+    g_variant_builder_add (&builder, "{s@v}", "disable-verify-bindings",
+                           g_variant_new_variant (g_variant_new_boolean (opt_disable_verify_bindings)));
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
     /* local pulls always disable signapi verification.  If you don't want this, use

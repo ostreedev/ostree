@@ -117,7 +117,7 @@ do_pull() {
     local branch=$3
     shift 3
 
-    if ${CMD_PREFIX} ostree "--repo=${repo}" pull "${remote_repo}-remote" "${branch}"
+    if ${CMD_PREFIX} ostree "--repo=${repo}" pull "$@" "${remote_repo}-remote" "${branch}"
     then return 0
     else return 1
     fi
@@ -129,7 +129,7 @@ do_local_pull() {
     local branch=$3
     shift 3
 
-    if ${CMD_PREFIX} ostree "--repo=${repo}" pull-local "${remote_repo}" "${branch}"
+    if ${CMD_PREFIX} ostree "--repo=${repo}" pull-local "$@" "${remote_repo}" "${branch}"
     then return 0
     else return 1
     fi
@@ -221,19 +221,23 @@ if do_pull local collection-repo badcref1
 then
     assert_not_reached "pulling a commit without collection ID from a repo with collection ID should fail"
 fi
+do_pull local collection-repo badcref1 --disable-verify-bindings
 if do_pull local collection-repo badcref2
 then
     assert_not_reached "pulling a commit with a mismatched collection ID from a repo with collection ID should fail"
 fi
+do_pull local collection-repo badcref2 --disable-verify-bindings
 if do_pull local collection-repo badcref3
 then
     assert_not_reached "pulling a commit with empty collection ID from repo with collection ID should fail"
 fi
+do_pull local collection-repo badcref3 --disable-verify-bindings
 do_pull local collection-repo goodcref1
 if do_pull local collection-repo badcref4
 then
     assert_not_reached "pulling a commit that was not requested from repo with collection ID should fail"
 fi
+do_pull local collection-repo badcref4 --disable-verify-bindings
 
 echo "ok 5 pull refs from remote repos"
 
@@ -243,19 +247,23 @@ if do_local_pull local collection-local-repo badclref1
 then
     assert_not_reached "pulling a commit without collection ID from a repo with collection ID should fail"
 fi
+do_local_pull local collection-local-repo badclref1 --disable-verify-bindings
 if do_local_pull local collection-local-repo badclref2
 then
     assert_not_reached "pulling a commit with a mismatched collection ID from a repo with collection ID should fail"
 fi
+do_local_pull local collection-local-repo badclref2 --disable-verify-bindings
 if do_local_pull local collection-local-repo badclref3
 then
     assert_not_reached "pulling a commit with empty collection ID from repo with collection ID should fail"
 fi
+do_local_pull local collection-local-repo badclref3 --disable-verify-bindings
 do_local_pull local collection-local-repo goodclref1
 if do_local_pull local collection-local-repo badclref4
 then
     assert_not_reached "pulling a commit that was not requested from repo with collection ID should fail"
 fi
+do_local_pull local collection-local-repo badclref4 --disable-verify-bindings
 
 echo "ok 6 pull refs from local repos"
 

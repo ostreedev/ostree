@@ -38,6 +38,7 @@ static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
 static gboolean opt_http_trusted;
 static gboolean opt_timestamp_check;
+static gboolean opt_disable_verify_bindings;
 static char* opt_timestamp_check_from_rev;
 static gboolean opt_bareuseronly_files;
 static char** opt_subpaths;
@@ -76,6 +77,7 @@ static GOptionEntry options[] = {
    { "localcache-repo", 'L', 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_localcache_repos, "Add REPO as local cache source for objects during this pull", "REPO" },
    { "timestamp-check", 'T', 0, G_OPTION_ARG_NONE, &opt_timestamp_check, "Require fetched commits to have newer timestamps", NULL },
    { "timestamp-check-from-rev", 0, 0, G_OPTION_ARG_STRING, &opt_timestamp_check_from_rev, "Require fetched commits to have newer timestamps than given rev", NULL },
+   { "disable-verify-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_disable_verify_bindings, "Do not verify commit bindings", NULL },
    /* let's leave this hidden for now; we just need it for tests */
    { "append-user-agent", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_STRING, &opt_append_user_agent, "Append string to user agent", NULL },
    { NULL }
@@ -330,6 +332,8 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
     if (opt_per_object_fsync)
       g_variant_builder_add (&builder, "{s@v}", "per-object-fsync",
                              g_variant_new_variant (g_variant_new_boolean (TRUE)));
+    g_variant_builder_add (&builder, "{s@v}", "disable-verify-bindings",
+                           g_variant_new_variant (g_variant_new_boolean (opt_disable_verify_bindings)));
     if (opt_http_headers)
       {
         GVariantBuilder hdr_builder;

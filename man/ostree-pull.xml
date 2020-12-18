@@ -137,6 +137,14 @@ Boston, MA 02111-1307, USA.
                     Specifies how many times each download should be retried upon error (default: 5)
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--disable-verify-bindings</option></term>
+
+                <listitem><para>
+                    Disable verification of commit metadata bindings.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
