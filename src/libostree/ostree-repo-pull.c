@@ -1620,17 +1620,19 @@ scan_commit_object (OtPullData                 *pull_data,
   if (!ostree_repo_load_commit (pull_data->repo, checksum, &commit, &commitstate, error))
     return FALSE;
 
-  if (!pull_data->disable_verify_bindings) {
-    /* If ref is non-NULL then the commit we fetched was requested through the
-     * branch, otherwise we requested a commit checksum without specifying a branch.
-     */
-    g_autofree char *remote_collection_id = NULL;
-    remote_collection_id = get_remote_repo_collection_id (pull_data);
-    if (!_ostree_repo_verify_bindings (remote_collection_id,
-                                       (ref != NULL) ? ref->ref_name : NULL,
-                                       commit, error))
-      return glnx_prefix_error (error, "Commit %s", checksum);
-  }
+  if (!pull_data->disable_verify_bindings)
+    {
+      /* If ref is non-NULL then the commit we fetched was requested through
+       * the branch, otherwise we requested a commit checksum without
+       * specifying a branch.
+       */
+      g_autofree char *remote_collection_id = NULL;
+      remote_collection_id = get_remote_repo_collection_id (pull_data);
+      if (!_ostree_repo_verify_bindings (remote_collection_id,
+                                         (ref != NULL) ? ref->ref_name : NULL,
+                                         commit, error))
+        return glnx_prefix_error (error, "Commit %s", checksum);
+    }
 
   guint64 new_ts = ostree_commit_get_timestamp (commit);
   if (pull_data->timestamp_check)
