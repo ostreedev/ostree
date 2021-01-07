@@ -3017,33 +3017,8 @@ reload_core_config (OstreeRepo          *self,
       }
   }
 
-  /* Currently experimental */
-  static const char fsverity_key[] = "ex-fsverity";
-  self->fs_verity_wanted = _OSTREE_FEATURE_NO;
-#ifdef HAVE_LINUX_FSVERITY_H
-  self->fs_verity_supported = _OSTREE_FEATURE_MAYBE;
-#else
-  self->fs_verity_supported = _OSTREE_FEATURE_NO;
-#endif
-  gboolean fsverity_required = FALSE;
-  if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "required",
-                                            FALSE, &fsverity_required, error))
+  if (!_ostree_repo_parse_fsverity_config (self, error))
     return FALSE;
-  if (fsverity_required)
-    {
-      self->fs_verity_wanted = _OSTREE_FEATURE_YES;
-      if (self->fs_verity_supported == _OSTREE_FEATURE_NO)
-        return glnx_throw (error, "fsverity required, but libostree compiled without support");
-    }
-  else
-    {  
-      gboolean fsverity_opportunistic = FALSE;
-      if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "opportunistic",
-                                                FALSE, &fsverity_opportunistic, error))
-        return FALSE;
-      if (fsverity_opportunistic)
-        self->fs_verity_wanted = _OSTREE_FEATURE_MAYBE;
-    }
   
   {
     g_clear_pointer (&self->collection_id, g_free);
