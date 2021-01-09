@@ -34,6 +34,12 @@
 #define OT_VARIANT_BUILDER_INITIALIZER {{{0,}}}
 #endif
 
+static inline const char *
+ot_booltostr (int b)
+{
+  return b ? "true" : "false";
+}
+
 #define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
 
 #define ot_transfer_out_value(outp, srcp) G_STMT_START {   \
