@@ -56,6 +56,7 @@ struct OstreeSysroot {
 
   GFile *path;
   int sysroot_fd;
+  int boot_fd;
   GLnxLockFile lock;
 
   OstreeSysrootLoadState loadstate;
@@ -159,6 +160,9 @@ _ostree_sysroot_rmrf_deployment (OstreeSysroot *sysroot,
 char * _ostree_sysroot_get_runstate_path (OstreeDeployment *deployment, const char *key);
 
 char *_ostree_sysroot_join_lines (GPtrArray  *lines);
+
+gboolean
+_ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error);
 
 gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
                                            OstreeBootloader **out_bootloader,

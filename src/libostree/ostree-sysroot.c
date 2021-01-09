@@ -198,6 +198,7 @@ ostree_sysroot_init (OstreeSysroot *self)
                                             keys, G_N_ELEMENTS (keys));
 
   self->sysroot_fd = -1;
+  self->boot_fd = -1;
 }
 
 /**
@@ -276,6 +277,19 @@ ensure_sysroot_fd (OstreeSysroot          *self,
     {
       if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->path), TRUE,
                            &self->sysroot_fd, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+gboolean
+_ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error)
+{
+  if (self->boot_fd == -1)
+    {
+      if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE,
+                           &self->boot_fd, error))
         return FALSE;
     }
   return TRUE;
@@ -380,6 +394,7 @@ void
 ostree_sysroot_unload (OstreeSysroot  *self)
 {
   glnx_close_fd (&self->sysroot_fd);
+  glnx_close_fd (&self->boot_fd);
 }
 
 /**

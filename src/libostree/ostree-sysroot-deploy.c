@@ -1582,11 +1582,11 @@ full_system_sync (OstreeSysroot     *self,
 
   out_stats->root_syncfs_msec = (end_msec - start_msec);
 
-  start_msec = g_get_monotonic_time () / 1000;
-  glnx_autofd int boot_dfd = -1;
-  if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+  if (!_ostree_sysroot_ensure_boot_fd  (self, error))
     return FALSE;
-  if (!fsfreeze_thaw_cycle (self, boot_dfd, cancellable, error))
+
+  start_msec = g_get_monotonic_time () / 1000;
+  if (!fsfreeze_thaw_cycle (self, self->boot_fd, cancellable, error))
     return FALSE;
   end_msec = g_get_monotonic_time () / 1000;
   out_stats->boot_syncfs_msec = (end_msec - start_msec);
@@ -1770,8 +1770,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                              cancellable, error))
     return FALSE;
 
-  glnx_autofd int boot_dfd = -1;
-  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+  if (!_ostree_sysroot_ensure_boot_fd  (sysroot, error))
     return FALSE;
 
   const char *osname = ostree_deployment_get_osname (deployment);
@@ -1781,14 +1780,14 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   g_autofree char *bootconf_name = g_strdup_printf ("ostree-%d-%s.conf",
                                    n_deployments - ostree_deployment_get_index (deployment),
                                    osname);
-  if (!glnx_shutil_mkdir_p_at (boot_dfd, bootcsumdir, 0775, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
 
   glnx_autofd int bootcsum_dfd = -1;
-  if (!glnx_opendirat (boot_dfd, bootcsumdir, TRUE, &bootcsum_dfd, error))
+  if (!glnx_opendirat (sysroot->boot_fd, bootcsumdir, TRUE, &bootcsum_dfd, error))
     return FALSE;
 
-  if (!glnx_shutil_mkdir_p_at (boot_dfd, bootconfdir, 0775, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootconfdir, 0775, cancellable, error))
     return FALSE;
 
   /* Install (hardlink/copy) the kernel into /boot/ostree/osname-${bootcsum} if
@@ -1879,18 +1878,18 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           overlay_initrds = g_ptr_array_new_with_free_func (g_free);
 
-          if (!glnx_shutil_mkdir_p_at (boot_dfd, _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS,
+          if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS,
                                        0755, cancellable, error))
             return FALSE;
         }
 
-      if (!glnx_fstatat_allow_noent (boot_dfd, rel_destpath, NULL, 0, error))
+      if (!glnx_fstatat_allow_noent (sysroot->boot_fd, rel_destpath, NULL, 0, error))
         return FALSE;
       if (errno == ENOENT)
         {
           g_autofree char *srcpath =
             g_strdup_printf (_OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR "/%s", checksum);
-          if (!install_into_boot (repo, sepolicy, AT_FDCWD, srcpath, boot_dfd, rel_destpath,
+          if (!install_into_boot (repo, sepolicy, AT_FDCWD, srcpath, sysroot->boot_fd, rel_destpath,
                                   cancellable, error))
             return FALSE;
         }
@@ -2019,7 +2018,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
 
   glnx_autofd int bootconf_dfd = -1;
-  if (!glnx_opendirat (boot_dfd, bootconfdir, TRUE, &bootconf_dfd, error))
+  if (!glnx_opendirat (sysroot->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
     return FALSE;
 
   if (!ostree_bootconfig_parser_write_at (ostree_deployment_get_bootconfig (deployment),
@@ -2076,15 +2075,14 @@ swap_bootloader (OstreeSysroot  *sysroot,
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
 
-  glnx_autofd int boot_dfd = -1;
-  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+  if (!_ostree_sysroot_ensure_boot_fd  (sysroot, error))
     return FALSE;
 
   /* The symlink was already written, and we used syncfs() to ensure
    * its data is in place.  Renaming now should give us atomic semantics;
    * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
    */
-  if (!glnx_renameat (boot_dfd, "loader.tmp", boot_dfd, "loader", error))
+  if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
     return FALSE;
 
   /* Now we explicitly fsync this directory, even though it
@@ -2096,7 +2094,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
    *    for whatever reason, and we wouldn't want to confuse the
    *    admin by going back to the previous session.
    */
-  if (fsync (boot_dfd) != 0)
+  if (fsync (sysroot->boot_fd) != 0)
     return glnx_throw_errno_prefix (error, "fsync(boot)");
 
   /* TODO: In the future also execute this automatically via a systemd unit
