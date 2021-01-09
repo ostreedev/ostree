@@ -122,26 +122,10 @@ maybe_setup_mount_namespace (gboolean    *out_ns,
   if (errno == ENOENT)
     return TRUE;
 
-  glnx_autofd int sysroot_subdir_fd = glnx_opendirat_with_errno (AT_FDCWD, "/sysroot", TRUE);
-  if (sysroot_subdir_fd < 0)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "opendirat");
-      /* No /sysroot - nothing to do */
-      return TRUE;
-    }
+  if (unshare (CLONE_NEWNS) < 0)
+    return glnx_throw_errno_prefix (error, "setting up mount namespace: unshare(CLONE_NEWNS)");
 
-  struct statvfs stvfs;
-  if (fstatvfs (sysroot_subdir_fd, &stvfs) < 0)
-    return glnx_throw_errno_prefix (error, "fstatvfs");
-  if (stvfs.f_flag & ST_RDONLY)
-    {
-      if (unshare (CLONE_NEWNS) < 0)
-        return glnx_throw_errno_prefix (error, "preparing writable sysroot: unshare (CLONE_NEWNS)");
-
-      *out_ns = TRUE;
-    }
-
+  *out_ns = TRUE;
   return TRUE;
 }
 
