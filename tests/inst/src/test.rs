@@ -8,6 +8,7 @@ use std::time;
 use anyhow::{bail, Context, Result};
 use linkme::distributed_slice;
 use rand::Rng;
+use serde_derive::Deserialize;
 
 pub use itest_macro::itest;
 pub use with_procspawn_tempdir::with_procspawn_tempdir;
@@ -207,6 +208,29 @@ pub(crate) fn prepare_reboot<M: AsRef<str>>(mark: M) -> Result<()> {
         anyhow::bail!("{:?}", s);
     }
     Ok(())
+}
+
+#[derive(Deserialize, Debug)]
+struct OstreeVersionOutputData {
+    #[serde(rename = "Features")]
+    features: Vec<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct OstreeVersionOutput {
+    libostree: OstreeVersionOutputData,
+}
+
+pub(crate) fn check_ostree_feature<S: AsRef<str>>(feature: S) -> Result<bool> {
+    let feature = feature.as_ref();
+    let out = std::process::Command::new("ostree")
+        .arg("--version")
+        .output()?;
+    if !out.status.success() {
+        anyhow::bail!("{:?}", out);
+    }
+    let v: OstreeVersionOutput = serde_yaml::from_reader(&*out.stdout)?;
+    Ok(v.libostree.features.iter().any(|f| f.as_str() == feature))
 }
 
 // I put tests in your tests so you can test while you test

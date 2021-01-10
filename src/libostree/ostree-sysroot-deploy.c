@@ -158,17 +158,6 @@ install_into_boot (OstreeRepo *repo,
   if (fdatasync (tmp_dest.fd) < 0)
     return glnx_throw_errno_prefix (error, "fdatasync");
 
-  /* Today we don't have a config flag to *require* verity on /boot,
-   * and at least for Fedora CoreOS we're not likely to do fsverity on
-   * /boot soon due to wanting to support mounting it from old Linux
-   * kernels.  So change "required" to "maybe".
-   */
-  _OstreeFeatureSupport boot_verity = _OSTREE_FEATURE_NO;
-  if (repo->fs_verity_wanted != _OSTREE_FEATURE_NO)
-    boot_verity = _OSTREE_FEATURE_MAYBE;
-  if (!_ostree_tmpf_fsverity_core (&tmp_dest, boot_verity, NULL, error))
-    return FALSE;
-
   if (!glnx_link_tmpfile_at (&tmp_dest, GLNX_LINK_TMPFILE_NOREPLACE, dest_dfd, dest_subpath, error))
     return FALSE;
 

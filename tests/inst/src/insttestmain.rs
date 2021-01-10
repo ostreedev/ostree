@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 use structopt::StructOpt;
 
 mod destructive;
+mod fsverity;
 mod repobin;
 mod rpmostree;
 mod sysroot;

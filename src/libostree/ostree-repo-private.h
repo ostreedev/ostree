@@ -162,8 +162,11 @@ struct OstreeRepo {
   GMutex txn_lock;
   OstreeRepoTxn txn;
   gboolean txn_locked;
-  _OstreeFeatureSupport fs_verity_wanted;
-  _OstreeFeatureSupport fs_verity_supported;
+  gboolean fs_verity_wanted;
+#ifdef BUILDOPT_FSVERITY
+  char *fsverity_cert;
+  char *fsverity_key;
+#endif
 
   GMutex cache_lock;
   guint dirmeta_cache_refcount;
@@ -521,18 +524,21 @@ OstreeRepoAutoLock * _ostree_repo_auto_lock_push (OstreeRepo          *self,
 void          _ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, _ostree_repo_auto_lock_cleanup)
 
-gboolean _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error);
-
-gboolean
-_ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
-                            _OstreeFeatureSupport fsverity_requested,
-                            gboolean    *supported,
-                            GError     **error);
-
+#define _OSTREE_FSVERITY_CONFIG_KEY "ex-fsverity"
+#ifdef BUILDOPT_FSVERITY
+gboolean 
+_ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error);
 gboolean
 _ostree_tmpf_fsverity (OstreeRepo *self,
                        GLnxTmpfile *tmpf,
                        GError    **error);
+#else
+static inline gboolean 
+_ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error) { return TRUE;}
+static inline gboolean
+_ostree_tmpf_fsverity (OstreeRepo  *self, GLnxTmpfile *tmpf, GError **error) { return TRUE; }
+#endif
+
 
 gboolean
 _ostree_repo_verify_bindings (const char  *collection_id,
