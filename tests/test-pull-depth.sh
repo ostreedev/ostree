@@ -35,21 +35,31 @@ ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=0 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=0 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=1 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^2$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=1 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^2$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^3$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 echo "ok pull depth"
