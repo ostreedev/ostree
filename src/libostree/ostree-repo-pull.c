@@ -1167,8 +1167,10 @@ meta_fetch_on_complete (GObject           *object,
             }
 
           /* When traversing parents, do not fail on a missing commit.
-           * We may be pulling from a partial repository that ends in
-           * a dangling parent reference. */
+           * We may be pulling from a partial repository that ends in a
+           * dangling parent reference. This logic should match the
+           * local case in scan_one_metadata_object.
+           */
           else if (objtype == OSTREE_OBJECT_TYPE_COMMIT &&
                    pull_data->maxdepth != 0 &&
                    is_parent_commit (pull_data, checksum))
@@ -1820,10 +1822,46 @@ scan_one_metadata_object (OtPullData                 *pull_data,
             return FALSE;
         }
 
+      g_autoptr(GError) local_error = NULL;
       if (!_ostree_repo_import_object (pull_data->repo, pull_data->remote_repo_local,
                                        objtype, checksum, pull_data->importflags,
-                                       cancellable, error))
-        return FALSE;
+                                       cancellable, &local_error))
+        {
+          /* When traversing parents, do not fail on a missing commit.
+           * We may be pulling from a partial repository that ends in a
+           * dangling parent reference. This logic should match the
+           * remote case in meta_fetch_on_complete.
+           *
+           * Note early return.
+           */
+          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND) &&
+              objtype == OSTREE_OBJECT_TYPE_COMMIT &&
+              pull_data->maxdepth != 0 &&
+              is_parent_commit (pull_data, checksum))
+            {
+              g_clear_error (&local_error);
+
+              /* If the remote repo supports tombstone commits, check if
+               * the commit was intentionally deleted.
+               */
+              if (pull_data->has_tombstone_commits)
+                {
+                  if (!_ostree_repo_import_object (pull_data->repo, pull_data->remote_repo_local,
+                                                   OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
+                                                   checksum, pull_data->importflags,
+                                                   cancellable, error))
+                    return FALSE;
+                }
+
+              return TRUE;
+            }
+          else
+            {
+              g_propagate_error (error, g_steal_pointer (&local_error));
+              return FALSE;
+            }
+        }
+
       /* The import API will fetch both the commit and detached metadata, so
        * add it to the hash to avoid re-fetching it below.
        */
