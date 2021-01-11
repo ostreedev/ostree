@@ -56,9 +56,6 @@
 #define OSTREE_DEPLOYMENT_FINALIZING_ID SD_ID128_MAKE(e8,64,6c,d6,3d,ff,46,25,b7,79,09,a8,e7,a4,09,94)
 #endif
 
-static gboolean
-is_ro_mount (const char *path);
-
 /*
  * Like symlinkat() but overwrites (atomically) an existing
  * symlink.
@@ -1582,11 +1579,11 @@ full_system_sync (OstreeSysroot     *self,
 
   out_stats->root_syncfs_msec = (end_msec - start_msec);
 
-  start_msec = g_get_monotonic_time () / 1000;
-  glnx_autofd int boot_dfd = -1;
-  if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+  if (!_ostree_sysroot_ensure_boot_fd  (self, error))
     return FALSE;
-  if (!fsfreeze_thaw_cycle (self, boot_dfd, cancellable, error))
+
+  start_msec = g_get_monotonic_time () / 1000;
+  if (!fsfreeze_thaw_cycle (self, self->boot_fd, cancellable, error))
     return FALSE;
   end_msec = g_get_monotonic_time () / 1000;
   out_stats->boot_syncfs_msec = (end_msec - start_msec);
@@ -1770,8 +1767,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                              cancellable, error))
     return FALSE;
 
-  glnx_autofd int boot_dfd = -1;
-  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+  if (!_ostree_sysroot_ensure_boot_fd  (sysroot, error))
     return FALSE;
 
   const char *osname = ostree_deployment_get_osname (deployment);
@@ -1781,14 +1777,14 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   g_autofree char *bootconf_name = g_strdup_printf ("ostree-%d-%s.conf",
                                    n_deployments - ostree_deployment_get_index (deployment),
                                    osname);
-  if (!glnx_shutil_mkdir_p_at (boot_dfd, bootcsumdir, 0775, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
 
   glnx_autofd int bootcsum_dfd = -1;
-  if (!glnx_opendirat (boot_dfd, bootcsumdir, TRUE, &bootcsum_dfd, error))
+  if (!glnx_opendirat (sysroot->boot_fd, bootcsumdir, TRUE, &bootcsum_dfd, error))
     return FALSE;
 
-  if (!glnx_shutil_mkdir_p_at (boot_dfd, bootconfdir, 0775, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootconfdir, 0775, cancellable, error))
     return FALSE;
 
   /* Install (hardlink/copy) the kernel into /boot/ostree/osname-${bootcsum} if
@@ -1879,18 +1875,18 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         {
           overlay_initrds = g_ptr_array_new_with_free_func (g_free);
 
-          if (!glnx_shutil_mkdir_p_at (boot_dfd, _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS,
+          if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS,
                                        0755, cancellable, error))
             return FALSE;
         }
 
-      if (!glnx_fstatat_allow_noent (boot_dfd, rel_destpath, NULL, 0, error))
+      if (!glnx_fstatat_allow_noent (sysroot->boot_fd, rel_destpath, NULL, 0, error))
         return FALSE;
       if (errno == ENOENT)
         {
           g_autofree char *srcpath =
             g_strdup_printf (_OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR "/%s", checksum);
-          if (!install_into_boot (repo, sepolicy, AT_FDCWD, srcpath, boot_dfd, rel_destpath,
+          if (!install_into_boot (repo, sepolicy, AT_FDCWD, srcpath, sysroot->boot_fd, rel_destpath,
                                   cancellable, error))
             return FALSE;
         }
@@ -2019,7 +2015,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
 
   glnx_autofd int bootconf_dfd = -1;
-  if (!glnx_opendirat (boot_dfd, bootconfdir, TRUE, &bootconf_dfd, error))
+  if (!glnx_opendirat (sysroot->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
     return FALSE;
 
   if (!ostree_bootconfig_parser_write_at (ostree_deployment_get_bootconfig (deployment),
@@ -2076,15 +2072,14 @@ swap_bootloader (OstreeSysroot  *sysroot,
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
 
-  glnx_autofd int boot_dfd = -1;
-  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
+  if (!_ostree_sysroot_ensure_boot_fd  (sysroot, error))
     return FALSE;
 
   /* The symlink was already written, and we used syncfs() to ensure
    * its data is in place.  Renaming now should give us atomic semantics;
    * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
    */
-  if (!glnx_renameat (boot_dfd, "loader.tmp", boot_dfd, "loader", error))
+  if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
     return FALSE;
 
   /* Now we explicitly fsync this directory, even though it
@@ -2096,7 +2091,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
    *    for whatever reason, and we wouldn't want to confuse the
    *    admin by going back to the previous session.
    */
-  if (fsync (boot_dfd) != 0)
+  if (fsync (sysroot->boot_fd) != 0)
     return glnx_throw_errno_prefix (error, "fsync(boot)");
 
   /* TODO: In the future also execute this automatically via a systemd unit
@@ -2225,57 +2220,6 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
     }
 
   return TRUE;
-}
-
-/* Detect whether or not @path refers to a read-only mountpoint. This is
- * currently just used to handle a potentially read-only /boot by transiently
- * remounting it read-write. In the future we might also do this for e.g.
- * /sysroot.
- */
-static gboolean
-is_ro_mount (const char *path)
-{
-#ifdef HAVE_LIBMOUNT
-  /* Dragging in all of this crud is apparently necessary just to determine
-   * whether something is a mount point.
-   *
-   * Systemd has a totally different implementation in
-   * src/basic/mount-util.c.
-   */
-  struct libmnt_table *tb = mnt_new_table_from_file ("/proc/self/mountinfo");
-  struct libmnt_fs *fs;
-  struct libmnt_cache *cache;
-  gboolean is_mount = FALSE;
-  struct statvfs stvfsbuf;
-
-  if (!tb)
-    return FALSE;
-
-  /* to canonicalize all necessary paths */
-  cache = mnt_new_cache ();
-  mnt_table_set_cache (tb, cache);
-
-  fs = mnt_table_find_target(tb, path, MNT_ITER_BACKWARD);
-  is_mount = fs && mnt_fs_get_target (fs);
-#ifdef HAVE_MNT_UNREF_CACHE
-  mnt_unref_table (tb);
-  mnt_unref_cache (cache);
-#else
-  mnt_free_table (tb);
-  mnt_free_cache (cache);
-#endif
-
-  if (!is_mount)
-    return FALSE;
-
-  /* We *could* parse the options, but it seems more reliable to
-   * introspect the actual mount at runtime.
-   */
-  if (statvfs (path, &stvfsbuf) == 0)
-    return (stvfsbuf.f_flag & ST_RDONLY) != 0;
-
-#endif
-  return FALSE;
 }
 
 /**
@@ -2579,42 +2523,13 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
     }
   else
     {
-      gboolean boot_was_ro_mount = FALSE;
-      if (self->booted_deployment)
-        boot_was_ro_mount = is_ro_mount ("/boot");
-
-      g_debug ("boot is ro: %s", boot_was_ro_mount ? "yes" : "no");
-
-      if (boot_was_ro_mount)
-        {
-          if (mount ("/boot", "/boot", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-            return glnx_throw_errno_prefix (error, "Remounting /boot read-write");
-        }
-
       if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
         return FALSE;
 
       bootloader_is_atomic = bootloader != NULL && _ostree_bootloader_is_atomic (bootloader);
 
-      /* Note equivalent of try/finally here */
-      gboolean success = write_deployments_bootswap (self, new_deployments, opts, bootloader,
-                                                     &syncstats, cancellable, error);
-      /* Below here don't set GError until the if (!success) check.
-       * Note we only bother remounting if a mount namespace isn't in use.
-       * */
-      if (boot_was_ro_mount && !self->mount_namespace_in_use)
-        {
-          if (mount ("/boot", "/boot", NULL, MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
-            {
-              /* Only make this a warning because we don't want to
-               * completely bomb out if some other process happened to
-               * jump in and open a file there.  See above TODO
-               * around doing this in a new mount namespace.
-               */
-              g_printerr ("warning: Failed to remount /boot read-only: %s\n", strerror (errno));
-            }
-        }
-      if (!success)
+      if (!write_deployments_bootswap (self, new_deployments, opts, bootloader,
+                                       &syncstats, cancellable, error))
         return FALSE;
     }
 

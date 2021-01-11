@@ -198,6 +198,7 @@ ostree_sysroot_init (OstreeSysroot *self)
                                             keys, G_N_ELEMENTS (keys));
 
   self->sysroot_fd = -1;
+  self->boot_fd = -1;
 }
 
 /**
@@ -278,6 +279,44 @@ ensure_sysroot_fd (OstreeSysroot          *self,
                            &self->sysroot_fd, error))
         return FALSE;
     }
+
+  return TRUE;
+}
+
+gboolean
+_ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error)
+{
+  if (self->boot_fd == -1)
+    {
+      if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE,
+                           &self->boot_fd, error))
+        return FALSE;
+    }
+  return TRUE;
+}
+
+static gboolean
+remount_writable (const char *path, gboolean *did_remount, GError **error)
+{
+  *did_remount = FALSE;
+  struct statvfs stvfsbuf;
+  if (statvfs (path, &stvfsbuf) < 0)
+    {
+      if (errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "statvfs(%s)", path);
+      else
+        return TRUE;
+    }
+
+  if ((stvfsbuf.f_flag & ST_RDONLY) != 0)
+    {
+      /* OK, let's remount writable. */
+      if (mount (path, path, NULL, MS_REMOUNT | MS_RELATIME, "") < 0)
+        return glnx_throw_errno_prefix (error, "Remounting %s read-write", path);
+      *did_remount = TRUE;
+      g_debug ("remounted %s writable", path);
+    }
+
   return TRUE;
 }
 
@@ -300,19 +339,19 @@ _ostree_sysroot_ensure_writable (OstreeSysroot      *self,
   if (!self->root_is_ostree_booted)
     return TRUE;
 
-  /* Check if /sysroot is a read-only mountpoint */
-  struct statvfs stvfsbuf;
-  if (statvfs ("/sysroot", &stvfsbuf) < 0)
-    return glnx_throw_errno_prefix (error, "fstatvfs(/sysroot)");
-  if ((stvfsbuf.f_flag & ST_RDONLY) == 0)
-    return TRUE;
+  /* In these cases we also require /boot */
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
 
-  /* OK, let's remount writable. */
-  if (mount ("/sysroot", "/sysroot", NULL, MS_REMOUNT | MS_RELATIME, "") < 0)
-    return glnx_throw_errno_prefix (error, "Remounting /sysroot read-write");
+  gboolean did_remount_sysroot = FALSE;
+  if (!remount_writable ("/sysroot", &did_remount_sysroot, error))
+    return FALSE;
+  gboolean did_remount_boot = FALSE;
+  if (!remount_writable ("/boot", &did_remount_boot, error))
+    return FALSE;
 
-  /* Reopen our fd */
-  glnx_close_fd (&self->sysroot_fd);
+  /* Now close and reopen our file descriptors */
+  ostree_sysroot_unload (self);
   if (!ensure_sysroot_fd (self, error))
     return FALSE;
 
@@ -380,6 +419,7 @@ void
 ostree_sysroot_unload (OstreeSysroot  *self)
 {
   glnx_close_fd (&self->sysroot_fd);
+  glnx_close_fd (&self->boot_fd);
 }
 
 /**
