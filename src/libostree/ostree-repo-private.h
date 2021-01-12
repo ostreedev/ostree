@@ -521,6 +521,8 @@ OstreeRepoAutoLock * _ostree_repo_auto_lock_push (OstreeRepo          *self,
 void          _ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, _ostree_repo_auto_lock_cleanup)
 
+gboolean _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error);
+
 gboolean
 _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
                             _OstreeFeatureSupport fsverity_requested,
