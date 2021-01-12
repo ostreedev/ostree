@@ -2584,7 +2584,7 @@ ostree_repo_create (OstreeRepo     *self,
  * @dfd: Directory fd
  * @path: Path
  * @mode: The mode to store the repository in
- * @options: a{sv}: See below for accepted keys
+ * @options: (nullable): a{sv}: See below for accepted keys
  * @cancellable: Cancellable
  * @error: Error
  *
