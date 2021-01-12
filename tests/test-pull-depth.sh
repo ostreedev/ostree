@@ -25,7 +25,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..1'
+echo '1..3'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -35,21 +35,63 @@ ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=0 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=0 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=1 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^2$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=1 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^2$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^3$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
 
 echo "ok pull depth"
+
+# Check that pulling with depth != 0 succeeds with a missing parent
+# commit. Prune the remote to truncate the history.
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo prune --refs-only --depth=0
+
+rm -rf repo/refs/heads/* repo/refs/remotes/* repo/objects/*/*.commit
+${CMD_PREFIX} ostree --repo=repo pull --depth=1 origin main
+find repo/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
+
+rm -rf repo/refs/heads/* repo/refs/remotes/* repo/objects/*/*.commit
+${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin main
+find repo/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
+
+echo "ok pull depth missing parent"
+
+# Check that it errors if the ref head commit is missing.
+cd ${test_tmpdir}
+rm -f ostree-srv/gnomerepo/objects/*/*.commit
+
+rm -rf repo/refs/heads/* repo/refs/remotes/* repo/objects/*/*.commit
+if ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin main; then
+    fatal "Pull with depth -1 succeeded with missing HEAD commit"
+fi
+
+echo "ok pull depth missing HEAD commit"

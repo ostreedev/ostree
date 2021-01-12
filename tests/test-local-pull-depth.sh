@@ -25,7 +25,7 @@ set -euo pipefail
 
 setup_test_repository "archive"
 
-echo "1..1"
+echo "1..3"
 
 cd ${test_tmpdir}
 mkdir repo2
@@ -62,3 +62,35 @@ find repo2/state -name '*.commitpartial' | wc -l > commitpartialcount
 assert_file_has_content commitpartialcount "^0$"
 
 echo "ok local pull depth"
+
+# Check that pulling with depth != 0 succeeds with a missing parent
+# commit. Prune the remote to truncate the history.
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo prune --refs-only --depth=0
+
+rm -rf repo2/refs/heads/* repo2/refs/remotes/* repo2/objects/*/*.commit
+${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=1 repo
+find repo/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
+
+rm -rf repo2/refs/heads/* repo2/refs/remotes/* repo2/objects/*/*.commit
+${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=-1 repo
+find repo/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^1$"
+find repo/state -name '*.commitpartial' | wc -l > commitpartialcount
+assert_file_has_content commitpartialcount "^0$"
+
+echo "ok local pull depth missing parent"
+
+# Check that it errors if the ref head commit is missing.
+cd ${test_tmpdir}
+rm -f repo/objects/*/*.commit
+
+rm -rf repo2/refs/heads/* repo2/refs/remotes/* repo2/objects/*/*.commit
+if ${CMD_PREFIX} ostree --repo=repo2 pull-local --depth=-1 repo; then
+    fatal "Local pull with depth -1 succeeded with missing HEAD commit"
+fi
+
+echo "ok local pull depth missing HEAD commit"
