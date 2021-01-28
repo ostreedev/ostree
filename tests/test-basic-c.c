@@ -430,6 +430,88 @@ test_devino_cache_xattrs (void)
   g_assert_cmpint (stats.content_objects_written, ==, 1);
 }
 
+/* check that the ima user.ima xattr is translated to security.ima */
+static void
+test_ima_xattr_translation (void)
+{
+  g_autoptr(GError) error = NULL;
+  gboolean ret = FALSE;
+
+  g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
+
+  /* we need to use an archive repo because we write security.ima */
+  ret = ot_test_run_libtest ("setup_test_repository archive", &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_path);
+  ret = ostree_repo_open (repo, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autofree char *csum = NULL;
+  ret = ostree_repo_resolve_rev (repo, "test2", FALSE, &csum, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  ret = ostree_repo_checkout_at (repo, NULL, AT_FDCWD, "ima-checkout", csum, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new ();
+  g_autoptr(OstreeRepoCommitModifier) modifier =
+    ostree_repo_commit_modifier_new (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_IMA_TRANSLATE, NULL, NULL, NULL);
+
+  g_auto(GVariantBuilder) builder;
+  g_variant_builder_init (&builder, (GVariantType*)"a(ayay)");
+  g_variant_builder_add (&builder, "(@ay@ay)",
+                         g_variant_new_bytestring ("user.ima"),
+                         g_variant_new_bytestring ("ima signature"));
+  g_autoptr(GVariant) orig_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
+
+  ret = ostree_repo_prepare_transaction (repo, NULL, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  ostree_repo_commit_modifier_set_xattr_callback (modifier, xattr_cb, NULL, orig_xattrs);
+  ret = ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, "ima-checkout",
+                                        mtree, modifier, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autoptr(GFile) root = NULL;
+  ret = ostree_repo_write_mtree (repo, mtree, &root, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  /* now check that the final xattr matches */
+  g_autoptr(GFile) baz_child = g_file_get_child (root, "baz");
+  g_autoptr(GFile) cow_child = g_file_get_child (baz_child, "cow");
+
+  g_autoptr(GVariant) xattrs = NULL;
+  ret = ostree_repo_file_get_xattrs (OSTREE_REPO_FILE (cow_child), &xattrs, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  gboolean found_xattr = FALSE;
+  gsize n = g_variant_n_children (xattrs);
+  for (gsize i = 0; i < n; i++)
+    {
+      const guint8* name;
+      const guint8* value;
+      g_variant_get_child (xattrs, i, "(^&ay^&ay)", &name, &value);
+
+      if (g_str_equal ((const char*)name, "security.ima"))
+        {
+          g_assert_cmpstr ((const char*)value, ==, "ima signature");
+          found_xattr = TRUE;
+          break;
+        }
+    }
+
+  g_assert (found_xattr);
+}
+
 /* https://github.com/ostreedev/ostree/issues/1721
  * We should be able to commit large metadata objects now.
  */
@@ -496,6 +578,7 @@ int main (int argc, char **argv)
   g_test_add_func ("/break-hardlink", test_break_hardlink);
   g_test_add_func ("/remotename", test_validate_remotename);
   g_test_add_func ("/big-metadata", test_big_metadata);
+  g_test_add_func ("/ima-xattr-translation", test_ima_xattr_translation);
 
   return g_test_run();
  out:

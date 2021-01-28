@@ -55,6 +55,7 @@ static char *opt_tar_pathname_filter;
 static gboolean opt_no_xattrs;
 static char *opt_selinux_policy;
 static gboolean opt_selinux_policy_from_base;
+static gboolean opt_translate_ima_xattr;
 static gboolean opt_canonical_permissions;
 static gboolean opt_ro_executables;
 static gboolean opt_consume;
@@ -116,6 +117,7 @@ static GOptionEntry options[] = {
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
   { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
   { "selinux-policy-from-base", 'P', 0, G_OPTION_ARG_NONE, &opt_selinux_policy_from_base, "Set SELinux labels based on first --tree argument", NULL },
+  { "ima-xattr-translate", 'P', 0, G_OPTION_ARG_NONE, &opt_translate_ima_xattr, "Translate the user.ima extended attribute to security.ima in the repository", NULL },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
   { "devino-canonical", 'I', 0, G_OPTION_ARG_NONE, &opt_devino_canonical, "Assume hardlinked objects are unmodified.  Implies --link-checkout-speedup", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
@@ -568,6 +570,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
+  if (opt_translate_ima_xattr)
+    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_IMA_TRANSLATE;
   if (opt_selinux_policy && opt_selinux_policy_from_base)
     {
       glnx_throw (error, "Cannot specify both --selinux-policy and --selinux-policy-from-base");

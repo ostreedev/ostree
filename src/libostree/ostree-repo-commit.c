@@ -49,7 +49,7 @@
 #endif
 
 /* Understanding ostree's fsync strategy
- * 
+ *
  * A long time ago, ostree used to invoke fsync() on each object,
  * then move it into the objects directory.  However, it turned
  * out to be a *lot* faster to write the objects into a separate "staging"
@@ -3319,6 +3319,34 @@ get_final_xattrs (OstreeRepo                       *self,
         }
     }
 
+  if (modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_IMA_TRANSLATE) > 0)
+    {
+      /* If there is no xattrs to start with, there's nothing to translate */
+      if (ret_xattrs)
+        {
+          GVariantBuilder builder;
+          g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+          guint n = g_variant_n_children (ret_xattrs);
+          for (guint i = 0; i < n; i++)
+            {
+              const char *name = NULL;
+              g_autoptr(GVariant) value = NULL;
+
+              g_variant_get_child (ret_xattrs, i, "(^&ay@ay)",
+                                  &name, &value);
+
+              if (strcmp (name, "user.ima") == 0)
+                {
+                  name = "security.ima";
+                }
+              g_variant_builder_add (&builder, "(@ay@ay)",
+                                    g_variant_new_bytestring (name),
+                                    value);
+            }
+          ret_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
+        }
+    }
+
   if (original_xattrs && ret_xattrs && g_variant_equal (original_xattrs, ret_xattrs))
     modified = FALSE;
 
@@ -4222,7 +4250,7 @@ ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              
  *
  * Since: 2020.4
  */
-gboolean 
+gboolean
 ostree_repo_commit_modifier_set_sepolicy_from_commit (OstreeRepoCommitModifier              *modifier,
                                                       OstreeRepo                            *repo,
                                                       const char                            *rev,

@@ -543,20 +543,20 @@ gboolean ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType objtype,
-                                        const char    *sha256, 
+                                        const char    *sha256,
                                         GVariant     **out_variant,
                                         GError       **error);
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   OstreeObjectType objtype,
-                                                  const char    *sha256, 
+                                                  const char    *sha256,
                                                   GVariant     **out_variant,
                                                   GError       **error);
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_commit (OstreeRepo            *self,
-                                       const char            *checksum, 
+                                       const char            *checksum,
                                        GVariant             **out_commit,
                                        OstreeRepoCommitState *out_state,
                                        GError               **error);
@@ -582,7 +582,7 @@ gboolean ostree_repo_load_object_stream (OstreeRepo         *self,
 _OSTREE_PUBLIC
 gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
                                                      OstreeObjectType      objtype,
-                                                     const char           *sha256, 
+                                                     const char           *sha256,
                                                      guint64              *out_size,
                                                      GCancellable         *cancellable,
                                                      GError              **error);
@@ -617,7 +617,7 @@ gboolean      ostree_repo_fsck_object (OstreeRepo           *self,
                                        GCancellable         *cancellable,
                                        GError              **error);
 
-/** 
+/**
  * OstreeRepoCommitFilterResult:
  * @OSTREE_REPO_COMMIT_FILTER_ALLOW: Do commit this object
  * @OSTREE_REPO_COMMIT_FILTER_SKIP: Ignore this object
@@ -650,6 +650,7 @@ typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo    *r
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED: Emit an error if configured SELinux policy does not provide a label
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME: Delete added files/directories after commit; Since: 2017.13
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL: If a devino cache hit is found, skip modifier filters (non-directories only); Since: 2017.14
+ * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_IMA_TRANSLATE: Translate from the user.ima extended attribute to security.ima
  */
 typedef enum {
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE = 0,
@@ -659,6 +660,7 @@ typedef enum {
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED = (1 << 3),
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME = (1 << 4),
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL = (1 << 5),
+  OSTREE_REPO_COMMIT_MODIFIER_FLAGS_IMA_TRANSLATE = (1 << 6),
 } OstreeRepoCommitModifierFlags;
 
 /**
