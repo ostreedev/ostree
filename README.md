@@ -48,6 +48,9 @@ their [eos-updater](https://github.com/endlessm/eos-updater)
 and [deb-ostree-builder](https://github.com/dbnicholson/deb-ostree-builder)
 projects.
 
+For Debian/apt, see also https://github.com/stb-tester/apt2ostree
+and the LWN article [Merkle trees and build systems](https://lwn.net/Articles/821367/).
+
 Fedora derivatives use rpm-ostree (noted below); there are 3 variants using OSTree:
 
  - [Fedora CoreOS](https://getfedora.org/en/coreos/)
