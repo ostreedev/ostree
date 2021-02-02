@@ -7,7 +7,7 @@ set -xeuo pipefail
 # cosa buildroot container
 # https://github.com/coreos/coreos-assembler/pull/730
 # And using `yum` at all means we can flake on fetching rpm metadata
-if [ -n "${SKIP_INSTALLDEPS:-}" ]; then
+if [ -n "${SKIP_INSTALLDEPS:-}" ] || test "$(id -u)" != 0; then
     exit 0
 fi
 
