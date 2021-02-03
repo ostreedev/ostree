@@ -393,6 +393,8 @@ fn impl_transaction_test<M: AsRef<str>>(
     // then we'll exit implicitly via the reboot, and reenter the function
     // above.
     loop {
+        // Make sure previously failed services (if any) can run.
+        bash!("systemctl reset-failed || true")?;
         // Save the previous strategy as a string so we can use it in error
         // messages below
         let prev_strategy_str = format!("{:?}", live_strategy);
