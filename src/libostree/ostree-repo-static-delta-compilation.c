@@ -636,7 +636,7 @@ try_content_rollsum (OstreeRepo                       *repo,
   if (!get_unpacked_unlinked_content (repo, to, &tmp_to, cancellable, error))
     return FALSE;
 
-  OstreeRollsumMatches *matches = _ostree_compute_rollsum_matches (tmp_from, tmp_to);
+  g_autoptr(OstreeRollsumMatches) matches = _ostree_compute_rollsum_matches (tmp_from, tmp_to);
 
   const guint match_ratio = (matches->bufmatches*100)/matches->total;
 
