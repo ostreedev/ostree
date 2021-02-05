@@ -51,16 +51,17 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
 ])])
 AC_SUBST(WARN_CFLAGS)
 
-AC_MSG_CHECKING([for -fsanitize=address in CFLAGS])
-if echo $CFLAGS | grep -q -e -fsanitize=address; then
-  AC_MSG_RESULT([yes])
-  using_asan=yes
-else
-  AC_MSG_RESULT([no])
-fi
-AM_CONDITIONAL(BUILDOPT_ASAN, [test x$using_asan = xyes])
-AM_COND_IF([BUILDOPT_ASAN],
-  [AC_DEFINE([BUILDOPT_ASAN], 1, [Define if we are building with -fsanitize=address])])
+AC_ARG_ENABLE(sanitizers,
+              AS_HELP_STRING([--enable-sanitizers],
+                             [Enable ASAN and UBSAN (default: no)]),,
+              [enable_sanitizers=no])
+AM_CONDITIONAL(BUILDOPT_ASAN, [test x$enable_sanitizers != xno])
+AM_COND_IF([BUILDOPT_ASAN], [
+  sanitizer_flags="-fsanitize=address -fsanitize=undefined -fsanitize-undefined-trap-on-error"
+  CFLAGS="$CFLAGS ${sanitizer_flags}"
+  CXXFLAGS="$CXXFLAGS ${sanitizer_flags}"
+  AC_DEFINE([BUILDOPT_ASAN], 1, [Define if we are building with asan and ubsan])
+])
 
 AC_MSG_CHECKING([for -fsanitize=thread in CFLAGS])
 if echo $CFLAGS | grep -q -e -fsanitize=thread; then

@@ -5,8 +5,7 @@ set -xeuo pipefail
 
 dn=$(dirname $0)
 . ${dn}/libbuild.sh
-export CFLAGS='-fsanitize=address -fsanitize=undefined -fsanitize-undefined-trap-on-error'
 # We leak global state in a few places, fixing that is hard.
 export ASAN_OPTIONS='detect_leaks=0'
-${dn}/build.sh
+build --disable-gtk-doc --with-curl --with-openssl --enable-sanitizers
 make check
