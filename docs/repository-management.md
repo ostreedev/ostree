@@ -248,5 +248,26 @@ will have "tombstone markers" added so that you know they were
 explicitly deleted, but all content in them (that is not referenced by
 a still retained commit) will be garbage collected.
 
+
+## Generating "scratch" deltas for efficient initial downloads
+
+In general, the happy path for OSTree downloads is via static deltas.
+If you are in a situation where you want to download an OSTree
+commit from an uninitialized repo (or one with unrelated history), you
+can generate "scratch" (aka `--empty` deltas) which bundle all
+objects for that commit.
+
+The tradeoff here is increasing server disk space in return
+for many fewer client HTTP requests.
+
+For example:
+
+```
+$ ostree --repo=/path/to/repo static-delta generate --empty --to=exampleos/x86_64/testing-devel
+$ ostree --repo=/path/to/repo summary -u
+```
+
+After that, clients fetching that commit will prefer fetching the "scratch" delta if they don't have the original ref.
+
 ###### Licensing for this document:
 `SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
