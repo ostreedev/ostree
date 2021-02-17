@@ -144,9 +144,15 @@ make
 make install DESTDIR=/path/to/dest
 ```
 
+## Contact and discussion forums
+
+OSTree has a [mailing list](https://mail.gnome.org/archives/ostree-list/) and
+there is also an `#ostree` channel on FreeNode.  However, asynchronous+logged
+communication is preferred for nontrivial questions.
+
 ## Contributing
 
-See [Contributing](docs/CONTRIBUTING.md).
+See [Contributing](CONTRIBUTING.md).
 
 ## Licensing
 
