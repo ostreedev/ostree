@@ -449,7 +449,7 @@ _ostree_repo_resolve_rev_internal (OstreeRepo     *self,
  * @self: Repo
  * @refspec: A refspec
  * @allow_noent: Do not throw an error if refspec does not exist
- * @out_rev: (out) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
+ * @out_rev: (out) (nullable) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
  * @error: Error
  *
  * Look up the given refspec, returning the checksum it references in
@@ -472,7 +472,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
  * @refspec: A refspec
  * @allow_noent: Do not throw an error if refspec does not exist
  * @flags: Options controlling behavior
- * @out_rev: (out) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
+ * @out_rev: (out) (nullable) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
  * @error: Error
  *
  * Look up the given refspec, returning the checksum it references in
