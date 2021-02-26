@@ -3,7 +3,6 @@ use structopt::StructOpt;
 
 mod destructive;
 mod repobin;
-mod rpmostree;
 mod sysroot;
 mod test;
 mod treegen;

@@ -31,7 +31,6 @@ use std::time;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::rpmostree;
 use crate::test::*;
 
 const ORIGREF: &'static str = "orig-booted";
@@ -258,7 +257,7 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
     let mut mark: RebootMark = serde_json::from_str(markstr)
         .with_context(|| format!("Failed to parse reboot mark {:?}", markstr))?;
     // The first failed reboot may be into the original booted commit
-    let status = rpmostree::query_status()?;
+    let status = rpmostree_client::query_status().map_err(anyhow::Error::msg)?;
     let firstdeploy = &status.deployments[0];
     // The first deployment should not be staged
     assert!(!firstdeploy.staged.unwrap_or(false));
@@ -318,7 +317,7 @@ fn validate_pending_commit(pending_commit: &str, commitstates: &CommitStates) ->
 
 /// In the case where we did a kill -9 of rpm-ostree, check the state
 fn validate_live_interrupted_upgrade(commitstates: &CommitStates) -> Result<UpdateResult> {
-    let status = rpmostree::query_status()?;
+    let status = rpmostree_client::query_status().map_err(anyhow::Error::msg)?;
     let firstdeploy = &status.deployments[0];
     let pending_commit = firstdeploy.checksum.as_str();
     let res = if firstdeploy.staged.unwrap_or(false) {
@@ -488,7 +487,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             } else {
                 live_strategy = Some(strategy);
             }
-            let status = rpmostree::query_status()?;
+            let status = rpmostree_client::query_status().map_err(anyhow::Error::msg)?;
             let firstdeploy = &status.deployments[0];
             let pending_commit = firstdeploy.checksum.as_str();
             validate_pending_commit(pending_commit, &commitstates)
