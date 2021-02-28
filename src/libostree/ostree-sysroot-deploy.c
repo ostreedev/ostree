@@ -1675,6 +1675,7 @@ static gboolean
 swap_bootlinks (OstreeSysroot *self,
                 int            bootversion,
                 GPtrArray     *new_deployments,
+                char         **out_subbootdir,
                 GCancellable  *cancellable,
                 GError       **error)
 {
@@ -1699,7 +1700,8 @@ swap_bootlinks (OstreeSysroot *self,
   if (!symlink_at_replace (ostree_subbootdir_name, ostree_dfd, ostree_bootdir_name,
                            cancellable, error))
     return FALSE;
-
+  if (out_subbootdir)
+    *out_subbootdir = g_steal_pointer (&ostree_subbootdir_name);
   return TRUE;
 }
 
@@ -2253,6 +2255,7 @@ write_deployments_bootswap (OstreeSysroot     *self,
                             OstreeSysrootWriteDeploymentsOpts *opts,
                             OstreeBootloader  *bootloader,
                             SyncStats         *out_syncstats,
+                            char             **out_subbootdir,
                             GCancellable      *cancellable,
                             GError           **error)
 {
@@ -2300,7 +2303,8 @@ write_deployments_bootswap (OstreeSysroot     *self,
                              new_deployments,
                              cancellable, error))
     return FALSE;
-  if (!swap_bootlinks (self, new_bootversion, new_deployments,
+  g_autofree char *new_subbootdir = NULL;
+  if (!swap_bootlinks (self, new_bootversion, new_deployments, &new_subbootdir,
                        cancellable, error))
     return FALSE;
 
@@ -2326,6 +2330,8 @@ write_deployments_bootswap (OstreeSysroot     *self,
                         cancellable, error))
     return FALSE;
 
+  if (out_subbootdir)
+    *out_subbootdir = g_steal_pointer (&new_subbootdir);
   return TRUE;
 }
 
@@ -2504,6 +2510,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   gboolean bootloader_is_atomic = FALSE;
   SyncStats syncstats = { 0, };
   g_autoptr(OstreeBootloader) bootloader = NULL;
+  g_autofree char *new_subbootdir = NULL;
   if (!requires_new_bootversion)
     {
       if (!create_new_bootlinks (self, self->bootversion,
@@ -2515,7 +2522,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
         return FALSE;
 
       if (!swap_bootlinks (self, self->bootversion,
-                           new_deployments,
+                           new_deployments, &new_subbootdir,
                            cancellable, error))
         return FALSE;
 
@@ -2529,14 +2536,15 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       bootloader_is_atomic = bootloader != NULL && _ostree_bootloader_is_atomic (bootloader);
 
       if (!write_deployments_bootswap (self, new_deployments, opts, bootloader,
-                                       &syncstats, cancellable, error))
+                                       &syncstats, &new_subbootdir, cancellable, error))
         return FALSE;
     }
 
   { g_autofree char *msg =
-      g_strdup_printf ("%s; bootconfig swap: %s; deployment count change: %i",
+      g_strdup_printf ("%s; bootconfig swap: %s; bootversion: %s, deployment count change: %i",
                        (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
                        requires_new_bootversion ? "yes" : "no",
+                       new_subbootdir,
                        new_deployments->len - self->deployments->len);
     const gchar *bootloader_config = ostree_repo_get_bootloader (ostree_sysroot_repo (self));
     ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(OSTREE_DEPLOYMENT_COMPLETE_ID),

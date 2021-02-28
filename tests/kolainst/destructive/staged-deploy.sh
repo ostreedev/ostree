@@ -54,7 +54,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     rpm-ostree status
     # Assert that the previous boot had a journal entry for it
     journalctl -b "-1" -u ostree-finalize-staged.service > svc.txt
-    assert_file_has_content svc.txt 'Bootloader updated; bootconfig swap: yes; deployment count change: 1'
+    assert_file_has_content svc.txt 'Bootloader updated; bootconfig swap: yes;.*deployment count change: 1'
     rm -f svc.txt
     # And there should not be a staged deployment
     test '!' -f /run/ostree/staged-deployment
