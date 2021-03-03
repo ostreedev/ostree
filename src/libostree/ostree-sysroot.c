@@ -489,6 +489,7 @@ _ostree_sysroot_parse_deploy_path_name (const char *name,
   return TRUE;
 }
 
+/* For a given bootversion, get its subbootversion from `/ostree/boot.$bootversion`. */
 gboolean
 _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
                                              int            bootversion,
@@ -505,6 +506,7 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
     return FALSE;
   if (errno == ENOENT)
     {
+      g_debug ("Didn't find $sysroot/ostree/boot.%d symlink; assuming subbootversion 0", bootversion);
       *out_subbootversion = 0;
     }
   else
@@ -556,6 +558,7 @@ compare_loader_configs_for_sorting (gconstpointer  a_pp,
   return compare_boot_loader_configs (a, b);
 }
 
+/* Read all the bootconfigs from `/boot/loader/`. */
 gboolean
 _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
                                           int            bootversion,
@@ -614,6 +617,7 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
   return TRUE;
 }
 
+/* Get the bootversion from the `/boot/loader` symlink. */
 static gboolean
 read_current_bootversion (OstreeSysroot *self,
                           int           *out_bootversion,
@@ -627,6 +631,7 @@ read_current_bootversion (OstreeSysroot *self,
     return FALSE;
   if (errno == ENOENT)
     {
+      g_debug ("Didn't find $sysroot/boot/loader symlink; assuming bootversion 0");
       ret_bootversion = 0;
     }
   else
@@ -738,7 +743,7 @@ parse_deployment (OstreeSysroot       *self,
     return FALSE;
 
   g_autofree char *errprefix =
-    g_strdup_printf ("Parsing deployment %i in stateroot '%s'", treebootserial, osname);
+    g_strdup_printf ("Parsing deployment %s in stateroot '%s'", boot_link, osname);
   GLNX_AUTO_PREFIX_ERROR(errprefix, error);
 
   const char *relative_boot_link = boot_link;
@@ -839,6 +844,8 @@ get_ostree_kernel_arg_from_config (OstreeBootconfigParser  *config)
   return NULL;
 }
 
+/* From a BLS config, use its ostree= karg to find the deployment it points to and add it to
+ * the inout_deployments array. */
 static gboolean
 list_deployments_process_one_boot_entry (OstreeSysroot               *self,
                                          OstreeBootconfigParser      *config,
@@ -1056,6 +1063,9 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
   return TRUE;
 }
 
+/* Loads the current bootversion, subbootversion, and deplyments, starting from the
+ * bootloader configs which are the source of truth.
+ */
 static gboolean
 sysroot_load_from_bootloader_configs (OstreeSysroot  *self,
                                       GCancellable   *cancellable,
