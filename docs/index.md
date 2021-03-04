@@ -65,6 +65,10 @@ system for GNOME.
 [Liri OS](https://liri.io/download/silverblue/) has the option to install
 their distribution using ostree.
 
+[TorizonCore](https://developer.toradex.com/knowledge-base/torizoncore-overview)
+uses libostree and Aktualizr as the base for OTA updates from compatible
+platforms, including [Torizon OTA](https://developer.toradex.com/knowledge-base/torizon-update-system).
+
 ## Distribution build tools
 
 [meta-updater](https://github.com/advancedtelematic/meta-updater) is
