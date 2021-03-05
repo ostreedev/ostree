@@ -362,5 +362,32 @@ The [Balena](https://github.com/resin-os/balena) project forks Docker and aims
 to even use Docker/OCI format for the root filesystem, and adds wire deltas
 using librsync.  See also [discussion on  libostree-list](https://mail.gnome.org/archives/ostree-list/2017-December/msg00002.html).
 
+## Torizon Platform
+
+[Torizon](https://www.toradex.com/operating-systems/torizon) is an open-source
+software platform that simplifies the development and maintenance of embedded
+Linux software. It is designed to be used out-of-the-box on devices requiring
+high reliability, allowing you to focus on your application and not on building
+and maintaining the operating system.
+
+### TorizonCore
+
+The platform OS - [TorizonCore](https://developer.toradex.com/knowledge-base/torizoncore-overview) -
+is a minimal OS with a Docker runtime and libostree + Aktualizr. The main goal
+of this system is to allow application developers to use containers, while the
+maintainers of TorizonCore focus on the base system updates.
+
+### TorizonCore Builder
+
+Since the TorizonCore OS is meant as a binary distribution, OS customization is
+made easier with [TorizonCore Builder](https://developer.toradex.com/knowledge-base/torizoncore-builder-tool),
+as the tool abstracts the handling of OSTree concepts from the final users.
+
+### Torizon OTA
+
+[Torizon OTA](https://developer.toradex.com/knowledge-base/torizon-update-system)
+is a hosted OTA update system that provides OS updates to TorizonCore using
+OSTree and Aktualizr.
+
 ###### Licensing for this document:
 `SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
