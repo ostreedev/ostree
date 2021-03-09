@@ -6674,7 +6674,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
         return FALSE;
     }
 
-  if (signatures)
+  if (signatures && !summary)
     {
       if (!_ostree_repo_load_cache_summary_if_same_sig (self,
                                                         name,
