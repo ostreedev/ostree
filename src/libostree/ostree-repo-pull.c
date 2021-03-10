@@ -4104,24 +4104,25 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                            &configured_branches, error))
     goto out;
 
-  /* TODO reindent later */
-  { OstreeFetcherURI *first_uri = pull_data->meta_mirrorlist->pdata[0];
+  /* Handle file:// URIs */
+  {
+    OstreeFetcherURI *first_uri = pull_data->meta_mirrorlist->pdata[0];
     g_autofree char *first_scheme = _ostree_fetcher_uri_get_scheme (first_uri);
 
-  /* NB: we don't support local mirrors in mirrorlists, so if this passes, it
-   * means that we're not using mirrorlists (see also fetch_mirrorlist())
-   * Also, we explicitly disable the "local repo" path if static deltas
-   * were explicitly requested to be required; this is going to happen
-   * most often for testing deltas without setting up a HTTP server.
-   */
-  if (g_str_equal (first_scheme, "file") && !pull_data->require_static_deltas)
-    {
-      g_autofree char *path = _ostree_fetcher_uri_get_path (first_uri);
-      g_autoptr(GFile) remote_repo_path = g_file_new_for_path (path);
-      pull_data->remote_repo_local = ostree_repo_new (remote_repo_path);
-      if (!ostree_repo_open (pull_data->remote_repo_local, cancellable, error))
-        goto out;
-    }
+    /* NB: we don't support local mirrors in mirrorlists, so if this passes, it
+     * means that we're not using mirrorlists (see also fetch_mirrorlist())
+     * Also, we explicitly disable the "local repo" path if static deltas
+     * were explicitly requested to be required; this is going to happen
+     * most often for testing deltas without setting up a HTTP server.
+     */
+    if (g_str_equal (first_scheme, "file") && !pull_data->require_static_deltas)
+      {
+        g_autofree char *path = _ostree_fetcher_uri_get_path (first_uri);
+        g_autoptr(GFile) remote_repo_path = g_file_new_for_path (path);
+        pull_data->remote_repo_local = ostree_repo_new (remote_repo_path);
+        if (!ostree_repo_open (pull_data->remote_repo_local, cancellable, error))
+          goto out;
+      }
   }
 
   /* Change some option defaults if we're actually pulling from a local
