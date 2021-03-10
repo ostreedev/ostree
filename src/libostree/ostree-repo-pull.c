@@ -4117,8 +4117,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
      */
     if (g_str_equal (first_scheme, "file") && !pull_data->require_static_deltas)
       {
-        g_autofree char *path = _ostree_fetcher_uri_get_path (first_uri);
-        g_autoptr(GFile) remote_repo_path = g_file_new_for_path (path);
+        g_autofree char *uri = _ostree_fetcher_uri_to_string (first_uri);
+        g_autoptr(GFile) remote_repo_path = g_file_new_for_uri (uri);
         pull_data->remote_repo_local = ostree_repo_new (remote_repo_path);
         if (!ostree_repo_open (pull_data->remote_repo_local, cancellable, error))
           goto out;
