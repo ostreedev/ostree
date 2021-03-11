@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-echo "1..$((86 + ${extra_basic_tests:-0}))"
+echo "1..$((87 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -225,6 +225,13 @@ assert_streq $($OSTREE log test2-no-parent |grep '^commit' | wc -l) "1"
 $OSTREE commit ${COMMIT_ARGS} -b test2-no-parent -s '' --parent=none $test_tmpdir/checkout-test2-4
 assert_streq $($OSTREE log test2-no-parent |grep '^commit' | wc -l) "1"
 echo "ok commit no parent"
+
+cd ${test_tmpdir}
+if $OSTREE commit ${COMMIT_ARGS} -b test-bootable --bootable $test_tmpdir/checkout-test2-4 2>err.txt; then
+    fatal "committed non-bootable tree"
+fi
+assert_file_has_content err.txt "error: .*No such file or directory"
+echo "ok commit fails bootable if no kernel"
 
 cd ${test_tmpdir}
 # Do the --bind-ref=<the other test branch>, so we store both branches sorted
