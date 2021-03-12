@@ -65,6 +65,12 @@ assert_not_file_has_content status.txt "pending"
 assert_not_file_has_content status.txt "rollback"
 validate_bootloader
 
+# Test the bootable and linux keys
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo --print-metadata-key=ostree.linux show testos:testos/buildmaster/x86_64-runtime >out.txt
+assert_file_has_content_literal out.txt 3.6.0
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo --print-metadata-key=ostree.bootable show testos:testos/buildmaster/x86_64-runtime >out.txt
+assert_file_has_content_literal out.txt true
+
 echo "ok deploy command"
 
 ${CMD_PREFIX} ostree admin --print-current-dir > curdir

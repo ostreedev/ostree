@@ -35,6 +35,7 @@
 
 static char *opt_subject;
 static char *opt_body;
+static char *opt_bootable;
 static char *opt_body_file;
 static gboolean opt_editor;
 static char *opt_parent;
@@ -112,6 +113,7 @@ static GOptionEntry options[] = {
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
   { "canonical-permissions", 0, 0, G_OPTION_ARG_NONE, &opt_canonical_permissions, "Canonicalize permissions in the same way bare-user does for hardlinked files", NULL },
+  { "bootable", 0, 0, G_OPTION_ARG_NONE, &opt_bootable, "Flag this commit as a bootable OSTree (e.g. contains a Linux kernel)", NULL },
   { "mode-ro-executables", 0, 0, G_OPTION_ARG_NONE, &opt_ro_executables, "Ensure executable files are not writable", NULL },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
   { "selinux-policy", 0, 0, G_OPTION_ARG_FILENAME, &opt_selinux_policy, "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
@@ -501,7 +503,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       goto out;
     }
 
-  if (opt_metadata_strings || opt_metadata_variants || opt_metadata_keep)
+  if (opt_metadata_strings || opt_metadata_variants || opt_metadata_keep || opt_bootable)
     {
       g_autoptr(GVariantBuilder) builder =
         g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
@@ -839,6 +841,17 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
         {
           g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
           fill_bindings (repo, old_metadata, &metadata);
+        }
+
+      if (opt_bootable)
+        {
+          g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
+          g_auto(GVariantDict) bootmeta;
+          g_variant_dict_init (&bootmeta, old_metadata);
+          if (!ostree_commit_metadata_for_bootable (root, &bootmeta, cancellable, error))
+            goto out;
+
+          metadata = g_variant_ref_sink (g_variant_dict_end (&bootmeta));
         }
 
       if (!opt_timestamp)

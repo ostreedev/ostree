@@ -1,6 +1,4 @@
 /*
- * Copyright (C) 2011,2013 Colin Walters <walters@verbum.org>
- *
  * SPDX-License-Identifier: LGPL-2.0+
  *
  * This library is free software; you can redistribute it and/or
@@ -21,26 +19,29 @@
 
 #pragma once
 
-#include <ostree-async-progress.h>
-#include <ostree-core.h>
-#include <ostree-repo.h>
-#include <ostree-repo-os.h>
-#include <ostree-mutable-tree.h>
-#include <ostree-remote.h>
-#include <ostree-repo-file.h>
-#include <ostree-sysroot.h>
-#include <ostree-sysroot-upgrader.h>
-#include <ostree-deployment.h>
-#include <ostree-bootconfig-parser.h>
-#include <ostree-diff.h>
-#include <ostree-gpg-verify-result.h>
-#include <ostree-ref.h>
-#include <ostree-repo-finder.h>
-#include <ostree-repo-finder-avahi.h>
-#include <ostree-repo-finder-config.h>
-#include <ostree-repo-finder-mount.h>
-#include <ostree-repo-finder-override.h>
-#include <ostree-kernel-args.h>
-#include <ostree-sign.h>
-#include <ostree-autocleanups.h>
-#include <ostree-version.h>
+#include <sys/stat.h>
+#include <gio/gio.h>
+#include <ostree-types.h>
+
+G_BEGIN_DECLS
+
+/** 
+ * OSTREE_METADATA_KEY_BOOTABLE:
+ *
+ * GVariant type `b`: Set if this commit is intended to be bootable
+ * Since: 2021.1
+ */
+#define OSTREE_METADATA_KEY_BOOTABLE "ostree.bootable"
+/** 
+ * OSTREE_METADATA_KEY_LINUX:
+ *
+ * GVariant type `s`: Contains the Linux kernel release (i.e. `uname -r`)
+ * Since: 2021.1
+ */
+#define OSTREE_METADATA_KEY_LINUX "ostree.linux"
+
+_OSTREE_PUBLIC
+gboolean
+ostree_commit_metadata_for_bootable (GFile *root, GVariantDict *dict, GCancellable *cancellable, GError **error);
+
+G_END_DECLS
