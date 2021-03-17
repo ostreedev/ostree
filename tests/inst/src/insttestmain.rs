@@ -8,10 +8,11 @@ mod test;
 mod treegen;
 
 // Written by Ignition
-const DESTRUCTIVE_TEST_STAMP: &'static str = "/etc/ostree-destructive-test-ok";
+const DESTRUCTIVE_TEST_STAMP: &str = "/etc/ostree-destructive-test-ok";
 
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
+#[allow(clippy::enum_variant_names)]
 /// Main options struct
 enum Opt {
     /// List the destructive tests
@@ -74,13 +75,11 @@ fn main() -> Result<()> {
             for t in test::DESTRUCTIVE_TESTS.iter() {
                 println!("{}", t.name);
             }
-            return Ok(());
+            Ok(())
         }
         Opt::NonDestructive(subopt) => {
             // FIXME add method to parse subargs
-            let iter = match subopt {
-                NonDestructiveOpts::Args(subargs) => subargs,
-            };
+            let NonDestructiveOpts::Args(iter) = subopt;
             let libtestargs = libtest_mimic::Arguments::from_iter(iter);
             let tests: Vec<_> = test::NONDESTRUCTIVE_TESTS
                 .iter()
