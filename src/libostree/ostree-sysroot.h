@@ -85,6 +85,9 @@ GPtrArray *ostree_sysroot_get_deployments (OstreeSysroot  *self);
 _OSTREE_PUBLIC
 OstreeDeployment *ostree_sysroot_get_booted_deployment (OstreeSysroot *self);
 _OSTREE_PUBLIC
+OstreeDeployment *
+ostree_sysroot_require_booted_deployment (OstreeSysroot *self, GError **error);
+_OSTREE_PUBLIC
 OstreeDeployment *ostree_sysroot_get_staged_deployment (OstreeSysroot *self);
 
 _OSTREE_PUBLIC

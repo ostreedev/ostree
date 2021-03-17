@@ -1246,6 +1246,27 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
   return self->booted_deployment;
 }
 
+
+/**
+ * ostree_sysroot_require_booted_deployment:
+ * @self: Sysroot
+ *
+ * Find the booted deployment, or return an error if not booted via OSTree.
+ *
+ * Returns: (transfer none) (not nullable): The currently booted deployment, or an error
+ * Since: 2021.1
+ */
+OstreeDeployment *
+ostree_sysroot_require_booted_deployment (OstreeSysroot *self, GError **error)
+{
+  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
+
+  if (!self->booted_deployment)
+    return glnx_null_throw (error, "Not currently booted into an OSTree system");
+  return self->booted_deployment;
+}
+
+
 /**
  * ostree_sysroot_get_staged_deployment:
  * @self: Sysroot

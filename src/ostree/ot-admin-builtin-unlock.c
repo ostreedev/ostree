@@ -61,13 +61,9 @@ ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocat
       goto out;
     }
 
-  booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
+  booted_deployment = ostree_sysroot_require_booted_deployment (sysroot, error);
   if (!booted_deployment)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Not currently booted into an OSTree system");
-      goto out;
-    }
+    goto out;
 
   if (opt_hotfix && opt_transient)
     {
