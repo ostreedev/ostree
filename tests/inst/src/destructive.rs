@@ -33,10 +33,10 @@ use strum_macros::EnumIter;
 
 use crate::test::*;
 
-const ORIGREF: &'static str = "orig-booted";
-const TESTREF: &'static str = "testcontent";
-const TDATAPATH: &'static str = "/var/tmp/ostree-test-transaction-data.json";
-const SRVREPO: &'static str = "/var/tmp/ostree-test-srv";
+const ORIGREF: &str = "orig-booted";
+const TESTREF: &str = "testcontent";
+const TDATAPATH: &str = "/var/tmp/ostree-test-transaction-data.json";
+const SRVREPO: &str = "/var/tmp/ostree-test-srv";
 // Percentage of ELF files to change per update
 const TREEGEN_PERCENTAGE: u32 = 15;
 /// Total number of reboots
@@ -111,21 +111,18 @@ impl RebootMark {
             InterruptStrategy::Polite(t) => self
                 .polite
                 .entry(t.clone())
-                .or_insert_with(|| BTreeMap::new()),
+                .or_insert_with(BTreeMap::new),
             InterruptStrategy::Force(t) => self
                 .force
                 .entry(t.clone())
-                .or_insert_with(|| BTreeMap::new()),
+                .or_insert_with(BTreeMap::new),
         }
     }
 }
 
 impl InterruptStrategy {
     pub(crate) fn is_noop(&self) -> bool {
-        match self {
-            InterruptStrategy::Polite(PoliteInterruptStrategy::None) => true,
-            _ => false,
-        }
+        matches!(self, InterruptStrategy::Polite(PoliteInterruptStrategy::None))
     }
 }
 
@@ -324,18 +321,16 @@ fn validate_live_interrupted_upgrade(commitstates: &CommitStates) -> Result<Upda
         assert!(!firstdeploy.booted);
         validate_pending_commit(pending_commit, &commitstates)?;
         UpdateResult::Staged
+    } else if pending_commit == commitstates.booted {
+        UpdateResult::NotCompleted
+    } else if pending_commit == commitstates.target {
+        UpdateResult::Completed
     } else {
-        if pending_commit == commitstates.booted {
-            UpdateResult::NotCompleted
-        } else if pending_commit == commitstates.target {
-            UpdateResult::Completed
-        } else {
-            anyhow::bail!(
-                "Unexpected pending commit: {} ({:?})",
-                pending_commit,
-                commitstates.describe(pending_commit)
-            );
-        }
+        anyhow::bail!(
+            "Unexpected pending commit: {} ({:?})",
+            pending_commit,
+            commitstates.describe(pending_commit)
+        );
     };
     Ok(res)
 }
@@ -504,7 +499,7 @@ fn impl_transaction_test<M: AsRef<str>>(
                     live_strategy = Some(strategy);
                 }
                 InterruptStrategy::Force(ForceInterruptStrategy::Reboot) => {
-                    mark.reboot_strategy = Some(strategy.clone());
+                    mark.reboot_strategy = Some(strategy);
                     prepare_reboot(serde_json::to_string(&mark)?)?;
                     // This is a forced reboot - no syncing of the filesystem.
                     bash!("reboot -ff")?;
@@ -516,8 +511,8 @@ fn impl_transaction_test<M: AsRef<str>>(
                     anyhow::bail!("Failed to wait for uninterrupted upgrade");
                 }
                 InterruptStrategy::Polite(PoliteInterruptStrategy::Reboot) => {
-                    mark.reboot_strategy = Some(strategy.clone());
-                    Err(reboot(serde_json::to_string(&mark)?))?;
+                    mark.reboot_strategy = Some(strategy);
+                    return Err(reboot(serde_json::to_string(&mark)?).into());
                     // We either rebooted, or failed to reboot
                 }
                 InterruptStrategy::Polite(PoliteInterruptStrategy::Stop) => {
@@ -545,7 +540,7 @@ fn transactionality() -> Result<()> {
     // We need this static across reboots
     let srvrepo = Path::new(SRVREPO);
     let firstrun = !srvrepo.exists();
-    if let Some(_) = mark.as_ref() {
+    if mark.as_ref().is_some() {
         if firstrun {
             anyhow::bail!("Missing {:?}", srvrepo);
         }
@@ -604,7 +599,7 @@ fn transactionality() -> Result<()> {
             let end = time::Instant::now();
             let cycle_time = end.duration_since(start);
             let tdata = TransactionalTestInfo {
-                cycle_time: cycle_time,
+                cycle_time,
             };
             let mut f = std::io::BufWriter::new(std::fs::File::create(&TDATAPATH)?);
             serde_json::to_writer(&mut f, &tdata)?;

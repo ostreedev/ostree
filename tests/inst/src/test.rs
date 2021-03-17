@@ -41,7 +41,7 @@ pub(crate) fn cmd_fails_with<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Resu
     if o.status.success() {
         bail!("Command {:?} unexpectedly succeeded", c);
     }
-    if !twoway::find_bytes(&o.stderr, pat.as_bytes()).is_some() {
+    if twoway::find_bytes(&o.stderr, pat.as_bytes()).is_none() {
         dbg!(String::from_utf8_lossy(&o.stdout));
         dbg!(String::from_utf8_lossy(&o.stderr));
         bail!("Command {:?} stderr did not match: {}", c, pat);
@@ -56,7 +56,7 @@ pub(crate) fn cmd_has_output<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Resu
     if !o.status.success() {
         bail!("Command {:?} failed", c);
     }
-    if !twoway::find_bytes(&o.stdout, pat.as_bytes()).is_some() {
+    if twoway::find_bytes(&o.stdout, pat.as_bytes()).is_none() {
         dbg!(String::from_utf8_lossy(&o.stdout));
         bail!("Command {:?} stdout did not match: {}", c, pat);
     }
@@ -77,12 +77,12 @@ pub(crate) struct TestHttpServerOpts {
     pub(crate) random_delay: Option<time::Duration>,
 }
 
-pub(crate) const TEST_HTTP_BASIC_AUTH: &'static str = "foouser:barpw";
+pub(crate) const TEST_HTTP_BASIC_AUTH: &str = "foouser:barpw";
 
 fn validate_authz(value: &[u8]) -> Result<bool> {
     let buf = std::str::from_utf8(&value)?;
     if let Some(o) = buf.find("Basic ") {
-        let (_, buf) = buf.split_at(o + "Basic ".len());
+    let (_, buf) = buf.split_at(o + "Basic ".len());
         let buf = base64::decode(buf).context("decoding")?;
         let buf = std::str::from_utf8(&buf)?;
         Ok(buf == TEST_HTTP_BASIC_AUTH)
@@ -136,7 +136,6 @@ pub(crate) async fn http_server<P: AsRef<Path>>(
 
     let make_service = make_service_fn(move |_| {
         let sv = sv.clone();
-        let opts = opts.clone();
         future::ok::<_, hyper::Error>(service_fn(move |req| handle_request(req, sv.clone(), opts)))
     });
     let server: hyper::Server<_, _, _> = hyper::Server::bind(&addr).serve(make_service);
@@ -161,7 +160,7 @@ where
     let path = path.as_ref();
     let mut rt = Runtime::new()?;
     rt.block_on(async move {
-        let addr = http_server(path, opts.clone()).await?;
+        let addr = http_server(path, *opts).await?;
         tokio::task::spawn_blocking(move || f(&addr)).await?
     })?;
     Ok(())
