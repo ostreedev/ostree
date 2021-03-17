@@ -108,21 +108,22 @@ impl RebootMark {
         strategy: &InterruptStrategy,
     ) -> &mut BTreeMap<UpdateResult, u32> {
         match strategy {
-            InterruptStrategy::Polite(t) => self
-                .polite
-                .entry(t.clone())
-                .or_insert_with(BTreeMap::new),
-            InterruptStrategy::Force(t) => self
-                .force
-                .entry(t.clone())
-                .or_insert_with(BTreeMap::new),
+            InterruptStrategy::Polite(t) => {
+                self.polite.entry(t.clone()).or_insert_with(BTreeMap::new)
+            }
+            InterruptStrategy::Force(t) => {
+                self.force.entry(t.clone()).or_insert_with(BTreeMap::new)
+            }
         }
     }
 }
 
 impl InterruptStrategy {
     pub(crate) fn is_noop(&self) -> bool {
-        matches!(self, InterruptStrategy::Polite(PoliteInterruptStrategy::None))
+        matches!(
+            self,
+            InterruptStrategy::Polite(PoliteInterruptStrategy::None)
+        )
     }
 }
 
@@ -598,9 +599,7 @@ fn transactionality() -> Result<()> {
             upgrade_and_finalize().context("Firstrun upgrade failed")?;
             let end = time::Instant::now();
             let cycle_time = end.duration_since(start);
-            let tdata = TransactionalTestInfo {
-                cycle_time,
-            };
+            let tdata = TransactionalTestInfo { cycle_time };
             let mut f = std::io::BufWriter::new(std::fs::File::create(&TDATAPATH)?);
             serde_json::to_writer(&mut f, &tdata)?;
             f.flush()?;
