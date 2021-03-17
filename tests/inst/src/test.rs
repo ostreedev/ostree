@@ -82,7 +82,7 @@ pub(crate) const TEST_HTTP_BASIC_AUTH: &str = "foouser:barpw";
 fn validate_authz(value: &[u8]) -> Result<bool> {
     let buf = std::str::from_utf8(&value)?;
     if let Some(o) = buf.find("Basic ") {
-    let (_, buf) = buf.split_at(o + "Basic ".len());
+        let (_, buf) = buf.split_at(o + "Basic ".len());
         let buf = base64::decode(buf).context("decoding")?;
         let buf = std::str::from_utf8(&buf)?;
         Ok(buf == TEST_HTTP_BASIC_AUTH)
