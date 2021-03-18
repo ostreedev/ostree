@@ -75,13 +75,9 @@ ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *inv
 
   if (opt_index == -1)
     {
-      target_deployment = ostree_sysroot_get_booted_deployment (sysroot);
+      target_deployment = ostree_sysroot_require_booted_deployment (sysroot, error);
       if (target_deployment == NULL)
-        {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Not currently booted into an OSTree system");
-          goto out;
-        }
+        goto out;
       /* To match the below */
       target_deployment = g_object_ref (target_deployment);
     }

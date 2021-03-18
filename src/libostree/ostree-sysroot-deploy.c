@@ -3066,9 +3066,9 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot     *self,
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
 
-  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (self);
+  OstreeDeployment *booted_deployment = ostree_sysroot_require_booted_deployment (self, error);
   if (booted_deployment == NULL)
-    return glnx_throw (error, "Cannot stage a deployment when not currently booted into an OSTree system");
+    return glnx_prefix_error (error, "Cannot stage deployment");
 
   /* This is used by the testsuite to exercise the path unit, until it becomes the default
    * (which is pending on the preset making it everywhere). */
