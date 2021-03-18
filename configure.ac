@@ -287,39 +287,6 @@ AS_IF([test "$enable_man" != no], [
 ])
 AM_CONDITIONAL(ENABLE_MAN, test "$enable_man" != no)
 
-AC_ARG_ENABLE(rust,
-  [AS_HELP_STRING([--enable-rust],
-  [Compile Rust code instead of C [default=no]])],,
-   [enable_rust=no; rust_debug_release=no])
-
-AS_IF([test "$enable_rust" = yes], [
-   AC_PATH_PROG([cargo], [cargo])
-   AS_IF([test -z "$cargo"], [AC_MSG_ERROR([cargo is required for --enable-rust])])
-   AC_PATH_PROG([rustc], [rustc])
-   AS_IF([test -z "$rustc"], [AC_MSG_ERROR([rustc is required for --enable-rust])])
-
-   dnl These bits based on gnome:librsvg/configure.ac
-
-   dnl By default, we build in public release mode.
-   AC_ARG_ENABLE(rust-debug,
-      AC_HELP_STRING([--enable-rust-debug],
-       [Build Rust code with debugging information [default=no]]),
-       [rust_debug_release=$enableval],
-       [rust_debug_release=release])
-
-   AC_MSG_CHECKING(whether to build Rust code with debugging information)
-   if test "x$rust_debug_release" = "xyes" ; then
-      rust_debug_release=debug
-      AC_MSG_RESULT(yes)
-   else
-      AC_MSG_RESULT(no)
-   fi
-   RUST_TARGET_SUBDIR=${rust_debug_release}
-   AC_SUBST([RUST_TARGET_SUBDIR])
-])
-AM_CONDITIONAL(RUST_DEBUG, [test "x$rust_debug_release" = "xdebug"])
-AM_CONDITIONAL(ENABLE_RUST, [test "$enable_rust" != no])
-
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)
@@ -628,7 +595,6 @@ echo "
 
 
     introspection:                                $found_introspection
-    Rust (internal oxidation):                    $rust_debug_release
     rofiles-fuse:                                 $enable_rofiles_fuse
     HTTP backend:                                 $fetcher_backend
     \"ostree trivial-httpd\":                       $enable_trivial_httpd_cmdline
