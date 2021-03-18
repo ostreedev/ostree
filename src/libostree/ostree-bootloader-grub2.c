@@ -28,25 +28,26 @@
 
 #include <string.h>
 
-/* I only did some cursory research here, but it appears
- * that we only want to use "linux16" for x86 platforms.
- * At least, I got a report that "linux16" is definitely wrong
- * for ppc64.  See
- * http://pkgs.fedoraproject.org/cgit/rpms/grub2.git/tree/0036-Use-linux16-when-appropriate-880840.patch?h=f25
- * https://bugzilla.redhat.com/show_bug.cgi?id=1108296
- * among others.
+/* Maintain backwards compatibility with legacy GRUB
+ * installations that might rely on the -16 suffix
+ * for real-mode booting.
+ * Allow us to override this at build time if we're
+ * using a modern GRUB installation.
  */
-#if defined(__i386__) || defined(__x86_64__)
+#if !defined(WITH_MODERN_GRUB) && ( defined(__i386__) || defined(__x86_64__) )
 #define GRUB2_SUFFIX "16"
 #else
 #define GRUB2_SUFFIX ""
 #endif
-/* https://github.com/projectatomic/rpm-ostree-toolbox/issues/102#issuecomment-316483554
- * https://github.com/rhboot/grubby/blob/34b1436ccbd56eab8024314cab48f2fc880eef08/grubby.c#L63
- *
- * This is true at least on Fedora/Red Hat Enterprise Linux for aarch64.
+/* Maintain backwards compatibility with legacy GRUB
+ * installations that might rely on the -efi suffix
+ * for RHEL/fedora-based distros.
+ * Allow us to override this at build time if we're
+ * using a modern GRUB installation that makes the
+ * suffix-less linux/initrd commands synonymous for
+ * both EFI and BIOS booting.
  */
-#if defined(__aarch64__)
+#if defined(WITH_MODERN_GRUB) || defined(__aarch64__)
 #define GRUB2_EFI_SUFFIX ""
 #else
 #define GRUB2_EFI_SUFFIX "efi"
