@@ -1,0 +1,19 @@
+---
+name: Ubuntu, unit tests
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  ubuntu:
+    name: "Ubuntu, unit tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Install build dependencies
+        run: ./ci/travis-install.sh
+      - name: Build + unit
+        run: env ci_parallel=2 ci_sudo=yes ci/travis-build.sh
