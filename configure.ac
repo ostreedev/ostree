@@ -548,6 +548,14 @@ AM_COND_IF(BUILDOPT_SYSTEMD_AND_LIBMOUNT,
   AC_DEFINE([BUILDOPT_LIBSYSTEMD_AND_LIBMOUNT], 1, [Define if systemd and libmount]))
 if test x$with_libsystemd = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES systemd"; fi
 
+AC_ARG_WITH(modern-grub,
+	    AS_HELP_STRING([--with-modern-grub],
+                           [Omit grub linux and initrd suffixes for EFI/BIOS booting on GRUB >2.02 (default: no)]),,
+              [with_modern_grub=no])
+AS_IF([ test x$with_modern_grub = xyes], [
+  AC_DEFINE([WITH_MODERN_GRUB], 1, [Define if we have a GRUB version newer than 2.02])
+])
+
 AC_ARG_WITH(builtin-grub2-mkconfig,
             AS_HELP_STRING([--with-builtin-grub2-mkconfig],
                            [Use a builtin minimal grub2-mkconfig to generate a GRUB2 configuration file (default: no)]),,
