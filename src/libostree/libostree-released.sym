@@ -638,6 +638,12 @@ global:
   ostree_repo_gpg_sign_data;
 } LIBOSTREE_2020.7;
 
+LIBOSTREE_2021.1 {
+global:
+  ostree_commit_metadata_for_bootable;
+  ostree_sysroot_require_booted_deployment;
+} LIBOSTREE_2020.8;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
