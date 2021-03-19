@@ -46,3 +46,7 @@ with-procspawn-tempdir = { git = "https://github.com/cgwalters/with-procspawn-te
 
 # Internal crate for the test macro
 itest-macro = { path = "itest-macro" }
+
+[patch.crates-io]
+# PR openat (pun intended) https://github.com/tailhook/openat/pull/36
+openat = { git = 'https://github.com/cgwalters/openat', branch = 'libc-rename-signed' }
