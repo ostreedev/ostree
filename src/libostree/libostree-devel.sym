@@ -22,12 +22,6 @@
    - uncomment the include in Makefile-libostree.am
 */
 
-LIBOSTREE_2021.1 {
-global:
-  ostree_commit_metadata_for_bootable;
-  ostree_sysroot_require_booted_deployment;
-} LIBOSTREE_2020.8;
-
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
