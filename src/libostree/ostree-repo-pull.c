@@ -706,7 +706,7 @@ scan_dirtree_object (OtPullData   *pull_data,
        *     before libostree's validation was strengthened.
        */
       if (!ot_util_filename_validate (filename, error))
-        return FALSE;
+        return glnx_prefix_error (error, "File %u in dirtree", i);
 
       /* Skip files if we're traversing a request only directory, unless it exactly
        * matches the path */
@@ -781,7 +781,7 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       /* See comment above for files */
       if (!ot_util_filename_validate (dirname, error))
-        return FALSE;
+        return glnx_prefix_error (error, "Dir %u in dirtree", i);
 
       if (!pull_matches_subdir (pull_data, path, dirname, TRUE))
         continue;
@@ -1934,7 +1934,7 @@ scan_one_metadata_object (OtPullData                 *pull_data,
     {
       if (!scan_dirtree_object (pull_data, checksum, path, recursion_depth,
                                 pull_data->cancellable, error))
-        return FALSE;
+        return glnx_prefix_error (error, "Validating dirtree %s (%s)", checksum, path);
 
       g_hash_table_add (pull_data->scanned_metadata, g_variant_ref (object));
       pull_data->n_scanned_metadata++;
