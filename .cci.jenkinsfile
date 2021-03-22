@@ -107,11 +107,6 @@ buildopts: {
       shwrap("""
         git submodule update --init
 
-        git worktree add build-rust && cd build-rust
-        env MAKE_JOBS=${n} CONFIGOPTS="--enable-rust" SKIP_INSTALLDEPS=1 ./ci/build.sh
-        make check TESTS=tests/test-rollsum
-        cd .. && rm -rf build-rust
-
         git worktree add build-libsoup && cd build-libsoup
         env MAKE_JOBS=${n} CONFIGOPTS="--without-curl --without-openssl --with-soup" SKIP_INSTALLDEPS=1 ./ci/build.sh
         make check

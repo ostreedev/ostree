@@ -21,18 +21,9 @@
 
 include Makefile-libostree-defines.am
 
-
-if ENABLE_RUST
-bupsplitpath = @abs_top_builddir@/target/@RUST_TARGET_SUBDIR@/libbupsplit_rs.a
-BUPSPLIT_RUST_SRCS = rust/src/bupsplit.rs
-EXTRA_DIST += $(BUPSPLIT_RUST_SRCS)
-$(bupsplitpath): Makefile $(BUPSPLIT_RUST_SRCS)
-	cd $(top_srcdir)/rust && CARGO_TARGET_DIR=@abs_top_builddir@/target cargo build --verbose $(CARGO_RELEASE_ARGS)
-else
 bupsplitpath = libbupsplit.la
 noinst_LTLIBRARIES += libbupsplit.la
 libbupsplit_la_SOURCES = src/libostree/bupsplit.h src/libostree/bupsplit.c
-endif # ENABLE_RUST
 
 lib_LTLIBRARIES += libostree-1.la
 
@@ -206,9 +197,6 @@ libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions $(addprefix 
 libostree_1_la_LIBADD = libotutil.la libglnx.la libbsdiff.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) \
                         $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS) $(OT_DEP_CRYPTO_LIBS)
 # Some change between rust-1.21.0-1.fc27 and rust-1.22.1-1.fc27.x86_64
-if ENABLE_RUST
-libostree_1_la_LIBADD += -ldl
-endif
 libostree_1_la_LIBADD += $(bupsplitpath)
 EXTRA_libostree_1_la_DEPENDENCIES = $(symbol_files)
 
