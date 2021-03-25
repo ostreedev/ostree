@@ -35,6 +35,10 @@
 #define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
 
+// This limit depends on the architecture and is between 256 and 4096 characters.
+// It is defined in the file ./include/asm/setup.h as COMMAND_LINE_SIZE.
+#define COMMAND_LINE_SIZE 4096
+
 static inline int
 path_is_on_readonly_fs (const char *path)
 {
@@ -50,58 +54,33 @@ static inline char *
 read_proc_cmdline (void)
 {
   FILE *f = fopen("/proc/cmdline", "r");
-  char *cmdline = NULL;
-  size_t len;
-
   if (!f)
-    goto out;
+    return NULL;
 
-  /* Note that /proc/cmdline will not end in a newline, so getline
-   * will fail unelss we provide a length.
-   */
-  if (getline (&cmdline, &len, f) < 0)
-    goto out;
-  /* ... but the length will be the size of the malloc buffer, not
-   * strlen().  Fix that.
-   */
-  len = strlen (cmdline);
-
-  if (cmdline[len-1] == '\n')
-    cmdline[len-1] = '\0';
-out:
-  if (f)
-    fclose (f);
-  return cmdline;
+  char buf[COMMAND_LINE_SIZE] = {'\0'};
+  size_t len = fread(&buf, 1, sizeof (buf), f);
+  fclose(f);
+  return strndup(buf, len);
 }
 
 static inline char *
 read_proc_cmdline_ostree (void)
 {
-  char *cmdline = NULL;
-  const char *iter;
-  char *ret = NULL;
-
-  cmdline = read_proc_cmdline ();
+  char *cmdline = read_proc_cmdline ();
   if (!cmdline)
     err (EXIT_FAILURE, "failed to read /proc/cmdline");
 
-  iter = cmdline;
-  while (iter != NULL)
+  char *ret = NULL;
+  char *sp = NULL;
+  const char* next = strtok_r (cmdline, " \n", &sp);
+  while (next)
     {
-      const char *next = strchr (iter, ' ');
-      const char *next_nonspc = next;
-      while (next_nonspc && *next_nonspc == ' ')
-        next_nonspc += 1;
-      if (strncmp (iter, "ostree=", strlen ("ostree=")) == 0)
-        {
-          const char *start = iter + strlen ("ostree=");
-          if (next)
-            ret = strndup (start, next - start);
-          else
-            ret = strdup (start);
-          break;
-        }
-      iter = next_nonspc;
+      if (strncmp (next, "ostree=", strlen ("ostree=")) == 0) {
+        const char *start = next + strlen ("ostree=");
+        ret = strdup (start);
+        break;
+      }
+      next = strtok_r (NULL, " \n", &sp);
     }
 
   free (cmdline);
