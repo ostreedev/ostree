@@ -22,6 +22,10 @@ pub static COMMIT_META_KEY_SOURCE_TITLE: once_cell::sync::Lazy<&'static str> = o
 pub static COMMIT_META_KEY_VERSION: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_COMMIT_META_KEY_VERSION).to_str().unwrap()});
 pub static DIRMETA_GVARIANT_STRING: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_DIRMETA_GVARIANT_STRING).to_str().unwrap()});
 pub static FILEMETA_GVARIANT_STRING: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_FILEMETA_GVARIANT_STRING).to_str().unwrap()});
+#[cfg(any(feature = "v2021_1", feature = "dox"))]
+pub static METADATA_KEY_BOOTABLE: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_METADATA_KEY_BOOTABLE).to_str().unwrap()});
+#[cfg(any(feature = "v2021_1", feature = "dox"))]
+pub static METADATA_KEY_LINUX: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_METADATA_KEY_LINUX).to_str().unwrap()});
 #[cfg(any(feature = "v2018_9", feature = "dox"))]
 pub static META_KEY_DEPLOY_COLLECTION_ID: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ostree_sys::OSTREE_META_KEY_DEPLOY_COLLECTION_ID).to_str().unwrap()});
 #[cfg(any(feature = "v2018_3", feature = "dox"))]

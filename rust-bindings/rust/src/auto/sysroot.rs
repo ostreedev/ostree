@@ -300,7 +300,7 @@ impl Sysroot {
     }
 
     #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    pub fn query_deployments_for(&self, osname: Option<&str>) -> (Deployment, Deployment) {
+    pub fn query_deployments_for(&self, osname: Option<&str>) -> (Option<Deployment>, Option<Deployment>) {
         unsafe {
             let mut out_pending = ptr::null_mut();
             let mut out_rollback = ptr::null_mut();
@@ -313,6 +313,15 @@ impl Sysroot {
     pub fn repo(&self) -> Option<Repo> {
         unsafe {
             from_glib_none(ostree_sys::ostree_sysroot_repo(self.to_glib_none().0))
+        }
+    }
+
+    #[cfg(any(feature = "v2021_1", feature = "dox"))]
+    pub fn require_booted_deployment(&self) -> Result<Deployment, glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ostree_sys::ostree_sysroot_require_booted_deployment(self.to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_none(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 

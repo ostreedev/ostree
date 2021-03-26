@@ -83,6 +83,11 @@ pub fn commit_get_timestamp(commit_variant: &glib::Variant) -> u64 {
     }
 }
 
+//#[cfg(any(feature = "v2021_1", feature = "dox"))]
+//pub fn commit_metadata_for_bootable<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(root: &P, dict: /*Ignored*/&glib::VariantDict, cancellable: Option<&Q>) -> Result<(), glib::Error> {
+//    unsafe { TODO: call ostree_sys:ostree_commit_metadata_for_bootable() }
+//}
+
 pub fn content_file_parse<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(compressed: bool, content_path: &P, trusted: bool, cancellable: Option<&Q>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), glib::Error> {
     unsafe {
         let mut out_input = ptr::null_mut();

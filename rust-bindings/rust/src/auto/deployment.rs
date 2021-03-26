@@ -21,7 +21,7 @@ glib_wrapper! {
 }
 
 impl Deployment {
-    pub fn new(index: i32, osname: &str, csum: &str, deployserial: i32, bootcsum: &str, bootserial: i32) -> Deployment {
+    pub fn new(index: i32, osname: &str, csum: &str, deployserial: i32, bootcsum: Option<&str>, bootserial: i32) -> Deployment {
         unsafe {
             from_glib_full(ostree_sys::ostree_deployment_new(index, osname.to_glib_none().0, csum.to_glib_none().0, deployserial, bootcsum.to_glib_none().0, bootserial))
         }
@@ -100,6 +100,12 @@ impl Deployment {
         }
     }
 
+    pub fn hash(&self) -> u32 {
+        unsafe {
+            ostree_sys::ostree_deployment_hash(ToGlibPtr::<*mut ostree_sys::OstreeDeployment>::to_glib_none(self).0 as glib_sys::gconstpointer)
+        }
+    }
+
     #[cfg(any(feature = "v2018_3", feature = "dox"))]
     pub fn is_pinned(&self) -> bool {
         unsafe {
@@ -114,7 +120,7 @@ impl Deployment {
         }
     }
 
-    pub fn set_bootconfig(&self, bootconfig: &BootconfigParser) {
+    pub fn set_bootconfig(&self, bootconfig: Option<&BootconfigParser>) {
         unsafe {
             ostree_sys::ostree_deployment_set_bootconfig(self.to_glib_none().0, bootconfig.to_glib_none().0);
         }
@@ -132,15 +138,9 @@ impl Deployment {
         }
     }
 
-    pub fn set_origin(&self, origin: &glib::KeyFile) {
+    pub fn set_origin(&self, origin: Option<&glib::KeyFile>) {
         unsafe {
             ostree_sys::ostree_deployment_set_origin(self.to_glib_none().0, origin.to_glib_none().0);
-        }
-    }
-
-    pub fn hash(&self) -> u32 {
-        unsafe {
-            ostree_sys::ostree_deployment_hash(ToGlibPtr::<*mut ostree_sys::OstreeDeployment>::to_glib_none(self).0 as glib_sys::gconstpointer)
         }
     }
 

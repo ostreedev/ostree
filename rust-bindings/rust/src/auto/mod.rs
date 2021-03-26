@@ -160,6 +160,10 @@ pub use self::constants::COMMIT_META_KEY_SOURCE_TITLE;
 pub use self::constants::COMMIT_META_KEY_VERSION;
 pub use self::constants::DIRMETA_GVARIANT_STRING;
 pub use self::constants::FILEMETA_GVARIANT_STRING;
+#[cfg(any(feature = "v2021_1", feature = "dox"))]
+pub use self::constants::METADATA_KEY_BOOTABLE;
+#[cfg(any(feature = "v2021_1", feature = "dox"))]
+pub use self::constants::METADATA_KEY_LINUX;
 #[cfg(any(feature = "v2018_9", feature = "dox"))]
 pub use self::constants::META_KEY_DEPLOY_COLLECTION_ID;
 #[cfg(any(feature = "v2018_3", feature = "dox"))]

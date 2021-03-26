@@ -45,7 +45,7 @@ version as well:
 ```toml
 [dependencies.ostree]
 version = "0.9"
-features = ["v2020_4"]
+features = ["v2021_1"]
 ```
 
 ## Developing

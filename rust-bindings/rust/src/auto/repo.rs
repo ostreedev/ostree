@@ -279,6 +279,16 @@ impl Repo {
         }
     }
 
+    #[cfg(any(feature = "v2020_8", feature = "dox"))]
+    pub fn gpg_sign_data<P: IsA<gio::Cancellable>>(&self, data: &glib::Bytes, old_signatures: &glib::Bytes, key_id: &[&str], homedir: Option<&str>, cancellable: Option<&P>) -> Result<glib::Bytes, glib::Error> {
+        unsafe {
+            let mut out_signatures = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_gpg_sign_data(self.to_glib_none().0, data.to_glib_none().0, old_signatures.to_glib_none().0, key_id.to_glib_none().0, homedir.to_glib_none().0, &mut out_signatures, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_signatures)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[cfg(any(feature = "v2016_6", feature = "dox"))]
     pub fn gpg_verify_data<P: IsA<gio::File>, Q: IsA<gio::File>, R: IsA<gio::Cancellable>>(&self, remote_name: Option<&str>, data: &glib::Bytes, signatures: &glib::Bytes, keyringdir: Option<&P>, extra_keyring: Option<&Q>, cancellable: Option<&R>) -> Result<GpgVerifyResult, glib::Error> {
         unsafe {
@@ -361,6 +371,16 @@ impl Repo {
     //pub fn list_refs_ext<P: IsA<gio::Cancellable>>(&self, refspec_prefix: Option<&str>, out_all_refs: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 0, id: 28 }, flags: RepoListRefsExtFlags, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_refs_ext() }
     //}
+
+    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    pub fn list_static_delta_indexes<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<Vec<GString>, glib::Error> {
+        unsafe {
+            let mut out_indexes = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ostree_sys::ostree_repo_list_static_delta_indexes(self.to_glib_none().0, &mut out_indexes, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_container(out_indexes)) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     pub fn list_static_delta_names<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<Vec<GString>, glib::Error> {
         unsafe {
@@ -676,7 +696,7 @@ impl Repo {
         }
     }
 
-    pub fn resolve_rev(&self, refspec: &str, allow_noent: bool) -> Result<GString, glib::Error> {
+    pub fn resolve_rev(&self, refspec: &str, allow_noent: bool) -> Result<Option<GString>, glib::Error> {
         unsafe {
             let mut out_rev = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -686,7 +706,7 @@ impl Repo {
     }
 
     #[cfg(any(feature = "v2016_7", feature = "dox"))]
-    pub fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: RepoResolveRevExtFlags) -> Result<GString, glib::Error> {
+    pub fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: RepoResolveRevExtFlags) -> Result<Option<GString>, glib::Error> {
         unsafe {
             let mut out_rev = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -786,13 +806,17 @@ impl Repo {
         }
     }
 
-    pub fn static_delta_generate<P: IsA<gio::Cancellable>>(&self, opt: StaticDeltaGenerateOpt, from: &str, to: &str, metadata: Option<&glib::Variant>, params: Option<&glib::Variant>, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    pub fn static_delta_generate<P: IsA<gio::Cancellable>>(&self, opt: StaticDeltaGenerateOpt, from: Option<&str>, to: &str, metadata: Option<&glib::Variant>, params: Option<&glib::Variant>, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_static_delta_generate(self.to_glib_none().0, opt.to_glib(), from.to_glib_none().0, to.to_glib_none().0, metadata.to_glib_none().0, params.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
+
+    //pub fn static_delta_reindex<P: IsA<gio::Cancellable>>(&self, flags: /*Ignored*/StaticDeltaIndexFlags, opt_to_commit: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //    unsafe { TODO: call ostree_sys:ostree_repo_static_delta_reindex() }
+    //}
 
     #[cfg(any(feature = "v2020_7", feature = "dox"))]
     pub fn static_delta_verify_signature<P: IsA<Sign>>(&self, delta_id: &str, sign: &P) -> Result<Option<GString>, glib::Error> {
@@ -990,7 +1014,7 @@ impl Repo {
     }
 
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    pub fn create_at<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, mode: RepoMode, options: &glib::Variant, cancellable: Option<&P>) -> Result<Repo, glib::Error> {
+    pub fn create_at<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, mode: RepoMode, options: Option<&glib::Variant>, cancellable: Option<&P>) -> Result<Repo, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let ret = ostree_sys::ostree_repo_create_at(dfd, path.to_glib_none().0, mode.to_glib(), options.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
