@@ -1,7 +1,7 @@
 GIR_REPO := https://github.com/gtk-rs/gir.git
 GIR_VERSION := 2d1ffab19eb5f9a2f0d7a294dbf07517dab4d989
-OSTREE_REPO := https://github.com/fkrull/ostree.git
-OSTREE_VERSION := patch-v2020.7
+OSTREE_REPO := https://github.com/ostreedev/ostree.git
+OSTREE_VERSION := v2021.1
 RUSTDOC_STRIPPER_VERSION := 0.1.13
 
 all: gir
@@ -55,8 +55,11 @@ gir-files/OSTree-1.0.gir:
 		--build-arg OSTREE_VERSION=$(OSTREE_VERSION) \
 		-t ostree-build \
 		.
-	podman run \
-		--rm \
-		-v $(PWD)/gir-files:/gir-files \
-		ostree-build \
-		bash -eu -c "cp /build/OSTree-1.0.gir /gir-files/"
+	podman create \
+		--name ostree-gir-container \
+		ostree-build
+	podman cp \
+		ostree-gir-container:/build/OSTree-1.0.gir \
+		gir-files/OSTree-1.0.gir
+	podman rm \
+		ostree-gir-container
