@@ -36,7 +36,7 @@ To use the crate, add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ostree = "0.9"
+ostree = "0.10"
 ```
 
 To use features from later libostree versions, you need to specify the release
@@ -44,7 +44,7 @@ version as well:
 
 ```toml
 [dependencies.ostree]
-version = "0.9"
+version = "0.10"
 features = ["v2021_1"]
 ```
 
