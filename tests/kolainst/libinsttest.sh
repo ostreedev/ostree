@@ -41,8 +41,8 @@ run_tmp_webserver() {
     dir=$1
 
     port=8000
-    podman create --name ostree-httpd --privileged  -ti --net=host -v "${dir}":/srv --workdir /srv \
-        registry.svc.ci.openshift.org/coreos/fedora:31 python3 -m http.server "${port}"
+    podman create --name ostree-httpd --privileged --user root -ti --net=host -v "${dir}":/srv --workdir /srv \
+        quay.io/coreos-assembler/fcos-buildroot:testing-devel python3 -m http.server "${port}"
     podman generate systemd ostree-httpd > /etc/systemd/system/ostree-httpd.service
     systemctl daemon-reload
     systemctl start ostree-httpd.service

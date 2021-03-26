@@ -3,7 +3,7 @@
 stage("Build") {
 parallel normal: {
   def n = 5
-  cosaPod(buildroot: true, runAsUser: 0, memory: "2Gi", cpu: "${n}") {
+  buildPod(runAsUser:0, memory: "2Gi", cpu: "${n}") {
       checkout scm
       stage("Core build") {
         shwrap("""
@@ -21,19 +21,25 @@ parallel normal: {
             make syntax-check
           """)
         } finally {
+            shwrap("cat test-suite.log || true")
             archiveArtifacts allowEmptyArchive: true, artifacts: 'test-suite.log'
         }
       }
-      shwrap("""
-        make install DESTDIR=\$(pwd)/insttree/
-        tar -c -C insttree/ -zvf insttree.tar.gz .
-      """)
-      stash includes: 'insttree.tar.gz', name: 'build'
+      stage("Build installed tests") {
+        shwrap("make -C tests/kolainst")
+      }
+      stage("Generate artifacts") {
+        shwrap("""
+          make install DESTDIR=\$(pwd)/installed/rootfs
+          make -C tests/kolainst install DESTDIR=\$(pwd)/installed/tests
+        """)
+      }
+      stash includes: "installed/", name: 'build'
   }
 },
 // A minimal build, helps test our build options
 minimal: {
-  cosaPod(buildroot: true, runAsUser: 0) {
+  buildPod(runAsUser:0) {
       checkout scm
       shwrap("""
         git submodule update --init
@@ -48,7 +54,7 @@ minimal: {
   }
 },
 codestyle: {
-  cosaPod {
+  buildPod(runAsUser:0) {
       checkout scm
       shwrap("""
         # Jenkins by default only fetches the branch it's testing. Explicitly fetch master
@@ -63,27 +69,25 @@ codestyle: {
 // Build FCOS and do a kola basic run
 stage("More builds and test") {
 parallel fcos: {
-  cosaPod(buildroot: true, runAsUser: 0, memory: "3072Mi", cpu: "4") {
+  cosaPod(runAsUser: 0, memory: "3072Mi", cpu: "4") {
     stage("Build FCOS") {
       checkout scm
       unstash 'build'
       shwrap("""
-        mkdir insttree
-        tar -C insttree -xzvf insttree.tar.gz
-        rsync -rlv insttree/ /
+        # Move the bits into the cosa pod
+        rsync -rlv installed/rootfs/ /
+        rsync -rlv installed/tests/ /
         coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
         mkdir -p overrides/rootfs
-        mv insttree/* overrides/rootfs/
-        rmdir insttree
+        # And override the on-host bits
+        mv installed/rootfs/* overrides/rootfs/
+        rm installed -rf
         coreos-assembler fetch
         coreos-assembler build
         coreos-assembler buildextend-metal
         coreos-assembler buildextend-metal4k
         coreos-assembler buildextend-live --fast
-        # Install the tests
-        # Build and install the tests
-        make -C tests/kolainst
-        make -C tests/kolainst install
+
       """)
     }
     stage("Test") {
@@ -102,7 +106,7 @@ parallel fcos: {
 },
 buildopts: {
   def n = 5
-  cosaPod(buildroot: true, runAsUser: 0, memory: "2Gi", cpu: "${n}") {
+  buildPod(memory: "2Gi", cpu: "${n}") {
       checkout scm
       shwrap("""
         git submodule update --init
