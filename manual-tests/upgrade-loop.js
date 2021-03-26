@@ -24,9 +24,6 @@
 // could watch the output, and assert that the system is in a
 // consistent state if this script is killed and restarted. randomly.
 
-const GLib = imports.gi.GLib;
-const Gio = imports.gi.Gio;
-
 const OSTree = imports.gi.OSTree;
 
 let sysroot = OSTree.Sysroot.new_default();
