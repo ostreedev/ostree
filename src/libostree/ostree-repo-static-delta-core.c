@@ -178,7 +178,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
  * This function synchronously enumerates all static delta indexes in the
  * repository, returning its result in @out_indexes.
  *
- * Since: 2020.7
+ * Since: 2020.8
  */
 gboolean
 ostree_repo_list_static_delta_indexes (OstreeRepo                  *self,
@@ -1254,6 +1254,8 @@ file_has_content (OstreeRepo   *repo,
  * This is normally called automatically when the summary is updated in ostree_repo_regenerate_summary().
  *
  * Locking: shared
+ *
+ * Since: 2020.8
  */
 gboolean
 ostree_repo_static_delta_reindex (OstreeRepo                 *repo,
