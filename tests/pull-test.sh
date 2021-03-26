@@ -196,7 +196,7 @@ if ! skip_one_without_user_xattrs; then
         # Preserve user.ostreemeta xattr
         cp -a ${path}{,.new}
         (dd if=${path} conv=swab) > ${path}.new
-        mv ${path}{.new,}
+        mv -f ${path}{.new,}
         if ${CMD_PREFIX} ostree --repo=cacherepo fsck 2>err.txt; then
             fatal "corrupt repo fsck?"
         fi
@@ -631,12 +631,12 @@ if has_gpgme; then
     objpath=objects/${csum::2}/${csum:2}.commitmeta
     remotesig=ostree-srv/gnomerepo/$objpath
     localsig=repo/$objpath
-    mv $remotesig $remotesig.bak
+    mv -f $remotesig $remotesig.bak
     if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main; then
         assert_not_reached "pull with gpg-verify unexpectedly succeeded?"
     fi
     # ok now check that we can pull correctly
-    mv $remotesig.bak $remotesig
+    mv -f $remotesig.bak $remotesig
     ${CMD_PREFIX} ostree --repo=repo pull origin main
     echo "ok pull signed commit"
     rm $localsig
