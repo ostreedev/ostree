@@ -372,7 +372,7 @@ impl Repo {
     //    unsafe { TODO: call ostree_sys:ostree_repo_list_refs_ext() }
     //}
 
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    #[cfg(any(feature = "v2020_8", feature = "dox"))]
     pub fn list_static_delta_indexes<P: IsA<gio::Cancellable>>(&self, cancellable: Option<&P>) -> Result<Vec<GString>, glib::Error> {
         unsafe {
             let mut out_indexes = ptr::null_mut();
@@ -814,6 +814,7 @@ impl Repo {
         }
     }
 
+    //#[cfg(any(feature = "v2020_8", feature = "dox"))]
     //pub fn static_delta_reindex<P: IsA<gio::Cancellable>>(&self, flags: /*Ignored*/StaticDeltaIndexFlags, opt_to_commit: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ostree_sys:ostree_repo_static_delta_reindex() }
     //}

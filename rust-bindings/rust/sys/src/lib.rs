@@ -1338,7 +1338,7 @@ extern "C" {
     pub fn ostree_repo_list_refs(self_: *mut OstreeRepo, refspec_prefix: *const c_char, out_all_refs: *mut *mut glib::GHashTable, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
     pub fn ostree_repo_list_refs_ext(self_: *mut OstreeRepo, refspec_prefix: *const c_char, out_all_refs: *mut *mut glib::GHashTable, flags: OstreeRepoListRefsExtFlags, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
+    #[cfg(any(feature = "v2020_8", feature = "dox"))]
     pub fn ostree_repo_list_static_delta_indexes(self_: *mut OstreeRepo, out_indexes: *mut *mut glib::GPtrArray, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_list_static_delta_names(self_: *mut OstreeRepo, out_deltas: *mut *mut glib::GPtrArray, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2015_7", feature = "dox"))]
@@ -1408,6 +1408,7 @@ extern "C" {
     #[cfg(any(feature = "v2020_7", feature = "dox"))]
     pub fn ostree_repo_static_delta_execute_offline_with_signature(self_: *mut OstreeRepo, dir_or_file: *mut gio::GFile, sign: *mut OstreeSign, skip_validation: gboolean, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_static_delta_generate(self_: *mut OstreeRepo, opt: OstreeStaticDeltaGenerateOpt, from: *const c_char, to: *const c_char, metadata: *mut glib::GVariant, params: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2020_8", feature = "dox"))]
     pub fn ostree_repo_static_delta_reindex(repo: *mut OstreeRepo, flags: OstreeStaticDeltaIndexFlags, opt_to_commit: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2020_7", feature = "dox"))]
     pub fn ostree_repo_static_delta_verify_signature(self_: *mut OstreeRepo, delta_id: *const c_char, sign: *mut OstreeSign, out_success_message: *mut *mut c_char, error: *mut *mut glib::GError) -> gboolean;
