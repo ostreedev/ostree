@@ -6696,7 +6696,7 @@ remote name) to checksums. Differently from ostree_repo_list_refs(), the
       </method>
       <method name="list_static_delta_indexes"
               c:identifier="ostree_repo_list_static_delta_indexes"
-              version="2020.7"
+              version="2020.8"
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-static-delta-core.c"
@@ -9456,6 +9456,7 @@ are known:
       </method>
       <method name="static_delta_reindex"
               c:identifier="ostree_repo_static_delta_reindex"
+              version="2020.8"
               throws="1">
         <doc xml:space="preserve"
              filename="ostree-repo-static-delta-core.c"
