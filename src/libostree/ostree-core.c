@@ -391,24 +391,18 @@ variant_to_lenprefixed_buffer (GVariant *variant)
   const guint32 variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
 
   g_string_append_len (buf, (char*)&variant_size_u32_be, sizeof (variant_size_u32_be));
-  const gsize alignment_offset = sizeof (variant_size_u32_be);
 
   /* Write NULs for alignment. At the moment this is a constant 4 bytes (i.e.
-   * align to 8, since the length is 4 bytes). For now, I decided to keep some
-   * of the (now legacy) more generic logic here in case we want to revive it
-   * later.
+   * align to 8, since the length is 4 bytes).  If we ever change this, the
+   * logic is here:
    */
-  const guint alignment = 8;
-  const guchar padding_nuls[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  guint bits;
-  if (alignment == 8)
-    bits = alignment_offset & 7; /* mod 8 */
-  else
-    bits = alignment_offset & 3; /* mod 4 */
-  const guint padding_len = alignment - bits;
-
-  if (bits > 0)
-    g_string_append_len (buf, (char*)padding_nuls, padding_len);
+  // const gsize alignment_offset = sizeof (variant_size_u32_be);
+  // const guint bits = alignment_offset & 7; /* mod 8 */
+  // const guint padding_len = alignment - bits;
+  #define padding_len sizeof(guint32)
+  const guchar padding_nuls[padding_len] = {0, 0, 0, 0};
+  g_string_append_len (buf, (char*)padding_nuls, padding_len);
+  #undef padding_len
 
   g_string_append_len (buf, (char*)g_variant_get_data (variant), g_variant_get_size (variant));
   return g_string_free_to_bytes (g_steal_pointer (&buf));
