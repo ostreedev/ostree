@@ -136,6 +136,13 @@ main (int    argc,
   g_autoptr(GError) error = NULL;
   int ret;
 
+  char *foo = malloc(42);
+  // Test a leak
+  (void) foo;
+  char *bar = malloc(43);
+  free (bar);
+  bar[0] = '1';
+
   setlocale (LC_ALL, "");
 
   g_set_prgname (argv[0]);
