@@ -18,7 +18,7 @@ pkg_upgrade
 pkg_install_buildroot
 pkg_builddep ostree
 pkg_install sudo which attr fuse strace \
-    libubsan libasan libtsan PyYAML redhat-rpm-config \
+    libubsan libasan libtsan pygobject3 PyYAML pyxattr redhat-rpm-config \
     elfutils
 if test -n "${CI_PKGS:-}"; then
     pkg_install ${CI_PKGS}

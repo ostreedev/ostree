@@ -1092,6 +1092,13 @@ checkout_tree_at_recurse (OstreeRepo                        *self,
        */
       if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY || options->bareuseronly_dirs)
         canonical_mode = (mode & 0775) | S_IFDIR;
+      else if (self->mode == OSTREE_REPO_MODE_BARE_USER)
+        {
+          if (!_ostree_write_bareuser_metadata (destination_dfd, uid, gid,
+                                                mode | S_IFDIR, xattrs, error))
+            return FALSE;
+          canonical_mode = mode | 0700;
+        }
       else
         canonical_mode = mode;
       if (TEMP_FAILURE_RETRY (fchmod (destination_dfd, canonical_mode)) < 0)

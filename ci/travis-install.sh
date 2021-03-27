@@ -113,6 +113,8 @@ case "$ci_distro" in
             libsoup2.4-dev \
             libcurl4-openssl-dev \
             procps \
+            python-gi \
+            python-xattr \
             zlib1g-dev \
             python3-yaml \
             ${ci_pkgs:-} \
