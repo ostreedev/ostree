@@ -4452,12 +4452,13 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
  * @self: Repo
  * @objtype: Object type
  * @sha256: ASCII checksum
- * @out_variant: (out) (transfer full): Metadata
+ * @out_variant: (out) (nullable) (transfer full): Metadata
  * @error: Error
  *
  * Attempt to load the metadata object @sha256 of type @objtype if it
  * exists, storing the result in @out_variant.  If it doesn't exist,
- * %NULL is returned.
+ * @out_variant will be set to %NULL and the function will still
+ * return TRUE.
  */
 gboolean
 ostree_repo_load_variant_if_exists (OstreeRepo       *self,
