@@ -3686,6 +3686,10 @@ load_metadata_internal (OstreeRepo       *self,
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
   g_return_val_if_fail (objtype == OSTREE_OBJECT_TYPE_COMMIT || out_state == NULL, FALSE);
 
+  /* Ensure this is set to NULL if we didn't find the object */
+  if (out_variant)
+    *out_variant = NULL;
+
   /* Special caching for dirmeta objects, since they're commonly referenced many
    * times.
    */
