@@ -533,14 +533,29 @@ static int
 callback_setxattr (const char *path, const char *name, const char *value,
                    size_t size, int flags)
 {
-  return -ENOTSUP;
+  PATH_WRITE_ENTRYPOINT (path);
+
+  char buf[PATH_MAX];
+  snprintf (buf, sizeof (buf), "/proc/self/fd/%d/%s", basefd, path);
+
+  if (setxattr (buf, name, value, size, flags) == -1)
+    return -errno;
+  return 0;
 }
 
 static int
 callback_getxattr (const char *path, const char *name, char *value,
                    size_t size)
 {
-  return -ENOTSUP;
+  path = ENSURE_RELPATH (path);
+
+  char buf[PATH_MAX];
+  snprintf (buf, sizeof (buf), "/proc/self/fd/%d/%s", basefd, path);
+
+  ssize_t n = getxattr (buf, name, value, size);
+  if (n == -1)
+    return -errno;
+  return n;
 }
 
 /*
@@ -549,8 +564,15 @@ callback_getxattr (const char *path, const char *name, char *value,
 static int
 callback_listxattr (const char *path, char *list, size_t size)
 {
-  return -ENOTSUP;
+  path = ENSURE_RELPATH (path);
 
+  char buf[PATH_MAX];
+  snprintf (buf, sizeof (buf), "/proc/self/fd/%d/%s", basefd, path);
+
+  ssize_t n = llistxattr (buf, list, size);
+  if (n == -1)
+    return -errno;
+  return n;
 }
 
 /*
@@ -559,8 +581,14 @@ callback_listxattr (const char *path, char *list, size_t size)
 static int
 callback_removexattr (const char *path, const char *name)
 {
-  return -ENOTSUP;
+  path = ENSURE_RELPATH (path);
 
+  char buf[PATH_MAX];
+  snprintf (buf, sizeof (buf), "/proc/self/fd/%d/%s", basefd, path);
+
+  if (lremovexattr (buf, name) == -1)
+    return -errno;
+  return 0;
 }
 
 struct fuse_operations callback_oper = {

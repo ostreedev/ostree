@@ -28,7 +28,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare"
 
-echo "1..11"
+echo "1..12"
 
 cd ${test_tmpdir}
 mkdir mnt
@@ -75,6 +75,10 @@ fi
 assert_file_has_content err.txt "chown:.*Read-only file system"
 echo "ok failed mutation chmod + chown"
 
+if setfattr -n user.foo -v bar mnt/firstfile-link; then
+    assert_not_reached "set xattr on linked file"
+fi
+
 # Test creating new files, using chown + chmod on them as well
 echo anewfile-for-fuse > mnt/anewfile-for-fuse
 assert_file_has_content mnt/anewfile-for-fuse anewfile-for-fuse
@@ -94,7 +98,13 @@ for i in $(seq 5); do
     chown $(id -u) mnt/newfusedir/test-morenewfuse.${i}
 done
 assert_file_has_content checkout-test2/newfusedir/test-morenewfuse.3 3-morenewfuse-3
+
 echo "ok new content"
+
+setfattr -n user.foo -v bar mnt/anewfile-for-fuse
+getfattr -d -m . mnt/anewfile-for-fuse > out.txt
+assert_file_has_content_literal out.txt 'user.foo="bar"'
+echo "ok new xattrs"
 
 rm mnt/baz/cow
 assert_not_has_file checkout-test2/baz/cow
@@ -148,6 +158,16 @@ echo "ok copyup mount"
 firstfile_orig_inode=$(stat -c %i checkout-test2/firstfile)
 echo -n truncating > mnt/firstfile
 assert_streq "$(cat mnt/firstfile)" truncating
+firstfile_new_inode=$(stat -c %i checkout-test2/firstfile)
+assert_not_streq "${firstfile_orig_inode}" "${firstfile_new_inode}"
+assert_test_file -f checkout-test2/firstfile
+
+# Test xattr modifications
+copyup_reset
+firstfile_orig_inode=$(stat -c %i checkout-test2/firstfile)
+setfattr -n user.foo -v bar mnt/firstfile
+getfattr -d -m . mnt/firstfile > out.txt
+assert_file_has_content_literal out.txt 'user.foo="bar"'
 firstfile_new_inode=$(stat -c %i checkout-test2/firstfile)
 assert_not_streq "${firstfile_orig_inode}" "${firstfile_new_inode}"
 assert_test_file -f checkout-test2/firstfile
