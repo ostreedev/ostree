@@ -139,6 +139,7 @@ status = "generate"
 [[object]]
 name = "OSTree.Repo"
 status = "generate"
+concurrency = "send"
     [[object.function]]
     # [MANUAL] we special-case the checksum value
     pattern = "^(write_content|write_content_async|write_metadata|write_metadata_async)$"

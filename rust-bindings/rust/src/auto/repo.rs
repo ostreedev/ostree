@@ -1060,8 +1060,8 @@ impl Repo {
     //    unsafe { TODO: call ostree_sys:ostree_repo_traverse_parents_get_commits() }
     //}
 
-    pub fn connect_gpg_verify_result<F: Fn(&Repo, &str, &GpgVerifyResult) + 'static>(&self, f: F) -> SignalHandlerId {
-        unsafe extern "C" fn gpg_verify_result_trampoline<F: Fn(&Repo, &str, &GpgVerifyResult) + 'static>(this: *mut ostree_sys::OstreeRepo, checksum: *mut libc::c_char, result: *mut ostree_sys::OstreeGpgVerifyResult, f: glib_sys::gpointer) {
+    pub fn connect_gpg_verify_result<F: Fn(&Repo, &str, &GpgVerifyResult) + Send + 'static>(&self, f: F) -> SignalHandlerId {
+        unsafe extern "C" fn gpg_verify_result_trampoline<F: Fn(&Repo, &str, &GpgVerifyResult) + Send + 'static>(this: *mut ostree_sys::OstreeRepo, checksum: *mut libc::c_char, result: *mut ostree_sys::OstreeGpgVerifyResult, f: glib_sys::gpointer) {
             let f: &F = &*(f as *const F);
             f(&from_glib_borrow(this), &GString::from_glib_borrow(checksum), &from_glib_borrow(result))
         }
@@ -1072,6 +1072,8 @@ impl Repo {
         }
     }
 }
+
+unsafe impl Send for Repo {}
 
 impl fmt::Display for Repo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
