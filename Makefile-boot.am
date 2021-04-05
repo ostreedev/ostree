@@ -65,7 +65,7 @@ endif
 
 EXTRA_DIST += src/boot/dracut/module-setup.sh \
 	src/boot/dracut/ostree.conf \
-	src/boot/mkinitcpio/ostree \
+	src/boot/mkinitcpio \
 	src/boot/ostree-prepare-root.service \
 	src/boot/ostree-finalize-staged.path \
 	src/boot/ostree-remount.service \
