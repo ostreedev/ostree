@@ -2769,6 +2769,51 @@ ostree_repo_write_content (OstreeRepo       *self,
                                cancellable, error);
 }
 
+/**
+ * ostree_repo_write_regfile_inline:
+ * @self: repo
+ * @expected_checksum: (allow-none): The expected checksum
+ * @uid: User id
+ * @gid: Group id
+ * @mode: File mode
+ * @xattrs: (allow-none): Extended attributes, GVariant of type (ayay)
+ * @buf: (array length=len) (element-type guint8): File contents
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Synchronously create a file object from the provided content.  This API
+ * is intended for small files where it is reasonable to buffer the entire
+ * content in memory.
+ *
+ * Unlike `ostree_repo_write_content()`, if @expected_checksum is provided,
+ * this function will not check for the presence of the object beforehand.
+ *
+ * Returns: (transfer full): Checksum (as a hex string) of the committed file
+ * Since: 2021.2
+ */
+_OSTREE_PUBLIC
+char *
+ostree_repo_write_regfile_inline (OstreeRepo       *self,
+                                  const char       *expected_checksum,
+                                  guint32           uid,
+                                  guint32           gid,
+                                  guint32           mode,
+                                  GVariant         *xattrs,
+                                  const guint8*     buf,
+                                  gsize             len,
+                                  GCancellable     *cancellable,
+                                  GError          **error)
+{
+  g_autoptr(GInputStream) memin = g_memory_input_stream_new_from_data (buf, len, NULL);
+  g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
+  g_autofree guint8* csum = NULL;
+  if (!write_content_object (self, expected_checksum,
+                             memin, finfo, xattrs, &csum,
+                             cancellable, error))
+    return NULL;
+  return ostree_checksum_from_bytes (csum);
+}
+
 typedef struct {
   OstreeRepo *repo;
   char *expected_checksum;

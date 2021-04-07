@@ -49,6 +49,20 @@ let [,dirTree] = repo.write_mtree(mtree, null);
 let [,commit] = repo.write_commit(null, 'Some subject', 'Some body', null, dirTree, null);
 print("commit => " + commit);
 
+// Test direct write APIs
+let inline_content = "default 0.0.0.0\nloopback 127.0.0.0\nlink-local 169.254.0.0\n";
+let regfile_mode = 33188; // 0o100000 | 0o644 (but in decimal so old gjs works)
+let inline_checksum = repo.write_regfile_inline(null, 0, 0, regfile_mode, null, inline_content, null);
+assertEquals(inline_checksum, "8aaa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873");
+let written = false;
+try {
+    repo.write_regfile_inline("8baa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873", 0, 0, regfile_mode, null, inline_content, null);
+    written = true;
+} catch (e) {
+}
+if (written)
+  throw new Error("Wrote invalid checksum");
+
 repo.commit_transaction(null, null);
 
 let [,root,checksum] = repo.read_commit(commit, null);
