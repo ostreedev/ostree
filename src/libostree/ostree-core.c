@@ -412,18 +412,12 @@ variant_to_lenprefixed_buffer (GVariant *variant)
  * header_and_input_to_stream:
  * @file_header: A file header
  * @input: File raw content stream
- * @out_input: (out): Serialized object stream
- * @cancellable: Cancellable
- * @error: Error
  *
  * Combines @file_header and @input into a single stream.
  */
-static gboolean
+static GInputStream *
 header_and_input_to_stream (GBytes             *file_header,
-                            GInputStream       *input,
-                            GInputStream      **out_input,
-                            GCancellable       *cancellable,
-                            GError            **error)
+                            GInputStream       *input)
 {
   /* Our result stream chain */
   g_autoptr(GPtrArray) streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
@@ -438,10 +432,7 @@ header_and_input_to_stream (GBytes             *file_header,
     g_ptr_array_add (streams, g_object_ref (input));
 
   /* Return the result stream */
-  g_autoptr(GInputStream) ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
-  ot_transfer_out_value (out_input, &ret_input);
-
-  return TRUE;
+  return (GInputStream*)ostree_chain_input_stream_new (streams);
 }
 
 /* Convert file metadata + file content into an archive-format stream. */
@@ -462,11 +453,8 @@ _ostree_raw_file_to_archive_stream (GInputStream       *input,
       zlib_input = g_converter_input_stream_new (input, zlib_compressor);
     }
   g_autoptr(GBytes) file_header = _ostree_zlib_file_header_new (file_info, xattrs);
-  return header_and_input_to_stream (file_header,
-                                     zlib_input,
-                                     out_input,
-                                     cancellable,
-                                     error);
+  *out_input = header_and_input_to_stream (file_header, zlib_input);
+  return TRUE;
 }
 
 /**
@@ -560,12 +548,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
                                    GError            **error)
 {
   g_autoptr(GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
-  if (!header_and_input_to_stream (file_header,
-                                   input,
-                                   out_input,
-                                   cancellable,
-                                   error))
-    return FALSE;
+  *out_input = header_and_input_to_stream (file_header, input);
   if (out_length)
     *out_length = g_bytes_get_size (file_header) + g_file_info_get_size (file_info);
   return TRUE;
