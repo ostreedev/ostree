@@ -1049,6 +1049,11 @@ ostree_repo_finalize (GObject *object)
   g_free (self->collection_id);
   g_strfreev (self->repo_finders);
 
+#ifdef BUILDOPT_FSVERITY
+  g_free (self->fsverity_cert);
+  g_free (self->fsverity_key);
+#endif
+
   g_clear_pointer (&self->remotes, g_hash_table_destroy);
   g_mutex_clear (&self->remotes_lock);
 
@@ -3017,9 +3022,20 @@ reload_core_config (OstreeRepo          *self,
       }
   }
 
-  if (!_ostree_repo_parse_fsverity_config (self, error))
+  /* Currently experimental */
+  if (!ot_keyfile_get_boolean_with_default (self->config, _OSTREE_FSVERITY_CONFIG_KEY, "required",
+                                            FALSE, &self->fs_verity_wanted, error))
     return FALSE;
-  
+  if (self->fs_verity_wanted)
+    {
+      #ifndef BUILDOPT_FSVERITY
+        return glnx_throw (error, "fsverity required, but libostree compiled without support");
+      #else
+        if (!_ostree_repo_parse_fsverity_config (self, error))
+          return FALSE;
+      #endif
+    }
+
   {
     g_clear_pointer (&self->collection_id, g_free);
     if (!ot_keyfile_get_value_with_default (self->config, "core", "collection-id",
