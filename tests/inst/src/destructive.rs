@@ -279,7 +279,7 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
         // Update the target state
         let srvrepo_obj = ostree::Repo::new(&gio::File::new_for_path(SRVREPO));
         srvrepo_obj.open(gio::NONE_CANCELLABLE)?;
-        commitstates.target = srvrepo_obj.resolve_rev(TESTREF, false)?.into();
+        commitstates.target = srvrepo_obj.resolve_rev(TESTREF, false)?.unwrap().into();
     } else if commitstates.booted == commitstates.orig || commitstates.booted == commitstates.prev {
         println!(
             "Failed update to {} (booted={})",
@@ -353,11 +353,12 @@ fn impl_transaction_test<M: AsRef<str>>(
 
         CommitStates {
             booted: booted_commit.to_string(),
-            orig: sysrepo_obj.resolve_rev(ORIGREF, false)?.into(),
+            orig: sysrepo_obj.resolve_rev(ORIGREF, false)?.unwrap().into(),
             prev: srvrepo_obj
                 .resolve_rev(&format!("{}^", TESTREF), false)?
+                .unwrap()
                 .into(),
-            target: srvrepo_obj.resolve_rev(TESTREF, false)?.into(),
+            target: srvrepo_obj.resolve_rev(TESTREF, false)?.unwrap().into(),
         }
     };
 

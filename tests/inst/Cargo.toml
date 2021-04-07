@@ -19,7 +19,7 @@ anyhow = "1.0"
 tempfile = "3.1.0"
 glib = "0.10"
 gio = "0.9"
-ostree = { version = "0.8.0", features = ["v2020_1"] }
+ostree = { version = "0.10.0", features = ["v2021_1"] }
 libtest-mimic = "0.3.0"
 twoway = "0.2.1"
 hyper = "0.13"
