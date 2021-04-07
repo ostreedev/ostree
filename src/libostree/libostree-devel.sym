@@ -25,6 +25,7 @@
 LIBOSTREE_2021.2 {
 global:
   ostree_repo_write_regfile_inline;
+  ostree_repo_write_symlink;
 } LIBOSTREE_2021.1;
 
 /* Stub section for the stable release *after* this development one; don't
