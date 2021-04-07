@@ -38,8 +38,7 @@ openat = "0.1.19"
 openat-ext = "0.1.4"
 nix = "0.17.0"
 # See discussion in https://github.com/coreos/rpm-ostree/pull/2569#issuecomment-780569188
-# Currently pinned to a hash, but after the next stable release let's switch to tags
-rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", rev = "170095bd60ec8802afeea42d120fb2e88298648f" }
+rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", tag = "v2021.3" }
 
 # This one I might publish to crates.io, not sure yet
 with-procspawn-tempdir = { git = "https://github.com/cgwalters/with-procspawn-tempdir" }
