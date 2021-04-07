@@ -208,12 +208,13 @@ fn upgrade_and_finalize() -> Result<()> {
 
 async fn run_upgrade_or_timeout(timeout: time::Duration) -> Result<bool> {
     let upgrade = tokio::task::spawn_blocking(upgrade_and_finalize);
+    tokio::pin!(upgrade);
     Ok(tokio::select! {
         res = upgrade => {
             let _res = res?;
             true
         },
-        _ = tokio::time::delay_for(timeout) => {
+        _ = tokio::time::sleep(timeout) => {
             false
         }
     })
@@ -383,7 +384,7 @@ fn impl_transaction_test<M: AsRef<str>>(
 
     assert_ne!(commitstates.booted.as_str(), commitstates.target.as_str());
 
-    let mut rt = tokio::runtime::Runtime::new()?;
+    let rt = tokio::runtime::Runtime::new()?;
     let cycle_time_ms = (tdata.cycle_time.as_secs_f64() * 1000f64 * FORCE_REBOOT_AFTER_MUL) as u64;
     // Set when we're trying an interrupt strategy that isn't a reboot, so we will
     // re-enter the loop below.
