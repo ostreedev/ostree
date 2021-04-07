@@ -125,4 +125,11 @@ EXTRA_DIST += \
 	ostree-experimental-sections.txt \
 	$(NULL)
 
+# These only get included in the generated .gitignore when building with
+# --enable-gtk-doc, so ensure they're always added.
+GITIGNOREFILES = \
+	ostree-overrides.txt \
+	version.xml \
+	$(NULL)
+
 -include $(top_srcdir)/git.mk
