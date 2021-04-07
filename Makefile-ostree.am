@@ -60,11 +60,6 @@ nodist_ostree_SOURCES = \
 	src/ostree/parse-datetime.c \
 	$(NULL)
 
-if ENABLE_EXPERIMENTAL_API
-ostree_SOURCES += \
-	$(NULL)
-endif
-
 if USE_GPGME
 ostree_SOURCES += \
 	src/ostree/ot-builtin-gpg-sign.c \

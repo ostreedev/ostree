@@ -156,8 +156,6 @@ _installed_or_uninstalled_test_scripts += \
 	$(NULL)
 endif
 
-experimental_test_scripts = \
-	$(NULL)
 test_extra_programs = \
 	tests/get-byte-order \
 	tests/repo-finder-mount \
@@ -170,12 +168,6 @@ tests_get_byte_order_LDADD = $(GLIB_LIBS)
 tests_repo_finder_mount_SOURCES = tests/repo-finder-mount.c
 tests_repo_finder_mount_CFLAGS = $(common_tests_cflags)
 tests_repo_finder_mount_LDADD = $(common_tests_ldadd) libostreetest.la
-
-if ENABLE_EXPERIMENTAL_API
-_installed_or_uninstalled_test_scripts += $(experimental_test_scripts)
-else
-EXTRA_DIST += $(experimental_test_scripts)
-endif
 
 if BUILDOPT_FUSE
 _installed_or_uninstalled_test_scripts += tests/test-rofiles-fuse.sh

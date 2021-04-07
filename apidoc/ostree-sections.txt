@@ -107,6 +107,7 @@ OSTREE_SUMMARY_GVARIANT_STRING
 OSTREE_SUMMARY_GVARIANT_FORMAT
 ostree_metadata_variant_type
 ostree_validate_checksum_string
+ostree_validate_collection_id
 ostree_checksum_to_bytes
 ostree_checksum_to_bytes_v
 ostree_checksum_from_bytes
@@ -304,6 +305,7 @@ ostree_repo_is_system
 ostree_repo_is_writable
 ostree_repo_create_at
 ostree_repo_create
+ostree_repo_get_collection_id
 ostree_repo_get_bootloader
 ostree_repo_get_path
 ostree_repo_get_mode
@@ -319,6 +321,7 @@ ostree_repo_remote_delete
 OstreeRepoRemoteChange
 ostree_repo_remote_change
 ostree_repo_remote_list
+ostree_repo_remote_list_collection_refs
 ostree_repo_remote_get_url
 ostree_repo_remote_get_gpg_verify
 ostree_repo_remote_get_gpg_verify_summary
@@ -337,10 +340,13 @@ ostree_repo_prepare_transaction
 ostree_repo_commit_transaction
 ostree_repo_abort_transaction
 ostree_repo_transaction_set_refspec
+ostree_repo_transaction_set_collection_ref
 ostree_repo_transaction_set_ref
 ostree_repo_set_ref_immediate
 ostree_repo_set_alias_ref_immediate
 ostree_repo_set_cache_dir
+ostree_repo_set_collection_id
+ostree_repo_set_collection_ref_immediate
 ostree_repo_sign_delta
 ostree_repo_has_object
 ostree_repo_mark_commit_partial
@@ -360,7 +366,9 @@ ostree_repo_resolve_rev_ext
 ostree_repo_list_refs
 OstreeRepoListRefsExtFlags
 ostree_repo_list_refs_ext
+ostree_repo_list_collection_refs
 ostree_repo_remote_list_refs
+ostree_repo_resolve_collection_ref
 ostree_repo_load_variant
 OstreeRepoCommitState
 ostree_repo_load_commit
@@ -619,7 +627,7 @@ ostree_remote_get_type
 </SECTION>
 
 <SECTION>
-<FILE>ostree-repo-experimental</FILE>
+<FILE>ostree-repo-remote-finder</FILE>
 ostree_repo_find_remotes_async
 ostree_repo_find_remotes_finish
 ostree_repo_pull_from_remotes_async
@@ -681,18 +689,6 @@ ostree_repo_finder_override_new
 ostree_repo_finder_override_add_uri
 <SUBSECTION Standard>
 ostree_repo_finder_override_get_type
-</SECTION>
-
-<SECTION>
-<FILE>ostree-misc-experimental</FILE>
-ostree_repo_get_collection_id
-ostree_repo_set_collection_id
-ostree_validate_collection_id
-ostree_repo_list_collection_refs
-ostree_repo_remote_list_collection_refs
-ostree_repo_set_collection_ref_immediate
-ostree_repo_transaction_set_collection_ref
-ostree_repo_resolve_collection_ref
 </SECTION>
 
 <SECTION>

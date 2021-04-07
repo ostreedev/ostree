@@ -122,7 +122,6 @@ include $(top_srcdir)/gtk-doc.make
 EXTRA_DIST += \
 	version.xml \
 	ostree-sections.txt \
-	ostree-experimental-sections.txt \
 	$(NULL)
 
 -include $(top_srcdir)/git.mk
