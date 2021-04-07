@@ -122,7 +122,6 @@ include $(top_srcdir)/gtk-doc.make
 EXTRA_DIST += \
 	version.xml \
 	ostree-sections.txt \
-	ostree-experimental-sections.txt \
 	$(NULL)
 
 # These only get included in the generated .gitignore when building with
