@@ -197,6 +197,47 @@ test_repo_get_min_free_space (Fixture *fixture,
     }
 }
 
+static void
+test_write_regfile_api (Fixture *fixture,
+                        gconstpointer test_data)
+{
+  g_autoptr (GKeyFile) config = NULL;
+  g_autoptr(GError) error = NULL;
+
+  g_autoptr(OstreeRepo) repo = ostree_repo_create_at (fixture->tmpdir.fd, ".",
+                                                      OSTREE_REPO_MODE_ARCHIVE,
+                                                      NULL,
+                                                      NULL, &error);
+  g_assert_no_error (error);
+
+  g_auto(GVariantBuilder) xattrs_builder;
+  g_variant_builder_init (&xattrs_builder, (GVariantType*)"a(ayay)");
+  g_variant_builder_add (&xattrs_builder, "(^ay^ay)", "security.selinux", "system_u:object_r:etc_t:s0");
+  g_autoptr(GVariant) xattrs = g_variant_ref_sink (g_variant_builder_end (&xattrs_builder));
+
+  // Current contents of /etc/networks in Fedora
+  static const char contents[] = "default 0.0.0.0\nloopback 127.0.0.0\nlink-local 169.254.0.0\n";
+  // First with no xattrs
+  g_autofree char *checksum = ostree_repo_write_regfile_inline (repo, NULL, 0, 0, S_IFREG | 0644, NULL, (const guint8*)contents, sizeof (contents)-1, NULL, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (checksum, ==, "8aaa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873");
+  g_clear_pointer (&checksum, g_free);
+
+  // Invalid checksum
+  checksum = ostree_repo_write_regfile_inline (repo, "3272139f889f6a7007b3d64adc74be9e2979bf6bbe663d1512e5bd43f4de24a1", 
+              0, 0, S_IFREG | 0644, NULL, (const guint8*)contents, sizeof (contents)-1, NULL, &error);
+  g_assert (checksum == NULL);
+  g_assert (error != NULL);
+  g_clear_error (&error);
+  
+  // Now with xattrs 
+  g_clear_pointer (&checksum, g_free);
+  checksum = ostree_repo_write_regfile_inline (repo, NULL, 0, 0, S_IFREG | 0644, xattrs, (const guint8*)contents, sizeof (contents)-1, NULL, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (checksum, ==, "4f600d252338f93279c51c964915cb2c26f0d09082164c54890d1a3c78cdeb1e");
+  g_clear_pointer (&checksum, g_free);
+}
+
 int
 main (int    argc,
       char **argv)
@@ -212,7 +253,8 @@ main (int    argc,
               test_repo_equal, teardown);
   g_test_add ("/repo/get_min_free_space", Fixture, NULL, setup,
               test_repo_get_min_free_space, teardown);
-
+  g_test_add ("/repo/write_regfile_api", Fixture, NULL, setup,
+              test_write_regfile_api, teardown);
 
   return g_test_run ();
 }
