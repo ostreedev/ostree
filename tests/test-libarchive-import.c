@@ -510,6 +510,7 @@ test_libarchive_xattr_import_skip_xattr (gconstpointer data)
   GError *error = NULL;
   g_autoptr(OtAutoArchiveRead) a = archive_read_new ();
   OstreeRepoImportArchiveOptions opts = { 0 };
+  g_autoptr(OstreeRepoCommitModifier) modifier = NULL;
 
   if (skip_if_no_xattr (td))
     goto out;
@@ -524,7 +525,7 @@ test_libarchive_xattr_import_skip_xattr (gconstpointer data)
 
   opts.ignore_unsupported_content = TRUE;
 
-  g_autoptr(OstreeRepoCommitModifier) modifier = ostree_repo_commit_modifier_new (
+  modifier = ostree_repo_commit_modifier_new (
       OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS, NULL, NULL, NULL);
   if (!import_write_and_ref (td->repo, &opts, a, "baz", modifier, &error))
     goto out;
