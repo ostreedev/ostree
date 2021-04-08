@@ -5,6 +5,8 @@ env:
   # debian has libsodium-dev, ubuntu doesn't in core at least
   - ci_docker=debian:buster-slim ci_distro=debian ci_suite=buster ci_configopts="--with-ed25519-libsodium" ci_pkgs="libsodium-dev"
   - ci_docker=debian:buster-slim ci_distro=debian ci_suite=buster ci_configopts="--with-curl --with-ed25519-libsodium --without-gpgme" ci_pkgs="libsodium-dev"
+  # A 32 bit build to act as a proxy for frequently deployed 32 bit armv7
+  - ci_docker=i386/debian:buster-slim ci_distro=debian ci_suite=buster
   - ci_docker=ubuntu:focal ci_distro=ubuntu ci_suite=focal
   - ci_docker=ubuntu:groovy ci_distro=ubuntu ci_suite=groovy
 
