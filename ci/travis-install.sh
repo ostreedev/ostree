@@ -82,6 +82,10 @@ esac
 
 case "$ci_distro" in
     (debian|ubuntu)
+        # Make debconf run non-interactively since its questions can't
+        # be answered.
+        export DEBIAN_FRONTEND=noninteractive
+
         # TODO: fetch this list from the Debian packaging git repository?
         $sudo apt-get -y update
         $sudo apt-get -y install \
