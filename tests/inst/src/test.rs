@@ -158,7 +158,7 @@ where
     F: Send + 'static,
 {
     let path = path.as_ref();
-    let mut rt = Runtime::new()?;
+    let rt = Runtime::new()?;
     rt.block_on(async move {
         let addr = http_server(path, *opts).await?;
         tokio::task::spawn_blocking(move || f(&addr)).await?

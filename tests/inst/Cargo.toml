@@ -19,14 +19,14 @@ anyhow = "1.0"
 tempfile = "3.1.0"
 glib = "0.10"
 gio = "0.9"
-ostree = { version = "0.8.0", features = ["v2020_1"] }
+ostree = { version = "0.10.0", features = ["v2021_1"] }
 libtest-mimic = "0.3.0"
 twoway = "0.2.1"
-hyper = "0.13"
+hyper = { version = "0.14", features = ["runtime", "http1", "http2", "tcp", "server"] }
+hyper-staticfile = "0.6.0"
 futures = "0.3.4"
 http = "0.2.0"
-hyper-staticfile = "0.5.1"
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "1.4.0", features = ["full"] }
 futures-util = "0.3.1"
 base64 = "0.12.0"
 procspawn = "0.8"
@@ -36,17 +36,12 @@ strum = "0.18.0"
 strum_macros = "0.18.0"
 openat = "0.1.19"
 openat-ext = "0.1.4"
-nix = "0.17.0"
+nix = "0.20.0"
 # See discussion in https://github.com/coreos/rpm-ostree/pull/2569#issuecomment-780569188
-# Currently pinned to a hash, but after the next stable release let's switch to tags
-rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", rev = "170095bd60ec8802afeea42d120fb2e88298648f" }
+rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", tag = "v2021.3" }
 
 # This one I might publish to crates.io, not sure yet
 with-procspawn-tempdir = { git = "https://github.com/cgwalters/with-procspawn-tempdir" }
 
 # Internal crate for the test macro
 itest-macro = { path = "itest-macro" }
-
-[patch.crates-io]
-# PR openat (pun intended) https://github.com/tailhook/openat/pull/36
-openat = { git = 'https://github.com/cgwalters/openat', branch = 'libc-rename-signed' }

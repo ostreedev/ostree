@@ -208,12 +208,13 @@ fn upgrade_and_finalize() -> Result<()> {
 
 async fn run_upgrade_or_timeout(timeout: time::Duration) -> Result<bool> {
     let upgrade = tokio::task::spawn_blocking(upgrade_and_finalize);
+    tokio::pin!(upgrade);
     Ok(tokio::select! {
         res = upgrade => {
             let _res = res?;
             true
         },
-        _ = tokio::time::delay_for(timeout) => {
+        _ = tokio::time::sleep(timeout) => {
             false
         }
     })
@@ -244,6 +245,11 @@ impl CommitStates {
     }
 }
 
+fn query_status() -> Result<rpmostree_client::Status> {
+    let client = rpmostree_client::CliClient::new("ostreetest");
+    rpmostree_client::query_status(&client).map_err(anyhow::Error::msg)
+}
+
 /// In the case where we've entered via a reboot, this function
 /// checks the state of things, and also generates a new update
 /// if everything was successful.
@@ -255,7 +261,7 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
     let mut mark: RebootMark = serde_json::from_str(markstr)
         .with_context(|| format!("Failed to parse reboot mark {:?}", markstr))?;
     // The first failed reboot may be into the original booted commit
-    let status = rpmostree_client::query_status().map_err(anyhow::Error::msg)?;
+    let status = query_status()?;
     let firstdeploy = &status.deployments[0];
     // The first deployment should not be staged
     assert!(!firstdeploy.staged.unwrap_or(false));
@@ -279,7 +285,7 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
         // Update the target state
         let srvrepo_obj = ostree::Repo::new(&gio::File::new_for_path(SRVREPO));
         srvrepo_obj.open(gio::NONE_CANCELLABLE)?;
-        commitstates.target = srvrepo_obj.resolve_rev(TESTREF, false)?.into();
+        commitstates.target = srvrepo_obj.resolve_rev(TESTREF, false)?.unwrap().into();
     } else if commitstates.booted == commitstates.orig || commitstates.booted == commitstates.prev {
         println!(
             "Failed update to {} (booted={})",
@@ -315,7 +321,7 @@ fn validate_pending_commit(pending_commit: &str, commitstates: &CommitStates) ->
 
 /// In the case where we did a kill -9 of rpm-ostree, check the state
 fn validate_live_interrupted_upgrade(commitstates: &CommitStates) -> Result<UpdateResult> {
-    let status = rpmostree_client::query_status().map_err(anyhow::Error::msg)?;
+    let status = query_status()?;
     let firstdeploy = &status.deployments[0];
     let pending_commit = firstdeploy.checksum.as_str();
     let res = if firstdeploy.staged.unwrap_or(false) {
@@ -353,11 +359,12 @@ fn impl_transaction_test<M: AsRef<str>>(
 
         CommitStates {
             booted: booted_commit.to_string(),
-            orig: sysrepo_obj.resolve_rev(ORIGREF, false)?.into(),
+            orig: sysrepo_obj.resolve_rev(ORIGREF, false)?.unwrap().into(),
             prev: srvrepo_obj
                 .resolve_rev(&format!("{}^", TESTREF), false)?
+                .unwrap()
                 .into(),
-            target: srvrepo_obj.resolve_rev(TESTREF, false)?.into(),
+            target: srvrepo_obj.resolve_rev(TESTREF, false)?.unwrap().into(),
         }
     };
 
@@ -377,7 +384,7 @@ fn impl_transaction_test<M: AsRef<str>>(
 
     assert_ne!(commitstates.booted.as_str(), commitstates.target.as_str());
 
-    let mut rt = tokio::runtime::Runtime::new()?;
+    let rt = tokio::runtime::Runtime::new()?;
     let cycle_time_ms = (tdata.cycle_time.as_secs_f64() * 1000f64 * FORCE_REBOOT_AFTER_MUL) as u64;
     // Set when we're trying an interrupt strategy that isn't a reboot, so we will
     // re-enter the loop below.
@@ -483,7 +490,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             } else {
                 live_strategy = Some(strategy);
             }
-            let status = rpmostree_client::query_status().map_err(anyhow::Error::msg)?;
+            let status = query_status()?;
             let firstdeploy = &status.deployments[0];
             let pending_commit = firstdeploy.checksum.as_str();
             validate_pending_commit(pending_commit, &commitstates)
