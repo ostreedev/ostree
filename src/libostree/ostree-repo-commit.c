@@ -2806,6 +2806,7 @@ ostree_repo_write_regfile_inline (OstreeRepo       *self,
 {
   g_autoptr(GInputStream) memin = g_memory_input_stream_new_from_data (buf, len, NULL);
   g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
+  g_file_info_set_size (finfo, len);
   g_autofree guint8* csum = NULL;
   if (!write_content_object (self, expected_checksum,
                              memin, finfo, xattrs, &csum,
