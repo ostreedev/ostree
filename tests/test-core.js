@@ -19,6 +19,7 @@
 // Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 // Boston, MA 02111-1307, USA.
 
+const ByteArray = imports.byteArray;
 const Gio = imports.gi.Gio;
 const OSTree = imports.gi.OSTree;
 
@@ -70,11 +71,30 @@ let inline_content = "default 0.0.0.0\nloopback 127.0.0.0\nlink-local 169.254.0.
 let networks_checksum = "8aaa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873";
 let regfile_mode = 33188; // 0o100000 | 0o644 (but in decimal so old gjs works)
 let inline_checksum = repo.write_regfile_inline(null, 0, 0, regfile_mode, null, inline_content, null);
-assertEquals(inline_checksum, "8aaa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873");
+assertEquals(inline_checksum, networks_checksum);
 assertThrows("Corrupted file object", function() {
     // Changed an a to b from above to make the checksum not match
     repo.write_regfile_inline("8baa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873", 0, 0, regfile_mode, null, inline_content, null);
 });
+
+{
+  let [_, instream, info, xattrs] = repo.load_file(networks_checksum, null);
+  // Read the whole content into a string via this amazing rube goldberg machine
+  let datain = Gio.DataInputStream.new(instream);
+  let bufw = Gio.MemoryOutputStream.new_resizable();
+  bufw.splice(datain, 0, null);
+  bufw.close(null);
+  let contents = bufw.steal_as_bytes();
+  let contentsStr = ByteArray.toString(contents.get_data())
+  assertEquals(contentsStr, inline_content);
+
+  let uid = info.get_attribute_uint32("unix::uid");
+  assertEquals(uid, 0);
+  let mode = info.get_attribute_uint32("unix::mode");
+  assertEquals(mode, regfile_mode);
+
+  assertEquals(xattrs.n_children(), 0);
+}
 
 repo.commit_transaction(null, null);
 
