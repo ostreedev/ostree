@@ -462,6 +462,16 @@ _ostree_repo_bare_content_commit (OstreeRepo                 *self,
                                   GCancellable               *cancellable,
                                   GError                    **error);
 
+OstreeContentWriter *
+_ostree_content_writer_new (OstreeRepo            *repo,
+                           const char            *checksum,
+                           guint                  uid,
+                           guint                  gid,
+                           guint                  mode,
+                           guint64                content_len,
+                           GVariant              *xattrs,
+                           GError               **error);
+
 gboolean
 _ostree_repo_load_file_bare (OstreeRepo         *self,
                              const char         *checksum,

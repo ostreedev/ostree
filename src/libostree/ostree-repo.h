@@ -436,6 +436,16 @@ char *      ostree_repo_write_regfile_inline (OstreeRepo       *self,
                                                 GError          **error);
 
 _OSTREE_PUBLIC
+OstreeContentWriter *    ostree_repo_write_regfile (OstreeRepo       *self,
+                                                    const char       *expected_checksum,
+                                                    guint32           uid,
+                                                    guint32           gid,
+                                                    guint32           mode,
+                                                    guint64           content_len,
+                                                    GVariant         *xattrs,
+                                                    GError          **error);
+             
+_OSTREE_PUBLIC
 char *      ostree_repo_write_symlink (OstreeRepo       *self,
                                        const char       *expected_checksum,
                                        guint32           uid,

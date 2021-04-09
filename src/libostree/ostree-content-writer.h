@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2021 Red Hat, Inc.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -17,28 +17,20 @@
  * License along with this library; if not, write to the
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- *
- * Author: Colin Walters <walters@verbum.org>
  */
 
 #pragma once
 
 #include <gio/gio.h>
 
-#ifndef _OSTREE_PUBLIC
-#define _OSTREE_PUBLIC extern
-#endif
-
 G_BEGIN_DECLS
 
-typedef struct OstreeRepo OstreeRepo;
-typedef struct OstreeRepoDevInoCache OstreeRepoDevInoCache;
-typedef struct OstreeSePolicy OstreeSePolicy;
-typedef struct OstreeSysroot OstreeSysroot;
-typedef struct OstreeSysrootUpgrader OstreeSysrootUpgrader;
-typedef struct OstreeMutableTree OstreeMutableTree;
-typedef struct OstreeRepoFile OstreeRepoFile;
-typedef struct _OstreeContentWriter OstreeContentWriter;
-typedef struct OstreeRemote OstreeRemote;
+#define OSTREE_TYPE_CONTENT_WRITER (ostree_content_writer_get_type ())
+_OSTREE_PUBLIC G_DECLARE_FINAL_TYPE (OstreeContentWriter, ostree_content_writer, OSTREE, CONTENT_WRITER, GOutputStream)
+
+_OSTREE_PUBLIC
+char * ostree_content_writer_finish (OstreeContentWriter  *self,
+                                     GCancellable         *cancellable,
+                                     GError              **error);
 
 G_END_DECLS
