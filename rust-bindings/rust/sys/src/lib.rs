@@ -308,6 +308,20 @@ impl ::std::fmt::Debug for OstreeCommitSizesEntry {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct OstreeContentWriterClass {
+    pub parent_class: gio::GOutputStreamClass,
+}
+
+impl ::std::fmt::Debug for OstreeContentWriterClass {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.debug_struct(&format!("OstreeContentWriterClass @ {:?}", self as *const _))
+         .field("parent_class", &self.parent_class)
+         .finish()
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct OstreeDiffDirsOptions {
     pub owner_uid: c_int,
     pub owner_gid: c_int,
@@ -840,6 +854,16 @@ impl ::std::fmt::Debug for OstreeBootconfigParser {
 }
 
 #[repr(C)]
+pub struct OstreeContentWriter(c_void);
+
+impl ::std::fmt::Debug for OstreeContentWriter {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.debug_struct(&format!("OstreeContentWriter @ {:?}", self as *const _))
+         .finish()
+    }
+}
+
+#[repr(C)]
 pub struct OstreeDeployment(c_void);
 
 impl ::std::fmt::Debug for OstreeDeployment {
@@ -1188,6 +1212,12 @@ extern "C" {
     //pub fn ostree_checksum_input_stream_new(stream: *mut gio::GInputStream, checksum: *mut glib::GChecksum) -> /*Ignored*/*mut OstreeChecksumInputStream;
 
     //=========================================================================
+    // OstreeContentWriter
+    //=========================================================================
+    pub fn ostree_content_writer_get_type() -> GType;
+    pub fn ostree_content_writer_finish(self_: *mut OstreeContentWriter, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> *mut c_char;
+
+    //=========================================================================
     // OstreeDeployment
     //=========================================================================
     pub fn ostree_deployment_get_type() -> GType;
@@ -1445,6 +1475,12 @@ extern "C" {
     pub fn ostree_repo_write_metadata_stream_trusted(self_: *mut OstreeRepo, objtype: OstreeObjectType, checksum: *const c_char, object_input: *mut gio::GInputStream, length: u64, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_metadata_trusted(self_: *mut OstreeRepo, objtype: OstreeObjectType, checksum: *const c_char, variant: *mut glib::GVariant, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     pub fn ostree_repo_write_mtree(self_: *mut OstreeRepo, mtree: *mut OstreeMutableTree, out_file: *mut *mut gio::GFile, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2021_2", feature = "dox"))]
+    pub fn ostree_repo_write_regfile(self_: *mut OstreeRepo, expected_checksum: *const c_char, uid: u32, gid: u32, mode: u32, content_len: u64, xattrs: *mut glib::GVariant, error: *mut *mut glib::GError) -> *mut OstreeContentWriter;
+    #[cfg(any(feature = "v2021_2", feature = "dox"))]
+    pub fn ostree_repo_write_regfile_inline(self_: *mut OstreeRepo, expected_checksum: *const c_char, uid: u32, gid: u32, mode: u32, xattrs: *mut glib::GVariant, buf: *const u8, len: size_t, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> *mut c_char;
+    #[cfg(any(feature = "v2021_2", feature = "dox"))]
+    pub fn ostree_repo_write_symlink(self_: *mut OstreeRepo, expected_checksum: *const c_char, uid: u32, gid: u32, xattrs: *mut glib::GVariant, symlink_target: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> *mut c_char;
 
     //=========================================================================
     // OstreeRepoFile

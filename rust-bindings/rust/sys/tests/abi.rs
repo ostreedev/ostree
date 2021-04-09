@@ -244,6 +244,7 @@ const RUST_LAYOUTS: &[(&str, Layout)] = &[
     ("OstreeCollectionRef", Layout {size: size_of::<OstreeCollectionRef>(), alignment: align_of::<OstreeCollectionRef>()}),
     ("OstreeCollectionRefv", Layout {size: size_of::<OstreeCollectionRefv>(), alignment: align_of::<OstreeCollectionRefv>()}),
     ("OstreeCommitSizesEntry", Layout {size: size_of::<OstreeCommitSizesEntry>(), alignment: align_of::<OstreeCommitSizesEntry>()}),
+    ("OstreeContentWriterClass", Layout {size: size_of::<OstreeContentWriterClass>(), alignment: align_of::<OstreeContentWriterClass>()}),
     ("OstreeDeploymentUnlockedState", Layout {size: size_of::<OstreeDeploymentUnlockedState>(), alignment: align_of::<OstreeDeploymentUnlockedState>()}),
     ("OstreeDiffDirsOptions", Layout {size: size_of::<OstreeDiffDirsOptions>(), alignment: align_of::<OstreeDiffDirsOptions>()}),
     ("OstreeDiffFlags", Layout {size: size_of::<OstreeDiffFlags>(), alignment: align_of::<OstreeDiffFlags>()}),

@@ -9,6 +9,10 @@ pub use self::async_progress::AsyncProgressExt;
 mod bootconfig_parser;
 pub use self::bootconfig_parser::{BootconfigParser, BootconfigParserClass};
 
+mod content_writer;
+pub use self::content_writer::{ContentWriter, ContentWriterClass, NONE_CONTENT_WRITER};
+pub use self::content_writer::ContentWriterExt;
+
 mod deployment;
 pub use self::deployment::{Deployment, DeploymentClass};
 
@@ -179,6 +183,7 @@ pub use self::constants::TREE_GVARIANT_STRING;
 #[doc(hidden)]
 pub mod traits {
     pub use super::AsyncProgressExt;
+    pub use super::ContentWriterExt;
     pub use super::MutableTreeExt;
     pub use super::RepoFileExt;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]

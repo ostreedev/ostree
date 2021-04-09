@@ -26,6 +26,8 @@ use std::ptr;
 use AsyncProgress;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 use CollectionRef;
+#[cfg(any(feature = "v2021_2", feature = "dox"))]
+use ContentWriter;
 use GpgVerifyResult;
 use MutableTree;
 use ObjectType;
@@ -434,7 +436,7 @@ impl Repo {
         }
     }
 
-    pub fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, glib::Error> {
+    pub fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str) -> Result<Option<glib::Variant>, glib::Error> {
         unsafe {
             let mut out_variant = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -995,6 +997,34 @@ impl Repo {
             let mut error = ptr::null_mut();
             let _ = ostree_sys::ostree_repo_write_mtree(self.to_glib_none().0, mtree.as_ref().to_glib_none().0, &mut out_file, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(from_glib_full(out_file)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2021_2", feature = "dox"))]
+    pub fn write_regfile(&self, expected_checksum: Option<&str>, uid: u32, gid: u32, mode: u32, content_len: u64, xattrs: Option<&glib::Variant>) -> Result<ContentWriter, glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ostree_sys::ostree_repo_write_regfile(self.to_glib_none().0, expected_checksum.to_glib_none().0, uid, gid, mode, content_len, xattrs.to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2021_2", feature = "dox"))]
+    pub fn write_regfile_inline<P: IsA<gio::Cancellable>>(&self, expected_checksum: Option<&str>, uid: u32, gid: u32, mode: u32, xattrs: Option<&glib::Variant>, buf: &[u8], cancellable: Option<&P>) -> Result<GString, glib::Error> {
+        let len = buf.len() as usize;
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ostree_sys::ostree_repo_write_regfile_inline(self.to_glib_none().0, expected_checksum.to_glib_none().0, uid, gid, mode, xattrs.to_glib_none().0, buf.to_glib_none().0, len, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2021_2", feature = "dox"))]
+    pub fn write_symlink<P: IsA<gio::Cancellable>>(&self, expected_checksum: Option<&str>, uid: u32, gid: u32, xattrs: Option<&glib::Variant>, symlink_target: &str, cancellable: Option<&P>) -> Result<GString, glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ostree_sys::ostree_repo_write_symlink(self.to_glib_none().0, expected_checksum.to_glib_none().0, uid, gid, xattrs.to_glib_none().0, symlink_target.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 

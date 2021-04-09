@@ -54,7 +54,11 @@ Cargo commands.
 
 ### Generated code
 Most code is generated based on the gir files using the
-[gir](https://github.com/gtk-rs/gir) tool. These parts can be regenerated using
+[gir](https://github.com/gtk-rs/gir) tool. 
+
+You can update `OSTree-1.0.gir` by directly copying it from a local ostree build.
+
+Or, these parts can be regenerated using
 the included Makefile:
 
 ```ShellSession

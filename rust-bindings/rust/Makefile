@@ -1,6 +1,6 @@
 GIR_REPO := https://github.com/gtk-rs/gir.git
 GIR_VERSION := 2d1ffab19eb5f9a2f0d7a294dbf07517dab4d989
-OSTREE_REPO := https://github.com/fkrull/ostree.git
+OSTREE_REPO := ../ostree
 OSTREE_VERSION := patch-v2021.1
 RUSTDOC_STRIPPER_VERSION := 0.1.17
 
