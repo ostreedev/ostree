@@ -56,6 +56,7 @@ let inline_checksum = repo.write_regfile_inline(null, 0, 0, regfile_mode, null, 
 assertEquals(inline_checksum, "8aaa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873");
 let written = false;
 try {
+    // Changed an a to b from above to make the checksum not match
     repo.write_regfile_inline("8baa9dc13a0c5839fe4a277756798c609c53fac6fa2290314ecfef9041065873", 0, 0, regfile_mode, null, inline_content, null);
     written = true;
 } catch (e) {

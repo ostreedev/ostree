@@ -236,6 +236,18 @@ test_write_regfile_api (Fixture *fixture,
   g_assert_no_error (error);
   g_assert_cmpstr (checksum, ==, "4f600d252338f93279c51c964915cb2c26f0d09082164c54890d1a3c78cdeb1e");
   g_clear_pointer (&checksum, g_free);
+
+  // Test symlinks
+  g_clear_pointer (&xattrs, g_variant_unref);
+  g_variant_builder_init (&xattrs_builder, (GVariantType*)"a(ayay)");
+  g_variant_builder_add (&xattrs_builder, "(^ay^ay)", "security.selinux", "system_u:object_r:bin_t:s0");
+  g_clear_pointer (&xattrs, g_variant_unref);
+  xattrs = g_variant_ref_sink (g_variant_builder_end (&xattrs_builder));
+
+  g_clear_pointer (&checksum, g_free);
+  checksum = ostree_repo_write_symlink (repo, NULL, 0, 0, xattrs, "bash", NULL, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (checksum, ==, "23a2e97d21d960ac7a4e39a8721b1baff7b213e00e5e5641334f50506012fcff");
 }
 
 int

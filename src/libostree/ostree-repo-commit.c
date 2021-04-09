@@ -2814,6 +2814,47 @@ ostree_repo_write_regfile_inline (OstreeRepo       *self,
   return ostree_checksum_from_bytes (csum);
 }
 
+/**
+ * ostree_repo_write_symlink:
+ * @self: repo
+ * @expected_checksum: (allow-none): The expected checksum
+ * @uid: User id
+ * @gid: Group id
+ * @xattrs: (allow-none): Extended attributes, GVariant of type (ayay)
+ * @symlink_target: Target of the symbolic link
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Synchronously create a symlink object.
+ *
+ * Unlike `ostree_repo_write_content()`, if @expected_checksum is provided,
+ * this function will not check for the presence of the object beforehand.
+ *
+ * Returns: (transfer full): Checksum (as a hex string) of the committed file
+ * Since: 2021.2
+ */
+char *      
+ostree_repo_write_symlink (OstreeRepo       *self,
+                           const char       *expected_checksum,
+                           guint32           uid,
+                           guint32           gid,
+                           GVariant         *xattrs,
+                           const char       *symlink_target,
+                           GCancellable     *cancellable,
+                           GError          **error)
+{
+  g_assert (symlink_target != NULL);
+
+  g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (S_IFLNK | 0777, uid, gid);
+  g_file_info_set_attribute_byte_string (finfo, "standard::symlink-target", symlink_target);
+  g_autofree guint8* csum = NULL;
+  if (!write_content_object (self, expected_checksum,
+                             NULL, finfo, xattrs, &csum,
+                             cancellable, error))
+    return NULL;
+  return ostree_checksum_from_bytes (csum);
+}
+
 typedef struct {
   OstreeRepo *repo;
   char *expected_checksum;
