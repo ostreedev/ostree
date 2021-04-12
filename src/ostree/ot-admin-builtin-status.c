@@ -31,7 +31,10 @@
 
 #include <glib/gi18n.h>
 
+static gboolean opt_verify;
+
 static GOptionEntry options[] = {
+  { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify, "Print the commit verification status", NULL },
   { NULL }
 };
 
@@ -86,6 +89,12 @@ deployment_print_status (OstreeSysroot    *sysroot,
   g_autoptr(GVariant) commit_metadata = NULL;
   if (commit)
     commit_metadata = g_variant_get_child_value (commit, 0);
+  g_autoptr(GVariant) commit_detached_metadata = NULL;
+  if (commit)
+    {
+      if (!ostree_repo_read_commit_detached_metadata (repo, ref, &commit_detached_metadata, cancellable, error))
+        return FALSE;
+    }
 
   const char *version = NULL;
   const char *source_title = NULL;
@@ -139,7 +148,7 @@ deployment_print_status (OstreeSysroot    *sysroot,
     }
 
 #ifndef OSTREE_DISABLE_GPGME
-  if (deployment_get_gpg_verify (deployment, repo))
+  if (!opt_verify && deployment_get_gpg_verify (deployment, repo))
     {
       g_autoptr(GString) output_buffer = g_string_sized_new (256);
       /* Print any digital signatures on this commit. */
@@ -172,6 +181,31 @@ deployment_print_status (OstreeSysroot    *sysroot,
       g_print ("%s", output_buffer->str);
     }
 #endif /* OSTREE_DISABLE_GPGME */
+  if (opt_verify)
+    {
+      if (!commit)
+        return glnx_throw (error, "Cannot verify, failed to load commit");
+
+      if (origin == NULL)
+        return glnx_throw (error, "Cannot verify deployment with no origin");
+
+      g_autofree char *refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
+      if (refspec == NULL)
+        return glnx_throw (error, "No origin/refspec, cannot verify");
+      g_autofree char *remote = NULL;
+      if (!ostree_parse_refspec (refspec, &remote, NULL, NULL))
+        return FALSE;
+      if (remote == NULL)
+        return glnx_throw (error, "Cannot verify deployment without remote");
+
+      g_autoptr(GBytes) commit_data = g_variant_get_data_as_bytes (commit);
+      g_autoptr(GBytes) commit_detached_metadata_bytes = 
+        commit_detached_metadata ? g_variant_get_data_as_bytes (commit_detached_metadata) : NULL;
+      g_autofree char *verify_text = NULL;
+      if (!ostree_repo_signature_verify_commit_data (repo, remote, commit_data, commit_detached_metadata_bytes, 0, &verify_text, error))
+        return FALSE;
+      g_print ("%s\n", verify_text);
+    }
 
   return TRUE;
 }

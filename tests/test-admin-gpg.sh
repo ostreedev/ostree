@@ -148,4 +148,9 @@ ${CMD_PREFIX} ostree admin status > status.txt
 test -f status.txt
 assert_file_has_content status.txt "GPG: Signature made"
 assert_not_file_has_content status.txt "GPG: Can't check signature: public key not found"
+rm -f status.txt
+
+${CMD_PREFIX} ostree admin status --verify > status.txt
+assert_file_has_content status.txt "GPG: Signature made"
+rm -f status.txt
 echo 'ok gpg signature'
