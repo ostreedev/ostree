@@ -166,6 +166,12 @@ ostree_commit_sizes_entry_get_type
 </SECTION>
 
 <SECTION>
+<FILE>ostree-content-writer</FILE>
+ostree_content_writer_get_type
+ostree_content_writer_finish
+</SECTION>
+
+<SECTION>
 <FILE>ostree-deployment</FILE>
 OstreeDeployment
 ostree_deployment_hash
@@ -355,6 +361,7 @@ ostree_repo_write_metadata
 ostree_repo_write_metadata_async
 ostree_repo_write_metadata_finish
 ostree_repo_write_content
+ostree_repo_write_regfile
 ostree_repo_write_regfile_inline
 ostree_repo_write_symlink
 ostree_repo_write_metadata_trusted

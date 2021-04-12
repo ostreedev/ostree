@@ -66,6 +66,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-checksum-input-stream.h \
 	src/libostree/ostree-chain-input-stream.c \
 	src/libostree/ostree-chain-input-stream.h \
+	src/libostree/ostree-content-writer.c \
+	src/libostree/ostree-content-writer.h \
 	src/libostree/ostree-lzma-common.c \
 	src/libostree/ostree-lzma-common.h \
 	src/libostree/ostree-lzma-compressor.c \

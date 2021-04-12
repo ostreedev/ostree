@@ -241,7 +241,6 @@ test_write_regfile_api (Fixture *fixture,
   g_clear_pointer (&xattrs, g_variant_unref);
   g_variant_builder_init (&xattrs_builder, (GVariantType*)"a(ayay)");
   g_variant_builder_add (&xattrs_builder, "(^ay^ay)", "security.selinux", "system_u:object_r:bin_t:s0");
-  g_clear_pointer (&xattrs, g_variant_unref);
   xattrs = g_variant_ref_sink (g_variant_builder_end (&xattrs_builder));
 
   g_clear_pointer (&checksum, g_free);

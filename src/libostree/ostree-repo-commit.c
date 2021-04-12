@@ -2806,6 +2806,7 @@ ostree_repo_write_regfile_inline (OstreeRepo       *self,
 {
   g_autoptr(GInputStream) memin = g_memory_input_stream_new_from_data (buf, len, NULL);
   g_autoptr(GFileInfo) finfo = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
+  g_file_info_set_size (finfo, len);
   g_autofree guint8* csum = NULL;
   if (!write_content_object (self, expected_checksum,
                              memin, finfo, xattrs, &csum,
@@ -2853,6 +2854,39 @@ ostree_repo_write_symlink (OstreeRepo       *self,
                              cancellable, error))
     return NULL;
   return ostree_checksum_from_bytes (csum);
+}
+
+/**
+ * ostree_repo_write_regfile:
+ * @self: Repo,
+ * @expected_checksum: (allow-none): Expected checksum (SHA-256 hex string)
+ * @uid: user id
+ * @gid: group id
+ * @mode: Unix file mode
+ * @content_len: Expected content length
+ * @xattrs: (allow-none): Extended attributes (GVariant type `(ayay)`)
+ * @error: Error
+ * 
+ * Create an `OstreeContentWriter` that allows streaming output into
+ * the repository.
+ *
+ * Returns: (transfer full): A new writer, or %NULL on error
+ * Since: 2021.2
+ */
+OstreeContentWriter *    
+ostree_repo_write_regfile (OstreeRepo       *self,
+                           const char       *expected_checksum,
+                           guint32           uid,
+                           guint32           gid,
+                           guint32           mode,
+                           guint64           content_len,
+                           GVariant         *xattrs,
+                           GError          **error)
+{
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE)
+    return glnx_null_throw (error, "Cannot currently use ostree_repo_write_regfile() on an archive mode repository");
+
+  return _ostree_content_writer_new (self, expected_checksum, uid, gid, mode, content_len, xattrs, error);
 }
 
 typedef struct {
