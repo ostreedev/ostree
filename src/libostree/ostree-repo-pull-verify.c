@@ -270,6 +270,7 @@ _sign_verify_for_remote (GPtrArray *verifiers,
 
   g_assert (out_success_message == NULL || *out_success_message == NULL);
 
+  g_assert (verifiers);
   g_assert_cmpuint (verifiers->len, >=, 1);
   for (guint i = 0; i < verifiers->len; i++)
     {
@@ -345,6 +346,120 @@ _process_gpg_verify_result (OtPullData            *pull_data,
   return TRUE;
 }
 #endif /* OSTREE_DISABLE_GPGME */
+
+static gboolean
+validate_metadata_size (const char *prefix, GBytes *buf, GError **error)
+{
+  gsize len = g_bytes_get_size (buf);
+  if (len > OSTREE_MAX_METADATA_SIZE)
+    return glnx_throw (error, "%s is %" G_GUINT64_FORMAT " bytes, exceeding maximum %" G_GUINT64_FORMAT, prefix, (guint64)len, (guint64)OSTREE_MAX_METADATA_SIZE);
+  return TRUE;
+}
+
+/**
+ * ostree_repo_signature_verify_commit_data:
+ * @self: Repo
+ * @remote_name: Name of remote
+ * @commit_data: Commit object data (GVariant)
+ * @commit_metadata: Commit metadata (GVariant `a{sv}`), must contain at least one valid signature
+ * @flags: Optionally disable GPG or signapi
+ * @out_results: (nullable) (out) (transfer full): Textual description of results
+ * @error: Error
+ *
+ * Validate the commit data using the commit metadata which must
+ * contain at least one valid signature.  If GPG and signapi are
+ * both enabled, then both must find at least one valid signature.
+ */
+gboolean 
+ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
+                                          const char    *remote_name,
+                                          GBytes        *commit_data,
+                                          GBytes        *commit_metadata,
+                                          OstreeRepoVerifyFlags flags,
+                                          char         **out_results,
+                                          GError       **error)
+{
+  g_assert (self);
+  g_assert (remote_name);
+  g_assert (commit_data);
+
+  gboolean gpg = !(flags & OSTREE_REPO_VERIFY_FLAGS_NO_GPG);
+  gboolean signapi = !(flags & OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI);
+  // Must ask for at least one type of verification
+  if (!(gpg || signapi))
+    return glnx_throw (error, "No commit verification types enabled via API");
+
+  if (!validate_metadata_size ("Commit", commit_data, error))
+    return FALSE;
+  /* Nothing to check if detached metadata is absent */
+  if (commit_metadata == NULL)
+    return glnx_throw (error, "Can't verify commit without detached metadata");
+  if (!validate_metadata_size ("Commit metadata", commit_metadata, error))
+    return FALSE;
+  g_autoptr(GVariant) commit_metadata_v = g_variant_new_from_bytes (G_VARIANT_TYPE_VARDICT, commit_metadata, FALSE);
+
+  g_autoptr(GString) results_buf = g_string_new ("");
+  gboolean verified = FALSE;
+
+  if (gpg)
+    {
+      if (!ostree_repo_remote_get_gpg_verify (self, remote_name,
+                                              &gpg, error))
+        return FALSE;
+    }
+
+  /* TODO - we could cache this in the repo */
+  g_autoptr(GPtrArray) signapi_verifiers = NULL;
+  if (signapi)
+    {
+      if (!_signapi_init_for_remote (self, remote_name, &signapi_verifiers, NULL, error))
+        return FALSE;
+    }
+
+  if (!(gpg || signapi_verifiers))
+    return glnx_throw (error, "Cannot verify commit for remote %s; GPG verification disabled, and no signapi verifiers configured", remote_name);
+
+#ifndef OSTREE_DISABLE_GPGME
+  if (gpg)
+    {
+      g_autoptr(OstreeGpgVerifyResult) result =
+        _ostree_repo_gpg_verify_with_metadata (self, commit_data,
+                                               commit_metadata_v,
+                                               remote_name,
+                                               NULL, NULL, NULL, error);
+      if (!result)
+        return FALSE;
+      if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+        return FALSE;
+
+      const guint n_signatures = ostree_gpg_verify_result_count_all (result);
+      g_assert_cmpuint (n_signatures, >, 0);
+      for (guint jj = 0; jj < n_signatures; jj++)
+        {
+          ostree_gpg_verify_result_describe (result, jj, results_buf, "GPG: ",
+                                             OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+        }
+      verified = TRUE;
+    }
+#endif /* OSTREE_DISABLE_GPGME */
+
+  if (signapi_verifiers)
+    {
+      g_autofree char *success_message = NULL;
+      if (!_sign_verify_for_remote (signapi_verifiers, commit_data, commit_metadata_v, &success_message, error))
+        return glnx_prefix_error (error, "Can't verify commit");
+      if (verified)
+        g_string_append_c (results_buf, '\n');
+      g_string_append (results_buf, success_message);
+      verified = TRUE;
+    }
+
+  /* Must be true since we did g_assert (gpg || signapi) */
+  g_assert (verified);
+  if (out_results)
+    *out_results = g_string_free (g_steal_pointer (&results_buf), FALSE);
+  return TRUE;
+}
 
 gboolean
 _verify_unwritten_commit (OtPullData                 *pull_data,

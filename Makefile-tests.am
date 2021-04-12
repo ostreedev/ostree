@@ -391,6 +391,10 @@ tests_test_rfc2616_dates_SOURCES = \
 tests_test_rfc2616_dates_CFLAGS = $(TESTS_CFLAGS)
 tests_test_rfc2616_dates_LDADD = $(TESTS_LDADD)
 
+noinst_PROGRAMS += tests/test-commit-sign-sh-ext
+tests_test_commit_sign_sh_ext_CFLAGS = $(TESTS_CFLAGS)
+tests_test_commit_sign_sh_ext_LDADD = $(TESTS_LDADD)
+
 if USE_GPGME
 tests_test_gpg_verify_result_SOURCES = \
 	src/libostree/ostree-gpg-verify-result-private.h \

@@ -28,7 +28,7 @@ if ! has_gpgme; then
     exit 0
 fi
 
-echo "1..6"
+echo "1..7"
 
 keyid="472CDAFA"
 oldpwd=`pwd`
@@ -85,8 +85,14 @@ ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/g
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo show --gpg-verify-remote=origin main > show.txt
 assert_file_has_content_literal show.txt 'Found 1 signature'
-rm repo -rf
 echo "ok pull verify"
+
+# Run tests written in C
+${OSTREE_UNINSTALLED}/tests/test-commit-sign-sh-ext
+echo "ok extra C tests"
+
+# Clean things up and reinit
+rm repo -rf
 
 # A test with corrupted detached signature
 cd ${test_tmpdir}

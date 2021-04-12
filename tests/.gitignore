@@ -24,3 +24,4 @@ test-repo-finder-mount
 test-rfc2616-dates
 test-rollsum-cli
 test-kargs
+test-commit-sign-sh-ext

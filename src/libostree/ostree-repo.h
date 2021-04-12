@@ -1538,6 +1538,29 @@ OstreeGpgVerifyResult * ostree_repo_verify_summary (OstreeRepo    *self,
                                                     GCancellable  *cancellable,
                                                     GError       **error);
 
+/**
+ * OstreeRepoVerifyFlags:
+ * @OSTREE_REPO_VERIFY_FLAGS_NONE: No flags
+ * @OSTREE_REPO_VERIFY_FLAGS_NO_GPG: Skip GPG verification
+ * @OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI: Skip all other signature verification methods
+ * 
+ * Since: 2021.4
+ */
+typedef enum {
+  OSTREE_REPO_VERIFY_FLAGS_NONE = 0,
+  OSTREE_REPO_VERIFY_FLAGS_NO_GPG = (1 << 0),
+  OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI = (1 << 1),
+} OstreeRepoVerifyFlags;
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
+                                                   const char    *remote_name,
+                                                   GBytes        *commit_data,
+                                                   GBytes        *commit_metadata,
+                                                   OstreeRepoVerifyFlags flags,
+                                                   char         **out_results,
+                                                   GError       **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GVariant       *additional_metadata,
