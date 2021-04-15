@@ -1,0 +1,6 @@
+#!/bin/bash
+# Run this script after e.g. `sudo make install` in a development container/host
+# to run tests which operate on the installed binaries.
+set -xeuo pipefail
+dn=$(dirname $0)
+(cd ${dn}/../tests/inst && cargo run --release)
