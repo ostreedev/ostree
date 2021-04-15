@@ -444,7 +444,7 @@ pop_repo_lock (OstreeRepo  *self,
   return TRUE;
 }
 
-/*
+/**
  * ostree_repo_lock_push:
  * @self: a #OstreeRepo
  * @lock_type: the type of lock to acquire
@@ -470,9 +470,10 @@ pop_repo_lock (OstreeRepo  *self,
  * %TRUE is returned.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
+ * Since: 2021.2
  */
 gboolean
-_ostree_repo_lock_push (OstreeRepo          *self,
+ostree_repo_lock_push (OstreeRepo          *self,
                         OstreeRepoLockType   lock_type,
                         GCancellable        *cancellable,
                         GError             **error)
@@ -538,8 +539,8 @@ _ostree_repo_lock_push (OstreeRepo          *self,
     }
 }
 
-/*
- * _ostree_repo_lock_pop:
+/**
+ * ostree_repo_lock_pop:
  * @self: a #OstreeRepo
  * @cancellable: a #GCancellable
  * @error: a #GError
@@ -560,11 +561,12 @@ _ostree_repo_lock_push (OstreeRepo          *self,
  * %TRUE is returned.
  *
  * Returns: %TRUE on success, otherwise %FALSE with @error set
+ * Since: 2021.2
  */
 gboolean
-_ostree_repo_lock_pop (OstreeRepo    *self,
-                       GCancellable  *cancellable,
-                       GError       **error)
+ostree_repo_lock_pop (OstreeRepo    *self,
+                      GCancellable  *cancellable,
+                      GError       **error)
 {
   g_return_val_if_fail (self != NULL, FALSE);
   g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
@@ -628,7 +630,7 @@ _ostree_repo_lock_pop (OstreeRepo    *self,
 }
 
 /*
- * _ostree_repo_auto_lock_push: (skip)
+ * ostree_repo_auto_lock_push: (skip)
  * @self: a #OstreeRepo
  * @lock_type: the type of lock to acquire
  * @cancellable: a #GCancellable
@@ -648,28 +650,31 @@ _ostree_repo_lock_pop (OstreeRepo    *self,
  * ]|
  *
  * Returns: @self on success, otherwise %NULL with @error set
+ * Since: 2021.2
  */
 OstreeRepoAutoLock *
-_ostree_repo_auto_lock_push (OstreeRepo          *self,
-                             OstreeRepoLockType   lock_type,
-                             GCancellable        *cancellable,
-                             GError             **error)
+ostree_repo_auto_lock_push (OstreeRepo          *self,
+                            OstreeRepoLockType   lock_type,
+                            GCancellable        *cancellable,
+                            GError             **error)
 {
-  if (!_ostree_repo_lock_push (self, lock_type, cancellable, error))
+  if (!ostree_repo_lock_push (self, lock_type, cancellable, error))
     return NULL;
   return (OstreeRepoAutoLock *)self;
 }
 
 /*
- * _ostree_repo_auto_lock_cleanup: (skip)
+ * ostree_repo_auto_lock_cleanup: (skip)
  * @lock: a #OstreeRepoAutoLock
  *
  * A cleanup handler for use with ostree_repo_auto_lock_push(). If @lock is
  * not %NULL, ostree_repo_lock_pop() will be called on it. If
  * ostree_repo_lock_pop() fails, a critical warning will be emitted.
+ *
+ * Since: 2021.2
  */
 void
-_ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock)
+ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock)
 {
   OstreeRepo *repo = lock;
   if (repo)
@@ -677,7 +682,7 @@ _ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock)
       g_autoptr(GError) error = NULL;
       int errsv = errno;
 
-      if (!_ostree_repo_lock_pop (repo, NULL, &error))
+      if (!ostree_repo_lock_pop (repo, NULL, &error))
         g_critical ("Cleanup repo lock failed: %s", error->message);
 
       errno = errsv;
@@ -5791,8 +5796,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   g_autoptr(OstreeRepoAutoLock) lock = NULL;
   gboolean no_deltas_in_summary = FALSE;
 
-  lock = _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
-                                      cancellable, error);
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
+                                     cancellable, error);
   if (!lock)
     return FALSE;
 

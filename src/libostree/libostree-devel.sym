@@ -22,6 +22,14 @@
    - uncomment the include in Makefile-libostree.am
 */
 
+LIBOSTREE_2021.3 {
+global:
+  ostree_repo_auto_lock_push;
+  ostree_repo_auto_lock_cleanup;
+  ostree_repo_lock_push;
+  ostree_repo_lock_pop;
+} LIBOSTREE_2021.2;
+
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION

@@ -1498,6 +1498,48 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+
+/**
+ * OstreeRepoLockType:
+ * @OSTREE_REPO_LOCK_SHARED: A "read only" lock; multiple readers are allowed.
+ * @OSTREE_REPO_LOCK_EXCLUSIVE: A writable lock at most one writer can be active, and zero readers.
+ *
+ * Flags controlling repository locking.
+ *
+ * Since: 2021.2
+ */
+typedef enum {
+  OSTREE_REPO_LOCK_SHARED,
+  OSTREE_REPO_LOCK_EXCLUSIVE
+} OstreeRepoLockType;
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_lock_push (OstreeRepo          *self,
+                                     OstreeRepoLockType   lock_type,
+                                     GCancellable        *cancellable,
+                                     GError             **error);
+_OSTREE_PUBLIC
+gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
+                                    GCancellable  *cancellable,
+                                    GError       **error);
+
+/* C convenience API only */
+#ifndef __GI_SCANNER__
+typedef OstreeRepo OstreeRepoAutoLock;
+
+_OSTREE_PUBLIC
+OstreeRepoAutoLock * ostree_repo_auto_lock_push (OstreeRepo          *self,
+                                                 OstreeRepoLockType   lock_type,
+                                                 GCancellable        *cancellable,
+                                                 GError             **error);
+
+_OSTREE_PUBLIC
+void ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, ostree_repo_auto_lock_cleanup)
+
+#endif
+
+
 /**
  * OSTREE_REPO_METADATA_REF:
  *

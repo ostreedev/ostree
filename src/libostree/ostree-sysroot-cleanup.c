@@ -505,7 +505,7 @@ ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
    * the prune.
    */
   g_autoptr(OstreeRepoAutoLock) lock =
-    _ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+    ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
   if (!lock)
     return FALSE;
 

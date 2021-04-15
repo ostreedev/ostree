@@ -249,6 +249,29 @@ test_write_regfile_api (Fixture *fixture,
   g_assert_cmpstr (checksum, ==, "23a2e97d21d960ac7a4e39a8721b1baff7b213e00e5e5641334f50506012fcff");
 }
 
+/* Just a sanity check of the C autolocking API */
+static void
+test_repo_autolock (Fixture *fixture,
+                        gconstpointer test_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(OstreeRepo) repo = ostree_repo_create_at (fixture->tmpdir.fd, ".",
+                                                      OSTREE_REPO_MODE_ARCHIVE,
+                                                      NULL,
+                                                      NULL, &error);
+  g_assert_no_error (error);
+
+  {
+    g_autoptr(OstreeRepoAutoLock)  lock = ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+    g_assert_no_error (error);
+  }
+
+  g_autoptr(OstreeRepoAutoLock)  lock1 = ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+
+  g_autoptr(OstreeRepoAutoLock) lock2 = ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+}
+
 int
 main (int    argc,
       char **argv)
@@ -266,6 +289,8 @@ main (int    argc,
               test_repo_get_min_free_space, teardown);
   g_test_add ("/repo/write_regfile_api", Fixture, NULL, setup,
               test_write_regfile_api, teardown);
+  g_test_add ("/repo/autolock", Fixture, NULL, setup,
+              test_repo_autolock, teardown);
 
   return g_test_run ();
 }

@@ -319,6 +319,10 @@ ostree_repo_get_min_free_space_bytes
 ostree_repo_get_config
 ostree_repo_get_dfd
 ostree_repo_get_default_repo_finders
+ostree_repo_lock_pop
+ostree_repo_lock_push
+ostree_repo_auto_lock_push
+ostree_repo_auto_lock_cleanup
 ostree_repo_hash
 ostree_repo_equal
 ostree_repo_copy_config
