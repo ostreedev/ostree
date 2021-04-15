@@ -1,10 +1,10 @@
 AC_PREREQ([2.63])
 dnl To perform a release, follow the instructions in `docs/CONTRIBUTING.md`.
 m4_define([year_version], [2021])
-m4_define([release_version], [2])
+m4_define([release_version], [3])
 m4_define([package_version], [year_version.release_version])
 AC_INIT([libostree], [package_version], [walters@verbum.org])
-is_release_build=yes
+is_release_build=no
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
