@@ -6,10 +6,14 @@ use ostree::prelude::*;
 
 use crate::test::*;
 
+fn skip_non_ostree_host() -> bool {
+    !std::path::Path::new("/run/ostree-booted").exists()
+}
+
 #[itest]
 fn test_sysroot_ro() -> Result<()> {
     // TODO add a skipped identifier
-    if !std::path::Path::new("/run/ostree-booted").exists() {
+    if skip_non_ostree_host() {
         return Ok(());
     }
     let cancellable = Some(gio::Cancellable::new());
@@ -34,6 +38,9 @@ fn test_sysroot_ro() -> Result<()> {
 
 #[itest]
 fn test_immutable_bit() -> Result<()> {
+    if skip_non_ostree_host() {
+        return Ok(());
+    }
     // https://bugzilla.redhat.com/show_bug.cgi?id=1867601
     cmd_has_output(sh_inline::bash_command!("lsattr -d /").unwrap(), "-i-")?;
     Ok(())
