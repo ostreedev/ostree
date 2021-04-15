@@ -431,8 +431,11 @@ if ENABLE_INSTALLED_TESTS_EXCLUSIVE
 dist_installed_test_scripts = $(_installed_or_uninstalled_test_scripts)
 installed_test_programs = $(_installed_or_uninstalled_test_programs)
 check-local:
+	echo "NOTE: Run the Rust installed tests (uninstalled) with ./tests/run-installed"
 	echo "NOTE: Exclusive installed tests are enabled; to run them, make install, then: gnome-desktop-testing-runner -p 0 libostree/"
 else
+check-local:
+	echo "NOTE: Run the Rust installed tests (uninstalled) with ./tests/run-installed"
 dist_test_scripts += $(_installed_or_uninstalled_test_scripts)
 test_programs += $(_installed_or_uninstalled_test_programs)
 endif
