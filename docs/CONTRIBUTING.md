@@ -182,4 +182,4 @@ For a detailed walk-through on building, modifying, and testing, see this [tutor
 
 Releases can be performed by [creating a new release ticket][new-release-ticket] and following the steps in the checklist there.
 
-[new-release-ticket]: https://github.com/ostreedev/ostree/new?labels=kind/release&template=release-checklist.md
+[new-release-ticket]: https://github.com/ostreedev/ostree/issues/new?labels=kind/release&template=release-checklist.md
