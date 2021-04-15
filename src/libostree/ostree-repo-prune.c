@@ -204,7 +204,7 @@ ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
                                  GError           **error)
 {
   g_autoptr(OstreeRepoAutoLock) lock =
-    _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+    ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
   if (!lock)
     return FALSE;
 
@@ -325,7 +325,7 @@ ostree_repo_traverse_reachable_refs (OstreeRepo *self,
                                      GError      **error)
 {
   g_autoptr(OstreeRepoAutoLock) lock =
-    _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED, cancellable, error);
+    ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED, cancellable, error);
   if (!lock)
     return FALSE;
 
@@ -400,7 +400,7 @@ ostree_repo_prune (OstreeRepo        *self,
                    GError           **error)
 {
   g_autoptr(OstreeRepoAutoLock) lock =
-    _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+    ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
   if (!lock)
     return FALSE;
 
@@ -486,7 +486,7 @@ ostree_repo_prune_from_reachable (OstreeRepo        *self,
                                   GError           **error)
 {
   g_autoptr(OstreeRepoAutoLock) lock =
-    _ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+    ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
   if (!lock)
     return FALSE;
 

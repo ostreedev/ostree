@@ -1684,8 +1684,8 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   memset (&self->txn.stats, 0, sizeof (OstreeRepoTransactionStats));
 
-  self->txn_locked = _ostree_repo_lock_push (self, OSTREE_REPO_LOCK_SHARED,
-                                             cancellable, error);
+  self->txn_locked = ostree_repo_lock_push (self, OSTREE_REPO_LOCK_SHARED,
+                                            cancellable, error);
   if (!self->txn_locked)
     return FALSE;
 
@@ -2341,7 +2341,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
 
   if (self->txn_locked)
     {
-      if (!_ostree_repo_lock_pop (self, cancellable, error))
+      if (!ostree_repo_lock_pop (self, cancellable, error))
         return FALSE;
       self->txn_locked = FALSE;
     }
@@ -2399,7 +2399,7 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 
   if (self->txn_locked)
     {
-      if (!_ostree_repo_lock_pop (self, cancellable, error))
+      if (!ostree_repo_lock_pop (self, cancellable, error))
         return FALSE;
       self->txn_locked = FALSE;
     }
