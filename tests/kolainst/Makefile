@@ -12,6 +12,6 @@ all:
 install:
 	install -D -m 0644 -t $(KOLA_TESTDIR) $(LIBSCRIPTS)
 	for x in $(TESTDIRS); do rsync -rlv ./$${x} $(KOLA_TESTDIR)/; done
-	install -D -m 0755 -t $(KOLA_TESTDIR)/nondestructive-rs ../inst/target/release/ostree-test
+	install -D -m 0755 -t $(KOLA_TESTDIR)/nondestructive-rs ../../target/release/ostree-test
 	install -D -m 0644 destructive-stamp.ign $(KOLA_TESTDIR)/destructive-rs/config.ign
 	./install-wrappers.sh destructive-list.txt $(KOLA_TESTDIR)/destructive-rs
