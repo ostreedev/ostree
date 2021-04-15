@@ -644,6 +644,15 @@ global:
   ostree_sysroot_require_booted_deployment;
 } LIBOSTREE_2020.8;
 
+LIBOSTREE_2021.2 {
+global:
+  ostree_repo_write_regfile_inline;
+  ostree_repo_write_symlink;
+  ostree_repo_write_regfile;
+  ostree_content_writer_get_type;
+  ostree_content_writer_finish;
+} LIBOSTREE_2021.1;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
