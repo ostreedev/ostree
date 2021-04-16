@@ -104,6 +104,13 @@ typedef struct {
   fsblkcnt_t max_blocks;
 } OstreeRepoTxn;
 
+typedef struct {
+  GMutex mutex;  /* All other members should only be accessed with this held */
+  int fd;  /* The open file or flock file descriptor */
+  guint shared;  /* Number of shared locks curently held */
+  guint exclusive;  /* Number of exclusive locks currently held */
+} OstreeRepoLock;
+
 typedef enum {
   _OSTREE_FEATURE_NO,
   _OSTREE_FEATURE_MAYBE,
@@ -158,6 +165,8 @@ struct OstreeRepo {
   GFile *sysroot_dir;
   GWeakRef sysroot; /* Weak to avoid a circular ref; see also `is_system` */
   char *remotes_config_dir;
+
+  OstreeRepoLock lock;
 
   GMutex txn_lock;
   OstreeRepoTxn txn;
