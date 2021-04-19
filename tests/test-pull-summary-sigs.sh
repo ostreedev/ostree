@@ -23,6 +23,9 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+# Ensure repo caching is in use.
+unset OSTREE_SKIP_CACHE
+
 COMMIT_SIGN=""
 if has_gpgme; then
     COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"

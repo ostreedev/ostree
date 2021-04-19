@@ -3291,7 +3291,7 @@ ostree_repo_open (OstreeRepo    *self,
   if (!glnx_opendirat (self->repo_dir_fd, "tmp", TRUE, &self->tmp_dir_fd, error))
     return FALSE;
 
-  if (self->writable)
+  if (self->writable && getenv ("OSTREE_SKIP_CACHE") == NULL)
     {
       if (!glnx_shutil_mkdir_p_at (self->tmp_dir_fd, _OSTREE_CACHE_DIR, DEFAULT_DIRECTORY_MODE, cancellable, error))
         return FALSE;

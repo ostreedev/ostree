@@ -27,6 +27,9 @@ set -euo pipefail
 
 echo "1..14"
 
+# Ensure repo caching is in use.
+unset OSTREE_SKIP_CACHE
+
 # This is explicitly opt in for testing
 export OSTREE_DUMMY_SIGN_ENABLED=1
 
