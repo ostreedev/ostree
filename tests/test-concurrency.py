@@ -40,10 +40,14 @@ def mktree(dname, serial=0):
             f.write('{} {} {}\n'.format(dname, serial, v))
 
 subprocess.check_call(['ostree', '--repo=repo', 'init', '--mode=bare'])
-# like the bit in libtest, but let's do it unconditionally since it's simpler,
-# and we don't need xattr coverage for this
 with open('repo/config', 'a') as f:
+    # like the bit in libtest, but let's do it unconditionally since
+    # it's simpler, and we don't need xattr coverage for this
     f.write('disable-xattrs=true\n')
+
+    # Make any locking errors fail quickly instead of blocking the test
+    # for 30 seconds.
+    f.write('lock-timeout-secs=5\n')
 
 def commit(v):
     tdir='tree{}'.format(v)
