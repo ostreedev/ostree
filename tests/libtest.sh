@@ -86,6 +86,11 @@ unset TAR_OPTIONS
 # easily clean up.
 export OSTREE_SYSROOT_DEBUG=mutable-deployments
 
+# By default, don't use a cache directory since it makes the tests racy.
+# Tests that are explicitly testing the cache operation should unset
+# this.
+export OSTREE_SKIP_CACHE=1
+
 export TEST_GPG_KEYID_1="7FCA23D8472CDAFA"
 export TEST_GPG_KEYFPR_1="5E65DE75AB1C501862D476347FCA23D8472CDAFA"
 export TEST_GPG_KEYID_2="D8228CFECA950D41"

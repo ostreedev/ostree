@@ -31,6 +31,9 @@ if ! has_gpgme; then
     exit 0
 fi
 
+# Ensure repo caching is in use.
+unset OSTREE_SKIP_CACHE
+
 COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 
 echo "1..1"
