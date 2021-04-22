@@ -51,6 +51,29 @@ setup (Fixture       *fixture,
   g_test_message ("Using temporary directory: %s", fixture->tmpdir.path);
 }
 
+/* Common setup for locking tests. Create an archive repo in the tmpdir and
+ * set the locking timeout to 0 so lock failures don't block.
+ */
+static void
+lock_setup (Fixture       *fixture,
+            gconstpointer  test_data)
+{
+  setup (fixture, test_data);
+
+  g_autoptr(GError) error = NULL;
+  g_autoptr(OstreeRepo) repo = ostree_repo_create_at (fixture->tmpdir.fd, ".",
+                                                      OSTREE_REPO_MODE_ARCHIVE,
+                                                      NULL,
+                                                      NULL, &error);
+  g_assert_no_error (error);
+
+  /* Set the lock timeout to 0 so failures don't block the test */
+  g_autoptr(GKeyFile) config = ostree_repo_copy_config (repo);
+  g_key_file_set_integer (config, "core", "lock-timeout-secs", 0);
+  ostree_repo_write_config (repo, config, &error);
+  g_assert_no_error (error);
+}
+
 static void
 teardown (Fixture       *fixture,
           gconstpointer  test_data)
@@ -273,6 +296,277 @@ test_repo_autolock (Fixture *fixture,
   g_assert_no_error (error);
 }
 
+/* Locking from single thread with a single OstreeRepo */
+static void
+test_repo_lock_single (Fixture       *fixture,
+                       gconstpointer  test_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(OstreeRepo) repo = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                    NULL, &error);
+  g_assert_no_error (error);
+
+  /* Single thread on a single repo can freely recurse in any state  */
+  ostree_repo_lock_push (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_push (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_pop (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_pop (repo, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_pop (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+}
+
+/* Unlocking without having ever locked */
+static void
+test_repo_lock_unlock_never_locked (Fixture       *fixture,
+                                    gconstpointer  test_data)
+{
+  if (g_test_subprocess ())
+    {
+      g_autoptr(GError) error = NULL;
+      g_autoptr(OstreeRepo) repo = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                        NULL, &error);
+      g_assert_no_error (error);
+
+      ostree_repo_lock_pop (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+
+      return;
+    }
+
+  g_test_trap_subprocess (NULL, 0, 0);
+  g_test_trap_assert_failed ();
+  g_test_trap_assert_stderr ("*ERROR*Cannot pop repo never locked repo lock\n");
+}
+
+/* Unlocking after already unlocked */
+static void
+test_repo_lock_double_unlock (Fixture       *fixture,
+                              gconstpointer  test_data)
+{
+  if (g_test_subprocess ())
+    {
+      g_autoptr(GError) error = NULL;
+      g_autoptr(OstreeRepo) repo = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                        NULL, &error);
+      g_assert_no_error (error);
+
+      ostree_repo_lock_push (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+      g_assert_no_error (error);
+      ostree_repo_lock_pop (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+      g_assert_no_error (error);
+      ostree_repo_lock_pop (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+
+      return;
+    }
+
+  g_test_trap_subprocess (NULL, 0, 0);
+  g_test_trap_assert_failed ();
+  g_test_trap_assert_stderr ("*ERROR*Cannot pop already unlocked repo lock\n");
+}
+
+/* Unlocking the wrong type */
+static void
+test_repo_lock_unlock_wrong_type (Fixture       *fixture,
+                                  gconstpointer  test_data)
+{
+  if (g_test_subprocess ())
+    {
+      g_autoptr(GError) error = NULL;
+      g_autoptr(OstreeRepo) repo = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                        NULL, &error);
+      g_assert_no_error (error);
+
+      ostree_repo_lock_push (repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+      g_assert_no_error (error);
+      ostree_repo_lock_pop (repo, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+
+      return;
+    }
+
+  g_test_trap_subprocess (NULL, 0, 0);
+  g_test_trap_assert_failed ();
+  g_test_trap_assert_stderr ("*ERROR*Repo exclusive lock pop requested, but none have been taken\n");
+}
+
+/* Locking with single thread and multiple OstreeRepos */
+static void
+test_repo_lock_multi_repo (Fixture       *fixture,
+                           gconstpointer  test_data)
+{
+  g_autoptr(GError) error = NULL;
+
+  /* Open two OstreeRepo instances */
+  g_autoptr(OstreeRepo) repo1 = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                     NULL, &error);
+  g_assert_no_error (error);
+  g_autoptr(OstreeRepo) repo2 = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                     NULL, &error);
+  g_assert_no_error (error);
+
+  /* Single thread with multiple OstreeRepo's conflict */
+  ostree_repo_lock_push (repo1, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_push (repo2, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_push (repo1, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+  g_clear_error (&error);
+  ostree_repo_lock_pop (repo1, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_pop (repo2, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+
+  /* Recursive lock should stay exclusive once acquired */
+  ostree_repo_lock_push (repo1, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_push (repo1, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_push (repo2, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+  g_clear_error (&error);
+  ostree_repo_lock_push (repo2, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+  g_clear_error (&error);
+  ostree_repo_lock_pop (repo1, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  ostree_repo_lock_pop (repo1, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+}
+
+/* Locking from multiple threads with a single OstreeRepo */
+typedef struct {
+  OstreeRepo *repo;
+  guint step;
+} LockThreadData;
+
+static gpointer
+lock_thread1 (gpointer thread_data)
+{
+  LockThreadData *data = thread_data;
+  g_autoptr(GError) error = NULL;
+
+  /* Step 0: Take an exclusive lock */
+  g_assert_cmpuint (data->step, ==, 0);
+  g_test_message ("Thread 1: Push exclusive lock");
+  ostree_repo_lock_push (data->repo, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+  data->step++;
+
+  /* Step 2: Take a shared lock */
+  while (data->step != 2)
+    g_thread_yield ();
+  g_test_message ("Thread 1: Push shared lock");
+  ostree_repo_lock_push (data->repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  data->step++;
+
+  /* Step 4: Pop both locks */
+  while (data->step != 4)
+    g_thread_yield ();
+  g_test_message ("Thread 1: Pop shared lock");
+  ostree_repo_lock_pop (data->repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  g_test_message ("Thread 1: Pop exclusive lock");
+  ostree_repo_lock_pop (data->repo, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+  data->step++;
+
+  return NULL;
+}
+
+static gpointer
+lock_thread2 (gpointer thread_data)
+{
+  LockThreadData *data = thread_data;
+  g_autoptr(GError) error = NULL;
+
+  /* Step 1: Wait for the other thread to acquire a lock and then take a
+   * shared lock.
+   */
+  while (data->step != 1)
+    g_thread_yield ();
+  g_test_message ("Thread 2: Push shared lock");
+  ostree_repo_lock_push (data->repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  data->step++;
+
+  /* Step 6: Pop lock */
+  while (data->step != 6)
+    g_thread_yield ();
+  g_test_message ("Thread 2: Pop shared lock");
+  ostree_repo_lock_pop (data->repo, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  data->step++;
+
+  return NULL;
+}
+
+static void
+test_repo_lock_multi_thread (Fixture       *fixture,
+                             gconstpointer  test_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(OstreeRepo) repo1 = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                     NULL, &error);
+  g_assert_no_error (error);
+  g_autoptr(OstreeRepo) repo2 = ostree_repo_open_at (fixture->tmpdir.fd, ".",
+                                                     NULL, &error);
+  g_assert_no_error (error);
+
+  LockThreadData thread_data = {repo1, 0};
+  GThread *thread1 = g_thread_new ("lock-thread-1", lock_thread1, &thread_data);
+  GThread *thread2 = g_thread_new ("lock-thread-2", lock_thread2, &thread_data);
+
+  /* Step 3: Try to take a shared lock on repo2. This should fail since
+   * thread1 still has an exclusive lock.
+   */
+  while (thread_data.step != 3)
+    g_thread_yield ();
+  g_test_message ("Repo 2: Push failing shared lock");
+  ostree_repo_lock_push (repo2, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+  g_clear_error (&error);
+  thread_data.step++;
+
+  /* Step 5: Try to a lock on repo2. A shared lock should succeed since
+   * thread1 has dropped its exclusive lock.
+   */
+  while (thread_data.step != 5)
+    g_thread_yield ();
+  g_test_message ("Repo 2: Push shared lock");
+  ostree_repo_lock_push (repo2, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  g_test_message ("Repo 2: Push failing exclusive lock");
+  ostree_repo_lock_push (repo2, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK);
+  g_clear_error (&error);
+  thread_data.step++;
+
+  /* Step 7: Now both threads have dropped their locks and taking an exclusive
+   * lock should succeed.
+   */
+  while (thread_data.step != 7)
+    g_thread_yield ();
+  g_test_message ("Repo 2: Push exclusive lock");
+  ostree_repo_lock_push (repo2, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+  g_test_message ("Repo 2: Pop exclusive lock");
+  ostree_repo_lock_pop (repo2, OSTREE_REPO_LOCK_EXCLUSIVE, NULL, &error);
+  g_assert_no_error (error);
+  g_test_message ("Repo 2: Pop shared lock");
+  ostree_repo_lock_pop (repo2, OSTREE_REPO_LOCK_SHARED, NULL, &error);
+  g_assert_no_error (error);
+  thread_data.step++;
+
+  g_thread_join (thread1);
+  g_thread_join (thread2);
+}
+
 int
 main (int    argc,
       char **argv)
@@ -292,6 +586,18 @@ main (int    argc,
               test_write_regfile_api, teardown);
   g_test_add ("/repo/autolock", Fixture, NULL, setup,
               test_repo_autolock, teardown);
+  g_test_add ("/repo/lock/single", Fixture, NULL, lock_setup,
+              test_repo_lock_single, teardown);
+  g_test_add ("/repo/lock/unlock-never-locked", Fixture, NULL, lock_setup,
+              test_repo_lock_unlock_never_locked, teardown);
+  g_test_add ("/repo/lock/double-unlock", Fixture, NULL, lock_setup,
+              test_repo_lock_double_unlock, teardown);
+  g_test_add ("/repo/lock/unlock-wrong-type", Fixture, NULL, lock_setup,
+              test_repo_lock_unlock_wrong_type, teardown);
+  g_test_add ("/repo/lock/multi-repo", Fixture, NULL, lock_setup,
+              test_repo_lock_multi_repo, teardown);
+  g_test_add ("/repo/lock/multi-thread", Fixture, NULL, lock_setup,
+              test_repo_lock_multi_thread, teardown);
 
   return g_test_run ();
 }
