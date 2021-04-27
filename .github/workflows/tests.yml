@@ -24,4 +24,4 @@ jobs:
           default: true
           components: rustfmt, clippy
       - name: cargo fmt (check)
-        run: cd tests/inst && cargo fmt -- --check -l
+        run: cargo fmt -- --check -l
