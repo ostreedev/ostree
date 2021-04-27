@@ -55,10 +55,10 @@ function verify_initial_contents() {
 }
 
 if has_gpgme; then
-    echo "1..36"
+    echo "1..37"
 else
     # 3 tests needs GPG support
-    echo "1..33"
+    echo "1..34"
 fi
 
 # Try both syntaxes
@@ -141,6 +141,14 @@ assert_file_has_content err.txt "Can't use static deltas in an archive repo"
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
 echo "ok pull (refuses deltas)"
+
+${CMD_PREFIX} ostree --repo=mirrorrepo remote add broken badscheme://something
+if ${CMD_PREFIX} ostree --repo=mirrorrepo pull broken main 2>err.txt; then
+  assert_not_reached "pulled from invalid"
+fi
+assert_file_has_content_literal err.txt "Invalid URI scheme in badscheme://something"
+${CMD_PREFIX} ostree --repo=mirrorrepo remote delete broken
+echo "ok clean error on invalid scheme"
 
 cd ${test_tmpdir}
 rm mirrorrepo/refs/remotes/* -rf

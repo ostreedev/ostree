@@ -117,3 +117,21 @@ _ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
 {
   return soup_uri_to_string ((SoupURI*)uri, FALSE);
 }
+
+
+/* Only accept http, https, and file; particularly curl has a ton of other
+ * backends like sftp that we don't want, and this also gracefully filters
+ * out invalid input.
+ */
+gboolean
+_ostree_fetcher_uri_validate (OstreeFetcherURI *uri, GError **error) 
+{
+  const char *scheme = soup_uri_get_scheme ((SoupURI*)uri);
+  // TODO only allow file if explicitly requested by a higher level
+  if (!(g_str_equal (scheme, "http") || g_str_equal (scheme, "https") || g_str_equal (scheme, "file")))
+    {
+      g_autofree char *s = _ostree_fetcher_uri_to_string (uri);
+      return glnx_throw (error, "Invalid URI scheme in %s", s);
+    }
+  return TRUE;
+}
