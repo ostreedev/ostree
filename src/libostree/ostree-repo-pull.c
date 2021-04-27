@@ -3446,6 +3446,9 @@ compute_effective_mirrorlist (OstreeRepo    *self,
       if (!baseuri)
         return FALSE;
 
+      if (!_ostree_fetcher_uri_validate (baseuri, error))
+        return FALSE;
+
       *out_mirrorlist =
         g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
       g_ptr_array_add (*out_mirrorlist, g_steal_pointer (&baseuri));
