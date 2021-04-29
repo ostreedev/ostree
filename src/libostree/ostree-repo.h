@@ -1519,9 +1519,10 @@ gboolean      ostree_repo_lock_push (OstreeRepo          *self,
                                      GCancellable        *cancellable,
                                      GError             **error);
 _OSTREE_PUBLIC
-gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
-                                    GCancellable  *cancellable,
-                                    GError       **error);
+gboolean      ostree_repo_lock_pop (OstreeRepo          *self,
+                                    OstreeRepoLockType   lock_type,
+                                    GCancellable        *cancellable,
+                                    GError             **error);
 
 /* C convenience API only */
 #ifndef __GI_SCANNER__
@@ -1533,7 +1534,7 @@ gboolean      ostree_repo_lock_pop (OstreeRepo    *self,
  *
  * Since: 2021.3
  */
-typedef OstreeRepo OstreeRepoAutoLock;
+typedef struct OstreeRepoAutoLock OstreeRepoAutoLock;
 
 _OSTREE_PUBLIC
 OstreeRepoAutoLock * ostree_repo_auto_lock_push (OstreeRepo          *self,
