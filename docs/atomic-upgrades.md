@@ -69,10 +69,26 @@ given commit is deployed more than once, it will be incremented.
 This is supported because the previous deployment may have
 configuration in `/etc` that we do not want to use or overwrite.
 
-Now that we have a deployment directory, a 3-way merge is
-performed between the (by default) currently booted deployment's
-`/etc`, its default
-configuration, and the new deployment (based on its `/usr/etc`).
+Now that we have a deployment directory, a 3-way merge is performed
+between the (by default) currently booted deployment's `/etc`, its
+default configuration, and the new deployment (based on its `/usr/etc`).
+
+How it works is:
+- Files in the currently booted deployment's `/etc` which were modified
+  from the default `/usr/etc` (of the same deployment) are retained.
+- Files in the currently booted deployment's `/etc` which were not
+  modified from the default `/usr/etc` (of the same deployment) are
+  upgraded to the new defaults from the new deployment's `/etc/etc`.
+
+Roughly, this means that as soon as you modify or add a file in `/etc`,
+this file will be propagated forever as is (though there is a
+corner-case, where if your modification eventually exactly matches a
+future default file, then the file will go back to following future
+default updates from that point on).
+
+You can use `ostree admin config-diff` to see the differences between
+your booted deployment's `/etc` and the OSTree defaults. A command like
+`diff {/usr,}/etc` will additional print line-level differences.
 
 ## Atomically swapping boot configuration
 
