@@ -78,7 +78,7 @@ How it works is:
   from the default `/usr/etc` (of the same deployment) are retained.
 - Files in the currently booted deployment's `/etc` which were not
   modified from the default `/usr/etc` (of the same deployment) are
-  upgraded to the new defaults from the new deployment's `/etc/etc`.
+  upgraded to the new defaults from the new deployment's `/usr/etc`.
 
 Roughly, this means that as soon as you modify or add a file in `/etc`,
 this file will be propagated forever as is (though there is a
