@@ -1,7 +1,7 @@
 //! Test that interrupting an upgrade is safe.
 //!
 //! This test builds on coreos-assembler's "external tests":
-//! https://github.com/coreos/coreos-assembler/blob/master/mantle/kola/README-kola-ext.md
+//! https://github.com/coreos/coreos-assembler/blob/main/mantle/kola/README-kola-ext.md
 //! Key to this in particular is coreos-assembler implementing the Debian autopkgtest reboot API.
 //!
 //! The basic model of this test is:
