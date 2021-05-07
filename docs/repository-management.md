@@ -80,7 +80,7 @@ Then, what you'll want to do is promote content from "dev" to "prod".
 We'll discuss this later, but first, let's talk about promotion
 *inside* our "dev" repository.
 
-## Promoting content along OSTree branches - "buildmaster", "smoketested"
+## Promoting content along OSTree branches - "buildmain", "smoketested"
 
 Besides multiple repositories, OSTree also supports multiple branches
 inside one repository, equivalent to git's branches.  We saw in an
@@ -88,16 +88,16 @@ earlier section an example branch name like
 `exampleos/x86_64/standard`.  Choosing the branch name for your "prod"
 repository is absolutely critical as client systems will reference it.
 It becomes an important part of your face to the world, in the same
-way the "master" branch in a git repository is.
+way the "main" branch in a git repository is.
 
 But with your "dev" repository internally, it can be very useful to
 use OSTree's branching concepts to represent different stages in a
 software delivery pipeline.
 
 Deriving from `exampleos/x86_64/standard`, let's say our "dev"
-repository contains `exampleos/x86_64/buildmaster/standard`.  We choose the
-term "buildmaster" to represent something that came straight from git
-master.  It may not be tested very much.
+repository contains `exampleos/x86_64/buildmain/standard`.  We choose the
+term "buildmain" to represent something that came straight from git
+main.  It may not be tested very much.
 
 Our next step should be to hook up a testing system (Jenkins,
 Buildbot, etc.) to this.  When a build (commit) passes some tests, we
@@ -106,14 +106,14 @@ want to "promote" that commit.  Let's create a new branch called
 complete system.  This might be where human testers get involved, for
 example.
 
-This is a basic way to "promote" the `buildmaster` commit that passed testing:
+This is a basic way to "promote" the `buildmain` commit that passed testing:
 
 ```
 ostree commit -b exampleos/x86_64/smoketested/standard -s 'Passed tests' --tree=ref=aec070645fe53...
 ```
 
 Here we're generating a new commit object (perhaps include in the commit
-log links to build logs, etc.), but we're reusing the *content* from the `buildmaster`
+log links to build logs, etc.), but we're reusing the *content* from the `buildmain`
 commit `aec070645fe53` that passed the smoketests.
 
 For a more sophisticated implementation of this model, see the

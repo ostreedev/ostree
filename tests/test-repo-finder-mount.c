@@ -125,7 +125,7 @@ test_repo_finder_mount_no_mounts (Fixture       *fixture,
   g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
   g_autoptr(GError) error = NULL;
   const OstreeCollectionRef ref1 = { "org.example.Collection1", "exampleos/x86_64/standard" };
-  const OstreeCollectionRef ref2 = { "org.example.Collection1", "exampleos/x86_64/buildmaster/standard" };
+  const OstreeCollectionRef ref2 = { "org.example.Collection1", "exampleos/x86_64/buildmain/standard" };
   const OstreeCollectionRef ref3 = { "org.example.Collection2", "exampleos/x86_64/standard" };
   const OstreeCollectionRef ref4 = { "org.example.Collection2", "exampleos/arm64/standard" };
   const OstreeCollectionRef * const refs[] = { &ref1, &ref2, &ref3, &ref4, NULL };

@@ -31,11 +31,11 @@ setup_os_repository "archive" "syslinux"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos $(cat httpd-address)/ostree/testos-repo
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmaster/x86_64-runtime
-rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmain/x86_64-runtime
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 parent_rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse ${rev}^)
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmaster/x86_64-runtime@${parent_rev}
-${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmain/x86_64-runtime@${parent_rev}
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime
 assert_has_dir sysroot/ostree/deploy/testos/deploy/${parent_rev}.0
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0
 # Do a pull, this one should get us new content
@@ -47,7 +47,7 @@ assert_not_file_has_content out.txt 'No update available'
 assert_has_dir sysroot/ostree/deploy/testos/deploy/${parent_rev}.0
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'TestOS 42 1\.0\.9'
-assert_streq "${rev}" $(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+assert_streq "${rev}" $(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 # Now, generate new content upstream; we shouldn't pull it
 os_repository_new_commit
 ${CMD_PREFIX} ostree admin upgrade --os=testos --deploy-only --os=testos > out.txt

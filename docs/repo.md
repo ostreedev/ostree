@@ -123,16 +123,16 @@ commits.  See the
 for information on how git uses them.  Unlike git though, it doesn't
 usually make sense to have a "main" branch.  There is a convention
 for references in OSTree that looks like this:
-`exampleos/buildmaster/x86_64-runtime` and
-`exampleos/buildmaster/x86_64-devel-debug`.  These two refs point to
+`exampleos/buildmain/x86_64-runtime` and
+`exampleos/buildmain/x86_64-devel-debug`.  These two refs point to
 two different generated filesystem trees.  In this example, the
 "runtime" tree contains just enough to run a basic system, and
 "devel-debug" contains all of the developer tools and debuginfo.
 
 The `ostree` supports a simple syntax using the caret `^` to refer to
 the parent of a given commit.  For example,
-`exampleos/buildmaster/x86_64-runtime^` refers to the previous build,
-and `exampleos/buildmaster/x86_64-runtime^^` refers to the one before
+`exampleos/buildmain/x86_64-runtime^` refers to the previous build,
+and `exampleos/buildmain/x86_64-runtime^^` refers to the one before
 that.
 
 ## The summary file

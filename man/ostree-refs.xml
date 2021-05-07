@@ -144,7 +144,7 @@ Boston, MA 02111-1307, USA.
         <para><command>$ ostree refs</command></para>
 <programlisting>
         my-branch
-        gnome-ostree/buildmaster/x86_64-runtime
+        gnome-ostree/buildmain/x86_64-runtime
 </programlisting>
     </refsect1>
 </refentry>

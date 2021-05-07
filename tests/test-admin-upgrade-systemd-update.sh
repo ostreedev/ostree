@@ -29,9 +29,9 @@ echo "1..2"
 # Setup a deployment
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos $(cat httpd-address)/ostree/testos-repo
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmaster/x86_64-runtime
-rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
-${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmain/x86_64-runtime
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
+${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 assert_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0/usr
 assert_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0/etc
 assert_has_dir sysroot/ostree/deploy/testos/var
@@ -50,7 +50,7 @@ touch -r ${usr} sysroot/ostree/deploy/testos/var/.updated
 # (current) deployment
 os_repository_new_commit
 ${CMD_PREFIX} ostree admin upgrade --os=testos
-newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/.updated
 assert_not_has_file sysroot/ostree/deploy/testos/var/.updated
 assert_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/.updated

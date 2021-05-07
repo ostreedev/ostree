@@ -53,10 +53,10 @@ test_sysroot_reload (gconstpointer data)
     goto out;
   g_assert (!changed);
 
-  if (!run_sync ("ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime", &error))
+  if (!run_sync ("ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime", &error))
     goto out;
 
-  if (!run_sync ("ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime", &error))
+  if (!run_sync ("ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime", &error))
     goto out;
 
   if (!ostree_sysroot_load_if_changed (sysroot, &changed, NULL, &error))

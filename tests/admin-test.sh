@@ -53,11 +53,11 @@ assert_ostree_deployment_refs() {
 }
 
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
-rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 export rev
 # This initial deployment gets kicked off with some kernel arguments
-${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime
 new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 assert_not_streq "${orig_mtime}" "${new_mtime}"
 ${CMD_PREFIX} ostree admin status | tee status.txt
@@ -66,9 +66,9 @@ assert_not_file_has_content status.txt "rollback"
 validate_bootloader
 
 # Test the bootable and linux keys
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo --print-metadata-key=ostree.linux show testos:testos/buildmaster/x86_64-runtime >out.txt
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo --print-metadata-key=ostree.linux show testos:testos/buildmain/x86_64-runtime >out.txt
 assert_file_has_content_literal out.txt 3.6.0
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo --print-metadata-key=ostree.bootable show testos:testos/buildmaster/x86_64-runtime >out.txt
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo --print-metadata-key=ostree.bootable show testos:testos/buildmain/x86_64-runtime >out.txt
 assert_file_has_content_literal out.txt true
 
 echo "ok deploy command"
@@ -92,14 +92,14 @@ assert_ostree_deployment_refs 1/1/0
 ${CMD_PREFIX} ostree admin status
 echo "ok layout"
 
-if ${CMD_PREFIX} ostree admin deploy --stage --os=testos testos:testos/buildmaster/x86_64-runtime 2>err.txt; then
+if ${CMD_PREFIX} ostree admin deploy --stage --os=testos testos:testos/buildmain/x86_64-runtime 2>err.txt; then
     fatal "staged when not booted"
 fi
 assert_file_has_content_literal err.txt "Cannot stage deployment: Not currently booted into an OSTree system"
 echo "ok staging does not work when not booted"
 
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
-${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 assert_not_streq "${orig_mtime}" "${new_mtime}"
 # Need a new bootversion, sine we now have two deployments
@@ -119,7 +119,7 @@ validate_bootloader
 
 echo "ok second deploy"
 
-${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 # Keep the same bootversion
 assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
@@ -134,7 +134,7 @@ echo "ok third deploy (swap)"
 
 ${CMD_PREFIX} ostree admin os-init otheros
 
-${CMD_PREFIX} ostree admin deploy --os=otheros testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --os=otheros testos/buildmain/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
 assert_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
@@ -147,7 +147,7 @@ validate_bootloader
 
 echo "ok independent deploy"
 
-${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmain/x86_64-runtime
 assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
 assert_has_file sysroot/boot/loader/entries/ostree-4-testos.conf
@@ -164,7 +164,7 @@ echo "a new local config file" > sysroot/ostree/deploy/testos/deploy/${rev}.3/et
 rm -r  sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/testdirectory
 rm sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
 ln -s /ENOENT sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/a-new-broken-symlink
-${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmain/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
 link=sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-broken-symlink
@@ -189,7 +189,7 @@ done
 assert_has_file sysroot/boot/loader/entries/ostree-1-testos.conf
 assert_not_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
 assert_not_has_file sysroot/boot/loader/entries/ostree-3-otheros.conf
-${CMD_PREFIX} ostree admin deploy --not-as-default --os=otheros testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --not-as-default --os=otheros testos:testos/buildmain/x86_64-runtime
 assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
 assert_has_file sysroot/boot/loader/entries/ostree-2-testos.conf
@@ -199,7 +199,7 @@ validate_bootloader
 
 echo "ok deploy --not-as-default"
 
-${CMD_PREFIX} ostree admin deploy --retain-rollback --os=otheros testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --retain-rollback --os=otheros testos:testos/buildmain/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
 assert_has_file sysroot/boot/loader/entries/ostree-3-otheros.conf
@@ -211,12 +211,12 @@ validate_bootloader
 echo "ok deploy --retain-rollback"
 
 os_repository_new_commit
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
-newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos:testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
+newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos:testos/buildmain/x86_64-runtime)
 export newrev
 assert_not_streq ${rev} ${newrev}
 
-${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 # New files in /usr/etc
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/a-new-default-config-file "a new default config file"
@@ -234,24 +234,24 @@ if env OSTREE_EX_STAGE_DEPLOYMENTS=1 ${CMD_PREFIX} ostree admin upgrade --os=tes
 fi
 echo "ok upgrade failed when staged"
 
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 origrev=${rev}
 rev=${newrev}
-newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 assert_not_streq ${rev} ${newrev}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo refs testos:testos > reftest.txt
-assert_file_has_content reftest.txt testos:buildmaster/x86_64-runtime
+assert_file_has_content reftest.txt testos:buildmain/x86_64-runtime
 
 echo "ok upgrade"
 
 originfile=$(${CMD_PREFIX} ostree admin --print-current-dir).origin
 cp ${originfile} saved-origin
 ${CMD_PREFIX} ostree admin set-origin --index=0 bacon --set=gpg-verify=false http://tasty.com
-assert_file_has_content "${originfile}" "bacon:testos/buildmaster/x86_64-runtime"
+assert_file_has_content "${originfile}" "bacon:testos/buildmain/x86_64-runtime"
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote list -u > remotes.txt
 assert_file_has_content remotes.txt 'bacon.*http://tasty\.com'
 cp saved-origin ${originfile}
@@ -272,22 +272,22 @@ validate_bootloader
 
 echo "ok undeploy"
 
-if ${CMD_PREFIX} ostree admin deploy --os=unknown testos:testos/buildmaster/x86_64-runtime; then
+if ${CMD_PREFIX} ostree admin deploy --os=unknown testos:testos/buildmain/x86_64-runtime; then
     assert_not_reached "Unexpected successful deploy of unknown OS"
 fi
 echo "ok deploy with unknown OS"
 
-${CMD_PREFIX} ostree admin deploy --os=testos --karg-append=console=/dev/foo --karg-append=console=/dev/bar testos:testos/buildmaster/x86_64-runtime
-${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --os=testos --karg-append=console=/dev/foo --karg-append=console=/dev/bar testos:testos/buildmain/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf 'console=/dev/foo.*console=/dev/bar'
 validate_bootloader
 
 echo "ok deploy with multiple kernel args"
 
-origrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+origrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 os_repository_new_commit 0 "test upgrade multiple kernel args"
 ${CMD_PREFIX} ostree admin upgrade --os=testos
-newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 assert_not_streq ${origrev} ${newrev}
 assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf 'console=/dev/foo.*console=/dev/bar'
 validate_bootloader
@@ -297,7 +297,7 @@ echo "ok upgrade with multiple kernel args"
 os_repository_new_commit
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 ${version} (ostree:testos:0)$"
-os_repository_new_commit 0 0 testos/buildmaster/x86_64-runtime 42
+os_repository_new_commit 0 0 testos/buildmain/x86_64-runtime 42
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 assert_file_has_content sysroot/boot/loader/entries/ostree-4-testos.conf "^title TestOS 42 (ostree:testos:0)$"
 
@@ -310,8 +310,8 @@ sleep 1
 os_repository_new_commit
 # upgrade to the latest
 ${CMD_PREFIX} ostree admin upgrade --os=testos
-head_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
-prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime^)
+head_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmain/x86_64-runtime)
+prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmain/x86_64-runtime^)
 assert_not_streq ${head_rev} ${prev_rev}
 # Don't use `ostree admin status | head -n 1` directly here because `head`
 # exiting early might cause SIGPIPE to ostree, which with `set -euo pipefail`
@@ -342,14 +342,14 @@ sleep 1
 os_repository_new_commit
 sleep 1
 os_repository_new_commit
-${CMD_PREFIX} ostree pull --repo=sysroot/ostree/repo --commit-metadata-only --depth=-1 testos:testos/buildmaster/x86_64-runtime
-curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
-prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime^)
+${CMD_PREFIX} ostree pull --repo=sysroot/ostree/repo --commit-metadata-only --depth=-1 testos:testos/buildmain/x86_64-runtime
+curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmain/x86_64-runtime)
+prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmain/x86_64-runtime^)
 ${CMD_PREFIX} ostree admin upgrade --os=testos --override-commit=${prev_rev}
 echo "ok upgrade to newer version older than branch tip"
 
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" \
-              --add-metadata-string 'ostree.source-title=libtest os_repository_new_commit()' -b testos/buildmaster/x86_64-runtime \
+              --add-metadata-string 'ostree.source-title=libtest os_repository_new_commit()' -b testos/buildmain/x86_64-runtime \
               -s "Build" --tree=dir=${test_tmpdir}/osdata
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 ${CMD_PREFIX} ostree admin status | tee status.txt
@@ -381,7 +381,7 @@ assert_file_has_content sysroot/ostree/repo/config remote-test-config-dir
 echo "ok remote add nonphysical sysroot add-remotes-config-dir false"
 
 if env OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},test-fifreeze" \
-       ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime 2>err.txt; then
+       ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime 2>err.txt; then
     fatal "fifreeze-test exited successfully?"
 fi
 assert_file_has_content err.txt "fifreeze watchdog was run"

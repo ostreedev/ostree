@@ -112,7 +112,7 @@ test_repo_finder_config_no_configs (Fixture       *fixture,
   g_autoptr(GPtrArray) results = NULL;  /* (element-type OstreeRepoFinderResult) */
   g_autoptr(GError) error = NULL;
   const OstreeCollectionRef ref1 = { "org.example.Os", "exampleos/x86_64/standard" };
-  const OstreeCollectionRef ref2 = { "org.example.Os", "exampleos/x86_64/buildmaster/standard" };
+  const OstreeCollectionRef ref2 = { "org.example.Os", "exampleos/x86_64/buildmain/standard" };
   const OstreeCollectionRef * const refs[] = { &ref1, &ref2, NULL };
 
   context = g_main_context_new ();
