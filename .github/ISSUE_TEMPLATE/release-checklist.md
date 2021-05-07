@@ -18,7 +18,7 @@ This guide requires:
 - Prepare local environment:
   - [ ]  `git remote get-url --push origin`
   - [ ]  validate that the output above points to `git@github.com:ostreedev/ostree.git`
-  - [ ] `git checkout master && git pull`
+  - [ ] `git checkout main && git pull`
   - [ ] `git clean -fd`
   - [ ] `RELEASE_VER=yyyy.n` (matching `package_version` in `configure.ac`)
   - [ ] `git checkout -b release-${RELEASE_VER}`
@@ -56,7 +56,7 @@ This guide requires:
 
 - Clean up:
   - [ ] `git clean -fd`
-  - [ ] `git checkout master`
+  - [ ] `git checkout main`
   - [ ] `git pull`
   - [ ] `git push origin :release-${RELEASE_VER}`
   - [ ] `git branch -d release-${RELEASE_VER}`

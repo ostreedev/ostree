@@ -127,7 +127,7 @@ However, in order to build from a git clone, you must update the
 submodules.  If you're packaging OSTree and want a tarball, I
 recommend using a "recursive git archive" script.  There are several
 available online;
-[this code](https://github.com/ostreedev/ostree/blob/master/packaging/Makefile.dist-packaging#L11)
+[this code](https://github.com/ostreedev/ostree/blob/main/packaging/Makefile.dist-packaging#L11)
 in OSTree is an example.
 
 Once you have a git clone or recursive archive, building is the
@@ -148,7 +148,7 @@ See [Contributing](docs/CONTRIBUTING.md).
 ## Licensing
 
 The licensing for the *code* of libostree can be canonically found in the individual files;
-and the overall status in the [COPYING](https://github.com/ostreedev/ostree/blob/master/COPYING)
+and the overall status in the [COPYING](https://github.com/ostreedev/ostree/blob/main/COPYING)
 file in the source.  Currently, that's LGPLv2+.  This also covers the man pages and API docs.
 
 The license for the manual documentation in the `doc/` directory is:

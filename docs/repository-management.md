@@ -117,7 +117,7 @@ log links to build logs, etc.), but we're reusing the *content* from the `buildm
 commit `aec070645fe53` that passed the smoketests.
 
 For a more sophisticated implementation of this model, see the
-[do-release-tags](https://github.com/ostreedev/ostree-releng-scripts/blob/master/do-release-tags)
+[do-release-tags](https://github.com/ostreedev/ostree-releng-scripts/blob/main/do-release-tags)
 script, which includes support for things like propagating version
 numbers across commit promotion.
 

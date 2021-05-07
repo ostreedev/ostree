@@ -121,7 +121,7 @@ Like git, OSTree uses the terminology "references" (abbreviated
 commits.  See the
 [Git Documentation](https://git-scm.com/book/en/v2/Git-Internals-Git-References)
 for information on how git uses them.  Unlike git though, it doesn't
-usually make sense to have a "master" branch.  There is a convention
+usually make sense to have a "main" branch.  There is a convention
 for references in OSTree that looks like this:
 `exampleos/buildmaster/x86_64-runtime` and
 `exampleos/buildmaster/x86_64-devel-debug`.  These two refs point to

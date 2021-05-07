@@ -3,7 +3,7 @@ jobs:
     - job: production_build
       trigger: commit
       metadata:
-          branch: master
+          branch: main
           targets: f34-coreos-continuous
 specfile_path: ostree.spec
 actions:
