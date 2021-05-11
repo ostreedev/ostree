@@ -82,12 +82,12 @@ EOF
     mkdir -p usr/etc/testdirectory
     echo "a default daemon file" > usr/etc/testdirectory/test
 
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-runtime -s "Build" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmain/x86_64-runtime -s "Build" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
 
     # Ensure these commits have distinct second timestamps
     sleep 2
     echo "a new executable" > usr/bin/sh
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.10 -b testos/buildmaster/x86_64-runtime -s "Build" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.10 -b testos/buildmain/x86_64-runtime -s "Build" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
 
     cd ${test_tmpdir}
     rm -rf osdata-devel
@@ -96,7 +96,7 @@ EOF
     cd osdata-devel
     mkdir -p usr/include
     echo "a development header" > usr/include/foo.h
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-devel -s "Build" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmain/x86_64-devel -s "Build" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
 
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo fsck -q
 
@@ -137,9 +137,9 @@ setup_os_repository_signed "archive" "syslinux"
 echo "1..2"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add testos $(cat httpd-address)/ostree/testos-repo
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --gpg-verify=true --remote=testos testos-repo testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --gpg-verify=true --remote=testos testos-repo testos/buildmain/x86_64-runtime
 # This initial deployment gets kicked off with some kernel arguments
-${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
 echo "ok deploy command"

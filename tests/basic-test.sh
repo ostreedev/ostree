@@ -1017,7 +1017,7 @@ if ! skip_one_without_user_xattrs; then
 fi
 
 cd ${test_tmpdir}
-${CMD_PREFIX} ostree --repo=repo remote --set=tls-permissive=true add aremote http://remote.example.com/repo testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=repo remote --set=tls-permissive=true add aremote http://remote.example.com/repo testos/buildmain/x86_64-runtime
 assert_file_has_content repo/config 'tls-permissive=true'
 assert_file_has_content repo/config 'remote\.example\.com'
 echo "ok remote add with set"

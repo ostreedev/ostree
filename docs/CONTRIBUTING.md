@@ -72,7 +72,7 @@ For more information see [How to Write a Git Commit Message](https://chris.beams
 
 **Editing a Committed Message:**
 
-To edit the message from the most recent commit run `git commit --amend`. To change older commits on the branch use `git rebase -i`. For a successful rebase have the branch track `upstream master`. Once the changes have been made and saved, run `git push --force origin <branch-name>`.
+To edit the message from the most recent commit run `git commit --amend`. To change older commits on the branch use `git rebase -i`. For a successful rebase have the branch track `upstream main`. Once the changes have been made and saved, run `git push --force origin <branch-name>`.
 
 ## Running the test suite
 

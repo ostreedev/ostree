@@ -17,14 +17,14 @@ Fork https://github.com/ostreedev/ostree, then run the following commands.
 ```bash
 $ git clone https://github.com/<username>/ostree && cd ostree
 $ git remote add upstream https://github.com/ostreedev/ostree
-$ git checkout master
-$ git fetch upstream && git branch --set-upstream-to=upstream/master master
+$ git checkout main
+$ git fetch upstream && git branch --set-upstream-to=upstream/main main
 ```
-Make a branch from master for your patch.
+Make a branch from main for your patch.
 
 ```bash
 $ git checkout -b <name-of-branch>
-$ git branch --set-upstream-to=upstream/master <name-of-branch>
+$ git branch --set-upstream-to=upstream/main <name-of-branch>
 ```
 
 ## Building OSTree
@@ -55,7 +55,7 @@ apt-get install build-essential && \
 apt-get build-dep ostree
 ```
 
-[build.sh](https://github.com/ostreedev/ostree/blob/master/ci/build.sh) will have a list of packages needed to build ostree.
+[build.sh](https://github.com/ostreedev/ostree/blob/main/ci/build.sh) will have a list of packages needed to build ostree.
 
 ### OSTree Build Commands
 
@@ -120,7 +120,7 @@ RUN dnf update -y && \
     dnf -y builddep ostree  && \
     dnf clean all
 
-# clone ostree and update master branch
+# clone ostree and update main branch
 COPY ostree-git.sh /
 RUN ../ostree-git.sh
 
@@ -142,7 +142,7 @@ Save the following bash scripts in the same directory as the Dockerfile. Then ch
 #!/bin/bash
 
 # ostree-git.sh
-# Clone ostree and update master branch
+# Clone ostree and update main branch
 
 set -euo pipefail
 
@@ -153,10 +153,10 @@ USERNAME=""
 git clone https://github.com/$USERNAME/ostree.git
 cd ostree
 
-# Add upstream as remote and update master branch
-git checkout master  
+# Add upstream as remote and update main branch
+git checkout main  
 git remote add upstream https://github.com/ostreedev/ostree.git
-git pull --rebase upstream master
+git pull --rebase upstream main
 ```
 
 ```bash
@@ -407,13 +407,13 @@ Tests for OSTree are done by shell scripting, by running OSTree commands and exa
 
 After you have committed your changes and tested, you are ready to submit your patch!
 
-You should make sure your commits are placed on top of the latest changes from `upstream/master`:
+You should make sure your commits are placed on top of the latest changes from `upstream/main`:
 
 ```bash
-$ git pull --rebase upstream master
+$ git pull --rebase upstream main
 ```
 
-To submit your patch, open a pull request from your forked repository. Most often, you'll be merging into `ostree:master` from `<username>:<branch name>`.
+To submit your patch, open a pull request from your forked repository. Most often, you'll be merging into `ostree:main` from `<username>:<branch name>`.
 
 If some of your changes are complete and you would like feedback, you may also open a pull request that has WIP (Work In Progress) in the title.
 
@@ -423,13 +423,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md#submitting-patches) for information on squ
 
 ### Returning Workflow
 
-When returning to work on a patch, it is recommended to update your fork with the latest changes in the upstream master branch.
+When returning to work on a patch, it is recommended to update your fork with the latest changes in the upstream main branch.
 
 If creating a new branch:
 
 ```bash
-$ git checkout master
-$ git pull upstream master
+$ git checkout main
+$ git pull upstream main
 $ git checkout -b <name-of-patch>
 ```
 
@@ -437,5 +437,5 @@ If continuing on a branch already created:
 
 ```bash
 $ git checkout <name-of-patch>
-$ git pull --rebase upstream master
+$ git pull --rebase upstream main
 ```

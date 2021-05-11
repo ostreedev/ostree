@@ -46,7 +46,7 @@ loadramdisk=load mmc ${bootpart} ${rdaddr} ${ramdisk_image}
 mmcargs=setenv bootargs $bootargs console=${console} ${optargs} root=${mmcroot} rootfstype=${mmcrootfstype}
 mmcboot=run loadramdisk; echo Booting from mmc ....; run mmcargs; bootz ${loadaddr} ${rdaddr} ${fdtaddr}
 EOF
-${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 assert_file_has_content sysroot/boot/uEnv.txt "loadfdt="
 assert_file_has_content sysroot/boot/uEnv.txt "kernel_image="
@@ -71,7 +71,7 @@ bootcsum=$(
     cat ${devicetree_path} ${devicetree_overlay_path} ) |
   sha256sum | cut -f 1 -d ' ')
 
-${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 assert_file_has_content sysroot/boot/uEnv.txt "fdtdir="
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/dtb/asoc-board.dtb 'a device tree'

@@ -1,4 +1,4 @@
-// Documentation: https://github.com/coreos/coreos-ci/blob/master/README-upstream-ci.md
+// Documentation: https://github.com/coreos/coreos-ci/blob/main/README-upstream-ci.md
 
 stage("Build") {
 parallel normal: {
@@ -57,9 +57,9 @@ codestyle: {
   buildPod(runAsUser:0) {
       checkout scm
       shwrap("""
-        # Jenkins by default only fetches the branch it's testing. Explicitly fetch master
+        # Jenkins by default only fetches the branch it's testing. Explicitly fetch main
         # for ci-commitmessage-submodules.sh
-        git fetch origin +refs/heads/master:refs/remotes/origin/master
+        git fetch origin +refs/heads/main:refs/remotes/origin/main
         ci/ci-commitmessage-submodules.sh
       """)
   }

@@ -29,8 +29,8 @@ setup_os_repository "archive" "syslinux"
 
 echo "1..5"
 
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
-${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 
 ${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAR
 ${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAZ FOO=BIF TESTARG=TESTVALUE KEYWORD EMPTYLIST=
@@ -50,7 +50,7 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'option
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
 echo "ok instutil set-kargs --replace"
 
-${CMD_PREFIX} ostree admin instutil set-kargs --merge --append=FOO=BAR --append=APPENDARG=VALAPPEND --append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin instutil set-kargs --merge --append=FOO=BAR --append=APPENDARG=VALAPPEND --append=APPENDARG=2NDAPPEND testos:testos/buildmain/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=XXX.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
 echo "ok instutil set-kargs --append"

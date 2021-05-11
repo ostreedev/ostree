@@ -93,6 +93,6 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
 
-        <para><command>$ ostree admin set-origin exampleos http://os.example.com/repo exampleos/10.0/master/router</command></para>
+        <para><command>$ ostree admin set-origin exampleos http://os.example.com/repo exampleos/10.0/main/router</command></para>
     </refsect1>    
 </refentry>

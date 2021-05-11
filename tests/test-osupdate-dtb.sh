@@ -41,17 +41,17 @@ echo "a device tree" > ${devicetree_path}
 mkdir -p osdata/${modulesdir}/dtb/overlays
 echo "a device tree overlay" > ${devicetree_overlay_path}
 
-${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmaster/x86_64-runtime
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
-${CMD_PREFIX} env OSTREE_SYSROOT_DEBUG=${OSTREE_SYSROOT_DEBUG},no-dtb ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmain/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmain/x86_64-runtime
+${CMD_PREFIX} env OSTREE_SYSROOT_DEBUG=${OSTREE_SYSROOT_DEBUG},no-dtb ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 assert_has_file sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0
 assert_not_has_file sysroot/boot/ostree/testos-${bootcsum}/dtb/asoc-board.dtb 'a device tree'
 assert_streq $(ls sysroot/boot/ostree | wc -l) 1
 assert_streq $(find sysroot/boot/ostree -name '*.dtb' | wc -l) 0
-${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmain/x86_64-runtime
 env OSTREE_SYSROOT_DEBUG=${OSTREE_SYSROOT_DEBUG},no-dtb ${CMD_PREFIX} ostree admin upgrade --os=testos
-${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=testos-repo commit --tree=dir=osdata/ -b testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 assert_streq $(ls sysroot/boot/ostree | wc -l) 2
 # Note that the bootcsum computed by the test suite doesn't include devicetree

@@ -28,7 +28,7 @@ setup_os_repository "archive" "syslinux"
 
 echo "1..2"
 
-ref=testos/buildmaster/x86_64-runtime
+ref=testos/buildmain/x86_64-runtime
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos $(cat httpd-address)/ostree/testos-repo
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos ${ref}

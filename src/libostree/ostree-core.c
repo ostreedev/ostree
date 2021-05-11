@@ -160,11 +160,11 @@ ostree_validate_checksum_string (const char *sha256,
  * @out_ref: (out) (not nullable) (optional): Return location for the ref name
  * @error: Error
  *
- * Split a refspec like `gnome-ostree:gnome-ostree/buildmaster` or just
- * `gnome-ostree/buildmaster` into two parts. In the first case, @out_remote
- * will be set to `gnome-ostree`, and @out_ref to `gnome-ostree/buildmaster`.
+ * Split a refspec like `gnome-ostree:gnome-ostree/buildmain` or just
+ * `gnome-ostree/buildmain` into two parts. In the first case, @out_remote
+ * will be set to `gnome-ostree`, and @out_ref to `gnome-ostree/buildmain`.
  * In the second case (a local ref), @out_remote will be %NULL, and @out_ref
- * will be `gnome-ostree/buildmaster`. In both cases, %TRUE will be returned.
+ * will be `gnome-ostree/buildmain`. In both cases, %TRUE will be returned.
  *
  * Returns: %TRUE on successful parsing, %FALSE otherwise
  */

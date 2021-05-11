@@ -36,12 +36,12 @@ echo "1..1"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos $(cat httpd-address)/ostree/testos-repo
-${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmaster/x86_64-runtime
-rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmain/x86_64-runtime
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 export rev
 echo "rev=${rev}"
 # This initial deployment gets kicked off with some kernel arguments 
-${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
 parallel_cmd="parallel --gnu"
@@ -50,7 +50,7 @@ if parallel --help | grep -q -e --no-notice; then
 fi
 
 count=$(($(getconf _NPROCESSORS_ONLN) * 2))
-seq "${count}" | ${parallel_cmd} -n0 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
+seq "${count}" | ${parallel_cmd} -n0 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmain/x86_64-runtime
 
 ${CMD_PREFIX} ostree admin status > status.txt
 grep "testos ${rev}" status.txt | wc -l > status-matches.txt

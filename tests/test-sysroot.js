@@ -49,7 +49,7 @@ GLib.setenv("OSTREE_SYSROOT_DEBUG", "mutable-deployments", true);
 let upstreamRepo = OSTree.Repo.new(Gio.File.new_for_path('testos-repo'));
 upstreamRepo.open(null);
 
-let runtimeRef = 'testos/buildmaster/x86_64-runtime';
+let runtimeRef = 'testos/buildmain/x86_64-runtime';
 let [,rev] = upstreamRepo.resolve_rev(runtimeRef, false);
 
 print("testos => " + rev);
