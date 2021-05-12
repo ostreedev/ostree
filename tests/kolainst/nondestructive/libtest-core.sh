@@ -1,1 +1,0 @@
-../libtest-core.sh

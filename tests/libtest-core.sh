@@ -1,1 +1,0 @@
-kolainst/libtest-core.sh

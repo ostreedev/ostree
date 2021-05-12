@@ -1,6 +1,0 @@
-# Today, this repository only uses Rust for tests.  This
-# toplevel Cargo.toml helps tools like rust-analyzer understand
-# that this project contains Rust code.  We don't otherwise currently
-# use `cargo` for any part of the core build.
-[workspace]
-members = ["tests/inst"]
