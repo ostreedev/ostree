@@ -196,9 +196,13 @@ gboolean ostree_sysroot_stage_overlay_initrd (OstreeSysroot  *self,
                                               GCancellable   *cancellable,
                                               GError        **error);
 
+/**
+ * finalization_flags: only used in the staging path
+ */
 typedef struct {
   gboolean unused_bools[8];
-  int unused_ints[8];
+  int unused_ints[7];
+  int finalization_flags;
   char **override_kernel_argv;
   char **overlay_initrds;
   gpointer unused_ptrs[6];
