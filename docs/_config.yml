@@ -13,7 +13,12 @@ exclude:
   - README.md
   - Gemfile
   - Gemfile.lock
+  - prep-docs.sh
   - vendor/
+
+# This is a copy of the apidoc/html directory. Run prep-docs.sh before
+# jekyll to put it in place.
+include: [reference]
 
 remote_theme: coreos/just-the-docs
 plugins:

@@ -54,6 +54,7 @@ GITIGNOREFILES += \
 	docs/.bundle/ \
 	docs/Gemfile.lock \
 	docs/_site/ \
+	docs/reference/ \
 	docs/vendor/ \
 	$(NULL)
 

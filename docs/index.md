@@ -141,6 +141,10 @@ make
 make install DESTDIR=/path/to/dest
 ```
 
+## API Reference
+
+The libostree API documentation is available in [Reference](reference/).
+
 ## Contributing
 
 See [Contributing]({{ site.baseurl }}{% link CONTRIBUTING.md %}).

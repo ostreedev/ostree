@@ -51,6 +51,11 @@ jobs:
             zlib1g-dev \
             python3-yaml
 
+      - name: Build API docs
+        run: |
+          ./autogen.sh --enable-gtk-doc
+          make -C apidoc
+
       - name: Build and publish jekyll docs
         uses: helaili/jekyll-action@v2
         with:
@@ -60,3 +65,5 @@ jobs:
           # Only publish when pushing to main.
           # XXX: Maybe this should only run on the release event?
           build_only: ${{ github.ref == 'refs/heads/main' && 'false' || 'true' }}
+          # Run the prep script to put the API docs in place.
+          pre_build_commands: ./docs/prep-docs.sh

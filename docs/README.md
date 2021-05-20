@@ -22,7 +22,10 @@ bundle config set --local path vendor/bundle
 bundle install
 ```
 
-Finally, render and serve the site locally with Jekyll:
+Finally, run the `prep-docs.sh` script and then render and serve the
+site locally with Jekyll:
+
 ```
+./prep-docs.sh
 bundle exec jekyll serve
 ```
