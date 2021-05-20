@@ -176,13 +176,17 @@ _OSTREE_PUBLIC
 gboolean ostree_sysroot_stage_overlay_initrd (OstreeSysroot *self, int fd, char **out_checksum,
                                               GCancellable *cancellable, GError **error);
 
+/**
+ * finalization_flags: only used in the staging path
+ */
 typedef struct
 {
   /* If set to true, then this deployment will be staged but "locked" and not automatically applied
    * on reboot. */
   gboolean locked;
   gboolean unused_bools[7];
-  int unused_ints[8];
+  int finalization_flags;
+  int unused_ints[7];
   char **override_kernel_argv;
   char **overlay_initrds;
   gpointer unused_ptrs[6];

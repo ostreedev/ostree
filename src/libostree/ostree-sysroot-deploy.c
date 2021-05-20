@@ -3784,6 +3784,11 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
     g_variant_builder_add (builder, "{sv}", "overlay-initrds",
                            g_variant_new_strv ((const char *const *)opts->overlay_initrds, -1));
 
+  /* Proxy across any flags */
+  if (opts && opts->finalization_flags)
+    g_variant_builder_add (builder, "{sv}", "write-deployment-flags",
+                           g_variant_new_uint32 ((guint32)opts->finalization_flags));
+
   const char *parent = dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED));
   if (!glnx_shutil_mkdir_p_at (AT_FDCWD, parent, 0755, cancellable, error))
     return FALSE;
@@ -3977,14 +3982,14 @@ _ostree_sysroot_finalize_staged_inner (OstreeSysroot *self, GCancellable *cancel
   staged->staged = FALSE;
   g_ptr_array_remove_index (self->deployments, 0);
 
-  /* TODO: Proxy across flags too?
-   *
-   * But note that we always use NO_CLEAN to avoid adding more latency at
+  OstreeSysrootSimpleWriteDeploymentFlags flags = 0;
+  g_variant_lookup (self->staged_deployment_data, "write-deployment-flags", "u", &flags);
+  /*
+   * Note that we always use NO_CLEAN to avoid adding more latency at
    * shutdown, and also because e.g. rpm-ostree wants to own the cleanup
    * process.
    */
-  OstreeSysrootSimpleWriteDeploymentFlags flags
-      = OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
+  flags |= OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN;
   if (!ostree_sysroot_simple_write_deployment (self, ostree_deployment_get_osname (staged), staged,
                                                merge_deployment, flags, cancellable, error))
     return FALSE;
