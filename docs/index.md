@@ -143,7 +143,7 @@ make install DESTDIR=/path/to/dest
 
 ## Contributing
 
-See [Contributing](docs/CONTRIBUTING.md).
+See [Contributing]({{ site.baseurl }}{% link CONTRIBUTING.md %}).
 
 ## Licensing
 
