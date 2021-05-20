@@ -1844,6 +1844,9 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
  * specified, then no cleanup will be performed after adding the
  * deployment. Make sure to call ostree_sysroot_cleanup() sometime
  * later, instead.
+ *
+ * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PREVIOUS_VERSION is
+ * specified, then the previous version will not be garbage collected.
  */
 gboolean
 ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
@@ -1862,6 +1865,8 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
     (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING) > 0;
   const gboolean retain_rollback =
     (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK) > 0;
+  const gboolean retain_previous =
+    (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PREVIOUS_VERSION) > 0;
   gboolean retain =
     (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
 
@@ -1884,6 +1889,27 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   if (!booted_deployment && !merge_deployment && (retain_pending || retain_rollback))
     retain = TRUE;
 
+  /* tracks current versioned deployment */
+  OstreeRepo *repo = ostree_sysroot_repo (sysroot);
+  const gchar *new_version =
+    _ostree_deployment_get_version (new_deployment, repo, error);
+
+  gboolean retained_previous_version = FALSE;
+  if (booted_deployment)
+    {
+      const gchar *booted_version =
+        _ostree_deployment_get_version (booted_deployment, repo, error);
+      retained_previous_version = (g_strcmp0 (booted_version, new_version) != 0);
+    }
+
+  if (!retained_previous_version && merge_deployment &&
+      !ostree_deployment_equal (merge_deployment, booted_deployment))
+    {
+      const gchar *merge_version =
+        _ostree_deployment_get_version (merge_deployment, repo, error);
+      retained_previous_version = (g_strcmp0 (merge_version, new_version) != 0);
+    }
+
   /* tracks when we come across the booted deployment */
   gboolean before_booted = TRUE;
   gboolean before_merge = TRUE;
@@ -1904,6 +1930,13 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
        * deployments, fall back on merge deployment */
       const gboolean passed_crossover = booted_deployment ? !before_booted : !before_merge;
 
+      gboolean is_previous_version = FALSE;
+      if (passed_crossover && osname_matches && !retained_previous_version)
+        {
+          const gchar *version = _ostree_deployment_get_version (deployment, repo, error);
+          is_previous_version = (g_strcmp0 (version, new_version) != 0);
+        }
+
       /* Retain deployment if:
        *   - we're explicitly asked to, or
        *   - it's pinned
@@ -1919,6 +1952,15 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
           || (is_booted || is_merge)
           || (retain_rollback && passed_crossover))
         g_ptr_array_add (new_deployments, g_object_ref (deployment));
+      /*
+       *   - we're keeping the previous version deployment
+       */
+      else if (retain_previous && !retained_previous_version && is_previous_version)
+        {
+          g_ptr_array_add (new_deployments, g_object_ref (deployment));
+          /* Just keep one previous version */
+          retained_previous_version = TRUE;
+        }
 
       /* add right after booted/merge deployment */
       if (!added_new && passed_crossover)
