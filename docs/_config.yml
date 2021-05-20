@@ -7,6 +7,14 @@ url: "https://ostreedev.github.io"
 permalink: /:title/
 markdown: kramdown
 
+# Exclude the README and the bundler files that would normally be
+# ignored by default.
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+
 remote_theme: coreos/just-the-docs
 plugins:
   - jekyll-remote-theme
