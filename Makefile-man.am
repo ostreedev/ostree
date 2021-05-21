@@ -52,9 +52,23 @@ man5_files = ostree.repo.5 ostree.repo-config.5
 man1_MANS = $(addprefix man/,$(man1_files))
 man5_MANS = $(addprefix man/,$(man5_files))
 
+manhtml_files = \
+	$(addprefix man/html/,$(man1_files:.1=.html)) \
+	$(addprefix man/html/,$(man5_files:.5=.html)) \
+	$(NULL)
+
+if ENABLE_MAN_HTML
+noinst_DATA += $(manhtml_files)
+
+# Convenience target for building the just the HTML man pages
+manhtml: $(manhtml_files)
+.PHONY: manhtml
+endif
+
 EXTRA_DIST += $(man1_MANS:.1=.xml) $(man5_MANS:.5=.xml)
 
-XSLT_STYLESHEET = http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
+XSLT_MAN_STYLESHEET = http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
+XSLT_HTML_STYLESHEET = http://docbook.sourceforge.net/release/xsl/current/html/docbook.xsl
 
 XSLTPROC_FLAGS = \
         --nonet \
@@ -67,14 +81,19 @@ XSLTPROC_FLAGS = \
 XSLTPROC_MAN = $(XSLTPROC) $(XSLTPROC_FLAGS)
 
 %.1: %.xml
-	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_STYLESHEET) $<
+	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_MAN_STYLESHEET) $<
 
 %.5: %.xml
-	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_STYLESHEET) $<
+	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_MAN_STYLESHEET) $<
+
+man/html/%.html: man/%.xml
+	@mkdir -p man/html
+	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_HTML_STYLESHEET) $<
 
 CLEANFILES += \
 	$(man1_MANS) \
 	$(man5_MANS) \
+	$(manhtml_files) \
 	$(NULL)
 
 endif
