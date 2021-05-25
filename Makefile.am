@@ -49,6 +49,15 @@ GITIGNOREFILES += fastbuild-*.qcow2 _kola_temp/
 # Rust stuff
 GITIGNOREFILES += target/ Cargo.lock
 
+# Jekyll docs
+GITIGNOREFILES += \
+	docs/.bundle/ \
+	docs/Gemfile.lock \
+	docs/_site/ \
+	docs/reference/ \
+	docs/vendor/ \
+	$(NULL)
+
 SUBDIRS += .
 
 if ENABLE_GTK_DOC

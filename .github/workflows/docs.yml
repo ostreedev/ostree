@@ -1,0 +1,69 @@
+---
+name: Docs
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  docs:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # This is taken from ci/travis-install.sh but should probably be
+      # refactored.
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            attr \
+            bison \
+            cpio \
+            debhelper \
+            dh-autoreconf \
+            dh-systemd \
+            docbook-xml \
+            docbook-xsl \
+            e2fslibs-dev \
+            elfutils \
+            fuse \
+            gjs \
+            gnome-desktop-testing \
+            gobject-introspection \
+            gtk-doc-tools \
+            libarchive-dev \
+            libattr1-dev \
+            libcap-dev \
+            libfuse-dev \
+            libgirepository1.0-dev \
+            libglib2.0-dev \
+            libgpgme11-dev \
+            liblzma-dev \
+            libmount-dev \
+            libselinux1-dev \
+            libsoup2.4-dev \
+            libcurl4-openssl-dev \
+            procps \
+            zlib1g-dev \
+            python3-yaml
+
+      - name: Build API docs
+        run: |
+          ./autogen.sh --enable-gtk-doc
+          make -C apidoc
+
+      - name: Build and publish jekyll docs
+        uses: helaili/jekyll-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          jekyll_src: docs
+          target_branch: gh-pages
+          # Only publish when pushing to main.
+          # XXX: Maybe this should only run on the release event?
+          build_only: ${{ github.ref == 'refs/heads/main' && 'false' || 'true' }}
+          # Run the prep script to put the API docs in place.
+          pre_build_commands: ./docs/prep-docs.sh
