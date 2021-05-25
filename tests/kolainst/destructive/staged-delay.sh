@@ -31,7 +31,7 @@ if systemctl --version | head -1 | grep -qF -e 'systemd 239'; then
   assert_file_has_content_literal logs.txt 'Stopped OSTree Finalize Staged Deployment'
   assert_not_file_has_content logs.txt 'Failed with result'
 else
-  assert_file_has_content_literal logs.txt 'ostree-finalize-staged.service: Succeeded.'
+  assert_file_has_content logs.txt 'ostree-finalize-staged.service: \(Succeeded\|Deactivated successfully\)'
 fi
 assert_file_has_content_literal /proc/cmdline somedummykarg=1 
 ;;
