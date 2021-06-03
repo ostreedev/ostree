@@ -235,7 +235,6 @@ assert_file_has_content test2-show "${key1_id}"
 assert_file_has_content test2-show "${key2_sub_id}"
 assert_file_has_content test2-show 'Good signature from "Test Key 1 <>"'
 assert_file_has_content test2-show 'BAD signature from "Test Key 2 <>"'
-assert_not_file_has_content test2-show 'Key expired'
 assert_file_has_content test2-show "Primary key ID ${key2_id}"
 assert_file_has_content test2-show 'Primary key expired'
 
