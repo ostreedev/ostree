@@ -104,6 +104,13 @@ typedef struct {
   fsblkcnt_t max_blocks;
 } OstreeRepoTxn;
 
+typedef struct {
+  GMutex mutex;  /* All other members should only be accessed with this held */
+  int fd;  /* The open file or flock file descriptor */
+  guint shared;  /* Number of shared locks curently held */
+  guint exclusive;  /* Number of exclusive locks currently held */
+} OstreeRepoLock;
+
 typedef enum {
   _OSTREE_FEATURE_NO,
   _OSTREE_FEATURE_MAYBE,
@@ -158,6 +165,8 @@ struct OstreeRepo {
   GFile *sysroot_dir;
   GWeakRef sysroot; /* Weak to avoid a circular ref; see also `is_system` */
   char *remotes_config_dir;
+
+  OstreeRepoLock lock;
 
   GMutex txn_lock;
   OstreeRepoTxn txn;
@@ -506,30 +515,6 @@ _ostree_repo_maybe_regenerate_summary (OstreeRepo    *self,
                                        GCancellable  *cancellable,
                                        GError       **error);
 
-/* Locking APIs are currently private.
- * See https://github.com/ostreedev/ostree/pull/1555
- */
-typedef enum {
-  OSTREE_REPO_LOCK_SHARED,
-  OSTREE_REPO_LOCK_EXCLUSIVE
-} OstreeRepoLockType;
-
-gboolean      _ostree_repo_lock_push (OstreeRepo          *self,
-                                     OstreeRepoLockType   lock_type,
-                                     GCancellable        *cancellable,
-                                     GError             **error);
-gboolean      _ostree_repo_lock_pop (OstreeRepo    *self,
-                                     GCancellable  *cancellable,
-                                     GError       **error);
-
-typedef OstreeRepo OstreeRepoAutoLock;
-
-OstreeRepoAutoLock * _ostree_repo_auto_lock_push (OstreeRepo          *self,
-                                                  OstreeRepoLockType   lock_type,
-                                                  GCancellable        *cancellable,
-                                                  GError             **error);
-void          _ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *lock);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoLock, _ostree_repo_auto_lock_cleanup)
 
 gboolean _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error);
 
