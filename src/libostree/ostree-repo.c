@@ -678,7 +678,7 @@ ostree_repo_auto_lock_push (OstreeRepo          *self,
   if (!ostree_repo_lock_push (self, lock_type, cancellable, error))
     return NULL;
 
-  OstreeRepoAutoLock *auto_lock = g_slice_new (OstreeRepoAutoLock);
+  OstreeRepoAutoLock *auto_lock = g_new (OstreeRepoAutoLock, 1);
   auto_lock->repo = self;
   auto_lock->lock_type = lock_type;
   return auto_lock;
@@ -707,7 +707,7 @@ ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *auto_lock)
 
       errno = errsv;
 
-      g_slice_free (OstreeRepoAutoLock, auto_lock);
+      g_free (auto_lock);
     }
 }
 
