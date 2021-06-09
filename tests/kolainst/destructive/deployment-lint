@@ -1,0 +1,13 @@
+#!/bin/bash
+set -xeuo pipefail
+
+. ${KOLA_EXT_DATA}/libinsttest.sh
+
+require_writable_sysroot
+prepare_tmpdir
+
+mkdir -p rootfs/var/shouldntdothis/subdir
+ostree commit -b testlint --no-bindings --selinux-policy-from-base --tree=ref="${host_refspec}" --consume --tree=dir=rootfs
+ostree admin deploy testlint 2>err.txt
+assert_file_has_content err.txt 'Deploying commit.*which contains content in /var/shouldntdothis'
+echo "ok content in /var"
