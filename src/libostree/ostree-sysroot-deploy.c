@@ -2632,6 +2632,39 @@ _ostree_deployment_set_bootconfig_from_kargs (OstreeDeployment *deployment,
     }
 }
 
+// Perform some basic static analysis and emit warnings for things
+// that are likely to fail later.  This function only returns
+// a hard error if something unexpected (e.g. I/O error) occurs.
+static gboolean
+lint_deployment_fs (OstreeSysroot     *self,
+                    OstreeDeployment  *deployment,
+                    int                deployment_dfd,
+                    GCancellable      *cancellable,
+                    GError           **error)
+{
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  glnx_autofd int dest_dfd = -1;
+  gboolean exists;
+
+  if (!ot_dfd_iter_init_allow_noent (deployment_dfd, "var", &dfd_iter, &exists, error))
+    return FALSE;
+  while (exists)
+    {
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+
+      fprintf (stderr, "note: Deploying commit %s which contains content in /var/%s that will be ignored.\n",
+                        ostree_deployment_get_csum (deployment),
+                        dent->d_name);
+    }
+
+  return TRUE;
+}
+
 /* The first part of writing a deployment. This primarily means doing the
  * hardlink farm checkout, but we also compute some initial state.
  */
@@ -2678,6 +2711,9 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
 
   if (!prepare_deployment_etc (self, repo, new_deployment, deployment_dfd,
                                cancellable, error))
+    return FALSE;
+
+  if (!lint_deployment_fs (self, new_deployment, deployment_dfd, cancellable, error))
     return FALSE;
 
   ot_transfer_out_value (out_new_deployment, &new_deployment);
