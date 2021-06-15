@@ -1063,7 +1063,7 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
   return TRUE;
 }
 
-/* Loads the current bootversion, subbootversion, and deplyments, starting from the
+/* Loads the current bootversion, subbootversion, and deployments, starting from the
  * bootloader configs which are the source of truth.
  */
 static gboolean
