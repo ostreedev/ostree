@@ -8,6 +8,10 @@ prepare_tmpdir
 
 case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "")
+  # Test our generator
+  test -f /run/systemd/generator/multi-user.target.wants/ostree-finalize-staged.path
+  test -f /run/systemd/generator/local-fs.target.requires/ostree-remount.service
+
   # Initial cleanup to handle the cosa fast-build case
     ## TODO remove workaround for https://github.com/coreos/rpm-ostree/pull/2021
     mkdir -p /var/lib/rpm-ostree/history
@@ -19,7 +23,6 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   # Start up path unit
     systemctl enable --now ostree-finalize-staged.path
   # Write staged-deploy commit
-    export OSTREE_SYSROOT_DEBUG="test-staged-path"
     cd /ostree/repo/tmp
     # https://github.com/ostreedev/ostree/issues/1569
     ostree checkout -H ${commit} t
@@ -29,8 +32,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     systemctl show -p SubState ostree-finalize-staged.path | grep -q waiting
     systemctl show -p ActiveState ostree-finalize-staged.service | grep -q inactive
     systemctl show -p TriggeredBy ostree-finalize-staged.service | grep -q path
-    ostree admin deploy --stage staged-deploy | tee out.txt
-    assert_file_has_content out.txt 'test-staged-path: Not running'
+    ostree admin deploy --stage staged-deploy
     systemctl show -p SubState ostree-finalize-staged.path | grep running
     systemctl show -p ActiveState ostree-finalize-staged.service | grep active
     new_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)

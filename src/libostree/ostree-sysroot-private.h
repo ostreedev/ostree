@@ -37,8 +37,7 @@ typedef enum {
   OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE = 1 << 2,
   /* This is a temporary flag until we fully drop the explicit `systemctl start
    * ostree-finalize-staged.service` so that tests can exercise the new path unit. */
-  OSTREE_SYSROOT_DEBUG_TEST_STAGED_PATH = 1 << 3,
-  OSTREE_SYSROOT_DEBUG_TEST_NO_DTB = 1 << 4, /* https://github.com/ostreedev/ostree/issues/2154 */
+  OSTREE_SYSROOT_DEBUG_TEST_NO_DTB = 1 << 3, /* https://github.com/ostreedev/ostree/issues/2154 */
 } OstreeSysrootDebugFlags;
 
 typedef enum {
