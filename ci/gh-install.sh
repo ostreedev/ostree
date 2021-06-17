@@ -37,6 +37,19 @@ case "$ID" in
         # be answered.
         export DEBIAN_FRONTEND=noninteractive
 
+        # Use libfuse3-dev unless otherwise specified
+        case " $* " in
+            (*\ libfuse-dev\ *)
+                ;;
+
+            (*\ libfuse3-dev\ *)
+                ;;
+
+            (*)
+                set -- "$@" libfuse3-dev
+                ;;
+        esac
+
         # TODO: fetch this list from the Debian packaging git repository?
         apt-get -y update
         apt-get -y install \
@@ -59,7 +72,6 @@ case "$ID" in
             libattr1-dev \
             libcap-dev \
             libcurl4-openssl-dev \
-            libfuse-dev \
             libgirepository1.0-dev \
             libglib2.0-dev \
             libgpgme11-dev \

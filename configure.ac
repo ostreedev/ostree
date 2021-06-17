@@ -254,6 +254,7 @@ AS_IF([test x$with_ed25519_libsodium != xno], [
 AM_CONDITIONAL(USE_LIBSODIUM, test "x$have_libsodium" = xyes)
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
+FUSE3_DEPENDENCY="fuse3 >= 3.1.1"
 # What's in RHEL7.2.
 FUSE_DEPENDENCY="fuse >= 2.9.2"
 
@@ -448,8 +449,22 @@ AC_ARG_ENABLE(rofiles-fuse,
                               [generate rofiles-fuse helper [default=yes]])],,
               enable_rofiles_fuse=yes)
 AS_IF([ test x$enable_rofiles_fuse != xno ], [
-    PKG_CHECK_MODULES(BUILDOPT_FUSE, $FUSE_DEPENDENCY)
-], [enable_rofiles_fuse=no])
+    PKG_CHECK_MODULES([FUSE3], [$FUSE3_DEPENDENCY],
+                      [
+                        FUSE_USE_VERSION=31
+                        BUILDOPT_FUSE_CFLAGS="$FUSE3_CFLAGS"
+                        BUILDOPT_FUSE_LIBS="$FUSE3_LIBS"
+                      ],
+                      [PKG_CHECK_MODULES([FUSE], [$FUSE_DEPENDENCY],
+                                         [
+                                           FUSE_USE_VERSION=26
+                                           BUILDOPT_FUSE_CFLAGS="$FUSE_CFLAGS"
+                                           BUILDOPT_FUSE_LIBS="$FUSE_LIBS"
+                                         ])])
+    AC_DEFINE_UNQUOTED([FUSE_USE_VERSION], [$FUSE_USE_VERSION], [Define to the FUSE API version])
+    AC_SUBST([BUILDOPT_FUSE_CFLAGS])
+    AC_SUBST([BUILDOPT_FUSE_LIBS])
+    ], [enable_rofiles_fuse=no])
 AM_CONDITIONAL(BUILDOPT_FUSE, test x$enable_rofiles_fuse = xyes)
 
 AC_ARG_WITH(dracut,
