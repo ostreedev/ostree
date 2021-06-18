@@ -120,6 +120,7 @@ require_internal_units (const char *normal_dir,
                         const char *late_dir,
                         GError    **error)
 {
+#ifdef SYSTEM_DATA_UNIT_PATH
   GCancellable *cancellable = NULL;
 
   glnx_autofd int normal_dir_dfd = -1;
@@ -137,6 +138,9 @@ require_internal_units (const char *normal_dir,
     return glnx_throw_errno_prefix (error, "symlinkat");
 
   return TRUE;
+#else
+  return glnx_throw (error, "Not implemented");
+#endif
 }
 
 /* Generate var.mount */
