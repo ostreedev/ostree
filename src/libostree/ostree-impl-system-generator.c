@@ -113,13 +113,39 @@ stateroot_from_ostree_cmdline (const char *ostree_cmdline,
 }
 #endif
 
-/* Implementation of ostree-system-generator */
-gboolean
-_ostree_impl_system_generator (const char *ostree_cmdline,
-                               const char *normal_dir,
-                               const char *early_dir,
-                               const char *late_dir,
-                               GError    **error)
+/* Forcibly enable our internal units, since we detected ostree= on the kernel cmdline */
+static gboolean
+require_internal_units (const char *normal_dir,
+                        const char *early_dir,
+                        const char *late_dir,
+                        GError    **error)
+{
+  GCancellable *cancellable = NULL;
+
+  glnx_autofd int normal_dir_dfd = -1;
+  if (!glnx_opendirat (AT_FDCWD, normal_dir, TRUE, &normal_dir_dfd, error))
+    return FALSE;
+
+  if (!glnx_shutil_mkdir_p_at (normal_dir_dfd, "local-fs.target.requires", 0755, cancellable, error))
+    return FALSE;
+  if (symlinkat (SYSTEM_DATA_UNIT_PATH "/ostree-remount.service", normal_dir_dfd, "local-fs.target.requires/ostree-remount.service") < 0)
+    return glnx_throw_errno_prefix (error, "symlinkat");
+
+  if (!glnx_shutil_mkdir_p_at (normal_dir_dfd, "multi-user.target.wants", 0755, cancellable, error))
+    return FALSE;
+  if (symlinkat (SYSTEM_DATA_UNIT_PATH "/ostree-finalize-staged.path", normal_dir_dfd, "multi-user.target.wants/ostree-finalize-staged.path") < 0)
+    return glnx_throw_errno_prefix (error, "symlinkat");
+
+  return TRUE;
+}
+
+/* Generate var.mount */
+static gboolean
+fstab_generator (const char *ostree_cmdline,
+                 const char *normal_dir,
+                 const char *early_dir,
+                 const char *late_dir,
+                 GError    **error)
 {
 #ifdef HAVE_LIBMOUNT
   /* Not currently cancellable, but define a var in case we care later */
@@ -224,4 +250,20 @@ _ostree_impl_system_generator (const char *ostree_cmdline,
 #else
   return glnx_throw (error, "Not implemented");
 #endif
+}
+
+/* Implementation of ostree-system-generator */
+gboolean
+_ostree_impl_system_generator (const char *ostree_cmdline,
+                               const char *normal_dir,
+                               const char *early_dir,
+                               const char *late_dir,
+                               GError    **error)
+{
+  if (!require_internal_units (normal_dir, early_dir, late_dir, error))
+    return FALSE;
+  if (!fstab_generator (ostree_cmdline, normal_dir, early_dir, late_dir, error))
+    return FALSE;
+
+  return TRUE;
 }

@@ -499,6 +499,7 @@ AS_IF([test "x$with_libsystemd" = "xyes"], [
               [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
   AS_IF([test "x$with_systemdsystemunitdir" != "xno"], [
     AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
+    AC_DEFINE_UNQUOTED([SYSTEM_DATA_UNIT_PATH], ["$with_systemdsystemunitdir"], ["unit path"])
   ])
   AC_ARG_WITH([systemdsystemgeneratordir],
               AS_HELP_STRING([--with-systemdsystemgeneratordir=DIR], [Directory for systemd generators]),
