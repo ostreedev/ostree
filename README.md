@@ -147,7 +147,7 @@ make install DESTDIR=/path/to/dest
 ## Contact and discussion forums
 
 OSTree has a [mailing list](https://mail.gnome.org/archives/ostree-list/) and
-there is also an `#ostree` channel on FreeNode.  However, asynchronous+logged
+there is also an `#ostree` channel on [Libera.Chat](ircs://irc.libera.chat/ostree).  However, asynchronous+logged
 communication is preferred for nontrivial questions.
 
 ## Contributing
