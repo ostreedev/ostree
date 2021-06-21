@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright © 2015-2016 Collabora Ltd.
+# Copyright © 2021 Endless OS Foundation LLC
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation files
@@ -27,68 +28,18 @@ set -x
 
 NULL=
 
-# ci_distro:
-# OS distribution in which we are testing
-# Typical values: ubuntu, debian; maybe fedora in future
-: "${ci_distro:=debian}"
+# Get the OS release info
+. /etc/os-release
 
-# ci_docker:
-# If non-empty, this is the name of a Docker image. travis-install.sh will
-# fetch it with "docker pull" and use it as a base for a new Docker image
-# named "ci-image" in which we will do our testing.
-: "${ci_docker:=}"
-
-# ci_in_docker:
-# Used internally by travis-install.sh. If yes, we are inside the Docker image
-# (ci_docker is empty in this case).
-: "${ci_in_docker:=no}"
-
-# ci_suite:
-# OS suite (release, branch) in which we are testing.
-# Typical values for ci_distro=ubuntu: xenial, trusty
-# Typical values for ci_distro=debian: sid, jessie
-# Typical values for ci_distro=fedora might be 25, rawhide
-: "${ci_suite:=stretch}"
-
-# ci_configopts: Additional arguments for configure
-: "${ci_configopts:=}"
-
-# ci_pkgs: Additional packages to be installed
-: "${ci_pkgs:=}"
-
-if [ $(id -u) = 0 ]; then
-    sudo=
-else
-    sudo=sudo
-fi
-
-if [ -n "$ci_docker" ]; then
-    sed \
-        -e "s,@ci_distro@,${ci_distro}," \
-        -e "s,@ci_docker@,${ci_docker}," \
-        -e "s,@ci_suite@,${ci_suite}," \
-        -e "s,@ci_pkgs@,${ci_pkgs}," \
-        < ci/travis-Dockerfile.in > Dockerfile
-    exec docker build -t ci-image .
-fi
-
-case "$ci_distro" in
-    (debian)
-        # Docker images use httpredir.debian.org but it seems to be
-        # unreliable; use a CDN instead
-        sed -i -e 's/httpredir\.debian\.org/deb.debian.org/g' /etc/apt/sources.list
-        ;;
-esac
-
-case "$ci_distro" in
+case "$ID" in
     (debian|ubuntu)
         # Make debconf run non-interactively since its questions can't
         # be answered.
         export DEBIAN_FRONTEND=noninteractive
 
         # TODO: fetch this list from the Debian packaging git repository?
-        $sudo apt-get -y update
-        $sudo apt-get -y install \
+        apt-get -y update
+        apt-get -y install \
             attr \
             bison \
             cpio \
@@ -107,6 +58,7 @@ case "$ci_distro" in
             libarchive-dev \
             libattr1-dev \
             libcap-dev \
+            libcurl4-openssl-dev \
             libfuse-dev \
             libgirepository1.0-dev \
             libglib2.0-dev \
@@ -115,25 +67,16 @@ case "$ci_distro" in
             libmount-dev \
             libselinux1-dev \
             libsoup2.4-dev \
-            libcurl4-openssl-dev \
+            libsystemd-dev \
             procps \
-            zlib1g-dev \
             python3-yaml \
-            ${ci_pkgs:-} \
-            ${NULL}
-
-        if [ "$ci_in_docker" = yes ]; then
-            # Add the user that we will use to do the build inside the
-            # Docker container, and let them use sudo
-            adduser --disabled-password user </dev/null
-            apt-get -y install sudo systemd-sysv
-            echo "user ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/nopasswd
-            chmod 0440 /etc/sudoers.d/nopasswd
-        fi
+            systemd \
+            zlib1g-dev \
+            "$@"
         ;;
 
     (*)
-        echo "Don't know how to set up ${ci_distro}" >&2
+        echo "Don't know how to set up ${ID}" >&2
         exit 1
         ;;
 esac
