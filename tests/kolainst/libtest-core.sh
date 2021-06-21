@@ -5,7 +5,8 @@
 #
 # Known copies are in the following repos:
 #
-# - https://github.com/projectatomic/rpm-ostree
+# - https://github.com/containers/bubblewrap
+# - https://github.com/coreos/rpm-ostree
 #
 # Copyright (C) 2017 Colin Walters <walters@verbum.org>
 #
@@ -83,6 +84,18 @@ _fatal_print_file() {
     fatal "$@"
 }
 
+_fatal_print_files() {
+    file1="$1"
+    shift
+    file2="$1"
+    shift
+    ls -al "$file1" >&2
+    sed -e 's/^/# /' < "$file1" >&2
+    ls -al "$file2" >&2
+    sed -e 's/^/# /' < "$file2" >&2
+    fatal "$@"
+}
+
 assert_not_has_file () {
     if test -f "$1"; then
         _fatal_print_file "$1" "File '$1' exists"
@@ -156,8 +169,22 @@ assert_file_empty() {
     fi
 }
 
+assert_files_equal() {
+    if ! cmp "$1" "$2"; then
+        _fatal_print_files "$1" "$2" "File '$1' and '$2' is not equal"
+    fi
+}
+
 # Use to skip all of these tests
 skip() {
     echo "1..0 # SKIP" "$@"
     exit 0
 }
+
+report_err () {
+  local exit_status="$?"
+  { { local BASH_XTRACEFD=3; } 2> /dev/null
+  echo "Unexpected nonzero exit status $exit_status while running: $BASH_COMMAND" >&2
+  } 3> /dev/null
+}
+trap report_err ERR
