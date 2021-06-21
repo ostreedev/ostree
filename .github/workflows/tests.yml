@@ -30,6 +30,9 @@ jobs:
     #
     # configure-options: Options to pass to `configure`.
     strategy:
+      # Let other configurations continue if one fails.
+      fail-fast: false
+
       matrix:
         include:
           - name: Debian Buster (10) with sign-ed25519
