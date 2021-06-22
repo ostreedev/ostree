@@ -28,7 +28,7 @@ After=systemd-remount-fs.service
 # But we run *before* most other core bootup services that need write access to /etc and /var
 Before=local-fs.target umount.target
 Before=systemd-random-seed.service plymouth-read-write.service systemd-journal-flush.service
-Before=systemd-tmpfiles-setup.service
+Before=systemd-tmpfiles-setup.service systemd-rfkill.service systemd-rfkill.socket
 
 [Service]
 Type=oneshot
