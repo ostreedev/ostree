@@ -30,10 +30,18 @@ jobs:
     #
     # configure-options: Options to pass to `configure`.
     strategy:
+      # Let other configurations continue if one fails.
+      fail-fast: false
+
       matrix:
         include:
-          - name: Debian Buster (10) with sign-ed25519
-            image: debian:buster-slim
+          # Debian builds. Currently stable and testing are tested.
+          # Other options would be stable-backports, oldstable,
+          # oldstable-backports and unstable.
+          #
+          # https://hub.docker.com/_/debian
+          - name: Debian Stable with sign-ed25519
+            image: debian:stable-slim
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
@@ -42,8 +50,8 @@ jobs:
             configure-options: >-
               --with-ed25519-libsodium
 
-          - name: Debian Buster (10) with curl, sign-ed25519 and no gpgme
-            image: debian:buster-slim
+          - name: Debian Stable with curl, sign-ed25519 and no gpgme
+            image: debian:stable-slim
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
@@ -56,8 +64,8 @@ jobs:
 
           # A 32 bit build to act as a proxy for frequently deployed 32
           # bit armv7
-          - name: Debian Buster (10) 32 bit
-            image: i386/debian:buster-slim
+          - name: Debian Stable 32 bit
+            image: i386/debian:stable-slim
             # This is pretty nasty. The checkout action uses an x86_64
             # node binary in the container, so we need to provide an
             # x86_64 ld.so and libstdc++.
@@ -66,14 +74,26 @@ jobs:
               apt-get update
               apt-get install -y git libc6:amd64 libstdc++6:amd64
 
-          - name: Ubuntu Focal (20.04)
-            image: ubuntu:focal
+          - name: Debian Testing
+            image: debian:testing-slim
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
 
-          - name: Ubuntu Groovy (20.10)
-            image: ubuntu:groovy
+          # Ubuntu builds. Unfortunately, when the latest release is
+          # also the latest LTS, latest and rolling are the same. Other
+          # options would be to test the previous LTS by name or to test
+          # the devel tag, which is the unreleased version.
+          #
+          # https://hub.docker.com/_/ubuntu
+          - name: Ubuntu Latest LTS
+            image: ubuntu:latest
+            pre-checkout-setup: |
+              apt-get update
+              apt-get install -y git
+
+          - name: Ubuntu Latest Release
+            image: ubuntu:rolling
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git

@@ -32,6 +32,8 @@ srcdir="$(pwd)"
 mkdir ci-build
 cd ci-build
 
+# V=1 shows the full build commands. VERBOSE=1 dumps test-suite.log on
+# failures.
 make="make V=1 VERBOSE=1"
 
 ../configure \
@@ -40,20 +42,9 @@ make="make V=1 VERBOSE=1"
 
 ${make}
 
-# Run the tests both using check and distcheck and dump the logs on
-# failures. For distcheck the logs will be inside the dist directory, so
-# tell make to use the current directory.
-if ! ${make} check; then
-    cat test-suite.log || :
-    exit 1
-fi
-if ! ${make} distcheck \
-    TEST_SUITE_LOG=$(pwd)/test-suite.log \
-    DISTCHECK_CONFIGURE_FLAGS="$*"
-then
-    cat test-suite.log || :
-    exit 1
-fi
+# Run the tests both using check and distcheck.
+${make} check
+${make} distcheck DISTCHECK_CONFIGURE_FLAGS="$*"
 
 # Show the installed files
 ${make} install DESTDIR=$(pwd)/DESTDIR

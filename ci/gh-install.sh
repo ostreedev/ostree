@@ -26,8 +26,6 @@
 set -euo pipefail
 set -x
 
-NULL=
-
 # Get the OS release info
 . /etc/os-release
 
@@ -37,42 +35,99 @@ case "$ID" in
         # be answered.
         export DEBIAN_FRONTEND=noninteractive
 
+        # Debian upstream data:
+        # https://tracker.debian.org/pkg/ostree
+        # https://salsa.debian.org/debian/ostree
+        # https://salsa.debian.org/debian/ostree/-/blob/debian/master/debian/control
+        #
+        # Ubuntu package data:
+        # https://packages.ubuntu.com/source/impish/ostree
+        #
         # TODO: fetch this list from the Debian packaging git repository?
+
+        # First construct a list of Build-Depends common to all
+        # versions. This includes build-essential, which is assumed to
+        # be installed on all Debian builders. We also add gjs to allow
+        # the JS tests to run even though gjs is explicitly disable in
+        # Debian.
+        PACKAGES=(
+            attr
+            autoconf
+            automake
+            bison
+            build-essential
+            ca-certificates
+            cpio
+            debhelper
+            dh-exec
+            docbook-xml
+            docbook-xsl
+            e2fslibs-dev
+            elfutils
+            fuse
+            gnupg
+            gobject-introspection
+            gtk-doc-tools
+            libarchive-dev
+            libattr1-dev
+            libavahi-client-dev
+            libavahi-glib-dev
+            libcap-dev
+            libfuse-dev
+            libgirepository1.0-dev
+            libglib2.0-dev
+            libglib2.0-doc
+            libgpgme-dev
+            liblzma-dev
+            libmount-dev
+            libselinux1-dev
+            libsoup2.4-dev
+            libsystemd-dev
+            libtool
+            procps
+            python3
+            python3-yaml
+            xsltproc
+            zlib1g-dev
+        )
+
+        # Additional common packages:
+        #
+        # gjs - To allow running JS tests even though this has been
+        # disabled in Debian for a while.
+        #
+        # gnome-desktop-testing - To eventually allow running the
+        # installed tests.
+        #
+        # libcurl4-openssl-dev - To allow building the cURL fetch
+        # backend in addition to the soup fetch backend.
+        #
+        # systemd - To get the unit and generator paths from systemd.pc
+        # rather than passing them as configure options.
+        PACKAGES+=(
+            gjs
+            gnome-desktop-testing
+            libcurl4-openssl-dev
+            systemd
+        )
+
+        # Distro specific packages. Matching is on VERSION_CODENAME from
+        # /etc/os-release. Debian testing and unstable may not have this
+        # set, so assume an empty or unset value represents those.
+
+        # hexdump was previously provided by bsdmainutils but is now in
+        # bsdextrautils.
+        case "${VERSION_CODENAME:-}" in
+            (buster|focal|bionic)
+                PACKAGES+=(bsdmainutils)
+                ;;
+            (*)
+                PACKAGES+=(bsdextrautils)
+                ;;
+        esac
+
         apt-get -y update
-        apt-get -y install \
-            attr \
-            bison \
-            cpio \
-            debhelper \
-            dh-autoreconf \
-            dh-systemd \
-            docbook-xml \
-            docbook-xsl \
-            e2fslibs-dev \
-            elfutils \
-            fuse \
-            gjs \
-            gnome-desktop-testing \
-            gobject-introspection \
-            gtk-doc-tools \
-            libarchive-dev \
-            libattr1-dev \
-            libcap-dev \
-            libcurl4-openssl-dev \
-            libfuse-dev \
-            libgirepository1.0-dev \
-            libglib2.0-dev \
-            libgpgme11-dev \
-            liblzma-dev \
-            libmount-dev \
-            libselinux1-dev \
-            libsoup2.4-dev \
-            libsystemd-dev \
-            procps \
-            python3-yaml \
-            systemd \
-            zlib1g-dev \
-            "$@"
+        apt-get -y install "${PACKAGES[@]}" "$@"
         ;;
 
     (*)
