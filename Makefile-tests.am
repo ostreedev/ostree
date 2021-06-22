@@ -69,6 +69,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-remote-add.sh \
 	tests/test-remote-headers.sh \
 	tests/test-commit-sign.sh \
+	tests/test-commit-timestamp.sh \
 	tests/test-export.sh \
 	tests/test-help.sh \
 	tests/test-libarchive.sh \
