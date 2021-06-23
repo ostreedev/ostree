@@ -108,9 +108,6 @@ mod repo_finder_result;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 pub use self::repo_finder_result::RepoFinderResult;
 
-mod repo_transaction_stats;
-pub use self::repo_transaction_stats::RepoTransactionStats;
-
 mod enums;
 pub use self::enums::DeploymentUnlockedState;
 pub use self::enums::GpgSignatureAttr;

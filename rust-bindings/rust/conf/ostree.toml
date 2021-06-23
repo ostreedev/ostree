@@ -89,6 +89,7 @@ manual = [
     "OSTree.KernelArgs",
     "OSTree.RepoCheckoutAtOptions",
     "OSTree.RepoCheckoutFilter",
+    "OSTree.RepoTransactionStats",
     "OSTree.SysrootWriteDeploymentsOpts",
     "OSTree.SysrootDeployTreeOpts",
 ]
@@ -186,12 +187,6 @@ status = "generate"
     # [IGNORE] clone() should already be this
     name = "dup"
     ignore = true
-
-[[object]]
-name = "OSTree.RepoTransactionStats"
-status = "generate"
-init_function_expression = "|_ptr| ()"
-clear_function_expression = "|_ptr| ()"
 
 [[object]]
 name = "OSTree.SePolicy"

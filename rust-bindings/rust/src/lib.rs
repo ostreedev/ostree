@@ -50,6 +50,8 @@ pub use crate::repo::*;
 mod repo_checkout_at_options;
 #[cfg(any(feature = "v2016_8", feature = "dox"))]
 pub use crate::repo_checkout_at_options::*;
+mod repo_transaction_stats;
+pub use repo_transaction_stats::RepoTransactionStats;
 mod se_policy;
 pub use crate::se_policy::*;
 #[cfg(any(feature = "v2020_1", feature = "dox"))]
