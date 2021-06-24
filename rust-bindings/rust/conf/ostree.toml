@@ -13,7 +13,7 @@ deprecate_by_min_version = true
 single_version_file = true
 generate_display_trait = true
 
-girs_dir = "../gir-files"
+girs_directories = [ "../gir-files" ]
 
 generate = [
     "OSTree.AsyncProgress",
@@ -224,6 +224,11 @@ status = "generate"
     [[object.function.parameter]]
     name = "opts"
     const = true
+
+    [[object.function]]
+    # [IGNORE] overlaps with repo()
+    name = "get_repo"
+    ignore = true
 
 [[object]]
 name = "OSTree.*"

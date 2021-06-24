@@ -2,7 +2,6 @@ use crate::{Repo, RepoCheckoutFilterResult};
 use glib::translate::*;
 use glib_sys::gpointer;
 use libc::c_char;
-use ostree_sys::*;
 use std::any::Any;
 use std::panic::catch_unwind;
 use std::path::{Path, PathBuf};
@@ -65,11 +64,11 @@ impl FromGlibPtrNone<gpointer> for &RepoCheckoutFilter {
 /// # Panics
 /// If any parameter is a null pointer, the function panics.
 unsafe fn filter_trampoline(
-    repo: *mut OstreeRepo,
+    repo: *mut ffi::OstreeRepo,
     path: *const c_char,
     stat: *mut libc::stat,
     user_data: gpointer,
-) -> OstreeRepoCheckoutFilterResult {
+) -> ffi::OstreeRepoCheckoutFilterResult {
     // We can't guarantee it's a valid pointer, but we can make sure it's not null.
     assert!(!stat.is_null());
     let stat = &*stat;
@@ -83,17 +82,17 @@ unsafe fn filter_trampoline(
     let path: PathBuf = from_glib_none(path);
 
     let result = closure.call(&repo, &path, stat);
-    result.to_glib()
+    result.into_glib()
 }
 
 /// Unwind-safe trampoline to call the Rust filter callback. See [filter_trampoline](fn.filter_trampoline.html).
 /// This function additionally catches panics and aborts to avoid unwinding into C code.
 pub(super) unsafe extern "C" fn filter_trampoline_unwindsafe(
-    repo: *mut OstreeRepo,
+    repo: *mut ffi::OstreeRepo,
     path: *const c_char,
     stat: *mut libc::stat,
     user_data: gpointer,
-) -> OstreeRepoCheckoutFilterResult {
+) -> ffi::OstreeRepoCheckoutFilterResult {
     // Unwinding across an FFI boundary is Undefined Behavior and we have no other way to communicate
     // the error. We abort() safely to avoid further problems.
     let result = catch_unwind(move || filter_trampoline(repo, path, stat, user_data));
@@ -213,6 +212,6 @@ mod tests {
                 filter.to_glib_none().0,
             )
         };
-        assert_eq!(result, OSTREE_REPO_CHECKOUT_FILTER_SKIP);
+        assert_eq!(result, ffi::OSTREE_REPO_CHECKOUT_FILTER_SKIP);
     }
 }

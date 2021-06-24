@@ -1,6 +1,6 @@
+use crate::CollectionRef;
 use glib::translate::ToGlibPtr;
 use std::ffi::CStr;
-use CollectionRef;
 
 trait AsNonnullPtr
 where

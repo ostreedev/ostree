@@ -3,7 +3,7 @@ use glib_sys::{g_free, g_malloc0, gpointer};
 use once_cell::sync::OnceCell;
 use std::ptr::copy_nonoverlapping;
 
-const BYTES_LEN: usize = ostree_sys::OSTREE_SHA256_DIGEST_LEN as usize;
+const BYTES_LEN: usize = ffi::OSTREE_SHA256_DIGEST_LEN as usize;
 
 static BASE64_CONFIG: OnceCell<radix64::CustomConfig> = OnceCell::new();
 
@@ -120,10 +120,8 @@ impl Clone for Checksum {
 impl PartialEq for Checksum {
     fn eq(&self, other: &Self) -> bool {
         unsafe {
-            let ret = ostree_sys::ostree_cmp_checksum_bytes(
-                self.bytes as *const u8,
-                other.bytes as *const u8,
-            );
+            let ret =
+                ffi::ostree_cmp_checksum_bytes(self.bytes as *const u8, other.bytes as *const u8);
             ret == 0
         }
     }

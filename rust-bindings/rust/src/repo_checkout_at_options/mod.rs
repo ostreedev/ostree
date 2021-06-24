@@ -1,7 +1,6 @@
 use crate::{RepoCheckoutMode, RepoCheckoutOverwriteMode, RepoDevInoCache, SePolicy};
 use glib::translate::*;
 use libc::c_char;
-use ostree_sys::*;
 use std::path::PathBuf;
 
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
@@ -69,45 +68,46 @@ impl Default for RepoCheckoutAtOptions {
 type StringStash<'a, T> = Stash<'a, *const c_char, Option<T>>;
 type WrapperStash<'a, GlibT, WrappedT> = Stash<'a, *mut GlibT, Option<WrappedT>>;
 
-impl<'a> ToGlibPtr<'a, *const OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOptions {
+impl<'a> ToGlibPtr<'a, *const ffi::OstreeRepoCheckoutAtOptions> for RepoCheckoutAtOptions {
     #[allow(clippy::type_complexity)]
     type Storage = (
-        Box<OstreeRepoCheckoutAtOptions>,
+        Box<ffi::OstreeRepoCheckoutAtOptions>,
         StringStash<'a, PathBuf>,
         StringStash<'a, String>,
-        WrapperStash<'a, OstreeRepoDevInoCache, RepoDevInoCache>,
-        WrapperStash<'a, OstreeSePolicy, SePolicy>,
+        WrapperStash<'a, ffi::OstreeRepoDevInoCache, RepoDevInoCache>,
+        WrapperStash<'a, ffi::OstreeSePolicy, SePolicy>,
     );
 
     // We need to make sure that all memory pointed to by the returned pointer is kept alive by
     // either the `self` reference or the returned Stash.
-    fn to_glib_none(&'a self) -> Stash<*const OstreeRepoCheckoutAtOptions, Self> {
+    fn to_glib_none(&'a self) -> Stash<*const ffi::OstreeRepoCheckoutAtOptions, Self> {
         // Creating this struct from zeroed memory is fine since it's `repr(C)` and only contains
         // primitive types. In fact, the libostree docs say to zero the struct. This means we handle
         // the unused bytes correctly.
         // The struct needs to be boxed so the pointer we return remains valid even as the Stash is
         // moved around.
-        let mut options = Box::new(unsafe { std::mem::zeroed::<OstreeRepoCheckoutAtOptions>() });
-        options.mode = self.mode.to_glib();
-        options.overwrite_mode = self.overwrite_mode.to_glib();
-        options.enable_uncompressed_cache = self.enable_uncompressed_cache.to_glib();
-        options.enable_fsync = self.enable_fsync.to_glib();
-        options.process_whiteouts = self.process_whiteouts.to_glib();
-        options.no_copy_fallback = self.no_copy_fallback.to_glib();
+        let mut options =
+            Box::new(unsafe { std::mem::zeroed::<ffi::OstreeRepoCheckoutAtOptions>() });
+        options.mode = self.mode.into_glib();
+        options.overwrite_mode = self.overwrite_mode.into_glib();
+        options.enable_uncompressed_cache = self.enable_uncompressed_cache.into_glib();
+        options.enable_fsync = self.enable_fsync.into_glib();
+        options.process_whiteouts = self.process_whiteouts.into_glib();
+        options.no_copy_fallback = self.no_copy_fallback.into_glib();
 
         #[cfg(feature = "v2017_6")]
         {
-            options.force_copy = self.force_copy.to_glib();
+            options.force_copy = self.force_copy.into_glib();
         }
 
         #[cfg(feature = "v2017_7")]
         {
-            options.bareuseronly_dirs = self.bareuseronly_dirs.to_glib();
+            options.bareuseronly_dirs = self.bareuseronly_dirs.into_glib();
         }
 
         #[cfg(feature = "v2018_9")]
         {
-            options.force_copy_zerosized = self.force_copy_zerosized.to_glib();
+            options.force_copy_zerosized = self.force_copy_zerosized.into_glib();
         }
 
         // We keep these complex values alive by returning them in our Stash. Technically, some of
@@ -162,8 +162,11 @@ mod tests {
         let stash = options.to_glib_none();
         let ptr = stash.0;
         unsafe {
-            assert_eq!((*ptr).mode, OSTREE_REPO_CHECKOUT_MODE_NONE);
-            assert_eq!((*ptr).overwrite_mode, OSTREE_REPO_CHECKOUT_OVERWRITE_NONE);
+            assert_eq!((*ptr).mode, ffi::OSTREE_REPO_CHECKOUT_MODE_NONE);
+            assert_eq!(
+                (*ptr).overwrite_mode,
+                ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_NONE
+            );
             assert_eq!((*ptr).enable_uncompressed_cache, GFALSE);
             assert_eq!((*ptr).enable_fsync, GFALSE);
             assert_eq!((*ptr).process_whiteouts, GFALSE);
@@ -212,17 +215,17 @@ mod tests {
             }),
             #[cfg(feature = "v2017_6")]
             sepolicy: Some(
-                SePolicy::new(&gio::File::new_for_path("a/b"), gio::NONE_CANCELLABLE).unwrap(),
+                SePolicy::new(&gio::File::for_path("a/b"), gio::NONE_CANCELLABLE).unwrap(),
             ),
             sepolicy_prefix: Some("prefix".into()),
         };
         let stash = options.to_glib_none();
         let ptr = stash.0;
         unsafe {
-            assert_eq!((*ptr).mode, OSTREE_REPO_CHECKOUT_MODE_USER);
+            assert_eq!((*ptr).mode, ffi::OSTREE_REPO_CHECKOUT_MODE_USER);
             assert_eq!(
                 (*ptr).overwrite_mode,
-                OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL
+                ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL
             );
             assert_eq!((*ptr).enable_uncompressed_cache, GTRUE);
             assert_eq!((*ptr).enable_fsync, GTRUE);

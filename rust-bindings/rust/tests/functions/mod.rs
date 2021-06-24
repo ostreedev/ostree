@@ -1,6 +1,6 @@
+use crate::util::TestRepo;
 use gio::NONE_CANCELLABLE;
 use ostree::{checksum_file_from_input, ObjectType};
-use util::TestRepo;
 
 #[test]
 fn should_checksum_file_from_input() {

@@ -1,17 +1,16 @@
 use gobject_sys;
-use ostree_sys;
 
-glib_wrapper! {
+glib::wrapper! {
     /// A list of statistics for each transaction that may be interesting for reporting purposes.
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct RepoTransactionStats(Boxed<ostree_sys::OstreeRepoTransactionStats>);
+    pub struct RepoTransactionStats(Boxed<ffi::OstreeRepoTransactionStats>);
 
     match fn {
-        copy => |ptr| gobject_sys::g_boxed_copy(ostree_sys::ostree_repo_transaction_stats_get_type(), ptr as *mut _) as *mut ostree_sys::OstreeRepoTransactionStats,
-        free => |ptr| gobject_sys::g_boxed_free(ostree_sys::ostree_repo_transaction_stats_get_type(), ptr as *mut _),
+        copy => |ptr| gobject_sys::g_boxed_copy(ffi::ostree_repo_transaction_stats_get_type(), ptr as *mut _) as *mut ffi::OstreeRepoTransactionStats,
+        free => |ptr| gobject_sys::g_boxed_free(ffi::ostree_repo_transaction_stats_get_type(), ptr as *mut _),
         init => |_ptr| (),
         clear => |_ptr| (),
-        get_type => || ostree_sys::ostree_repo_transaction_stats_get_type(),
+        type_ => || ffi::ostree_repo_transaction_stats_get_type(),
     }
 }
 

@@ -1,5 +1,5 @@
+use ffi::OstreeSysrootWriteDeploymentsOpts;
 use glib::translate::*;
-use ostree_sys::OstreeSysrootWriteDeploymentsOpts;
 
 pub struct SysrootWriteDeploymentsOpts {
     pub do_postclean: bool,
@@ -23,7 +23,7 @@ impl<'a> ToGlibPtr<'a, *const OstreeSysrootWriteDeploymentsOpts> for SysrootWrit
         // moved around.
         let mut options =
             Box::new(unsafe { std::mem::zeroed::<OstreeSysrootWriteDeploymentsOpts>() });
-        options.do_postclean = self.do_postclean.to_glib();
+        options.do_postclean = self.do_postclean.into_glib();
         Stash(options.as_ref(), options)
     }
 }

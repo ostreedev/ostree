@@ -13,9 +13,9 @@ pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(
     unsafe {
         let mut out_csum = ptr::null_mut();
         let mut error = ptr::null_mut();
-        let ret = ostree_sys::ostree_checksum_file(
+        let ret = ffi::ostree_checksum_file(
             f.as_ref().to_glib_none().0,
-            objtype.to_glib(),
+            objtype.into_glib(),
             &mut out_csum,
             cancellable.map(|p| p.as_ref()).to_glib_none().0,
             &mut error,
@@ -45,7 +45,7 @@ pub fn checksum_file_async<
     ) {
         let mut error = ptr::null_mut();
         let mut out_csum = MaybeUninit::uninit();
-        let ret = ostree_sys::ostree_checksum_file_async_finish(
+        let ret = ffi::ostree_checksum_file_async_finish(
             _source_object as *mut _,
             res,
             out_csum.as_mut_ptr(),
@@ -58,9 +58,9 @@ pub fn checksum_file_async<
     }
     let callback = checksum_file_async_trampoline::<R>;
     unsafe {
-        ostree_sys::ostree_checksum_file_async(
+        ffi::ostree_checksum_file_async(
             f.as_ref().to_glib_none().0,
-            objtype.to_glib(),
+            objtype.into_glib(),
             io_priority,
             cancellable.map(|p| p.as_ref()).to_glib_none().0,
             Some(callback),
@@ -76,12 +76,10 @@ pub fn checksum_file_async_future<P: IsA<gio::File> + Clone + 'static>(
     io_priority: i32,
 ) -> Pin<Box<dyn Future<Output = Result<Checksum, Box<dyn std::error::Error>>> + 'static>> {
     let f = f.clone();
-    Box::pin(gio::GioFuture::new(&f, move |f, send| {
-        let cancellable = gio::Cancellable::new();
-        checksum_file_async(f, objtype, io_priority, Some(&cancellable), move |res| {
+    Box::pin(gio::GioFuture::new(&f, move |f, cancellable, send| {
+        checksum_file_async(f, objtype, io_priority, Some(cancellable), move |res| {
             send.resolve(res);
         });
-        cancellable
     }))
 }
 
@@ -95,11 +93,11 @@ pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellabl
     unsafe {
         let mut out_csum = ptr::null_mut();
         let mut error = ptr::null_mut();
-        let ret = ostree_sys::ostree_checksum_file_from_input(
+        let ret = ffi::ostree_checksum_file_from_input(
             file_info.to_glib_none().0,
             xattrs.to_glib_none().0,
             in_.map(|p| p.as_ref()).to_glib_none().0,
-            objtype.to_glib(),
+            objtype.into_glib(),
             &mut out_csum,
             cancellable.map(|p| p.as_ref()).to_glib_none().0,
             &mut error,
@@ -120,14 +118,14 @@ pub fn checksum_file_at<P: IsA<gio::Cancellable>>(
     unsafe {
         let mut out_checksum = ptr::null_mut();
         let mut error = ptr::null_mut();
-        ostree_sys::ostree_checksum_file_at(
+        ffi::ostree_checksum_file_at(
             dfd,
             path.to_glib_none().0,
             stbuf
                 .map(|p| p as *const libc::stat as *mut libc::stat)
                 .unwrap_or(ptr::null_mut()),
-            objtype.to_glib(),
-            flags.to_glib(),
+            objtype.into_glib(),
+            flags.into_glib(),
             &mut out_checksum,
             cancellable.map(|p| p.as_ref()).to_glib_none().0,
             &mut error,
@@ -148,7 +146,7 @@ unsafe fn checksum_file_error(
     if !error.is_null() {
         Err(Box::<glib::Error>::new(from_glib_full(error)))
     } else if ret == GFALSE {
-        Err(Box::new(glib_bool_error!("unknown error")))
+        Err(Box::new(glib::bool_error!("unknown error")))
     } else {
         Ok(Checksum::from_glib_full(out_csum))
     }

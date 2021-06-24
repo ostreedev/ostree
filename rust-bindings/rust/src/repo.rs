@@ -1,10 +1,10 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
 use crate::{Checksum, ObjectName, ObjectType, Repo};
+use ffi;
 use gio_sys;
 use glib::{self, translate::*, Error, IsA};
 use glib_sys;
-use ostree_sys;
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
@@ -38,7 +38,7 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> Has
 impl Repo {
     /// Create a new `Repo` object for working with an OSTree repo at the given path.
     pub fn new_for_path<P: AsRef<Path>>(path: P) -> Repo {
-        Repo::new(&gio::File::new_for_path(path.as_ref()))
+        Repo::new(&gio::File::for_path(path.as_ref()))
     }
 
     pub fn traverse_commit<P: IsA<gio::Cancellable>>(
@@ -50,7 +50,7 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_traverse_commit(
+            let _ = ffi::ostree_repo_traverse_commit(
                 self.to_glib_none().0,
                 commit_checksum.to_glib_none().0,
                 maxdepth,
@@ -74,7 +74,7 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_list_refs(
+            let _ = ffi::ostree_repo_list_refs(
                 self.to_glib_none().0,
                 refspec_prefix.to_glib_none().0,
                 &mut hashtable,
@@ -100,11 +100,11 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_list_refs_ext(
+            let _ = ffi::ostree_repo_list_refs_ext(
                 self.to_glib_none().0,
                 refspec_prefix.to_glib_none().0,
                 &mut hashtable,
-                flags.to_glib(),
+                flags.into_glib(),
                 cancellable.map(AsRef::as_ref).to_glib_none().0,
                 &mut error,
             );
@@ -127,7 +127,7 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let mut out_csum = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_write_content(
+            let _ = ffi::ostree_repo_write_content(
                 self.to_glib_none().0,
                 expected_checksum.to_glib_none().0,
                 object_input.as_ref().to_glib_none().0,
@@ -154,9 +154,9 @@ impl Repo {
         unsafe {
             let mut error = ptr::null_mut();
             let mut out_csum = ptr::null_mut();
-            let _ = ostree_sys::ostree_repo_write_metadata(
+            let _ = ffi::ostree_repo_write_metadata(
                 self.to_glib_none().0,
-                objtype.to_glib(),
+                objtype.into_glib(),
                 expected_checksum.to_glib_none().0,
                 object.to_glib_none().0,
                 &mut out_csum,
@@ -193,7 +193,7 @@ impl Repo {
         ) {
             let mut error = ptr::null_mut();
             let mut out_csum = MaybeUninit::uninit();
-            let _ = ostree_sys::ostree_repo_write_content_finish(
+            let _ = ffi::ostree_repo_write_content_finish(
                 _source_object as *mut _,
                 res,
                 out_csum.as_mut_ptr(),
@@ -210,7 +210,7 @@ impl Repo {
         }
         let callback = write_content_async_trampoline::<R>;
         unsafe {
-            ostree_sys::ostree_repo_write_content_async(
+            ffi::ostree_repo_write_content_async(
                 self.to_glib_none().0,
                 expected_checksum.to_glib_none().0,
                 object.as_ref().to_glib_none().0,
@@ -230,20 +230,18 @@ impl Repo {
     ) -> Pin<Box<dyn Future<Output = Result<Checksum, Error>> + 'static>> {
         let expected_checksum = expected_checksum.map(ToOwned::to_owned);
         let object = object.clone();
-        Box::pin(gio::GioFuture::new(self, move |obj, send| {
-            let cancellable = gio::Cancellable::new();
+        Box::pin(gio::GioFuture::new(self, move |obj, cancellable, send| {
             obj.write_content_async(
                 expected_checksum
                     .as_ref()
                     .map(::std::borrow::Borrow::borrow),
                 &object,
                 length,
-                Some(&cancellable),
+                Some(cancellable),
                 move |res| {
                     send.resolve(res);
                 },
             );
-            cancellable
         }))
     }
 
@@ -268,7 +266,7 @@ impl Repo {
         ) {
             let mut error = ptr::null_mut();
             let mut out_csum = MaybeUninit::uninit();
-            let _ = ostree_sys::ostree_repo_write_metadata_finish(
+            let _ = ffi::ostree_repo_write_metadata_finish(
                 _source_object as *mut _,
                 res,
                 out_csum.as_mut_ptr(),
@@ -285,9 +283,9 @@ impl Repo {
         }
         let callback = write_metadata_async_trampoline::<Q>;
         unsafe {
-            ostree_sys::ostree_repo_write_metadata_async(
+            ffi::ostree_repo_write_metadata_async(
                 self.to_glib_none().0,
-                objtype.to_glib(),
+                objtype.into_glib(),
                 expected_checksum.to_glib_none().0,
                 object.to_glib_none().0,
                 cancellable.map(|p| p.as_ref()).to_glib_none().0,
@@ -305,20 +303,18 @@ impl Repo {
     ) -> Pin<Box<dyn Future<Output = Result<Checksum, Error>> + 'static>> {
         let expected_checksum = expected_checksum.map(ToOwned::to_owned);
         let object = object.clone();
-        Box::pin(gio::GioFuture::new(self, move |obj, send| {
-            let cancellable = gio::Cancellable::new();
+        Box::pin(gio::GioFuture::new(self, move |obj, cancellable, send| {
             obj.write_metadata_async(
                 objtype,
                 expected_checksum
                     .as_ref()
                     .map(::std::borrow::Borrow::borrow),
                 &object,
-                Some(&cancellable),
+                Some(cancellable),
                 move |res| {
                     send.resolve(res);
                 },
             );
-            cancellable
         }))
     }
 }

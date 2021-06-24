@@ -32,7 +32,7 @@ fn should_traverse_commit() {
         .expect("traverse commit");
 
     assert_eq!(
-        hashset!(
+        maplit::hashset!(
             ObjectName::new(
                 "89f84ca9854a80e85b583e46a115ba4985254437027bad34f0b113219323d3f8",
                 ObjectType::File
@@ -76,7 +76,7 @@ fn should_checkout_tree() {
         .checkout_tree(
             ostree::RepoCheckoutMode::User,
             ostree::RepoCheckoutOverwriteMode::None,
-            &gio::File::new_for_path(checkout_dir.path().join("test-checkout")),
+            &gio::File::for_path(checkout_dir.path().join("test-checkout")),
             &file,
             &info,
             NONE_CANCELLABLE,

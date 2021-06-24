@@ -30,7 +30,7 @@ impl TestRepo {
 
 pub fn create_mtree(repo: &ostree::Repo) -> ostree::MutableTree {
     let mtree = ostree::MutableTree::new();
-    let file = gio::File::new_for_path(
+    let file = gio::File::for_path(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("data")

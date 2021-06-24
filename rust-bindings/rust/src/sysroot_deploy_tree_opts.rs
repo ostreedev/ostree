@@ -1,6 +1,6 @@
+use ffi::OstreeSysrootDeployTreeOpts;
 use glib::translate::*;
 use libc::c_char;
-use ostree_sys::OstreeSysrootDeployTreeOpts;
 
 pub struct SysrootDeployTreeOpts<'a> {
     pub override_kernel_argv: Option<&'a [&'a str]>,

@@ -36,4 +36,4 @@ ignore = [
     "OSTree.BUILT_FEATURES",
 ]
 
-girs_dir = "../gir-files"
+girs_directories = [ "../gir-files" ]

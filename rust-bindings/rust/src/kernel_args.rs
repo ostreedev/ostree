@@ -1,3 +1,4 @@
+use ffi::OstreeKernelArgs;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 use gio;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
@@ -5,18 +6,16 @@ use glib::object::IsA;
 use glib::translate::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 use glib::GString;
-use ostree_sys;
-use ostree_sys::OstreeKernelArgs;
 use std::fmt;
 use std::ptr;
 
-glib_wrapper! {
+glib::wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct KernelArgs(Boxed<ostree_sys::OstreeKernelArgs>);
+    pub struct KernelArgs(Boxed<ffi::OstreeKernelArgs>);
 
     match fn {
         copy => |_ptr| unimplemented!(),
-        free => |ptr| ostree_sys::ostree_kernel_args_free(ptr),
+        free => |ptr| ffi::ostree_kernel_args_free(ptr),
     }
 }
 
@@ -24,24 +23,21 @@ impl KernelArgs {
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append(&mut self, arg: &str) {
         unsafe {
-            ostree_sys::ostree_kernel_args_append(self.to_glib_none_mut().0, arg.to_glib_none().0);
+            ffi::ostree_kernel_args_append(self.to_glib_none_mut().0, arg.to_glib_none().0);
         }
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_argv(&mut self, argv: &[&str]) {
         unsafe {
-            ostree_sys::ostree_kernel_args_append_argv(
-                self.to_glib_none_mut().0,
-                argv.to_glib_none().0,
-            );
+            ffi::ostree_kernel_args_append_argv(self.to_glib_none_mut().0, argv.to_glib_none().0);
         }
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_argv_filtered(&mut self, argv: &[&str], prefixes: &[&str]) {
         unsafe {
-            ostree_sys::ostree_kernel_args_append_argv_filtered(
+            ffi::ostree_kernel_args_append_argv_filtered(
                 self.to_glib_none_mut().0,
                 argv.to_glib_none().0,
                 prefixes.to_glib_none().0,
@@ -56,7 +52,7 @@ impl KernelArgs {
     ) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_kernel_args_append_proc_cmdline(
+            let _ = ffi::ostree_kernel_args_append_proc_cmdline(
                 self.to_glib_none_mut().0,
                 cancellable.map(|p| p.as_ref()).to_glib_none().0,
                 &mut error,
@@ -72,7 +68,7 @@ impl KernelArgs {
     pub fn delete(&mut self, arg: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_kernel_args_delete(
+            let _ = ffi::ostree_kernel_args_delete(
                 self.to_glib_none_mut().0,
                 arg.to_glib_none().0,
                 &mut error,
@@ -89,7 +85,7 @@ impl KernelArgs {
     pub fn delete_key_entry(&mut self, key: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_kernel_args_delete_key_entry(
+            let _ = ffi::ostree_kernel_args_delete_key_entry(
                 self.to_glib_none_mut().0,
                 key.to_glib_none().0,
                 &mut error,
@@ -105,7 +101,7 @@ impl KernelArgs {
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn get_last_value(&self, key: &str) -> Option<GString> {
         unsafe {
-            from_glib_none(ostree_sys::ostree_kernel_args_get_last_value(
+            from_glib_none(ffi::ostree_kernel_args_get_last_value(
                 self.to_glib_none().0 as *mut OstreeKernelArgs,
                 key.to_glib_none().0,
             ))
@@ -116,7 +112,7 @@ impl KernelArgs {
     pub fn new_replace(&mut self, arg: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let _ = ostree_sys::ostree_kernel_args_new_replace(
+            let _ = ffi::ostree_kernel_args_new_replace(
                 self.to_glib_none_mut().0,
                 arg.to_glib_none().0,
                 &mut error,
@@ -132,7 +128,7 @@ impl KernelArgs {
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn parse_append(&mut self, options: &str) {
         unsafe {
-            ostree_sys::ostree_kernel_args_parse_append(
+            ffi::ostree_kernel_args_parse_append(
                 self.to_glib_none_mut().0,
                 options.to_glib_none().0,
             );
@@ -142,34 +138,28 @@ impl KernelArgs {
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace(&mut self, arg: &str) {
         unsafe {
-            ostree_sys::ostree_kernel_args_replace(self.to_glib_none_mut().0, arg.to_glib_none().0);
+            ffi::ostree_kernel_args_replace(self.to_glib_none_mut().0, arg.to_glib_none().0);
         }
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace_argv(&mut self, argv: &[&str]) {
         unsafe {
-            ostree_sys::ostree_kernel_args_replace_argv(
-                self.to_glib_none_mut().0,
-                argv.to_glib_none().0,
-            );
+            ffi::ostree_kernel_args_replace_argv(self.to_glib_none_mut().0, argv.to_glib_none().0);
         }
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace_take(&mut self, arg: &str) {
         unsafe {
-            ostree_sys::ostree_kernel_args_replace_take(
-                self.to_glib_none_mut().0,
-                arg.to_glib_full(),
-            );
+            ffi::ostree_kernel_args_replace_take(self.to_glib_none_mut().0, arg.to_glib_full());
         }
     }
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     fn to_gstring(&self) -> GString {
         unsafe {
-            from_glib_full(ostree_sys::ostree_kernel_args_to_string(
+            from_glib_full(ffi::ostree_kernel_args_to_string(
                 self.to_glib_none().0 as *mut OstreeKernelArgs,
             ))
         }
@@ -178,7 +168,7 @@ impl KernelArgs {
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn to_strv(&self) -> Vec<GString> {
         unsafe {
-            FromGlibPtrContainer::from_glib_full(ostree_sys::ostree_kernel_args_to_strv(
+            FromGlibPtrContainer::from_glib_full(ffi::ostree_kernel_args_to_strv(
                 self.to_glib_none().0 as *mut OstreeKernelArgs,
             ))
         }
@@ -190,7 +180,7 @@ impl KernelArgs {
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn from_string(options: &str) -> KernelArgs {
         unsafe {
-            from_glib_full(ostree_sys::ostree_kernel_args_from_string(
+            from_glib_full(ffi::ostree_kernel_args_from_string(
                 options.to_glib_none().0,
             ))
         }
@@ -198,7 +188,7 @@ impl KernelArgs {
 
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn new() -> KernelArgs {
-        unsafe { from_glib_full(ostree_sys::ostree_kernel_args_new()) }
+        unsafe { from_glib_full(ffi::ostree_kernel_args_new()) }
     }
 }
 
