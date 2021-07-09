@@ -10,14 +10,26 @@ set -euo pipefail
 HEAD=${PAPR_COMMIT:-HEAD}
 
 git log --format=%B -n 1 $HEAD > log.txt
-trap "rm -f log.txt" EXIT
+trap "rm -f version.m4 log.txt" EXIT
 
 if grep -q ^is_release_build=yes configure.ac; then
     echo "*** is_release_build is set to yes ***"
 
-    V=$(grep -Po '^#define PACKAGE_VERSION "\K[0-9]+\.[0-9]+(?=")' config.h)
+    # assemble a short m4 macro file to evaluate 'package_version'
+    cat > version.m4 <<EOF
+m4_divert(-1)
+m4_changequote([, ])
+EOF
+
+    grep m4_define configure.ac | grep _version >> version.m4
+
+    cat >> version.m4 <<EOF
+m4_divert(0)m4_dnl
+package_version
+EOF
+    V=$(m4 -P version.m4)
     if [ -z "$V" ]; then
-        echo "ERROR: couldn't read PACKAGE_VERSION"
+        echo "ERROR: couldn't read package_version"
         exit 1
     fi
     echo "OK: release version is $V"
