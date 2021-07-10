@@ -196,9 +196,13 @@ gboolean ostree_sysroot_stage_overlay_initrd (OstreeSysroot  *self,
                                               GCancellable   *cancellable,
                                               GError        **error);
 
+/**
+ * finalization_flags: only used in the staging path
+ */
 typedef struct {
   gboolean unused_bools[8];
-  int unused_ints[8];
+  int unused_ints[7];
+  int finalization_flags;
   char **override_kernel_argv;
   char **overlay_initrds;
   gpointer unused_ptrs[6];
@@ -291,6 +295,7 @@ typedef enum {
   OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN = (1 << 2),
   OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING = (1 << 3),
   OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK = (1 << 4),
+  OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PREVIOUS_VERSION = (1 << 5),
 } OstreeSysrootSimpleWriteDeploymentFlags;
 
 _OSTREE_PUBLIC
