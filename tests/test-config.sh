@@ -64,6 +64,16 @@ if ${CMD_PREFIX} ostree config --repo=repo set --group=core lock-timeout-secs 12
     assert_not_reached "ostree config set should error out if too many arguments are given"
 fi
 assert_file_has_content err.txt "error: Too many arguments given"
+
+# Check that it errors out with invalid argument
+for i in lock-timeout-secs,-3 min-free-space-size,10 min-free-space-size,10M payload-link-threshold,-1 tmp-expiry-secs,-1 zlib-level,0 zlib-level,10 min-free-space-percent,101 min-free-space-percent,-1; do
+    IFS=',' read key value <<< "${i}"
+    if ${CMD_PREFIX} ostree config --repo=repo -- set core.${key} ${value} 2>err.txt; then
+        assert_not_reached "ostree config set should error out with invalid arguments"
+    fi
+    assert_file_has_content err.txt "error: Invalid value \"${value}\" for key \"${key}\""
+    assert_not_file_has_content repo/config "${key}=${value}"
+done
 echo "ok config set"
 
 # Check that using `--` works and that "ostree config unset" works

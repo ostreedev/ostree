@@ -1484,6 +1484,158 @@ ostree_repo_copy_config (OstreeRepo *self)
   return copy;
 }
 
+/* FIXME: replace by g_ascii_string_to_unsigned when using glib >= 2.54 */
+static gboolean
+ascii_string_to_unsigned (const gchar  *str,
+                          guint         base,
+                          guint64       min,
+                          guint64       max,
+                          guint64      *out_num)
+{
+  gchar *endptr = NULL;
+  guint64 value = g_ascii_strtoull (str, &endptr, base);
+  if ((*str == '-') || (*endptr != '\0') ||
+      (value == G_MAXUINT64 && errno == ERANGE) ||
+      (!value && (errno == EINVAL || endptr == str)) ||
+      (value < min) || (value > max))
+    return FALSE;
+
+  if (out_num)
+    *out_num = value;
+  return TRUE;
+}
+
+/* FIXME: replace by g_ascii_string_to_signed when using glib >= 2.54 */
+static gboolean
+ascii_string_to_signed (const gchar *str,
+                        guint        base,
+                        gint64       min,
+                        gint64       max,
+                        gint64      *out_num)
+{
+  gchar *endptr = NULL;
+  gint64 value = g_ascii_strtoll (str, &endptr, base);
+  if ((*endptr != '\0') ||
+      ((value == G_MAXINT64 || value == G_MININT64) && errno == ERANGE) ||
+      (!value && (errno == EINVAL || endptr == str)) ||
+      (value < min) || (value > max))
+    return FALSE;
+
+  if (out_num)
+    *out_num = value;
+  return TRUE;
+}
+
+static gboolean
+min_free_space_calculate_reserved_bytes (OstreeRepo *self, guint64 *bytes, GError **error)
+{
+  guint64 reserved_bytes = 0;
+
+  struct statvfs stvfsbuf;
+  if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs");
+
+  if (self->min_free_space_mb > 0)
+    {
+      if (self->min_free_space_mb > (G_MAXUINT64 >> 20))
+        return glnx_throw (error, "min-free-space value is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
+                           (G_MAXUINT64 >> 20));
+
+      reserved_bytes = self->min_free_space_mb << 20;
+    }
+  else if (self->min_free_space_percent > 0)
+    {
+      if (stvfsbuf.f_frsize > (G_MAXUINT64 / stvfsbuf.f_blocks))
+        return glnx_throw (error, "Filesystem's size is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
+                           (G_MAXUINT64 / stvfsbuf.f_blocks));
+
+      guint64 total_bytes = (stvfsbuf.f_frsize * stvfsbuf.f_blocks);
+      reserved_bytes = ((double)total_bytes) * (self->min_free_space_percent/100.0);
+    }
+
+  *bytes = reserved_bytes;
+  return TRUE;
+}
+
+static gboolean
+min_free_space_size_validate_and_convert (const char    *min_free_space_size_str,
+                                          guint64       *out_value,
+                                          GError       **error)
+{
+  static GRegex *regex;
+  static gsize regex_initialized;
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^([0-9]+)(G|M|T)B$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  g_autoptr(GMatchInfo) match = NULL;
+  if (!g_regex_match (regex, min_free_space_size_str, 0, &match))
+    return glnx_throw (error, "It should be of the format '123MB', '123GB' or '123TB'");
+
+  g_autofree char *size_str = g_match_info_fetch (match, 1);
+  g_autofree char *unit = g_match_info_fetch (match, 2);
+  guint shifts;
+
+  switch (*unit)
+    {
+      case 'M':
+        shifts = 0;
+        break;
+      case 'G':
+        shifts = 10;
+        break;
+      case 'T':
+        shifts = 20;
+        break;
+      default:
+        g_assert_not_reached ();
+    }
+
+  guint64 min_free_space = g_ascii_strtoull (size_str, NULL, 10);
+  if (shifts > 0 && g_bit_nth_lsf (min_free_space, 63 - shifts) != -1)
+    return glnx_throw (error, "Value was too high");
+
+  if (out_value)
+    *out_value = min_free_space << shifts;
+
+  return TRUE;
+}
+
+/**
+ * ostree_repo_validate_config_value
+ * @key: core config key
+ * @value: value
+ *
+ * Check whether a (key, value) pair is valid for core config
+ */
+static gboolean
+ostree_repo_validate_config_value (const char *key,
+                                   const char *value)
+{
+  if (!strcmp (key, "repo_version"))
+    {
+      if (strcmp (value, "1") != 0)
+        return FALSE;
+    }
+  else if (!strcmp (key, "tmp-expiry-secs"))
+    return ascii_string_to_unsigned (value, 10, 0, G_MAXUINT64, NULL);
+  else if (!strcmp (key, "lock-timeout-secs"))
+    return ascii_string_to_signed (value, 10, REPO_LOCK_DISABLED, G_MAXINT64, NULL);
+  else if (!strcmp (key, "zlib-level"))
+    return ascii_string_to_unsigned (value, 10, 1, 9, NULL);
+  else if (!strcmp (key, "min-free-space-size"))
+    return min_free_space_size_validate_and_convert (value, NULL, NULL);
+  else if (!strcmp (key, "min-free-space-percent"))
+    return ascii_string_to_unsigned (value, 10, 0, 99, NULL);
+  else if (!strcmp (key, "payload-link-threshold"))
+    return ascii_string_to_unsigned (value, 10, 0, G_MAXUINT64, NULL);
+
+  return TRUE;
+}
+
 /**
  * ostree_repo_write_config:
  * @self: Repo
@@ -1528,6 +1680,23 @@ ostree_repo_write_config (OstreeRepo *self,
                            "Remote \"%s\" already defined in %s",
                            new_remote->name,
                            gs_file_get_path_cached (cur_remote->file));
+              return FALSE;
+            }
+        }
+
+      gsize num_keys;
+      g_auto(GStrv) keys = g_key_file_get_keys (new_config, groups[i], &num_keys, NULL);
+      for (gsize j = 0; j < num_keys; j++)
+        {
+          g_autofree gchar *value = g_key_file_get_value (new_config, groups[i], keys[j], NULL);
+          if (!value)
+            continue;
+
+          if (!ostree_repo_validate_config_value (keys[j], value))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                           "Invalid value \"%s\" for key \"%s\"",
+                           value, keys[j]);
               return FALSE;
             }
         }
@@ -2801,83 +2970,6 @@ get_remotes_d_dir (OstreeRepo          *self,
 }
 
 static gboolean
-min_free_space_calculate_reserved_bytes (OstreeRepo *self, guint64 *bytes, GError **error)
-{
-  guint64 reserved_bytes = 0;
-
-  struct statvfs stvfsbuf;
-  if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
-    return glnx_throw_errno_prefix (error, "fstatvfs");
-
-  if (self->min_free_space_mb > 0)
-    {
-      if (self->min_free_space_mb > (G_MAXUINT64 >> 20))
-        return glnx_throw (error, "min-free-space value is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
-                           (G_MAXUINT64 >> 20));
-
-      reserved_bytes = self->min_free_space_mb << 20;
-    }
-  else if (self->min_free_space_percent > 0)
-    {
-      if (stvfsbuf.f_frsize > (G_MAXUINT64 / stvfsbuf.f_blocks))
-        return glnx_throw (error, "Filesystem's size is greater than the maximum allowed value of %" G_GUINT64_FORMAT " bytes",
-                           (G_MAXUINT64 / stvfsbuf.f_blocks));
-
-      guint64 total_bytes = (stvfsbuf.f_frsize * stvfsbuf.f_blocks);
-      reserved_bytes = ((double)total_bytes) * (self->min_free_space_percent/100.0);
-    }
-
-  *bytes = reserved_bytes;
-  return TRUE;
-}
-
-static gboolean
-min_free_space_size_validate_and_convert (OstreeRepo    *self,
-                                          const char    *min_free_space_size_str,
-                                          GError       **error)
-{
-  static GRegex *regex;
-  static gsize regex_initialized;
-  if (g_once_init_enter (&regex_initialized))
-    {
-      regex = g_regex_new ("^([0-9]+)(G|M|T)B$", 0, 0, NULL);
-      g_assert (regex);
-      g_once_init_leave (&regex_initialized, 1);
-    }
-
-  g_autoptr(GMatchInfo) match = NULL;
-  if (!g_regex_match (regex, min_free_space_size_str, 0, &match))
-    return glnx_throw (error, "It should be of the format '123MB', '123GB' or '123TB'");
-
-  g_autofree char *size_str = g_match_info_fetch (match, 1);
-  g_autofree char *unit = g_match_info_fetch (match, 2);
-  guint shifts;
-
-  switch (*unit)
-    {
-      case 'M':
-        shifts = 0;
-        break;
-      case 'G':
-        shifts = 10;
-        break;
-      case 'T':
-        shifts = 20;
-        break;
-      default:
-        g_assert_not_reached ();
-    }
-
-  guint64 min_free_space = g_ascii_strtoull (size_str, NULL, 10);
-  if (shifts > 0 && g_bit_nth_lsf (min_free_space, 63 - shifts) != -1)
-    return glnx_throw (error, "Value was too high");
-
-  self->min_free_space_mb = min_free_space << shifts;
-
-  return TRUE;
-}
-
-static gboolean
 reload_core_config (OstreeRepo          *self,
                     GCancellable        *cancellable,
                     GError             **error)
@@ -2961,7 +3053,9 @@ reload_core_config (OstreeRepo          *self,
                                             &tmp_expiry_seconds, error))
       return FALSE;
 
-    self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
+    if (!ascii_string_to_unsigned (tmp_expiry_seconds, 10, 0, G_MAXUINT64,
+                                   &self->tmp_expiry_seconds))
+      return glnx_throw (error, "Invalid tmp-expiry-secs '%s'", tmp_expiry_seconds);
   }
 
   { gboolean locking;
@@ -2981,7 +3075,11 @@ reload_core_config (OstreeRepo          *self,
                                                 &lock_timeout_seconds, error))
           return FALSE;
 
-        self->lock_timeout_seconds = g_ascii_strtoll (lock_timeout_seconds, NULL, 10);
+        gint64 value;
+        if (!ascii_string_to_signed (lock_timeout_seconds, 10, REPO_LOCK_DISABLED, G_MAXINT64, &value))
+          return glnx_throw (error, "Invalid lock-timeout-secs '%s'", lock_timeout_seconds);
+
+        self->lock_timeout_seconds = (gint)value;
       }
   }
 
@@ -2992,8 +3090,14 @@ reload_core_config (OstreeRepo          *self,
                                              &compression_level_str, NULL);
 
     if (compression_level_str)
-      /* Ensure level is in [1,9] */
-      self->zlib_compression_level = MAX (1, MIN (9, g_ascii_strtoull (compression_level_str, NULL, 10)));
+      {
+        /* Ensure level is in [1,9] */
+        guint64 value;
+        if (!ascii_string_to_unsigned (compression_level_str, 10, 1, 9, &value))
+          return glnx_throw (error, "Invalid zlib-level '%s'", compression_level_str);
+
+        self->zlib_compression_level = (guint)value;
+      }
     else
       self->zlib_compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
   }
@@ -3011,7 +3115,7 @@ reload_core_config (OstreeRepo          *self,
           return FALSE;
 
         /* Validate the string and convert the size to MBs */
-        if (!min_free_space_size_validate_and_convert (self, min_free_space_size_str, error))
+        if (!min_free_space_size_validate_and_convert (min_free_space_size_str, &self->min_free_space_mb, error))
           return glnx_prefix_error (error, "Invalid min-free-space-size '%s'", min_free_space_size_str);
       }
 
@@ -3023,9 +3127,11 @@ reload_core_config (OstreeRepo          *self,
                                                 NULL, &min_free_space_percent_str, error))
           return FALSE;
 
-        self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
-        if (self->min_free_space_percent > 99)
+        guint64 value;
+        if (!ascii_string_to_unsigned (min_free_space_percent_str, 10, 0, 99, &value))
           return glnx_throw (error, "Invalid min-free-space-percent '%s'", min_free_space_percent_str);
+
+        self->min_free_space_percent = (guint)value;
       }
     else if (!g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
       {
@@ -3083,11 +3189,13 @@ reload_core_config (OstreeRepo          *self,
 
   { g_autofree char *payload_threshold = NULL;
 
-    if (!ot_keyfile_get_value_with_default (self->config, "core", "payload-link-threshold", "-1",
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "payload-link-threshold", "0",
                                             &payload_threshold, error))
       return FALSE;
 
-    self->payload_link_threshold = g_ascii_strtoull (payload_threshold, NULL, 10);
+    if (!ascii_string_to_unsigned (payload_threshold, 10, 0, G_MAXUINT64,
+                                   &self->payload_link_threshold))
+      return glnx_throw (error, "Invalid payload-link-threshold '%s'", payload_threshold);
   }
 
   { g_auto(GStrv) configured_finders = NULL;
