@@ -1,0 +1,733 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  
+    <title>Historical OSTree README - ostreedev/ostree</title>
+
+    
+  
+
+  <link rel="shortcut icon" href="/ostree/favicon.ico" type="image/x-icon">
+
+  <link rel="stylesheet" href="/ostree/assets/css/just-the-docs-default.css">
+
+  
+
+  
+    <script type="text/javascript" src="/ostree/assets/js/vendor/lunr.min.js"></script>
+  
+  <script type="text/javascript" src="/ostree/assets/js/just-the-docs.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Historical OSTree README | ostreedev/ostree</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="Historical OSTree README" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="ostree documentation" />
+<meta property="og:description" content="ostree documentation" />
+<link rel="canonical" href="https://ostreedev.github.io/ostree/README-historical/" />
+<meta property="og:url" content="https://ostreedev.github.io/ostree/README-historical/" />
+<meta property="og:site_name" content="ostreedev/ostree" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Historical OSTree README" />
+<script type="application/ld+json">
+{"description":"ostree documentation","url":"https://ostreedev.github.io/ostree/README-historical/","@type":"WebPage","headline":"Historical OSTree README","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  
+
+</head>
+
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="svg-link" viewBox="0 0 24 24">
+      <title>Link</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+    </symbol>
+    <symbol id="svg-search" viewBox="0 0 24 24">
+      <title>Search</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search">
+        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-menu" viewBox="0 0 24 24">
+      <title>Menu</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+        <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+      <title>Expand</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </symbol>
+    <symbol id="svg-doc" viewBox="0 0 24 24">
+      <title>Document</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>
+      </svg>
+    </symbol>
+  </svg>
+
+  <div class="side-bar">
+    <div class="site-header">
+      <a href="https://ostreedev.github.io/ostree/" class="site-title lh-tight">
+  ostreedev/ostree
+
+</a>
+      <a href="#" id="menu-button" class="site-button">
+        <svg viewBox="0 0 24 24" class="icon"><use xlink:href="#svg-menu"></use></svg>
+      </a>
+    </div>
+    <nav role="navigation" aria-label="Main" id="site-nav" class="site-nav">
+      
+        <ul class="nav-list"><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/" class="nav-list-link">libostree</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/introduction/" class="nav-list-link">OSTree Overview</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repo/" class="nav-list-link">Anatomy of an OSTree repository</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/deployment/" class="nav-list-link">Deployments</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/atomic-upgrades/" class="nav-list-link">Atomic Upgrades</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/adapting-existing/" class="nav-list-link">Adapting existing mainstream distributions</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/formats/" class="nav-list-link">OSTree data formats</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/buildsystem-and-repos/" class="nav-list-link">Writing a buildsystem and managing repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repository-management/" class="nav-list-link">Managing content in OSTree repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/related-projects/" class="nav-list-link">Related Projects</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/CONTRIBUTING/" class="nav-list-link">Contributing</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/contributing-tutorial/" class="nav-list-link">OSTree Contributing Tutorial</a></li><li class="nav-list-item active"><a href="https://ostreedev.github.io/ostree/README-historical/" class="nav-list-link active">Historical OSTree README</a></li></ul>
+
+      
+    </nav>
+    <footer class="site-footer">
+      This site uses <a href="https://github.com/pmarsceill/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    </footer>
+  </div>
+  <div class="main" id="top">
+    <div id="main-header" class="main-header">
+      
+        <div class="search">
+          <div class="search-input-wrap">
+            <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="Search ostreedev/ostree" aria-label="Search ostreedev/ostree" autocomplete="off">
+            <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>
+          </div>
+          <div id="search-results" class="search-results"></div>
+        </div>
+      
+      
+      
+        <nav aria-label="Auxiliary" class="aux-nav">
+          <ul class="aux-nav-list">
+            
+              <li class="aux-nav-list-item">
+                <a href="https://github.com/ostreedev/ostree" class="site-button"
+                  
+                >
+                  OSTree on GitHub
+                </a>
+              </li>
+            
+          </ul>
+        </nav>
+      
+    </div>
+    <div id="main-content-wrap" class="main-content-wrap">
+      
+        
+      
+      <div id="main-content" class="main-content" role="main">
+        
+          <p><strong>This file is outdated, but some of the text here is still useful for
+historical context.  I’m preserving it (explicitly still in the tree)
+for posterity.</strong></p>
+      <h1 id="ostree">
+        
+        
+          <a href="#ostree" class="anchor-heading" aria-labelledby="ostree"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> OSTree
+        
+        
+      </h1>
+    
+      <h2 id="problem-statement">
+        
+        
+          <a href="#problem-statement" class="anchor-heading" aria-labelledby="problem-statement"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Problem statement
+        
+        
+      </h2>
+    
+
+<p>Hacking on the core operating system is painful - this includes most
+of GNOME from upower and NetworkManager up to gnome-shell.  I want a
+system that matches these requirements:</p>
+
+<ol>
+  <li>Does not disturb your existing OS</li>
+  <li>Is not terribly slow to use</li>
+  <li>Shares your $HOME - you have your data</li>
+  <li>Allows easy rollback</li>
+  <li>Ideally allows access to existing apps</li>
+</ol>
+      <h2 id="comparison-with-existing-tools">
+        
+        
+          <a href="#comparison-with-existing-tools" class="anchor-heading" aria-labelledby="comparison-with-existing-tools"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Comparison with existing tools
+        
+        
+      </h2>
+    
+
+<ul>
+  <li>
+    <p>Virtualization</p>
+
+    <p>Fails on points 2) and 3).  Actually qemu-kvm can be pretty fast,
+ but in a lot of cases there is no substitute for actually booting
+ on bare metal; GNOME 3 really needs some hardware GPU
+ acceleration.</p>
+  </li>
+  <li>
+    <p>Rebuilding distribution packages</p>
+
+    <p>Fails on points 1) and 4).  Is also just very annoying: dpkg/rpm
+ both want tarballs, which you don’t have since you’re working from
+ git.  The suggested “mock/pbuilder” type chroot builds are <em>slow</em>.
+ And even with non-chroot builds there is lots of pointless build
+ wrapping going on.  Both dpkg and rpm also are poor at helping you
+ revert back to the original system.</p>
+
+    <p>All of this can be scripted to be less bad of course - and I have
+ worked on such scripts.  But fundamentally you’re still fighting
+ the system, and if you’re hacking on a lowlevel library like say
+ glib, you can easily get yourself to the point where you need a
+ recovery CD - at that point your edit/compile/debug cycle is just
+ too long.</p>
+  </li>
+  <li>
+    <p>“sudo make install”</p>
+
+    <p>Now your system is in an undefined state.  You can use e.g. rpm
+ -qV to try to find out what you overwrote, but neither dpkg nor
+ rpm will help clean up any files left over that aren’t shipped by
+ the old package.</p>
+
+    <p>This is most realistic option for people hacking on system
+ components currently, but ostree will be better.</p>
+  </li>
+  <li>
+    <p>LXC / containers</p>
+
+    <p>Fails on 3), and 4) is questionable.  Also shares the annoying part
+of rebuilding distribution packages. LXC is focused on running
+multiple server systems at the <em>same time</em>, which isn’t what we
+want (at least, not right now), and honestly even trying to support
+that for a graphical desktop would be a lot of tricky work, for
+example getting two GDM instances not to fight over VT
+allocations. But some bits of the technology may make sense to use.</p>
+  </li>
+  <li>
+    <p>jhbuild + distribution packages</p>
+
+    <p>The state of the art in GNOME - but can only build non-root things -
+ this means you can’t build NetworkManager, and thus are permanently
+ stuck on whatever the distro provides.</p>
+  </li>
+</ul>
+      <h2 id="who-is-ostree-for">
+        
+        
+          <a href="#who-is-ostree-for" class="anchor-heading" aria-labelledby="who-is-ostree-for"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Who is ostree for?
+        
+        
+      </h2>
+    
+
+<p>First - operating system developers and testers.  I specifically keep
+a few people in mind - Dan Williams and Eric Anholt, as well as myself
+obviously.  For Eric Anholt, a key use case for him is being able to
+try out the latest gnome-shell, and combine it with his work on Mesa,
+and see how it works/performs - while retaining the ability to roll
+back if one or both breaks.</p>
+
+<p>The rollback concept is absolutely key for shipping anything to
+enthusiasts or knowledable testers.  With a system like this, a tester
+can easily perform a local rollback - something just not well
+supported by dpkg/rpm.  (What about Conary?  See below.)</p>
+
+<p>Also, distributing operating system trees (instead of packages) gives
+us a sane place to perform automated QA <strong>before</strong> we ship it to
+testers.  We should never be wasting these people’s time.</p>
+
+<p>Even better, this system would allow testers to <em>bisect</em> across
+operating system builds, and do so very efficiently.</p>
+      <h2 id="the-core-idea---chroots">
+        
+        
+          <a href="#the-core-idea---chroots" class="anchor-heading" aria-labelledby="the-core-idea---chroots"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> The core idea - chroots
+        
+        
+      </h2>
+    
+
+<p>chroots are the original lightweight “virtualization”.  Let’s use
+them.  So basically, you install a mainstream distribution (say
+Debian).  It has a root filesystem like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	/usr
+	/etc
+	/home
+	...
+</code></pre></div></div>
+
+<p>Now, what we can do is have a system that installs chroots as a subdirectory
+of the root, like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	/ostree/gnomeos-3.0-opt-393a4555/{usr,etc,sbin,...}
+	/ostree/gnomeos-3.2-opt-7e9788a2/{usr,etc,sbin,...}
+</code></pre></div></div>
+
+<p>These live in the same root filesystem as your regular distribution
+(Note though, the root partition should be reasonably sized, or
+hopefully you’ve used just one big partition).</p>
+
+<p>You should be able to boot into one of these roots.  Since ostree
+lives inside a distro created partition, a tricky part here is that we
+need to know how to interact with the installed distribution’s grub.
+This is an annoying but tractable problem.</p>
+
+<p>First, we install a kernel+initramfs alongside the distribution’s.
+Then, we have a “trampoline” ostree-init binary which is statically
+linked, and boot the kernel with init=/ostree/ostree-init.  This then
+takes care of chrooting and running the init binary.</p>
+
+<p>An important note here is that we bind mount the real /home.  This
+means you have your data.  This also implies we share uid/gid, so
+/etc/passwd will have to be in sync.  Probably what we’ll do is have a
+script to pull the data from the “host” OS.</p>
+
+<p>I’ve decided for now to move /var into /ostree to avoid sharing it
+with the “host” distribution, because in practice we’re likely
+to hit incompatibilities.</p>
+
+<p>Do note however /etc lives <em>inside</em> the OSTree; it’s presently
+versioned and readonly like everything else.</p>
+
+<p>On a pure OSTree system, the filesystem layout will look like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	.
+	|-- boot
+	|-- home
+	|-- ostree
+	|   |-- var
+	|   |-- current -&gt; gnomeos-3.2-opt-7e9788a2
+	|   |-- gnomeos-3.0-opt-393a4555
+	|   |   |-- etc
+	|   |   |-- lib
+	|   |   |-- mnt
+	|   |   |-- proc
+	|   |   |-- run
+	|   |   |-- sbin
+	|   |   |-- srv
+	|   |   |-- sys
+	|   |   `-- usr
+	|   `-- gnomeos-3.2-opt-7e9788a2
+	|       |-- etc
+	|       |-- lib
+	|       |-- mnt
+	|       |-- proc
+	|       |-- run
+	|       |-- sbin
+	|       |-- srv
+	|       |-- sys
+	|       `-- usr
+	|-- root
+</code></pre></div></div>
+      <h2 id="making-this-efficient">
+        
+        
+          <a href="#making-this-efficient" class="anchor-heading" aria-labelledby="making-this-efficient"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Making this efficient
+        
+        
+      </h2>
+    
+
+<p>One of the first things you’ll probably ask is “but won’t that use a
+lot of disk space”?  Indeed, it will, if you just unpack a set of RPMs
+or .debs into each root.</p>
+
+<p>Besides chroots, there’s another old Unix idea we can take advantage
+of - hard links.  These allow sharing the underlying data of a file,
+with the tradeoff that changing any one file will change all names
+that point to it.  This mutability means that we have to either:</p>
+
+<ol>
+  <li>Make sure everything touching the operating system breaks hard links
+This is probably tractable over a long period of time, but if anything
+has a bug, then it corrupts the file effectively.</li>
+  <li>Make the core OS read-only, with a well-defined mechanism for mutating
+under the control of ostree.</li>
+</ol>
+
+<p>I chose 2.</p>
+      <h2 id="a-userspace-content-addressed-versioning-filesystem">
+        
+        
+          <a href="#a-userspace-content-addressed-versioning-filesystem" class="anchor-heading" aria-labelledby="a-userspace-content-addressed-versioning-filesystem"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> A userspace content-addressed versioning filesystem
+        
+        
+      </h2>
+    
+
+<p>At its very core, that’s what ostree is.  Just like git.  If you
+understand git, you know it’s not like other revision control systems.
+git is effectively a specialized, userspace filesystem, and that is a
+very powerful idea.</p>
+
+<p>At the core of git is the idea of “content-addressed objects”.  For
+background on this, see <a href="http://book.git-scm.com/7_how_git_stores_objects.html">http://book.git-scm.com/7_how_git_stores_objects.html</a></p>
+
+<p>Why not just use git?  Basically because git is designed mainly for
+source trees - it goes to effort to be sure it’s compressing text for
+example, under the assumption that you have a lot of text.  Its
+handling of binaries is very generic and unoptimized.</p>
+
+<p>In contrast, ostree is explicitly designed for binaries, and in
+particular one type of binary - ELF executables (or it will be once we
+start using bsdiff).</p>
+
+<p>Another big difference versus git is that ostree uses hard links
+between “checkouts” and the repository.  This means each checkout uses
+almost no additional space, and is <em>extremely</em> fast to check out.  We
+can do this because again each checkout is designed to be read-only.</p>
+
+<p>So we mentioned above there are:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	/ostree/gnomeos-3.2-opt-7e9788a2
+	/ostree/gnomeos-3.2-opt-393a4555
+</code></pre></div></div>
+
+<p>There is also a “repository” that looks like this:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>	/ostree/repo/objects/17/a95e8ca0ba655b09cb68d7288342588e867ee0.file
+	/ostree/repo/objects/17/68625e7ff5a8db77904c77489dc6f07d4afdba.meta
+	/ostree/repo/objects/17/cc01589dd8540d85c0f93f52b708500dbaa5a9.file
+	/ostree/repo/objects/30
+	/ostree/repo/objects/30/6359b3ca7684358a3988afd005013f13c0c533.meta
+	/ostree/repo/objects/30/8f3c03010cedd930b1db756ce659c064f0cd7f.meta
+	/ostree/repo/objects/30/8cf0fd8e63dfff6a5f00ba5a48f3b92fb52de7.file
+	/ostree/repo/objects/30/6cad7f027d69a46bb376044434bbf28d63e88d.file
+</code></pre></div></div>
+
+<p>Each object is either metadata (like a commit or tree), or a hard link
+to a regular file.</p>
+
+<p>Note that also unlike git, the checksum here includes <em>metadata</em> such
+as uid, gid, permissions, and extended attributes.  (It does not include
+file access times, since those shouldn’t matter for the OS)</p>
+
+<p>This is another important component to allowing the hardlinks.  We
+wouldn’t want say all empty files to be shared necessarily.  (Though
+maybe this is wrong, and since the OS is readonly, we can make all
+files owned by root without loss of generality).</p>
+
+<p>However this tradeoff means that we probably need a second index by
+content, so we don’t have to redownload the entire OS if permissions
+change =)</p>
+      <h2 id="atomic-upgrades-rollback">
+        
+        
+          <a href="#atomic-upgrades-rollback" class="anchor-heading" aria-labelledby="atomic-upgrades-rollback"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Atomic upgrades, rollback
+        
+        
+      </h2>
+    
+
+<p>OSTree is designed to atomically swap operating systems - such that
+during an upgrade and reboot process, you either get the full new
+system, or the old one.  There is no “Please don’t turn off your
+computer”.  We do this by simply using a symbolic link like:</p>
+
+<p>/ostree/current -&gt; /ostree/gnomeos-3.4-opt-e3b0c4429</p>
+
+<p>Where gnomeos-e3b0c4429 has the full regular filesystem tree with usr/
+etc/ directories as above.  To upgrade or rollback (there is no
+difference internally), we simply check out a new tree into
+gnomeos-b90ae4763 for example, then swap the “current” symbolic link,
+then remove the old tree.</p>
+
+<p>But does this mean you have to reboot for OS upgrades?  Very likely,
+yes - and this is no different from RPM/deb or whatever.  They just
+typically lie to you about it =)</p>
+
+<p>A typical model with RPM/deb is to unpack the new files, then use some
+IPC mechanism (SIGHUP, a control binary like /usr/sbin/apachectl) to
+signal the running process to reload.  There are multiple problems
+with this - one is that in the new state, daemon A may depend on the
+updated configuration in daemon B.  This may not be particularly
+common in default configurations, but it’s highly likely that that
+some deployments will have e.g. apache talking to a local MySQL
+instance.  So you really want to do is only apply the updated
+configuration when all the files are in place; not after each RPM or
+.deb is installed.</p>
+
+<p>What’s even harder is the massive set of race conditions that are
+possible while RPM/deb are in the process of upgrading.  Cron jobs are
+very likely to hit this.  If we want the ability to apply updates to a
+live system, we could first pause execution of non-upgrade userspace
+tasks.  This could be done via SIGSTOP for example.  Then, we can swap
+around the filesystem tree, and then finally attempt to apply updates
+via SIGHUP, and if possible, restart processes.</p>
+      <h2 id="configuration-management">
+        
+        
+          <a href="#configuration-management" class="anchor-heading" aria-labelledby="configuration-management"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Configuration Management
+        
+        
+      </h2>
+    
+
+<p>By now if you’ve thought about this problem domain before, you’re wondering
+about configuration management.  In other words, if the OS is read only,
+how do I edit /etc/sudoers?</p>
+
+<p>Well, have you ever been a system administrator on a zypper/yum
+system, done an RPM update, which then drops .rpmnew files in your
+/etc/ that you have to go and hunt for with “find” or something, and
+said to yourself, “Wow, this system is awesome!!!” ?  Right, that’s
+what I thought.</p>
+
+<p>Configuration (and systems) management is a tricky problem, and I
+certainly don’t have a magic bullet.  However, one large conceptual
+improvement I think is defaulting to “rebase” versus “merge”.</p>
+
+<p>This means that we won’t permit direct modification of /etc - instead,
+you HAVE to write a script which accomplishes your goals.  To generate
+a tree, we check out a new copy, then run your script on top.</p>
+
+<p>If the script fails, we can roll back the update, or drop to a shell
+if interactive.</p>
+
+<p>However, we also need to consider cases where the administrator
+modifies state indirectly by a program.  Think “adduser” for example.</p>
+
+<p>Possible approaches:</p>
+
+<ol>
+  <li>Patch all of these programs to know how to write to the writable
+location, instead of the R/O bind mount overlay.</li>
+  <li>Move the data to /var</li>
+</ol>
+      <h2 id="what-about-packages">
+        
+        
+          <a href="#what-about-packages" class="anchor-heading" aria-labelledby="what-about-packages"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> What about “packages”?
+        
+        
+      </h2>
+    
+
+<p>There are several complex and separate issues hiding in this seemingly
+simple question.</p>
+
+<p>I think OSTree always makes sense to use as a core operating system
+builder and updater.  By “core” here I mean the parts that aren’t
+removable.  Debian has Essential: yes, any other distribution has this
+too implicitly in the set of dependencies for their updater tool.</p>
+
+<p>Now, let me just say I will absolutely support using something like
+apt/yum/zypper (and consequently deb/rpm) on top of OSTree.  This
+isn’t trivial, but there aren’t any conceptual issues.</p>
+
+<p>Concretely for example, RPM or .deb might make sense as a delivery
+vehicle for third party OS extensions.  A canoncial example is the
+NVidia graphics driver.</p>
+
+<p>If one is using OSTree to build an <em>operating system</em>, then there has
+to be some API for applications.  And that demands its own targeted
+solution - something like an evolved glick (zeroinstall is also
+similar).</p>
+
+<p>Current package systems are totally broken for application deployment
+though; for example, they will remove files away from under running
+applications on update.  And we clearly need the ability to install
+and upgrade applications without rebooting the OS.</p>
+      <h2 id="details-of-rpm-installation">
+        
+        
+          <a href="#details-of-rpm-installation" class="anchor-heading" aria-labelledby="details-of-rpm-installation"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Details of RPM installation
+        
+        
+      </h2>
+    
+
+<p>We should be able to install LSB rpms.  This implies providing “rpm”.
+The tricky part here is since the OS itself is not assembled via RPMs,
+we need to fake up a database of “provides” as if we were.  Even
+harder would be maintaining binary compatibilty with any arbitrary
+%post scripts that may be run.</p>
+      <h2 id="what-about-btrfs--doesnt-it-solve-everything">
+        
+        
+          <a href="#what-about-btrfs--doesnt-it-solve-everything" class="anchor-heading" aria-labelledby="what-about-btrfs--doesnt-it-solve-everything"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> What about BTRFS?  Doesn’t it solve everything?
+        
+        
+      </h2>
+    
+
+<p>In short, BTRFS is not a magic bullet, but yes - it helps
+significantly.  The obvious thing to do is layer BTRFS under dpkg/rpm,
+and have a separate subvolume for /home so rollbacks don’t lose your
+data.  See e.g.
+<a href="http://fedoraproject.org/wiki/Features/SystemRollbackWithBtrfs">http://fedoraproject.org/wiki/Features/SystemRollbackWithBtrfs</a></p>
+
+<p>As a general rule an issue with the BTRFS is that it can’t roll back
+just changes to things installed by RPM (i.e. what’s in rpm -qal).</p>
+
+<p>For example, it’s possible to e.g. run yum update, then edit something
+in /etc, reboot and notice things are broken, then roll back and have
+silently lost your changes to /etc.</p>
+
+<p>Another example is adding a new binary in /usr/local.  You could say,
+“OK, we’ll use subvolumes for those!”.  But then what about /var (and
+your VM images that live in /var/lib/libvirt ?)</p>
+
+<p>Finally, probably the biggest disadvantage of the rpm/dpkg + BTRFS
+approach is it doesn’t solve the race conditions that happen when
+unpacking packages into the live system.  This problem is really
+important to me.</p>
+
+<p>Note though ostree can definitely take advantage of BTRFS features!
+In particular, we could use “reflink”
+<a href="http://lwn.net/Articles/331808/">http://lwn.net/Articles/331808/</a> instead of hard links, and avoid
+having the object store corrupted if somehow the files are modified
+directly.</p>
+      <h2 id="other-systems">
+        
+        
+          <a href="#other-systems" class="anchor-heading" aria-labelledby="other-systems"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Other systems
+        
+        
+      </h2>
+    
+
+<p>I’ve spent a long time thinking about this problem, and here are some
+of the other possible solutions out there I looked at, and why I
+didn’t use them:</p>
+
+<ul>
+  <li>
+    <p>Git: <a href="http://git-scm.com/">http://git-scm.com/</a></p>
+
+    <p>Really awesome, and the core inspiration here.  But like I mentioned
+ above, not at all designed for binaries - we can make different tradeoffs.</p>
+  </li>
+  <li>
+    <p>bup: <a href="https://github.com/apenwarr/bup">https://github.com/apenwarr/bup</a></p>
+
+    <p>bup is cool.  But it shares the negative tradeoffs with git, though it
+ does add positives of its own.  It also inspired me.</p>
+  </li>
+  <li>
+    <p>git-annex: <a href="http://git-annex.branchable.com/git-annex/">http://git-annex.branchable.com/git-annex/</a></p>
+
+    <p>Looks interesting; I think this will share the same negative tradeoffs with git
+as far as using it for an OS goes.</p>
+  </li>
+  <li>
+    <p>schroot: <a href="http://www.debian-administration.org/articles/566">http://www.debian-administration.org/articles/566</a></p>
+
+    <p>Like LXC/containers, but just using a chroot.</p>
+  </li>
+  <li>
+    <p>NixOS: <a href="http://nixos.org/">http://nixos.org/</a></p>
+
+    <p>The NixOS people have a lot of really good ideas, and they’ve definitely
+ thought about the problem space.  However, their approach of checksumming
+ all inputs to a package is pretty wacky.  I don’t see the point, and moreover
+ it uses gobs of disk space.</p>
+  </li>
+  <li>
+    <p>Conary: <a href="http://wiki.rpath.com/wiki/Conary:Updates_and_Rollbacks">http://wiki.rpath.com/wiki/Conary:Updates_and_Rollbacks</a></p>
+
+    <p>If rpm/dpkg are like CVS, Conary is closer to Subversion.  It’s not
+bad, but ostree is better than it for the exact same reasons git
+is better than Subversion.</p>
+  </li>
+  <li>
+    <p>BTRFS: <a href="http://en.wikipedia.org/wiki/Btrfs">http://en.wikipedia.org/wiki/Btrfs</a></p>
+
+    <p>See above.</p>
+  </li>
+  <li>
+    <p>Solaris IPS: <a href="http://hub.opensolaris.org/bin/view/Project+pkg/">http://hub.opensolaris.org/bin/view/Project+pkg/</a></p>
+
+    <p>Rollback is ZFS level, so I think this shares the same tradeoffs as BTRFS+RPM/deb.
+They probably have some vertical integration though which definitely helps.
+Obviously we can’t use ZFS.</p>
+  </li>
+  <li>
+    <p>Jhbuild: <a href="https://live.gnome.org/Jhbuild">https://live.gnome.org/Jhbuild</a></p>
+
+    <p>What we’ve been using in GNOME, and has the essential property of allowing you
+to “fall back” to a stable system.  But ostree will blow it out of the water.</p>
+  </li>
+</ul>
+      <h2 id="development">
+        
+        
+          <a href="#development" class="anchor-heading" aria-labelledby="development"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Development
+        
+        
+      </h2>
+    
+
+<ul>
+  <li>
+    <p>OSTree wiki page: <a href="https://live.gnome.org/OSTree">https://live.gnome.org/OSTree</a></p>
+  </li>
+  <li>
+    <p>ostbuild wiki page: <a href="https://live.gnome.org/OSTree/Ostbuild">https://live.gnome.org/OSTree/Ostbuild</a></p>
+  </li>
+  <li>
+    <p>Git repository: <a href="http://git.gnome.org/browse/ostree/">http://git.gnome.org/browse/ostree/</a></p>
+  </li>
+  <li>
+    <p>Deploying OSTree in the Gnome servers: <a href="https://bugzilla.gnome.org/show_bug.cgi?id=669772">https://bugzilla.gnome.org/show_bug.cgi?id=669772</a></p>
+  </li>
+</ul>
+
+        
+
+        
+
+        
+        
+          <hr>
+          <footer>
+            
+
+            <p class="text-small text-grey-dk-100 mb-0">Copyright &copy; <a href="https://www.redhat.com">Red Hat, Inc.</a> and <a href="https://github.com/ostreedev">others</a>.</p>
+
+            
+              <div class="d-flex mt-2">
+                
+                
+                  <p class="text-small text-grey-dk-000 mb-0">
+                    <a href="https://github.com/ostreedev/ostree/tree/main/docs/README-historical.md" id="edit-this-page">Edit this page on GitHub</a>
+                  </p>
+                
+              </div>
+            
+          </footer>
+        
+
+      </div>
+    </div>
+
+    
+      
+
+      <div class="search-overlay"></div>
+    
+  </div>
+</body>
+</html>
+

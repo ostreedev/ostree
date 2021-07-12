@@ -1,0 +1,498 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  
+    <title>Managing content in OSTree repositories - ostreedev/ostree</title>
+
+    
+  
+
+  <link rel="shortcut icon" href="/ostree/favicon.ico" type="image/x-icon">
+
+  <link rel="stylesheet" href="/ostree/assets/css/just-the-docs-default.css">
+
+  
+
+  
+    <script type="text/javascript" src="/ostree/assets/js/vendor/lunr.min.js"></script>
+  
+  <script type="text/javascript" src="/ostree/assets/js/just-the-docs.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Managing content in OSTree repositories | ostreedev/ostree</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="Managing content in OSTree repositories" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="ostree documentation" />
+<meta property="og:description" content="ostree documentation" />
+<link rel="canonical" href="https://ostreedev.github.io/ostree/repository-management/" />
+<meta property="og:url" content="https://ostreedev.github.io/ostree/repository-management/" />
+<meta property="og:site_name" content="ostreedev/ostree" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Managing content in OSTree repositories" />
+<script type="application/ld+json">
+{"description":"ostree documentation","url":"https://ostreedev.github.io/ostree/repository-management/","@type":"WebPage","headline":"Managing content in OSTree repositories","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  
+
+</head>
+
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="svg-link" viewBox="0 0 24 24">
+      <title>Link</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+    </symbol>
+    <symbol id="svg-search" viewBox="0 0 24 24">
+      <title>Search</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search">
+        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-menu" viewBox="0 0 24 24">
+      <title>Menu</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+        <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+      <title>Expand</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </symbol>
+    <symbol id="svg-doc" viewBox="0 0 24 24">
+      <title>Document</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>
+      </svg>
+    </symbol>
+  </svg>
+
+  <div class="side-bar">
+    <div class="site-header">
+      <a href="https://ostreedev.github.io/ostree/" class="site-title lh-tight">
+  ostreedev/ostree
+
+</a>
+      <a href="#" id="menu-button" class="site-button">
+        <svg viewBox="0 0 24 24" class="icon"><use xlink:href="#svg-menu"></use></svg>
+      </a>
+    </div>
+    <nav role="navigation" aria-label="Main" id="site-nav" class="site-nav">
+      
+        <ul class="nav-list"><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/" class="nav-list-link">libostree</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/introduction/" class="nav-list-link">OSTree Overview</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repo/" class="nav-list-link">Anatomy of an OSTree repository</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/deployment/" class="nav-list-link">Deployments</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/atomic-upgrades/" class="nav-list-link">Atomic Upgrades</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/adapting-existing/" class="nav-list-link">Adapting existing mainstream distributions</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/formats/" class="nav-list-link">OSTree data formats</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/buildsystem-and-repos/" class="nav-list-link">Writing a buildsystem and managing repositories</a></li><li class="nav-list-item active"><a href="https://ostreedev.github.io/ostree/repository-management/" class="nav-list-link active">Managing content in OSTree repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/related-projects/" class="nav-list-link">Related Projects</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/CONTRIBUTING/" class="nav-list-link">Contributing</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/contributing-tutorial/" class="nav-list-link">OSTree Contributing Tutorial</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/README-historical/" class="nav-list-link">Historical OSTree README</a></li></ul>
+
+      
+    </nav>
+    <footer class="site-footer">
+      This site uses <a href="https://github.com/pmarsceill/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    </footer>
+  </div>
+  <div class="main" id="top">
+    <div id="main-header" class="main-header">
+      
+        <div class="search">
+          <div class="search-input-wrap">
+            <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="Search ostreedev/ostree" aria-label="Search ostreedev/ostree" autocomplete="off">
+            <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>
+          </div>
+          <div id="search-results" class="search-results"></div>
+        </div>
+      
+      
+      
+        <nav aria-label="Auxiliary" class="aux-nav">
+          <ul class="aux-nav-list">
+            
+              <li class="aux-nav-list-item">
+                <a href="https://github.com/ostreedev/ostree" class="site-button"
+                  
+                >
+                  OSTree on GitHub
+                </a>
+              </li>
+            
+          </ul>
+        </nav>
+      
+    </div>
+    <div id="main-content-wrap" class="main-content-wrap">
+      
+        
+      
+      <div id="main-content" class="main-content" role="main">
+        
+          <h1 class="no_toc" id="managing-content-in-ostree-repositories">
+        
+        
+          <a href="#managing-content-in-ostree-repositories" class="anchor-heading" aria-labelledby="managing-content-in-ostree-repositories"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Managing content in OSTree repositories
+        
+        
+      </h1>
+    
+
+<ol id="markdown-toc">
+  <li><a href="#mirroring-repositories" id="markdown-toc-mirroring-repositories">Mirroring repositories</a></li>
+  <li><a href="#separate-development-vs-release-repositories" id="markdown-toc-separate-development-vs-release-repositories">Separate development vs release repositories</a></li>
+  <li><a href="#promoting-content-along-ostree-branches---buildmain-smoketested" id="markdown-toc-promoting-content-along-ostree-branches---buildmain-smoketested">Promoting content along OSTree branches - “buildmain”, “smoketested”</a></li>
+  <li><a href="#promoting-content-between-ostree-repositories" id="markdown-toc-promoting-content-between-ostree-repositories">Promoting content between OSTree repositories</a></li>
+  <li><a href="#derived-data---static-deltas-and-the-summary-file" id="markdown-toc-derived-data---static-deltas-and-the-summary-file">Derived data - static deltas and the summary file</a></li>
+  <li><a href="#pruning-our-build-and-dev-repositories" id="markdown-toc-pruning-our-build-and-dev-repositories">Pruning our build and dev repositories</a></li>
+  <li><a href="#generating-scratch-deltas-for-efficient-initial-downloads" id="markdown-toc-generating-scratch-deltas-for-efficient-initial-downloads">Generating “scratch” deltas for efficient initial downloads</a>    <ol>
+      <li><a href="#licensing-for-this-document" id="markdown-toc-licensing-for-this-document">Licensing for this document:</a></li>
+    </ol>
+  </li>
+</ol>
+
+<p>Once you have a build system going, if you actually want client
+systems to retrieve the content, you will quickly feel a need for
+“repository management”.</p>
+
+<p>The command line tool <code class="language-plaintext highlighter-rouge">ostree</code> does cover some core functionality, but
+doesn’t include very high level workflows.  One reason is that how
+content is delivered and managed has concerns very specific to the
+organization.  For example, some operating system content vendors may
+want integration with a specific errata notification system when
+generating commits.</p>
+
+<p>In this section, we will describe some high level ideas and methods
+for managing content in OSTree repositories, mostly independent of any
+particular model or tool.  That said, there is an associated upstream
+project <a href="https://github.com/ostreedev/ostree-releng-scripts">ostree-releng-scripts</a>
+which has some scripts that are intended to implement portions of
+this document.</p>
+
+<p>Another example of software which can assist in managing OSTree
+repositories today is the <a href="http://www.pulpproject.org/">Pulp Project</a>,
+which has a
+<a href="https://docs.pulpproject.org/plugins/pulp_ostree/index.html">Pulp OSTree plugin</a>.</p>
+      <h2 id="mirroring-repositories">
+        
+        
+          <a href="#mirroring-repositories" class="anchor-heading" aria-labelledby="mirroring-repositories"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Mirroring repositories
+        
+        
+      </h2>
+    
+
+<p>It’s very common to want to perform a full or partial mirror, in
+particular across organizational boundaries (e.g. an upstream OS
+provider, and a user that wants offline and faster access to the
+content).  OSTree supports both full and partial mirroring of the base
+<code class="language-plaintext highlighter-rouge">archive</code> content, although not yet of static deltas.</p>
+
+<p>To create a mirror, first create an <code class="language-plaintext highlighter-rouge">archive</code> repository (you don’t
+need to run this as root), then add the upstream as a remote, then use
+<code class="language-plaintext highlighter-rouge">pull --mirror</code>.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ostree --repo=repo init --mode=archive
+ostree --repo=repo remote add exampleos https://exampleos.com/ostree/repo
+ostree --repo=repo pull --mirror exampleos:exampleos/x86_64/standard
+</code></pre></div></div>
+
+<p>You can use the <code class="language-plaintext highlighter-rouge">--depth=-1</code> option to retrieve all history, or a
+positive integer like <code class="language-plaintext highlighter-rouge">3</code> to retrieve just the last 3 commits.</p>
+
+<p>See also the <code class="language-plaintext highlighter-rouge">rsync-repos</code> script in
+<a href="https://github.com/ostreedev/ostree-releng-scripts">ostree-releng-scripts</a>.</p>
+      <h2 id="separate-development-vs-release-repositories">
+        
+        
+          <a href="#separate-development-vs-release-repositories" class="anchor-heading" aria-labelledby="separate-development-vs-release-repositories"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Separate development vs release repositories
+        
+        
+      </h2>
+    
+
+<p>By default, OSTree accumulates server side history.  This is actually
+optional in that your build system can (using the API) write a commit
+with no parent.  But first, we’ll investigate the ramifications of
+server side history.</p>
+
+<p>Many content vendors will want to separate their internal development
+with what is made public to the world.  Therefore, you will want (at
+least) two OSTree repositories, we’ll call them “dev” and “prod”.</p>
+
+<p>To phrase this another way, let’s say you have a continuous delivery
+system which is building from git and committing into your “dev”
+OSTree repository.  This might happen tens to hundreds of times per
+day.  That’s a substantial amount of history over time, and it’s
+unlikely most of your content consumers (i.e. not developers/testers)
+will be interested in all of it.</p>
+
+<p>The original vision of OSTree was to fulfill this “dev” role, and in
+particular the “archive” format was designed for it.</p>
+
+<p>Then, what you’ll want to do is promote content from “dev” to “prod”.
+We’ll discuss this later, but first, let’s talk about promotion
+<em>inside</em> our “dev” repository.</p>
+      <h2 id="promoting-content-along-ostree-branches---buildmain-smoketested">
+        
+        
+          <a href="#promoting-content-along-ostree-branches---buildmain-smoketested" class="anchor-heading" aria-labelledby="promoting-content-along-ostree-branches---buildmain-smoketested"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Promoting content along OSTree branches - “buildmain”, “smoketested”
+        
+        
+      </h2>
+    
+
+<p>Besides multiple repositories, OSTree also supports multiple branches
+inside one repository, equivalent to git’s branches.  We saw in an
+earlier section an example branch name like
+<code class="language-plaintext highlighter-rouge">exampleos/x86_64/standard</code>.  Choosing the branch name for your “prod”
+repository is absolutely critical as client systems will reference it.
+It becomes an important part of your face to the world, in the same
+way the “main” branch in a git repository is.</p>
+
+<p>But with your “dev” repository internally, it can be very useful to
+use OSTree’s branching concepts to represent different stages in a
+software delivery pipeline.</p>
+
+<p>Deriving from <code class="language-plaintext highlighter-rouge">exampleos/x86_64/standard</code>, let’s say our “dev”
+repository contains <code class="language-plaintext highlighter-rouge">exampleos/x86_64/buildmain/standard</code>.  We choose the
+term “buildmain” to represent something that came straight from git
+main.  It may not be tested very much.</p>
+
+<p>Our next step should be to hook up a testing system (Jenkins,
+Buildbot, etc.) to this.  When a build (commit) passes some tests, we
+want to “promote” that commit.  Let’s create a new branch called
+<code class="language-plaintext highlighter-rouge">smoketested</code> to say that some basic sanity checks pass on the
+complete system.  This might be where human testers get involved, for
+example.</p>
+
+<p>This is a basic way to “promote” the <code class="language-plaintext highlighter-rouge">buildmain</code> commit that passed testing:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ostree commit -b exampleos/x86_64/smoketested/standard -s 'Passed tests' --tree=ref=aec070645fe53...
+</code></pre></div></div>
+
+<p>Here we’re generating a new commit object (perhaps include in the commit
+log links to build logs, etc.), but we’re reusing the <em>content</em> from the <code class="language-plaintext highlighter-rouge">buildmain</code>
+commit <code class="language-plaintext highlighter-rouge">aec070645fe53</code> that passed the smoketests.</p>
+
+<p>For a more sophisticated implementation of this model, see the
+<a href="https://github.com/ostreedev/ostree-releng-scripts/blob/main/do-release-tags">do-release-tags</a>
+script, which includes support for things like propagating version
+numbers across commit promotion.</p>
+
+<p>We can easily generalize this model to have an arbitrary number of
+stages like <code class="language-plaintext highlighter-rouge">exampleos/x86_64/stage-1-pass/standard</code>,
+<code class="language-plaintext highlighter-rouge">exampleos/x86_64/stage-2-pass/standard</code>, etc. depending on business
+requirements and logic.</p>
+
+<p>In this suggested model, the “stages” are increasingly expensive.  The
+logic is that we don’t want to spend substantial time on e.g. network
+performance tests if something basic like a systemd unit file fails on
+bootup.</p>
+      <h2 id="promoting-content-between-ostree-repositories">
+        
+        
+          <a href="#promoting-content-between-ostree-repositories" class="anchor-heading" aria-labelledby="promoting-content-between-ostree-repositories"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Promoting content between OSTree repositories
+        
+        
+      </h2>
+    
+
+<p>Now, we have our internal continuous delivery stream flowing, it’s
+being tested and works.  We want to periodically take the latest
+commit on <code class="language-plaintext highlighter-rouge">exampleos/x86_64/stage-3-pass/standard</code> and expose it in
+our “prod” repository as <code class="language-plaintext highlighter-rouge">exampleos/x86_64/standard</code>, with a much
+smaller history.</p>
+
+<p>We’ll have other business requirements such as writing release notes
+(and potentially putting them in the OSTree commit message), etc.</p>
+
+<p>In <a href="/ostree/buildsystem-and-repos/">Build Systems</a> we saw how the
+<code class="language-plaintext highlighter-rouge">pull-local</code> command can be used to migrate content from the “build”
+repository (in <code class="language-plaintext highlighter-rouge">bare-user</code> mode) into an <code class="language-plaintext highlighter-rouge">archive</code> repository for
+serving to client systems.</p>
+
+<p>Following this section, we now have three repositories, let’s call
+them <code class="language-plaintext highlighter-rouge">repo-build</code>, <code class="language-plaintext highlighter-rouge">repo-dev</code>, and <code class="language-plaintext highlighter-rouge">repo-prod</code>.  We’ve been pulling
+content from <code class="language-plaintext highlighter-rouge">repo-build</code> into <code class="language-plaintext highlighter-rouge">repo-dev</code> (which involves gzip
+compression among other things since it is a format change).</p>
+
+<p>When using <code class="language-plaintext highlighter-rouge">pull-local</code> to migrate content between two <code class="language-plaintext highlighter-rouge">archive</code>
+repositories, the binary content is taken unmodified.  Let’s go ahead
+and generate a new commit in our prod repository:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>checksum=$(ostree --repo=repo-dev rev-parse exampleos/x86_64/stage-3-pass/standard`)
+ostree --repo=repo-prod pull-local repo-dev ${checksum}
+ostree --repo=repo-prod commit -b exampleos/x86_64/standard \
+       -s 'Release 1.2.3' --add-metadata-string=version=1.2.3 \
+	   --tree=ref=${checksum}
+</code></pre></div></div>
+
+<p>There are a few things going on here.  First, we found the latest
+commit checksum for the “stage-3 dev”, and told <code class="language-plaintext highlighter-rouge">pull-local</code> to copy
+it, without using the branch name.  We do this because we don’t want
+to expose the <code class="language-plaintext highlighter-rouge">exampleos/x86_64/stage-3-pass/standard</code> branch name in
+our “prod” repository.</p>
+
+<p>Next, we generate a new commit in prod that’s referencing the exact
+binary content in dev.  If the “dev” and “prod” repositories are on
+the same Unix filesystem, (like git) OSTree will make use of hard
+links to avoid copying any content at all - making the process very
+fast.</p>
+
+<p>Another interesting thing to notice here is that we’re adding an
+<code class="language-plaintext highlighter-rouge">version</code> metadata string to the commit.  This is an optional
+piece of metadata, but we are encouraging its use in the OSTree
+ecosystem of tools.  Commands like <code class="language-plaintext highlighter-rouge">ostree admin status</code> show it by
+default.</p>
+      <h2 id="derived-data---static-deltas-and-the-summary-file">
+        
+        
+          <a href="#derived-data---static-deltas-and-the-summary-file" class="anchor-heading" aria-labelledby="derived-data---static-deltas-and-the-summary-file"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Derived data - static deltas and the summary file
+        
+        
+      </h2>
+    
+
+<p>As discussed in <a href="/ostree/formats/">Formats</a>, the <code class="language-plaintext highlighter-rouge">archive</code> repository we
+use for “prod” requires one HTTP fetch per client request by default.
+If we’re only performing a release e.g. once a week, it’s appropriate
+to use “static deltas” to speed up client updates.</p>
+
+<p>So once we’ve used the above command to pull content from <code class="language-plaintext highlighter-rouge">repo-dev</code>
+into <code class="language-plaintext highlighter-rouge">repo-prod</code>, let’s generate a delta against the previous commit:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ostree --repo=repo-prod static-delta generate exampleos/x86_64/standard
+</code></pre></div></div>
+
+<p>We may also want to support client systems upgrading from <em>two</em>
+commits previous.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ostree --repo=repo-prod static-delta generate --from=exampleos/x86_64/standard^^ --to=exampleos/x86_64/standard
+</code></pre></div></div>
+
+<p>Generating a full permutation of deltas across all prior versions can
+get expensive, and there is some support in the OSTree core for static
+deltas which “recurse” to a parent.  This can help create a model
+where clients download a chain of deltas.  Support for this is not
+fully implemented yet however.</p>
+
+<p>Regardless of whether or not you choose to generate static deltas,
+you should update the summary file:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ostree --repo=repo-prod summary -u
+</code></pre></div></div>
+
+<p>(Remember, the <code class="language-plaintext highlighter-rouge">summary</code> command cannot be run concurrently, so this
+ should be triggered serially by other jobs).</p>
+
+<p>There is some more information on the design of the summary file in
+<a href="/ostree/repo/">Repo</a>.</p>
+      <h2 id="pruning-our-build-and-dev-repositories">
+        
+        
+          <a href="#pruning-our-build-and-dev-repositories" class="anchor-heading" aria-labelledby="pruning-our-build-and-dev-repositories"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Pruning our build and dev repositories
+        
+        
+      </h2>
+    
+
+<p>First, the OSTree author believes you should <em>not</em> use OSTree as a
+“primary content store”.  The binaries in an OSTree repository should
+be derived from a git repository.  Your build system should record
+proper metadata such as the configuration options used to generate the
+build, and you should be able to rebuild it if necessary.  Art assets
+should be stored in a system that’s designed for that
+(e.g. <a href="https://git-lfs.github.com/">Git LFS</a>).</p>
+
+<p>Another way to say this is that five years down the line, we are
+unlikely to care about retaining the exact binaries from an OS build
+on Wednesday afternoon three years ago.</p>
+
+<p>We want to save space and prune our “dev” repository.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ostree --repo=repo-dev prune --refs-only --keep-younger-than="6 months ago"
+</code></pre></div></div>
+
+<p>That will truncate the history older than 6 months.  Deleted commits
+will have “tombstone markers” added so that you know they were
+explicitly deleted, but all content in them (that is not referenced by
+a still retained commit) will be garbage collected.</p>
+      <h2 id="generating-scratch-deltas-for-efficient-initial-downloads">
+        
+        
+          <a href="#generating-scratch-deltas-for-efficient-initial-downloads" class="anchor-heading" aria-labelledby="generating-scratch-deltas-for-efficient-initial-downloads"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Generating “scratch” deltas for efficient initial downloads
+        
+        
+      </h2>
+    
+
+<p>In general, the happy path for OSTree downloads is via static deltas.
+If you are in a situation where you want to download an OSTree
+commit from an uninitialized repo (or one with unrelated history), you
+can generate “scratch” (aka <code class="language-plaintext highlighter-rouge">--empty</code> deltas) which bundle all
+objects for that commit.</p>
+
+<p>The tradeoff here is increasing server disk space in return
+for many fewer client HTTP requests.</p>
+
+<p>For example:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ostree --repo=/path/to/repo static-delta generate --empty --to=exampleos/x86_64/testing-devel
+$ ostree --repo=/path/to/repo summary -u
+</code></pre></div></div>
+
+<p>After that, clients fetching that commit will prefer fetching the “scratch” delta if they don’t have the original ref.</p>
+      <h6 id="licensing-for-this-document">
+        
+        
+          <a href="#licensing-for-this-document" class="anchor-heading" aria-labelledby="licensing-for-this-document"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Licensing for this document:
+        
+        
+      </h6>
+    
+<p><code class="language-plaintext highlighter-rouge">SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)</code></p>
+
+        
+
+        
+
+        
+        
+          <hr>
+          <footer>
+            
+
+            <p class="text-small text-grey-dk-100 mb-0">Copyright &copy; <a href="https://www.redhat.com">Red Hat, Inc.</a> and <a href="https://github.com/ostreedev">others</a>.</p>
+
+            
+              <div class="d-flex mt-2">
+                
+                
+                  <p class="text-small text-grey-dk-000 mb-0">
+                    <a href="https://github.com/ostreedev/ostree/tree/main/docs/repository-management.md" id="edit-this-page">Edit this page on GitHub</a>
+                  </p>
+                
+              </div>
+            
+          </footer>
+        
+
+      </div>
+    </div>
+
+    
+      
+
+      <div class="search-overlay"></div>
+    
+  </div>
+</body>
+</html>
+

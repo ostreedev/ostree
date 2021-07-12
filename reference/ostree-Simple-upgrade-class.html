@@ -1,0 +1,715 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Simple upgrade class: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-SELinux-policy-management.html" title="SELinux policy management">
+<link rel="next" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">
+<meta name="generator" content="GTK-Doc V1.32 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-Simple-upgrade-class.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-SELinux-policy-management.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-GPG-signature-verification-results.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-Simple-upgrade-class"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-Simple-upgrade-class.top_of_page"></a>Simple upgrade class</span></h2>
+<p>Simple upgrade class — Upgrade OSTree systems</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-Simple-upgrade-class.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="returnvalue">OstreeSysrootUpgrader</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-new" title="ostree_sysroot_upgrader_new ()">ostree_sysroot_upgrader_new</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="returnvalue">OstreeSysrootUpgrader</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-new-for-os" title="ostree_sysroot_upgrader_new_for_os ()">ostree_sysroot_upgrader_new_for_os</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="returnvalue">OstreeSysrootUpgrader</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-new-for-os-with-flags" title="ostree_sysroot_upgrader_new_for_os_with_flags ()">ostree_sysroot_upgrader_new_for_os_with_flags</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GKeyFile</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-get-origin" title="ostree_sysroot_upgrader_get_origin ()">ostree_sysroot_upgrader_get_origin</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GKeyFile</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-dup-origin" title="ostree_sysroot_upgrader_dup_origin ()">ostree_sysroot_upgrader_dup_origin</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-set-origin" title="ostree_sysroot_upgrader_set_origin ()">ostree_sysroot_upgrader_set_origin</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-get-origin-description" title="ostree_sysroot_upgrader_get_origin_description ()">ostree_sysroot_upgrader_get_origin_description</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-check-timestamps" title="ostree_sysroot_upgrader_check_timestamps ()">ostree_sysroot_upgrader_check_timestamps</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-pull" title="ostree_sysroot_upgrader_pull ()">ostree_sysroot_upgrader_pull</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-pull-one-dir" title="ostree_sysroot_upgrader_pull_one_dir ()">ostree_sysroot_upgrader_pull_one_dir</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-deploy" title="ostree_sysroot_upgrader_deploy ()">ostree_sysroot_upgrader_deploy</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-Simple-upgrade-class.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="typedef_keyword">typedef</td>
+<td class="function_name"><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader">OstreeSysrootUpgrader</a></td>
+</tr>
+<tr>
+<td class="datatype_keyword">enum</td>
+<td class="function_name"><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgraderFlags" title="enum OstreeSysrootUpgraderFlags">OstreeSysrootUpgraderFlags</a></td>
+</tr>
+<tr>
+<td class="datatype_keyword">enum</td>
+<td class="function_name"><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgraderPullFlags" title="enum OstreeSysrootUpgraderPullFlags">OstreeSysrootUpgraderPullFlags</a></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-Simple-upgrade-class.description"></a><h2>Description</h2>
+<p>The <a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> class allows performing simple upgrade
+operations.</p>
+</div>
+<div class="refsect1">
+<a name="ostree-Simple-upgrade-class.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-new"></a><h3>ostree_sysroot_upgrader_new ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="returnvalue">OstreeSysrootUpgrader</span></a> *
+ostree_sysroot_upgrader_new (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *sysroot</code></em>,
+                             <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                             <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-new.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>sysroot</p></td>
+<td class="parameter_description"><p>An <a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-new.returns"></a><h4>Returns</h4>
+<p>An upgrader. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-new-for-os"></a><h3>ostree_sysroot_upgrader_new_for_os ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="returnvalue">OstreeSysrootUpgrader</span></a> *
+ostree_sysroot_upgrader_new_for_os (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *sysroot</code></em>,
+                                    <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                                    <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                    <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-new-for-os.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>sysroot</p></td>
+<td class="parameter_description"><p>An <a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>Operating system name. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-new-for-os.returns"></a><h4>Returns</h4>
+<p>An upgrader. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-new-for-os-with-flags"></a><h3>ostree_sysroot_upgrader_new_for_os_with_flags ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="returnvalue">OstreeSysrootUpgrader</span></a> *
+ostree_sysroot_upgrader_new_for_os_with_flags
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *sysroot</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgraderFlags" title="enum OstreeSysrootUpgraderFlags"><span class="type">OstreeSysrootUpgraderFlags</span></a> flags</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-new-for-os-with-flags.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>sysroot</p></td>
+<td class="parameter_description"><p>An <a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>Operating system name. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>flags</p></td>
+<td class="parameter_description"><p>Flags</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-new-for-os-with-flags.returns"></a><h4>Returns</h4>
+<p>An upgrader. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-get-origin"></a><h3>ostree_sysroot_upgrader_get_origin ()</h3>
+<pre class="programlisting"><span class="returnvalue">GKeyFile</span> *
+ostree_sysroot_upgrader_get_origin (<em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-get-origin.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-get-origin.returns"></a><h4>Returns</h4>
+<p>The origin file, or <code class="literal">NULL</code> if unknown. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-dup-origin"></a><h3>ostree_sysroot_upgrader_dup_origin ()</h3>
+<pre class="programlisting"><span class="returnvalue">GKeyFile</span> *
+ostree_sysroot_upgrader_dup_origin (<em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-dup-origin.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-dup-origin.returns"></a><h4>Returns</h4>
+<p>A copy of the origin file, or <code class="literal">NULL</code> if unknown. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-set-origin"></a><h3>ostree_sysroot_upgrader_set_origin ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_upgrader_set_origin (<em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> *self</code></em>,
+                                    <em class="parameter"><code><span class="type">GKeyFile</span> *origin</code></em>,
+                                    <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                    <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Replace the origin with <em class="parameter"><code>origin</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-set-origin.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>origin</p></td>
+<td class="parameter_description"><p>The new origin. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-get-origin-description"></a><h3>ostree_sysroot_upgrader_get_origin_description ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_sysroot_upgrader_get_origin_description
+                               (<em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-get-origin-description.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Upgrader</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-get-origin-description.returns"></a><h4>Returns</h4>
+<p> A one-line descriptive summary of the origin, or <code class="literal">NULL</code> if unknown</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-check-timestamps"></a><h3>ostree_sysroot_upgrader_check_timestamps ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_upgrader_check_timestamps
+                               (<em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *repo</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *from_rev</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *to_rev</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Check that the timestamp on <em class="parameter"><code>to_rev</code></em>
+ is equal to or newer than
+<em class="parameter"><code>from_rev</code></em>
+.  This protects systems against man-in-the-middle
+attackers which provide a client with an older commit.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-check-timestamps.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>repo</p></td>
+<td class="parameter_description"><p>Repo</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>from_rev</p></td>
+<td class="parameter_description"><p>From revision</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>to_rev</p></td>
+<td class="parameter_description"><p>To revision</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-pull"></a><h3>ostree_sysroot_upgrader_pull ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_upgrader_pull (<em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> *self</code></em>,
+                              <em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepoPullFlags" title="enum OstreeRepoPullFlags"><span class="type">OstreeRepoPullFlags</span></a> flags</code></em>,
+                              <em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgraderPullFlags" title="enum OstreeSysrootUpgraderPullFlags"><span class="type">OstreeSysrootUpgraderPullFlags</span></a> upgrader_flags</code></em>,
+                              <em class="parameter"><code><a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#OstreeAsyncProgress" title="OstreeAsyncProgress"><span class="type">OstreeAsyncProgress</span></a> *progress</code></em>,
+                              <em class="parameter"><code><span class="type">gboolean</span> *out_changed</code></em>,
+                              <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                              <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Perform a pull from the origin.  First check if the ref has
+changed, if so download the linked objects, and store the updated
+ref locally.  Then <em class="parameter"><code>out_changed</code></em>
+ will be <code class="literal">TRUE</code>.</p>
+<p>If the origin remote is unchanged, <em class="parameter"><code>out_changed</code></em>
+ will be set to
+<code class="literal">FALSE</code>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-pull.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Upgrader</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>flags</p></td>
+<td class="parameter_description"><p>Flags controlling pull behavior</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>upgrader_flags</p></td>
+<td class="parameter_description"><p>Flags controlling upgrader behavior</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>progress</p></td>
+<td class="parameter_description"><p>Progress. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_changed</p></td>
+<td class="parameter_description"><p>Whether or not the origin changed. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-pull-one-dir"></a><h3>ostree_sysroot_upgrader_pull_one_dir ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_upgrader_pull_one_dir (<em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> *self</code></em>,
+                                      <em class="parameter"><code>const <span class="type">char</span> *dir_to_pull</code></em>,
+                                      <em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepoPullFlags" title="enum OstreeRepoPullFlags"><span class="type">OstreeRepoPullFlags</span></a> flags</code></em>,
+                                      <em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgraderPullFlags" title="enum OstreeSysrootUpgraderPullFlags"><span class="type">OstreeSysrootUpgraderPullFlags</span></a> upgrader_flags</code></em>,
+                                      <em class="parameter"><code><a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#OstreeAsyncProgress" title="OstreeAsyncProgress"><span class="type">OstreeAsyncProgress</span></a> *progress</code></em>,
+                                      <em class="parameter"><code><span class="type">gboolean</span> *out_changed</code></em>,
+                                      <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                      <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Like <a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-pull" title="ostree_sysroot_upgrader_pull ()"><code class="function">ostree_sysroot_upgrader_pull()</code></a>, but allows retrieving just a
+subpath of the tree.  This can be used to download metadata files
+from inside the tree such as package databases.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-pull-one-dir.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Upgrader</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>dir_to_pull</p></td>
+<td class="parameter_description"><p>Subdirectory path (should include a leading /)</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>flags</p></td>
+<td class="parameter_description"><p>Flags controlling pull behavior</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>upgrader_flags</p></td>
+<td class="parameter_description"><p>Flags controlling upgrader behavior</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>progress</p></td>
+<td class="parameter_description"><p>Progress. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_changed</p></td>
+<td class="parameter_description"><p>Whether or not the origin changed. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-upgrader-deploy"></a><h3>ostree_sysroot_upgrader_deploy ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_upgrader_deploy (<em class="parameter"><code><a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a> *self</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Write the new deployment to disk, perform a configuration merge
+with /etc, and update the bootloader configuration.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-upgrader-deploy.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Self</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-Simple-upgrade-class.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeSysrootUpgrader"></a><h3>OstreeSysrootUpgrader</h3>
+<pre class="programlisting">typedef struct OstreeSysrootUpgrader OstreeSysrootUpgrader;
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeSysrootUpgraderFlags"></a><h3>enum OstreeSysrootUpgraderFlags</h3>
+<p>Flags controlling operation of an <a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader"><span class="type">OstreeSysrootUpgrader</span></a>.</p>
+<div class="refsect3">
+<a name="OstreeSysrootUpgraderFlags.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="enum_members_name">
+<col class="enum_members_description">
+<col width="200px" class="enum_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-UPGRADER-FLAGS-NONE:CAPS"></a>OSTREE_SYSROOT_UPGRADER_FLAGS_NONE</p></td>
+<td class="enum_member_description">
+<p>No options</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-UPGRADER-FLAGS-IGNORE-UNCONFIGURED:CAPS"></a>OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED</p></td>
+<td class="enum_member_description">
+<p>Do not error if the origin has an unconfigured-state key</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeSysrootUpgraderPullFlags"></a><h3>enum OstreeSysrootUpgraderPullFlags</h3>
+<div class="refsect3">
+<a name="OstreeSysrootUpgraderPullFlags.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="enum_members_name">
+<col class="enum_members_description">
+<col width="200px" class="enum_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-UPGRADER-PULL-FLAGS-NONE:CAPS"></a>OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_NONE</p></td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-UPGRADER-PULL-FLAGS-ALLOW-OLDER:CAPS"></a>OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER</p></td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-UPGRADER-PULL-FLAGS-SYNTHETIC:CAPS"></a>OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC</p></td>
+<td> </td>
+<td> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.32</div>
+</body>
+</html>

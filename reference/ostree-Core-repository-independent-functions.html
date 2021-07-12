@@ -1,0 +1,2975 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Core repository-independent functions: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="reference.html" title="API Reference">
+<link rel="next" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">
+<meta name="generator" content="GTK-Doc V1.32 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-Core-repository-independent-functions.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="reference.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-OstreeRepo.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-Core-repository-independent-functions"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-Core-repository-independent-functions.top_of_page"></a>Core repository-independent functions</span></h2>
+<p>Core repository-independent functions — Create, validate, and convert core data types</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-Core-repository-independent-functions.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-IS-META:CAPS" title="OSTREE_OBJECT_TYPE_IS_META()">OSTREE_OBJECT_TYPE_IS_META</a><span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">GVariantType</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-metadata-variant-type" title="ostree_metadata_variant_type ()">ostree_metadata_variant_type</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-checksum-string" title="ostree_validate_checksum_string ()">ostree_validate_checksum_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-collection-id" title="ostree_validate_collection_id ()">ostree_validate_collection_id</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-to-bytes" title="ostree_checksum_to_bytes ()">ostree_checksum_to_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GVariant</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-to-bytes-v" title="ostree_checksum_to_bytes_v ()">ostree_checksum_to_bytes_v</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-from-bytes" title="ostree_checksum_from_bytes ()">ostree_checksum_from_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-from-bytes-v" title="ostree_checksum_from_bytes_v ()">ostree_checksum_from_bytes_v</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-inplace-from-bytes" title="ostree_checksum_inplace_from_bytes ()">ostree_checksum_inplace_from_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-inplace-to-bytes" title="ostree_checksum_inplace_to_bytes ()">ostree_checksum_inplace_to_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">guchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-bytes-peek" title="ostree_checksum_bytes_peek ()">ostree_checksum_bytes_peek</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">guchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-bytes-peek-validate" title="ostree_checksum_bytes_peek_validate ()">ostree_checksum_bytes_peek_validate</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-from-bytes" title="ostree_checksum_b64_from_bytes ()">ostree_checksum_b64_from_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-to-bytes" title="ostree_checksum_b64_to_bytes ()">ostree_checksum_b64_to_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-inplace-from-bytes" title="ostree_checksum_b64_inplace_from_bytes ()">ostree_checksum_b64_inplace_from_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-inplace-to-bytes" title="ostree_checksum_b64_inplace_to_bytes ()">ostree_checksum_b64_inplace_to_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">int</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-cmp-checksum-bytes" title="ostree_cmp_checksum_bytes ()">ostree_cmp_checksum_bytes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-rev" title="ostree_validate_rev ()">ostree_validate_rev</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-remote-name" title="ostree_validate_remote_name ()">ostree_validate_remote_name</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-parse-refspec" title="ostree_parse_refspec ()">ostree_parse_refspec</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-type-to-string" title="ostree_object_type_to_string ()">ostree_object_type_to_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="returnvalue">OstreeObjectType</span></a>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-type-from-string" title="ostree_object_type_from_string ()">ostree_object_type_from_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guint</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-hash-object-name" title="ostree_hash_object_name ()">ostree_hash_object_name</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GVariant</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-name-serialize" title="ostree_object_name_serialize ()">ostree_object_name_serialize</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-name-deserialize" title="ostree_object_name_deserialize ()">ostree_object_name_deserialize</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-to-string" title="ostree_object_to_string ()">ostree_object_to_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-from-string" title="ostree_object_from_string ()">ostree_object_from_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-stream-parse" title="ostree_content_stream_parse ()">ostree_content_stream_parse</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-file-parse" title="ostree_content_file_parse ()">ostree_content_file_parse</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-file-parse-at" title="ostree_content_file_parse_at ()">ostree_content_file_parse_at</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-archive-z2-stream" title="ostree_raw_file_to_archive_z2_stream ()">ostree_raw_file_to_archive_z2_stream</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-archive-z2-stream-with-options" title="ostree_raw_file_to_archive_z2_stream_with_options ()">ostree_raw_file_to_archive_z2_stream_with_options</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-content-stream" title="ostree_raw_file_to_content_stream ()">ostree_raw_file_to_content_stream</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-break-hardlink" title="ostree_break_hardlink ()">ostree_break_hardlink</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-from-input" title="ostree_checksum_file_from_input ()">ostree_checksum_file_from_input</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file" title="ostree_checksum_file ()">ostree_checksum_file</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-at" title="ostree_checksum_file_at ()">ostree_checksum_file_at</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-async" title="ostree_checksum_file_async ()">ostree_checksum_file_async</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-async-finish" title="ostree_checksum_file_async_finish ()">ostree_checksum_file_async_finish</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GVariant</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-create-directory-metadata" title="ostree_create_directory_metadata ()">ostree_create_directory_metadata</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-objtype" title="ostree_validate_structureof_objtype ()">ostree_validate_structureof_objtype</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-csum-v" title="ostree_validate_structureof_csum_v ()">ostree_validate_structureof_csum_v</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-checksum-string" title="ostree_validate_structureof_checksum_string ()">ostree_validate_structureof_checksum_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-file-mode" title="ostree_validate_structureof_file_mode ()">ostree_validate_structureof_file_mode</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-commit" title="ostree_validate_structureof_commit ()">ostree_validate_structureof_commit</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-dirtree" title="ostree_validate_structureof_dirtree ()">ostree_validate_structureof_dirtree</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-dirmeta" title="ostree_validate_structureof_dirmeta ()">ostree_validate_structureof_dirmeta</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-parent" title="ostree_commit_get_parent ()">ostree_commit_get_parent</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guint64</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-timestamp" title="ostree_commit_get_timestamp ()">ostree_commit_get_timestamp</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-metadata-for-bootable" title="ostree_commit_metadata_for_bootable ()">ostree_commit_metadata_for_bootable</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-content-checksum" title="ostree_commit_get_content_checksum ()">ostree_commit_get_content_checksum</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-object-sizes" title="ostree_commit_get_object_sizes ()">ostree_commit_get_object_sizes</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="returnvalue">OstreeCommitSizesEntry</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-sizes-entry-new" title="ostree_commit_sizes_entry_new ()">ostree_commit_sizes_entry_new</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="returnvalue">OstreeCommitSizesEntry</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-sizes-entry-copy" title="ostree_commit_sizes_entry_copy ()">ostree_commit_sizes_entry_copy</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-sizes-entry-free" title="ostree_commit_sizes_entry_free ()">ostree_commit_sizes_entry_free</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-check-version" title="ostree_check_version ()">ostree_check_version</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-Core-repository-independent-functions.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-MAX-METADATA-SIZE:CAPS" title="OSTREE_MAX_METADATA_SIZE">OSTREE_MAX_METADATA_SIZE</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-MAX-METADATA-WARN-SIZE:CAPS" title="OSTREE_MAX_METADATA_WARN_SIZE">OSTREE_MAX_METADATA_WARN_SIZE</a></td>
+</tr>
+<tr>
+<td class="datatype_keyword">enum</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType">OstreeObjectType</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-LAST:CAPS" title="OSTREE_OBJECT_TYPE_LAST">OSTREE_OBJECT_TYPE_LAST</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-DIRMETA-GVARIANT-STRING:CAPS" title="OSTREE_DIRMETA_GVARIANT_STRING">OSTREE_DIRMETA_GVARIANT_STRING</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-DIRMETA-GVARIANT-FORMAT:CAPS" title="OSTREE_DIRMETA_GVARIANT_FORMAT">OSTREE_DIRMETA_GVARIANT_FORMAT</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-FILEMETA-GVARIANT-STRING:CAPS" title="OSTREE_FILEMETA_GVARIANT_STRING">OSTREE_FILEMETA_GVARIANT_STRING</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-FILEMETA-GVARIANT-FORMAT:CAPS" title="OSTREE_FILEMETA_GVARIANT_FORMAT">OSTREE_FILEMETA_GVARIANT_FORMAT</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-TREE-GVARIANT-STRING:CAPS" title="OSTREE_TREE_GVARIANT_STRING">OSTREE_TREE_GVARIANT_STRING</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-TREE-GVARIANT-FORMAT:CAPS" title="OSTREE_TREE_GVARIANT_FORMAT">OSTREE_TREE_GVARIANT_FORMAT</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-COMMIT-GVARIANT-STRING:CAPS" title="OSTREE_COMMIT_GVARIANT_STRING">OSTREE_COMMIT_GVARIANT_STRING</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-COMMIT-GVARIANT-FORMAT:CAPS" title="OSTREE_COMMIT_GVARIANT_FORMAT">OSTREE_COMMIT_GVARIANT_FORMAT</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-SUMMARY-GVARIANT-STRING:CAPS" title="OSTREE_SUMMARY_GVARIANT_STRING">OSTREE_SUMMARY_GVARIANT_STRING</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-SUMMARY-GVARIANT-FORMAT:CAPS" title="OSTREE_SUMMARY_GVARIANT_FORMAT">OSTREE_SUMMARY_GVARIANT_FORMAT</a></td>
+</tr>
+<tr>
+<td class="datatype_keyword"> </td>
+<td class="function_name"><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry">OstreeCommitSizesEntry</a></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-Core-repository-independent-functions.description"></a><h2>Description</h2>
+<p>These functions implement repository-independent algorithms for
+operating on the core OSTree data formats, such as converting
+<span class="type">GFileInfo</span> into a <span class="type">GVariant</span>.</p>
+<p>There are 4 types of objects; file, dirmeta, tree, and commit.  The
+last 3 are metadata, and the file object is the only content object
+type.</p>
+<p>All metadata objects are stored as <span class="type">GVariant</span> (big endian).  The
+rationale for this is the same as that of the ext{2,3,4} family of
+filesystems; most developers will be using LE, and so it's better
+to continually test the BE-&gt;LE swap.</p>
+<p>The file object is a custom format in order to support streaming.</p>
+</div>
+<div class="refsect1">
+<a name="ostree-Core-repository-independent-functions.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="OSTREE-OBJECT-TYPE-IS-META:CAPS"></a><h3>OSTREE_OBJECT_TYPE_IS_META()</h3>
+<pre class="programlisting">#define OSTREE_OBJECT_TYPE_IS_META(t) (t &gt;= 2 &amp;&amp; t &lt;= 6)
+</pre>
+<div class="refsect3">
+<a name="OSTREE-OBJECT-TYPE-IS-META.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>t</p></td>
+<td class="parameter_description"><p>An <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="OSTREE-OBJECT-TYPE-IS-META.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if object type is metadata</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-metadata-variant-type"></a><h3>ostree_metadata_variant_type ()</h3>
+<pre class="programlisting">const <span class="returnvalue">GVariantType</span> *
+ostree_metadata_variant_type (<em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-checksum-string"></a><h3>ostree_validate_checksum_string ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_checksum_string (<em class="parameter"><code>const <span class="type">char</span> *sha256</code></em>,
+                                 <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Use this function to see if input strings are checksums.</p>
+<div class="refsect3">
+<a name="ostree-validate-checksum-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>sha256</p></td>
+<td class="parameter_description"><p>SHA256 hex string</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-checksum-string.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>sha256</code></em>
+is a valid checksum string, <code class="literal">FALSE</code> otherwise</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-collection-id"></a><h3>ostree_validate_collection_id ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_collection_id (<em class="parameter"><code>const <span class="type">char</span> *collection_id</code></em>,
+                               <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Check whether the given <em class="parameter"><code>collection_id</code></em>
+ is valid. Return an error if it is
+invalid or <code class="literal">NULL</code>.</p>
+<p>Valid collection IDs are reverse DNS names:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>They are composed of 1 or more elements separated by a period (<code class="literal">.</code>) character.
+All elements must contain at least one character.</p></li>
+<li class="listitem"><p>Each element must only contain the ASCII characters <code class="literal">[A-Z][a-z][0-9]_</code> and must not
+begin with a digit.</p></li>
+<li class="listitem"><p>They must contain at least one <code class="literal">.</code> (period) character (and thus at least two elements).</p></li>
+<li class="listitem"><p>They must not begin with a <code class="literal">.</code> (period) character.</p></li>
+<li class="listitem"><p>They must not exceed 255 characters in length.</p></li>
+</ul></div>
+<p>(This makes their format identical to D-Bus interface names, for consistency.)</p>
+<div class="refsect3">
+<a name="ostree-validate-collection-id.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>collection_id</p></td>
+<td class="parameter_description"><p>A collection ID. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-collection-id.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>collection_id</code></em>
+is a valid collection ID, <code class="literal">FALSE</code> if it is invalid
+or <code class="literal">NULL</code></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-to-bytes"></a><h3>ostree_checksum_to_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">guchar</span> *
+ostree_checksum_to_bytes (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-checksum-to-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>An ASCII checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-to-bytes.returns"></a><h4>Returns</h4>
+<p>Binary checksum from <em class="parameter"><code>checksum</code></em>
+of length 32; free with <code class="function">g_free()</code>. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-to-bytes-v"></a><h3>ostree_checksum_to_bytes_v ()</h3>
+<pre class="programlisting"><span class="returnvalue">GVariant</span> *
+ostree_checksum_to_bytes_v (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-checksum-to-bytes-v.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>An ASCII checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-to-bytes-v.returns"></a><h4>Returns</h4>
+<p>New <span class="type">GVariant</span> of type ay with length 32. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-from-bytes"></a><h3>ostree_checksum_from_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_checksum_from_bytes (<em class="parameter"><code>const <span class="type">guchar</span> *csum</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-checksum-from-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>csum</p></td>
+<td class="parameter_description"><p>An binary checksum of length 32. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-from-bytes.returns"></a><h4>Returns</h4>
+<p>String form of <em class="parameter"><code>csum</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-from-bytes-v"></a><h3>ostree_checksum_from_bytes_v ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_checksum_from_bytes_v (<em class="parameter"><code><span class="type">GVariant</span> *csum_v</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-checksum-from-bytes-v.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>csum_v</p></td>
+<td class="parameter_description"><p><span class="type">GVariant</span> of type ay</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-from-bytes-v.returns"></a><h4>Returns</h4>
+<p>String form of <em class="parameter"><code>csum_bytes</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-inplace-from-bytes"></a><h3>ostree_checksum_inplace_from_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_checksum_inplace_from_bytes (<em class="parameter"><code>const <span class="type">guchar</span> *csum</code></em>,
+                                    <em class="parameter"><code><span class="type">char</span> *buf</code></em>);</pre>
+<p>Overwrite the contents of <em class="parameter"><code>buf</code></em>
+ with stringified version of <em class="parameter"><code>csum</code></em>
+.</p>
+<p><span class="annotation">[<a href="http://foldoc.org/skip"><span class="acronym">skip</span></a>]</span></p>
+<div class="refsect3">
+<a name="ostree-checksum-inplace-from-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>csum</p></td>
+<td class="parameter_description"><p>An binary checksum of length 32. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>buf</p></td>
+<td class="parameter_description"><p>Output location, must be at least OSTREE_SHA256_STRING_LEN+1 bytes in length</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-inplace-to-bytes"></a><h3>ostree_checksum_inplace_to_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_checksum_inplace_to_bytes (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>,
+                                  <em class="parameter"><code><span class="type">guchar</span> *buf</code></em>);</pre>
+<p>Convert <em class="parameter"><code>checksum</code></em>
+ from a string to binary in-place, without
+allocating memory.  Use this function in hot code paths.</p>
+<div class="refsect3">
+<a name="ostree-checksum-inplace-to-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>a SHA256 string</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>buf</p></td>
+<td class="parameter_description"><p>Output buffer with at least 32 bytes of space</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-bytes-peek"></a><h3>ostree_checksum_bytes_peek ()</h3>
+<pre class="programlisting">const <span class="returnvalue">guchar</span> *
+ostree_checksum_bytes_peek (<em class="parameter"><code><span class="type">GVariant</span> *bytes</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-checksum-bytes-peek.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>bytes</p></td>
+<td class="parameter_description"><p><span class="type">GVariant</span> of type ay</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-bytes-peek.returns"></a><h4>Returns</h4>
+<p>Binary checksum data in <em class="parameter"><code>bytes</code></em>
+; do not free.  If <em class="parameter"><code>bytes</code></em>
+does not have the correct length, return <code class="literal">NULL</code>. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> guint8]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-bytes-peek-validate"></a><h3>ostree_checksum_bytes_peek_validate ()</h3>
+<pre class="programlisting">const <span class="returnvalue">guchar</span> *
+ostree_checksum_bytes_peek_validate (<em class="parameter"><code><span class="type">GVariant</span> *bytes</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Like <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-bytes-peek" title="ostree_checksum_bytes_peek ()"><code class="function">ostree_checksum_bytes_peek()</code></a>, but also throws <em class="parameter"><code>error</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-checksum-bytes-peek-validate.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>bytes</p></td>
+<td class="parameter_description"><p><span class="type">GVariant</span> of type ay</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Errror</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-bytes-peek-validate.returns"></a><h4>Returns</h4>
+<p>Binary checksum data. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> guint8]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-b64-from-bytes"></a><h3>ostree_checksum_b64_from_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_checksum_b64_from_bytes (<em class="parameter"><code>const <span class="type">guchar</span> *csum</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-checksum-b64-from-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>csum</p></td>
+<td class="parameter_description"><p>An binary checksum of length 32. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-b64-from-bytes.returns"></a><h4>Returns</h4>
+<p>Modified base64 encoding of <em class="parameter"><code>csum</code></em>
+</p>
+<p>The "modified" term refers to the fact that instead of '/', the '_'
+character is used. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2016.8</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-b64-to-bytes"></a><h3>ostree_checksum_b64_to_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">guchar</span> *
+ostree_checksum_b64_to_bytes (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-checksum-b64-to-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>An ASCII checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-checksum-b64-to-bytes.returns"></a><h4>Returns</h4>
+<p>Binary version of <em class="parameter"><code>checksum</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></p>
+</div>
+<p class="since">Since: 2016.8</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-b64-inplace-from-bytes"></a><h3>ostree_checksum_b64_inplace_from_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_checksum_b64_inplace_from_bytes
+                               (<em class="parameter"><code>const <span class="type">guchar</span> *csum</code></em>,
+                                <em class="parameter"><code><span class="type">char</span> *buf</code></em>);</pre>
+<p>Overwrite the contents of <em class="parameter"><code>buf</code></em>
+ with modified base64 encoding of <em class="parameter"><code>csum</code></em>
+.
+The "modified" term refers to the fact that instead of '/', the '_'
+character is used.</p>
+<p><span class="annotation">[<a href="http://foldoc.org/skip"><span class="acronym">skip</span></a>]</span></p>
+<div class="refsect3">
+<a name="ostree-checksum-b64-inplace-from-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>csum</p></td>
+<td class="parameter_description"><p>An binary checksum of length 32. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>buf</p></td>
+<td class="parameter_description"><p>Output location, must be at least 44 bytes in length</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-b64-inplace-to-bytes"></a><h3>ostree_checksum_b64_inplace_to_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_checksum_b64_inplace_to_bytes (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>,
+                                      <em class="parameter"><code><span class="type">guint8</span> *buf</code></em>);</pre>
+<p>Overwrite the contents of <em class="parameter"><code>buf</code></em>
+ with stringified version of <em class="parameter"><code>csum</code></em>
+.</p>
+<p><span class="annotation">[<a href="http://foldoc.org/skip"><span class="acronym">skip</span></a>]</span></p>
+<div class="refsect3">
+<a name="ostree-checksum-b64-inplace-to-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>An binary checksum of length 32. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>buf</p></td>
+<td class="parameter_description"><p>Output location, must be at least 45 bytes in length</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-cmp-checksum-bytes"></a><h3>ostree_cmp_checksum_bytes ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>
+ostree_cmp_checksum_bytes (<em class="parameter"><code>const <span class="type">guchar</span> *a</code></em>,
+                           <em class="parameter"><code>const <span class="type">guchar</span> *b</code></em>);</pre>
+<p>Compare two binary checksums, using <code class="function">memcmp()</code>.</p>
+<div class="refsect3">
+<a name="ostree-cmp-checksum-bytes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>a</p></td>
+<td class="parameter_description"><p>A binary checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>b</p></td>
+<td class="parameter_description"><p>A binary checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-rev"></a><h3>ostree_validate_rev ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_rev (<em class="parameter"><code>const <span class="type">char</span> *rev</code></em>,
+                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-validate-rev.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>rev</p></td>
+<td class="parameter_description"><p>A revision string</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-rev.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>rev</code></em>
+is a valid ref string</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-remote-name"></a><h3>ostree_validate_remote_name ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_remote_name (<em class="parameter"><code>const <span class="type">char</span> *remote_name</code></em>,
+                             <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-validate-remote-name.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>remote_name</p></td>
+<td class="parameter_description"><p>A remote name</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-remote-name.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>remote_name</code></em>
+is a valid remote name</p>
+</div>
+<p class="since">Since: 2017.8</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-parse-refspec"></a><h3>ostree_parse_refspec ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_parse_refspec (<em class="parameter"><code>const <span class="type">char</span> *refspec</code></em>,
+                      <em class="parameter"><code><span class="type">char</span> **out_remote</code></em>,
+                      <em class="parameter"><code><span class="type">char</span> **out_ref</code></em>,
+                      <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Split a refspec like <code class="literal">gnome-ostree:gnome-ostree/buildmain</code> or just
+<code class="literal">gnome-ostree/buildmain</code> into two parts. In the first case, <em class="parameter"><code>out_remote</code></em>
+
+will be set to <code class="literal">gnome-ostree</code>, and <em class="parameter"><code>out_ref</code></em>
+ to <code class="literal">gnome-ostree/buildmain</code>.
+In the second case (a local ref), <em class="parameter"><code>out_remote</code></em>
+ will be <code class="literal">NULL</code>, and <em class="parameter"><code>out_ref</code></em>
+
+will be <code class="literal">gnome-ostree/buildmain</code>. In both cases, <code class="literal">TRUE</code> will be returned.</p>
+<div class="refsect3">
+<a name="ostree-parse-refspec.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>refspec</p></td>
+<td class="parameter_description"><p>A "refspec" string</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_remote</p></td>
+<td class="parameter_description"><p>Return location for the remote name,
+or <code class="literal">NULL</code> if the refspec refs to a local ref. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>][<a href="http://foldoc.org/optional"><span class="acronym">optional</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_ref</p></td>
+<td class="parameter_description"><p>Return location for the ref name. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>][<a href="http://foldoc.org/optional"><span class="acronym">optional</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-parse-refspec.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on successful parsing, <code class="literal">FALSE</code> otherwise</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-object-type-to-string"></a><h3>ostree_object_type_to_string ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *
+ostree_object_type_to_string (<em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>);</pre>
+<p>Serialize <em class="parameter"><code>objtype</code></em>
+ to a string; this is used for file extensions.</p>
+<div class="refsect3">
+<a name="ostree-object-type-to-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-object-type-from-string"></a><h3>ostree_object_type_from_string ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="returnvalue">OstreeObjectType</span></a>
+ostree_object_type_from_string (<em class="parameter"><code>const <span class="type">char</span> *str</code></em>);</pre>
+<p>The reverse of <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-type-to-string" title="ostree_object_type_to_string ()"><code class="function">ostree_object_type_to_string()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-object-type-from-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>str</p></td>
+<td class="parameter_description"><p>A stringified version of <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-hash-object-name"></a><h3>ostree_hash_object_name ()</h3>
+<pre class="programlisting"><span class="returnvalue">guint</span>
+ostree_hash_object_name (<em class="parameter"><code><span class="type">gconstpointer</span> a</code></em>);</pre>
+<p>Use this function with <span class="type">GHashTable</span> and <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-name-serialize" title="ostree_object_name_serialize ()"><code class="function">ostree_object_name_serialize()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-hash-object-name.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>a</p></td>
+<td class="parameter_description"><p>A <span class="type">GVariant</span> containing a serialized object</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-object-name-serialize"></a><h3>ostree_object_name_serialize ()</h3>
+<pre class="programlisting"><span class="returnvalue">GVariant</span> *
+ostree_object_name_serialize (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>,
+                              <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-object-name-serialize.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>An ASCII checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>An object type</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-object-name-serialize.returns"></a><h4>Returns</h4>
+<p>A new floating <span class="type">GVariant</span> containing checksum string and objtype. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20floating"><span class="acronym">transfer floating</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-object-name-deserialize"></a><h3>ostree_object_name_deserialize ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_object_name_deserialize (<em class="parameter"><code><span class="type">GVariant</span> *variant</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> **out_checksum</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> *out_objtype</code></em>);</pre>
+<p>Reverse <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-name-serialize" title="ostree_object_name_serialize ()"><code class="function">ostree_object_name_serialize()</code></a>.  Note that <em class="parameter"><code>out_checksum</code></em>
+ is
+only valid for the lifetime of <em class="parameter"><code>variant</code></em>
+, and must not be freed.</p>
+<div class="refsect3">
+<a name="ostree-object-name-deserialize.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>variant</p></td>
+<td class="parameter_description"><p>A <span class="type">GVariant</span> of type (su)</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_checksum</p></td>
+<td class="parameter_description"><p>Pointer into string memory of <em class="parameter"><code>variant</code></em>
+with checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_objtype</p></td>
+<td class="parameter_description"><p>Return object type. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-object-to-string"></a><h3>ostree_object_to_string ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_object_to_string (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>,
+                         <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-object-to-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>An ASCII checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>Object type</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-object-to-string.returns"></a><h4>Returns</h4>
+<p> A string containing both <em class="parameter"><code>checksum</code></em>
+and a stringifed version of <em class="parameter"><code>objtype</code></em>
+</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-object-from-string"></a><h3>ostree_object_from_string ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_object_from_string (<em class="parameter"><code>const <span class="type">char</span> *str</code></em>,
+                           <em class="parameter"><code><span class="type">gchar</span> **out_checksum</code></em>,
+                           <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> *out_objtype</code></em>);</pre>
+<p>Reverse <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-to-string" title="ostree_object_to_string ()"><code class="function">ostree_object_to_string()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-object-from-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>str</p></td>
+<td class="parameter_description"><p>An ASCII checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_checksum</p></td>
+<td class="parameter_description"><p>Parsed checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_objtype</p></td>
+<td class="parameter_description"><p>Parsed object type. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-content-stream-parse"></a><h3>ostree_content_stream_parse ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_content_stream_parse (<em class="parameter"><code><span class="type">gboolean</span> compressed</code></em>,
+                             <em class="parameter"><code><span class="type">GInputStream</span> *input</code></em>,
+                             <em class="parameter"><code><span class="type">guint64</span> input_length</code></em>,
+                             <em class="parameter"><code><span class="type">gboolean</span> trusted</code></em>,
+                             <em class="parameter"><code><span class="type">GInputStream</span> **out_input</code></em>,
+                             <em class="parameter"><code><span class="type">GFileInfo</span> **out_file_info</code></em>,
+                             <em class="parameter"><code><span class="type">GVariant</span> **out_xattrs</code></em>,
+                             <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                             <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>The reverse of <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-content-stream" title="ostree_raw_file_to_content_stream ()"><code class="function">ostree_raw_file_to_content_stream()</code></a>; this function
+converts an object content stream back into components.</p>
+<div class="refsect3">
+<a name="ostree-content-stream-parse.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>compressed</p></td>
+<td class="parameter_description"><p>Whether or not the stream is zlib-compressed</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>input</p></td>
+<td class="parameter_description"><p>Object content stream</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>input_length</p></td>
+<td class="parameter_description"><p>Length of stream</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>trusted</p></td>
+<td class="parameter_description"><p>If <code class="literal">TRUE</code>, assume the content has been validated</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_input</p></td>
+<td class="parameter_description"><p>The raw file content stream. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_file_info</p></td>
+<td class="parameter_description"><p>Normal metadata. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_xattrs</p></td>
+<td class="parameter_description"><p>Extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-content-file-parse"></a><h3>ostree_content_file_parse ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_content_file_parse (<em class="parameter"><code><span class="type">gboolean</span> compressed</code></em>,
+                           <em class="parameter"><code><span class="type">GFile</span> *content_path</code></em>,
+                           <em class="parameter"><code><span class="type">gboolean</span> trusted</code></em>,
+                           <em class="parameter"><code><span class="type">GInputStream</span> **out_input</code></em>,
+                           <em class="parameter"><code><span class="type">GFileInfo</span> **out_file_info</code></em>,
+                           <em class="parameter"><code><span class="type">GVariant</span> **out_xattrs</code></em>,
+                           <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                           <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>A thin wrapper for <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-stream-parse" title="ostree_content_stream_parse ()"><code class="function">ostree_content_stream_parse()</code></a>; this function
+converts an object content stream back into components.</p>
+<div class="refsect3">
+<a name="ostree-content-file-parse.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>compressed</p></td>
+<td class="parameter_description"><p>Whether or not the stream is zlib-compressed</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>content_path</p></td>
+<td class="parameter_description"><p>Path to file containing content</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>trusted</p></td>
+<td class="parameter_description"><p>If <code class="literal">TRUE</code>, assume the content has been validated</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_input</p></td>
+<td class="parameter_description"><p>The raw file content stream. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_file_info</p></td>
+<td class="parameter_description"><p>Normal metadata. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_xattrs</p></td>
+<td class="parameter_description"><p>Extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-content-file-parse-at"></a><h3>ostree_content_file_parse_at ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_content_file_parse_at (<em class="parameter"><code><span class="type">gboolean</span> compressed</code></em>,
+                              <em class="parameter"><code><span class="type">int</span> parent_dfd</code></em>,
+                              <em class="parameter"><code>const <span class="type">char</span> *path</code></em>,
+                              <em class="parameter"><code><span class="type">gboolean</span> trusted</code></em>,
+                              <em class="parameter"><code><span class="type">GInputStream</span> **out_input</code></em>,
+                              <em class="parameter"><code><span class="type">GFileInfo</span> **out_file_info</code></em>,
+                              <em class="parameter"><code><span class="type">GVariant</span> **out_xattrs</code></em>,
+                              <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                              <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>A thin wrapper for <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-stream-parse" title="ostree_content_stream_parse ()"><code class="function">ostree_content_stream_parse()</code></a>; this function
+converts an object content stream back into components.</p>
+<div class="refsect3">
+<a name="ostree-content-file-parse-at.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>compressed</p></td>
+<td class="parameter_description"><p>Whether or not the stream is zlib-compressed</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>parent_dfd</p></td>
+<td class="parameter_description"><p>Directory file descriptor</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>path</p></td>
+<td class="parameter_description"><p>Subpath</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>trusted</p></td>
+<td class="parameter_description"><p>If <code class="literal">TRUE</code>, assume the content has been validated</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_input</p></td>
+<td class="parameter_description"><p>The raw file content stream. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_file_info</p></td>
+<td class="parameter_description"><p>Normal metadata. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_xattrs</p></td>
+<td class="parameter_description"><p>Extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-raw-file-to-archive-z2-stream"></a><h3>ostree_raw_file_to_archive_z2_stream ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_raw_file_to_archive_z2_stream (<em class="parameter"><code><span class="type">GInputStream</span> *input</code></em>,
+                                      <em class="parameter"><code><span class="type">GFileInfo</span> *file_info</code></em>,
+                                      <em class="parameter"><code><span class="type">GVariant</span> *xattrs</code></em>,
+                                      <em class="parameter"><code><span class="type">GInputStream</span> **out_input</code></em>,
+                                      <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                      <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Convert from a "bare" file representation into an
+OSTREE_OBJECT_TYPE_FILE stream suitable for ostree pull.</p>
+<div class="refsect3">
+<a name="ostree-raw-file-to-archive-z2-stream.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>input</p></td>
+<td class="parameter_description"><p>File raw content stream</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>file_info</p></td>
+<td class="parameter_description"><p>A file info</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>xattrs</p></td>
+<td class="parameter_description"><p>Optional extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_input</p></td>
+<td class="parameter_description"><p>Serialized object stream. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2016.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-raw-file-to-archive-z2-stream-with-options"></a><h3>ostree_raw_file_to_archive_z2_stream_with_options ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_raw_file_to_archive_z2_stream_with_options
+                               (<em class="parameter"><code><span class="type">GInputStream</span> *input</code></em>,
+                                <em class="parameter"><code><span class="type">GFileInfo</span> *file_info</code></em>,
+                                <em class="parameter"><code><span class="type">GVariant</span> *xattrs</code></em>,
+                                <em class="parameter"><code><span class="type">GVariant</span> *options</code></em>,
+                                <em class="parameter"><code><span class="type">GInputStream</span> **out_input</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Like <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-archive-z2-stream" title="ostree_raw_file_to_archive_z2_stream ()"><code class="function">ostree_raw_file_to_archive_z2_stream()</code></a>, but supports an extensible set
+of flags. The following flags are currently defined:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p><code class="literal">compression-level</code> (<code class="literal">i</code>): Level of compression to use, 0–9, with 0 being
+the least compression, and &lt;0 giving the default level (currently 6).</p></li></ul></div>
+<div class="refsect3">
+<a name="ostree-raw-file-to-archive-z2-stream-with-options.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>input</p></td>
+<td class="parameter_description"><p>File raw content stream</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>file_info</p></td>
+<td class="parameter_description"><p>A file info</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>xattrs</p></td>
+<td class="parameter_description"><p>Optional extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>options</p></td>
+<td class="parameter_description"><p>A GVariant <code class="literal">a{sv}</code> with an extensible set of flags. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_input</p></td>
+<td class="parameter_description"><p>Serialized object stream. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2017.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-raw-file-to-content-stream"></a><h3>ostree_raw_file_to_content_stream ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_raw_file_to_content_stream (<em class="parameter"><code><span class="type">GInputStream</span> *input</code></em>,
+                                   <em class="parameter"><code><span class="type">GFileInfo</span> *file_info</code></em>,
+                                   <em class="parameter"><code><span class="type">GVariant</span> *xattrs</code></em>,
+                                   <em class="parameter"><code><span class="type">GInputStream</span> **out_input</code></em>,
+                                   <em class="parameter"><code><span class="type">guint64</span> *out_length</code></em>,
+                                   <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                   <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Convert from a "bare" file representation into an
+OSTREE_OBJECT_TYPE_FILE stream.  This is a fundamental operation
+for writing data to an <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a>.</p>
+<div class="refsect3">
+<a name="ostree-raw-file-to-content-stream.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>input</p></td>
+<td class="parameter_description"><p>File raw content stream</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>file_info</p></td>
+<td class="parameter_description"><p>A file info</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>xattrs</p></td>
+<td class="parameter_description"><p>Optional extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_input</p></td>
+<td class="parameter_description"><p>Serialized object stream. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_length</p></td>
+<td class="parameter_description"><p>Length of stream. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-break-hardlink"></a><h3>ostree_break_hardlink ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_break_hardlink (<em class="parameter"><code><span class="type">int</span> dfd</code></em>,
+                       <em class="parameter"><code>const <span class="type">char</span> *path</code></em>,
+                       <em class="parameter"><code><span class="type">gboolean</span> skip_xattrs</code></em>,
+                       <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                       <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>In many cases using libostree, a program may need to "break"
+hardlinks by performing a copy.  For example, in order to
+logically append to a file.</p>
+<p>This function performs full copying, including e.g. extended
+attributes and permissions of both regular files and symbolic links.</p>
+<p>If the file is not hardlinked, this function does nothing and
+returns successfully.</p>
+<p>This function does not perform synchronization via <code class="literal"><code class="function">fsync()</code></code> or
+<code class="literal"><code class="function">fdatasync()</code></code>; the idea is this will commonly be done as part
+of an <code class="literal"><a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-transaction" title="ostree_repo_commit_transaction ()"><code class="function">ostree_repo_commit_transaction()</code></a></code>, which itself takes
+care of synchronization.</p>
+<div class="refsect3">
+<a name="ostree-break-hardlink.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>dfd</p></td>
+<td class="parameter_description"><p>Directory fd</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>path</p></td>
+<td class="parameter_description"><p>Path relative to <em class="parameter"><code>dfd</code></em>
+</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>skip_xattrs</p></td>
+<td class="parameter_description"><p>Do not copy extended attributes</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2017.15</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-file-from-input"></a><h3>ostree_checksum_file_from_input ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_checksum_file_from_input (<em class="parameter"><code><span class="type">GFileInfo</span> *file_info</code></em>,
+                                 <em class="parameter"><code><span class="type">GVariant</span> *xattrs</code></em>,
+                                 <em class="parameter"><code><span class="type">GInputStream</span> *in</code></em>,
+                                 <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>,
+                                 <em class="parameter"><code><span class="type">guchar</span> **out_csum</code></em>,
+                                 <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                 <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Compute the OSTree checksum for a given input.</p>
+<div class="refsect3">
+<a name="ostree-checksum-file-from-input.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>file_info</p></td>
+<td class="parameter_description"><p>File information</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>xattrs</p></td>
+<td class="parameter_description"><p>Optional extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>in</p></td>
+<td class="parameter_description"><p>File content, should be <code class="literal">NULL</code> for symbolic links. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>Object type</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_csum</p></td>
+<td class="parameter_description"><p>Return location for binary checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-file"></a><h3>ostree_checksum_file ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_checksum_file (<em class="parameter"><code><span class="type">GFile</span> *f</code></em>,
+                      <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>,
+                      <em class="parameter"><code><span class="type">guchar</span> **out_csum</code></em>,
+                      <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                      <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Compute the OSTree checksum for a given file.</p>
+<div class="refsect3">
+<a name="ostree-checksum-file.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>f</p></td>
+<td class="parameter_description"><p>File path</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>Object type</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_csum</p></td>
+<td class="parameter_description"><p>Return location for binary checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-file-at"></a><h3>ostree_checksum_file_at ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_checksum_file_at (<em class="parameter"><code><span class="type">int</span> dfd</code></em>,
+                         <em class="parameter"><code>const <span class="type">char</span> *path</code></em>,
+                         <em class="parameter"><code><span class="type">struct stat</span> *stbuf</code></em>,
+                         <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>,
+                         <em class="parameter"><code><span class="type">OstreeChecksumFlags</span> flags</code></em>,
+                         <em class="parameter"><code><span class="type">char</span> **out_checksum</code></em>,
+                         <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Compute the OSTree checksum for a given file. This is an fd-relative version
+of <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file" title="ostree_checksum_file ()"><code class="function">ostree_checksum_file()</code></a> which also takes flags and fills in a caller
+allocated buffer.</p>
+<div class="refsect3">
+<a name="ostree-checksum-file-at.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>dfd</p></td>
+<td class="parameter_description"><p>Directory file descriptor</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>path</p></td>
+<td class="parameter_description"><p>Subpath</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>stbuf (allow-none)</p></td>
+<td class="parameter_description"><p>Optional stat buffer</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>Object type</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>flags</p></td>
+<td class="parameter_description"><p>Flags</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_checksum (out) (transfer full)</p></td>
+<td class="parameter_description"><p>Return location for hex checksum</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2017.13</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-file-async"></a><h3>ostree_checksum_file_async ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_checksum_file_async (<em class="parameter"><code><span class="type">GFile</span> *f</code></em>,
+                            <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>,
+                            <em class="parameter"><code><span class="type">int</span> io_priority</code></em>,
+                            <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                            <em class="parameter"><code><span class="type">GAsyncReadyCallback</span> callback</code></em>,
+                            <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>);</pre>
+<p>Asynchronously compute the OSTree checksum for a given file;
+complete with <a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-async-finish" title="ostree_checksum_file_async_finish ()"><code class="function">ostree_checksum_file_async_finish()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-checksum-file-async.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>f</p></td>
+<td class="parameter_description"><p>File path</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>Object type</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>io_priority</p></td>
+<td class="parameter_description"><p>Priority for operation, see <code class="literal">G_IO_PRIORITY_DEFAULT</code></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>callback</p></td>
+<td class="parameter_description"><p>Invoked when operation is complete</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>user_data</p></td>
+<td class="parameter_description"><p>Data for <em class="parameter"><code>callback</code></em>
+</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-checksum-file-async-finish"></a><h3>ostree_checksum_file_async_finish ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_checksum_file_async_finish (<em class="parameter"><code><span class="type">GFile</span> *f</code></em>,
+                                   <em class="parameter"><code><span class="type">GAsyncResult</span> *result</code></em>,
+                                   <em class="parameter"><code><span class="type">guchar</span> **out_csum</code></em>,
+                                   <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Finish computing the OSTree checksum for a given file; see
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-async" title="ostree_checksum_file_async ()"><code class="function">ostree_checksum_file_async()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-checksum-file-async-finish.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>f</p></td>
+<td class="parameter_description"><p>File path</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>Async result</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_csum</p></td>
+<td class="parameter_description"><p>Return location for binary checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> fixed-size=32]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-create-directory-metadata"></a><h3>ostree_create_directory_metadata ()</h3>
+<pre class="programlisting"><span class="returnvalue">GVariant</span> *
+ostree_create_directory_metadata (<em class="parameter"><code><span class="type">GFileInfo</span> *dir_info</code></em>,
+                                  <em class="parameter"><code><span class="type">GVariant</span> *xattrs</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-create-directory-metadata.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>dir_info</p></td>
+<td class="parameter_description"><p>a <span class="type">GFileInfo</span> containing directory information</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>xattrs</p></td>
+<td class="parameter_description"><p>Optional extended attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-create-directory-metadata.returns"></a><h4>Returns</h4>
+<p>A new <span class="type">GVariant</span> containing <a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-DIR-META:CAPS"><code class="literal">OSTREE_OBJECT_TYPE_DIR_META</code></a>. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-structureof-objtype"></a><h3>ostree_validate_structureof_objtype ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_structureof_objtype (<em class="parameter"><code><span class="type">guchar</span> objtype</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-validate-structureof-objtype.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-structureof-objtype.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>objtype</code></em>
+represents a valid object type</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-structureof-csum-v"></a><h3>ostree_validate_structureof_csum_v ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_structureof_csum_v (<em class="parameter"><code><span class="type">GVariant</span> *checksum</code></em>,
+                                    <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-validate-structureof-csum-v.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>a <span class="type">GVariant</span> of type "ay"</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-structureof-csum-v.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>checksum</code></em>
+is a valid binary SHA256 checksum</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-structureof-checksum-string"></a><h3>ostree_validate_structureof_checksum_string ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_structureof_checksum_string
+                               (<em class="parameter"><code>const <span class="type">char</span> *checksum</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-validate-structureof-checksum-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>an ASCII string</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-structureof-checksum-string.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>checksum</code></em>
+is a valid ASCII SHA256 checksum</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-structureof-file-mode"></a><h3>ostree_validate_structureof_file_mode ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_structureof_file_mode (<em class="parameter"><code><span class="type">guint32</span> mode</code></em>,
+                                       <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-validate-structureof-file-mode.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>mode</p></td>
+<td class="parameter_description"><p>A Unix filesystem mode</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-structureof-file-mode.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>mode</code></em>
+represents a valid file type and permissions</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-structureof-commit"></a><h3>ostree_validate_structureof_commit ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_structureof_commit (<em class="parameter"><code><span class="type">GVariant</span> *commit</code></em>,
+                                    <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Use this to validate the basic structure of <em class="parameter"><code>commit</code></em>
+, independent of
+any other objects it references.</p>
+<div class="refsect3">
+<a name="ostree-validate-structureof-commit.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>commit</p></td>
+<td class="parameter_description"><p>A commit object, <a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-COMMIT:CAPS"><code class="literal">OSTREE_OBJECT_TYPE_COMMIT</code></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-structureof-commit.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>commit</code></em>
+is structurally valid</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-structureof-dirtree"></a><h3>ostree_validate_structureof_dirtree ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_structureof_dirtree (<em class="parameter"><code><span class="type">GVariant</span> *dirtree</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Use this to validate the basic structure of <em class="parameter"><code>dirtree</code></em>
+, independent of
+any other objects it references.</p>
+<div class="refsect3">
+<a name="ostree-validate-structureof-dirtree.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>dirtree</p></td>
+<td class="parameter_description"><p>A dirtree object, <a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-DIR-TREE:CAPS"><code class="literal">OSTREE_OBJECT_TYPE_DIR_TREE</code></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-structureof-dirtree.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>dirtree</code></em>
+is structurally valid</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-validate-structureof-dirmeta"></a><h3>ostree_validate_structureof_dirmeta ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_validate_structureof_dirmeta (<em class="parameter"><code><span class="type">GVariant</span> *dirmeta</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Use this to validate the basic structure of <em class="parameter"><code>dirmeta</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-validate-structureof-dirmeta.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>dirmeta</p></td>
+<td class="parameter_description"><p>A dirmeta object, <a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-DIR-META:CAPS"><code class="literal">OSTREE_OBJECT_TYPE_DIR_META</code></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-validate-structureof-dirmeta.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>dirmeta</code></em>
+is structurally valid</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-get-parent"></a><h3>ostree_commit_get_parent ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *
+ostree_commit_get_parent (<em class="parameter"><code><span class="type">GVariant</span> *commit_variant</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-commit-get-parent.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>commit_variant</p></td>
+<td class="parameter_description"><p>Variant of type <a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-COMMIT:CAPS"><code class="literal">OSTREE_OBJECT_TYPE_COMMIT</code></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-commit-get-parent.returns"></a><h4>Returns</h4>
+<p> Checksum of the parent commit of <em class="parameter"><code>commit_variant</code></em>
+, or <code class="literal">NULL</code>
+if none</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-get-timestamp"></a><h3>ostree_commit_get_timestamp ()</h3>
+<pre class="programlisting"><span class="returnvalue">guint64</span>
+ostree_commit_get_timestamp (<em class="parameter"><code><span class="type">GVariant</span> *commit_variant</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-commit-get-timestamp.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>commit_variant</p></td>
+<td class="parameter_description"><p>Commit object</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-commit-get-timestamp.returns"></a><h4>Returns</h4>
+<p> timestamp in seconds since the Unix epoch, UTC</p>
+</div>
+<p class="since">Since: 2016.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-metadata-for-bootable"></a><h3>ostree_commit_metadata_for_bootable ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_commit_metadata_for_bootable (<em class="parameter"><code><span class="type">GFile</span> *root</code></em>,
+                                     <em class="parameter"><code><span class="type">GVariantDict</span> *dict</code></em>,
+                                     <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Update provided <em class="parameter"><code>dict</code></em>
+ with standard metadata for bootable OSTree commits.</p>
+<div class="refsect3">
+<a name="ostree-commit-metadata-for-bootable.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>root</p></td>
+<td class="parameter_description"><p>Root filesystem to be committed</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>dict</p></td>
+<td class="parameter_description"><p>Dictionary to update</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2021.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-get-content-checksum"></a><h3>ostree_commit_get_content_checksum ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *
+ostree_commit_get_content_checksum (<em class="parameter"><code><span class="type">GVariant</span> *commit_variant</code></em>);</pre>
+<p>There are use cases where one wants a checksum just of the content of a
+commit. OSTree commits by default capture the current timestamp, and may have
+additional metadata, which means that re-committing identical content
+often results in a new checksum.</p>
+<p>By comparing checksums of content, it's possible to easily distinguish
+cases where nothing actually changed.</p>
+<p>The content checksums is simply defined as <code class="literal">SHA256(root dirtree_checksum || root_dirmeta_checksum)</code>,
+i.e. the SHA-256 of the root "dirtree" object's checksum concatenated with the
+root "dirmeta" checksum (both in binary form, not hexadecimal).</p>
+<div class="refsect3">
+<a name="ostree-commit-get-content-checksum.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>commit_variant</p></td>
+<td class="parameter_description"><p>A commit object</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-commit-get-content-checksum.returns"></a><h4>Returns</h4>
+<p>A SHA-256 hex string, or <code class="literal">NULL</code> if <em class="parameter"><code>commit_variant</code></em>
+is not well-formed. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.2</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-get-object-sizes"></a><h3>ostree_commit_get_object_sizes ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_commit_get_object_sizes (<em class="parameter"><code><span class="type">GVariant</span> *commit_variant</code></em>,
+                                <em class="parameter"><code><span class="type">GPtrArray</span> **out_sizes_entries</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Reads a commit's "ostree.sizes" metadata and returns an array of
+<a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="type">OstreeCommitSizesEntry</span></a> in <em class="parameter"><code>out_sizes_entries</code></em>
+. Each element
+represents an object in the commit. If the commit does not contain
+the "ostree.sizes" metadata, a <code class="literal">G_IO_ERROR_NOT_FOUND</code> error will be
+returned.</p>
+<div class="refsect3">
+<a name="ostree-commit-get-object-sizes.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>commit_variant</p></td>
+<td class="parameter_description"><p>variant of type <a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-COMMIT:CAPS"><code class="literal">OSTREE_OBJECT_TYPE_COMMIT</code></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_sizes_entries</p></td>
+<td class="parameter_description"><p>return location for an array of object size entries. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> OstreeCommitSizesEntry][<a href="http://foldoc.org/transfer%20container"><span class="acronym">transfer container</span></a>][<a href="http://foldoc.org/optional"><span class="acronym">optional</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2020.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-sizes-entry-new"></a><h3>ostree_commit_sizes_entry_new ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="returnvalue">OstreeCommitSizesEntry</span></a> *
+ostree_commit_sizes_entry_new (<em class="parameter"><code>const <span class="type">gchar</span> *checksum</code></em>,
+                               <em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> objtype</code></em>,
+                               <em class="parameter"><code><span class="type">guint64</span> unpacked</code></em>,
+                               <em class="parameter"><code><span class="type">guint64</span> archived</code></em>);</pre>
+<p>Create a new <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="type">OstreeCommitSizesEntry</span></a> for representing an object in a
+commit's "ostree.sizes" metadata.</p>
+<div class="refsect3">
+<a name="ostree-commit-sizes-entry-new.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>checksum</p></td>
+<td class="parameter_description"><p>object checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>objtype</p></td>
+<td class="parameter_description"><p>object type</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>unpacked</p></td>
+<td class="parameter_description"><p>unpacked object size</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>archived</p></td>
+<td class="parameter_description"><p>compressed object size</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-commit-sizes-entry-new.returns"></a><h4>Returns</h4>
+<p>a new <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="type">OstreeCommitSizesEntry</span></a>. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2020.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-sizes-entry-copy"></a><h3>ostree_commit_sizes_entry_copy ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="returnvalue">OstreeCommitSizesEntry</span></a> *
+ostree_commit_sizes_entry_copy (<em class="parameter"><code>const <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="type">OstreeCommitSizesEntry</span></a> *entry</code></em>);</pre>
+<p>Create a copy of the given <em class="parameter"><code>entry</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-commit-sizes-entry-copy.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>entry</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="type">OstreeCommitSizesEntry</span></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-commit-sizes-entry-copy.returns"></a><h4>Returns</h4>
+<p>a new copy of <em class="parameter"><code>entry</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2020.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-commit-sizes-entry-free"></a><h3>ostree_commit_sizes_entry_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_commit_sizes_entry_free (<em class="parameter"><code><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="type">OstreeCommitSizesEntry</span></a> *entry</code></em>);</pre>
+<p>Free given <em class="parameter"><code>entry</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-commit-sizes-entry-free.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>entry</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-Core-repository-independent-functions.html#OstreeCommitSizesEntry" title="OstreeCommitSizesEntry"><span class="type">OstreeCommitSizesEntry</span></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2020.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-check-version"></a><h3>ostree_check_version ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_check_version (<em class="parameter"><code><span class="type">guint</span> required_year</code></em>,
+                      <em class="parameter"><code><span class="type">guint</span> required_release</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-check-version.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>required_year</p></td>
+<td class="parameter_description"><p>Major/year required</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>required_release</p></td>
+<td class="parameter_description"><p>Release version required</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-check-version.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if current libostree has at least the requested version, <code class="literal">FALSE</code> otherwise</p>
+</div>
+<p class="since">Since: 2017.4</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-Core-repository-independent-functions.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OSTREE-MAX-METADATA-SIZE:CAPS"></a><h3>OSTREE_MAX_METADATA_SIZE</h3>
+<pre class="programlisting">#define OSTREE_MAX_METADATA_SIZE (10 * 1024 * 1024)
+</pre>
+<p>Default limit for maximum permitted size in bytes of metadata objects fetched
+over HTTP (including repo/config files, refs, and commit/dirtree/dirmeta
+objects). This is an arbitrary number intended to mitigate disk space
+exhaustion attacks.</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-MAX-METADATA-WARN-SIZE:CAPS"></a><h3>OSTREE_MAX_METADATA_WARN_SIZE</h3>
+<pre class="programlisting">#define OSTREE_MAX_METADATA_WARN_SIZE (7 * 1024 * 1024)
+</pre>
+<p>This variable is no longer meaningful, it is kept only for compatibility.</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeObjectType"></a><h3>enum OstreeObjectType</h3>
+<p>Enumeration for core object types; <a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-FILE:CAPS"><code class="literal">OSTREE_OBJECT_TYPE_FILE</code></a> is for
+content, the other types are metadata.</p>
+<div class="refsect3">
+<a name="OstreeObjectType.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="enum_members_name">
+<col class="enum_members_description">
+<col width="200px" class="enum_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-OBJECT-TYPE-FILE:CAPS"></a>OSTREE_OBJECT_TYPE_FILE</p></td>
+<td class="enum_member_description">
+<p>Content; regular file, symbolic link</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-OBJECT-TYPE-DIR-TREE:CAPS"></a>OSTREE_OBJECT_TYPE_DIR_TREE</p></td>
+<td class="enum_member_description">
+<p>List of children (trees or files), and metadata</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-OBJECT-TYPE-DIR-META:CAPS"></a>OSTREE_OBJECT_TYPE_DIR_META</p></td>
+<td class="enum_member_description">
+<p>Directory metadata</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-OBJECT-TYPE-COMMIT:CAPS"></a>OSTREE_OBJECT_TYPE_COMMIT</p></td>
+<td class="enum_member_description">
+<p>Toplevel object, refers to tree and dirmeta for root</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-OBJECT-TYPE-TOMBSTONE-COMMIT:CAPS"></a>OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT</p></td>
+<td class="enum_member_description">
+<p>Toplevel object, refers to a deleted commit</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-OBJECT-TYPE-COMMIT-META:CAPS"></a>OSTREE_OBJECT_TYPE_COMMIT_META</p></td>
+<td class="enum_member_description">
+<p>Detached metadata for a commit</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-OBJECT-TYPE-PAYLOAD-LINK:CAPS"></a>OSTREE_OBJECT_TYPE_PAYLOAD_LINK</p></td>
+<td class="enum_member_description">
+<p>Symlink to a .file given its checksum on the payload only.</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-OBJECT-TYPE-LAST:CAPS"></a><h3>OSTREE_OBJECT_TYPE_LAST</h3>
+<pre class="programlisting">#define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_PAYLOAD_LINK
+</pre>
+<p>Last valid object type; use this to validate ranges.</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-DIRMETA-GVARIANT-STRING:CAPS"></a><h3>OSTREE_DIRMETA_GVARIANT_STRING</h3>
+<pre class="programlisting">#define OSTREE_DIRMETA_GVARIANT_STRING "(uuua(ayay))"
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-DIRMETA-GVARIANT-FORMAT:CAPS"></a><h3>OSTREE_DIRMETA_GVARIANT_FORMAT</h3>
+<pre class="programlisting">#define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_DIRMETA_GVARIANT_STRING)
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>u - uid (big-endian)</p></li>
+<li class="listitem"><p>u - gid (big-endian)</p></li>
+<li class="listitem"><p>u - mode (big-endian)</p></li>
+<li class="listitem"><p>a(ayay) - xattrs</p></li>
+</ul></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-FILEMETA-GVARIANT-STRING:CAPS"></a><h3>OSTREE_FILEMETA_GVARIANT_STRING</h3>
+<pre class="programlisting">#define OSTREE_FILEMETA_GVARIANT_STRING "(uuua(ayay))"
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-FILEMETA-GVARIANT-FORMAT:CAPS"></a><h3>OSTREE_FILEMETA_GVARIANT_FORMAT</h3>
+<pre class="programlisting">#define OSTREE_FILEMETA_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_FILEMETA_GVARIANT_STRING)
+</pre>
+<p>This is not a regular object type, but used as an xattr on a .file object
+in bare-user repositories. This allows us to store metadata information that we
+can't store in the real filesystem but we can still use a regular .file object
+that we can hardlink to in the case of a user-mode checkout.</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>u - uid (big-endian)</p></li>
+<li class="listitem"><p>u - gid (big-endian)</p></li>
+<li class="listitem"><p>u - mode (big-endian)</p></li>
+<li class="listitem"><p>a(ayay) - xattrs</p></li>
+</ul></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-TREE-GVARIANT-STRING:CAPS"></a><h3>OSTREE_TREE_GVARIANT_STRING</h3>
+<pre class="programlisting">#define OSTREE_TREE_GVARIANT_STRING "(a(say)a(sayay))"
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-TREE-GVARIANT-FORMAT:CAPS"></a><h3>OSTREE_TREE_GVARIANT_FORMAT</h3>
+<pre class="programlisting">#define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_TREE_GVARIANT_STRING)
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>a(say) - array of (filename, checksum) for files</p></li>
+<li class="listitem"><p>a(sayay) - array of (dirname, tree_checksum, meta_checksum) for directories</p></li>
+</ul></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-COMMIT-GVARIANT-STRING:CAPS"></a><h3>OSTREE_COMMIT_GVARIANT_STRING</h3>
+<pre class="programlisting">#define OSTREE_COMMIT_GVARIANT_STRING "(a{sv}aya(say)sstayay)"
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-COMMIT-GVARIANT-FORMAT:CAPS"></a><h3>OSTREE_COMMIT_GVARIANT_FORMAT</h3>
+<pre class="programlisting">#define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_COMMIT_GVARIANT_STRING)
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>a{sv} - Metadata</p></li>
+<li class="listitem"><p>ay - parent checksum (empty string for initial)</p></li>
+<li class="listitem"><p>a(say) - Related objects</p></li>
+<li class="listitem"><p>s - subject</p></li>
+<li class="listitem"><p>s - body</p></li>
+<li class="listitem"><p>t - Timestamp in seconds since the epoch (UTC, big-endian)</p></li>
+<li class="listitem"><p>ay - Root tree contents</p></li>
+<li class="listitem"><p>ay - Root tree metadata</p></li>
+</ul></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-SUMMARY-GVARIANT-STRING:CAPS"></a><h3>OSTREE_SUMMARY_GVARIANT_STRING</h3>
+<pre class="programlisting">#define OSTREE_SUMMARY_GVARIANT_STRING "(a(s(taya{sv}))a{sv})"
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-SUMMARY-GVARIANT-FORMAT:CAPS"></a><h3>OSTREE_SUMMARY_GVARIANT_FORMAT</h3>
+<pre class="programlisting">#define OSTREE_SUMMARY_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_SUMMARY_GVARIANT_STRING)
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>a(s(taya{sv})) - Map of ref name -&gt; (latest commit size, latest commit checksum, additional metadata), sorted by ref name</p></li>
+<li class="listitem">
+<p>a{sv} - Additional metadata, at the current time the following are defined:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem"><p>key: "ostree.static-deltas", value: a{sv}, static delta name -&gt; 32 bytes of checksum</p></li>
+<li class="listitem"><p>key: "ostree.summary.last-modified", value: t, timestamp (seconds since
+the Unix epoch in UTC, big-endian) when the summary was last regenerated
+(similar to the HTTP <code class="literal">Last-Modified</code> header)</p></li>
+<li class="listitem"><p>key: "ostree.summary.expires", value: t, timestamp (seconds since the
+Unix epoch in UTC, big-endian) after which the summary is considered
+stale and should be re-downloaded if possible (similar to the HTTP
+<code class="literal">Expires</code> header)</p></li>
+</ul></div>
+</li>
+</ul></div>
+<p>The currently defined keys for the <code class="literal">a{sv}</code> of additional metadata for each commit are:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>key: <code class="literal">ostree.commit.timestamp</code>, value: <code class="literal">t</code>, timestamp (seconds since the
+Unix epoch in UTC, big-endian) when the commit was committed</p></li></ul></div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeCommitSizesEntry"></a><h3>OstreeCommitSizesEntry</h3>
+<pre class="programlisting">typedef struct {
+  gchar *checksum;
+  OstreeObjectType objtype;
+  guint64 unpacked;
+  guint64 archived;
+} OstreeCommitSizesEntry;
+</pre>
+<p>Structure representing an entry in the "ostree.sizes" commit metadata. Each
+entry corresponds to an object in the associated commit.</p>
+<div class="refsect3">
+<a name="OstreeCommitSizesEntry.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="struct_members_name">
+<col class="struct_members_description">
+<col width="200px" class="struct_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="struct_member_name"><p><span class="type">gchar</span> *<em class="structfield"><code><a name="OstreeCommitSizesEntry.checksum"></a>checksum</code></em>;</p></td>
+<td class="struct_member_description"><p>object checksum. </p></td>
+<td class="struct_member_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType"><span class="type">OstreeObjectType</span></a> <em class="structfield"><code><a name="OstreeCommitSizesEntry.objtype"></a>objtype</code></em>;</p></td>
+<td class="struct_member_description"><p>object type</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">guint64</span> <em class="structfield"><code><a name="OstreeCommitSizesEntry.unpacked"></a>unpacked</code></em>;</p></td>
+<td class="struct_member_description"><p>unpacked object size</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">guint64</span> <em class="structfield"><code><a name="OstreeCommitSizesEntry.archived"></a>archived</code></em>;</p></td>
+<td class="struct_member_description"><p>compressed object size</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2020.1</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.32</div>
+</body>
+</html>

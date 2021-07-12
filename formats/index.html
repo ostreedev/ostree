@@ -1,0 +1,459 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  
+    <title>OSTree data formats - ostreedev/ostree</title>
+
+    
+  
+
+  <link rel="shortcut icon" href="/ostree/favicon.ico" type="image/x-icon">
+
+  <link rel="stylesheet" href="/ostree/assets/css/just-the-docs-default.css">
+
+  
+
+  
+    <script type="text/javascript" src="/ostree/assets/js/vendor/lunr.min.js"></script>
+  
+  <script type="text/javascript" src="/ostree/assets/js/just-the-docs.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>OSTree data formats | ostreedev/ostree</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="OSTree data formats" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="ostree documentation" />
+<meta property="og:description" content="ostree documentation" />
+<link rel="canonical" href="https://ostreedev.github.io/ostree/formats/" />
+<meta property="og:url" content="https://ostreedev.github.io/ostree/formats/" />
+<meta property="og:site_name" content="ostreedev/ostree" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="OSTree data formats" />
+<script type="application/ld+json">
+{"description":"ostree documentation","url":"https://ostreedev.github.io/ostree/formats/","@type":"WebPage","headline":"OSTree data formats","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  
+
+</head>
+
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="svg-link" viewBox="0 0 24 24">
+      <title>Link</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+    </symbol>
+    <symbol id="svg-search" viewBox="0 0 24 24">
+      <title>Search</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search">
+        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-menu" viewBox="0 0 24 24">
+      <title>Menu</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+        <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+      <title>Expand</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </symbol>
+    <symbol id="svg-doc" viewBox="0 0 24 24">
+      <title>Document</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>
+      </svg>
+    </symbol>
+  </svg>
+
+  <div class="side-bar">
+    <div class="site-header">
+      <a href="https://ostreedev.github.io/ostree/" class="site-title lh-tight">
+  ostreedev/ostree
+
+</a>
+      <a href="#" id="menu-button" class="site-button">
+        <svg viewBox="0 0 24 24" class="icon"><use xlink:href="#svg-menu"></use></svg>
+      </a>
+    </div>
+    <nav role="navigation" aria-label="Main" id="site-nav" class="site-nav">
+      
+        <ul class="nav-list"><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/" class="nav-list-link">libostree</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/introduction/" class="nav-list-link">OSTree Overview</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repo/" class="nav-list-link">Anatomy of an OSTree repository</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/deployment/" class="nav-list-link">Deployments</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/atomic-upgrades/" class="nav-list-link">Atomic Upgrades</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/adapting-existing/" class="nav-list-link">Adapting existing mainstream distributions</a></li><li class="nav-list-item active"><a href="https://ostreedev.github.io/ostree/formats/" class="nav-list-link active">OSTree data formats</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/buildsystem-and-repos/" class="nav-list-link">Writing a buildsystem and managing repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repository-management/" class="nav-list-link">Managing content in OSTree repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/related-projects/" class="nav-list-link">Related Projects</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/CONTRIBUTING/" class="nav-list-link">Contributing</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/contributing-tutorial/" class="nav-list-link">OSTree Contributing Tutorial</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/README-historical/" class="nav-list-link">Historical OSTree README</a></li></ul>
+
+      
+    </nav>
+    <footer class="site-footer">
+      This site uses <a href="https://github.com/pmarsceill/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    </footer>
+  </div>
+  <div class="main" id="top">
+    <div id="main-header" class="main-header">
+      
+        <div class="search">
+          <div class="search-input-wrap">
+            <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="Search ostreedev/ostree" aria-label="Search ostreedev/ostree" autocomplete="off">
+            <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>
+          </div>
+          <div id="search-results" class="search-results"></div>
+        </div>
+      
+      
+      
+        <nav aria-label="Auxiliary" class="aux-nav">
+          <ul class="aux-nav-list">
+            
+              <li class="aux-nav-list-item">
+                <a href="https://github.com/ostreedev/ostree" class="site-button"
+                  
+                >
+                  OSTree on GitHub
+                </a>
+              </li>
+            
+          </ul>
+        </nav>
+      
+    </div>
+    <div id="main-content-wrap" class="main-content-wrap">
+      
+        
+      
+      <div id="main-content" class="main-content" role="main">
+        
+          <h1 class="no_toc" id="ostree-data-formats">
+        
+        
+          <a href="#ostree-data-formats" class="anchor-heading" aria-labelledby="ostree-data-formats"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> OSTree data formats
+        
+        
+      </h1>
+    
+
+<ol id="markdown-toc">
+  <li><a href="#on-the-topic-of-smart-servers" id="markdown-toc-on-the-topic-of-smart-servers">On the topic of “smart servers”</a></li>
+  <li><a href="#the-archive-format" id="markdown-toc-the-archive-format">The archive format</a></li>
+  <li><a href="#archive-efficiency" id="markdown-toc-archive-efficiency">archive efficiency</a></li>
+  <li><a href="#aside-the-bare-and-bare-user-formats" id="markdown-toc-aside-the-bare-and-bare-user-formats">Aside: the bare and bare-user formats</a></li>
+  <li><a href="#static-deltas" id="markdown-toc-static-deltas">Static deltas</a></li>
+  <li><a href="#static-delta-repository-layout" id="markdown-toc-static-delta-repository-layout">Static delta repository layout</a></li>
+  <li><a href="#static-delta-internal-structure" id="markdown-toc-static-delta-internal-structure">Static delta internal structure</a>    <ol>
+      <li><a href="#the-delta-superblock" id="markdown-toc-the-delta-superblock">The delta superblock</a></li>
+    </ol>
+  </li>
+  <li><a href="#a-delta-part" id="markdown-toc-a-delta-part">A delta part</a></li>
+  <li><a href="#fallback-objects" id="markdown-toc-fallback-objects">Fallback objects</a>    <ol>
+      <li><a href="#licensing-for-this-document" id="markdown-toc-licensing-for-this-document">Licensing for this document:</a></li>
+    </ol>
+  </li>
+</ol>
+      <h2 id="on-the-topic-of-smart-servers">
+        
+        
+          <a href="#on-the-topic-of-smart-servers" class="anchor-heading" aria-labelledby="on-the-topic-of-smart-servers"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> On the topic of “smart servers”
+        
+        
+      </h2>
+    
+
+<p>One really crucial difference between OSTree and git is that git has a
+“smart server”.  Even when fetching over <code class="language-plaintext highlighter-rouge">https://</code>, it isn’t just a
+static webserver, but one that e.g. dynamically computes and
+compresses pack files for each client.</p>
+
+<p>In contrast, the author of OSTree feels that for operating system
+updates, many deployments will want to use simple static webservers,
+the same target most package systems were designed to use.  The
+primary advantages are security and compute efficiency.  Services like
+Amazon S3 and CDNs are a canonical target, as well as a stock static
+nginx server.</p>
+      <h2 id="the-archive-format">
+        
+        
+          <a href="#the-archive-format" class="anchor-heading" aria-labelledby="the-archive-format"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> The archive format
+        
+        
+      </h2>
+    
+
+<p>In the <a href="repo">repo</a> section, the concept of objects was introduced,
+where file/content objects are checksummed and managed individually.
+(Unlike a package system, which operates on compressed aggregates).</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">archive</code> format simply gzip-compresses each content object.
+Metadata objects are stored uncompressed.  This means that it’s easy
+to serve via static HTTP.  Note: the repo config file still uses the
+historical term <code class="language-plaintext highlighter-rouge">archive-z2</code> as mode. But this essentially indicates
+the modern <code class="language-plaintext highlighter-rouge">archive</code> format.</p>
+
+<p>When you commit new content, you will see new <code class="language-plaintext highlighter-rouge">.filez</code> files appearing
+in <code class="language-plaintext highlighter-rouge">objects/</code>.</p>
+      <h2 id="archive-efficiency">
+        
+        
+          <a href="#archive-efficiency" class="anchor-heading" aria-labelledby="archive-efficiency"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> archive efficiency
+        
+        
+      </h2>
+    
+
+<p>The advantages of <code class="language-plaintext highlighter-rouge">archive</code>:</p>
+
+<ul>
+  <li>It’s easy to understand and implement</li>
+  <li>Can be served directly over plain HTTP by a static webserver</li>
+  <li>Clients can download/unpack updates incrementally</li>
+  <li>Space efficient on the server</li>
+</ul>
+
+<p>The biggest disadvantage of this format is that for a client to
+perform an update, one HTTP request per changed file is required.  In
+some scenarios, this actually isn’t bad at all, particularly with
+techniques to reduce HTTP overhead, such as
+<a href="https://en.wikipedia.org/wiki/HTTP/2">HTTP/2</a>.</p>
+
+<p>In order to make this format work well, you should design your content
+such that large data that changes infrequently (e.g. graphic images)
+are stored separately from small frequently changing data (application
+code).</p>
+
+<p>Other disadvantages of <code class="language-plaintext highlighter-rouge">archive</code>:</p>
+
+<ul>
+  <li>It’s quite bad when clients are performing an initial pull (without HTTP/2),</li>
+  <li>One doesn’t know the total size (compressed or uncompressed) of content
+before downloading everything</li>
+</ul>
+      <h2 id="aside-the-bare-and-bare-user-formats">
+        
+        
+          <a href="#aside-the-bare-and-bare-user-formats" class="anchor-heading" aria-labelledby="aside-the-bare-and-bare-user-formats"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Aside: the bare and bare-user formats
+        
+        
+      </h2>
+    
+
+<p>The most common operation is to pull from an <code class="language-plaintext highlighter-rouge">archive</code> repository
+into a <code class="language-plaintext highlighter-rouge">bare</code> or <code class="language-plaintext highlighter-rouge">bare-user</code> formatted repository.  These latter two
+are not compressed on disk.  In other words, pulling to them is
+similar to unpacking (but not installing) an RPM/deb package.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">bare-user</code> format is a bit special in that the uid/gid and xattrs
+from the content are ignored.  This is primarily useful if you want to
+have the same OSTree-managed content that can be run on a host system
+or an unprivileged container.</p>
+      <h2 id="static-deltas">
+        
+        
+          <a href="#static-deltas" class="anchor-heading" aria-labelledby="static-deltas"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Static deltas
+        
+        
+      </h2>
+    
+
+<p>OSTree itself was originally focused on a continuous delivery model, where
+client systems are expected to update regularly.  However, many OS vendors
+would like to supply content that’s updated e.g. once a month or less often.</p>
+
+<p>For this model, we can do a lot better to support batched updates than
+a basic <code class="language-plaintext highlighter-rouge">archive</code> repo. However, we still want to preserve the
+model of “static webserver only”.  Given this, OSTree has gained the
+concept of a “static delta”.</p>
+
+<p>These deltas are targeted to be a delta between two specific commit
+objects, including “bsdiff” and “rsync-style” deltas within a content
+object.  Static deltas also support <code class="language-plaintext highlighter-rouge">from NULL</code>, where the client can
+more efficiently download a commit object from scratch - this is
+mostly useful when using OSTree for containers, rather than OS images.
+For OS images, one tends to download an installer ISO or qcow2 image
+which is a single file that contains the tree data already.</p>
+
+<p>Effectively, we’re spending server-side storage (and one-time compute
+cost), and gaining efficiency in client network bandwidth.</p>
+      <h2 id="static-delta-repository-layout">
+        
+        
+          <a href="#static-delta-repository-layout" class="anchor-heading" aria-labelledby="static-delta-repository-layout"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Static delta repository layout
+        
+        
+      </h2>
+    
+
+<p>Since static deltas may not exist, the client first needs to attempt
+to locate one.  Suppose a client wants to retrieve commit <code class="language-plaintext highlighter-rouge">${new}</code>
+while currently running <code class="language-plaintext highlighter-rouge">${current}</code>.</p>
+
+<p>In order to save space, these two commits are “modified base64” - the 
+<code class="language-plaintext highlighter-rouge">/</code> character is replaced with <code class="language-plaintext highlighter-rouge">_</code>.</p>
+
+<p>Like the commit objects, a “prefix directory” is used to make
+management easier for filesystem tools.</p>
+
+<p>A delta is named <code class="language-plaintext highlighter-rouge">$(mbase64 $from)-$(mbase64 $to)</code>, for example
+<code class="language-plaintext highlighter-rouge">GpTyZaVut2jXFPWnO4LJiKEdRTvOw_mFUCtIKW1NIX0-L8f+VVDkEBKNc1Ncd+mDUrSVR4EyybQGCkuKtkDnTwk</code>,
+which in SHA256 format is
+<code class="language-plaintext highlighter-rouge">1a94f265a56eb768d714f5a73b82c988a11d453bcec3f985502b48296d4d217d-2fc7fe5550e410128d73535c77e98352b495478132c9b4060a4b8ab640e74f09</code>.</p>
+
+<p>Finally, the actual content can be found in
+<code class="language-plaintext highlighter-rouge">deltas/$fromprefix/$fromsuffix-$to</code>.</p>
+      <h2 id="static-delta-internal-structure">
+        
+        
+          <a href="#static-delta-internal-structure" class="anchor-heading" aria-labelledby="static-delta-internal-structure"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Static delta internal structure
+        
+        
+      </h2>
+    
+
+<p>A delta is itself a directory.  Inside, there is a file called
+<code class="language-plaintext highlighter-rouge">superblock</code> which contains metadata.  The rest of the files will be
+integers bearing packs of content.</p>
+
+<p>The file format of static deltas should be currently considered an
+OSTree implementation detail.  Obviously, nothing stops one from
+writing code which is compatible with OSTree today.  However, we would
+like the flexibility to expand and change things, and having multiple
+codebases makes that more problematic.  Please contact the authors
+with any requests.</p>
+
+<p>That said, one critical thing to understand about the design is that
+delta payloads are a bit more like “restricted programs” than they are
+raw data.  There’s a “compilation” phase which generates output that
+the client executes.</p>
+
+<p>This “updates as code” model allows for multiple content generation
+strategies.  The design of this was inspired by that of Chromium:
+<a href="http://dev.chromium.org/chromium-os/chromiumos-design-docs/filesystem-autoupdate">ChromiumOS Autoupdate</a>.</p>
+      <h3 id="the-delta-superblock">
+        
+        
+          <a href="#the-delta-superblock" class="anchor-heading" aria-labelledby="the-delta-superblock"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> The delta superblock
+        
+        
+      </h3>
+    
+
+<p>The superblock contains:</p>
+
+<ul>
+  <li>arbitrary metadata</li>
+  <li>delta generation timestamp</li>
+  <li>the new commit object</li>
+  <li>An array of recursive deltas to apply</li>
+  <li>An array of per-part metadata, including total object sizes (compressed and uncompressed),</li>
+  <li>An array of fallback objects</li>
+</ul>
+
+<p>Let’s define a delta part, then return to discuss details:</p>
+      <h2 id="a-delta-part">
+        
+        
+          <a href="#a-delta-part" class="anchor-heading" aria-labelledby="a-delta-part"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> A delta part
+        
+        
+      </h2>
+    
+
+<p>A delta part is a combination of a raw blob of data, plus a very
+restricted bytecode that operates on it.  Say for example two files
+happen to share a common section.  It’s possible for the delta
+compilation to include that section once in the delta data blob, then
+generate instructions to write out that blob twice when generating
+both objects.</p>
+
+<p>Realistically though, it’s very common for most of a delta to just be
+“stream of new objects” - if one considers it, it doesn’t make sense
+to have too much duplication inside operating system content at this
+level.</p>
+
+<p>So then, what’s more interesting is that OSTree static deltas support
+a per-file delta algorithm called
+<a href="https://github.com/mendsley/bsdiff">bsdiff</a> that most notably works
+well on executable code.</p>
+
+<p>The current delta compiler scans for files with matching basenames in
+each commit that have a similar size, and attempts a bsdiff between
+them.  (It would make sense later to have a build system provide a
+hint for this - for example, files within a same package).</p>
+
+<p>A generated bsdiff is included in the payload blob, and applying it is
+an instruction.</p>
+      <h2 id="fallback-objects">
+        
+        
+          <a href="#fallback-objects" class="anchor-heading" aria-labelledby="fallback-objects"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Fallback objects
+        
+        
+      </h2>
+    
+
+<p>It’s possible for there to be large-ish files which might be resistant
+to bsdiff.  A good example is that it’s common for operating systems
+to use an “initramfs”, which is itself a compressed filesystem.  This
+“internal compression” defeats bsdiff analysis.</p>
+
+<p>For these types of objects, the delta superblock contains an array of
+“fallback objects”.  These objects aren’t included in the delta
+parts - the client simply fetches them from the underlying <code class="language-plaintext highlighter-rouge">.filez</code>
+object.</p>
+      <h6 id="licensing-for-this-document">
+        
+        
+          <a href="#licensing-for-this-document" class="anchor-heading" aria-labelledby="licensing-for-this-document"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Licensing for this document:
+        
+        
+      </h6>
+    
+<p><code class="language-plaintext highlighter-rouge">SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)</code></p>
+
+        
+
+        
+
+        
+        
+          <hr>
+          <footer>
+            
+
+            <p class="text-small text-grey-dk-100 mb-0">Copyright &copy; <a href="https://www.redhat.com">Red Hat, Inc.</a> and <a href="https://github.com/ostreedev">others</a>.</p>
+
+            
+              <div class="d-flex mt-2">
+                
+                
+                  <p class="text-small text-grey-dk-000 mb-0">
+                    <a href="https://github.com/ostreedev/ostree/tree/main/docs/formats.md" id="edit-this-page">Edit this page on GitHub</a>
+                  </p>
+                
+              </div>
+            
+          </footer>
+        
+
+      </div>
+    </div>
+
+    
+      
+
+      <div class="search-overlay"></div>
+    
+  </div>
+</body>
+</html>
+

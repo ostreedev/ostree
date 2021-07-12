@@ -1,0 +1,752 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  
+    <title>OSTree Contributing Tutorial - ostreedev/ostree</title>
+
+    
+  
+
+  <link rel="shortcut icon" href="/ostree/favicon.ico" type="image/x-icon">
+
+  <link rel="stylesheet" href="/ostree/assets/css/just-the-docs-default.css">
+
+  
+
+  
+    <script type="text/javascript" src="/ostree/assets/js/vendor/lunr.min.js"></script>
+  
+  <script type="text/javascript" src="/ostree/assets/js/just-the-docs.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>OSTree Contributing Tutorial | ostreedev/ostree</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="OSTree Contributing Tutorial" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="ostree documentation" />
+<meta property="og:description" content="ostree documentation" />
+<link rel="canonical" href="https://ostreedev.github.io/ostree/contributing-tutorial/" />
+<meta property="og:url" content="https://ostreedev.github.io/ostree/contributing-tutorial/" />
+<meta property="og:site_name" content="ostreedev/ostree" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="OSTree Contributing Tutorial" />
+<script type="application/ld+json">
+{"description":"ostree documentation","url":"https://ostreedev.github.io/ostree/contributing-tutorial/","@type":"WebPage","headline":"OSTree Contributing Tutorial","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  
+
+</head>
+
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="svg-link" viewBox="0 0 24 24">
+      <title>Link</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+    </symbol>
+    <symbol id="svg-search" viewBox="0 0 24 24">
+      <title>Search</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search">
+        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-menu" viewBox="0 0 24 24">
+      <title>Menu</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+        <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+      <title>Expand</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </symbol>
+    <symbol id="svg-doc" viewBox="0 0 24 24">
+      <title>Document</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>
+      </svg>
+    </symbol>
+  </svg>
+
+  <div class="side-bar">
+    <div class="site-header">
+      <a href="https://ostreedev.github.io/ostree/" class="site-title lh-tight">
+  ostreedev/ostree
+
+</a>
+      <a href="#" id="menu-button" class="site-button">
+        <svg viewBox="0 0 24 24" class="icon"><use xlink:href="#svg-menu"></use></svg>
+      </a>
+    </div>
+    <nav role="navigation" aria-label="Main" id="site-nav" class="site-nav">
+      
+        <ul class="nav-list"><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/" class="nav-list-link">libostree</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/introduction/" class="nav-list-link">OSTree Overview</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repo/" class="nav-list-link">Anatomy of an OSTree repository</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/deployment/" class="nav-list-link">Deployments</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/atomic-upgrades/" class="nav-list-link">Atomic Upgrades</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/adapting-existing/" class="nav-list-link">Adapting existing mainstream distributions</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/formats/" class="nav-list-link">OSTree data formats</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/buildsystem-and-repos/" class="nav-list-link">Writing a buildsystem and managing repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repository-management/" class="nav-list-link">Managing content in OSTree repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/related-projects/" class="nav-list-link">Related Projects</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/CONTRIBUTING/" class="nav-list-link">Contributing</a></li><li class="nav-list-item active"><a href="https://ostreedev.github.io/ostree/contributing-tutorial/" class="nav-list-link active">OSTree Contributing Tutorial</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/README-historical/" class="nav-list-link">Historical OSTree README</a></li></ul>
+
+      
+    </nav>
+    <footer class="site-footer">
+      This site uses <a href="https://github.com/pmarsceill/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    </footer>
+  </div>
+  <div class="main" id="top">
+    <div id="main-header" class="main-header">
+      
+        <div class="search">
+          <div class="search-input-wrap">
+            <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="Search ostreedev/ostree" aria-label="Search ostreedev/ostree" autocomplete="off">
+            <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>
+          </div>
+          <div id="search-results" class="search-results"></div>
+        </div>
+      
+      
+      
+        <nav aria-label="Auxiliary" class="aux-nav">
+          <ul class="aux-nav-list">
+            
+              <li class="aux-nav-list-item">
+                <a href="https://github.com/ostreedev/ostree" class="site-button"
+                  
+                >
+                  OSTree on GitHub
+                </a>
+              </li>
+            
+          </ul>
+        </nav>
+      
+    </div>
+    <div id="main-content-wrap" class="main-content-wrap">
+      
+        
+      
+      <div id="main-content" class="main-content" role="main">
+        
+          <h1 class="no_toc" id="ostree-contributing-tutorial">
+        
+        
+          <a href="#ostree-contributing-tutorial" class="anchor-heading" aria-labelledby="ostree-contributing-tutorial"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> OSTree Contributing Tutorial
+        
+        
+      </h1>
+    
+
+<p>The following guide is about OSTree forking, building, adding a command, testing the command, and submitting the change.</p>
+
+<ol id="markdown-toc">
+  <li><a href="#getting-started" id="markdown-toc-getting-started">Getting Started</a></li>
+  <li><a href="#building-ostree" id="markdown-toc-building-ostree">Building OSTree</a>    <ol>
+      <li><a href="#install-build-dependencies" id="markdown-toc-install-build-dependencies">Install Build Dependencies</a></li>
+      <li><a href="#ostree-build-commands" id="markdown-toc-ostree-build-commands">OSTree Build Commands</a>        <ol>
+          <li><a href="#notes" id="markdown-toc-notes">Notes</a></li>
+          <li><a href="#tip" id="markdown-toc-tip">Tip</a></li>
+        </ol>
+      </li>
+    </ol>
+  </li>
+  <li><a href="#testing-a-build" id="markdown-toc-testing-a-build">Testing a Build</a>    <ol>
+      <li><a href="#testing-in-a-container" id="markdown-toc-testing-in-a-container">Testing in a Container</a></li>
+      <li><a href="#testing-in-a-virtual-machine" id="markdown-toc-testing-in-a-virtual-machine">Testing in a Virtual Machine</a></li>
+    </ol>
+  </li>
+  <li><a href="#tutorial-adding-a-basic-builtin-command-to-ostree" id="markdown-toc-tutorial-adding-a-basic-builtin-command-to-ostree">Tutorial: Adding a basic builtin command to ostree</a>    <ol>
+      <li><a href="#modifying-ostree" id="markdown-toc-modifying-ostree">Modifying OSTree</a></li>
+      <li><a href="#ostree-tests" id="markdown-toc-ostree-tests">OSTree Tests</a></li>
+      <li><a href="#submitting-a-patch" id="markdown-toc-submitting-a-patch">Submitting a Patch</a></li>
+      <li><a href="#returning-workflow" id="markdown-toc-returning-workflow">Returning Workflow</a></li>
+    </ol>
+  </li>
+</ol>
+      <h2 id="getting-started">
+        
+        
+          <a href="#getting-started" class="anchor-heading" aria-labelledby="getting-started"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Getting Started
+        
+        
+      </h2>
+    
+
+<p>Fork https://github.com/ostreedev/ostree, then run the following commands.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>git clone https://github.com/&lt;username&gt;/ostree <span class="o">&amp;&amp;</span> <span class="nb">cd </span>ostree
+<span class="nv">$ </span>git remote add upstream https://github.com/ostreedev/ostree
+<span class="nv">$ </span>git checkout main
+<span class="nv">$ </span>git fetch upstream <span class="o">&amp;&amp;</span> git branch <span class="nt">--set-upstream-to</span><span class="o">=</span>upstream/main main
+</code></pre></div></div>
+<p>Make a branch from main for your patch.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>git checkout <span class="nt">-b</span> &lt;name-of-branch&gt;
+<span class="nv">$ </span>git branch <span class="nt">--set-upstream-to</span><span class="o">=</span>upstream/main &lt;name-of-branch&gt;
+</code></pre></div></div>
+      <h2 id="building-ostree">
+        
+        
+          <a href="#building-ostree" class="anchor-heading" aria-labelledby="building-ostree"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Building OSTree
+        
+        
+      </h2>
+    
+      <h3 id="install-build-dependencies">
+        
+        
+          <a href="#install-build-dependencies" class="anchor-heading" aria-labelledby="install-build-dependencies"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Install Build Dependencies
+        
+        
+      </h3>
+    
+
+<p>Execute one of the following group commands as superuser depending on your machine’s package manager.</p>
+
+<p>For Fedora:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>dnf <span class="nb">install</span> @buildsys-build dnf-plugins-core <span class="o">&amp;&amp;</span> <span class="se">\</span>
+dnf builddep ostree
+</code></pre></div></div>
+
+<p>For CentOS:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>yum <span class="nb">install </span>yum-utils dnf-plugins-core <span class="o">&amp;&amp;</span> <span class="se">\</span>
+yum-builddep ostree
+</code></pre></div></div>
+
+<p>For Debian based distros:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>apt-get update <span class="o">&amp;&amp;</span> <span class="se">\</span>
+apt-get <span class="nb">install </span>build-essential <span class="o">&amp;&amp;</span> <span class="se">\</span>
+apt-get build-dep ostree
+</code></pre></div></div>
+
+<p><a href="https://github.com/ostreedev/ostree/blob/main/ci/build.sh">build.sh</a> will have a list of packages needed to build ostree.</p>
+      <h3 id="ostree-build-commands">
+        
+        
+          <a href="#ostree-build-commands" class="anchor-heading" aria-labelledby="ostree-build-commands"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> OSTree Build Commands
+        
+        
+      </h3>
+    
+
+<p>These are the basic commands to build OSTree. Depending on the OS that OSTree will be built for, the flags or options for <code class="language-plaintext highlighter-rouge">./autogen.sh</code> and <code class="language-plaintext highlighter-rouge">./configure</code> will vary.</p>
+
+<p>See <code class="language-plaintext highlighter-rouge">ostree-build.sh</code> in this tutorial below for specific commands to building OSTree for Fedora 28 and Fedora 28 Atomic Host.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># optional: autogen.sh will run this if necessary</span>
+git submodule update <span class="nt">--init</span>
+
+<span class="nb">env </span><span class="nv">NOCONFIGURE</span><span class="o">=</span>1 ./autogen.sh
+
+<span class="c"># run ./configure if makefile does not exist</span>
+./configure
+
+make
+make <span class="nb">install </span><span class="nv">DESTDIR</span><span class="o">=</span>/path/to/install/binary
+</code></pre></div></div>
+      <h4 id="notes">
+        
+        
+          <a href="#notes" class="anchor-heading" aria-labelledby="notes"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Notes
+        
+        
+      </h4>
+    
+
+<p>Running <code class="language-plaintext highlighter-rouge">git submodule update --init</code> is optional since <code class="language-plaintext highlighter-rouge">autogen.sh</code> will check to see if one of the submodule files for example from <code class="language-plaintext highlighter-rouge">libglnx/</code> or from <code class="language-plaintext highlighter-rouge">bsdiff/</code> exists.</p>
+
+<p>Additionally, <code class="language-plaintext highlighter-rouge">autogen.sh</code> will check to see if the environment variable <code class="language-plaintext highlighter-rouge">NOCONFIGURE</code> is set. To run <code class="language-plaintext highlighter-rouge">./configure</code> manually, run autogen in a modified environment as such, <code class="language-plaintext highlighter-rouge">env NOCONFIGURE=1 ./autogen.sh</code>.</p>
+
+<p>Otherwise, leave <code class="language-plaintext highlighter-rouge">NOCONFIGURE</code> empty and <code class="language-plaintext highlighter-rouge">autogen.sh</code> will run <code class="language-plaintext highlighter-rouge">./configure</code> as part of the <code class="language-plaintext highlighter-rouge">autogen.sh</code> command when it executes.</p>
+
+<p>For more information on <code class="language-plaintext highlighter-rouge">--prefix</code> see <a href="https://www.gnu.org/prep/standards/html_node/Directory-Variables.html#Directory-Variables">Variables for Installation Directories</a>.</p>
+
+<p><code class="language-plaintext highlighter-rouge">make install</code> will generate files for <code class="language-plaintext highlighter-rouge">/bin</code> and <code class="language-plaintext highlighter-rouge">/lib</code>. If <code class="language-plaintext highlighter-rouge">DESTDIR</code> is unspecified then OSTree will be installed in the default directory i.e. <code class="language-plaintext highlighter-rouge">/usr/local/bin</code> and its static libraries in <code class="language-plaintext highlighter-rouge">/usr/local/lib</code>. Note that the <code class="language-plaintext highlighter-rouge">/usr/local</code> portion of the path can be changed using the <code class="language-plaintext highlighter-rouge">--prefix</code> option for <code class="language-plaintext highlighter-rouge">./configure</code>.</p>
+
+<p>See this <a href="https://www.gnu.org/prep/standards/html_node/DESTDIR.html">GNU guide on <code class="language-plaintext highlighter-rouge">DESTDIR</code> Staged Installs</a> for more information.</p>
+      <h4 id="tip">
+        
+        
+          <a href="#tip" class="anchor-heading" aria-labelledby="tip"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Tip
+        
+        
+      </h4>
+    
+
+<p>Make allows parallel execution of recipes. Use <code class="language-plaintext highlighter-rouge">make -j&lt;N&gt;</code> to speed up the build. <code class="language-plaintext highlighter-rouge">&lt;N&gt;</code> is typically <code class="language-plaintext highlighter-rouge">$((2 * $(nproc)))</code> for optimal performance, where <code class="language-plaintext highlighter-rouge">nproc</code> is the number of processing units (CPU cores) available.</p>
+
+<p>See page 106 of the <a href="https://www.gnu.org/software/make/manual/make.pdf">GNU Make Manual</a> for more information about the <code class="language-plaintext highlighter-rouge">--jobs</code> or <code class="language-plaintext highlighter-rouge">-j</code> option.</p>
+      <h2 id="testing-a-build">
+        
+        
+          <a href="#testing-a-build" class="anchor-heading" aria-labelledby="testing-a-build"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Testing a Build
+        
+        
+      </h2>
+    
+
+<p>It is best practice to build software (definitely including ostree) in a container or virtual machine first.</p>
+      <h3 id="testing-in-a-container">
+        
+        
+          <a href="#testing-in-a-container" class="anchor-heading" aria-labelledby="testing-in-a-container"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Testing in a Container
+        
+        
+      </h3>
+    
+
+<p>There are a variety of container engines available and many distributions have pre-packaged versions of e.g. <a href="https://github.com/projectatomic/libpod">Podman</a> and Docker.</p>
+
+<p>If you choose to use <a href="https://docs.docker.com/v17.09/engine/installation/linux/docker-ce/fedora/">Docker upstream</a>, you may want to follow this <a href="https://docs.docker.com/v17.09/engine/installation/linux/linux-postinstall/">post-installation guide for Docker</a>. This will allow you to run Docker as a non-root user on a Linux based host machine.</p>
+
+<p>You will need to have pushed a remote git branch <code class="language-plaintext highlighter-rouge">$REMOTE_BRANCH</code> (see <code class="language-plaintext highlighter-rouge">ostree-git.sh below</code>) in order to pull your changes into a container.</p>
+
+<p>The example below uses Docker to manage containers. Save the contents of this <strong>Dockerfile</strong> somewhere on your machine:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># this pulls the fedora 28 image</span>
+FROM registry.fedoraproject.org/fedora:28
+
+<span class="c"># install ostree dependencies</span>
+RUN dnf update <span class="nt">-y</span> <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    dnf <span class="nt">-y</span> <span class="nb">install</span> @buildsys-build dnf-plugins-core  <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    dnf <span class="nt">-y</span> builddep ostree  <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    dnf clean all
+
+<span class="c"># clone ostree and update main branch</span>
+COPY ostree-git.sh /
+RUN ../ostree-git.sh
+
+<span class="c"># builds ostree + any additional commands</span>
+COPY ostree-build.sh /
+
+<span class="c"># entry into the container will start at this directory</span>
+WORKDIR /ostree
+
+<span class="c"># run the following as `/bin/sh -c`</span>
+<span class="c"># or enter the container to execute ./ostree-build.sh</span>
+RUN ../ostree-build.sh
+
+</code></pre></div></div>
+
+<p>Save the following bash scripts in the same directory as the Dockerfile. Then change the mode bit of these files so that they are executable, by running <code class="language-plaintext highlighter-rouge">chmod +x ostree-git.sh ostree-build.sh</code></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+
+<span class="c"># ostree-git.sh</span>
+<span class="c"># Clone ostree and update main branch</span>
+
+<span class="nb">set</span> <span class="nt">-euo</span> pipefail
+
+<span class="c"># Set $USERNAME to your GitHub username here.</span>
+<span class="nv">USERNAME</span><span class="o">=</span><span class="s2">""</span>
+
+<span class="c"># clone your fork of the OSTree repo, this will be in the "/" directory</span>
+git clone https://github.com/<span class="nv">$USERNAME</span>/ostree.git
+<span class="nb">cd </span>ostree
+
+<span class="c"># Add upstream as remote and update main branch</span>
+git checkout main  
+git remote add upstream https://github.com/ostreedev/ostree.git
+git pull <span class="nt">--rebase</span> upstream main
+</code></pre></div></div>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+
+<span class="c"># ostree-build.sh</span>
+<span class="c"># Build and test OSTree</span>
+
+<span class="nb">set</span> <span class="nt">-euo</span> pipefail
+
+<span class="c"># $REMOTE_BRANCH is the name of the remote branch in your</span>
+<span class="c"># repository that contains changes (e.g. my-patch).</span>
+<span class="nv">REMOTE_BRANCH</span><span class="o">=</span><span class="s2">""</span>
+
+<span class="c"># fetch updates from origin</span>
+<span class="c"># origin url should be your forked ostree repository</span>
+git fetch origin
+
+<span class="c"># go to branch with changes</span>
+<span class="c"># if this branch already exists then checkout that branch</span>
+<span class="nv">exit_code</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span>git checkout <span class="nt">--track</span> origin/<span class="nv">$REMOTE_BRANCH</span><span class="p">;</span> <span class="nb">echo</span> <span class="nv">$?</span><span class="si">)</span><span class="s2">"</span>
+<span class="k">if</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$exit_code</span><span class="s2">"</span> <span class="o">==</span> 1 <span class="o">]]</span>
+<span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"This branch:"</span> <span class="nv">$REMOTE_BRANCH</span> <span class="s2">"is not a remote branch."</span>
+    <span class="nb">exit
+</span><span class="k">fi</span>
+
+<span class="c"># make sure branch with changes is up-to-date</span>
+git pull origin <span class="nv">$REMOTE_BRANCH</span>
+
+<span class="c"># build OSTree commands for Fedora 28 and Fedora 28 Atomic Host</span>
+./autogen.sh <span class="nt">--prefix</span><span class="o">=</span>/usr <span class="nt">--libdir</span><span class="o">=</span>/usr/lib64 <span class="nt">--sysconfdir</span><span class="o">=</span>/etc
+./configure <span class="nt">--prefix</span><span class="o">=</span>/usr
+make <span class="nt">-j</span><span class="k">$((</span><span class="m">2</span> <span class="o">*</span> <span class="si">$(</span><span class="nb">nproc</span><span class="si">)</span><span class="k">))</span>
+make <span class="nb">install</span>
+
+<span class="c"># any additional commands go here</span>
+</code></pre></div></div>
+
+<p><strong>Build the container</strong></p>
+
+<p>Run <code class="language-plaintext highlighter-rouge">docker build</code> in the same directory of the <code class="language-plaintext highlighter-rouge">Dockerfile</code> like so:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>docker build <span class="nt">-t</span> ostree-fedora-test <span class="nb">.</span>
+</code></pre></div></div>
+
+<p>When this build is done, the <code class="language-plaintext highlighter-rouge">-t</code> option tags the image as <code class="language-plaintext highlighter-rouge">ostree-fedora-test</code>.</p>
+
+<p><strong>Note</strong>: Do not forget the dot <strong>.</strong> at the end of the above command which specifies the location of the Dockerfile.</p>
+
+<p>You will see <code class="language-plaintext highlighter-rouge">ostree-fedora-test</code> listed when running <code class="language-plaintext highlighter-rouge">docker images</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>REPOSITORY                                 TAG                 IMAGE ID            CREATED             SIZE
+ostree-fedora-test                         latest              817c04cc3656        1 day ago          978MB
+</code></pre></div></div>
+
+<p><strong>Entering the Container</strong></p>
+
+<p>To <strong>start</strong> the <code class="language-plaintext highlighter-rouge">ostree-fedora-test</code> container, run:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>docker run <span class="nt">-it</span> <span class="nt">--rm</span> <span class="nt">--entrypoint</span> /bin/sh <span class="nt">--name</span> ostree-testing ostree-fedora-test
+</code></pre></div></div>
+
+<p><strong>Note</strong>:</p>
+
+<p><code class="language-plaintext highlighter-rouge">--rm</code> option tells <a href="https://docs.docker.com/engine/reference/run/#clean-up---rm">Docker to automatically clean up the container and remove the file system when the container exits</a>. Otherwise remove it manually by running <code class="language-plaintext highlighter-rouge">docker rm &lt;container name&gt;</code>.</p>
+
+<p>The state of the container will not be saved when the shell prompt exits. Best practice is modify the Dockerfile to modify the image.</p>
+
+<p><strong>Testing in a Container Workflow</strong></p>
+
+<ol>
+  <li>Edit the changes to OSTree on your local machine.</li>
+  <li><code class="language-plaintext highlighter-rouge">git add</code> to stage the changed files, <code class="language-plaintext highlighter-rouge">git commit</code> and then <code class="language-plaintext highlighter-rouge">git push origin &lt;local-branch&gt;:&lt;remote-branch&gt;</code>.</li>
+  <li>
+    <p>Testing on a <em>new</em> container vs. Testing on an <em>existing</em> container:</p>
+
+    <p>If the <code class="language-plaintext highlighter-rouge">ostree-testing</code> container was newly built right after your changes have been committed, then the container’s build of <code class="language-plaintext highlighter-rouge">ostree</code> should contain your changes.</p>
+
+    <p>Else: Within the <code class="language-plaintext highlighter-rouge">ostree-testing</code> container, run <code class="language-plaintext highlighter-rouge">../ostree-build.sh</code> in the ostree directory. This will pull in changes from your branch and create a new <code class="language-plaintext highlighter-rouge">ostree</code> build.</p>
+  </li>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">make install</code> will install OSTree in the default location i.e. <code class="language-plaintext highlighter-rouge">/usr/..</code>in a Fedora 28 container.</p>
+  </li>
+  <li>Test <code class="language-plaintext highlighter-rouge">ostree</code>.</li>
+</ol>
+      <h3 id="testing-in-a-virtual-machine">
+        
+        
+          <a href="#testing-in-a-virtual-machine" class="anchor-heading" aria-labelledby="testing-in-a-virtual-machine"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Testing in a Virtual Machine
+        
+        
+      </h3>
+    
+
+<p>To create a Fedora 28 Atomic Host Vagrant VM, run the following commands:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span><span class="nb">mkdir </span>atomic <span class="o">&amp;&amp;</span> <span class="nb">cd </span>atomic
+<span class="nv">$ </span>vagrant init fedora/28-atomic-host <span class="o">&amp;&amp;</span> vagrant up
+</code></pre></div></div>
+
+<p>An option is to use <code class="language-plaintext highlighter-rouge">rsync</code> to transfer <code class="language-plaintext highlighter-rouge">ostree</code> files to a Vagrant VM.</p>
+
+<p>To find the IP address of a Vagrant VM, run <code class="language-plaintext highlighter-rouge">vagrant ssh-config</code> in the same directory as the <code class="language-plaintext highlighter-rouge">Vagrantfile</code>.</p>
+
+<p><strong>Steps to <code class="language-plaintext highlighter-rouge">rsync</code> files to test an <code class="language-plaintext highlighter-rouge">ostree</code> build</strong>:</p>
+
+<ol>
+  <li>
+    <p>Copy the contents of your public ssh key on your host machine e.g. <code class="language-plaintext highlighter-rouge">id_rsa.pub</code> to <code class="language-plaintext highlighter-rouge">/home/vagrant/.ssh/authorized_keys</code> on the VM.</p>
+  </li>
+  <li>
+    <p>Run <code class="language-plaintext highlighter-rouge">sudo su</code>, followed by <code class="language-plaintext highlighter-rouge">ssh localhost</code> then press <kbd>Ctrl</kbd>+<kbd>c</kbd> to exit from the decision prompt. This will create the <code class="language-plaintext highlighter-rouge">.ssh</code> directory with the right permissions.</p>
+  </li>
+  <li>
+    <p>Using <code class="language-plaintext highlighter-rouge">Vagrant</code> as the user, run <code class="language-plaintext highlighter-rouge">sudo cp ~/.ssh/authorized_keys /root/.ssh/</code>. So that user <code class="language-plaintext highlighter-rouge">root</code> has the the same login credentials.</p>
+  </li>
+  <li>
+    <p>To override the <code class="language-plaintext highlighter-rouge">Read-only file system</code> warning, run <code class="language-plaintext highlighter-rouge">sudo ostree admin unlock</code>.</p>
+  </li>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">&lt;ostree-install-dir&gt;</code> will serve as the local install location for <code class="language-plaintext highlighter-rouge">ostree</code> and the path to this directory should be <em>absolute</em> when specified in <code class="language-plaintext highlighter-rouge">DESTDIR</code>.</p>
+  </li>
+  <li>
+    <p>Set <code class="language-plaintext highlighter-rouge">rsync</code> to sync changes in <code class="language-plaintext highlighter-rouge">/etc</code> and <code class="language-plaintext highlighter-rouge">/usr</code> from <code class="language-plaintext highlighter-rouge">&lt;ostree-install-dir&gt;/</code> on the host to the VM:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> $ rsync -av &lt;ostree-install-dir&gt;/etc/ root@&lt;ip-address&gt;:/etc
+ $ rsync -av &lt;ostree-install-dir&gt;/usr/ root@&lt;ip-address&gt;:/usr
+</code></pre></div>    </div>
+
+    <p>Using option <code class="language-plaintext highlighter-rouge">-n</code> will execute the commands as a trial, which is helpful to list the files that will be synced.</p>
+  </li>
+  <li>
+    <p>Run the commands in step 6 each time a new <code class="language-plaintext highlighter-rouge">ostree</code> build is executed to update the change. Running <code class="language-plaintext highlighter-rouge">ls -lt</code> in the directory where the changed file is expected, is a simple way to check when a particular file was last modified. Proceed to the test changes <code class="language-plaintext highlighter-rouge">ostree</code> with the most recent changes.</p>
+  </li>
+</ol>
+      <h2 id="tutorial-adding-a-basic-builtin-command-to-ostree">
+        
+        
+          <a href="#tutorial-adding-a-basic-builtin-command-to-ostree" class="anchor-heading" aria-labelledby="tutorial-adding-a-basic-builtin-command-to-ostree"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Tutorial: Adding a basic builtin command to ostree
+        
+        
+      </h2>
+    
+      <h3 id="modifying-ostree">
+        
+        
+          <a href="#modifying-ostree" class="anchor-heading" aria-labelledby="modifying-ostree"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Modifying OSTree
+        
+        
+      </h3>
+    
+
+<p>This will add a command which prints <code class="language-plaintext highlighter-rouge">Hello OSTree!</code> when <code class="language-plaintext highlighter-rouge">ostree hello-ostree</code> is entered.</p>
+
+<ol>
+  <li>
+    <p>Create a file in <code class="language-plaintext highlighter-rouge">src/ostree</code> named <code class="language-plaintext highlighter-rouge">ot-builtin-hello-ostree.c</code>. Code that lives in here belongs to OSTree, and uses functionality from libostree.</p>
+  </li>
+  <li>
+    <p>Add the following to <code class="language-plaintext highlighter-rouge">ot-builtin-hello-ostree.c</code>:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> #include "config.h"
+
+ #include "ot-main.h"
+ #include "ot-builtins.h"
+ #include "ostree.h"
+ #include "otutil.h"
+
+ // Structure for options such as ostree hello-ostree --option.
+ static GOptionEntry options[] = {
+   { NULL },
+ };
+
+ gboolean
+ ostree_builtin_hello_ostree (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ {
+   g_autoptr(GOptionContext) context = NULL;
+   g_autoptr(OstreeRepo) repo = NULL;
+   gboolean ret = FALSE;
+
+   // Creates new command context, ready to be parsed.
+   // Input to g_option_context_new shows when running ostree &lt;command&gt; --help
+   context = g_option_context_new ("");
+
+   // Parses the command context according to the ostree CLI.
+   if (!ostree_option_context_parse (context, options, &amp;argc, &amp;argv, invocation, &amp;repo, cancellable, error))
+     goto out;
+
+   g_print("Hello OSTree!\n");
+
+   ret = TRUE;
+  out:
+   return ret;
+ }
+</code></pre></div>    </div>
+
+    <p>This defines the functionality for <code class="language-plaintext highlighter-rouge">hello-ostree</code>. Now we have to make sure the CLI can refer to the execution function, and that autotools knows to build this file.</p>
+  </li>
+  <li>
+    <p>Add the following in <code class="language-plaintext highlighter-rouge">src/ostree/main.c</code>:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> { "hello-ostree",               // The name of the command
+   OSTREE_BUILTIN_FLAG_NO_REPO,  // Flag not to require the `--repo` argument, see "ot-main.h"
+   ostree_builtin_hello_ostree,  // Execution function for the command
+   "Print hello message" },      // Short description to appear when `ostree hello-ostree --help` is entered
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>Add a macro for the function declaration of <code class="language-plaintext highlighter-rouge">ostree_builtin_hello_ostree</code>, in <code class="language-plaintext highlighter-rouge">ot-builtins.h</code>:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> BUILTINPROTO(hello_ostree);
+</code></pre></div>    </div>
+
+    <p>This makes the function definition visible to the CLI.</p>
+  </li>
+  <li>
+    <p>Configure automake to include <code class="language-plaintext highlighter-rouge">ot-builtin-hello-ostree.c</code> in the build, by adding an entry in <code class="language-plaintext highlighter-rouge">Makefile-ostree.am</code> under <code class="language-plaintext highlighter-rouge">ostree_SOURCES</code>:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> src/ostree/ot-builtin-hello-ostree.c \
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>Rebuild ostree:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> $ make &amp;&amp; make install DESTDIR=/path/to/install/the/content
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>Execute the new <code class="language-plaintext highlighter-rouge">ostree</code> binary, from where you installed it:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> $ ostree hello-ostree
+ Hello OSTree!
+</code></pre></div>    </div>
+  </li>
+</ol>
+      <h3 id="ostree-tests">
+        
+        
+          <a href="#ostree-tests" class="anchor-heading" aria-labelledby="ostree-tests"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> OSTree Tests
+        
+        
+      </h3>
+    
+
+<p>Tests for OSTree are done by shell scripting, by running OSTree commands and examining output. These steps will go through adding a test for <code class="language-plaintext highlighter-rouge">hello-ostree</code>.</p>
+
+<ol>
+  <li>
+    <p>Create a file in <code class="language-plaintext highlighter-rouge">tests</code> called <code class="language-plaintext highlighter-rouge">test-hello-ostree.sh</code>.</p>
+  </li>
+  <li>
+    <p>Add the following to <code class="language-plaintext highlighter-rouge">test-hello-ostree.sh</code>:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> set -euo pipefail           # Ensure the test will not silently fail
+
+ . $(dirname $0)/libtest.sh  # Make libtest.sh functions available
+
+ echo "1..1"                 # Declare which test is being run out of how many
+
+ pushd ${test_tmpdir}
+
+ ${CMD_PREFIX} ostree hello-ostree &gt; hello-output.txt
+ assert_file_has_content hello-output.txt "Hello OSTree!"
+
+ popd
+
+ echo "ok hello ostree"      # Indicate test success
+</code></pre></div>    </div>
+
+    <p>Many tests require a fake repository setting up (as most OSTree commands require <code class="language-plaintext highlighter-rouge">--repo</code> to be specified). See <code class="language-plaintext highlighter-rouge">test-pull-depth.sh</code> for an example of this setup.</p>
+  </li>
+  <li>
+    <p>Configure automake to include <code class="language-plaintext highlighter-rouge">test-hello-ostree.sh</code> in the build, by adding an entry in <code class="language-plaintext highlighter-rouge">Makefile-tests.am</code> under <code class="language-plaintext highlighter-rouge">_installed_or_uninstalled_test_scripts</code>:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> tests/test-hello-ostree.sh \
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>Make sure <code class="language-plaintext highlighter-rouge">test-hello-ostree.sh</code> has executable permissions!</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> $ chmod +x tests/test-hello-ostree.sh
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>Run the test:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> $ make check TESTS="tests/test-hello-ostree.sh"
+</code></pre></div>    </div>
+
+    <p>Multiple tests can be specified: <code class="language-plaintext highlighter-rouge">make check TESTS="test1 test2 ..."</code>. To run all tests, use <code class="language-plaintext highlighter-rouge">make check</code>.</p>
+
+    <p>Hopefully, the test passes! The following will be printed:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code> PASS: tests/test-hello-ostree.sh 1 hello ostree
+ ============================================================================
+ Testsuite summary for libostree 2018.8
+ ============================================================================
+ # TOTAL: 1
+ # PASS:  1
+ # SKIP:  0
+ # XFAIL: 0
+ # FAIL:  0
+ # XPASS: 0
+ # ERROR: 0
+ ============================================================================
+</code></pre></div>    </div>
+  </li>
+</ol>
+      <h3 id="submitting-a-patch">
+        
+        
+          <a href="#submitting-a-patch" class="anchor-heading" aria-labelledby="submitting-a-patch"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Submitting a Patch
+        
+        
+      </h3>
+    
+
+<p>After you have committed your changes and tested, you are ready to submit your patch!</p>
+
+<p>You should make sure your commits are placed on top of the latest changes from <code class="language-plaintext highlighter-rouge">upstream/main</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>git pull <span class="nt">--rebase</span> upstream main
+</code></pre></div></div>
+
+<p>To submit your patch, open a pull request from your forked repository. Most often, you’ll be merging into <code class="language-plaintext highlighter-rouge">ostree:main</code> from <code class="language-plaintext highlighter-rouge">&lt;username&gt;:&lt;branch name&gt;</code>.</p>
+
+<p>If some of your changes are complete and you would like feedback, you may also open a pull request that has WIP (Work In Progress) in the title.</p>
+
+<p>Before a pull request is considered merge ready, your commit messages should fall within the specified guideline. See <a href="/ostree/CONTRIBUTING/#commit-message-style">Commit message style</a>.</p>
+
+<p>See <a href="/ostree/CONTRIBUTING/#submitting-patches">CONTRIBUTING.md</a> for information on squashing commits, and alternative options to submit patches.</p>
+      <h3 id="returning-workflow">
+        
+        
+          <a href="#returning-workflow" class="anchor-heading" aria-labelledby="returning-workflow"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Returning Workflow
+        
+        
+      </h3>
+    
+
+<p>When returning to work on a patch, it is recommended to update your fork with the latest changes in the upstream main branch.</p>
+
+<p>If creating a new branch:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>git checkout main
+<span class="nv">$ </span>git pull upstream main
+<span class="nv">$ </span>git checkout <span class="nt">-b</span> &lt;name-of-patch&gt;
+</code></pre></div></div>
+
+<p>If continuing on a branch already created:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>git checkout &lt;name-of-patch&gt;
+<span class="nv">$ </span>git pull <span class="nt">--rebase</span> upstream main
+</code></pre></div></div>
+
+        
+
+        
+
+        
+        
+          <hr>
+          <footer>
+            
+
+            <p class="text-small text-grey-dk-100 mb-0">Copyright &copy; <a href="https://www.redhat.com">Red Hat, Inc.</a> and <a href="https://github.com/ostreedev">others</a>.</p>
+
+            
+              <div class="d-flex mt-2">
+                
+                
+                  <p class="text-small text-grey-dk-000 mb-0">
+                    <a href="https://github.com/ostreedev/ostree/tree/main/docs/contributing-tutorial.md" id="edit-this-page">Edit this page on GitHub</a>
+                  </p>
+                
+              </div>
+            
+          </footer>
+        
+
+      </div>
+    </div>
+
+    
+      
+
+      <div class="search-overlay"></div>
+    
+  </div>
+</body>
+</html>
+

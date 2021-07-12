@@ -1,0 +1,2407 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Root partition mount point: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">
+<link rel="next" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">
+<meta name="generator" content="GTK-Doc V1.32 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-Root-partition-mount-point.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-In-memory-modifiable-filesystem-tree.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-Progress-notification-system-for-asynchronous-operations.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-Root-partition-mount-point"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-Root-partition-mount-point.top_of_page"></a>Root partition mount point</span></h2>
+<p>Root partition mount point — Manage physical root filesystem</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-Root-partition-mount-point.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="returnvalue">OstreeSysroot</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-new" title="ostree_sysroot_new ()">ostree_sysroot_new</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="returnvalue">OstreeSysroot</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-new-default" title="ostree_sysroot_new_default ()">ostree_sysroot_new_default</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-initialize" title="ostree_sysroot_initialize ()">ostree_sysroot_initialize</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GFile</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-path" title="ostree_sysroot_get_path ()">ostree_sysroot_get_path</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()">ostree_sysroot_load</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load-if-changed" title="ostree_sysroot_load_if_changed ()">ostree_sysroot_load_if_changed</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock" title="ostree_sysroot_lock ()">ostree_sysroot_lock</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-try-lock" title="ostree_sysroot_try_lock ()">ostree_sysroot_try_lock</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock-async" title="ostree_sysroot_lock_async ()">ostree_sysroot_lock_async</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock-finish" title="ostree_sysroot_lock_finish ()">ostree_sysroot_lock_finish</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-unlock" title="ostree_sysroot_unlock ()">ostree_sysroot_unlock</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-unload" title="ostree_sysroot_unload ()">ostree_sysroot_unload</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-set-mount-namespace-in-use" title="ostree_sysroot_set_mount_namespace_in_use ()">ostree_sysroot_set_mount_namespace_in_use</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-is-booted" title="ostree_sysroot_is_booted ()">ostree_sysroot_is_booted</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">int</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-fd" title="ostree_sysroot_get_fd ()">ostree_sysroot_get_fd</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-ensure-initialized" title="ostree_sysroot_ensure_initialized ()">ostree_sysroot_ensure_initialized</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">int</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-bootversion" title="ostree_sysroot_get_bootversion ()">ostree_sysroot_get_bootversion</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">int</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-subbootversion" title="ostree_sysroot_get_subbootversion ()">ostree_sysroot_get_subbootversion</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GPtrArray</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployments" title="ostree_sysroot_get_deployments ()">ostree_sysroot_get_deployments</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-booted-deployment" title="ostree_sysroot_get_booted_deployment ()">ostree_sysroot_get_booted_deployment</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-require-booted-deployment" title="ostree_sysroot_require_booted_deployment ()">ostree_sysroot_require_booted_deployment</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GFile</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployment-directory" title="ostree_sysroot_get_deployment_directory ()">ostree_sysroot_get_deployment_directory</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployment-dirpath" title="ostree_sysroot_get_deployment_dirpath ()">ostree_sysroot_get_deployment_dirpath</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GFile</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployment-origin-path" title="ostree_sysroot_get_deployment_origin_path ()">ostree_sysroot_get_deployment_origin_path</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-cleanup" title="ostree_sysroot_cleanup ()">ostree_sysroot_cleanup</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-prepare-cleanup" title="ostree_sysroot_prepare_cleanup ()">ostree_sysroot_prepare_cleanup</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-cleanup-prune-repo" title="ostree_sysroot_cleanup_prune_repo ()">ostree_sysroot_cleanup_prune_repo</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="returnvalue">OstreeRepo</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-repo" title="ostree_sysroot_repo ()">ostree_sysroot_repo</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-repo" title="ostree_sysroot_get_repo ()">ostree_sysroot_get_repo</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-staged-deployment" title="ostree_sysroot_get_staged_deployment ()">ostree_sysroot_get_staged_deployment</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-init-osname" title="ostree_sysroot_init_osname ()">ostree_sysroot_init_osname</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-kargs" title="ostree_sysroot_deployment_set_kargs ()">ostree_sysroot_deployment_set_kargs</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-mutable" title="ostree_sysroot_deployment_set_mutable ()">ostree_sysroot_deployment_set_mutable</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-unlock" title="ostree_sysroot_deployment_unlock ()">ostree_sysroot_deployment_unlock</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-pinned" title="ostree_sysroot_deployment_set_pinned ()">ostree_sysroot_deployment_set_pinned</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-write-deployments" title="ostree_sysroot_write_deployments ()">ostree_sysroot_write_deployments</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-write-deployments-with-options" title="ostree_sysroot_write_deployments_with_options ()">ostree_sysroot_write_deployments_with_options</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-write-origin-file" title="ostree_sysroot_write_origin_file ()">ostree_sysroot_write_origin_file</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree" title="ostree_sysroot_stage_tree ()">ostree_sysroot_stage_tree</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree-with-options" title="ostree_sysroot_stage_tree_with_options ()">ostree_sysroot_stage_tree_with_options</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-overlay-initrd" title="ostree_sysroot_stage_overlay_initrd ()">ostree_sysroot_stage_overlay_initrd</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deploy-tree" title="ostree_sysroot_deploy_tree ()">ostree_sysroot_deploy_tree</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deploy-tree-with-options" title="ostree_sysroot_deploy_tree_with_options ()">ostree_sysroot_deploy_tree_with_options</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-merge-deployment" title="ostree_sysroot_get_merge_deployment ()">ostree_sysroot_get_merge_deployment</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-query-deployments-for" title="ostree_sysroot_query_deployments_for ()">ostree_sysroot_query_deployments_for</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GKeyFile</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-origin-new-from-refspec" title="ostree_sysroot_origin_new_from_refspec ()">ostree_sysroot_origin_new_from_refspec</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-simple-write-deployment" title="ostree_sysroot_simple_write_deployment ()">ostree_sysroot_simple_write_deployment</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-Root-partition-mount-point.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="typedef_keyword">typedef</td>
+<td class="function_name"><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot">OstreeSysroot</a></td>
+</tr>
+<tr>
+<td class="datatype_keyword">enum</td>
+<td class="function_name"><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysrootSimpleWriteDeploymentFlags" title="enum OstreeSysrootSimpleWriteDeploymentFlags">OstreeSysrootSimpleWriteDeploymentFlags</a></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-Root-partition-mount-point.description"></a><h2>Description</h2>
+<p>A <a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> object represents a physical root filesystem,
+which in particular should contain a toplevel /ostree directory.
+Inside this directory is an <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> in /ostree/repo, plus a set
+of deployments in /ostree/deploy.</p>
+<p>This class is not by default safe against concurrent use by threads
+or external processes.  You can use <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock" title="ostree_sysroot_lock ()"><code class="function">ostree_sysroot_lock()</code></a> to
+perform locking externally.</p>
+</div>
+<div class="refsect1">
+<a name="ostree-Root-partition-mount-point.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-sysroot-new"></a><h3>ostree_sysroot_new ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="returnvalue">OstreeSysroot</span></a> *
+ostree_sysroot_new (<em class="parameter"><code><span class="type">GFile</span> *path</code></em>);</pre>
+<p>Create a new <a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> object for the sysroot at <em class="parameter"><code>path</code></em>
+. If <em class="parameter"><code>path</code></em>
+ is <code class="literal">NULL</code>,
+the current visible root file system is used, equivalent to
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-new-default" title="ostree_sysroot_new_default ()"><code class="function">ostree_sysroot_new_default()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-new.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>path</p></td>
+<td class="parameter_description"><p>Path to a system root directory, or <code class="literal">NULL</code> to use the
+current visible root file system. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-new.returns"></a><h4>Returns</h4>
+<p>An accessor object for an system root located at <em class="parameter"><code>path</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-new-default"></a><h3>ostree_sysroot_new_default ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="returnvalue">OstreeSysroot</span></a> *
+ostree_sysroot_new_default (<em class="parameter"><code><span class="type">void</span></code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-new-default.returns"></a><h4>Returns</h4>
+<p>An accessor for the current visible root / filesystem. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-initialize"></a><h3>ostree_sysroot_initialize ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_initialize (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                           <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Subset of <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()"><code class="function">ostree_sysroot_load()</code></a>; performs basic initialization. Notably, one
+can invoke <code class="literal"><a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-fd" title="ostree_sysroot_get_fd ()"><code class="function">ostree_sysroot_get_fd()</code></a></code> after calling this function.</p>
+<p>It is not necessary to call this function if <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()"><code class="function">ostree_sysroot_load()</code></a> is
+invoked.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-initialize.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2020.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-path"></a><h3>ostree_sysroot_get_path ()</h3>
+<pre class="programlisting"><span class="returnvalue">GFile</span> *
+ostree_sysroot_get_path (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-get-path.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-path.returns"></a><h4>Returns</h4>
+<p>Path to rootfs. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>][<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-load"></a><h3>ostree_sysroot_load ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_load (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                     <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Load deployment list, bootversion, and subbootversion from the
+rootfs <em class="parameter"><code>self</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-load.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-load-if-changed"></a><h3>ostree_sysroot_load_if_changed ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_load_if_changed (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code><span class="type">gboolean</span> *out_changed</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-load-if-changed.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_changed</p></td>
+<td class="parameter_description"><p>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out%20caller-allocates"><span class="acronym">out caller-allocates</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2016.4</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-lock"></a><h3>ostree_sysroot_lock ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_lock (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Acquire an exclusive multi-process write lock for <em class="parameter"><code>self</code></em>
+.  This call
+blocks until the lock has been acquired.  The lock is not
+reentrant.</p>
+<p>Release the lock with <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-unlock" title="ostree_sysroot_unlock ()"><code class="function">ostree_sysroot_unlock()</code></a>.  The lock will also
+be released if <em class="parameter"><code>self</code></em>
+ is deallocated.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-lock.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Self</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-try-lock"></a><h3>ostree_sysroot_try_lock ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_try_lock (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                         <em class="parameter"><code><span class="type">gboolean</span> *out_acquired</code></em>,
+                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Try to acquire an exclusive multi-process write lock for <em class="parameter"><code>self</code></em>
+.  If
+another process holds the lock, this function will return
+immediately, setting <em class="parameter"><code>out_acquired</code></em>
+ to <code class="literal">FALSE</code>, and returning <code class="literal">TRUE</code>
+(and no error).</p>
+<p>Release the lock with <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-unlock" title="ostree_sysroot_unlock ()"><code class="function">ostree_sysroot_unlock()</code></a>.  The lock will also
+be released if <em class="parameter"><code>self</code></em>
+ is deallocated.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-try-lock.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Self</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_acquired</p></td>
+<td class="parameter_description"><p>Whether or not the lock has been acquired. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-lock-async"></a><h3>ostree_sysroot_lock_async ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_sysroot_lock_async (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                           <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                           <em class="parameter"><code><span class="type">GAsyncReadyCallback</span> callback</code></em>,
+                           <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>);</pre>
+<p>An asynchronous version of <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock" title="ostree_sysroot_lock ()"><code class="function">ostree_sysroot_lock()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-lock-async.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Self</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>callback</p></td>
+<td class="parameter_description"><p>Callback</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>user_data</p></td>
+<td class="parameter_description"><p>User data</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-lock-finish"></a><h3>ostree_sysroot_lock_finish ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_lock_finish (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                            <em class="parameter"><code><span class="type">GAsyncResult</span> *result</code></em>,
+                            <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Call when <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock-async" title="ostree_sysroot_lock_async ()"><code class="function">ostree_sysroot_lock_async()</code></a> is ready.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-lock-finish.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Self</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>Result</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-unlock"></a><h3>ostree_sysroot_unlock ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_sysroot_unlock (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<p>Clear the lock previously acquired with <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock" title="ostree_sysroot_lock ()"><code class="function">ostree_sysroot_lock()</code></a>.  It
+is safe to call this function if the lock has not been previously
+acquired.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-unlock.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Self</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-unload"></a><h3>ostree_sysroot_unload ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_sysroot_unload (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<p>Release any resources such as file descriptors referring to the
+root directory of this sysroot.  Normally, those resources are
+cleared by finalization, but in garbage collected languages that
+may not be predictable.</p>
+<p>This undoes the effect of <code class="literal"><a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()"><code class="function">ostree_sysroot_load()</code></a></code>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-unload.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-set-mount-namespace-in-use"></a><h3>ostree_sysroot_set_mount_namespace_in_use ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_sysroot_set_mount_namespace_in_use
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<p>If this function is invoked, then libostree will assume that
+a private Linux mount namespace has been created by the process.
+The primary use case for this is to have e.g. /sysroot mounted
+read-only by default.</p>
+<p>If this function has been called, then when a function which requires
+writable access is invoked, libostree will automatically remount as writable
+any mount points on which it operates.  This currently is just <code class="literal">/sysroot</code> and
+<code class="literal">/boot</code>.</p>
+<p>If you invoke this function, it must be before <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()"><code class="function">ostree_sysroot_load()</code></a>; it may
+be invoked before or after <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-initialize" title="ostree_sysroot_initialize ()"><code class="function">ostree_sysroot_initialize()</code></a>.</p>
+<p class="since">Since: 2020.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-is-booted"></a><h3>ostree_sysroot_is_booted ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_is_booted (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<p>Can only be invoked after <code class="literal"><a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-initialize" title="ostree_sysroot_initialize ()"><code class="function">ostree_sysroot_initialize()</code></a></code>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-is-booted.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-is-booted.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> iff the sysroot points to a booted deployment</p>
+</div>
+<p class="since">Since: 2020.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-fd"></a><h3>ostree_sysroot_get_fd ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>
+ostree_sysroot_get_fd (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<p>Access a file descriptor that refers to the root directory of this sysroot.
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-initialize" title="ostree_sysroot_initialize ()"><code class="function">ostree_sysroot_initialize()</code></a> (or <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()"><code class="function">ostree_sysroot_load()</code></a>) must have been invoked
+prior to calling this function.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-get-fd.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-fd.returns"></a><h4>Returns</h4>
+<p> A file descriptor valid for the lifetime of <em class="parameter"><code>self</code></em>
+</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-ensure-initialized"></a><h3>ostree_sysroot_ensure_initialized ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_ensure_initialized (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                   <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                   <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Ensure that <em class="parameter"><code>self</code></em>
+ is set up as a valid rootfs, by creating
+/ostree/repo, among other things.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-ensure-initialized.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-bootversion"></a><h3>ostree_sysroot_get_bootversion ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>
+ostree_sysroot_get_bootversion (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-subbootversion"></a><h3>ostree_sysroot_get_subbootversion ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>
+ostree_sysroot_get_subbootversion (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-deployments"></a><h3>ostree_sysroot_get_deployments ()</h3>
+<pre class="programlisting"><span class="returnvalue">GPtrArray</span> *
+ostree_sysroot_get_deployments (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployments.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployments.returns"></a><h4>Returns</h4>
+<p>Ordered list of deployments. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> OstreeDeployment][<a href="http://foldoc.org/transfer%20container"><span class="acronym">transfer container</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-booted-deployment"></a><h3>ostree_sysroot_get_booted_deployment ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+ostree_sysroot_get_booted_deployment (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-get-booted-deployment.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-booted-deployment.returns"></a><h4>Returns</h4>
+<p>The currently booted deployment, or <code class="literal">NULL</code> if none. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-require-booted-deployment"></a><h3>ostree_sysroot_require_booted_deployment ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+ostree_sysroot_require_booted_deployment
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Find the booted deployment, or return an error if not booted via OSTree.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-require-booted-deployment.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-require-booted-deployment.returns"></a><h4>Returns</h4>
+<p>The currently booted deployment, or an error. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>][<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2021.1</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-deployment-directory"></a><h3>ostree_sysroot_get_deployment_directory ()</h3>
+<pre class="programlisting"><span class="returnvalue">GFile</span> *
+ostree_sysroot_get_deployment_directory
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *deployment</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployment-directory.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployment</p></td>
+<td class="parameter_description"><p>A deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployment-directory.returns"></a><h4>Returns</h4>
+<p>Path to deployment root directory. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-deployment-dirpath"></a><h3>ostree_sysroot_get_deployment_dirpath ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_sysroot_get_deployment_dirpath (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                       <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *deployment</code></em>);</pre>
+<p>Note this function only returns a *relative* path - if you want
+to access, it, you must either use fd-relative api such as <code class="function">openat()</code>,
+or concatenate it with the full <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-path" title="ostree_sysroot_get_path ()"><code class="function">ostree_sysroot_get_path()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployment-dirpath.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Repo</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployment</p></td>
+<td class="parameter_description"><p>A deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployment-dirpath.returns"></a><h4>Returns</h4>
+<p>Path to deployment root directory, relative to sysroot. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-deployment-origin-path"></a><h3>ostree_sysroot_get_deployment_origin_path ()</h3>
+<pre class="programlisting"><span class="returnvalue">GFile</span> *
+ostree_sysroot_get_deployment_origin_path
+                               (<em class="parameter"><code><span class="type">GFile</span> *deployment_path</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployment-origin-path.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>deployment_path</p></td>
+<td class="parameter_description"><p>A deployment path</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-deployment-origin-path.returns"></a><h4>Returns</h4>
+<p>Path to deployment origin file. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-cleanup"></a><h3>ostree_sysroot_cleanup ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_cleanup (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                        <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                        <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Delete any state that resulted from a partially completed
+transaction, such as incomplete deployments.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-cleanup.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-prepare-cleanup"></a><h3>ostree_sysroot_prepare_cleanup ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_prepare_cleanup (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Like <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-cleanup" title="ostree_sysroot_cleanup ()"><code class="function">ostree_sysroot_cleanup()</code></a> in that it cleans up incomplete deployments
+and old boot versions, but does NOT prune the repository.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-prepare-cleanup.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-cleanup-prune-repo"></a><h3>ostree_sysroot_cleanup_prune_repo ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_cleanup_prune_repo (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *sysroot</code></em>,
+                                   <em class="parameter"><code><span class="type">OstreeRepoPruneOptions</span> *options</code></em>,
+                                   <em class="parameter"><code><span class="type">gint</span> *out_objects_total</code></em>,
+                                   <em class="parameter"><code><span class="type">gint</span> *out_objects_pruned</code></em>,
+                                   <em class="parameter"><code><span class="type">guint64</span> *out_pruned_object_size_total</code></em>,
+                                   <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                   <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Prune the system repository.  This is a thin wrapper
+around <a class="link" href="ostree-OstreeRepo.html#ostree-repo-prune-from-reachable" title="ostree_repo_prune_from_reachable ()"><code class="function">ostree_repo_prune_from_reachable()</code></a>; the primary
+addition is that this function automatically gathers
+all deployed commits into the reachable set.</p>
+<p>You generally want to at least set the <code class="literal">OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY</code>
+flag in <em class="parameter"><code>options</code></em>
+.  A commit traversal depth of <code class="literal">0</code> is assumed.</p>
+<p>Locking: exclusive</p>
+<div class="refsect3">
+<a name="ostree-sysroot-cleanup-prune-repo.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>sysroot</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>options</p></td>
+<td class="parameter_description"><p>Flags controlling pruning</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_objects_total</p></td>
+<td class="parameter_description"><p>Number of objects found. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_objects_pruned</p></td>
+<td class="parameter_description"><p>Number of objects deleted. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_pruned_object_size_total</p></td>
+<td class="parameter_description"><p>Storage size in bytes of objects deleted. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-repo"></a><h3>ostree_sysroot_repo ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="returnvalue">OstreeRepo</span></a> *
+ostree_sysroot_repo (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<p>This function is a variant of <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-repo" title="ostree_sysroot_get_repo ()"><code class="function">ostree_sysroot_get_repo()</code></a> that cannot fail, and
+returns a cached repository. Can only be called after <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-initialize" title="ostree_sysroot_initialize ()"><code class="function">ostree_sysroot_initialize()</code></a>
+or <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()"><code class="function">ostree_sysroot_load()</code></a> has been invoked successfully.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-repo.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-repo.returns"></a><h4>Returns</h4>
+<p>The OSTree repository in sysroot <em class="parameter"><code>self</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>][<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2017.7</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-repo"></a><h3>ostree_sysroot_get_repo ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_get_repo (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                         <em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> **out_repo</code></em>,
+                         <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                         <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Retrieve the OSTree repository in sysroot <em class="parameter"><code>self</code></em>
+. The repo is guaranteed to be open
+(see <a class="link" href="ostree-OstreeRepo.html#ostree-repo-open" title="ostree_repo_open ()"><code class="function">ostree_repo_open()</code></a>).</p>
+<div class="refsect3">
+<a name="ostree-sysroot-get-repo.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_repo</p></td>
+<td class="parameter_description"><p>Repository in sysroot <em class="parameter"><code>self</code></em>
+. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/optional"><span class="acronym">optional</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-repo.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> otherwise</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-staged-deployment"></a><h3>ostree_sysroot_get_staged_deployment ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+ostree_sysroot_get_staged_deployment (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-get-staged-deployment.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-staged-deployment.returns"></a><h4>Returns</h4>
+<p>The currently staged deployment, or <code class="literal">NULL</code> if none. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.5</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-init-osname"></a><h3>ostree_sysroot_init_osname ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_init_osname (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                            <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                            <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                            <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Initialize the directory structure for an "osname", which is a
+group of operating system deployments, with a shared <code class="literal">/var</code>.  One
+is required for generating a deployment.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-init-osname.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>Name group of operating system checkouts</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2016.4</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-deployment-set-kargs"></a><h3>ostree_sysroot_deployment_set_kargs ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_deployment_set_kargs (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                     <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *deployment</code></em>,
+                                     <em class="parameter"><code><span class="type">char</span> **new_kargs</code></em>,
+                                     <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Entirely replace the kernel arguments of <em class="parameter"><code>deployment</code></em>
+ with the
+values in <em class="parameter"><code>new_kargs</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-deployment-set-kargs.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployment</p></td>
+<td class="parameter_description"><p>A deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>new_kargs</p></td>
+<td class="parameter_description"><p>Replace deployment's kernel arguments. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> utf8]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-deployment-set-mutable"></a><h3>ostree_sysroot_deployment_set_mutable ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_deployment_set_mutable (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                       <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *deployment</code></em>,
+                                       <em class="parameter"><code><span class="type">gboolean</span> is_mutable</code></em>,
+                                       <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                       <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>By default, deployment directories are not mutable.  This function
+will allow making them temporarily mutable, for example to allow
+layering additional non-OSTree content.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-deployment-set-mutable.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployment</p></td>
+<td class="parameter_description"><p>A deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>is_mutable</p></td>
+<td class="parameter_description"><p>Whether or not deployment's files can be changed</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-deployment-unlock"></a><h3>ostree_sysroot_deployment_unlock ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_deployment_unlock (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                  <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *deployment</code></em>,
+                                  <em class="parameter"><code><span class="type">OstreeDeploymentUnlockedState</span> unlocked_state</code></em>,
+                                  <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                  <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Configure the target deployment <em class="parameter"><code>deployment</code></em>
+ such that it
+is writable.  There are multiple modes, essentially differing
+in whether or not any changes persist across reboot.</p>
+<p>The <code class="literal">OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX</code> state is persistent
+across reboots.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-deployment-unlock.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployment</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>unlocked_state</p></td>
+<td class="parameter_description"><p>Transition to this unlocked state</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2016.4</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-deployment-set-pinned"></a><h3>ostree_sysroot_deployment_set_pinned ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_deployment_set_pinned (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                      <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *deployment</code></em>,
+                                      <em class="parameter"><code><span class="type">gboolean</span> is_pinned</code></em>,
+                                      <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>By default, deployments may be subject to garbage collection. Typical uses of
+libostree only retain at most 2 deployments. If <em class="parameter"><code>is_pinned</code></em>
+ is <code class="literal">TRUE</code>, a
+metadata bit will be set causing libostree to avoid automatic GC of the
+deployment. However, this is really an "advisory" note; it's still possible
+for e.g. older versions of libostree unaware of pinning to GC the deployment.</p>
+<p>This function does nothing and returns successfully if the deployment
+is already in the desired pinning state.  It is an error to try to pin
+the staged deployment (as it's not in the bootloader entries).</p>
+<div class="refsect3">
+<a name="ostree-sysroot-deployment-set-pinned.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployment</p></td>
+<td class="parameter_description"><p>A deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>is_pinned</p></td>
+<td class="parameter_description"><p>Whether or not deployment will be automatically GC'd</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-write-deployments"></a><h3>ostree_sysroot_write_deployments ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_write_deployments (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                  <em class="parameter"><code><span class="type">GPtrArray</span> *new_deployments</code></em>,
+                                  <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                  <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Older version of <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-write-deployments-with-options" title="ostree_sysroot_write_deployments_with_options ()"><code class="function">ostree_sysroot_write_deployments_with_options()</code></a>. This
+version will perform post-deployment cleanup by default.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-write-deployments.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>new_deployments</p></td>
+<td class="parameter_description"><p>List of new deployments. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> OstreeDeployment]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-write-deployments-with-options"></a><h3>ostree_sysroot_write_deployments_with_options ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_write_deployments_with_options
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code><span class="type">GPtrArray</span> *new_deployments</code></em>,
+                                <em class="parameter"><code><span class="type">OstreeSysrootWriteDeploymentsOpts</span> *opts</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Assuming <em class="parameter"><code>new_deployments</code></em>
+ have already been deployed in place on disk via
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deploy-tree" title="ostree_sysroot_deploy_tree ()"><code class="function">ostree_sysroot_deploy_tree()</code></a>, atomically update bootloader configuration. By
+default, no post-transaction cleanup will be performed. You should invoke
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-cleanup" title="ostree_sysroot_cleanup ()"><code class="function">ostree_sysroot_cleanup()</code></a> at some point after the transaction, or specify
+<code class="literal">do_postclean</code> in <em class="parameter"><code>opts</code></em>
+.  Skipping the post-transaction cleanup is useful
+if for example you want to control pruning of the repository.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-write-deployments-with-options.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>new_deployments</p></td>
+<td class="parameter_description"><p>List of new deployments. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> OstreeDeployment]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>opts</p></td>
+<td class="parameter_description"><p>Options</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2017.4</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-write-origin-file"></a><h3>ostree_sysroot_write_origin_file ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_write_origin_file (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *sysroot</code></em>,
+                                  <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *deployment</code></em>,
+                                  <em class="parameter"><code><span class="type">GKeyFile</span> *new_origin</code></em>,
+                                  <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                  <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Immediately replace the origin file of the referenced <em class="parameter"><code>deployment</code></em>
+
+with the contents of <em class="parameter"><code>new_origin</code></em>
+.  If <em class="parameter"><code>new_origin</code></em>
+ is <code class="literal">NULL</code>,
+this function will write the current origin of <em class="parameter"><code>deployment</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-write-origin-file.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>sysroot</p></td>
+<td class="parameter_description"><p>System root</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployment</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>new_origin</p></td>
+<td class="parameter_description"><p>Origin content. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-stage-tree"></a><h3>ostree_sysroot_stage_tree ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_stage_tree (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                           <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                           <em class="parameter"><code>const <span class="type">char</span> *revision</code></em>,
+                           <em class="parameter"><code><span class="type">GKeyFile</span> *origin</code></em>,
+                           <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *merge_deployment</code></em>,
+                           <em class="parameter"><code><span class="type">char</span> **override_kernel_argv</code></em>,
+                           <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> **out_new_deployment</code></em>,
+                           <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                           <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Older version of <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree-with-options" title="ostree_sysroot_stage_tree_with_options ()"><code class="function">ostree_sysroot_stage_tree_with_options()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-stage-tree.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>osname to use for merge deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>revision</p></td>
+<td class="parameter_description"><p>Checksum to add</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>origin</p></td>
+<td class="parameter_description"><p>Origin to use for upgrades. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>merge_deployment</p></td>
+<td class="parameter_description"><p>Use this deployment for merge path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>override_kernel_argv</p></td>
+<td class="parameter_description"><p>Use these as kernel arguments; if <code class="literal">NULL</code>, inherit options from provided_merge_deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> utf8]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_new_deployment</p></td>
+<td class="parameter_description"><p>The new deployment path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.5</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-stage-tree-with-options"></a><h3>ostree_sysroot_stage_tree_with_options ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_stage_tree_with_options
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *revision</code></em>,
+                                <em class="parameter"><code><span class="type">GKeyFile</span> *origin</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *merge_deployment</code></em>,
+                                <em class="parameter"><code><span class="type">OstreeSysrootDeployTreeOpts</span> *opts</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> **out_new_deployment</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Like <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deploy-tree" title="ostree_sysroot_deploy_tree ()"><code class="function">ostree_sysroot_deploy_tree()</code></a>, but "finalization" only occurs at OS
+shutdown time.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-stage-tree-with-options.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>osname to use for merge deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>revision</p></td>
+<td class="parameter_description"><p>Checksum to add</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>origin</p></td>
+<td class="parameter_description"><p>Origin to use for upgrades. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>merge_deployment</p></td>
+<td class="parameter_description"><p>Use this deployment for merge path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>opts</p></td>
+<td class="parameter_description"><p>Options</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_new_deployment</p></td>
+<td class="parameter_description"><p>The new deployment path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2020.7</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-stage-overlay-initrd"></a><h3>ostree_sysroot_stage_overlay_initrd ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_stage_overlay_initrd (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                     <em class="parameter"><code><span class="type">int</span> fd</code></em>,
+                                     <em class="parameter"><code><span class="type">char</span> **out_checksum</code></em>,
+                                     <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Stage an overlay initrd to be used in an upcoming deployment. Returns a checksum which
+can be passed to <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deploy-tree-with-options" title="ostree_sysroot_deploy_tree_with_options ()"><code class="function">ostree_sysroot_deploy_tree_with_options()</code></a> or
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree-with-options" title="ostree_sysroot_stage_tree_with_options ()"><code class="function">ostree_sysroot_stage_tree_with_options()</code></a> via the <code class="literal">overlay_initrds</code> array option.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-stage-overlay-initrd.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>fd</p></td>
+<td class="parameter_description"><p>File descriptor to overlay initrd</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_checksum</p></td>
+<td class="parameter_description"><p>Overlay initrd checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2020.7</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-deploy-tree"></a><h3>ostree_sysroot_deploy_tree ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_deploy_tree (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                            <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                            <em class="parameter"><code>const <span class="type">char</span> *revision</code></em>,
+                            <em class="parameter"><code><span class="type">GKeyFile</span> *origin</code></em>,
+                            <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *provided_merge_deployment</code></em>,
+                            <em class="parameter"><code><span class="type">char</span> **override_kernel_argv</code></em>,
+                            <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> **out_new_deployment</code></em>,
+                            <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                            <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Older version of <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree-with-options" title="ostree_sysroot_stage_tree_with_options ()"><code class="function">ostree_sysroot_stage_tree_with_options()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-deploy-tree.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>osname to use for merge deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>revision</p></td>
+<td class="parameter_description"><p>Checksum to add</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>origin</p></td>
+<td class="parameter_description"><p>Origin to use for upgrades. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>provided_merge_deployment</p></td>
+<td class="parameter_description"><p>Use this deployment for merge path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>override_kernel_argv</p></td>
+<td class="parameter_description"><p>Use these as kernel arguments; if <code class="literal">NULL</code>, inherit options from provided_merge_deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> utf8]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_new_deployment</p></td>
+<td class="parameter_description"><p>The new deployment path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.5</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-deploy-tree-with-options"></a><h3>ostree_sysroot_deploy_tree_with_options ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_deploy_tree_with_options
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *revision</code></em>,
+                                <em class="parameter"><code><span class="type">GKeyFile</span> *origin</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *provided_merge_deployment</code></em>,
+                                <em class="parameter"><code><span class="type">OstreeSysrootDeployTreeOpts</span> *opts</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> **out_new_deployment</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Check out deployment tree with revision <em class="parameter"><code>revision</code></em>
+, performing a 3
+way merge with <em class="parameter"><code>provided_merge_deployment</code></em>
+ for configuration.</p>
+<p>When booted into the sysroot, you should use the
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree" title="ostree_sysroot_stage_tree ()"><code class="function">ostree_sysroot_stage_tree()</code></a> API instead.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-deploy-tree-with-options.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>osname to use for merge deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>revision</p></td>
+<td class="parameter_description"><p>Checksum to add</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>origin</p></td>
+<td class="parameter_description"><p>Origin to use for upgrades. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>provided_merge_deployment</p></td>
+<td class="parameter_description"><p>Use this deployment for merge path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>opts</p></td>
+<td class="parameter_description"><p>Options. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_new_deployment</p></td>
+<td class="parameter_description"><p>The new deployment path. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2020.7</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-get-merge-deployment"></a><h3>ostree_sysroot_get_merge_deployment ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+ostree_sysroot_get_merge_deployment (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                     <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>);</pre>
+<p>Find the deployment to use as a configuration merge source; this is
+the first one in the current deployment list which matches osname.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-get-merge-deployment.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>Operating system group. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-get-merge-deployment.returns"></a><h4>Returns</h4>
+<p>Configuration merge deployment. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-query-deployments-for"></a><h3>ostree_sysroot_query_deployments_for ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_sysroot_query_deployments_for (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                      <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                                      <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> **out_pending</code></em>,
+                                      <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> **out_rollback</code></em>);</pre>
+<p>Find the pending and rollback deployments for <em class="parameter"><code>osname</code></em>
+. Pass <code class="literal">NULL</code> for <em class="parameter"><code>osname</code></em>
+
+to use the booted deployment's osname. By default, pending deployment is the
+first deployment in the order that matches <em class="parameter"><code>osname</code></em>
+, and <em class="parameter"><code>rollback</code></em>
+ will be the
+next one after the booted deployment, or the deployment after the pending if
+we're not looking at the booted deployment.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-query-deployments-for.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>"stateroot" name. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_pending</p></td>
+<td class="parameter_description"><p>The pending deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>][<a href="http://foldoc.org/optional"><span class="acronym">optional</span></a>][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_rollback</p></td>
+<td class="parameter_description"><p>The rollback deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>][<a href="http://foldoc.org/optional"><span class="acronym">optional</span></a>][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2017.7</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-origin-new-from-refspec"></a><h3>ostree_sysroot_origin_new_from_refspec ()</h3>
+<pre class="programlisting"><span class="returnvalue">GKeyFile</span> *
+ostree_sysroot_origin_new_from_refspec
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *self</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *refspec</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-sysroot-origin-new-from-refspec.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>refspec</p></td>
+<td class="parameter_description"><p>A refspec</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-sysroot-origin-new-from-refspec.returns"></a><h4>Returns</h4>
+<p>A new config file which sets <em class="parameter"><code>refspec</code></em>
+as an origin. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-sysroot-simple-write-deployment"></a><h3>ostree_sysroot_simple_write_deployment ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_sysroot_simple_write_deployment
+                               (<em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot"><span class="type">OstreeSysroot</span></a> *sysroot</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *new_deployment</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *merge_deployment</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysrootSimpleWriteDeploymentFlags" title="enum OstreeSysrootSimpleWriteDeploymentFlags"><span class="type">OstreeSysrootSimpleWriteDeploymentFlags</span></a> flags</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Prepend <em class="parameter"><code>new_deployment</code></em>
+ to the list of deployments, commit, and
+cleanup.  By default, all other deployments for the given <em class="parameter"><code>osname</code></em>
+
+except the merge deployment and the booted deployment will be
+garbage collected.</p>
+<p>If <a class="link" href="ostree-Root-partition-mount-point.html#OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-RETAIN:CAPS"><code class="literal">OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN</code></a> is
+specified, then all current deployments will be kept.</p>
+<p>If <a class="link" href="ostree-Root-partition-mount-point.html#OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-RETAIN-PENDING:CAPS"><code class="literal">OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING</code></a> is
+specified, then pending deployments will be kept.</p>
+<p>If <a class="link" href="ostree-Root-partition-mount-point.html#OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-RETAIN-ROLLBACK:CAPS"><code class="literal">OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK</code></a> is
+specified, then rollback deployments will be kept.</p>
+<p>If <a class="link" href="ostree-Root-partition-mount-point.html#OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-NOT-DEFAULT:CAPS"><code class="literal">OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT</code></a> is
+specified, then instead of prepending, the new deployment will be
+added right after the booted or merge deployment, instead of first.</p>
+<p>If <a class="link" href="ostree-Root-partition-mount-point.html#OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-NO-CLEAN:CAPS"><code class="literal">OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN</code></a> is
+specified, then no cleanup will be performed after adding the
+deployment. Make sure to call <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-cleanup" title="ostree_sysroot_cleanup ()"><code class="function">ostree_sysroot_cleanup()</code></a> sometime
+later, instead.</p>
+<div class="refsect3">
+<a name="ostree-sysroot-simple-write-deployment.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>sysroot</p></td>
+<td class="parameter_description"><p>Sysroot</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>OS name. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>new_deployment</p></td>
+<td class="parameter_description"><p>Prepend this deployment to the list</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>merge_deployment</p></td>
+<td class="parameter_description"><p>Use this deployment for configuration merge. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>flags</p></td>
+<td class="parameter_description"><p>Flags controlling behavior</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>Cancellable</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>Error</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-Root-partition-mount-point.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeSysroot"></a><h3>OstreeSysroot</h3>
+<pre class="programlisting">typedef struct OstreeSysroot OstreeSysroot;
+</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeSysrootSimpleWriteDeploymentFlags"></a><h3>enum OstreeSysrootSimpleWriteDeploymentFlags</h3>
+<div class="refsect3">
+<a name="OstreeSysrootSimpleWriteDeploymentFlags.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="enum_members_name">
+<col class="enum_members_description">
+<col width="200px" class="enum_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-NONE:CAPS"></a>OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE</p></td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-RETAIN:CAPS"></a>OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN</p></td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-NOT-DEFAULT:CAPS"></a>OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT</p></td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-NO-CLEAN:CAPS"></a>OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN</p></td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-RETAIN-PENDING:CAPS"></a>OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING</p></td>
+<td> </td>
+<td> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-SYSROOT-SIMPLE-WRITE-DEPLOYMENT-FLAGS-RETAIN-ROLLBACK:CAPS"></a>OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK</p></td>
+<td> </td>
+<td> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.32</div>
+</body>
+</html>

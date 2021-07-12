@@ -1,0 +1,842 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ostree-deployment: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-ostree-checksum-input-stream.html" title="ostree-checksum-input-stream">
+<link rel="next" href="ostree-ostree-diff.html" title="ostree-diff">
+<meta name="generator" content="GTK-Doc V1.32 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-ostree-deployment.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-ostree-checksum-input-stream.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-ostree-diff.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-ostree-deployment"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-ostree-deployment.top_of_page"></a>ostree-deployment</span></h2>
+<p>ostree-deployment</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-ostree-deployment.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guint</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-hash" title="ostree_deployment_hash ()">ostree_deployment_hash</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-equal" title="ostree_deployment_equal ()">ostree_deployment_equal</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-new" title="ostree_deployment_new ()">ostree_deployment_new</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">int</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-index" title="ostree_deployment_get_index ()">ostree_deployment_get_index</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-osname" title="ostree_deployment_get_osname ()">ostree_deployment_get_osname</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">int</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-deployserial" title="ostree_deployment_get_deployserial ()">ostree_deployment_get_deployserial</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-csum" title="ostree_deployment_get_csum ()">ostree_deployment_get_csum</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-bootcsum" title="ostree_deployment_get_bootcsum ()">ostree_deployment_get_bootcsum</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">int</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-bootserial" title="ostree_deployment_get_bootserial ()">ostree_deployment_get_bootserial</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-bootconfig-parser.html#OstreeBootconfigParser" title="OstreeBootconfigParser"><span class="returnvalue">OstreeBootconfigParser</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-bootconfig" title="ostree_deployment_get_bootconfig ()">ostree_deployment_get_bootconfig</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GKeyFile</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-origin" title="ostree_deployment_get_origin ()">ostree_deployment_get_origin</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-origin-relpath" title="ostree_deployment_get_origin_relpath ()">ostree_deployment_get_origin_relpath</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">OstreeDeploymentUnlockedState</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-unlocked" title="ostree_deployment_get_unlocked ()">ostree_deployment_get_unlocked</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-is-pinned" title="ostree_deployment_is_pinned ()">ostree_deployment_is_pinned</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-is-staged" title="ostree_deployment_is_staged ()">ostree_deployment_is_staged</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-index" title="ostree_deployment_set_index ()">ostree_deployment_set_index</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-bootserial" title="ostree_deployment_set_bootserial ()">ostree_deployment_set_bootserial</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-bootconfig" title="ostree_deployment_set_bootconfig ()">ostree_deployment_set_bootconfig</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-origin" title="ostree_deployment_set_origin ()">ostree_deployment_set_origin</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-origin-remove-transient-state" title="ostree_deployment_origin_remove_transient_state ()">ostree_deployment_origin_remove_transient_state</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-clone" title="ostree_deployment_clone ()">ostree_deployment_clone</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-unlocked-state-to-string" title="ostree_deployment_unlocked_state_to_string ()">ostree_deployment_unlocked_state_to_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-deployment.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody><tr>
+<td class="datatype_keyword"> </td>
+<td class="function_name"><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment">OstreeDeployment</a></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-deployment.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-deployment.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-deployment-hash"></a><h3>ostree_deployment_hash ()</h3>
+<pre class="programlisting"><span class="returnvalue">guint</span>
+ostree_deployment_hash (<em class="parameter"><code><span class="type">gconstpointer</span> v</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-hash.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>v</p></td>
+<td class="parameter_description"><p>Deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/type"><span class="acronym">type</span></a> OstreeDeployment]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-hash.returns"></a><h4>Returns</h4>
+<p> An integer suitable for use in a <code class="literal">GHashTable</code></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-equal"></a><h3>ostree_deployment_equal ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_deployment_equal (<em class="parameter"><code><span class="type">gconstpointer</span> ap</code></em>,
+                         <em class="parameter"><code><span class="type">gconstpointer</span> bp</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-equal.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>ap</p></td>
+<td class="parameter_description"><p>A deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/type"><span class="acronym">type</span></a> OstreeDeployment]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>bp</p></td>
+<td class="parameter_description"><p>A deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/type"><span class="acronym">type</span></a> OstreeDeployment]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-equal.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if deployments have the same osname, csum, and deployserial</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-new"></a><h3>ostree_deployment_new ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+ostree_deployment_new (<em class="parameter"><code><span class="type">int</span> index</code></em>,
+                       <em class="parameter"><code>const <span class="type">char</span> *osname</code></em>,
+                       <em class="parameter"><code>const <span class="type">char</span> *csum</code></em>,
+                       <em class="parameter"><code><span class="type">int</span> deployserial</code></em>,
+                       <em class="parameter"><code>const <span class="type">char</span> *bootcsum</code></em>,
+                       <em class="parameter"><code><span class="type">int</span> bootserial</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-new.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>index</p></td>
+<td class="parameter_description"><p>Global index into the bootloader entries</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>osname</p></td>
+<td class="parameter_description"><p>"stateroot" for this deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>csum</p></td>
+<td class="parameter_description"><p>OSTree commit that will be deployed</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>deployserial</p></td>
+<td class="parameter_description"><p>Unique counter</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>bootcsum</p></td>
+<td class="parameter_description"><p>Kernel/initrd checksum. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>bootserial</p></td>
+<td class="parameter_description"><p>Unique index</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-new.returns"></a><h4>Returns</h4>
+<p>New deployment. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-index"></a><h3>ostree_deployment_get_index ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>
+ostree_deployment_get_index (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-get-index.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-get-index.returns"></a><h4>Returns</h4>
+<p> The global index into the bootloader ordering</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-osname"></a><h3>ostree_deployment_get_osname ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *
+ostree_deployment_get_osname (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-deployserial"></a><h3>ostree_deployment_get_deployserial ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>
+ostree_deployment_get_deployserial (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-csum"></a><h3>ostree_deployment_get_csum ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *
+ostree_deployment_get_csum (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-bootcsum"></a><h3>ostree_deployment_get_bootcsum ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *
+ostree_deployment_get_bootcsum (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-bootserial"></a><h3>ostree_deployment_get_bootserial ()</h3>
+<pre class="programlisting"><span class="returnvalue">int</span>
+ostree_deployment_get_bootserial (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-bootconfig"></a><h3>ostree_deployment_get_bootconfig ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-bootconfig-parser.html#OstreeBootconfigParser" title="OstreeBootconfigParser"><span class="returnvalue">OstreeBootconfigParser</span></a> *
+ostree_deployment_get_bootconfig (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-get-bootconfig.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-get-bootconfig.returns"></a><h4>Returns</h4>
+<p>Boot configuration. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-origin"></a><h3>ostree_deployment_get_origin ()</h3>
+<pre class="programlisting"><span class="returnvalue">GKeyFile</span> *
+ostree_deployment_get_origin (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-get-origin.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-get-origin.returns"></a><h4>Returns</h4>
+<p>Origin. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-origin-relpath"></a><h3>ostree_deployment_get_origin_relpath ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_deployment_get_origin_relpath (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<p>Note this function only returns a *relative* path - if you want to
+access, it, you must either use fd-relative api such as <code class="function">openat()</code>,
+or concatenate it with the full <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-path" title="ostree_sysroot_get_path ()"><code class="function">ostree_sysroot_get_path()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-deployment-get-origin-relpath.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>A deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-get-origin-relpath.returns"></a><h4>Returns</h4>
+<p>Path to deployment root directory, relative to sysroot. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-get-unlocked"></a><h3>ostree_deployment_get_unlocked ()</h3>
+<pre class="programlisting"><span class="returnvalue">OstreeDeploymentUnlockedState</span>
+ostree_deployment_get_unlocked (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<p class="since">Since: 2016.4</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-is-pinned"></a><h3>ostree_deployment_is_pinned ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_deployment_is_pinned (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<p>See <a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-pinned" title="ostree_sysroot_deployment_set_pinned ()"><code class="function">ostree_sysroot_deployment_set_pinned()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-deployment-is-pinned.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-is-pinned.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if deployment will not be subject to GC</p>
+</div>
+<p class="since">Since: 2018.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-is-staged"></a><h3>ostree_deployment_is_staged ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_deployment_is_staged (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-is-staged.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-is-staged.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if deployment should be "finalized" at shutdown time</p>
+</div>
+<p class="since">Since: 2018.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-set-index"></a><h3>ostree_deployment_set_index ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_deployment_set_index (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>,
+                             <em class="parameter"><code><span class="type">int</span> index</code></em>);</pre>
+<p>Sets the global index into the bootloader ordering.</p>
+<div class="refsect3">
+<a name="ostree-deployment-set-index.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>index</p></td>
+<td class="parameter_description"><p>Index into bootloader ordering</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-set-bootserial"></a><h3>ostree_deployment_set_bootserial ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_deployment_set_bootserial (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>,
+                                  <em class="parameter"><code><span class="type">int</span> index</code></em>);</pre>
+<p>Should never have been made public API; don't use this.</p>
+<div class="refsect3">
+<a name="ostree-deployment-set-bootserial.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>index</p></td>
+<td class="parameter_description"><p>Don't use this</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-set-bootconfig"></a><h3>ostree_deployment_set_bootconfig ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_deployment_set_bootconfig (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>,
+                                  <em class="parameter"><code><a class="link" href="ostree-ostree-bootconfig-parser.html#OstreeBootconfigParser" title="OstreeBootconfigParser"><span class="type">OstreeBootconfigParser</span></a> *bootconfig</code></em>);</pre>
+<p>Set or clear the bootloader configuration.</p>
+<div class="refsect3">
+<a name="ostree-deployment-set-bootconfig.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>bootconfig</p></td>
+<td class="parameter_description"><p>Bootloader configuration object. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-set-origin"></a><h3>ostree_deployment_set_origin ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_deployment_set_origin (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>,
+                              <em class="parameter"><code><span class="type">GKeyFile</span> *origin</code></em>);</pre>
+<p>Replace the "origin", which is a description of the source
+of the deployment and how to update to the next version.</p>
+<div class="refsect3">
+<a name="ostree-deployment-set-origin.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>origin</p></td>
+<td class="parameter_description"><p>Set the origin for this deployment. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-origin-remove-transient-state"></a><h3>ostree_deployment_origin_remove_transient_state ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_deployment_origin_remove_transient_state
+                               (<em class="parameter"><code><span class="type">GKeyFile</span> *origin</code></em>);</pre>
+<p>The intention of an origin file is primarily describe the "inputs" that
+resulted in a deployment, and it's commonly used to derive the new state. For
+example, a key value (in pure libostree mode) is the "refspec". However,
+libostree (or other applications) may want to store "transient" state that
+should not be carried across upgrades.</p>
+<p>This function just removes all members of the <code class="literal">libostree-transient</code> group.
+The name of that group is available to all libostree users; best practice
+would be to prefix values underneath there with a short identifier for your
+software.</p>
+<p>Additionally, this function will remove the <code class="literal">origin/unlocked</code> and
+<code class="literal">origin/override-commit</code> members; these should be considered transient state
+that should have been under an explicit group.</p>
+<div class="refsect3">
+<a name="ostree-deployment-origin-remove-transient-state.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>origin</p></td>
+<td class="parameter_description"><p>An origin</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-clone"></a><h3>ostree_deployment_clone ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="returnvalue">OstreeDeployment</span></a> *
+ostree_deployment_clone (<em class="parameter"><code><a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment"><span class="type">OstreeDeployment</span></a> *self</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-clone.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>Deployment</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-deployment-clone.returns"></a><h4>Returns</h4>
+<p>New deep copy of <em class="parameter"><code>self</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-deployment-unlocked-state-to-string"></a><h3>ostree_deployment_unlocked_state_to_string ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *
+ostree_deployment_unlocked_state_to_string
+                               (<em class="parameter"><code><span class="type">OstreeDeploymentUnlockedState</span> state</code></em>);</pre>
+<div class="refsect3">
+<a name="ostree-deployment-unlocked-state-to-string.returns"></a><h4>Returns</h4>
+<p>Description of state. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2016.4</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-deployment.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeDeployment"></a><h3>OstreeDeployment</h3>
+<pre class="programlisting">typedef struct {
+  GObject       parent_instance;
+
+  int index;
+  char *osname;
+  char *csum;
+  int deployserial;
+  char *bootcsum;
+  int bootserial;
+  OstreeBootconfigParser *bootconfig;
+  GKeyFile *origin;
+  OstreeDeploymentUnlockedState unlocked;
+  gboolean staged;
+  char **overlay_initrds;
+  char *overlay_initrds_id;
+} OstreeDeployment;
+</pre>
+<div class="refsect3">
+<a name="OstreeDeployment.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="struct_members_name">
+<col class="struct_members_description">
+<col width="200px" class="struct_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="struct_member_name"><p><span class="type">int</span> <em class="structfield"><code><a name="OstreeDeployment.index"></a>index</code></em>;</p></td>
+<td class="struct_member_description"><p>Global offset</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">char</span> *<em class="structfield"><code><a name="OstreeDeployment.osname"></a>osname</code></em>;</p></td>
+<td class="struct_member_description"> </td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">char</span> *<em class="structfield"><code><a name="OstreeDeployment.csum"></a>csum</code></em>;</p></td>
+<td class="struct_member_description"><p>OSTree checksum of tree</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">int</span> <em class="structfield"><code><a name="OstreeDeployment.deployserial"></a>deployserial</code></em>;</p></td>
+<td class="struct_member_description"><p>How many times this particular csum appears in deployment list</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">char</span> *<em class="structfield"><code><a name="OstreeDeployment.bootcsum"></a>bootcsum</code></em>;</p></td>
+<td class="struct_member_description"><p>Checksum of kernel+initramfs</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">int</span> <em class="structfield"><code><a name="OstreeDeployment.bootserial"></a>bootserial</code></em>;</p></td>
+<td class="struct_member_description"><p>An integer assigned to this tree per its ${bootcsum}</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><a class="link" href="ostree-ostree-bootconfig-parser.html#OstreeBootconfigParser" title="OstreeBootconfigParser"><span class="type">OstreeBootconfigParser</span></a> *<em class="structfield"><code><a name="OstreeDeployment.bootconfig"></a>bootconfig</code></em>;</p></td>
+<td class="struct_member_description"><p>Bootloader configuration</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">GKeyFile</span> *<em class="structfield"><code><a name="OstreeDeployment.origin"></a>origin</code></em>;</p></td>
+<td class="struct_member_description"><p>How to construct an upgraded version of this tree</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">OstreeDeploymentUnlockedState</span> <em class="structfield"><code><a name="OstreeDeployment.unlocked"></a>unlocked</code></em>;</p></td>
+<td class="struct_member_description"><p>The unlocked state</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">gboolean</span> <em class="structfield"><code><a name="OstreeDeployment.staged"></a>staged</code></em>;</p></td>
+<td class="struct_member_description"><p>TRUE iff this deployment is staged</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">char</span> **<em class="structfield"><code><a name="OstreeDeployment.overlay-initrds"></a>overlay_initrds</code></em>;</p></td>
+<td class="struct_member_description"><p>Checksums of staged additional initrds for this deployment</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+<tr>
+<td class="struct_member_name"><p><span class="type">char</span> *<em class="structfield"><code><a name="OstreeDeployment.overlay-initrds-id"></a>overlay_initrds_id</code></em>;</p></td>
+<td class="struct_member_description"><p>Unique ID generated from initrd checksums; used to compare deployments</p></td>
+<td class="struct_member_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.32</div>
+</body>
+</html>

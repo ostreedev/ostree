@@ -1,0 +1,754 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>GPG signature verification results: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">
+<link rel="next" href="ostree-Signature-management.html" title="Signature management">
+<meta name="generator" content="GTK-Doc V1.32 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-GPG-signature-verification-results.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-Simple-upgrade-class.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-Signature-management.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-GPG-signature-verification-results"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-GPG-signature-verification-results.top_of_page"></a>GPG signature verification results</span></h2>
+<p>GPG signature verification results — Inspect detached GPG signatures</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-GPG-signature-verification-results.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guint</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-all" title="ostree_gpg_verify_result_count_all ()">ostree_gpg_verify_result_count_all</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guint</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-valid" title="ostree_gpg_verify_result_count_valid ()">ostree_gpg_verify_result_count_valid</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-lookup" title="ostree_gpg_verify_result_lookup ()">ostree_gpg_verify_result_lookup</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GVariant</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get" title="ostree_gpg_verify_result_get ()">ostree_gpg_verify_result_get</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GVariant</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get-all" title="ostree_gpg_verify_result_get_all ()">ostree_gpg_verify_result_get_all</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-describe" title="ostree_gpg_verify_result_describe ()">ostree_gpg_verify_result_describe</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-describe-variant" title="ostree_gpg_verify_result_describe_variant ()">ostree_gpg_verify_result_describe_variant</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-require-valid-signature" title="ostree_gpg_verify_result_require_valid_signature ()">ostree_gpg_verify_result_require_valid_signature</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-GPG-signature-verification-results.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="datatype_keyword">enum</td>
+<td class="function_name"><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgError" title="enum OstreeGpgError">OstreeGpgError</a></td>
+</tr>
+<tr>
+<td class="typedef_keyword">typedef</td>
+<td class="function_name"><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult">OstreeGpgVerifyResult</a></td>
+</tr>
+<tr>
+<td class="datatype_keyword">enum</td>
+<td class="function_name"><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr">OstreeGpgSignatureAttr</a></td>
+</tr>
+<tr>
+<td class="datatype_keyword">enum</td>
+<td class="function_name"><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureFormatFlags" title="enum OstreeGpgSignatureFormatFlags">OstreeGpgSignatureFormatFlags</a></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-GPG-signature-verification-results.description"></a><h2>Description</h2>
+<p><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> contains verification details for GPG signatures
+read from a detached <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> metadata object.</p>
+<p>Use <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-all" title="ostree_gpg_verify_result_count_all ()"><code class="function">ostree_gpg_verify_result_count_all()</code></a> and
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-valid" title="ostree_gpg_verify_result_count_valid ()"><code class="function">ostree_gpg_verify_result_count_valid()</code></a> to quickly check overall signature
+validity.</p>
+<p>Use <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-lookup" title="ostree_gpg_verify_result_lookup ()"><code class="function">ostree_gpg_verify_result_lookup()</code></a> to find a signature by the key ID
+or fingerprint of the signing key.</p>
+<p>For more in-depth inspection, such as presenting signature details to the
+user, pass an array of attribute values to <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get" title="ostree_gpg_verify_result_get ()"><code class="function">ostree_gpg_verify_result_get()</code></a>
+or get all signature details with <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get-all" title="ostree_gpg_verify_result_get_all ()"><code class="function">ostree_gpg_verify_result_get_all()</code></a>.</p>
+</div>
+<div class="refsect1">
+<a name="ostree-GPG-signature-verification-results.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-count-all"></a><h3>ostree_gpg_verify_result_count_all ()</h3>
+<pre class="programlisting"><span class="returnvalue">guint</span>
+ostree_gpg_verify_result_count_all (<em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> *result</code></em>);</pre>
+<p>Counts all the signatures in <em class="parameter"><code>result</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-count-all.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-count-all.returns"></a><h4>Returns</h4>
+<p> signature count</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-count-valid"></a><h3>ostree_gpg_verify_result_count_valid ()</h3>
+<pre class="programlisting"><span class="returnvalue">guint</span>
+ostree_gpg_verify_result_count_valid (<em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> *result</code></em>);</pre>
+<p>Counts only the valid signatures in <em class="parameter"><code>result</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-count-valid.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-count-valid.returns"></a><h4>Returns</h4>
+<p> valid signature count</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-lookup"></a><h3>ostree_gpg_verify_result_lookup ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_gpg_verify_result_lookup (<em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> *result</code></em>,
+                                 <em class="parameter"><code>const <span class="type">gchar</span> *key_id</code></em>,
+                                 <em class="parameter"><code><span class="type">guint</span> *out_signature_index</code></em>);</pre>
+<p>Searches <em class="parameter"><code>result</code></em>
+ for a signature signed by <em class="parameter"><code>key_id</code></em>
+.  If a match is found,
+the function returns <code class="literal">TRUE</code> and sets <em class="parameter"><code>out_signature_index</code></em>
+ so that further
+signature details can be obtained through <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get" title="ostree_gpg_verify_result_get ()"><code class="function">ostree_gpg_verify_result_get()</code></a>.
+If no match is found, the function returns <code class="literal">FALSE</code> and leaves
+<em class="parameter"><code>out_signature_index</code></em>
+ unchanged.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-lookup.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>key_id</p></td>
+<td class="parameter_description"><p>a GPG key ID or fingerprint</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>out_signature_index</p></td>
+<td class="parameter_description"><p>return location for the index of the signature
+signed by <em class="parameter"><code>key_id</code></em>
+, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/out"><span class="acronym">out</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-lookup.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> on failure</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-get"></a><h3>ostree_gpg_verify_result_get ()</h3>
+<pre class="programlisting"><span class="returnvalue">GVariant</span> *
+ostree_gpg_verify_result_get (<em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> *result</code></em>,
+                              <em class="parameter"><code><span class="type">guint</span> signature_index</code></em>,
+                              <em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr"><span class="type">OstreeGpgSignatureAttr</span></a> *attrs</code></em>,
+                              <em class="parameter"><code><span class="type">guint</span> n_attrs</code></em>);</pre>
+<p>Builds a <span class="type">GVariant</span> tuple of requested attributes for the GPG signature at
+<em class="parameter"><code>signature_index</code></em>
+ in <em class="parameter"><code>result</code></em>
+.  See the <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr"><span class="type">OstreeGpgSignatureAttr</span></a> description
+for the <span class="type">GVariantType</span> of each available attribute.</p>
+<p>It is a programmer error to request an invalid <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr"><span class="type">OstreeGpgSignatureAttr</span></a> or
+an invalid <em class="parameter"><code>signature_index</code></em>
+.  Use <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-all" title="ostree_gpg_verify_result_count_all ()"><code class="function">ostree_gpg_verify_result_count_all()</code></a> to
+find the number of signatures in <em class="parameter"><code>result</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-get.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>signature_index</p></td>
+<td class="parameter_description"><p>which signature to get attributes from</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>attrs</p></td>
+<td class="parameter_description"><p>Array of requested attributes. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> length=n_attrs]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>n_attrs</p></td>
+<td class="parameter_description"><p>Length of the <em class="parameter"><code>attrs</code></em>
+array</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-get.returns"></a><h4>Returns</h4>
+<p> a new, floating, <span class="type">GVariant</span> tuple</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-get-all"></a><h3>ostree_gpg_verify_result_get_all ()</h3>
+<pre class="programlisting"><span class="returnvalue">GVariant</span> *
+ostree_gpg_verify_result_get_all (<em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> *result</code></em>,
+                                  <em class="parameter"><code><span class="type">guint</span> signature_index</code></em>);</pre>
+<p>Builds a <span class="type">GVariant</span> tuple of all available attributes for the GPG signature
+at <em class="parameter"><code>signature_index</code></em>
+ in <em class="parameter"><code>result</code></em>
+.</p>
+<p>The child values in the returned <span class="type">GVariant</span> tuple are ordered to match the
+<a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr"><span class="type">OstreeGpgSignatureAttr</span></a> enumeration, which means the enum values can be
+used as index values in functions like <code class="function">g_variant_get_child()</code>.  See the
+<a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr"><span class="type">OstreeGpgSignatureAttr</span></a> description for the <span class="type">GVariantType</span> of each
+available attribute.</p>
+<div class="note"><p>
+    The <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr"><span class="type">OstreeGpgSignatureAttr</span></a> enumeration may be extended in the future
+    with new attributes, which would affect the <span class="type">GVariant</span> tuple returned by
+    this function.  While the position and type of current child values in
+    the <span class="type">GVariant</span> tuple will not change, to avoid backward-compatibility
+    issues <span class="emphasis"><em>please do not depend on the tuple's overall size or
+    type signature</em></span>.
+  </p></div>
+<p>It is a programmer error to request an invalid <em class="parameter"><code>signature_index</code></em>
+.  Use
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-all" title="ostree_gpg_verify_result_count_all ()"><code class="function">ostree_gpg_verify_result_count_all()</code></a> to find the number of signatures in
+<em class="parameter"><code>result</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-get-all.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>signature_index</p></td>
+<td class="parameter_description"><p>which signature to get attributes from</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-get-all.returns"></a><h4>Returns</h4>
+<p> a new, floating, <span class="type">GVariant</span> tuple</p>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-describe"></a><h3>ostree_gpg_verify_result_describe ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_gpg_verify_result_describe (<em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> *result</code></em>,
+                                   <em class="parameter"><code><span class="type">guint</span> signature_index</code></em>,
+                                   <em class="parameter"><code><span class="type">GString</span> *output_buffer</code></em>,
+                                   <em class="parameter"><code>const <span class="type">gchar</span> *line_prefix</code></em>,
+                                   <em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureFormatFlags" title="enum OstreeGpgSignatureFormatFlags"><span class="type">OstreeGpgSignatureFormatFlags</span></a> flags</code></em>);</pre>
+<p>Appends a brief, human-readable description of the GPG signature at
+<em class="parameter"><code>signature_index</code></em>
+ in <em class="parameter"><code>result</code></em>
+ to the <em class="parameter"><code>output_buffer</code></em>
+.  The description
+spans multiple lines.  A <em class="parameter"><code>line_prefix</code></em>
+ string, if given, will precede
+each line of the description.</p>
+<p>The <em class="parameter"><code>flags</code></em>
+ argument is reserved for future variations to the description
+format.  Currently must be 0.</p>
+<p>It is a programmer error to request an invalid <em class="parameter"><code>signature_index</code></em>
+.  Use
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-all" title="ostree_gpg_verify_result_count_all ()"><code class="function">ostree_gpg_verify_result_count_all()</code></a> to find the number of signatures in
+<em class="parameter"><code>result</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-describe.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>signature_index</p></td>
+<td class="parameter_description"><p>which signature to describe</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>output_buffer</p></td>
+<td class="parameter_description"><p>a <span class="type">GString</span> to hold the description</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>line_prefix</p></td>
+<td class="parameter_description"><p>optional line prefix string. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>flags</p></td>
+<td class="parameter_description"><p>flags to adjust the description format</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-describe-variant"></a><h3>ostree_gpg_verify_result_describe_variant ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_gpg_verify_result_describe_variant
+                               (<em class="parameter"><code><span class="type">GVariant</span> *variant</code></em>,
+                                <em class="parameter"><code><span class="type">GString</span> *output_buffer</code></em>,
+                                <em class="parameter"><code>const <span class="type">gchar</span> *line_prefix</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureFormatFlags" title="enum OstreeGpgSignatureFormatFlags"><span class="type">OstreeGpgSignatureFormatFlags</span></a> flags</code></em>);</pre>
+<p>Similar to <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-describe" title="ostree_gpg_verify_result_describe ()"><code class="function">ostree_gpg_verify_result_describe()</code></a> but takes a <span class="type">GVariant</span> of
+all attributes for a GPG signature instead of an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a>
+and signature index.</p>
+<p>The <em class="parameter"><code>variant</code></em>
+ <span class="emphasis"><em>MUST</em></span> have been created by
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get-all" title="ostree_gpg_verify_result_get_all ()"><code class="function">ostree_gpg_verify_result_get_all()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-describe-variant.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>variant</p></td>
+<td class="parameter_description"><p>a <span class="type">GVariant</span> from <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get-all" title="ostree_gpg_verify_result_get_all ()"><code class="function">ostree_gpg_verify_result_get_all()</code></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>output_buffer</p></td>
+<td class="parameter_description"><p>a <span class="type">GString</span> to hold the description</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>line_prefix</p></td>
+<td class="parameter_description"><p>optional line prefix string. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/allow-none"><span class="acronym">allow-none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>flags</p></td>
+<td class="parameter_description"><p>flags to adjust the description format</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-gpg-verify-result-require-valid-signature"></a><h3>ostree_gpg_verify_result_require_valid_signature ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_gpg_verify_result_require_valid_signature
+                               (<em class="parameter"><code><a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a> *result</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Checks if the result contains at least one signature from the
+trusted keyring.  You can call this function immediately after
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-verify-summary" title="ostree_repo_verify_summary ()"><code class="function">ostree_repo_verify_summary()</code></a> or <a class="link" href="ostree-OstreeRepo.html#ostree-repo-verify-commit-ext" title="ostree_repo_verify_commit_ext ()"><code class="function">ostree_repo_verify_commit_ext()</code></a> -
+it will handle the <code class="literal">NULL</code> <em class="parameter"><code>result</code></em>
+ and filled <em class="parameter"><code>error</code></em>
+ too.</p>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-require-valid-signature.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>A <span class="type">GError</span></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-gpg-verify-result-require-valid-signature.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>result</code></em>
+was not <code class="literal">NULL</code> and had at least one
+signature from trusted keyring, otherwise <code class="literal">FALSE</code></p>
+</div>
+<p class="since">Since: 2016.6</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-GPG-signature-verification-results.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeGpgError"></a><h3>enum OstreeGpgError</h3>
+<p>Errors returned by signature creation and verification operations in OSTree.
+These may be returned by any API which creates or verifies signatures.</p>
+<div class="refsect3">
+<a name="OstreeGpgError.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="enum_members_name">
+<col class="enum_members_description">
+<col width="200px" class="enum_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-ERROR-NO-SIGNATURE:CAPS"></a>OSTREE_GPG_ERROR_NO_SIGNATURE</p></td>
+<td class="enum_member_description">
+<p>A signature was expected, but not found.</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-ERROR-INVALID-SIGNATURE:CAPS"></a>OSTREE_GPG_ERROR_INVALID_SIGNATURE</p></td>
+<td class="enum_member_description">
+<p>A signature was malformed.</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-ERROR-MISSING-KEY:CAPS"></a>OSTREE_GPG_ERROR_MISSING_KEY</p></td>
+<td class="enum_member_description">
+<p>A signature was found, but was created with a key not in the configured keyrings.</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-ERROR-EXPIRED-SIGNATURE:CAPS"></a>OSTREE_GPG_ERROR_EXPIRED_SIGNATURE</p></td>
+<td class="enum_member_description">
+<p>A signature was expired. Since: 2020.1.</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-ERROR-EXPIRED-KEY:CAPS"></a>OSTREE_GPG_ERROR_EXPIRED_KEY</p></td>
+<td class="enum_member_description">
+<p>A signature was found, but the key used to
+sign it has expired. Since: 2020.1.</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-ERROR-REVOKED-KEY:CAPS"></a>OSTREE_GPG_ERROR_REVOKED_KEY</p></td>
+<td class="enum_member_description">
+<p>A signature was found, but the key used to
+sign it has been revoked. Since: 2020.1.</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2017.10</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeGpgVerifyResult"></a><h3>OstreeGpgVerifyResult</h3>
+<pre class="programlisting">typedef struct OstreeGpgVerifyResult OstreeGpgVerifyResult;
+</pre>
+<p>Private instance structure.</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeGpgSignatureAttr"></a><h3>enum OstreeGpgSignatureAttr</h3>
+<p>Signature attributes available from an <a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult"><span class="type">OstreeGpgVerifyResult</span></a>.
+The attribute's <span class="type">GVariantType</span> is shown in brackets.</p>
+<div class="refsect3">
+<a name="OstreeGpgSignatureAttr.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="enum_members_name">
+<col class="enum_members_description">
+<col width="200px" class="enum_members_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-VALID:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_VALID</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_BOOLEAN</span>] Is the signature valid?</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-SIG-EXPIRED:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_BOOLEAN</span>] Has the signature expired?</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-KEY-EXPIRED:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_BOOLEAN</span>] Has the signing key expired?</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-KEY-REVOKED:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_BOOLEAN</span>] Has the signing key been revoked?</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-KEY-MISSING:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_BOOLEAN</span>] Is the signing key missing?</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-FINGERPRINT:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_STRING</span>] Fingerprint of the signing key</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-TIMESTAMP:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_TIMESTAMP</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_INT64</span>] Signature creation Unix timestamp</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-EXP-TIMESTAMP:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_EXP_TIMESTAMP</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_INT64</span>] Signature expiration Unix timestamp (0 if no
+expiration)</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-PUBKEY-ALGO-NAME:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_STRING</span>] Name of the public key algorithm used to create
+the signature</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-HASH-ALGO-NAME:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_STRING</span>] Name of the hash algorithm used to create the
+signature</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-USER-NAME:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_USER_NAME</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_STRING</span>] The name of the signing key's primary user</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-USER-EMAIL:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_STRING</span>] The email address of the signing key's primary
+user</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-FINGERPRINT-PRIMARY:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_STRING</span>] Fingerprint of the signing key's primary key
+(will be the same as OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT if the
+the signature is already from the primary key rather than a subkey,
+and will be the empty string if the key is missing.)</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-KEY-EXP-TIMESTAMP:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_INT64</span>] Key expiration Unix timestamp (0 if no
+expiration or if the key is missing)</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+<tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-ATTR-KEY-EXP-TIMESTAMP-PRIMARY:CAPS"></a>OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY</p></td>
+<td class="enum_member_description">
+<p>[<span class="type">G_VARIANT_TYPE_INT64</span>] Key expiration Unix timestamp of the signing key's
+primary key (will be the same as OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP
+if the signing key is the primary key and 0 if no expiration or if the key
+is missing)</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeGpgSignatureFormatFlags"></a><h3>enum OstreeGpgSignatureFormatFlags</h3>
+<p>Formatting flags for <a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-describe" title="ostree_gpg_verify_result_describe ()"><code class="function">ostree_gpg_verify_result_describe()</code></a>.  Currently
+there's only one possible output format, but this enumeration allows
+for future variations.</p>
+<div class="refsect3">
+<a name="OstreeGpgSignatureFormatFlags.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="300px" class="enum_members_name">
+<col class="enum_members_description">
+<col width="200px" class="enum_members_annotations">
+</colgroup>
+<tbody><tr>
+<td class="enum_member_name"><p><a name="OSTREE-GPG-SIGNATURE-FORMAT-DEFAULT:CAPS"></a>OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT</p></td>
+<td class="enum_member_description">
+<p>Use the default output format</p>
+</td>
+<td class="enum_member_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.32</div>
+</body>
+</html>

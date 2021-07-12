@@ -1,0 +1,382 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  
+    <title>Atomic Upgrades - ostreedev/ostree</title>
+
+    
+  
+
+  <link rel="shortcut icon" href="/ostree/favicon.ico" type="image/x-icon">
+
+  <link rel="stylesheet" href="/ostree/assets/css/just-the-docs-default.css">
+
+  
+
+  
+    <script type="text/javascript" src="/ostree/assets/js/vendor/lunr.min.js"></script>
+  
+  <script type="text/javascript" src="/ostree/assets/js/just-the-docs.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>Atomic Upgrades | ostreedev/ostree</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="Atomic Upgrades" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="ostree documentation" />
+<meta property="og:description" content="ostree documentation" />
+<link rel="canonical" href="https://ostreedev.github.io/ostree/atomic-upgrades/" />
+<meta property="og:url" content="https://ostreedev.github.io/ostree/atomic-upgrades/" />
+<meta property="og:site_name" content="ostreedev/ostree" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Atomic Upgrades" />
+<script type="application/ld+json">
+{"description":"ostree documentation","url":"https://ostreedev.github.io/ostree/atomic-upgrades/","@type":"WebPage","headline":"Atomic Upgrades","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  
+
+</head>
+
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="svg-link" viewBox="0 0 24 24">
+      <title>Link</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+    </symbol>
+    <symbol id="svg-search" viewBox="0 0 24 24">
+      <title>Search</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search">
+        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-menu" viewBox="0 0 24 24">
+      <title>Menu</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+        <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+      </svg>
+    </symbol>
+    <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+      <title>Expand</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    </symbol>
+    <symbol id="svg-doc" viewBox="0 0 24 24">
+      <title>Document</title>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file">
+        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>
+      </svg>
+    </symbol>
+  </svg>
+
+  <div class="side-bar">
+    <div class="site-header">
+      <a href="https://ostreedev.github.io/ostree/" class="site-title lh-tight">
+  ostreedev/ostree
+
+</a>
+      <a href="#" id="menu-button" class="site-button">
+        <svg viewBox="0 0 24 24" class="icon"><use xlink:href="#svg-menu"></use></svg>
+      </a>
+    </div>
+    <nav role="navigation" aria-label="Main" id="site-nav" class="site-nav">
+      
+        <ul class="nav-list"><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/" class="nav-list-link">libostree</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/introduction/" class="nav-list-link">OSTree Overview</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repo/" class="nav-list-link">Anatomy of an OSTree repository</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/deployment/" class="nav-list-link">Deployments</a></li><li class="nav-list-item active"><a href="https://ostreedev.github.io/ostree/atomic-upgrades/" class="nav-list-link active">Atomic Upgrades</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/adapting-existing/" class="nav-list-link">Adapting existing mainstream distributions</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/formats/" class="nav-list-link">OSTree data formats</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/buildsystem-and-repos/" class="nav-list-link">Writing a buildsystem and managing repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/repository-management/" class="nav-list-link">Managing content in OSTree repositories</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/related-projects/" class="nav-list-link">Related Projects</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/CONTRIBUTING/" class="nav-list-link">Contributing</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/contributing-tutorial/" class="nav-list-link">OSTree Contributing Tutorial</a></li><li class="nav-list-item"><a href="https://ostreedev.github.io/ostree/README-historical/" class="nav-list-link">Historical OSTree README</a></li></ul>
+
+      
+    </nav>
+    <footer class="site-footer">
+      This site uses <a href="https://github.com/pmarsceill/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    </footer>
+  </div>
+  <div class="main" id="top">
+    <div id="main-header" class="main-header">
+      
+        <div class="search">
+          <div class="search-input-wrap">
+            <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="Search ostreedev/ostree" aria-label="Search ostreedev/ostree" autocomplete="off">
+            <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>
+          </div>
+          <div id="search-results" class="search-results"></div>
+        </div>
+      
+      
+      
+        <nav aria-label="Auxiliary" class="aux-nav">
+          <ul class="aux-nav-list">
+            
+              <li class="aux-nav-list-item">
+                <a href="https://github.com/ostreedev/ostree" class="site-button"
+                  
+                >
+                  OSTree on GitHub
+                </a>
+              </li>
+            
+          </ul>
+        </nav>
+      
+    </div>
+    <div id="main-content-wrap" class="main-content-wrap">
+      
+        
+      
+      <div id="main-content" class="main-content" role="main">
+        
+          <h1 class="no_toc" id="atomic-upgrades">
+        
+        
+          <a href="#atomic-upgrades" class="anchor-heading" aria-labelledby="atomic-upgrades"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Atomic Upgrades
+        
+        
+      </h1>
+    
+
+<ol id="markdown-toc">
+  <li><a href="#you-can-turn-off-the-power-anytime-you-want" id="markdown-toc-you-can-turn-off-the-power-anytime-you-want">You can turn off the power anytime you want…</a></li>
+  <li><a href="#simple-upgrades-via-http" id="markdown-toc-simple-upgrades-via-http">Simple upgrades via HTTP</a></li>
+  <li><a href="#upgrades-via-external-tools-eg-package-managers" id="markdown-toc-upgrades-via-external-tools-eg-package-managers">Upgrades via external tools (e.g. package managers)</a></li>
+  <li><a href="#assembling-a-new-deployment-directory" id="markdown-toc-assembling-a-new-deployment-directory">Assembling a new deployment directory</a></li>
+  <li><a href="#atomically-swapping-boot-configuration" id="markdown-toc-atomically-swapping-boot-configuration">Atomically swapping boot configuration</a></li>
+  <li><a href="#the-bootversion" id="markdown-toc-the-bootversion">The bootversion</a></li>
+  <li><a href="#the-ostreeboot-directory" id="markdown-toc-the-ostreeboot-directory">The /ostree/boot directory</a>    <ol>
+      <li><a href="#licensing-for-this-document" id="markdown-toc-licensing-for-this-document">Licensing for this document:</a></li>
+    </ol>
+  </li>
+</ol>
+      <h2 id="you-can-turn-off-the-power-anytime-you-want">
+        
+        
+          <a href="#you-can-turn-off-the-power-anytime-you-want" class="anchor-heading" aria-labelledby="you-can-turn-off-the-power-anytime-you-want"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> You can turn off the power anytime you want…
+        
+        
+      </h2>
+    
+
+<p>OSTree is designed to implement fully atomic and safe upgrades;
+more generally, atomic transitions between lists of bootable
+deployments.  If the system crashes or you pull the power, you
+will have either the old system, or the new one.</p>
+      <h2 id="simple-upgrades-via-http">
+        
+        
+          <a href="#simple-upgrades-via-http" class="anchor-heading" aria-labelledby="simple-upgrades-via-http"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Simple upgrades via HTTP
+        
+        
+      </h2>
+    
+
+<p>First, the most basic model OSTree supports is one where it replicates
+pre-generated filesystem trees from a server over HTTP, tracking
+exactly one ref, which is stored in the <code class="language-plaintext highlighter-rouge">.origin</code> file for the
+deployment.  The command <code class="language-plaintext highlighter-rouge">ostree admin upgrade</code>
+implements this.</p>
+
+<p>To begin a simple upgrade, OSTree fetches the contents of the ref from
+the remote server.  Suppose we’re tracking a ref named
+<code class="language-plaintext highlighter-rouge">exampleos/buildmain/x86_64-runtime</code>.  OSTree fetches the URL
+<code class="language-plaintext highlighter-rouge">http://example.com/repo/refs/heads/exampleos/buildmain/x86_64-runtime</code>,
+which contains a SHA256 checksum.  This determines the tree to deploy,
+and <code class="language-plaintext highlighter-rouge">/etc</code> will be merged from currently booted tree.</p>
+
+<p>If we do not have this commit, then we perform a pull process.
+At present (without static deltas), this involves quite simply just
+fetching each individual object that we do not have, asynchronously.
+Put in other words, we only download changed files (zlib-compressed).
+Each object has its checksum validated and is stored in <code class="language-plaintext highlighter-rouge">/ostree/repo/objects/</code>.</p>
+
+<p>Once the pull is complete, we have downloaded all the objects that we need
+to perform a deployment.</p>
+      <h2 id="upgrades-via-external-tools-eg-package-managers">
+        
+        
+          <a href="#upgrades-via-external-tools-eg-package-managers" class="anchor-heading" aria-labelledby="upgrades-via-external-tools-eg-package-managers"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Upgrades via external tools (e.g. package managers)
+        
+        
+      </h2>
+    
+
+<p>As mentioned in the introduction, OSTree is also designed to allow a
+model where filesystem trees are computed on the client.  It is
+completely agnostic as to how those trees are generated; they could be
+computed with traditional packages, packages with post-deployment
+scripts on top, or built by developers directly from revision control
+locally, etc.</p>
+
+<p>At a practical level, most package managers today (<code class="language-plaintext highlighter-rouge">dpkg</code> and <code class="language-plaintext highlighter-rouge">rpm</code>)
+operate “live” on the currently booted filesystem.  The way they could
+work with OSTree is to, instead, take the list of installed packages in
+the currently booted tree, and compute a new filesystem from that.  A
+later chapter describes in more details how this could work:
+<a href="/ostree/adapting-existing/">Adapting Existing Systems</a>.</p>
+
+<p>For the purposes of this section, let’s assume that we have a
+newly generated filesystem tree stored in the repo (which shares
+storage with the existing booted tree).  We can then move on to
+checking it back out of the repo into a deployment.</p>
+      <h2 id="assembling-a-new-deployment-directory">
+        
+        
+          <a href="#assembling-a-new-deployment-directory" class="anchor-heading" aria-labelledby="assembling-a-new-deployment-directory"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Assembling a new deployment directory
+        
+        
+      </h2>
+    
+
+<p>Given a commit to deploy, OSTree first allocates a directory for
+it.  This is of the form <code class="language-plaintext highlighter-rouge">/boot/loader/entries/ostree-$stateroot-$checksum.$serial.conf</code>.
+The <code class="language-plaintext highlighter-rouge">$serial</code> is normally <code class="language-plaintext highlighter-rouge">0</code>, but if a
+given commit is deployed more than once, it will be incremented.
+This is supported because the previous deployment may have
+configuration in <code class="language-plaintext highlighter-rouge">/etc</code> that we do not want to use or overwrite.</p>
+
+<p>Now that we have a deployment directory, a 3-way merge is performed
+between the (by default) currently booted deployment’s <code class="language-plaintext highlighter-rouge">/etc</code>, its
+default configuration, and the new deployment (based on its <code class="language-plaintext highlighter-rouge">/usr/etc</code>).</p>
+
+<p>How it works is:</p>
+<ul>
+  <li>Files in the currently booted deployment’s <code class="language-plaintext highlighter-rouge">/etc</code> which were modified
+from the default <code class="language-plaintext highlighter-rouge">/usr/etc</code> (of the same deployment) are retained.</li>
+  <li>Files in the currently booted deployment’s <code class="language-plaintext highlighter-rouge">/etc</code> which were not
+modified from the default <code class="language-plaintext highlighter-rouge">/usr/etc</code> (of the same deployment) are
+upgraded to the new defaults from the new deployment’s <code class="language-plaintext highlighter-rouge">/usr/etc</code>.</li>
+</ul>
+
+<p>Roughly, this means that as soon as you modify or add a file in <code class="language-plaintext highlighter-rouge">/etc</code>,
+this file will be propagated forever as is (though there is a
+corner-case, where if your modification eventually exactly matches a
+future default file, then the file will go back to following future
+default updates from that point on).</p>
+
+<p>You can use <code class="language-plaintext highlighter-rouge">ostree admin config-diff</code> to see the differences between
+your booted deployment’s <code class="language-plaintext highlighter-rouge">/etc</code> and the OSTree defaults. A command like
+<code class="language-plaintext highlighter-rouge">diff {/usr,}/etc</code> will additional print line-level differences.</p>
+      <h2 id="atomically-swapping-boot-configuration">
+        
+        
+          <a href="#atomically-swapping-boot-configuration" class="anchor-heading" aria-labelledby="atomically-swapping-boot-configuration"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Atomically swapping boot configuration
+        
+        
+      </h2>
+    
+
+<p>At this point, a new deployment directory has been created as a
+hardlink farm; the running system is untouched, and the bootloader
+configuration is untouched.  We want to add this deployment to the
+“deployment list”.</p>
+
+<p>To support a more general case, OSTree supports atomic transitioning
+between arbitrary sets of deployments, with the restriction that the
+currently booted deployment must always be in the new set.  In the
+normal case, we have exactly one deployment, which is the booted one,
+and we want to add the new deployment to the list.  A more complex
+command might allow creating 100 deployments as part of one atomic
+transaction, so that one can set up an automated system to bisect
+across them.</p>
+      <h2 id="the-bootversion">
+        
+        
+          <a href="#the-bootversion" class="anchor-heading" aria-labelledby="the-bootversion"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> The bootversion
+        
+        
+      </h2>
+    
+
+<p>OSTree allows swapping between boot configurations by implementing the
+“swapped directory pattern” in <code class="language-plaintext highlighter-rouge">/boot</code>.  This means it is a symbolic
+link to one of two directories <code class="language-plaintext highlighter-rouge">/ostree/boot.[0|1]</code>.  To swap the
+contents atomically, if the current version is <code class="language-plaintext highlighter-rouge">0</code>, we create
+<code class="language-plaintext highlighter-rouge">/ostree/boot.1</code>, populate it with the new contents, then atomically
+swap the symbolic link.  Finally, the old contents can be garbage
+collected at any point.</p>
+      <h2 id="the-ostreeboot-directory">
+        
+        
+          <a href="#the-ostreeboot-directory" class="anchor-heading" aria-labelledby="the-ostreeboot-directory"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> The /ostree/boot directory
+        
+        
+      </h2>
+    
+
+<p>However, we want to optimize for the case where the set of
+kernel/initramfs/devicetree sets is the same between both the old and new
+deployment lists.  This happens when doing an upgrade that does not
+include the kernel; think of a simple translation update.  OSTree
+optimizes for this case because on some systems <code class="language-plaintext highlighter-rouge">/boot</code> may be on a
+separate medium such as flash storage not optimized for significant
+amounts of write traffic.  Related to this, modern OSTree has support
+for having <code class="language-plaintext highlighter-rouge">/boot</code> be a read-only mount by default - it will
+automatically remount read-write just for the portion of time
+necessary to update the bootloader configuration.</p>
+
+<p>To implement this, OSTree also maintains the directory
+<code class="language-plaintext highlighter-rouge">/ostree/boot.$bootversion</code>, which is a set
+of symbolic links to the deployment directories.  The
+<code class="language-plaintext highlighter-rouge">$bootversion</code> here must match the version of
+<code class="language-plaintext highlighter-rouge">/boot</code>.  However, in order to allow atomic transitions of
+<em>this</em> directory, this is also a swapped directory,
+so just like <code class="language-plaintext highlighter-rouge">/boot</code>, it has a version of <code class="language-plaintext highlighter-rouge">0</code> or <code class="language-plaintext highlighter-rouge">1</code> appended.</p>
+
+<p>Each bootloader entry has a special <code class="language-plaintext highlighter-rouge">ostree=</code> argument which refers to
+one of these symbolic links.  This is parsed at runtime in the
+initramfs.</p>
+      <h6 id="licensing-for-this-document">
+        
+        
+          <a href="#licensing-for-this-document" class="anchor-heading" aria-labelledby="licensing-for-this-document"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Licensing for this document:
+        
+        
+      </h6>
+    
+<p><code class="language-plaintext highlighter-rouge">SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)</code></p>
+
+        
+
+        
+
+        
+        
+          <hr>
+          <footer>
+            
+
+            <p class="text-small text-grey-dk-100 mb-0">Copyright &copy; <a href="https://www.redhat.com">Red Hat, Inc.</a> and <a href="https://github.com/ostreedev">others</a>.</p>
+
+            
+              <div class="d-flex mt-2">
+                
+                
+                  <p class="text-small text-grey-dk-000 mb-0">
+                    <a href="https://github.com/ostreedev/ostree/tree/main/docs/atomic-upgrades.md" id="edit-this-page">Edit this page on GitHub</a>
+                  </p>
+                
+              </div>
+            
+          </footer>
+        
+
+      </div>
+    </div>
+
+    
+      
+
+      <div class="search-overlay"></div>
+    
+  </div>
+</body>
+</html>
+
