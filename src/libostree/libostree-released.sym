@@ -653,6 +653,14 @@ global:
   ostree_content_writer_finish;
 } LIBOSTREE_2021.1;
 
+LIBOSTREE_2021.3 {
+global:
+  ostree_repo_auto_lock_push;
+  ostree_repo_auto_lock_cleanup;
+  ostree_repo_lock_push;
+  ostree_repo_lock_pop;
+} LIBOSTREE_2021.2;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
