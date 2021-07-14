@@ -5343,12 +5343,12 @@ _ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
                                    const gchar        *remote_name,
                                    GFile              *keyringdir,
                                    GFile              *extra_keyring,
+                                   gboolean            add_global_keyrings,
                                    OstreeGpgVerifier **out_verifier,
                                    GCancellable       *cancellable,
                                    GError            **error)
 {
   g_autoptr(OstreeGpgVerifier) verifier = _ostree_gpg_verifier_new ();
-  gboolean add_global_keyring_dir = TRUE;
 
   if (remote_name == OSTREE_ALL_REMOTES)
     {
@@ -5375,7 +5375,7 @@ _ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
       if (keyring_data != NULL)
         {
           _ostree_gpg_verifier_add_keyring_data (verifier, keyring_data, remote->keyring);
-          add_global_keyring_dir = FALSE;
+          add_global_keyrings = FALSE;
         }
 
       g_auto(GStrv) gpgkeypath_list = NULL;
@@ -5397,7 +5397,7 @@ _ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
         }
     }
 
-  if (add_global_keyring_dir)
+  if (add_global_keyrings)
     {
       /* Use the deprecated global keyring directory. */
       if (!_ostree_gpg_verifier_add_global_keyring_dir (verifier, cancellable, error))
@@ -5436,6 +5436,7 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
                                           remote_name,
                                           keyringdir,
                                           extra_keyring,
+                                          TRUE,
                                           &verifier,
                                           cancellable,
                                           error))
