@@ -232,7 +232,9 @@ Boston, MA 02111-1307, USA.
                 <term><option>--statoverride</option>="PATH"</term>
 
                 <listitem><para>
-                    File containing list of modifications to make permissions (file mode, followed by space, followed by file path).
+                    File containing list of modifications to make permissions (file mode in
+                    decimal, followed by space, followed by file path).  The specified mode
+                    is ORed with the file's original mode unless preceded by "=".
                 </para></listitem>
             </varlistentry>
 
