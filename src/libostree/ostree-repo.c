@@ -2366,7 +2366,7 @@ _ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
 /**
  * ostree_repo_remote_get_gpg_keys:
  * @self: an #OstreeRepo
- * @name (nullable): name of the remote or %NULL
+ * @name: (nullable): name of the remote or %NULL
  * @key_ids: (array zero-terminated=1) (element-type utf8) (nullable):
  *    a %NULL-terminated array of GPG key IDs to include, or %NULL
  * @out_keys: (out) (optional) (element-type GVariant) (transfer container):
