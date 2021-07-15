@@ -468,7 +468,7 @@ ot_dump_gpg_key (GVariant  *key,
   g_variant_iter_init (&subkeys_iter, subkeys_v);
 
   g_autoptr(GVariant) primary_key = NULL;
-  g_variant_iter_next (&subkeys_iter, "(@a{sv})", &primary_key);
+  g_variant_iter_next (&subkeys_iter, "@a{sv}", &primary_key);
   if (!dump_gpg_subkey (primary_key, TRUE, error))
     return FALSE;
 
@@ -476,7 +476,7 @@ ot_dump_gpg_key (GVariant  *key,
   GVariantIter uids_iter;
   g_variant_iter_init (&uids_iter, uids_v);
   GVariant *uid_v = NULL;
-  while (g_variant_iter_loop (&uids_iter, "(@a{sv})", &uid_v))
+  while (g_variant_iter_loop (&uids_iter, "@a{sv}", &uid_v))
     {
       const gchar *uid = NULL;
       gboolean revoked = FALSE;
@@ -498,7 +498,7 @@ ot_dump_gpg_key (GVariant  *key,
     }
 
   GVariant *subkey = NULL;
-  while (g_variant_iter_loop (&subkeys_iter, "(@a{sv})", &subkey))
+  while (g_variant_iter_loop (&subkeys_iter, "@a{sv}", &subkey))
     {
       if (!dump_gpg_subkey (subkey, FALSE, error))
         return FALSE;
