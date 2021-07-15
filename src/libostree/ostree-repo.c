@@ -2413,9 +2413,9 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
       gpgme_key_t key = gpg_keys->pdata[i];
 
       g_auto(GVariantBuilder) subkeys_builder = OT_VARIANT_BUILDER_INITIALIZER;
-      g_variant_builder_init (&subkeys_builder, G_VARIANT_TYPE ("a(a{sv})"));
+      g_variant_builder_init (&subkeys_builder, G_VARIANT_TYPE ("aa{sv}"));
       g_auto(GVariantBuilder) uids_builder = OT_VARIANT_BUILDER_INITIALIZER;
-      g_variant_builder_init (&uids_builder, G_VARIANT_TYPE ("a(a{sv})"));
+      g_variant_builder_init (&uids_builder, G_VARIANT_TYPE ("aa{sv}"));
       for (gpgme_subkey_t subkey = key->subkeys; subkey != NULL;
            subkey = subkey->next)
         {
@@ -2433,7 +2433,7 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
                                        g_variant_new_boolean (subkey->expired));
           g_variant_dict_insert_value (&subkey_dict, "invalid",
                                        g_variant_new_boolean (subkey->invalid));
-          g_variant_builder_add (&subkeys_builder, "(@a{sv})",
+          g_variant_builder_add (&subkeys_builder, "@a{sv}",
                                  g_variant_dict_end (&subkey_dict));
         }
 
@@ -2467,7 +2467,7 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
                                        g_variant_new ("ms", advanced_url));
           g_variant_dict_insert_value (&uid_dict, "direct_url",
                                        g_variant_new ("ms", direct_url));
-          g_variant_builder_add (&uids_builder, "(@a{sv})",
+          g_variant_builder_add (&uids_builder, "@a{sv}",
                                  g_variant_dict_end (&uid_dict));
         }
 
@@ -2475,7 +2475,7 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
       g_auto(GVariantDict) metadata_dict = OT_VARIANT_BUILDER_INITIALIZER;
       g_variant_dict_init (&metadata_dict, NULL);
 
-      GVariant *key_variant = g_variant_new ("(@a(a{sv})@a(a{sv})@a{sv})",
+      GVariant *key_variant = g_variant_new ("(@aa{sv}@aa{sv}@a{sv})",
                                              g_variant_builder_end (&subkeys_builder),
                                              g_variant_builder_end (&uids_builder),
                                              g_variant_dict_end (&metadata_dict));

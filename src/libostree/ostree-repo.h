@@ -1429,7 +1429,7 @@ gboolean      ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
 /**
  * OSTREE_GPG_KEY_GVARIANT_FORMAT:
  *
- * - a(a{sv}) - Array of subkeys. Each a{sv} dictionary represents a
+ * - aa{sv} - Array of subkeys. Each a{sv} dictionary represents a
  *   subkey. The primary key is the first subkey. The following keys are
  *   currently recognized:
  *   - key: `fingerprint`, value: `s`, key fingerprint hexadecimal string
@@ -1441,7 +1441,7 @@ gboolean      ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
  *   - key: `revoked`, value: `b`, whether key is revoked
  *   - key: `expired`, value: `b`, whether key is expired
  *   - key: `invalid`, value: `b`, whether key is invalid
- * - a(a{sv}) - Array of user IDs. Each a{sv} dictionary represents a
+ * - aa{sv} - Array of user IDs. Each a{sv} dictionary represents a
  *   user ID. The following keys are currently recognized:
  *   - key: `uid`, value: `s`, full user ID (name, email and comment)
  *   - key: `name`, value: `s`, user ID name component
@@ -1456,7 +1456,7 @@ gboolean      ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
  *
  * Since: 2021.4
  */
-#define OSTREE_GPG_KEY_GVARIANT_STRING "(a(a{sv})a(a{sv})a{sv})"
+#define OSTREE_GPG_KEY_GVARIANT_STRING "(aa{sv}aa{sv}a{sv})"
 #define OSTREE_GPG_KEY_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_GPG_KEY_GVARIANT_STRING)
 
 _OSTREE_PUBLIC
