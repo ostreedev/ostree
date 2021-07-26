@@ -13,7 +13,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    container: quay.io/cgwalters/fcos-buildroot
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
 
     steps:
     - uses: actions/checkout@v2
