@@ -69,6 +69,10 @@ if ! test -f .testtmp; then
     touch .testtmp
 fi
 
+# Some distribution builds set this, but some of our build-time tests
+# assume this won't be used when committing
+unset SOURCE_DATE_EPOCH
+
 # Also, unbreak `tar` inside `make check`...Automake will inject
 # TAR_OPTIONS: --owner=0 --group=0 --numeric-owner presumably so that
 # tarballs are predictable, except we don't want this in our tests.

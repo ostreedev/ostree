@@ -44,6 +44,11 @@ ${make}
 
 # Run the tests both using check and distcheck.
 ${make} check
+
+# Some tests historically failed when package builds set this.
+# By setting it for distcheck but not check, we exercise both ways.
+export SOURCE_DATE_EPOCH=$(date '+%s')
+
 ${make} distcheck DISTCHECK_CONFIGURE_FLAGS="$*"
 
 # Show the installed files
