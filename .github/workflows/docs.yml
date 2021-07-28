@@ -1,19 +1,21 @@
 ---
 name: Docs
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
+permissions:
+  # This workflow pushes to the gh-pages branch, so the token needs write
+  # privileges for repo contents.
+  contents: write
+
 jobs:
   docs:
     name: Build documentation
     runs-on: ubuntu-latest
-    permissions:
-      # This job pushes to the gh-pages branch, so the token needs write
-      # privileges for repo contents.
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2

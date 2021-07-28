@@ -7,6 +7,9 @@ on:
     paths:
       - 'configure.ac'
 
+permissions:
+  contents: read
+
 jobs:
   ci-release-build:
     name: "Sanity check release commits"
