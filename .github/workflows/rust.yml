@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  ACTIONS_LINTS_TOOLCHAIN: 1.50.0
+  ACTIONS_LINTS_TOOLCHAIN: 1.53.0
 
 jobs:
   linting:
