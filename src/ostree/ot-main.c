@@ -148,7 +148,6 @@ ostree_run (int    argc,
             OstreeCommand *commands,
             GError **res_error)
 {
-  OstreeCommand *command;
   GError *error = NULL;
   GCancellable *cancellable = NULL;
 #ifndef BUILDOPT_TSAN
@@ -187,7 +186,7 @@ ostree_run (int    argc,
 
   argc = out;
 
-  command = commands;
+  OstreeCommand *command = commands;
   while (command->name)
     {
       if (g_strcmp0 (command_name, command->name) == 0)
