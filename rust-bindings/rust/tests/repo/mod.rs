@@ -1,6 +1,7 @@
 use crate::util::*;
-use gio::{prelude::*, NONE_CANCELLABLE};
-use ostree::{ObjectType, *};
+use ostree::gio::NONE_CANCELLABLE;
+use ostree::prelude::*;
+use ostree::{ObjectName, ObjectType};
 
 #[cfg(feature = "v2016_8")]
 mod checkout_at;
