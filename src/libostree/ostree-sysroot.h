@@ -201,8 +201,8 @@ gboolean ostree_sysroot_stage_overlay_initrd (OstreeSysroot  *self,
  */
 typedef struct {
   gboolean unused_bools[8];
-  int unused_ints[7];
   int finalization_flags;
+  int unused_ints[7];
   char **override_kernel_argv;
   char **overlay_initrds;
   gpointer unused_ptrs[6];
