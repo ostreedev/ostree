@@ -87,28 +87,27 @@ ostree_deployment_get_bootserial (OstreeDeployment *self)
   return self->bootserial;
 }
 
-char *
+const char *
 _ostree_deployment_get_version (OstreeDeployment  *self,
-                                OstreeRepo        *repo,
-                                GError           **error)
+                                OstreeRepo        *repo)
 {
   g_return_val_if_fail (repo != NULL, NULL);
 
-  if (self->version_is_cached)
-    return self->version;
+  if (!self->version_is_cached)
+    {
+      /* Try extracting a version for this deployment. */
+      const gchar *csum = ostree_deployment_get_csum (self);
 
-  /* Try extracting a version for this deployment. */
-  const gchar *csum = ostree_deployment_get_csum (self);
+      g_autoptr(GVariant) variant = NULL;
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum,
+            &variant, NULL))
+        return NULL;
 
-  g_autoptr(GVariant) variant = NULL;
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum,
-                                 &variant, error))
-    return NULL;
+      g_autoptr(GVariant) metadata = g_variant_get_child_value (variant, 0);
+      g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &self->version);
 
-  g_autoptr(GVariant) metadata = g_variant_get_child_value (variant, 0);
-  g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &self->version);
-
-  self->version_is_cached = TRUE;
+      self->version_is_cached = TRUE;
+    }
 
   return self->version;
 }

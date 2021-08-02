@@ -1925,7 +1925,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   const gchar *deployment_version = NULL;
   if (repo)
-    deployment_version = _ostree_deployment_get_version (deployment, repo, error);
+    deployment_version = _ostree_deployment_get_version (deployment, repo);
 
   /* XXX The SYSLINUX bootloader backend actually parses the title string
    *     (specifically, it looks for the substring "(ostree"), so further

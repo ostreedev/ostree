@@ -61,7 +61,7 @@ struct _OstreeDeployment
 };
 
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);
-char *_ostree_deployment_get_version (OstreeDeployment *self, OstreeRepo *repo, GError **error);
+const char *_ostree_deployment_get_version (OstreeDeployment *self, OstreeRepo *repo);
 
 void _ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
                                              char **overlay_initrds);
