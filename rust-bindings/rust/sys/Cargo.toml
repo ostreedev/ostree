@@ -71,7 +71,7 @@ license = "MIT"
 links = "ostree-1"
 name = "ostree-sys"
 repository = "https://gitlab.com/fkrull/ostree-rs"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2018"
 
 [package.metadata.docs.rs]
