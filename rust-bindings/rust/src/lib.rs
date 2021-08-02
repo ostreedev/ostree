@@ -5,6 +5,9 @@
 //! along with a layer for deploying them and managing the bootloader configuration.
 
 #![cfg_attr(feature = "dox", feature(doc_cfg))]
+#![deny(unused_must_use)]
+#![warn(missing_docs)]
+#![warn(rustdoc::broken_intra_doc_links)]
 
 // Re-export our dependencies.  See https://gtk-rs.org/blog/2021/06/22/new-release.html
 // "Dependencies are re-exported".  Users will need e.g. `gio::File`, so this avoids
@@ -16,6 +19,7 @@ pub use glib;
 #[rustfmt::skip]
 #[allow(clippy::all)]
 #[allow(unused_imports)]
+#[allow(missing_docs)]
 mod auto;
 pub use crate::auto::functions::*;
 pub use crate::auto::*;
@@ -62,7 +66,7 @@ pub use crate::sysroot_deploy_tree_opts::SysrootDeployTreeOpts;
 #[cfg(test)]
 mod tests;
 
-// prelude
+/// Prelude, intended for glob imports.
 pub mod prelude {
     pub use crate::auto::traits::*;
     // See "Re-export dependencies above".

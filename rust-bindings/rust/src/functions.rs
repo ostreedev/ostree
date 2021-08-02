@@ -5,6 +5,7 @@ use glib::{prelude::*, translate::*};
 use glib_sys::GFALSE;
 use std::{future::Future, mem::MaybeUninit, pin::Pin, ptr};
 
+/// Compute the SHA-256 checksum of a file.
 pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(
     f: &P,
     objtype: ObjectType,
@@ -24,6 +25,7 @@ pub fn checksum_file<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(
     }
 }
 
+/// Asynchronously compute the SHA-256 checksum of a file.
 pub fn checksum_file_async<
     P: IsA<gio::File>,
     Q: IsA<gio::Cancellable>,
@@ -69,6 +71,7 @@ pub fn checksum_file_async<
     }
 }
 
+/// Asynchronously compute the SHA-256 checksum of a file.
 #[allow(clippy::type_complexity)]
 pub fn checksum_file_async_future<P: IsA<gio::File> + Clone + 'static>(
     f: &P,
@@ -83,6 +86,7 @@ pub fn checksum_file_async_future<P: IsA<gio::File> + Clone + 'static>(
     }))
 }
 
+/// Compute the OSTree checksum of a content object.
 pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(
     file_info: &gio::FileInfo,
     xattrs: Option<&glib::Variant>,

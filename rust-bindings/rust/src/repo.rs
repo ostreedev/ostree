@@ -41,6 +41,7 @@ impl Repo {
         Repo::new(&gio::File::for_path(path.as_ref()))
     }
 
+    /// Find all objects reachable from a commit.
     pub fn traverse_commit<P: IsA<gio::Cancellable>>(
         &self,
         commit_checksum: &str,
@@ -66,6 +67,7 @@ impl Repo {
         }
     }
 
+    /// List all branch names (refs).
     pub fn list_refs<P: IsA<gio::Cancellable>>(
         &self,
         refspec_prefix: Option<&str>,
@@ -117,6 +119,7 @@ impl Repo {
         }
     }
 
+    /// Write a content object from provided input.
     pub fn write_content<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(
         &self,
         expected_checksum: Option<&str>,
@@ -144,6 +147,7 @@ impl Repo {
         }
     }
 
+    /// Write a metadata object.
     pub fn write_metadata<P: IsA<gio::Cancellable>>(
         &self,
         objtype: ObjectType,
@@ -171,6 +175,7 @@ impl Repo {
         }
     }
 
+    /// Asynchronously write a content object.
     pub fn write_content_async<
         P: IsA<gio::InputStream>,
         Q: IsA<gio::Cancellable>,
@@ -222,6 +227,7 @@ impl Repo {
         }
     }
 
+    /// Asynchronously write a content object.
     pub fn write_content_async_future<P: IsA<gio::InputStream> + Clone + 'static>(
         &self,
         expected_checksum: Option<&str>,
@@ -245,6 +251,7 @@ impl Repo {
         }))
     }
 
+    /// Asynchronously write a metadata object.
     pub fn write_metadata_async<
         P: IsA<gio::Cancellable>,
         Q: FnOnce(Result<Checksum, Error>) + Send + 'static,
@@ -295,6 +302,7 @@ impl Repo {
         }
     }
 
+    /// Asynchronously write a metadata object.
     pub fn write_metadata_async_future(
         &self,
         objtype: ObjectType,

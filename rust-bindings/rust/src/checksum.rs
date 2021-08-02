@@ -19,10 +19,13 @@ fn base64_config() -> &'static radix64::CustomConfig {
     })
 }
 
+/// Error returned from parsing a checksum.
 #[derive(Debug, thiserror::Error)]
 pub enum ChecksumError {
+    /// Invalid hex checksum string.
     #[error("invalid hex checksum string")]
     InvalidHexString,
+    /// Invalid base64 checksum string
     #[error("invalid base64 checksum string")]
     InvalidBase64String,
 }
