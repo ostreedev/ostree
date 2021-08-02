@@ -4,7 +4,7 @@
 //! tools that combines a "git-like" model for committing and downloading bootable filesystem trees,
 //! along with a layer for deploying them and managing the bootloader configuration.
 
-#![doc(html_root_url = "https://fkrull.gitlab.io/ostree-rs")]
+#![cfg_attr(feature = "dox", feature(doc_cfg))]
 
 // Re-export our dependencies.  See https://gtk-rs.org/blog/2021/06/22/new-release.html
 // "Dependencies are re-exported".  Users will need e.g. `gio::File`, so this avoids
