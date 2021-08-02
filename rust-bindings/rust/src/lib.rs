@@ -27,6 +27,9 @@ pub use crate::auto::*;
 // handwritten code
 mod checksum;
 pub use crate::checksum::*;
+mod core;
+pub use crate::core::*;
+
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod collection_ref;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
