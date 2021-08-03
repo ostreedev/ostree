@@ -110,6 +110,7 @@ pub fn checksum_file_from_input<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellabl
     }
 }
 
+/// Compute the OSTree checksum of a file.
 #[cfg(any(feature = "v2017_13", feature = "dox"))]
 pub fn checksum_file_at<P: IsA<gio::Cancellable>>(
     dfd: i32,

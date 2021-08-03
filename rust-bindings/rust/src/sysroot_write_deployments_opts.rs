@@ -1,7 +1,9 @@
 use ffi::OstreeSysrootWriteDeploymentsOpts;
 use glib::translate::*;
 
+/// Options for writing a deployment.
 pub struct SysrootWriteDeploymentsOpts {
+    /// Perform cleanup after writing the deployment.
     pub do_postclean: bool,
 }
 

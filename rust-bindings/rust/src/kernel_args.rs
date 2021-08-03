@@ -10,6 +10,7 @@ use std::fmt;
 use std::ptr;
 
 glib::wrapper! {
+    /// Kernel arguments.
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct KernelArgs(Boxed<ffi::OstreeKernelArgs>);
 
@@ -20,6 +21,7 @@ glib::wrapper! {
 }
 
 impl KernelArgs {
+    /// Add a kernel argument.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append(&mut self, arg: &str) {
         unsafe {
@@ -27,6 +29,7 @@ impl KernelArgs {
         }
     }
 
+    /// Add multiple kernel arguments.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_argv(&mut self, argv: &[&str]) {
         unsafe {
@@ -34,6 +37,7 @@ impl KernelArgs {
         }
     }
 
+    /// Appends each argument that does not have one of `prefixes`.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_argv_filtered(&mut self, argv: &[&str], prefixes: &[&str]) {
         unsafe {
@@ -45,6 +49,7 @@ impl KernelArgs {
         }
     }
 
+    /// Append the entire contents of the currently booted kernel commandline.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn append_proc_cmdline<P: IsA<gio::Cancellable>>(
         &mut self,
@@ -65,6 +70,7 @@ impl KernelArgs {
         }
     }
 
+    /// Remove a kernel argument.
     pub fn delete(&mut self, arg: &str) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
@@ -81,6 +87,7 @@ impl KernelArgs {
         }
     }
 
+    /// Remove a kernel argument.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn delete_key_entry(&mut self, key: &str) -> Result<(), glib::Error> {
         unsafe {
@@ -98,6 +105,7 @@ impl KernelArgs {
         }
     }
 
+    /// Given `foo`, return the last the value of a `foo=bar` key as `bar`.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn get_last_value(&self, key: &str) -> Option<GString> {
         unsafe {
@@ -108,6 +116,7 @@ impl KernelArgs {
         }
     }
 
+    /// Replace any existing `foo=bar` with `foo=other` e.g.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn new_replace(&mut self, arg: &str) -> Result<(), glib::Error> {
         unsafe {
@@ -125,6 +134,7 @@ impl KernelArgs {
         }
     }
 
+    /// Append from a whitespace-separated string.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn parse_append(&mut self, options: &str) {
         unsafe {
@@ -135,6 +145,7 @@ impl KernelArgs {
         }
     }
 
+    /// Replace a kernel argument.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace(&mut self, arg: &str) {
         unsafe {
@@ -142,6 +153,7 @@ impl KernelArgs {
         }
     }
 
+    /// Replace multiple kernel arguments.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace_argv(&mut self, argv: &[&str]) {
         unsafe {
@@ -149,6 +161,7 @@ impl KernelArgs {
         }
     }
 
+    /// A duplicate of `replace`.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn replace_take(&mut self, arg: &str) {
         unsafe {
@@ -156,6 +169,7 @@ impl KernelArgs {
         }
     }
 
+    /// Convert the kernel arguments to a string.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     fn to_gstring(&self) -> GString {
         unsafe {
@@ -165,6 +179,7 @@ impl KernelArgs {
         }
     }
 
+    /// Convert the kernel arguments to a string array.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn to_strv(&self) -> Vec<GString> {
         unsafe {
@@ -177,6 +192,7 @@ impl KernelArgs {
     // Not needed
     //pub fn cleanup(loc: /*Unimplemented*/Option<Fundamental: Pointer>)
 
+    /// Parse the given string as kernel arguments.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn from_string(options: &str) -> KernelArgs {
         unsafe {
@@ -186,6 +202,7 @@ impl KernelArgs {
         }
     }
 
+    /// Create new empty kernel arguments.
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     pub fn new() -> KernelArgs {
         unsafe { from_glib_full(ffi::ostree_kernel_args_new()) }

@@ -92,6 +92,7 @@ impl Repo {
         }
     }
 
+    /// List refs with extended options.
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
     pub fn list_refs_ext<P: IsA<gio::Cancellable>>(
         &self,

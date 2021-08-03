@@ -8,20 +8,32 @@ mod repo_checkout_filter;
 #[cfg(any(feature = "v2018_2", feature = "dox"))]
 pub use self::repo_checkout_filter::RepoCheckoutFilter;
 
+/// Options for checking out an OSTree commit.
 pub struct RepoCheckoutAtOptions {
+    /// Checkout mode.
     pub mode: RepoCheckoutMode,
+    /// Overwrite mode.
     pub overwrite_mode: RepoCheckoutOverwriteMode,
+    /// Deprecated, do not use.
     pub enable_uncompressed_cache: bool,
+    /// Perform `fsync()` on checked out files and directories.
     pub enable_fsync: bool,
+    /// Handle OCI/Docker style whiteout files.
     pub process_whiteouts: bool,
+    /// Require hardlinking.
     pub no_copy_fallback: bool,
+    /// Never hardlink; reflink if possible, otherwise full physical copy.
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
     pub force_copy: bool,
+    /// Suppress mode bits outside of 0775 for directories.
     #[cfg(any(feature = "v2017_7", feature = "dox"))]
     pub bareuseronly_dirs: bool,
+    /// Copy zero-sized files rather than hardlinking.
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
     pub force_copy_zerosized: bool,
+    /// Only check out this subpath.
     pub subpath: Option<PathBuf>,
+    /// A cache from device, inode pairs to checksums.
     pub devino_to_csum_cache: Option<RepoDevInoCache>,
     /// A callback function to decide which files and directories will be checked out from the
     /// repo. See the documentation on [RepoCheckoutFilter](struct.RepoCheckoutFilter.html) for more
@@ -34,8 +46,10 @@ pub struct RepoCheckoutAtOptions {
     /// callback to catch and silence any panics that occur.
     #[cfg(any(feature = "v2018_2", feature = "dox"))]
     pub filter: Option<RepoCheckoutFilter>,
+    /// SELinux policy.
     #[cfg(any(feature = "v2017_6", feature = "dox"))]
     pub sepolicy: Option<SePolicy>,
+    /// When computing security contexts, prefix the path with this value.
     pub sepolicy_prefix: Option<String>,
 }
 
