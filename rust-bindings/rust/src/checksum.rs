@@ -1,5 +1,5 @@
+use glib::ffi::{g_free, g_malloc0, gpointer};
 use glib::translate::{FromGlibPtrFull, FromGlibPtrNone};
-use glib_sys::{g_free, g_malloc0, gpointer};
 use once_cell::sync::OnceCell;
 use std::ptr::copy_nonoverlapping;
 
@@ -168,8 +168,8 @@ impl FromGlibPtrNone<*mut [u8; BYTES_LEN]> for Checksum {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use glib::ffi::g_malloc0;
     use glib::translate::from_glib_full;
-    use glib_sys::g_malloc0;
 
     const CHECKSUM_BYTES: &[u8; BYTES_LEN] = b"\xbf\x87S\x06x>\xfd\xc5\xbc\xab7\xea\x10\xb6\xcaN\x9bj\xea\x8b\x94X\r\x0c\xa9J\xf1 V\\\x0e\x8a";
     const CHECKSUM_HEX: &str = "bf875306783efdc5bcab37ea10b6ca4e9b6aea8b94580d0ca94af120565c0e8a";

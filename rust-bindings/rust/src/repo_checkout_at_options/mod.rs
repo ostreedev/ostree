@@ -166,7 +166,7 @@ impl<'a> ToGlibPtr<'a, *const ffi::OstreeRepoCheckoutAtOptions> for RepoCheckout
 #[cfg(test)]
 mod tests {
     use super::*;
-    use glib_sys::{GFALSE, GTRUE};
+    use glib::ffi::{GFALSE, GTRUE};
     use std::ffi::{CStr, CString};
     use std::ptr;
 

@@ -1,6 +1,6 @@
 use crate::{Repo, RepoCheckoutFilterResult};
+use glib::ffi::gpointer;
 use glib::translate::*;
-use glib_sys::gpointer;
 use libc::c_char;
 use std::any::Any;
 use std::panic::catch_unwind;

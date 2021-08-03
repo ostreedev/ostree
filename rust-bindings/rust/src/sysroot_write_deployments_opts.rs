@@ -33,7 +33,7 @@ impl<'a> ToGlibPtr<'a, *const OstreeSysrootWriteDeploymentsOpts> for SysrootWrit
 #[cfg(test)]
 mod tests {
     use super::*;
-    use glib_sys::{GFALSE, GTRUE};
+    use glib::ffi::{GFALSE, GTRUE};
 
     #[test]
     fn should_convert_default_options() {

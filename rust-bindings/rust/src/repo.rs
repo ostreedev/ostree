@@ -2,9 +2,8 @@
 use crate::RepoListRefsExtFlags;
 use crate::{Checksum, ObjectName, ObjectType, Repo};
 use ffi;
-use gio_sys;
+use glib::ffi as glib_sys;
 use glib::{self, translate::*, Error, IsA};
-use glib_sys;
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
@@ -193,9 +192,9 @@ impl Repo {
         unsafe extern "C" fn write_content_async_trampoline<
             R: FnOnce(Result<Checksum, Error>) + Send + 'static,
         >(
-            _source_object: *mut gobject_sys::GObject,
-            res: *mut gio_sys::GAsyncResult,
-            user_data: glib_sys::gpointer,
+            _source_object: *mut glib::gobject_ffi::GObject,
+            res: *mut gio::ffi::GAsyncResult,
+            user_data: glib::ffi::gpointer,
         ) {
             let mut error = ptr::null_mut();
             let mut out_csum = MaybeUninit::uninit();
@@ -268,8 +267,8 @@ impl Repo {
         unsafe extern "C" fn write_metadata_async_trampoline<
             Q: FnOnce(Result<Checksum, Error>) + Send + 'static,
         >(
-            _source_object: *mut gobject_sys::GObject,
-            res: *mut gio_sys::GAsyncResult,
+            _source_object: *mut glib::gobject_ffi::GObject,
+            res: *mut gio::ffi::GAsyncResult,
             user_data: glib_sys::gpointer,
         ) {
             let mut error = ptr::null_mut();

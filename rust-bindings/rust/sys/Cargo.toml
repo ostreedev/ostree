@@ -5,9 +5,9 @@ repository = "fkrull/ostree-rs"
 system-deps = "3"
 
 [dependencies]
-glib-sys = "0.14.0"
-gobject-sys = "0.14.0"
-gio-sys = "0.14.0"
+glib-sys = "0.14"
+gobject-sys = "0.14"
+gio-sys = "0.14"
 libc = "0.2"
 
 [dev-dependencies]

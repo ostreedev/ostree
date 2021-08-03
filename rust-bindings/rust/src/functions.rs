@@ -1,8 +1,8 @@
 #[cfg(any(feature = "v2017_13", feature = "dox"))]
 use crate::ChecksumFlags;
 use crate::{Checksum, ObjectType};
+use glib::ffi::GFALSE;
 use glib::{prelude::*, translate::*};
-use glib_sys::GFALSE;
 use std::{future::Future, mem::MaybeUninit, pin::Pin, ptr};
 
 /// Compute the SHA-256 checksum of a file.
@@ -41,9 +41,9 @@ pub fn checksum_file_async<
     unsafe extern "C" fn checksum_file_async_trampoline<
         R: FnOnce(Result<Checksum, Box<dyn std::error::Error>>) + Send + 'static,
     >(
-        _source_object: *mut gobject_sys::GObject,
-        res: *mut gio_sys::GAsyncResult,
-        user_data: glib_sys::gpointer,
+        _source_object: *mut glib::gobject_ffi::GObject,
+        res: *mut gio::ffi::GAsyncResult,
+        user_data: glib::ffi::gpointer,
     ) {
         let mut error = ptr::null_mut();
         let mut out_csum = MaybeUninit::uninit();
@@ -145,7 +145,7 @@ pub fn checksum_file_at<P: IsA<gio::Cancellable>>(
 
 unsafe fn checksum_file_error(
     out_csum: *mut [*mut u8; 32],
-    error: *mut glib_sys::GError,
+    error: *mut glib::ffi::GError,
     ret: i32,
 ) -> Result<Checksum, Box<dyn std::error::Error>> {
     if !error.is_null() {
