@@ -169,6 +169,6 @@ ostree_repo_init repo2 --mode=bare-user
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
 ${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
 ${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline --sign-type=dummy repo/deltas/${deltaprefix}/${deltadir} badsign 2> apply-offline-bad-key.txt && exit 1
-assert_file_has_content apply-offline-bad-key.txt "signature: dummy: incorrect signature"
+assert_file_has_content apply-offline-bad-key.txt "signature: dummy: incorrect signatures found: 1"
 
 echo 'ok apply offline failed with dummy and bad key'
