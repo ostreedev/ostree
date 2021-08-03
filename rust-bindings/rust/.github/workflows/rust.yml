@@ -18,6 +18,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --features=v2021_3
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --features=v2021_3
