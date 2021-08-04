@@ -1790,7 +1790,7 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
     return glnx_throw_errno_prefix (error, "fchmod %s", "var/tmp");
 
   if (mkdirat (dfd, "var/lib", 0777) < 0)
-    return glnx_throw_errno_prefix (error, "Creating %s", "var/tmp");
+    return glnx_throw_errno_prefix (error, "Creating %s", "var/lib");
 
   /* This needs to be available and properly labeled early during the boot
    * process (before tmpfiles.d kicks in), so that journald can flush logs from

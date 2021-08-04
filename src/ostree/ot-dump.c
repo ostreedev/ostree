@@ -136,8 +136,8 @@ dump_commit (GVariant            *variant,
       g_print ("Parent:  %s\n", parent);
     }
 
-  g_autofree char *contents = ostree_commit_get_content_checksum (variant) ?: "<invalid commit>";
-  g_print ("ContentChecksum:  %s\n", contents);
+  g_autofree char *contents = ostree_commit_get_content_checksum (variant);
+  g_print ("ContentChecksum:  %s\n", contents ?: "<invalid commit>");
   g_print ("Date:  %s\n", str);
 
   if ((version = ot_admin_checksum_version (variant)))

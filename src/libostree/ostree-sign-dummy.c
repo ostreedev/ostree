@@ -171,7 +171,8 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
   if (!g_variant_is_of_type (signatures, (GVariantType *) OSTREE_SIGN_METADATA_DUMMY_TYPE))
     return glnx_throw (error, "signature: dummy: wrong type passed for verification");
 
-  for (gsize i = 0; i < g_variant_n_children(signatures); i++)
+  gsize n = g_variant_n_children(signatures);
+  for (gsize i = 0; i < n; i++)
     {
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
       g_autoptr (GBytes) signature = g_variant_get_data_as_bytes(child);
@@ -188,9 +189,9 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
             *out_success_message = g_strdup ("dummy: Signature verified");
           return TRUE;
         }
-      else
-        return glnx_throw (error, "signature: dummy: incorrect signature %" G_GSIZE_FORMAT, i);
     }
 
+  if (n)
+    return glnx_throw (error, "signature: dummy: incorrect signatures found: %" G_GSIZE_FORMAT, n);
   return glnx_throw (error, "signature: dummy: no signatures");
 }
