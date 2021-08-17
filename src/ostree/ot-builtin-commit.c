@@ -555,6 +555,23 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       detached_metadata = g_variant_ref_sink (g_variant_builder_end (builder));
     }
 
+  /* Check for conflicting options */
+  if (opt_canonical_permissions && opt_owner_uid > 0)
+    {
+      glnx_throw (error, "Cannot specify both --canonical-permissions and non-zero --owner-uid");
+      goto out;
+    }
+  if (opt_canonical_permissions && opt_owner_gid > 0)
+    {
+      glnx_throw (error, "Cannot specify both --canonical-permissions and non-zero --owner-gid");
+      goto out;
+    }
+  if (opt_selinux_policy && opt_selinux_policy_from_base)
+    {
+      glnx_throw (error, "Cannot specify both --selinux-policy and --selinux-policy-from-base");
+      goto out;
+    }
+
   if (opt_no_xattrs)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
   if (opt_consume)
@@ -570,11 +587,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
-  if (opt_selinux_policy && opt_selinux_policy_from_base)
-    {
-      glnx_throw (error, "Cannot specify both --selinux-policy and --selinux-policy-from-base");
-      goto out;
-    }
 
   if (flags != 0
       || opt_owner_uid >= 0
