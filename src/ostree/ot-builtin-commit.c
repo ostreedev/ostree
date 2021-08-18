@@ -432,7 +432,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autoptr(GHashTable) skip_list = NULL;
   OstreeRepoCommitModifierFlags flags = 0;
   g_autoptr(OstreeSePolicy) policy = NULL;
-  OstreeRepoCommitModifier *modifier = NULL;
+  g_autoptr(OstreeRepoCommitModifier) modifier = NULL;
   OstreeRepoTransactionStats stats;
   struct CommitFilterData filter_data = { 0, };
   g_autofree char *commit_body = NULL;
@@ -980,7 +980,5 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
  out:
   if (repo)
     ostree_repo_abort_transaction (repo, cancellable, NULL);
-  if (modifier)
-    ostree_repo_commit_modifier_unref (modifier);
   return ret;
 }
