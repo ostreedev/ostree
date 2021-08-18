@@ -65,6 +65,79 @@ _ostree_bootloader_uboot_get_name (OstreeBootloader *bootloader)
   return "U-Boot";
 }
 
+/* Run system's setup.sh script, if it exists in $deployment/usr/lib/ostree-boot/ */
+static gboolean
+run_system_setup (OstreeBootloaderUboot   *self,
+                    const int bootversion,
+                    GCancellable            *cancellable,
+                    GError                 **error)
+{
+  // code to find bootargs is duplicated from create_config_from_boot_loader_entries
+  // is there a better way to know the deployment path?
+  g_autoptr(GPtrArray) boot_loader_configs = NULL;
+  OstreeBootconfigParser *config;
+  const char *val;
+  const char *bootargs = NULL;
+
+  if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
+                                                 cancellable, error)) {
+    return FALSE;
+  }
+
+  for (int i = 0; i < boot_loader_configs->len; i++) {
+    config = boot_loader_configs->pdata[i];
+
+    val = ostree_bootconfig_parser_get (config, "options");
+    if (val) {
+      bootargs = val;
+      break;
+    }
+  }
+
+  if(bootargs == NULL) {
+    return FALSE;
+  }
+
+  g_autoptr(OstreeKernelArgs) kargs = NULL;
+  const char *setup_path = NULL;
+  const char *setup_path_relative = NULL;
+  const char *ostree_arg = NULL;
+  GFile *sysroot_file = ostree_sysroot_get_path(self->sysroot);
+  g_autofree char* sysroot_path = g_file_get_path(sysroot_file);
+
+  kargs = ostree_kernel_args_from_string (bootargs);
+  ostree_arg = ostree_kernel_args_get_last_value (kargs, "ostree");
+  if (!ostree_arg)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "No ostree= kernel argument found in boot loader configuration file");
+      return FALSE;
+    }
+  setup_path_relative = glnx_strjoina ((ostree_arg+1), "/usr/lib/ostree-boot/setup.sh");
+  setup_path = glnx_strjoina (sysroot_path, ostree_arg, "/usr/lib/ostree-boot/setup.sh");
+  if (glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, setup_path_relative, NULL, 0, error)) {
+    int estatus;
+    g_autofree char *loader_arg = g_strdup_printf ("/boot/loader.%d", bootversion);
+
+    char const* setup_argv[5];
+    setup_argv[0] = setup_path;
+    setup_argv[1] = sysroot_path;
+    setup_argv[2] = ostree_arg;
+    setup_argv[3] = loader_arg;
+    setup_argv[4] = NULL;
+
+    if (!g_spawn_sync (NULL, (char**)setup_argv, NULL, G_SPAWN_SEARCH_PATH,
+                       NULL, NULL, NULL, NULL, &estatus, error)) {
+      return FALSE;
+    }
+    if (!g_spawn_check_exit_status (estatus, error)) {
+      return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
 /* Append system's uEnv.txt, if it exists in $deployment/usr/lib/ostree-boot/ */
 static gboolean
 append_system_uenv (OstreeBootloaderUboot   *self,
@@ -152,9 +225,10 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
       if (val)
         {
           g_ptr_array_add (new_lines, g_strdup_printf ("bootargs%s=%s", index_suffix, val));
-          if (i == 0)
+          if (i == 0) {
             if (!append_system_uenv (self, val, new_lines, cancellable, error))
               return FALSE;
+          }
         }
     }
 
@@ -188,6 +262,9 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader *bootloader,
                                       (guint8*)new_config_contents, strlen (new_config_contents),
                                       GLNX_FILE_REPLACE_DATASYNC_NEW,
                                       cancellable, error))
+    return FALSE;
+
+  if (!run_system_setup (self, bootversion, cancellable, error))
     return FALSE;
 
   return TRUE;
