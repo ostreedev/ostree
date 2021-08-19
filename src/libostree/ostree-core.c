@@ -984,6 +984,9 @@ ostree_checksum_file_at (int               dfd,
 
   g_autoptr(GFileInfo) file_info = _ostree_stbuf_to_gfileinfo (stbuf);
 
+  const gboolean canonicalize_perms =
+    ((flags & OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS) != 0);
+
   g_autoptr(GInputStream) in = NULL;
   if (S_ISREG (stbuf->st_mode))
     {
@@ -991,6 +994,11 @@ ostree_checksum_file_at (int               dfd,
       if (!glnx_openat_rdonly (dfd, path, FALSE, &fd, error))
         return FALSE;
       in = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+      if (canonicalize_perms)
+        {
+          g_file_info_set_attribute_uint32 (file_info, "unix::uid", 0);
+          g_file_info_set_attribute_uint32 (file_info, "unix::gid", 0);
+        }
     }
   else if (S_ISLNK (stbuf->st_mode))
     {
