@@ -31,7 +31,7 @@ if is_bare_user_only_repo repo; then
     # In bare-user-only repos we can only represent files with uid/gid 0, no
     # xattrs and canonical permissions, so we need to commit them as such, or
     # we end up with repos that don't pass fsck
-    COMMIT_ARGS="--canonical-permissions"
+    COMMIT_ARGS="--canonical-permissions --no-xattrs"
     DIFF_ARGS="--owner-uid=0 --owner-gid=0 --no-xattrs"
     # Also, since we can't check out uid=0 files we need to check out in user mode
     CHECKOUT_U_ARG="-U"
@@ -706,7 +706,7 @@ for x in $(seq 3); do
     # But they share the GPL
     echo 'this is the GPL' > pkg${x}/usr/share/licenses/COPYING
     ln -s COPYING pkg${x}/usr/share/licenses/LICENSE
-    $OSTREE commit -b union-identical-pkg${x} --tree=dir=pkg${x}
+    $OSTREE commit ${COMMIT_ARGS} -b union-identical-pkg${x} --tree=dir=pkg${x}
 done
 rm union-identical-test -rf
 for x in $(seq 3); do
@@ -756,7 +756,7 @@ cd ${test_tmpdir}
 rm files -rf && mkdir files
 touch files/anemptyfile
 touch files/anotheremptyfile
-$CMD_PREFIX ostree --repo=repo commit --consume -b tree-with-empty-files --tree=dir=files
+$CMD_PREFIX ostree --repo=repo commit ${COMMIT_ARGS} --consume -b tree-with-empty-files --tree=dir=files
 $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} tree-with-empty-files tree-with-empty-files
 if files_are_hardlinked tree-with-empty-files/an{,other}emptyfile; then
     fatal "--force-copy-zerosized failed"
@@ -773,7 +773,7 @@ echo "ok checkout zero sized files are not hardlinked"
 $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-empty-files tree-with-empty-files
 $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-empty-files tree-with-empty-files
 echo notempty > tree-with-empty-files/anemptyfile.new && mv tree-with-empty-files/anemptyfile{.new,}
-$CMD_PREFIX ostree --repo=repo commit --consume -b tree-with-conflicting-empty-files --tree=dir=tree-with-empty-files
+$CMD_PREFIX ostree --repo=repo commit ${COMMIT_ARGS} --consume -b tree-with-conflicting-empty-files --tree=dir=tree-with-empty-files
 # Reset back to base
 rm tree-with-empty-files -rf
 $CMD_PREFIX ostree --repo=repo checkout ${CHECKOUT_H_ARGS} --union-identical -z tree-with-empty-files tree-with-empty-files
