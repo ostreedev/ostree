@@ -375,6 +375,9 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                 if (repo->disable_xattrs)
                   flags |= OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS;
 
+                if (repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+                  flags |= OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS;
+
                 g_autofree char *actual_checksum = NULL;
                 if (!ostree_checksum_file_at (destination_dfd, destination_name,
                                               &dest_stbuf, OSTREE_OBJECT_TYPE_FILE,
@@ -526,7 +529,10 @@ checkout_file_hardlink (OstreeRepo                          *self,
                  * */
                 OstreeChecksumFlags flags = 0;
                 if (self->disable_xattrs)
-                    flags |= OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS;
+                  flags |= OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS;
+
+                if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+                  flags |= OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS;
 
                 g_autofree char *actual_checksum = NULL;
                 if (!ostree_checksum_file_at (destination_dfd, destination_name,

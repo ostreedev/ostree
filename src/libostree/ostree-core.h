@@ -460,12 +460,21 @@ gboolean ostree_break_hardlink (int               dfd,
 
 /**
  * OstreeChecksumFlags:
+ * @OSTREE_CHECKSUM_FLAGS_NONE: Default checksumming without tweaks.
+ *    (Since: 2017.13.)
+ * @OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS: Ignore xattrs when checksumming.
+ *    (Since: 2017.13.)
+ * @OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS: Use canonical uid/gid/mode
+ *    values, for bare-user-only mode. (Since: 2021.4.)
+ *
+ * Flags influencing checksumming logic.
  *
  * Since: 2017.13
  */
 typedef enum {
   OSTREE_CHECKSUM_FLAGS_NONE = 0,
   OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS = (1 << 0),
+  OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS = (1 << 1),
 } OstreeChecksumFlags;
 
 _OSTREE_PUBLIC

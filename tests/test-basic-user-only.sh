@@ -25,7 +25,7 @@ set -euo pipefail
 
 mode="bare-user-only"
 setup_test_repository "$mode"
-extra_basic_tests=5
+extra_basic_tests=6
 . $(dirname $0)/basic-test.sh
 
 $CMD_PREFIX ostree --version > version.yaml
@@ -41,6 +41,7 @@ ostree_repo_init repo init --mode=bare-user-only
 cd ${test_tmpdir}
 rm repo-input -rf
 ostree_repo_init repo-input init --mode=archive
+
 cd ${test_tmpdir}
 cat > statoverride.txt <<EOF
 2048 /some-setuid
@@ -99,3 +100,15 @@ if ! skip_one_without_user_xattrs; then
     $OSTREE fsck -q
     echo "ok hardlink pull from bare-user"
 fi
+
+cd ${test_tmpdir}
+rm repo -rf
+ostree_repo_init repo init --mode=bare-user-only
+rm files -rf && mkdir files
+echo afile > files/afile
+$OSTREE commit ${COMMIT_ARGS} -b perms files
+rm out -rf
+$OSTREE checkout --force-copy perms out
+$OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical perms out
+$OSTREE fsck
+echo "ok checkout checksum with canonical perms"
