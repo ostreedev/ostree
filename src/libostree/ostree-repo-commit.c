@@ -3286,22 +3286,35 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     GFileInfo                *file_info,
                                     GFileInfo               **out_modified_info)
 {
+  gboolean canonicalize_perms = FALSE;
+  gboolean has_filter = FALSE;
   OstreeRepoCommitFilterResult result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
   GFileInfo *modified_info;
 
-  if (modifier == NULL ||
-      (modifier->filter == NULL &&
-       (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) == 0))
+  /* Auto-detect bare-user-only repo, force canonical permissions. */
+  if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    canonicalize_perms = TRUE;
+
+  if (modifier != NULL)
+    {
+      if ((modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) != 0)
+        canonicalize_perms = TRUE;
+      if (modifier->filter != NULL)
+        has_filter = TRUE;
+    }
+
+  if (!(canonicalize_perms || has_filter))
     {
       *out_modified_info = g_object_ref (file_info);
-      return OSTREE_REPO_COMMIT_FILTER_ALLOW;
+      return OSTREE_REPO_COMMIT_FILTER_ALLOW; /* Note: early return (no actions needed) */
     }
 
   modified_info = g_file_info_dup (file_info);
-  if (modifier->filter)
+
+  if (has_filter)
     result = modifier->filter (self, path, modified_info, modifier->user_data);
 
-  if ((modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS) != 0)
+  if (canonicalize_perms)
     {
       guint mode = g_file_info_get_attribute_uint32 (modified_info, "unix::mode");
       switch (g_file_info_get_file_type (file_info))
@@ -3618,8 +3631,8 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
   /* Load flags into boolean constants for ease of readability (we also need to
    * NULL-check modifier)
    */
-  const gboolean canonical_permissions = modifier &&
-    (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS);
+  const gboolean canonical_permissions = self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY ||
+    (modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS));
   const gboolean devino_canonical = modifier &&
     (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL);
   /* We currently only honor the CONSUME flag in the dfd_iter case to avoid even
