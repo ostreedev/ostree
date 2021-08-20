@@ -2353,6 +2353,144 @@ out:
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
+static gboolean
+_ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
+                                   const gchar        *remote_name,
+                                   GFile              *keyringdir,
+                                   GFile              *extra_keyring,
+                                   gboolean            add_global_keyrings,
+                                   OstreeGpgVerifier **out_verifier,
+                                   GCancellable       *cancellable,
+                                   GError            **error);
+
+/**
+ * ostree_repo_remote_get_gpg_keys:
+ * @self: an #OstreeRepo
+ * @name: (nullable): name of the remote or %NULL
+ * @key_ids: (array zero-terminated=1) (element-type utf8) (nullable):
+ *    a %NULL-terminated array of GPG key IDs to include, or %NULL
+ * @out_keys: (out) (optional) (element-type GVariant) (transfer container):
+ *    return location for a #GPtrArray of the remote's trusted GPG keys, or
+ *    %NULL
+ * @cancellable: (nullable): a #GCancellable, or %NULL
+ * @error: return location for a #GError, or %NULL
+ *
+ * Enumerate the trusted GPG keys for the remote @name. If @name is
+ * %NULL, the global GPG keys will be returned. The keys will be
+ * returned in the @out_keys #GPtrArray. Each element in the array is a
+ * #GVariant of format %OSTREE_GPG_KEY_GVARIANT_FORMAT. The @key_ids
+ * array can be used to limit which keys are included. If @key_ids is
+ * %NULL, then all keys are included.
+ *
+ * Returns: %TRUE if the GPG keys could be enumerated, %FALSE otherwise
+ *
+ * Since: 2021.4
+ */
+gboolean
+ostree_repo_remote_get_gpg_keys (OstreeRepo          *self,
+                                 const char          *name,
+                                 const char * const  *key_ids,
+                                 GPtrArray          **out_keys,
+                                 GCancellable        *cancellable,
+                                 GError             **error)
+{
+#ifndef OSTREE_DISABLE_GPGME
+  g_autoptr(OstreeGpgVerifier) verifier = NULL;
+  gboolean global_keyrings = (name == NULL);
+  if (!_ostree_repo_gpg_prepare_verifier (self, name, NULL, NULL, global_keyrings,
+                                          &verifier, cancellable, error))
+    return FALSE;
+
+  g_autoptr(GPtrArray) gpg_keys = NULL;
+  if (!_ostree_gpg_verifier_list_keys (verifier, key_ids, &gpg_keys,
+                                       cancellable, error))
+    return FALSE;
+
+  g_autoptr(GPtrArray) keys =
+    g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
+  for (guint i = 0; i < gpg_keys->len; i++)
+    {
+      gpgme_key_t key = gpg_keys->pdata[i];
+
+      g_auto(GVariantBuilder) subkeys_builder = OT_VARIANT_BUILDER_INITIALIZER;
+      g_variant_builder_init (&subkeys_builder, G_VARIANT_TYPE ("aa{sv}"));
+      g_auto(GVariantBuilder) uids_builder = OT_VARIANT_BUILDER_INITIALIZER;
+      g_variant_builder_init (&uids_builder, G_VARIANT_TYPE ("aa{sv}"));
+      for (gpgme_subkey_t subkey = key->subkeys; subkey != NULL;
+           subkey = subkey->next)
+        {
+          g_auto(GVariantDict) subkey_dict = OT_VARIANT_BUILDER_INITIALIZER;
+          g_variant_dict_init (&subkey_dict, NULL);
+          g_variant_dict_insert_value (&subkey_dict, "fingerprint",
+                                       g_variant_new_string (subkey->fpr));
+          g_variant_dict_insert_value (&subkey_dict, "created",
+                                       g_variant_new_int64 (GINT64_TO_BE (subkey->timestamp)));
+          g_variant_dict_insert_value (&subkey_dict, "expires",
+                                       g_variant_new_int64 (GINT64_TO_BE (subkey->expires)));
+          g_variant_dict_insert_value (&subkey_dict, "revoked",
+                                       g_variant_new_boolean (subkey->revoked));
+          g_variant_dict_insert_value (&subkey_dict, "expired",
+                                       g_variant_new_boolean (subkey->expired));
+          g_variant_dict_insert_value (&subkey_dict, "invalid",
+                                       g_variant_new_boolean (subkey->invalid));
+          g_variant_builder_add (&subkeys_builder, "@a{sv}",
+                                 g_variant_dict_end (&subkey_dict));
+        }
+
+      for (gpgme_user_id_t uid = key->uids; uid != NULL; uid = uid->next)
+        {
+          /* Get WKD update URLs if address set */
+          g_autofree char *advanced_url = NULL;
+          g_autofree char *direct_url = NULL;
+          if (uid->address != NULL)
+            {
+              if (!ot_gpg_wkd_urls (uid->address, &advanced_url, &direct_url,
+                                    error))
+                return FALSE;
+            }
+
+          g_auto(GVariantDict) uid_dict = OT_VARIANT_BUILDER_INITIALIZER;
+          g_variant_dict_init (&uid_dict, NULL);
+          g_variant_dict_insert_value (&uid_dict, "uid",
+                                       g_variant_new_string (uid->uid));
+          g_variant_dict_insert_value (&uid_dict, "name",
+                                       g_variant_new_string (uid->name));
+          g_variant_dict_insert_value (&uid_dict, "comment",
+                                       g_variant_new_string (uid->comment));
+          g_variant_dict_insert_value (&uid_dict, "email",
+                                       g_variant_new_string (uid->email));
+          g_variant_dict_insert_value (&uid_dict, "revoked",
+                                       g_variant_new_boolean (uid->revoked));
+          g_variant_dict_insert_value (&uid_dict, "invalid",
+                                       g_variant_new_boolean (uid->invalid));
+          g_variant_dict_insert_value (&uid_dict, "advanced_url",
+                                       g_variant_new ("ms", advanced_url));
+          g_variant_dict_insert_value (&uid_dict, "direct_url",
+                                       g_variant_new ("ms", direct_url));
+          g_variant_builder_add (&uids_builder, "@a{sv}",
+                                 g_variant_dict_end (&uid_dict));
+        }
+
+      /* Currently empty */
+      g_auto(GVariantDict) metadata_dict = OT_VARIANT_BUILDER_INITIALIZER;
+      g_variant_dict_init (&metadata_dict, NULL);
+
+      GVariant *key_variant = g_variant_new ("(@aa{sv}@aa{sv}@a{sv})",
+                                             g_variant_builder_end (&subkeys_builder),
+                                             g_variant_builder_end (&uids_builder),
+                                             g_variant_dict_end (&metadata_dict));
+      g_ptr_array_add (keys, g_variant_ref_sink (key_variant));
+    }
+
+  if (out_keys)
+    *out_keys = g_steal_pointer (&keys);
+
+  return TRUE;
+#else /* OSTREE_DISABLE_GPGME */
+  return glnx_throw (error, "GPG feature is disabled in a build time");
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
 /**
  * ostree_repo_remote_fetch_summary:
  * @self: Self
@@ -5338,6 +5476,89 @@ find_keyring (OstreeRepo          *self,
   return TRUE;
 }
 
+static gboolean
+_ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
+                                   const gchar        *remote_name,
+                                   GFile              *keyringdir,
+                                   GFile              *extra_keyring,
+                                   gboolean            add_global_keyrings,
+                                   OstreeGpgVerifier **out_verifier,
+                                   GCancellable       *cancellable,
+                                   GError            **error)
+{
+  g_autoptr(OstreeGpgVerifier) verifier = _ostree_gpg_verifier_new ();
+
+  if (remote_name == OSTREE_ALL_REMOTES)
+    {
+      /* Add all available remote keyring files. */
+
+      if (!_ostree_gpg_verifier_add_keyring_dir_at (verifier, self->repo_dir_fd, ".",
+                                                    cancellable, error))
+        return FALSE;
+    }
+  else if (remote_name != NULL)
+    {
+      /* Add the remote's keyring file if it exists. */
+
+      g_autoptr(OstreeRemote) remote = NULL;
+
+      remote = _ostree_repo_get_remote_inherited (self, remote_name, error);
+      if (remote == NULL)
+        return FALSE;
+
+      g_autoptr(GBytes) keyring_data = NULL;
+      if (!find_keyring (self, remote, &keyring_data, cancellable, error))
+        return FALSE;
+
+      if (keyring_data != NULL)
+        {
+          _ostree_gpg_verifier_add_keyring_data (verifier, keyring_data, remote->keyring);
+          add_global_keyrings = FALSE;
+        }
+
+      g_auto(GStrv) gpgkeypath_list = NULL;
+
+      if (!ot_keyfile_get_string_list_with_separator_choice (remote->options,
+                                                             remote->group,
+                                                             "gpgkeypath",
+                                                             ";,",
+                                                             &gpgkeypath_list,
+                                                             error))
+        return FALSE;
+
+      if (gpgkeypath_list)
+        {
+          for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)
+            if (!_ostree_gpg_verifier_add_keyfile_path (verifier, *iter,
+                                                        cancellable, error))
+              return FALSE;
+        }
+    }
+
+  if (add_global_keyrings)
+    {
+      /* Use the deprecated global keyring directory. */
+      if (!_ostree_gpg_verifier_add_global_keyring_dir (verifier, cancellable, error))
+        return FALSE;
+    }
+
+  if (keyringdir)
+    {
+      if (!_ostree_gpg_verifier_add_keyring_dir (verifier, keyringdir,
+                                                 cancellable, error))
+        return FALSE;
+    }
+  if (extra_keyring != NULL)
+    {
+      _ostree_gpg_verifier_add_keyring_file (verifier, extra_keyring);
+    }
+
+  if (out_verifier != NULL)
+    *out_verifier = g_steal_pointer (&verifier);
+
+  return TRUE;
+}
+
 static OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
                                        const gchar   *remote_name,
@@ -5349,74 +5570,15 @@ _ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
                                        GError       **error)
 {
   g_autoptr(OstreeGpgVerifier) verifier = NULL;
-  gboolean add_global_keyring_dir = TRUE;
-
-  verifier = _ostree_gpg_verifier_new ();
-
-  if (remote_name == OSTREE_ALL_REMOTES)
-    {
-      /* Add all available remote keyring files. */
-
-      if (!_ostree_gpg_verifier_add_keyring_dir_at (verifier, self->repo_dir_fd, ".",
-                                                    cancellable, error))
-        return NULL;
-    }
-  else if (remote_name != NULL)
-    {
-      /* Add the remote's keyring file if it exists. */
-
-      g_autoptr(OstreeRemote) remote = NULL;
-
-      remote = _ostree_repo_get_remote_inherited (self, remote_name, error);
-      if (remote == NULL)
-        return NULL;
-
-      g_autoptr(GBytes) keyring_data = NULL;
-      if (!find_keyring (self, remote, &keyring_data, cancellable, error))
-        return NULL;
-
-      if (keyring_data != NULL)
-        {
-          _ostree_gpg_verifier_add_keyring_data (verifier, keyring_data, remote->keyring);
-          add_global_keyring_dir = FALSE;
-        }
-
-      g_auto(GStrv) gpgkeypath_list = NULL;
-
-      if (!ot_keyfile_get_string_list_with_separator_choice (remote->options,
-                                                             remote->group,
-                                                             "gpgkeypath",
-                                                             ";,",
-                                                             &gpgkeypath_list,
-                                                             error))
-        return NULL;
-
-      if (gpgkeypath_list)
-        {
-          for (char **iter = gpgkeypath_list; *iter != NULL; ++iter)
-            if (!_ostree_gpg_verifier_add_keyfile_path (verifier, *iter,
-                                                        cancellable, error))
-              return NULL;
-        }
-    }
-
-  if (add_global_keyring_dir)
-    {
-      /* Use the deprecated global keyring directory. */
-      if (!_ostree_gpg_verifier_add_global_keyring_dir (verifier, cancellable, error))
-        return NULL;
-    }
-
-  if (keyringdir)
-    {
-      if (!_ostree_gpg_verifier_add_keyring_dir (verifier, keyringdir,
-                                                 cancellable, error))
-        return NULL;
-    }
-  if (extra_keyring != NULL)
-    {
-      _ostree_gpg_verifier_add_keyring_file (verifier, extra_keyring);
-    }
+  if (!_ostree_repo_gpg_prepare_verifier (self,
+                                          remote_name,
+                                          keyringdir,
+                                          extra_keyring,
+                                          TRUE,
+                                          &verifier,
+                                          cancellable,
+                                          error))
+    return NULL;
 
   return _ostree_gpg_verifier_check_signature (verifier,
                                                data,

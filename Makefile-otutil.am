@@ -49,6 +49,8 @@ if USE_GPGME
 libotutil_la_SOURCES += \
 	src/libotutil/ot-gpg-utils.c \
 	src/libotutil/ot-gpg-utils.h \
+	src/libotutil/zbase32.c \
+	src/libotutil/zbase32.h \
 	$(NULL)
 endif
 
