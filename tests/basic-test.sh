@@ -31,7 +31,7 @@ if is_bare_user_only_repo repo; then
     # In bare-user-only repos we can only represent files with uid/gid 0, no
     # xattrs and canonical permissions, so we need to commit them as such, or
     # we end up with repos that don't pass fsck
-    COMMIT_ARGS="--canonical-permissions --no-xattrs"
+    COMMIT_ARGS="--no-xattrs"
     DIFF_ARGS="--owner-uid=0 --owner-gid=0 --no-xattrs"
     # Also, since we can't check out uid=0 files we need to check out in user mode
     CHECKOUT_U_ARG="-U"
