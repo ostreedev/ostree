@@ -66,7 +66,7 @@ Boston, MA 02111-1307, USA.
                 <command>ostree remote gpg-import</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">NAME</arg> <arg choice="opt" rep="repeat">KEY-ID</arg>
             </cmdsynopsis>
             <cmdsynopsis>
-                <command>ostree remote list-gpg-keys</command> <arg choice="req">NAME</arg>
+                <command>ostree remote gpg-list-keys</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree remote refs</command> <arg choice="req">NAME</arg>
@@ -112,7 +112,7 @@ Boston, MA 02111-1307, USA.
             The <command>gpg-import</command> subcommand can associate GPG
             keys to a specific remote repository for use when pulling signed
             commits from that repository (if GPG verification is enabled). The
-            <command>list-gpg-keys</command> subcommand can be used to see the
+            <command>gpg-list-keys</command> subcommand can be used to see the
             GPG keys currently associated with a remote repository.
         </para>
         <para>

@@ -44,7 +44,7 @@ static OstreeCommand remote_subcommands[] = {
   { "gpg-import", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_gpg_import,
     "Import GPG keys" },
-  { "list-gpg-keys", OSTREE_BUILTIN_FLAG_NONE,
+  { "gpg-list-keys", OSTREE_BUILTIN_FLAG_NONE,
     ot_remote_builtin_list_gpg_keys,
     "Show remote GPG keys" },
 #endif /* OSTREE_DISABLE_GPGME */

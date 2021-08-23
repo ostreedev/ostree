@@ -46,7 +46,7 @@ cd ${test_tmpdir}
 ${OSTREE} remote add R1 http://example.com/repo
 
 # No remote keyring should list no keys.
-${OSTREE} remote list-gpg-keys R1 > result
+${OSTREE} remote gpg-list-keys R1 > result
 assert_file_empty result
 
 echo "ok remote no keyring"
@@ -54,7 +54,7 @@ echo "ok remote no keyring"
 # Make the global keyring available and make sure there are still no
 # keys found for a specified remote.
 OSTREE_GPG_HOME=${trusteddir}
-${OSTREE} remote list-gpg-keys R1 > result
+${OSTREE} remote gpg-list-keys R1 > result
 OSTREE_GPG_HOME=${emptydir}
 assert_file_empty result
 
@@ -62,7 +62,7 @@ echo "ok remote with global keyring"
 
 # Import a key and check that it's listed
 ${OSTREE} remote gpg-import --keyring ${TEST_GPG_KEYHOME}/key1.asc R1
-${OSTREE} remote list-gpg-keys R1 > result
+${OSTREE} remote gpg-list-keys R1 > result
 cat > expected <<"EOF"
 Key: 5E65DE75AB1C501862D476347FCA23D8472CDAFA
   Created: Tue Sep 10 02:29:42 2013
@@ -78,14 +78,14 @@ echo "ok remote with keyring"
 
 # Check the global keys with no keyring
 OSTREE_GPG_HOME=${emptydir}
-${OSTREE} remote list-gpg-keys > result
+${OSTREE} remote gpg-list-keys > result
 assert_file_empty result
 
 echo "ok global no keyring"
 
 # Now check the global keys with a keyring
 OSTREE_GPG_HOME=${trusteddir}
-${OSTREE} remote list-gpg-keys > result
+${OSTREE} remote gpg-list-keys > result
 OSTREE_GPG_HOME=${emptydir}
 cat > expected <<"EOF"
 Key: 5E65DE75AB1C501862D476347FCA23D8472CDAFA
@@ -134,7 +134,7 @@ else
     sleep 2
     ${GPG} --homedir=${test_tmpdir}/gpghome --armor --export ${TEST_GPG_KEYID_1} > ${test_tmpdir}/key1expired.asc
     ${OSTREE} remote gpg-import --keyring ${test_tmpdir}/key1expired.asc R1
-    ${OSTREE} remote list-gpg-keys R1 > result
+    ${OSTREE} remote gpg-list-keys R1 > result
     assert_file_has_content result "^  Expired:"
 
     echo "ok remote expired key"
@@ -143,7 +143,7 @@ else
     ${GPG} --homedir=${TEST_GPG_KEYHOME} --import ${TEST_GPG_KEYHOME}/revocations/key1.rev
     ${GPG} --homedir=${test_tmpdir}/gpghome --armor --export ${TEST_GPG_KEYID_1} > ${test_tmpdir}/key1revoked.asc
     ${OSTREE} remote gpg-import --keyring ${test_tmpdir}/key1revoked.asc R1
-    ${OSTREE} remote list-gpg-keys R1 > result
+    ${OSTREE} remote gpg-list-keys R1 > result
     assert_file_has_content result "^Key: 5E65DE75AB1C501862D476347FCA23D8472CDAFA (revoked)"
     assert_file_has_content result "^  UID: Ostree Tester <test@test.com> (revoked)"
     assert_file_has_content result "^  Subkey: CC47B2DFB520AEF231180725DF20F58B408DEA49 (revoked)"
