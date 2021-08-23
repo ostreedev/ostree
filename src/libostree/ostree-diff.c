@@ -268,15 +268,18 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
   /* If we're diffing versus a repo, and either of them have xattrs disabled,
    * then disable for both.
    */
-  OstreeRepo *repo;
   if (OSTREE_IS_REPO_FILE (a))
-    repo = ostree_repo_file_get_repo ((OstreeRepoFile*)a);
-  else if (OSTREE_IS_REPO_FILE (b))
-    repo = ostree_repo_file_get_repo ((OstreeRepoFile*)b);
-  else
-    repo = NULL;
-  if (repo != NULL && repo->disable_xattrs)
-    flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
+    {
+      OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile*)a);
+      if (repo->disable_xattrs)
+        flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
+    }
+  if (OSTREE_IS_REPO_FILE (b))
+    {
+      OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile*)b);
+      if (repo->disable_xattrs)
+        flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
+    }
 
   if (a == NULL)
     {
