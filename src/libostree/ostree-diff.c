@@ -271,13 +271,13 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
   if (OSTREE_IS_REPO_FILE (a))
     {
       OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile*)a);
-      if (repo->disable_xattrs)
+      if (repo->disable_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
         flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
     }
   if (OSTREE_IS_REPO_FILE (b))
     {
       OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile*)b);
-      if (repo->disable_xattrs)
+      if (repo->disable_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
         flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
     }
 
