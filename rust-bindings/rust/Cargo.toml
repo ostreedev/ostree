@@ -31,7 +31,7 @@ members = [".", "sys"]
 bitflags = "1.2.1"
 ffi = { package = "ostree-sys", path = "sys", version = "0.8.1" }
 gio = "0.14"
-glib = "0.14"
+glib = "0.14.4"
 hex = "0.4.2"
 libc = "0.2"
 once_cell = "1.4.0"
