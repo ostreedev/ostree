@@ -29,10 +29,8 @@ COMMIT_ARGS=""
 DIFF_ARGS=""
 if is_bare_user_only_repo repo; then
     # In bare-user-only repos we can only represent files with uid/gid 0, no
-    # xattrs and canonical permissions, so we need to commit them as such, or
-    # we end up with repos that don't pass fsck
-    COMMIT_ARGS="--no-xattrs"
-    DIFF_ARGS="--owner-uid=0 --owner-gid=0 --no-xattrs"
+    # xattrs and canonical permissions.
+    DIFF_ARGS="--owner-uid=0 --owner-gid=0"
     # Also, since we can't check out uid=0 files we need to check out in user mode
     CHECKOUT_U_ARG="-U"
     CHECKOUT_H_ARGS="-U -H"
@@ -314,7 +312,7 @@ echo "ok diff revisions"
 
 cd ${test_tmpdir}/checkout-test2-4
 echo afile > oh-look-a-file
-$OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2-2
+$OSTREE diff ${DIFF_ARGS} test2 ./ > ${test_tmpdir}/diff-test2-2
 rm oh-look-a-file
 cd ${test_tmpdir}
 assert_file_has_content diff-test2-2 'A *oh-look-a-file$'
@@ -787,11 +785,14 @@ cd ${test_tmpdir}
 rm files -rf && mkdir files
 mkdir files/worldwritable-dir
 chmod a+w files/worldwritable-dir
-$CMD_PREFIX ostree --repo=repo commit -b content-with-dir-world-writable --tree=dir=files
+$OSTREE commit ${COMMIT_ARGS} -b content-with-dir-world-writable --tree=dir=files
+$OSTREE fsck
 rm dir-co -rf
-$CMD_PREFIX ostree --repo=repo checkout -U -H -M content-with-dir-world-writable dir-co
-assert_file_has_mode dir-co/worldwritable-dir 775
-if ! is_bare_user_only_repo repo; then
+$OSTREE checkout -U -H -M content-with-dir-world-writable dir-co
+if is_bare_user_only_repo repo; then
+    assert_file_has_mode dir-co/worldwritable-dir 755
+else
+    assert_file_has_mode dir-co/worldwritable-dir 775
     rm dir-co -rf
     $CMD_PREFIX ostree --repo=repo checkout -U -H content-with-dir-world-writable dir-co
     assert_file_has_mode dir-co/worldwritable-dir 777

@@ -25,7 +25,7 @@ set -euo pipefail
 
 mode="bare-user-only"
 setup_test_repository "$mode"
-extra_basic_tests=7
+extra_basic_tests=6
 . $(dirname $0)/basic-test.sh
 
 $CMD_PREFIX ostree --version > version.yaml
@@ -63,8 +63,8 @@ rm files -rf && mkdir files
 echo "a group writable file" > files/some-group-writable
 chmod 0664 files/some-group-writable
 $CMD_PREFIX ostree --repo=repo-input commit -b content-with-group-writable --tree=dir=files
-$CMD_PREFIX ostree pull-local --repo=repo repo-input
-$CMD_PREFIX ostree --repo=repo checkout -U -H content-with-group-writable groupwritable-co
+$OSTREE pull-local repo-input
+$OSTREE checkout -U -H content-with-group-writable groupwritable-co
 assert_file_has_mode groupwritable-co/some-group-writable 664
 echo "ok supported group writable"
 
@@ -75,8 +75,8 @@ rm files -rf && mkdir files
 mkdir files/worldwritable-dir
 chmod a+w files/worldwritable-dir
 $CMD_PREFIX ostree --repo=repo-input commit -b content-with-dir-world-writable --tree=dir=files
-$CMD_PREFIX ostree pull-local --repo=repo repo-input
-$CMD_PREFIX ostree --repo=repo checkout -U -H content-with-dir-world-writable dir-co
+$OSTREE pull-local repo-input
+$OSTREE checkout -U -H content-with-dir-world-writable dir-co
 assert_file_has_mode dir-co/worldwritable-dir 775
 echo "ok didn't make world-writable dir"
 
@@ -106,21 +106,12 @@ rm repo -rf
 ostree_repo_init repo init --mode=bare-user-only
 rm files -rf && mkdir files
 echo afile > files/afile
+chmod 0777 files/afile
 $OSTREE commit ${COMMIT_ARGS} -b perms files
+$OSTREE fsck
 rm out -rf
 $OSTREE checkout --force-copy perms out
+assert_file_has_mode out/afile 755
 $OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical perms out
-$OSTREE fsck
-echo "ok checkout checksum with canonical perms"
-
-cd ${test_tmpdir}
-rm repo -rf
-ostree_repo_init repo init --mode=bare-user-only
-rm files -rf && mkdir files
-echo afile > files/afile
-$OSTREE commit ${COMMIT_ARGS} -b perms files
-rm out -rf
-$OSTREE checkout --force-copy perms out
-$OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical perms out
-$OSTREE fsck
+assert_file_has_mode out/afile 755
 echo "ok automatic canonical perms for bare-user-only"
