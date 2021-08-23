@@ -572,7 +572,9 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       goto out;
     }
 
-  if (opt_no_xattrs)
+  if (opt_canonical_permissions || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS;
+  if (opt_no_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
   if (opt_consume)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME;
@@ -581,8 +583,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       opt_link_checkout_speedup = TRUE; /* Imply this */
       flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL;
     }
-  if (opt_canonical_permissions)
-    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS;
   if (opt_generate_sizes)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
   if (opt_disable_fsync)
