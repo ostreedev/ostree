@@ -3382,8 +3382,9 @@ get_final_xattrs (OstreeRepo                       *self,
   /* track whether the returned xattrs differ from the file on disk */
   gboolean modified = TRUE;
   const gboolean skip_xattrs = (modifier &&
-      modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
-                         OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0;
+      (modifier->flags & (OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS |
+                          OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS)) > 0) ||
+      self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY;
 
   /* fetch on-disk xattrs if needed & not disabled */
   g_autoptr(GVariant) original_xattrs = NULL;
