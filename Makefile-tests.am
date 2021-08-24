@@ -152,7 +152,7 @@ _installed_or_uninstalled_test_scripts = \
 if USE_GPGME
 _installed_or_uninstalled_test_scripts += \
 	tests/test-remote-gpg-import.sh \
-	tests/test-remote-list-gpg-keys.sh \
+	tests/test-remote-gpg-list-keys.sh \
 	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-gpg.sh \
 	$(NULL)

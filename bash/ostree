@@ -1381,9 +1381,9 @@ _ostree_remote() {
         delete
         delete-cookie
         gpg-import
+        gpg-list-keys
         list
         list-cookies
-        list-gpg-keys
         refs
         show-url
         summary
