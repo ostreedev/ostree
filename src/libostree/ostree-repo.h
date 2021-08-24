@@ -684,7 +684,7 @@ typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo    *r
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL: If a devino cache hit is found, skip modifier filters (non-directories only); Since: 2017.14
  *
  * Flags modifying commit behavior. In bare-user-only mode, @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS
- * is automatically enabled.
+ * and @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS are automatically enabled.
  *
  */
 typedef enum {
