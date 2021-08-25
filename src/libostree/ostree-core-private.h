@@ -36,6 +36,9 @@ G_BEGIN_DECLS
 #define DEFAULT_DIRECTORY_MODE 0775
 #define DEFAULT_REGFILE_MODE 0660
 
+/* Mask to sanitize permissions into a safe canonical subset, for user-bare-only mode. */
+#define USERMODE_CANONICAL_MASK 0775
+
 /* This file contains private implementation data format definitions
  * read by multiple implementation .c files.
  */

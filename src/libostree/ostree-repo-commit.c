@@ -298,7 +298,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
        */
       if (S_ISREG (mode))
         {
-          const mode_t content_mode = (mode & (S_IFREG | 0775)) | S_IRUSR;
+          const mode_t content_mode = (mode & USERMODE_CANONICAL_MASK) | S_IFREG | S_IRUSR;
           if (!glnx_fchmod (tmpf->fd, content_mode, error))
             return FALSE;
         }
@@ -1318,7 +1318,7 @@ adopt_and_commit_regfile (OstreeRepo   *self,
   if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
     {
       const guint32 src_mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
-      if (fchmod (fd, src_mode & 0755) < 0)
+      if (fchmod (fd, src_mode & USERMODE_CANONICAL_MASK) < 0)
         return glnx_throw_errno_prefix (error, "fchmod");
     }
   if (renameat (dfd, name, dest_dfd, loose_path) == -1)
@@ -3323,11 +3323,11 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
           /* In particular, we want to squash the s{ug}id bits, but this also
            * catches the sticky bit for example.
            */
-          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", mode & (S_IFREG | 0755));
+          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", (mode & USERMODE_CANONICAL_MASK) | S_IFREG);
           break;
         case G_FILE_TYPE_DIRECTORY:
           /* Like the above but for directories */
-          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", mode & (S_IFDIR | 0755));
+          g_file_info_set_attribute_uint32 (modified_info, "unix::mode", (mode & USERMODE_CANONICAL_MASK) | S_IFDIR);
           break;
         case G_FILE_TYPE_SYMBOLIC_LINK:
           break;

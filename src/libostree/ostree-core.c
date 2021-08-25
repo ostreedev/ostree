@@ -2288,7 +2288,7 @@ _ostree_validate_bareuseronly_mode (guint32     content_mode,
 {
   if (S_ISREG (content_mode))
     {
-      const guint32 invalid_modebits = ((content_mode & ~S_IFMT) & ~0775);
+      const guint32 invalid_modebits = ((content_mode & ~S_IFMT) & ~USERMODE_CANONICAL_MASK);
       if (invalid_modebits > 0)
         return glnx_throw (error, "Content object %s: invalid mode 0%04o with bits 0%04o",
                            checksum, content_mode, invalid_modebits);

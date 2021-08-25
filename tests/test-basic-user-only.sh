@@ -111,7 +111,7 @@ $OSTREE commit ${COMMIT_ARGS} -b perms files
 $OSTREE fsck
 rm out -rf
 $OSTREE checkout --force-copy perms out
-assert_file_has_mode out/afile 755
+assert_file_has_mode out/afile 775
 $OSTREE checkout ${CHECKOUT_H_ARGS} --union-identical perms out
-assert_file_has_mode out/afile 755
+assert_file_has_mode out/afile 775
 echo "ok automatic canonical perms for bare-user-only"

@@ -789,10 +789,8 @@ $OSTREE commit ${COMMIT_ARGS} -b content-with-dir-world-writable --tree=dir=file
 $OSTREE fsck
 rm dir-co -rf
 $OSTREE checkout -U -H -M content-with-dir-world-writable dir-co
-if is_bare_user_only_repo repo; then
-    assert_file_has_mode dir-co/worldwritable-dir 755
-else
-    assert_file_has_mode dir-co/worldwritable-dir 775
+assert_file_has_mode dir-co/worldwritable-dir 775
+if ! is_bare_user_only_repo repo; then
     rm dir-co -rf
     $CMD_PREFIX ostree --repo=repo checkout -U -H content-with-dir-world-writable dir-co
     assert_file_has_mode dir-co/worldwritable-dir 777
