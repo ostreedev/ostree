@@ -234,9 +234,17 @@ typedef OstreeRepo _OstreeRepoAutoTransaction;
 static inline void
 _ostree_repo_auto_transaction_cleanup (void *p)
 {
+  if (p == NULL)
+    return;
+  g_return_if_fail (OSTREE_IS_REPO (p));
+
   OstreeRepo *repo = p;
-  if (repo)
-    (void) ostree_repo_abort_transaction (repo, NULL, NULL);
+  g_autoptr(GError) error = NULL;
+
+  if (!ostree_repo_abort_transaction (repo, NULL, &error))
+    g_warning("Failed to auto-cleanup OSTree transaction: %s", error->message);
+
+  g_object_unref (repo);
 }
 
 static inline _OstreeRepoAutoTransaction *
@@ -246,7 +254,8 @@ _ostree_repo_auto_transaction_start (OstreeRepo     *repo,
 {
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     return NULL;
-  return (_OstreeRepoAutoTransaction *)repo;
+
+  return (_OstreeRepoAutoTransaction *) g_object_ref (repo);
 }
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (_OstreeRepoAutoTransaction, _ostree_repo_auto_transaction_cleanup)
 
