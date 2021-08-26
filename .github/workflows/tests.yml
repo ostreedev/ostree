@@ -120,8 +120,11 @@ jobs:
       - name: Install dependencies
         run: ./ci/gh-install.sh ${{ matrix.extra-packages }}
 
+      - name: Add non-root user
+        run: "useradd builder && chown -R -h builder: ."
+
       - name: Build and test
-        run: ./ci/gh-build.sh ${{ matrix.configure-options }}
+        run: runuser -u builder -- ./ci/gh-build.sh ${{ matrix.configure-options }}
         env:
           # GitHub hosted runners currently have 2 CPUs, so run 2
           # parallel make jobs.
