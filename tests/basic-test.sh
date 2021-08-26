@@ -455,11 +455,21 @@ $OSTREE commit ${COMMIT_ARGS} --skip-if-unchanged -b trees/test2 -s 'should not 
 $OSTREE ls -R -C test2
 new_rev=$($OSTREE rev-parse test2)
 assert_streq "${old_rev}" "${new_rev}"
+$OSTREE fsck
 echo "ok commit --skip-if-unchanged"
 
-cd ${test_tmpdir}/checkout-test2-4
-$OSTREE commit ${COMMIT_ARGS} -b test2 -s "no xattrs" --no-xattrs
-echo "ok commit with no xattrs"
+if have_selinux_relabel; then
+    # Unfortunately later tests depend on this right now, so commit anyways
+    cd ${test_tmpdir}/checkout-test2-4
+    $OSTREE commit ${COMMIT_ARGS} -b test2
+    echo "ok # SKIP we get an injected security.selinux xattr regardless, so we can't do this"
+else
+    cd ${test_tmpdir}/checkout-test2-4
+    $OSTREE commit ${COMMIT_ARGS} -b test2-noxattrs -s "no xattrs" --no-xattrs
+    # Validate our assumptions
+    $OSTREE fsck
+    echo "ok commit with no xattrs"
+fi
 
 mkdir tree-A tree-B
 touch tree-A/file-a tree-B/file-b
