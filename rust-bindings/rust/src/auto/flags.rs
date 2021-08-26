@@ -19,6 +19,8 @@ bitflags! {
         const NONE = ffi::OSTREE_CHECKSUM_FLAGS_NONE as u32;
         #[doc(alias = "OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS")]
         const IGNORE_XATTRS = ffi::OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS as u32;
+        #[doc(alias = "OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS")]
+        const CANONICAL_PERMISSIONS = ffi::OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS as u32;
     }
 }
 
@@ -404,6 +406,48 @@ impl FromGlib<ffi::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
     }
 }
 
+#[cfg(any(feature = "v2021_4", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+bitflags! {
+    #[doc(alias = "OstreeRepoVerifyFlags")]
+    pub struct RepoVerifyFlags: u32 {
+        #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NONE")]
+        const NONE = ffi::OSTREE_REPO_VERIFY_FLAGS_NONE as u32;
+        #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NO_GPG")]
+        const NO_GPG = ffi::OSTREE_REPO_VERIFY_FLAGS_NO_GPG as u32;
+        #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI")]
+        const NO_SIGNAPI = ffi::OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI as u32;
+    }
+}
+
+#[cfg(any(feature = "v2021_4", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+impl fmt::Display for RepoVerifyFlags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <Self as fmt::Debug>::fmt(self, f)
+    }
+}
+
+#[cfg(any(feature = "v2021_4", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+#[doc(hidden)]
+impl IntoGlib for RepoVerifyFlags {
+    type GlibType = ffi::OstreeRepoVerifyFlags;
+
+    fn into_glib(self) -> ffi::OstreeRepoVerifyFlags {
+        self.bits()
+    }
+}
+
+#[cfg(any(feature = "v2021_4", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+#[doc(hidden)]
+impl FromGlib<ffi::OstreeRepoVerifyFlags> for RepoVerifyFlags {
+    unsafe fn from_glib(value: ffi::OstreeRepoVerifyFlags) -> Self {
+        Self::from_bits_truncate(value)
+    }
+}
+
 bitflags! {
     #[doc(alias = "OstreeSePolicyRestoreconFlags")]
     pub struct SePolicyRestoreconFlags: u32 {
@@ -483,6 +527,8 @@ bitflags! {
     pub struct SysrootUpgraderFlags: u32 {
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED")]
         const IGNORE_UNCONFIGURED = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED as u32;
+        #[doc(alias = "OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE")]
+        const STAGE = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE as u32;
     }
 }
 

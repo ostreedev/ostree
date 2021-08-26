@@ -38,6 +38,8 @@ pub static COMMIT_META_KEY_VERSION: once_cell::sync::Lazy<&'static str> = once_c
 pub static DIRMETA_GVARIANT_STRING: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ffi::OSTREE_DIRMETA_GVARIANT_STRING).to_str().unwrap()});
 #[doc(alias = "OSTREE_FILEMETA_GVARIANT_STRING")]
 pub static FILEMETA_GVARIANT_STRING: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ffi::OSTREE_FILEMETA_GVARIANT_STRING).to_str().unwrap()});
+#[doc(alias = "OSTREE_GPG_KEY_GVARIANT_STRING")]
+pub static GPG_KEY_GVARIANT_STRING: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ffi::OSTREE_GPG_KEY_GVARIANT_STRING).to_str().unwrap()});
 #[cfg(any(feature = "v2021_1", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_1")))]
 #[doc(alias = "OSTREE_METADATA_KEY_BOOTABLE")]

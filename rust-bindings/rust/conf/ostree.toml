@@ -54,6 +54,7 @@ generate = [
     "OSTree.RepoPullFlags",
     "OSTree.RepoRemoteChange",
     "OSTree.RepoResolveRevExtFlags",
+    "OSTree.RepoVerifyFlags",
     "OSTree.SePolicyRestoreconFlags",
     "OSTree.StaticDeltaGenerateOpt",
     "OSTree.SysrootSimpleWriteDeploymentFlags",

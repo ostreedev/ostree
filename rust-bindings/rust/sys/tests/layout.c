@@ -43,6 +43,7 @@ int main() {
     printf("%s;%zu;%zu\n", "OstreeRepoFinderResultv", sizeof(OstreeRepoFinderResultv), alignof(OstreeRepoFinderResultv));
     printf("%s;%zu;%zu\n", "OstreeRepoListObjectsFlags", sizeof(OstreeRepoListObjectsFlags), alignof(OstreeRepoListObjectsFlags));
     printf("%s;%zu;%zu\n", "OstreeRepoListRefsExtFlags", sizeof(OstreeRepoListRefsExtFlags), alignof(OstreeRepoListRefsExtFlags));
+    printf("%s;%zu;%zu\n", "OstreeRepoLockType", sizeof(OstreeRepoLockType), alignof(OstreeRepoLockType));
     printf("%s;%zu;%zu\n", "OstreeRepoMode", sizeof(OstreeRepoMode), alignof(OstreeRepoMode));
     printf("%s;%zu;%zu\n", "OstreeRepoPruneFlags", sizeof(OstreeRepoPruneFlags), alignof(OstreeRepoPruneFlags));
     printf("%s;%zu;%zu\n", "OstreeRepoPruneOptions", sizeof(OstreeRepoPruneOptions), alignof(OstreeRepoPruneOptions));
@@ -50,6 +51,7 @@ int main() {
     printf("%s;%zu;%zu\n", "OstreeRepoRemoteChange", sizeof(OstreeRepoRemoteChange), alignof(OstreeRepoRemoteChange));
     printf("%s;%zu;%zu\n", "OstreeRepoResolveRevExtFlags", sizeof(OstreeRepoResolveRevExtFlags), alignof(OstreeRepoResolveRevExtFlags));
     printf("%s;%zu;%zu\n", "OstreeRepoTransactionStats", sizeof(OstreeRepoTransactionStats), alignof(OstreeRepoTransactionStats));
+    printf("%s;%zu;%zu\n", "OstreeRepoVerifyFlags", sizeof(OstreeRepoVerifyFlags), alignof(OstreeRepoVerifyFlags));
     printf("%s;%zu;%zu\n", "OstreeSePolicyRestoreconFlags", sizeof(OstreeSePolicyRestoreconFlags), alignof(OstreeSePolicyRestoreconFlags));
     printf("%s;%zu;%zu\n", "OstreeSignInterface", sizeof(OstreeSignInterface), alignof(OstreeSignInterface));
     printf("%s;%zu;%zu\n", "OstreeStaticDeltaGenerateOpt", sizeof(OstreeStaticDeltaGenerateOpt), alignof(OstreeStaticDeltaGenerateOpt));

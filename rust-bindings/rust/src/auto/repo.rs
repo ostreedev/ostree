@@ -36,6 +36,9 @@ use crate::RepoRemoteChange;
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_7")))]
 use crate::RepoResolveRevExtFlags;
 use crate::RepoTransactionStats;
+#[cfg(any(feature = "v2021_4", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+use crate::RepoVerifyFlags;
 #[cfg(any(feature = "v2020_7", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
 use crate::Sign;
@@ -527,6 +530,20 @@ impl Repo {
         }
     }
 
+    //#[cfg(any(feature = "v2021_3", feature = "dox"))]
+    //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_3")))]
+    //#[doc(alias = "ostree_repo_lock_pop")]
+    //pub fn lock_pop<P: IsA<gio::Cancellable>>(&self, lock_type: /*Ignored*/RepoLockType, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //    unsafe { TODO: call ffi:ostree_repo_lock_pop() }
+    //}
+
+    //#[cfg(any(feature = "v2021_3", feature = "dox"))]
+    //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_3")))]
+    //#[doc(alias = "ostree_repo_lock_push")]
+    //pub fn lock_push<P: IsA<gio::Cancellable>>(&self, lock_type: /*Ignored*/RepoLockType, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //    unsafe { TODO: call ffi:ostree_repo_lock_push() }
+    //}
+
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_15")))]
     #[doc(alias = "ostree_repo_mark_commit_partial")]
@@ -650,7 +667,7 @@ impl Repo {
     }
 
     #[doc(alias = "ostree_repo_read_commit_detached_metadata")]
-    pub fn read_commit_detached_metadata<P: IsA<gio::Cancellable>>(&self, checksum: &str, cancellable: Option<&P>) -> Result<glib::Variant, glib::Error> {
+    pub fn read_commit_detached_metadata<P: IsA<gio::Cancellable>>(&self, checksum: &str, cancellable: Option<&P>) -> Result<Option<glib::Variant>, glib::Error> {
         unsafe {
             let mut out_metadata = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -680,7 +697,7 @@ impl Repo {
     }
 
     #[doc(alias = "ostree_repo_remote_add")]
-    pub fn remote_add<P: IsA<gio::Cancellable>>(&self, name: &str, url: &str, options: Option<&glib::Variant>, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    pub fn remote_add<P: IsA<gio::Cancellable>>(&self, name: &str, url: Option<&str>, options: Option<&glib::Variant>, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ffi::ostree_repo_remote_add(self.to_glib_none().0, name.to_glib_none().0, url.to_glib_none().0, options.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -689,7 +706,7 @@ impl Repo {
     }
 
     #[doc(alias = "ostree_repo_remote_change")]
-    pub fn remote_change<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, sysroot: Option<&P>, changeop: RepoRemoteChange, name: &str, url: &str, options: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<(), glib::Error> {
+    pub fn remote_change<P: IsA<gio::File>, Q: IsA<gio::Cancellable>>(&self, sysroot: Option<&P>, changeop: RepoRemoteChange, name: &str, url: Option<&str>, options: Option<&glib::Variant>, cancellable: Option<&Q>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ffi::ostree_repo_remote_change(self.to_glib_none().0, sysroot.map(|p| p.as_ref()).to_glib_none().0, changeop.into_glib(), name.to_glib_none().0, url.to_glib_none().0, options.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
@@ -727,6 +744,18 @@ impl Repo {
             let mut error = ptr::null_mut();
             let _ = ffi::ostree_repo_remote_fetch_summary_with_options(self.to_glib_none().0, name.to_glib_none().0, options.to_glib_none().0, &mut out_summary, &mut out_signatures, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok((from_glib_full(out_summary), from_glib_full(out_signatures))) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2021_4", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+    #[doc(alias = "ostree_repo_remote_get_gpg_keys")]
+    pub fn remote_get_gpg_keys<P: IsA<gio::Cancellable>>(&self, name: Option<&str>, key_ids: &[&str], cancellable: Option<&P>) -> Result<Vec<glib::Variant>, glib::Error> {
+        unsafe {
+            let mut out_keys = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_remote_get_gpg_keys(self.to_glib_none().0, name.to_glib_none().0, key_ids.to_glib_none().0, &mut out_keys, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_container(out_keys)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -923,6 +952,18 @@ impl Repo {
             let mut error = ptr::null_mut();
             let _ = ffi::ostree_repo_sign_delta(self.to_glib_none().0, from_commit.to_glib_none().0, to_commit.to_glib_none().0, key_id.to_glib_none().0, homedir.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(any(feature = "v2021_4", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+    #[doc(alias = "ostree_repo_signature_verify_commit_data")]
+    pub fn signature_verify_commit_data(&self, remote_name: &str, commit_data: &glib::Bytes, commit_metadata: &glib::Bytes, flags: RepoVerifyFlags) -> Result<Option<glib::GString>, glib::Error> {
+        unsafe {
+            let mut out_results = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_signature_verify_commit_data(self.to_glib_none().0, remote_name.to_glib_none().0, commit_data.to_glib_none().0, commit_metadata.to_glib_none().0, flags.into_glib(), &mut out_results, &mut error);
+            if error.is_null() { Ok(from_glib_full(out_results)) } else { Err(from_glib_full(error)) }
         }
     }
 

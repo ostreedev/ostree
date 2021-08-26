@@ -145,6 +145,9 @@ pub use self::flags::RepoListRefsExtFlags;
 pub use self::flags::RepoPruneFlags;
 pub use self::flags::RepoPullFlags;
 pub use self::flags::RepoResolveRevExtFlags;
+#[cfg(any(feature = "v2021_4", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+pub use self::flags::RepoVerifyFlags;
 pub use self::flags::SePolicyRestoreconFlags;
 pub use self::flags::SysrootSimpleWriteDeploymentFlags;
 pub use self::flags::SysrootUpgraderFlags;
@@ -177,6 +180,7 @@ pub use self::constants::COMMIT_META_KEY_SOURCE_TITLE;
 pub use self::constants::COMMIT_META_KEY_VERSION;
 pub use self::constants::DIRMETA_GVARIANT_STRING;
 pub use self::constants::FILEMETA_GVARIANT_STRING;
+pub use self::constants::GPG_KEY_GVARIANT_STRING;
 #[cfg(any(feature = "v2021_1", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_1")))]
 pub use self::constants::METADATA_KEY_BOOTABLE;
