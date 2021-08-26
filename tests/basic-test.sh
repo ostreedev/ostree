@@ -435,7 +435,7 @@ echo "ok user checkout"
 $OSTREE commit ${COMMIT_ARGS} -b test2 -s "Another commit" --tree=ref=test2
 echo "ok commit from ref"
 
-$OSTREE commit ${COMMIT_ARGS} -b test2 -s "Another commit with modifier" --tree=ref=test2 --owner-uid=0
+$OSTREE commit ${COMMIT_ARGS} -b test2 -s "Another commit with modifier" --tree=ref=test2 --mode-ro-executables
 echo "ok commit from ref with modifier"
 
 $OSTREE commit ${COMMIT_ARGS} -b trees/test2 -s 'ref with / in it' --tree=ref=test2
