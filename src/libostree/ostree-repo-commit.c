@@ -3117,7 +3117,7 @@ ostree_repo_write_commit_with_time (OstreeRepo      *self,
  * ostree_repo_read_commit_detached_metadata:
  * @self: Repo
  * @checksum: ASCII SHA256 commit checksum
- * @out_metadata: (out) (transfer full): Metadata associated with commit in with format "a{sv}", or %NULL if none exists
+ * @out_metadata: (out) (nullable) (transfer full): Metadata associated with commit in with format "a{sv}", or %NULL if none exists
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -3132,6 +3132,8 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
                                            GCancellable    *cancellable,
                                            GError         **error)
 {
+  g_assert (out_metadata != NULL);
+
   char buf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
