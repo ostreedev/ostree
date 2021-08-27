@@ -372,7 +372,7 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                  * checkout_file_hardlink().
                  */
                 OstreeChecksumFlags flags = 0;
-                if (repo->disable_xattrs)
+                if (repo->disable_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
                   flags |= OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS;
 
                 if (repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
@@ -529,7 +529,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
                  * shouldn't hit this anymore. https://github.com/ostreedev/ostree/pull/1258
                  * */
                 OstreeChecksumFlags flags = 0;
-                if (self->disable_xattrs)
+                if (self->disable_xattrs || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
                   flags |= OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS;
 
                 if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
