@@ -25,6 +25,7 @@
 LIBOSTREE_2021.4 {
 global:
   ostree_repo_remote_get_gpg_keys;
+  ostree_repo_signature_verify_commit_data;
 } LIBOSTREE_2021.3;
 
 /* Stub section for the stable release *after* this development one; don't
