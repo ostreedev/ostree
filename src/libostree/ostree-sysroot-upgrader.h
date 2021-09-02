@@ -35,12 +35,15 @@ G_BEGIN_DECLS
  * OstreeSysrootUpgraderFlags:
  * @OSTREE_SYSROOT_UPGRADER_FLAGS_NONE: No options
  * @OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED: Do not error if the origin has an unconfigured-state key
+ * @OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE: Enable "staging" (finalization at shutdown); recommended
+ *    (Since: 2021.4)
  *
  * Flags controlling operation of an #OstreeSysrootUpgrader.
  */
 typedef enum {
   OSTREE_SYSROOT_UPGRADER_FLAGS_NONE = (1 << 0),
   OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED = (1 << 1),
+  OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE = (1 << 2),
 } OstreeSysrootUpgraderFlags;
 
 _OSTREE_PUBLIC
