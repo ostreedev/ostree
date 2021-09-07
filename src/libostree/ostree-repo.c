@@ -1589,7 +1589,6 @@ impl_repo_remote_add (OstreeRepo     *self,
                       GError        **error)
 {
   g_return_val_if_fail (name != NULL, FALSE);
-  g_return_val_if_fail (url != NULL, FALSE);
   g_return_val_if_fail (options == NULL || g_variant_is_of_type (options, G_VARIANT_TYPE ("a{sv}")), FALSE);
 
   if (!ostree_validate_remote_name (name, error))
@@ -1637,10 +1636,13 @@ impl_repo_remote_add (OstreeRepo     *self,
       remote->file = g_file_get_child (etc_ostree_remotes_d, basename);
     }
 
-  if (g_str_has_prefix (url, "metalink="))
-    g_key_file_set_string (remote->options, remote->group, "metalink", url + strlen ("metalink="));
-  else
-    g_key_file_set_string (remote->options, remote->group, "url", url);
+  if (url)
+    {
+      if (g_str_has_prefix (url, "metalink="))
+        g_key_file_set_string (remote->options, remote->group, "metalink", url + strlen ("metalink="));
+      else
+        g_key_file_set_string (remote->options, remote->group, "url", url);
+    }
 
   if (options)
     keyfile_set_from_vardict (remote->options, remote->group, options);
@@ -1676,7 +1678,7 @@ impl_repo_remote_add (OstreeRepo     *self,
  * ostree_repo_remote_add:
  * @self: Repo
  * @name: Name of remote
- * @url: URL for remote (if URL begins with metalink=, it will be used as such)
+ * @url: (allow-none): URL for remote (if URL begins with metalink=, it will be used as such)
  * @options: (allow-none): GVariant of type a{sv}
  * @cancellable: Cancellable
  * @error: Error
@@ -1789,7 +1791,6 @@ impl_repo_remote_replace (OstreeRepo     *self,
                           GError        **error)
 {
   g_return_val_if_fail (name != NULL, FALSE);
-  g_return_val_if_fail (url != NULL, FALSE);
   g_return_val_if_fail (options == NULL || g_variant_is_of_type (options, G_VARIANT_TYPE ("a{sv}")), FALSE);
 
   if (!ostree_validate_remote_name (name, error))
@@ -1815,11 +1816,14 @@ impl_repo_remote_replace (OstreeRepo     *self,
       if (!g_key_file_remove_group (remote->options, remote->group, error))
         return FALSE;
 
-      if (g_str_has_prefix (url, "metalink="))
-        g_key_file_set_string (remote->options, remote->group, "metalink",
-                               url + strlen ("metalink="));
-      else
-        g_key_file_set_string (remote->options, remote->group, "url", url);
+      if (url)
+        {
+          if (g_str_has_prefix (url, "metalink="))
+            g_key_file_set_string (remote->options, remote->group, "metalink",
+                                   url + strlen ("metalink="));
+          else
+            g_key_file_set_string (remote->options, remote->group, "url", url);
+        }
 
       if (options != NULL)
         keyfile_set_from_vardict (remote->options, remote->group, options);
@@ -1866,7 +1870,7 @@ impl_repo_remote_replace (OstreeRepo     *self,
  * @sysroot: (allow-none): System root
  * @changeop: Operation to perform
  * @name: Name of remote
- * @url: URL for remote (if URL begins with metalink=, it will be used as such)
+ * @url: (allow-none): URL for remote (if URL begins with metalink=, it will be used as such)
  * @options: (allow-none): GVariant of type a{sv}
  * @cancellable: Cancellable
  * @error: Error
