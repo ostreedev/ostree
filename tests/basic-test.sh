@@ -435,7 +435,7 @@ echo "ok user checkout"
 $OSTREE commit ${COMMIT_ARGS} -b test2 -s "Another commit" --tree=ref=test2
 echo "ok commit from ref"
 
-$OSTREE commit ${COMMIT_ARGS} -b test2 -s "Another commit with modifier" --tree=ref=test2 --owner-uid=0
+$OSTREE commit ${COMMIT_ARGS} -b test2 -s "Another commit with modifier" --tree=ref=test2 --mode-ro-executables
 echo "ok commit from ref with modifier"
 
 $OSTREE commit ${COMMIT_ARGS} -b trees/test2 -s 'ref with / in it' --tree=ref=test2
@@ -455,11 +455,18 @@ $OSTREE commit ${COMMIT_ARGS} --skip-if-unchanged -b trees/test2 -s 'should not 
 $OSTREE ls -R -C test2
 new_rev=$($OSTREE rev-parse test2)
 assert_streq "${old_rev}" "${new_rev}"
+$OSTREE fsck
 echo "ok commit --skip-if-unchanged"
 
 cd ${test_tmpdir}/checkout-test2-4
+# Unfortunately later tests depend on this right now, so commit anyways
 $OSTREE commit ${COMMIT_ARGS} -b test2 -s "no xattrs" --no-xattrs
-echo "ok commit with no xattrs"
+if have_selinux_relabel; then
+    echo "ok # SKIP we get an injected security.selinux xattr regardless, so we can't do this"
+else
+    $OSTREE fsck
+    echo "ok commit with no xattrs"
+fi
 
 mkdir tree-A tree-B
 touch tree-A/file-a tree-B/file-b
@@ -786,7 +793,10 @@ rm files -rf && mkdir files
 mkdir files/worldwritable-dir
 chmod a+w files/worldwritable-dir
 $OSTREE commit ${COMMIT_ARGS} -b content-with-dir-world-writable --tree=dir=files
-$OSTREE fsck
+# FIXME(lucab): this seems to fail in unprivileged bare mode.
+if ! have_selinux_relabel; then
+    $OSTREE fsck
+fi
 rm dir-co -rf
 $OSTREE checkout -U -H -M content-with-dir-world-writable dir-co
 if is_bare_user_only_repo repo; then

@@ -609,7 +609,7 @@ have_systemd_and_libmount() {
 # https://github.com/ostreedev/ostree/pull/1217
 skip_without_no_selinux_or_relabel () {
     if ! have_selinux_relabel; then
-        skip "this test requires xattr support"
+        skip "this test requires SELinux relabeling support"
     fi
 }
 
