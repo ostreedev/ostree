@@ -2439,7 +2439,7 @@ get_best_static_delta_start_for (OtPullData *pull_data,
       if (!ostree_repo_load_commit (pull_data->repo, to_revision,
                                     NULL, &to_rev_state, error))
         return FALSE;
-      if (!(to_rev_state & OSTREE_REPO_COMMIT_STATE_PARTIAL))
+      if (!(commitstate_is_partial(pull_data, to_rev_state)))
         {
           /* We already have this commit, we're done! */
           out_result->result = DELTA_SEARCH_RESULT_UNCHANGED;
