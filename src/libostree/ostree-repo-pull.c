@@ -3965,6 +3965,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   else
     {
       g_autofree char *unconfigured_state = NULL;
+      g_autofree char *custom_backend = NULL;
 
       g_free (pull_data->remote_name);
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
@@ -3994,6 +3995,20 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "remote unconfigured-state: %s", unconfigured_state);
+          goto out;
+        }
+
+      if (!ostree_repo_get_remote_option (self, pull_data->remote_name,
+                                          "custom-backend", NULL,
+                                          &custom_backend,
+                                          error))
+        goto out;
+
+      if (custom_backend)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Cannot fetch via libostree - remote '%s' uses custom backend '%s'", 
+                       pull_data->remote_name, custom_backend);
           goto out;
         }
     }

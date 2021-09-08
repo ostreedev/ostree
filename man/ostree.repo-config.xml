@@ -355,6 +355,14 @@ Boston, MA 02111-1307, USA.
         <listitem><para>If set, pulls from this remote will fail with the configured text.  This is intended for OS vendors which have a subscription process to access content.</para></listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><varname>custom-backend</varname></term>
+        <listitem><para>If set, pulls from this remote via libostree will fail with an error that mentions the value.
+                        It is recommended to make this a software identifier token (e.g. "examplecorp-fetcher"), not freeform text ("ExampleCorp Fetcher").
+                        This is intended to be used by higher level software that wants to fetch ostree commits via some other mechanism, while still reusing the core libostree infrastructure around e.g. signatures.
+                        </para></listitem>
+      </varlistentry>
+
     </variablelist>
 
   </refsect1>

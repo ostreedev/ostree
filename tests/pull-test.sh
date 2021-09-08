@@ -55,10 +55,10 @@ function verify_initial_contents() {
 }
 
 if has_gpgme; then
-    echo "1..37"
+    echo "1..38"
 else
     # 3 tests needs GPG support
-    echo "1..34"
+    echo "1..35"
 fi
 
 # Try both syntaxes
@@ -597,6 +597,33 @@ fi
 assert_file_has_content err.txt "ONE BILLION DOLLARS"
 
 echo "ok unconfigured"
+
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo remote add --custom-backend=ostree-rs-ext fromcontainer
+if ${CMD_PREFIX} ostree --repo=repo pull fromcontainer 2>err.txt; then
+    assert_not_reached "pull unexpectedly succeeded?"
+fi
+assert_file_has_content err.txt "remote 'fromcontainer' uses custom backend 'ostree-rs-ext'"
+
+for x in show-url refs; do
+if ${CMD_PREFIX} ostree --repo=repo remote "$x" fromcontainer 2>err.txt; then
+assert_file_has_content err.txt "remote 'fromcontainer' uses custom backend 'ostree-rs-ext'"
+    assert_not_reached "no url expected"
+fi
+assert_file_has_content err.txt "No \"url\" option in remote"
+done
+${CMD_PREFIX} ostree --repo=repo remote delete fromcontainer
+
+${CMD_PREFIX} ostree --repo=repo remote add --custom-backend=ostree-rs-ext fromcontainer2 docker://quay.io/examplecorp/foo
+if ${CMD_PREFIX} ostree --repo=repo pull fromcontainer2 main 2>err.txt; then
+    assert_not_reached "pull unexpectedly succeeded?"
+fi
+assert_file_has_content err.txt "remote 'fromcontainer2' uses custom backend 'ostree-rs-ext'"
+${CMD_PREFIX} ostree --repo=repo remote show-url fromcontainer2 >out.txt
+assert_file_has_content out.txt docker://quay.io/examplecorp/foo
+${CMD_PREFIX} ostree --repo=repo remote delete fromcontainer2
+
+echo "ok custom backend"
 
 cd ${test_tmpdir}
 repo_init

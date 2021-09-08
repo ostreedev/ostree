@@ -35,6 +35,7 @@ static char *opt_gpg_import;
 static char **opt_sign_verify;
 static char *opt_contenturl;
 static char *opt_collection_id;
+static char *opt_custom_backend;
 static char *opt_sysroot;
 static char *opt_repo;
 
@@ -51,6 +52,7 @@ static GOptionEntry option_entries[] = {
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Replace the provided remote if it exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
+  { "custom-backend", 0, 0, G_OPTION_ARG_STRING, &opt_custom_backend, "This remote has content not fetched via libostree", "NAME" },
   { "contenturl", 0, 0, G_OPTION_ARG_STRING, &opt_contenturl, "Use URL when fetching content", "URL" },
   { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id,
     "Globally unique ID for this repository as an collection of refs for redistribution to other repositories", "COLLECTION-ID" },
@@ -103,7 +105,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autoptr(OstreeRepo) repo = NULL;
   g_autoptr(GString) sign_verify = NULL;
   const char *remote_name;
-  const char *remote_url;
+  const char *remote_url = NULL;
   g_autoptr(GVariantBuilder) optbuilder = NULL;
   g_autoptr(GVariant) options = NULL;
   gboolean ret = FALSE;
@@ -119,11 +121,26 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
                                             cancellable, error))
     goto out;
 
-  if (argc < 3)
+  if (opt_custom_backend)
     {
-      ot_util_usage_error (context, "NAME and URL must be specified", error);
-      goto out;
+      if (argc < 2)
+        {
+          ot_util_usage_error (context, "NAME must be specified", error);
+          goto out;
+        }
+      if (argc >= 3)
+        remote_url = argv[2];
     }
+  else
+    {
+      if (argc < 3)
+        {
+          ot_util_usage_error (context, "NAME and URL must be specified", error);
+          goto out;
+        }
+      remote_url = argv[2];
+    }
+  remote_name = argv[1];
 
   if (opt_if_not_exists && opt_force)
     {
@@ -132,9 +149,6 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
                            error);
       goto out;
     }
-
-  remote_name = argv[1];
-  remote_url  = argv[2];
 
   optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
 
@@ -159,6 +173,9 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
   if (opt_contenturl != NULL)
     g_variant_builder_add (optbuilder, "{s@v}",
                            "contenturl", g_variant_new_variant (g_variant_new_string (opt_contenturl)));
+  if (opt_custom_backend != NULL)
+    g_variant_builder_add (optbuilder, "{s@v}",
+                           "custom-backend", g_variant_new_variant (g_variant_new_string (opt_custom_backend)));
 
   for (char **iter = opt_set; iter && *iter; iter++)
     {
