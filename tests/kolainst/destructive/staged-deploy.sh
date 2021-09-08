@@ -19,9 +19,6 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     commit=${host_commit}
   # Test the deploy --stage functionality; first, we stage a deployment
   # reboot, and validate that it worked.
-  # for now, until the preset propagates down
-  # Start up path unit
-    systemctl enable --now ostree-finalize-staged.path
   # Write staged-deploy commit
     cd /ostree/repo/tmp
     # https://github.com/ostreedev/ostree/issues/1569
@@ -70,7 +67,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     ostree checkout -H "${origcommit}" t
     ostree commit --no-bindings --parent="${origcommit}" -b staged-deploy -I --consume t
     newcommit=$(ostree rev-parse staged-deploy)
-    env OSTREE_EX_STAGE_DEPLOYMENTS=1 ostree admin upgrade >out.txt
+    ostree admin upgrade --stage >out.txt
     test -f /run/ostree/staged-deployment
     # Debating bouncing back out to Ansible for this
     firstdeploycommit=$(rpm-ostree status |grep 'Commit:' |head -1|sed -e 's,^ *Commit: *,,')

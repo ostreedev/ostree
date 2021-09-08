@@ -646,7 +646,8 @@ ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
   g_autoptr(OstreeDeployment) new_deployment = NULL;
 
   /* Experimental flag to enable staging */
-  if (getenv ("OSTREE_EX_STAGE_DEPLOYMENTS"))
+  gboolean stage = (self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE) > 0 || getenv ("OSTREE_EX_STAGE_DEPLOYMENTS") != NULL;
+  if (stage)
     {
       if (!ostree_sysroot_stage_tree (self->sysroot, self->osname,
                                       self->new_revision,
@@ -688,6 +689,7 @@ ostree_sysroot_upgrader_flags_get_type (void)
     {
       static const GFlagsValue values[] = {
         { OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED, "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED", "ignore-unconfigured" },
+        { OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE, "OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE", "stage" },
         { 0, NULL, NULL }
       };
       GType g_define_type_id =

@@ -37,6 +37,7 @@ static gboolean opt_reboot;
 static gboolean opt_allow_downgrade;
 static gboolean opt_pull_only;
 static gboolean opt_deploy_only;
+static gboolean opt_stage;
 static char *opt_osname;
 static char *opt_override_commit;
 
@@ -47,6 +48,7 @@ static GOptionEntry options[] = {
   { "override-commit", 0, 0, G_OPTION_ARG_STRING, &opt_override_commit, "Deploy CHECKSUM instead of the latest tree", "CHECKSUM" },
   { "pull-only", 0, 0, G_OPTION_ARG_NONE, &opt_pull_only, "Do not create a deployment, just download", NULL },
   { "deploy-only", 0, 0, G_OPTION_ARG_NONE, &opt_deploy_only, "Do not pull, only deploy", NULL },
+  { "stage", 0, 0, G_OPTION_ARG_NONE, &opt_stage, "Enable staging (finalization at reboot time)", NULL },
   { NULL }
 };
 
@@ -74,9 +76,13 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
       return FALSE;
     }
 
+  OstreeSysrootUpgraderFlags flags = 0;
+  if (opt_stage)
+    flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE;
+
   g_autoptr(OstreeSysrootUpgrader) upgrader =
-    ostree_sysroot_upgrader_new_for_os (sysroot, opt_osname,
-                                        cancellable, error);
+    ostree_sysroot_upgrader_new_for_os_with_flags (sysroot, opt_osname, flags,
+                                                   cancellable, error);
   if (!upgrader)
     return FALSE;
 
