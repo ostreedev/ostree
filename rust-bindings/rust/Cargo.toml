@@ -29,7 +29,7 @@ members = [".", "sys"]
 
 [dependencies]
 bitflags = "1.2.1"
-ffi = { package = "ostree-sys", path = "sys", version = "0.8.1" }
+ffi = { package = "ostree-sys", path = "sys", version = "0.9" }
 gio = "0.14"
 glib = "0.14.4"
 hex = "0.4.2"
