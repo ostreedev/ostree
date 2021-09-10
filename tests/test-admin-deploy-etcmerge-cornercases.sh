@@ -26,8 +26,6 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
-echo "1..2"
-
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 export rev
@@ -89,7 +87,7 @@ test -L ${newetc}/a/link-to-no-such-file || assert_not_reached "should have syml
 assert_has_dir ${newroot}/usr/etc/testdirectory
 assert_not_has_dir ${newetc}/testdirectory
 
-echo "ok"
+tap_ok first
 
 # Add /etc/initially-empty
 cd "${test_tmpdir}/osdata"
@@ -141,4 +139,6 @@ assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/usr/etc/initial
 assert_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
 rm ${newconfpath}
 
-echo "ok"
+tap_ok second
+
+tap_end
