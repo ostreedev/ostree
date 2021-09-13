@@ -35,6 +35,17 @@ assert_not_reached () {
     fatal "$@"
 }
 
+# Output an ok message for TAP
+n_tap_tests=0
+tap_ok() {
+    echo "ok" "$@"
+    n_tap_tests=$(($n_tap_tests+1))
+}
+
+tap_end() {
+    echo "1..${n_tap_tests}"
+}
+
 # Some tests look for specific English strings. Use a UTF-8 version
 # of the C (POSIX) locale if we have one, or fall back to en_US.UTF-8
 # (https://sourceware.org/glibc/wiki/Proposals/C.UTF-8)

@@ -54,11 +54,12 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
+n_base_tests=35
+gpg_tests=3
 if has_gpgme; then
-    echo "1..38"
+    echo "1..$(($n_base_tests+$gpg_tests))"
 else
-    # 3 tests needs GPG support
-    echo "1..35"
+    echo "1..$((n_base_tests))"
 fi
 
 # Try both syntaxes
