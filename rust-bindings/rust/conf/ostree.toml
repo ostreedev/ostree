@@ -192,6 +192,7 @@ status = "generate"
 [[object]]
 name = "OSTree.SePolicy"
 status = "generate"
+concurrency = "send"
     [[object.function]]
     # [IGNORE] has an unused raw pointer parameter
     name = "fscreatecon_cleanup"

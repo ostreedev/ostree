@@ -106,6 +106,8 @@ impl SePolicy {
     }
 }
 
+unsafe impl Send for SePolicy {}
+
 impl fmt::Display for SePolicy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("SePolicy")
