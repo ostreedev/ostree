@@ -40,6 +40,23 @@ impl Repo {
         Repo::new(&gio::File::for_path(path.as_ref()))
     }
 
+    /// Return a copy of the directory file descriptor for this repository.
+    #[cfg(any(feature = "v2016_4", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    pub fn dfd_as_file(&self) -> std::io::Result<std::fs::File> {
+        use std::os::unix::prelude::FromRawFd;
+        use std::os::unix::prelude::IntoRawFd;
+        unsafe {
+            // A temporary owned file instance
+            let dfd = std::fs::File::from_raw_fd(self.dfd());
+            // So we can call dup() on it
+            let copy = dfd.try_clone();
+            // Now release our temporary ownership of the original
+            let _ = dfd.into_raw_fd();
+            Ok(copy?)
+        }
+    }
+
     /// Find all objects reachable from a commit.
     pub fn traverse_commit<P: IsA<gio::Cancellable>>(
         &self,

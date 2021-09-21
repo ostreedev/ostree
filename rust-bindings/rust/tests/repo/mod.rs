@@ -106,6 +106,17 @@ fn should_write_content_to_repo() {
     }
 }
 
+#[test]
+#[cfg(feature = "v2016_4")]
+fn repo_file() {
+    use std::os::unix::fs::MetadataExt;
+    let test_repo = TestRepo::new();
+    let m1 = test_repo.repo.dfd_as_file().unwrap().metadata().unwrap();
+    let m2 = test_repo.repo.dfd_as_file().unwrap().metadata().unwrap();
+    assert_eq!(m1.dev(), m2.dev());
+    assert_eq!(m1.ino(), m2.ino());
+}
+
 fn copy_file(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) {
     let (stream, len) = src
         .repo
