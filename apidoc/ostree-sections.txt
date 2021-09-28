@@ -522,6 +522,7 @@ ostree_repo_file_get_type
 OstreeSePolicy
 ostree_sepolicy_new
 ostree_sepolicy_new_at
+ostree_sepolicy_new_from_commit
 ostree_sepolicy_get_path
 ostree_sepolicy_get_name
 ostree_sepolicy_get_label
