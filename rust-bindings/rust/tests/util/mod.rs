@@ -42,7 +42,8 @@ pub fn create_mtree(repo: &ostree::Repo) -> ostree::MutableTree {
 }
 
 pub fn commit(repo: &ostree::Repo, mtree: &ostree::MutableTree, ref_: &str) -> GString {
-    repo.prepare_transaction(NONE_CANCELLABLE)
+    let txn = repo
+        .auto_transaction(NONE_CANCELLABLE)
         .expect("prepare transaction");
     let repo_file = repo
         .write_mtree(mtree, NONE_CANCELLABLE)
@@ -60,8 +61,7 @@ pub fn commit(repo: &ostree::Repo, mtree: &ostree::MutableTree, ref_: &str) -> G
         )
         .expect("write commit");
     repo.transaction_set_ref(None, ref_, checksum.as_str().into());
-    repo.commit_transaction(NONE_CANCELLABLE)
-        .expect("commit transaction");
+    txn.commit(NONE_CANCELLABLE).expect("commit transaction");
     checksum
 }
 

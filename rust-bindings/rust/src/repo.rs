@@ -1,6 +1,6 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
-use crate::{Checksum, ObjectName, ObjectType, Repo};
+use crate::{Checksum, ObjectName, ObjectType, Repo, RepoTransactionStats};
 use ffi;
 use glib::ffi as glib_sys;
 use glib::{self, translate::*, Error, IsA};
@@ -34,10 +34,49 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> Has
     set
 }
 
+/// An open transaction in the repository.
+///
+/// This will automatically invoke [`ostree::Repo::abort_transaction`] when the value is dropped.
+pub struct TransactionGuard<'a> {
+    /// Reference to the repository for this transaction.
+    repo: Option<&'a Repo>,
+}
+
+impl<'a> TransactionGuard<'a> {
+    /// Commit this transaction.
+    pub fn commit<P: IsA<gio::Cancellable>>(
+        mut self,
+        cancellable: Option<&P>,
+    ) -> Result<RepoTransactionStats, glib::Error> {
+        // Safety: This is the only function which mutates this option
+        let repo = self.repo.take().unwrap();
+        repo.commit_transaction(cancellable)
+    }
+}
+
+impl<'a> Drop for TransactionGuard<'a> {
+    fn drop(&mut self) {
+        if let Some(repo) = self.repo {
+            // TODO: better logging in ostree?
+            // See also https://github.com/ostreedev/ostree/issues/2413
+            let _ = repo.abort_transaction(gio::NONE_CANCELLABLE);
+        }
+    }
+}
+
 impl Repo {
     /// Create a new `Repo` object for working with an OSTree repo at the given path.
     pub fn new_for_path<P: AsRef<Path>>(path: P) -> Repo {
         Repo::new(&gio::File::for_path(path.as_ref()))
+    }
+
+    /// A wrapper for [`prepare_transaction`] which ensures the transaction will be aborted when the guard goes out of scope.
+    pub fn auto_transaction<P: IsA<gio::Cancellable>>(
+        &self,
+        cancellable: Option<&P>,
+    ) -> Result<TransactionGuard, glib::Error> {
+        let _ = self.prepare_transaction(cancellable)?;
+        Ok(TransactionGuard { repo: Some(self) })
     }
 
     /// Return a copy of the directory file descriptor for this repository.
