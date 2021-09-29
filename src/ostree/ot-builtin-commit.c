@@ -602,6 +602,17 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       filter_data.skip_list = skip_list;
       modifier = ostree_repo_commit_modifier_new (flags, commit_filter,
                                                   &filter_data, NULL);
+
+      if (opt_selinux_policy)
+        {
+          glnx_autofd int rootfs_dfd = -1;
+          if (!glnx_opendirat (AT_FDCWD, opt_selinux_policy, TRUE, &rootfs_dfd, error))
+            goto out;
+          policy = ostree_sepolicy_new_at (rootfs_dfd, cancellable, error);
+          if (!policy)
+            goto out;
+          ostree_repo_commit_modifier_set_sepolicy (modifier, policy);
+        }
     }
 
   if (opt_editor)
@@ -691,14 +702,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
         {
           if (first && opt_selinux_policy_from_base)
             {
-              opt_selinux_policy = g_strdup (tree);
-              opt_selinux_policy_from_base = FALSE;
-            }
-          if (first && opt_selinux_policy)
-            {
-              g_assert (modifier);
               glnx_autofd int rootfs_dfd = -1;
-              if (!glnx_opendirat (AT_FDCWD, opt_selinux_policy, TRUE, &rootfs_dfd, error))
+              if (!glnx_opendirat (AT_FDCWD, tree, TRUE, &rootfs_dfd, error))
                 goto out;
               policy = ostree_sepolicy_new_at (rootfs_dfd, cancellable, error);
               if (!policy)

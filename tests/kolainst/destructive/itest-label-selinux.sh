@@ -104,3 +104,16 @@ assert_file_has_content newls.txt ':lib_t:'
 ostree ls -X newbase /usr/etc/some.conf > newls.txt
 assert_file_has_content newls.txt ':etc_t:'
 echo "ok commit --selinux-policy-from-base"
+
+rm rootfs -rf
+mkdir rootfs
+mkdir -p rootfs/usr/{bin,lib,etc}
+echo 'somebinary' > rootfs/usr/bin/somebinary
+ls -Z rootfs/usr/bin/somebinary > lsz.txt
+assert_not_file_has_content lsz.txt ':bin_t:'
+rm -f lsz.txt
+tar -C rootfs -cf rootfs.tar .
+ostree commit -b newbase --selinux-policy / --tree=tar=rootfs.tar
+ostree ls -X newbase /usr/bin/somebinary > newls.txt
+assert_file_has_content newls.txt ':bin_t:'
+echo "ok commit --selinux-policy with --tree=tar"
