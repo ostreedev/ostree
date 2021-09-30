@@ -44,6 +44,11 @@ OstreeSePolicy* ostree_sepolicy_new_at (int            rootfs_dfd,
                                         GCancellable  *cancellable,
                                         GError       **error);
 
+_OSTREE_PUBLIC
+OstreeSePolicy* ostree_sepolicy_new_from_commit (OstreeRepo  *repo,
+                                                 const char  *rev,
+                                                 GCancellable *cancellable,
+                                                 GError     **error);
 
 _OSTREE_PUBLIC
 GFile * ostree_sepolicy_get_path (OstreeSePolicy  *self);

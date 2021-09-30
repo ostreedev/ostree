@@ -4314,7 +4314,6 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
   g_clear_pointer (&modifier->devino_cache, (GDestroyNotify)g_hash_table_unref);
 
   g_clear_object (&modifier->sepolicy);
-  (void) glnx_tmpdir_delete (&modifier->sepolicy_tmpdir, NULL, NULL);
 
   g_free (modifier);
   return;
@@ -4386,38 +4385,10 @@ ostree_repo_commit_modifier_set_sepolicy_from_commit (OstreeRepoCommitModifier  
                                                       GCancellable                          *cancellable,
                                                       GError                               **error)
 {
-  GLNX_AUTO_PREFIX_ERROR ("setting sepolicy from commit", error);
-  g_autofree char *commit = NULL;
-  g_autoptr(GFile) root = NULL;
-  if (!ostree_repo_read_commit (repo, rev, &root, &commit, cancellable, error))
-    return FALSE;
-  const char policypath[] = "usr/etc/selinux";
-  g_autoptr(GFile) policyroot = g_file_get_child (root, policypath);
-  if (!g_file_query_exists (policyroot, NULL))
-    return TRUE;  /* No policy, nothing to do */
-
-  GLnxTmpDir tmpdir = {0,};
-  if (!glnx_mkdtemp ("ostree-commit-sepolicy-XXXXXX", 0700, &tmpdir, error))
-    return FALSE;
-  if (!glnx_shutil_mkdir_p_at (tmpdir.fd, "usr/etc", 0755, cancellable, error))
-    return FALSE;
-
-  OstreeRepoCheckoutAtOptions coopts = {0,};
-  coopts.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
-  coopts.subpath = glnx_strjoina ("/", policypath);
-
-  if (!ostree_repo_checkout_at (repo, &coopts, tmpdir.fd, policypath, commit, cancellable, error))
-    return glnx_prefix_error (error, "policy checkout");
-
-  g_autoptr(OstreeSePolicy) policy = ostree_sepolicy_new_at (tmpdir.fd, cancellable, error);
+  g_autoptr(OstreeSePolicy) policy = ostree_sepolicy_new_from_commit (repo, rev, cancellable, error);
   if (!policy)
-    return glnx_prefix_error (error, "reading policy");
-
+    return FALSE;
   ostree_repo_commit_modifier_set_sepolicy (modifier, policy);
-  /* Transfer ownership */
-  modifier->sepolicy_tmpdir = tmpdir;
-  tmpdir.initialized = FALSE;
-
   return TRUE;
 }
 

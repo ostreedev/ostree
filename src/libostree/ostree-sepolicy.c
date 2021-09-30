@@ -29,6 +29,7 @@
 #include "otutil.h"
 
 #include "ostree-sepolicy.h"
+#include "ostree-repo.h"
 #include "ostree-sepolicy-private.h"
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
@@ -47,6 +48,7 @@ struct OstreeSePolicy {
   int rootfs_dfd;
   int rootfs_dfd_owned;
   GFile *path;
+  GLnxTmpDir tmpdir;
 
 #ifdef HAVE_SELINUX
   GFile *selinux_policy_root;
@@ -76,6 +78,8 @@ static void
 ostree_sepolicy_finalize (GObject *object)
 {
   OstreeSePolicy *self = OSTREE_SEPOLICY (object);
+
+  (void) glnx_tmpdir_delete (&self->tmpdir, NULL, NULL);
 
   g_clear_object (&self->path);
   if (self->rootfs_dfd_owned != -1)
@@ -266,6 +270,58 @@ get_policy_checksum (char        **out_csum,
 
 #endif
 
+/**
+ * ostree_sepolicy_new_from_commit:
+ * @repo: The repo
+ * @rev: ostree ref or checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Extract the SELinux policy from a commit object via a partial checkout.  This is useful
+ * for labeling derived content as separate commits.
+ *
+ * This function is the backend of `ostree_repo_commit_modifier_set_sepolicy_from_commit()`.
+ *
+ * Returns: (transfer full): A new policy
+ */
+OstreeSePolicy*
+ostree_sepolicy_new_from_commit (OstreeRepo  *repo,
+                                 const char  *rev,
+                                 GCancellable *cancellable,
+                                 GError     **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("setting sepolicy from commit", error);
+  g_autoptr(GFile) root = NULL;
+  g_autofree char *commit = NULL;
+  if (!ostree_repo_read_commit (repo, rev, &root, &commit, cancellable, error))
+    return NULL;
+  const char policypath[] = "usr/etc/selinux";
+  g_autoptr(GFile) policyroot = g_file_get_child (root, policypath);
+
+  GLnxTmpDir tmpdir = {0,};
+  if (!glnx_mkdtemp ("ostree-commit-sepolicy-XXXXXX", 0700, &tmpdir, error))
+    return FALSE;
+  if (!glnx_shutil_mkdir_p_at (tmpdir.fd, "usr/etc", 0755, cancellable, error))
+    return FALSE;
+
+  if (g_file_query_exists (policyroot, NULL))
+    {
+       OstreeRepoCheckoutAtOptions coopts = {0,};
+       coopts.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+       coopts.subpath = glnx_strjoina ("/", policypath);
+     
+       if (!ostree_repo_checkout_at (repo, &coopts, tmpdir.fd, policypath, commit, cancellable, error))
+         return glnx_prefix_error_null (error, "policy checkout");
+    }
+
+  OstreeSePolicy *ret = ostree_sepolicy_new_at (tmpdir.fd, cancellable, error);
+  if (!ret)
+    return NULL;
+  /* Transfer ownership of tmpdir */
+  ret->tmpdir = tmpdir;
+  tmpdir.initialized = FALSE;
+  return ret;
+}
 
 /* Workaround for http://marc.info/?l=selinux&m=149323809332417&w=2 */
 #ifdef HAVE_SELINUX
@@ -443,7 +499,11 @@ ostree_sepolicy_new_at (int         rootfs_dfd,
 
 /**
  * ostree_sepolicy_get_path:
- * @self:
+ * @self: A SePolicy object
+ *
+ * This API should be considered deprecated, because it's supported for
+ * policy objects to be created from file-descriptor relative paths, which
+ * may not be globally accessible.
  *
  * Returns: (transfer none): Path to rootfs
  */
