@@ -17,9 +17,7 @@ serde_json = "1.0"
 sh-inline = "0.1.0"
 anyhow = "1.0"
 tempfile = "3.1.0"
-glib = "0.10"
-gio = "0.9"
-ostree = { version = "0.10.0", features = ["v2021_1"] }
+ostree-ext = { version = "0.3.0" }
 libtest-mimic = "0.3.0"
 twoway = "0.2.1"
 hyper = { version = "0.14", features = ["runtime", "http1", "http2", "tcp", "server"] }
