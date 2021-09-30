@@ -499,7 +499,11 @@ ostree_sepolicy_new_at (int         rootfs_dfd,
 
 /**
  * ostree_sepolicy_get_path:
- * @self:
+ * @self: A SePolicy object
+ *
+ * This API should be considered deprecated, because it's supported for
+ * policy objects to be created from file-descriptor relative paths, which
+ * may not be globally accessible.
  *
  * Returns: (transfer none): Path to rootfs
  */
