@@ -12,6 +12,23 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   test -f /run/systemd/generator/multi-user.target.wants/ostree-finalize-staged.path
   test -f /run/systemd/generator/local-fs.target.requires/ostree-remount.service
 
+  cat >/etc/systemd/system/sock-to-ignore.socket << 'EOF'
+[Socket]
+ListenStream=/etc/sock-to-ignore
+EOF
+  cat >/etc/systemd/system/sock-to-ignore.service << 'EOF'
+[Service]
+ExecStart=/bin/cat
+EOF
+  # policy denies systemd listening on a socket in /etc (arguably correctly)
+  setenforce 0
+  systemctl daemon-reload
+  systemctl start --now sock-to-ignore.socket
+  setenforce 1
+
+  test -S /etc/sock-to-ignore
+  mkfifo /etc/fifo-to-ignore
+
   # Initial cleanup to handle the cosa fast-build case
     ## TODO remove workaround for https://github.com/coreos/rpm-ostree/pull/2021
     mkdir -p /var/lib/rpm-ostree/history
@@ -54,6 +71,9 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     # Assert that the previous boot had a journal entry for it
     journalctl -b "-1" -u ostree-finalize-staged.service > svc.txt
     assert_file_has_content svc.txt 'Bootloader updated; bootconfig swap: yes;.*deployment count change: 1'
+    # Also validate ignoring socket and fifo
+    assert_file_has_content svc.txt 'Ignoring.*during /etc merge:.*sock-to-ignore'
+    assert_file_has_content svc.txt 'Ignoring.*during /etc merge:.*fifo-to-ignore'
     rm -f svc.txt
     # And there should not be a staged deployment
     test '!' -f /run/ostree/staged-deployment

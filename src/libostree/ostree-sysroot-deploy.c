@@ -488,9 +488,7 @@ copy_modified_config_file (int                 orig_etc_fd,
     }
   else
     {
-      return glnx_throw (error,
-                         "Unsupported non-regular/non-symlink file in /etc '%s'",
-                         path);
+      ot_journal_print (LOG_INFO, "Ignoring non-regular/non-symlink file found during /etc merge: %s", path);
     }
 
   return TRUE;
