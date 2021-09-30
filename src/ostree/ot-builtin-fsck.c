@@ -459,5 +459,8 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
   if (n_fsck_partial > 0)
     return glnx_throw (error, "%u partial commits from fsck-detected corruption", n_partial);
 
+  g_print ("object fsck of %d commits completed successfully - no errors found.\n", 
+           (guint)g_hash_table_size (commits));
+
   return TRUE;
 }
