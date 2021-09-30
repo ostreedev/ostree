@@ -53,6 +53,12 @@ _OSTREE_PUBLIC
 OstreeMutableTree *ostree_mutable_tree_new (void);
 
 _OSTREE_PUBLIC
+OstreeMutableTree *
+ostree_mutable_tree_new_from_commit (OstreeRepo *repo,
+                                     const char *rev,
+                                     GError    **error);
+
+_OSTREE_PUBLIC
 OstreeMutableTree * ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,
                                                            const char *contents_checksum,
                                                            const char *metadata_checksum);

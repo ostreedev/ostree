@@ -681,3 +681,39 @@ ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,
   out->metadata_checksum = g_strdup (metadata_checksum);
   return out;
 }
+
+/**
+ * ostree_mutable_tree_new_from_commit:
+ * @repo: The repo which contains the objects refered by the checksums.
+ * @rev: ref or SHA-256 checksum
+ *
+ * Creates a new OstreeMutableTree with the contents taken from the given commit.
+ * The data will be loaded from the repo lazily as needed.
+ *
+ * Returns: (transfer full): A new tree
+ * Since: 2021.5
+ */
+OstreeMutableTree *
+ostree_mutable_tree_new_from_commit (OstreeRepo *repo,
+                                     const char *rev,
+                                     GError    **error)
+{
+  g_autofree char *commit = NULL;
+  if (!ostree_repo_resolve_rev (repo, rev, FALSE, &commit, error))
+    return NULL;
+  g_autoptr(GVariant) commit_v = NULL;
+  if (!ostree_repo_load_commit (repo, commit, &commit_v, NULL, error))
+    return NULL;
+
+  g_autoptr(GVariant) contents_checksum_v = NULL;
+  g_autoptr(GVariant) metadata_checksum_v = NULL;
+  char contents_checksum[OSTREE_SHA256_STRING_LEN + 1];
+  char metadata_checksum[OSTREE_SHA256_STRING_LEN + 1];
+  g_variant_get_child (commit_v, 6, "@ay", &contents_checksum_v);
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (contents_checksum_v),
+                                      contents_checksum);
+  g_variant_get_child (commit_v, 7, "@ay", &metadata_checksum_v);
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (metadata_checksum_v),
+                                      metadata_checksum);
+  return ostree_mutable_tree_new_from_checksum (repo, contents_checksum, metadata_checksum);
+}
