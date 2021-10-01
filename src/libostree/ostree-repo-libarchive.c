@@ -27,6 +27,7 @@
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree-sepolicy-private.h"
 
 #ifdef HAVE_LIBARCHIVE
 #include <archive.h>
@@ -167,8 +168,8 @@ builder_add_label (GVariantBuilder  *builder,
   if (!sepolicy)
     return TRUE;
 
-  if (!ostree_sepolicy_get_label (sepolicy, path, mode, &label,
-                                  cancellable, error))
+  if (!_ostree_sepolicy_require_label (sepolicy, path, mode, &label,
+                                       cancellable, error))
     return FALSE;
 
   if (label)

@@ -599,6 +599,25 @@ ostree_sepolicy_get_label (OstreeSePolicy    *self,
   return TRUE;
 }
 
+// If policy doesn't specify a label, try a fallback.
+gboolean
+_ostree_sepolicy_require_label (OstreeSePolicy *policy, const char *relpath,
+                                guint32 unix_mode, char **out_label, 
+                                GCancellable *cancellable, GError **error)
+{
+  char *label = NULL;
+  if (!ostree_sepolicy_get_label (policy, relpath, unix_mode, &label, cancellable, error))
+    return FALSE;
+  if (!label)
+    {
+      if (!ostree_sepolicy_get_label (policy, "/usr/share/some-generic-thing", unix_mode, &label, cancellable, error))
+        return FALSE;
+    }
+  *out_label = label;
+  return TRUE;
+}
+
+
 /**
  * ostree_sepolicy_restorecon:
  * @self: Self

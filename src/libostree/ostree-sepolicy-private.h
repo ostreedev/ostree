@@ -38,6 +38,11 @@ gboolean _ostree_sepolicy_preparefscreatecon (OstreeSepolicyFsCreatecon *con,
                                               guint32           mode,
                                               GError          **error);
 
+gboolean
+_ostree_sepolicy_require_label (OstreeSePolicy *policy, const char *relpath,
+                                guint32 unix_mode, char **out_label, 
+                                GCancellable *cancellable, GError **error);
+
 GVariant *_ostree_filter_selinux_xattr (GVariant *xattrs);
 
 G_END_DECLS
