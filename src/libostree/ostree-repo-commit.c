@@ -1672,14 +1672,18 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
                                  GCancellable   *cancellable,
                                  GError        **error)
 {
+  g_assert (self != NULL);
+
   guint64 reserved_bytes = 0;
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
   g_debug ("Preparing transaction in repository %p", self);
 
-  /* Set up to abort the transaction if we return early from this function. */
-  g_autoptr(_OstreeRepoAutoTransaction) txn = self;
+  /* Set up to abort the transaction if we return early from this function.
+   * This needs to be manually built here due to a circular dependency. */
+  g_autoptr(OstreeRepoAutoTransaction) txn = g_malloc(sizeof(OstreeRepoAutoTransaction));
+  txn->repo = self;
   (void) txn; /* Add use to silence static analysis */
 
   memset (&self->txn.stats, 0, sizeof (OstreeRepoTransactionStats));
@@ -1736,7 +1740,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
     return FALSE;
 
   /* Success: do not abort the transaction when returning. */
-  txn = NULL; (void) txn;
+  txn->repo = NULL; (void) txn;
 
   if (out_transaction_resume)
     *out_transaction_resume = ret_transaction_resume;

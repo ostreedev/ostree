@@ -229,36 +229,6 @@ struct OstreeRepo {
   OstreeRepo *parent_repo;
 };
 
-/* Taken from flatpak; may be made into public API later */
-typedef OstreeRepo _OstreeRepoAutoTransaction;
-static inline void
-_ostree_repo_auto_transaction_cleanup (void *p)
-{
-  if (p == NULL)
-    return;
-  g_return_if_fail (OSTREE_IS_REPO (p));
-
-  OstreeRepo *repo = p;
-  g_autoptr(GError) error = NULL;
-
-  if (!ostree_repo_abort_transaction (repo, NULL, &error))
-    g_warning("Failed to auto-cleanup OSTree transaction: %s", error->message);
-
-  g_object_unref (repo);
-}
-
-static inline _OstreeRepoAutoTransaction *
-_ostree_repo_auto_transaction_start (OstreeRepo     *repo,
-                                     GCancellable   *cancellable,
-                                     GError        **error)
-{
-  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
-    return NULL;
-
-  return (_OstreeRepoAutoTransaction *) g_object_ref (repo);
-}
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (_OstreeRepoAutoTransaction, _ostree_repo_auto_transaction_cleanup)
-
 typedef struct {
   dev_t dev;
   ino_t ino;
@@ -543,5 +513,40 @@ _ostree_repo_verify_bindings (const char  *collection_id,
                               const char  *ref_name,
                               GVariant    *commit,
                               GError     **error);
+
+/**
+ * OstreeRepoAutoTransaction:
+ *
+ * A transaction guard for a specific #OstreeRepo. It can be explicitly
+ * completed through abort/commit. If the guard has not been completed
+ * beforehand, on cleanup it is automatically aborted.
+ *
+ * Taken from flatpak; may be made into public API later
+ */
+typedef struct
+{
+  OstreeRepo *repo;
+} OstreeRepoAutoTransaction;
+
+OstreeRepoAutoTransaction *
+_ostree_repo_auto_transaction_start (OstreeRepo     *repo,
+                                     GCancellable   *cancellable,
+                                     GError        **error);
+
+gboolean
+_ostree_repo_auto_transaction_abort (OstreeRepoAutoTransaction  *txn,
+                                     GCancellable               *cancellable,
+                                     GError                    **error);
+
+gboolean
+_ostree_repo_auto_transaction_commit (OstreeRepoAutoTransaction  *txn,
+                                      OstreeRepoTransactionStats *out_stats,
+                                      GCancellable               *cancellable,
+                                      GError                    **error);
+
+void
+_ostree_repo_auto_transaction_cleanup (void *p);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoTransaction, _ostree_repo_auto_transaction_cleanup);
 
 G_END_DECLS
