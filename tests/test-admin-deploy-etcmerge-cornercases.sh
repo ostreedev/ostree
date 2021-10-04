@@ -51,6 +51,9 @@ chmod 700 ${etc}/a/long/dir/forking
 # Symlink to nonexistent path, to ensure we aren't walking symlinks
 ln -s no-such-file ${etc}/a/link-to-no-such-file
 
+# fifo which should be ignored
+mkfifo "${etc}/fifo-to-ignore"
+
 # Remove a directory
 rm ${etc}/testdirectory -rf
 
@@ -65,6 +68,10 @@ newetc=${newroot}/etc
 
 assert_file_has_content ${newroot}/usr/etc/NetworkManager/nm.conf "a default daemon file"
 assert_file_has_content ${newetc}/NetworkManager/nm.conf "a modified config file"
+
+if test -e "${newetc}"/fifo-to-ignore; then
+  fatal "Should not have copied fifo!"
+fi
 
 assert_file_has_mode() {
   stat -c '%a' $1 > mode.txt
