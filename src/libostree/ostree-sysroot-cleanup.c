@@ -445,7 +445,7 @@ generate_deployment_refs (OstreeSysroot       *self,
                            cancellable, error))
     return FALSE;
 
-  g_autoptr(_OstreeRepoAutoTransaction) txn =
+  g_autoptr(OstreeRepoAutoTransaction) txn =
     _ostree_repo_auto_transaction_start (repo, cancellable, error);
   if (!txn)
     return FALSE;
@@ -458,7 +458,7 @@ generate_deployment_refs (OstreeSysroot       *self,
 
       ostree_repo_transaction_set_refspec (repo, refname, ostree_deployment_get_csum (deployment));
     }
-  if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
+  if (!_ostree_repo_auto_transaction_commit (txn, NULL, cancellable, error))
     return FALSE;
 
   return TRUE;

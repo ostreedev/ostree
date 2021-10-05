@@ -711,6 +711,118 @@ ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *auto_lock)
     }
 }
 
+
+/**
+ * _ostree_repo_auto_transaction_start:
+ * @repo: an #OsreeRepo object
+ * @cancellable: Cancellable
+ * @error: a #GError
+ *
+ * Start a transaction and return a guard for it.
+ *
+ * Returns: (transfer full): an #OsreeRepoAutoTransaction guard on success,
+ * %NULL otherwise.
+ */
+OstreeRepoAutoTransaction *
+_ostree_repo_auto_transaction_start (OstreeRepo     *repo,
+                                     GCancellable   *cancellable,
+                                     GError        **error)
+{
+  g_assert (repo != NULL);
+
+  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+    return NULL;
+
+  OstreeRepoAutoTransaction *txn = g_malloc(sizeof(OstreeRepoAutoTransaction));
+  txn->repo = g_object_ref (repo);
+
+  return g_steal_pointer (&txn);
+}
+
+/**
+ * _ostree_repo_auto_transaction_abort:
+ * @txn: an #OsreeRepoAutoTransaction guard
+ * @cancellable: Cancellable
+ * @error: a #GError
+ *
+ * Abort a transaction, marking the related guard as completed.
+ *
+ * Returns: %TRUE on successful commit, %FALSE otherwise.
+ */
+gboolean
+_ostree_repo_auto_transaction_abort (OstreeRepoAutoTransaction  *txn,
+                                     GCancellable               *cancellable,
+                                     GError                    **error)
+{
+  g_assert (txn != NULL);
+
+  if (txn->repo == NULL) {
+    return glnx_throw (error, "transaction already completed");
+  }
+
+  if (!ostree_repo_abort_transaction (txn->repo, cancellable, error))
+    return FALSE;
+
+  g_clear_object (&txn->repo);
+
+  return TRUE;
+}
+
+/**
+ * _ostree_repo_auto_transaction_commit:
+ * @txn: an #OsreeRepoAutoTransaction guard
+ * @cancellable: Cancellable
+ * @error: a #GError
+ *
+ * Commit a transaction, marking the related guard as completed.
+ *
+ * Returns: %TRUE on successful aborting, %FALSE otherwise.
+ */
+gboolean
+_ostree_repo_auto_transaction_commit (OstreeRepoAutoTransaction  *txn,
+                                      OstreeRepoTransactionStats *out_stats,
+                                      GCancellable               *cancellable,
+                                      GError                    **error)
+{
+  g_assert (txn != NULL);
+
+  if (txn->repo == NULL) {
+    return glnx_throw (error, "transaction already completed");
+  }
+
+  if (!ostree_repo_commit_transaction (txn->repo, out_stats, cancellable, error))
+    return FALSE;
+
+  g_clear_object (&txn->repo);
+
+  return TRUE;
+}
+
+/**
+ * _ostree_repo_auto_transaction_cleanup:
+ * @p: pointer to an #OsreeRepoAutoTransaction guard
+ *
+ * Destroy a transaction guard. If the transaction has not yet been completed,
+ * it gets aborted.
+ */
+void
+_ostree_repo_auto_transaction_cleanup (void *p)
+{
+  if (p == NULL)
+    return;
+
+  OstreeRepoAutoTransaction *txn = p;
+  // Auto-abort only if transaction has not already been aborted/committed.
+  if (txn->repo != NULL)
+    {
+      g_autoptr(GError) error = NULL;
+      if (!_ostree_repo_auto_transaction_abort (txn, NULL, &error)) {
+        g_warning("Failed to auto-cleanup OSTree transaction: %s", error->message);
+        g_clear_object (&txn->repo);
+      }
+    }
+}
+
 static GFile *
 get_remotes_d_dir (OstreeRepo          *self,
                    GFile               *sysroot);
