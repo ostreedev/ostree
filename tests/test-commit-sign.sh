@@ -88,8 +88,12 @@ assert_file_has_content_literal show.txt 'Found 1 signature'
 echo "ok pull verify"
 
 # Run tests written in C
-${OSTREE_UNINSTALLED}/tests/test-commit-sign-sh-ext
-echo "ok extra C tests"
+if [ -n "${OSTREE_UNINSTALLED:-}" ]; then
+  ${OSTREE_UNINSTALLED}/tests/test-commit-sign-sh-ext
+  echo "ok extra C tests"
+else
+  echo "ok # SKIP test only available when running uninstalled"
+fi
 
 # Clean things up and reinit
 rm repo -rf
