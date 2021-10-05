@@ -668,6 +668,12 @@ global:
   ostree_repo_signature_verify_commit_data;
 } LIBOSTREE_2021.3;
 
+LIBOSTREE_2021.5 {
+global:
+  ostree_sepolicy_new_from_commit;
+  ostree_mutable_tree_new_from_commit;
+} LIBOSTREE_2021.4;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
