@@ -638,20 +638,14 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (opt_base)
     {
-      g_autofree char *base_commit = NULL;
-      g_autoptr(GFile) base_root = NULL;
-      if (!ostree_repo_read_commit (repo, opt_base, &base_root, &base_commit, cancellable, error))
+      mtree = ostree_mutable_tree_new_from_commit (repo, opt_base, error);
+      if (!mtree)
         goto out;
-      OstreeRepoFile *rootf = (OstreeRepoFile*) base_root;
-
-      mtree = ostree_mutable_tree_new_from_checksum (repo,
-                                                     ostree_repo_file_tree_get_contents_checksum (rootf),
-                                                     ostree_repo_file_tree_get_metadata_checksum (rootf));
 
       if (opt_selinux_policy_from_base)
         {
           g_assert (modifier);
-          if (!ostree_repo_commit_modifier_set_sepolicy_from_commit (modifier, repo, base_commit, cancellable, error))
+          if (!ostree_repo_commit_modifier_set_sepolicy_from_commit (modifier, repo, opt_base, cancellable, error))
             goto out;
           /* Don't try to handle it twice */
           opt_selinux_policy_from_base = FALSE;
