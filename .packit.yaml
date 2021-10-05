@@ -1,14 +1,24 @@
 # build into f34-coreos-continuous on every commit to main
 jobs:
-    - job: production_build
+    - job: copr_build
       trigger: commit
       metadata:
-          branch: main
-          targets: f34-coreos-continuous
+        branch: main
+        owner: "@CoreOS"
+        project: continuous
+        targets:
+        - centos-stream-8-aarch64
+        - centos-stream-8-x86_64
+        - fedora-all-aarch64
+        - fedora-all-s390x
+        - fedora-all
 specfile_path: ostree.spec
 actions:
+    create-archive:
+        - "./ci/make-git-snapshot.sh"
+        - "bash -c 'ls ostree-*.tar'"
     # https://packit.dev/faq/#how-can-i-download-rpm-spec-file-if-it-is-not-part-of-upstream-repository
     post-upstream-clone:
-        - "wget https://src.fedoraproject.org/rpms/ostree/raw/rawhide/f/ostree.spec"
+        - "curl -LO https://src.fedoraproject.org/rpms/ostree/raw/rawhide/f/ostree.spec"
         # we don't want any downstream patches
         - "sed -ie 's/^Patch/# Patch/g' ostree.spec"
