@@ -19,7 +19,7 @@
 
 #include "config.h"
 
-#include "ostree-tls-cert-interaction.h"
+#include "ostree-tls-cert-interaction-private.h"
 
 struct _OstreeTlsCertInteraction
 {

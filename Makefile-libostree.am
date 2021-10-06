@@ -146,7 +146,7 @@ endif
 if HAVE_LIBSOUP_CLIENT_CERTS
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-tls-cert-interaction.c \
-	src/libostree/ostree-tls-cert-interaction.h \
+	src/libostree/ostree-tls-cert-interaction-private.h \
 	$(NULL)
 endif
 

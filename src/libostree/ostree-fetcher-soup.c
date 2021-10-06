@@ -35,7 +35,7 @@
 #include "ostree-fetcher.h"
 #include "ostree-fetcher-util.h"
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
-#include "ostree-tls-cert-interaction.h"
+#include "ostree-tls-cert-interaction-private.h"
 #endif
 #include "ostree-enumtypes.h"
 #include "ostree.h"
