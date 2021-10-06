@@ -36,6 +36,18 @@ impl MutableTree {
         }
     }
 
+    #[cfg(any(feature = "v2021_5", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_5")))]
+    #[doc(alias = "ostree_mutable_tree_new_from_commit")]
+    #[doc(alias = "new_from_commit")]
+    pub fn from_commit(repo: &Repo, rev: &str) -> Result<MutableTree, glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ffi::ostree_mutable_tree_new_from_commit(repo.to_glib_none().0, rev.to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[cfg(any(feature = "v2018_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_7")))]
     #[doc(alias = "ostree_mutable_tree_check_error")]

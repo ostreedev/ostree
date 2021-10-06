@@ -2,6 +2,7 @@
 // from gir-files
 // DO NOT EDIT
 
+use crate::Repo;
 use crate::SePolicyRestoreconFlags;
 use glib::object::IsA;
 use glib::object::ObjectType as ObjectType_;
@@ -36,6 +37,16 @@ impl SePolicy {
         unsafe {
             let mut error = ptr::null_mut();
             let ret = ffi::ostree_sepolicy_new_at(rootfs_dfd, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[doc(alias = "ostree_sepolicy_new_from_commit")]
+    #[doc(alias = "new_from_commit")]
+    pub fn from_commit<P: IsA<gio::Cancellable>>(repo: &Repo, rev: &str, cancellable: Option<&P>) -> Result<SePolicy, glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let ret = ffi::ostree_sepolicy_new_from_commit(repo.to_glib_none().0, rev.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }

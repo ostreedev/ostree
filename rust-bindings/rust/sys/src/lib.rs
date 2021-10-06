@@ -834,16 +834,6 @@ impl ::std::fmt::Debug for OstreeSysrootWriteDeploymentsOpts {
     }
 }
 
-#[repr(C)]
-pub struct _OstreeTlsCertInteraction(c_void);
-
-pub type OstreeTlsCertInteraction = *mut _OstreeTlsCertInteraction;
-
-#[repr(C)]
-pub struct _OstreeTlsCertInteractionClass(c_void);
-
-pub type OstreeTlsCertInteractionClass = *mut _OstreeTlsCertInteractionClass;
-
 // Classes
 #[repr(C)]
 pub struct OstreeAsyncProgress(c_void);
@@ -1342,6 +1332,9 @@ extern "C" {
     #[cfg(any(feature = "v2018_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_7")))]
     pub fn ostree_mutable_tree_new_from_checksum(repo: *mut OstreeRepo, contents_checksum: *const c_char, metadata_checksum: *const c_char) -> *mut OstreeMutableTree;
+    #[cfg(any(feature = "v2021_5", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_5")))]
+    pub fn ostree_mutable_tree_new_from_commit(repo: *mut OstreeRepo, rev: *const c_char, error: *mut *mut glib::GError) -> *mut OstreeMutableTree;
     #[cfg(any(feature = "v2018_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_7")))]
     pub fn ostree_mutable_tree_check_error(self_: *mut OstreeMutableTree, error: *mut *mut glib::GError) -> gboolean;
@@ -1685,6 +1678,7 @@ extern "C" {
     #[cfg(any(feature = "v2017_4", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_4")))]
     pub fn ostree_sepolicy_new_at(rootfs_dfd: c_int, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> *mut OstreeSePolicy;
+    pub fn ostree_sepolicy_new_from_commit(repo: *mut OstreeRepo, rev: *const c_char, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> *mut OstreeSePolicy;
     pub fn ostree_sepolicy_fscreatecon_cleanup(unused: *mut *mut c_void);
     #[cfg(any(feature = "v2016_5", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
