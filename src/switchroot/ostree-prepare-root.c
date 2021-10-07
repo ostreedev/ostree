@@ -189,6 +189,10 @@ main(int argc, char *argv[])
         err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
       root_arg = argv[1];
     }
+#ifdef USE_LIBSYSTEMD
+  sd_journal_send ("MESSAGE=preparing sysroot at %s", root_arg,
+                    NULL);
+#endif
 
   struct stat stbuf;
   if (stat ("/proc/cmdline", &stbuf) < 0)
@@ -238,15 +242,20 @@ main(int argc, char *argv[])
    */
   const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
   const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
-
 #ifdef USE_LIBSYSTEMD
-      sd_journal_send ("MESSAGE=sysroot configured read-only: %d, currently writable: %d", 
-                      (int)sysroot_readonly, (int)sysroot_currently_writable, NULL);
+  sd_journal_send ("MESSAGE=filesystem at %s currently writable: %d", root_arg,
+                   (int)sysroot_currently_writable,
+                   NULL);
+  sd_journal_send ("MESSAGE=sysroot.readonly configuration value: %d",
+                   (int)sysroot_readonly,
+                   NULL);
 #endif
+
   if (sysroot_readonly)
     {
       if (!sysroot_currently_writable)
-        errx (EXIT_FAILURE, "sysroot=readonly currently requires writable / in initramfs");
+        errx (EXIT_FAILURE, "sysroot.readonly=true requires %s to be writable at this point",
+              root_arg);
       /* Now, /etc is not normally a bind mount, but if we have a readonly
        * sysroot, we still need a writable /etc.  And to avoid race conditions
        * we ensure it's writable in the initramfs, before we switchroot at all.
