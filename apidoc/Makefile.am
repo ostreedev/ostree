@@ -87,7 +87,7 @@ IGNORE_HFILES= \
 	ostree-repo-pull-private.h \
 	ostree-repo-static-delta-private.h \
 	ostree-sysroot-private.h \
-	ostree-tls-cert-interaction.h \
+	ostree-tls-cert-interaction-private.h \
 	$(NULL)
 
 # Images to copy into HTML directory.
