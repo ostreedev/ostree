@@ -1235,12 +1235,15 @@ ostree_sysroot_get_subbootversion (OstreeSysroot   *self)
  * ostree_sysroot_get_booted_deployment:
  * @self: Sysroot
  *
+ * This function may only be called if the sysroot is loaded.
+ *
  * Returns: (transfer none) (nullable): The currently booted deployment, or %NULL if none
  */
 OstreeDeployment *
 ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
 {
-  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
+  g_assert (self);
+  g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
 
   return self->booted_deployment;
 }
@@ -1390,7 +1393,8 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
 OstreeRepo *
 ostree_sysroot_repo (OstreeSysroot *self)
 {
-  g_return_val_if_fail (self->loadstate >= OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
+  g_assert (self);
+  g_assert (self->loadstate >= OSTREE_SYSROOT_LOAD_STATE_LOADED);
   g_assert (self->repo);
   return self->repo;
 }
