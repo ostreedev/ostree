@@ -65,8 +65,8 @@ ostree_remote_new_dynamic (const gchar *name,
 {
   OstreeRemote *remote;
 
-  g_return_val_if_fail (name != NULL && *name != '\0', NULL);
-  g_return_val_if_fail (refspec_name == NULL || *refspec_name != '\0', NULL);
+  g_assert (name != NULL && *name != '\0');
+  g_assert (refspec_name == NULL || *refspec_name != '\0');
 
   remote = g_slice_new0 (OstreeRemote);
   remote->ref_count = 1;
