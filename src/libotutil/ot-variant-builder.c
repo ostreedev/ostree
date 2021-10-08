@@ -909,6 +909,7 @@ ot_variant_builder_pre_add (OtVariantBuilderInfo *info,
       const GVariantMemberInfo *member_info;
 
       member_info = g_variant_type_info_member_info (info->type_info, info->n_children);
+      g_assert (member_info);
       alignment = member_info->type_info->alignment;
     }
   else if (g_variant_type_is_array (info->type))
@@ -959,6 +960,7 @@ ot_variant_builder_post_add (OtVariantBuilderInfo *info,
       const GVariantMemberInfo *member_info;
 
       member_info = g_variant_type_info_member_info (info->type_info, info->n_children);
+      g_assert (member_info);
       if (member_info->ending_type == G_VARIANT_MEMBER_ENDING_OFFSET)
         ot_variant_builder_add_child_end (info);
     }
@@ -1085,16 +1087,13 @@ ot_variant_builder_open (OtVariantBuilder *builder,
   OtVariantBuilderInfo *info = builder->head;
   OtVariantBuilderInfo *new_info;
 
-  g_return_val_if_fail (info->n_children < info->max_items,
-                        FALSE);
-  g_return_val_if_fail (!info->expected_type ||
+  g_assert (info->n_children < info->max_items);
+  g_assert (!info->expected_type ||
                         g_variant_type_is_subtype_of (type,
-                                                      info->expected_type),
-                        FALSE);
-  g_return_val_if_fail (!info->prev_item_type ||
+                                                      info->expected_type));
+  g_assert (!info->prev_item_type ||
                         g_variant_type_is_subtype_of (info->prev_item_type,
-                                                      type),
-                        FALSE);
+                                                      type));
 
   if (!ot_variant_builder_pre_add (info, type, error))
     return FALSE;
