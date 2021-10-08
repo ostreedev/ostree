@@ -183,7 +183,7 @@ static OstreeFetcherPendingURI *
 pending_uri_ref (OstreeFetcherPendingURI *pending)
 {
   gint refcount;
-  g_return_val_if_fail (pending != NULL, NULL);
+  g_assert (pending);
   refcount = g_atomic_int_add (&pending->ref_count, 1);
   g_assert (refcount > 0);
   return pending;
