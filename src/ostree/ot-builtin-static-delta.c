@@ -669,7 +669,7 @@ ostree_builtin_static_delta (int argc, char **argv, OstreeCommandInvocation *inv
       return TRUE; /* Note early return */
     }
 
-  if (!command->fn)
+  if (!command || !command->fn)
     {
       static_delta_usage (argv, TRUE);
       return glnx_throw (error, "Unknown \"static-delta\" subcommand '%s'", cmdname);
