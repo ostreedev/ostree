@@ -6,6 +6,10 @@ url: "https://ostreedev.github.io"
 # url: "http://localhost:4000"
 permalink: /:title/
 markdown: kramdown
+kramdown:
+  typographic_symbols:
+    ndash: "--"
+    mdash: "---"
 
 # Exclude the README and the bundler files that would normally be
 # ignored by default.
