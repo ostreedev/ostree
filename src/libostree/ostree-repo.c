@@ -711,10 +711,9 @@ ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *auto_lock)
     }
 }
 
-
 /**
  * _ostree_repo_auto_transaction_start:
- * @repo: an #OsreeRepo object
+ * @repo: (not nullable): an #OsreeRepo object
  * @cancellable: Cancellable
  * @error: a #GError
  *
@@ -734,6 +733,7 @@ _ostree_repo_auto_transaction_start (OstreeRepo     *repo,
     return NULL;
 
   OstreeRepoAutoTransaction *txn = g_malloc(sizeof(OstreeRepoAutoTransaction));
+  txn->atomic_refcount = 1;
   txn->repo = g_object_ref (repo);
 
   return g_steal_pointer (&txn);
@@ -741,7 +741,7 @@ _ostree_repo_auto_transaction_start (OstreeRepo     *repo,
 
 /**
  * _ostree_repo_auto_transaction_abort:
- * @txn: an #OsreeRepoAutoTransaction guard
+ * @txn: (not nullable): an #OsreeRepoAutoTransaction guard
  * @cancellable: Cancellable
  * @error: a #GError
  *
@@ -770,7 +770,8 @@ _ostree_repo_auto_transaction_abort (OstreeRepoAutoTransaction  *txn,
 
 /**
  * _ostree_repo_auto_transaction_commit:
- * @txn: an #OsreeRepoAutoTransaction guard
+ * @txn: (not nullable): an #OsreeRepoAutoTransaction guard
+ * @out_stats: (out) (allow-none): transaction result statistics
  * @cancellable: Cancellable
  * @error: a #GError
  *
@@ -799,29 +800,57 @@ _ostree_repo_auto_transaction_commit (OstreeRepoAutoTransaction  *txn,
 }
 
 /**
- * _ostree_repo_auto_transaction_cleanup:
- * @p: pointer to an #OsreeRepoAutoTransaction guard
+ * _ostree_repo_auto_transaction_ref:
+ * @txn: (not nullable): an #OsreeRepoAutoTransaction guard
  *
- * Destroy a transaction guard. If the transaction has not yet been completed,
- * it gets aborted.
+ * Return a new reference to the transaction guard.
+ *
+ * Returns: (transfer full) (not nullable): new transaction guard reference.
+ */
+OstreeRepoAutoTransaction *
+_ostree_repo_auto_transaction_ref (OstreeRepoAutoTransaction *txn)
+{
+  g_assert (txn != NULL);
+
+  gint refcount = g_atomic_int_add (&txn->atomic_refcount, 1);
+  g_assert (refcount > 1);
+
+  return txn;
+}
+
+/**
+ * _ostree_repo_auto_transaction_unref:
+ * @txn: (transfer full): an #OsreeRepoAutoTransaction guard
+ *
+ * Unreference a transaction guard. When the last reference is gone,
+ * if the transaction has not yet been completed, it gets aborted.
  */
 void
-_ostree_repo_auto_transaction_cleanup (void *p)
+_ostree_repo_auto_transaction_unref (OstreeRepoAutoTransaction *txn)
 {
-  if (p == NULL)
+  if (txn == NULL)
     return;
 
-  OstreeRepoAutoTransaction *txn = p;
+  if (!g_atomic_int_dec_and_test (&txn->atomic_refcount))
+    return;
+
   // Auto-abort only if transaction has not already been aborted/committed.
   if (txn->repo != NULL)
     {
       g_autoptr(GError) error = NULL;
-      if (!_ostree_repo_auto_transaction_abort (txn, NULL, &error)) {
+      if (!ostree_repo_abort_transaction (txn->repo, NULL, &error))
         g_warning("Failed to auto-cleanup OSTree transaction: %s", error->message);
-        g_clear_object (&txn->repo);
-      }
+
+      g_clear_object (&txn->repo);
     }
+
+  g_free (txn);
+  return;
 }
+
+G_DEFINE_BOXED_TYPE(OstreeRepoAutoTransaction, _ostree_repo_auto_transaction,
+                    _ostree_repo_auto_transaction_ref,
+                    _ostree_repo_auto_transaction_unref);
 
 static GFile *
 get_remotes_d_dir (OstreeRepo          *self,

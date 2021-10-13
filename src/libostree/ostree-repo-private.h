@@ -525,6 +525,7 @@ _ostree_repo_verify_bindings (const char  *collection_id,
  */
 typedef struct
 {
+  gint atomic_refcount;
   OstreeRepo *repo;
 } OstreeRepoAutoTransaction;
 
@@ -544,9 +545,14 @@ _ostree_repo_auto_transaction_commit (OstreeRepoAutoTransaction  *txn,
                                       GCancellable               *cancellable,
                                       GError                    **error);
 
-void
-_ostree_repo_auto_transaction_cleanup (void *p);
+OstreeRepoAutoTransaction *
+_ostree_repo_auto_transaction_ref (OstreeRepoAutoTransaction *txn);
 
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoTransaction, _ostree_repo_auto_transaction_cleanup);
+void
+_ostree_repo_auto_transaction_unref (OstreeRepoAutoTransaction *txn);
+
+GType _ostree_repo_auto_transaction_get_type (void);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoTransaction, _ostree_repo_auto_transaction_unref);
 
 G_END_DECLS
