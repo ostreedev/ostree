@@ -30,6 +30,6 @@ esac
 
 # always fail on warnings; https://github.com/ostreedev/ostree/pull/971
 # NB: this disables the default set of flags from configure.ac
-export CFLAGS="-Wall -Werror ${CFLAGS:-}"
+export CFLAGS="-Wall -Werror -fanalyzer ${CFLAGS:-}"
 
 build --enable-gtk-doc ${CONFIGOPTS:-}
