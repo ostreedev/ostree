@@ -374,9 +374,9 @@ ostree_deployment_new (int    index,
   OstreeDeployment *self;
 
   /* index may be -1 */
-  g_return_val_if_fail (osname != NULL, NULL);
-  g_return_val_if_fail (csum != NULL, NULL);
-  g_return_val_if_fail (deployserial >= 0, NULL);
+  g_assert (osname != NULL);
+  g_assert (csum != NULL);
+  g_assert (deployserial >= 0);
   /* We can have "disconnected" deployments that don't have a
      bootcsum/serial */
 

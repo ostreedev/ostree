@@ -82,10 +82,13 @@ ot_gfile_ensure_unlinked (GFile         *path,
                           GCancellable  *cancellable,
                           GError       **error)
 {
-  if (unlink (gs_file_get_path_cached (path)) != 0)
+  g_assert (path);
+  const char *pathc = gs_file_get_path_cached (path);
+  g_assert (pathc);
+  if (unlink (pathc) != 0)
     {
       if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "unlink(%s)", gs_file_get_path_cached (path));
+        return glnx_throw_errno_prefix (error, "unlink(%s)", pathc);
     }
   return TRUE;
 }
