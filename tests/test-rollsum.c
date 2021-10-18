@@ -75,8 +75,8 @@ test_rollsum (void)
 #define MAX_BUFFER_SIZE 1000000
   gsize i;
   int len;
-  g_autofree unsigned char *a = malloc (MAX_BUFFER_SIZE);
-  g_autofree unsigned char *b = malloc (MAX_BUFFER_SIZE);
+  g_autofree unsigned char *a = g_malloc (MAX_BUFFER_SIZE);
+  g_autofree unsigned char *b = g_malloc (MAX_BUFFER_SIZE);
   g_autoptr(GRand) rand = g_rand_new ();
 
   /* These two buffers produce the same crc32.  */
