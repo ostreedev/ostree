@@ -6,12 +6,9 @@ set -xeuo pipefail
 
 case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "") 
-    require_writable_sysroot
-    # Hack this off for now
-    chattr -i /sysroot
-    cp -a /var /sysroot/myvar
-    touch /sysroot/myvar/somenewfile
-    echo '/sysroot/myvar /var none bind 0 0' >> /etc/fstab
+    touch "/var/somenewfile"
+    stateroot=$(ostree admin status 2> /dev/null | grep '^\*' | cut -d ' ' -f2 || true)
+    echo "/sysroot/ostree/deploy/${stateroot}/var /var none bind 0 0" >> /etc/fstab
     /tmp/autopkgtest-reboot "2"
     ;;
   "2")
