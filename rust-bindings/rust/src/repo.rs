@@ -175,6 +175,13 @@ impl Repo {
         }
     }
 
+    /// Resolve a refspec to a commit SHA256.
+    /// Returns an error if the refspec does not exist.
+    pub fn require_rev(&self, refspec: &str) -> Result<glib::GString, Error> {
+        // SAFETY: Since we said `false` for "allow_noent", this function must return a value
+        Ok(self.resolve_rev(refspec, false)?.unwrap())
+    }
+
     /// Write a content object from provided input.
     pub fn write_content<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(
         &self,

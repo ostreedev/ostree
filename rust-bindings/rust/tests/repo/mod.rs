@@ -10,8 +10,12 @@ mod checkout_at;
 fn should_commit_content_to_repo_and_list_refs_again() {
     let test_repo = TestRepo::new();
 
+    assert!(test_repo.repo.require_rev("nosuchrev").is_err());
+
     let mtree = create_mtree(&test_repo.repo);
     let checksum = commit(&test_repo.repo, &mtree, "test");
+
+    assert_eq!(test_repo.repo.require_rev("test").unwrap(), checksum);
 
     let repo = ostree::Repo::new_for_path(test_repo.dir.path());
     repo.open(NONE_CANCELLABLE).expect("OSTree test_repo");
