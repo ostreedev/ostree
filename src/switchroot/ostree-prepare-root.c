@@ -132,7 +132,8 @@ resolve_deploy_path (const char * root_mountpoint)
   if (!ostree_target)
     errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
 
-  snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target);
+  if (snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
+    err (EXIT_FAILURE, "failed to assemble ostree target path");
   if (lstat (destpath, &stbuf) < 0)
     err (EXIT_FAILURE, "Couldn't find specified OSTree root '%s'", destpath);
   if (!S_ISLNK (stbuf.st_mode))
@@ -284,12 +285,14 @@ main(int argc, char *argv[])
   char srcpath[PATH_MAX];
   /* If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
-  snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint);
+  if (snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint) < 0)
+    err (EXIT_FAILURE, "failed to assemble /boot/loader path");
   if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
     {
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
-          snprintf (srcpath, sizeof(srcpath), "%s/boot", root_mountpoint);
+          if (snprintf (srcpath, sizeof(srcpath), "%s/boot", root_mountpoint) < 0)
+            err (EXIT_FAILURE, "failed to assemble /boot path");
           if (mount (srcpath, "boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
         }
