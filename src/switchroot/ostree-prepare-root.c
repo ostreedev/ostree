@@ -201,7 +201,7 @@ main(int argc, char *argv[])
         err (EXIT_FAILURE, "stat(\"/proc/cmdline\") failed");
       /* We need /proc mounted for /proc/cmdline and realpath (on musl) to
        * work: */
-      if (mount ("proc", "/proc", "proc", 0, NULL) < 0)
+      if (mount ("proc", "/proc", "proc", MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to mount proc on /proc");
       we_mounted_proc = 1;
     }
@@ -224,11 +224,11 @@ main(int argc, char *argv[])
    * work-around.
    *
    * https://bugzilla.redhat.com/show_bug.cgi?id=847418 */
-  if (mount (NULL, "/", NULL, MS_REC|MS_PRIVATE, NULL) < 0)
+  if (mount (NULL, "/", NULL, MS_REC | MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to make \"/\" private mount");
 
   /* Make deploy_path a bind mount, so we can move it later */
-  if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
+  if (mount (deploy_path, deploy_path, NULL, MS_BIND | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
 
   /* chdir to our new root.  We need to do this after bind-mounting it over
@@ -260,7 +260,7 @@ main(int argc, char *argv[])
        * sysroot, we still need a writable /etc.  And to avoid race conditions
        * we ensure it's writable in the initramfs, before we switchroot at all.
        */
-      if (mount ("etc", "etc", NULL, MS_BIND, NULL) < 0)
+      if (mount ("etc", "etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make /etc a bind mount");
       /* Pass on the fact that we discovered a readonly sysroot to ostree-remount.service */
       int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
@@ -281,7 +281,7 @@ main(int argc, char *argv[])
     mount_var = true;
 
   /* Link to the deployment's /var */
-  if (mount_var && mount ("../../var", "var", NULL, MS_BIND, NULL) < 0)
+  if (mount_var && mount ("../../var", "var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to bind mount ../../var to var");
 
   char srcpath[PATH_MAX];
@@ -293,7 +293,7 @@ main(int argc, char *argv[])
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
           snprintf (srcpath, sizeof(srcpath), "%s/boot", root_mountpoint);
-          if (mount (srcpath, "boot", NULL, MS_BIND, NULL) < 0)
+          if (mount (srcpath, "boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
         }
     }
@@ -314,15 +314,15 @@ main(int argc, char *argv[])
             err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
         }
 
-      if (mount ("overlay", "usr", "overlay", 0, usr_ovl_options) < 0)
+      if (mount ("overlay", "usr", "overlay", MS_SILENT, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
   else
     {
       /* Otherwise, a read-only bind mount for /usr */
-      if (mount ("usr", "usr", NULL, MS_BIND, NULL) < 0)
+      if (mount ("usr", "usr", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
-      if (mount ("usr", "usr", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0)
+      if (mount ("usr", "usr", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
@@ -364,13 +364,13 @@ main(int argc, char *argv[])
       if (mkdir ("/sysroot.tmp", 0755) < 0)
         err (EXIT_FAILURE, "couldn't create temporary sysroot /sysroot.tmp");
 
-      if (mount (deploy_path, "/sysroot.tmp", NULL, MS_MOVE, NULL) < 0)
+      if (mount (deploy_path, "/sysroot.tmp", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE '%s' to '/sysroot.tmp'", deploy_path);
 
-      if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE, NULL) < 0)
+      if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
 
-      if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
+      if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
 
       if (rmdir ("/sysroot.tmp") < 0)
@@ -385,7 +385,7 @@ main(int argc, char *argv[])
    * at the very start (perhaps down the line systemd will have compile/runtime option
    * to say that the initramfs environment did everything right from the start).
    */
-  if (mount ("none", "sysroot", NULL, MS_PRIVATE, NULL) < 0)
+  if (mount ("none", "sysroot", NULL, MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "remounting 'sysroot' private");
 
   if (running_as_pid1)
