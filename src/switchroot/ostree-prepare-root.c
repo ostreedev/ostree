@@ -81,9 +81,6 @@
 
 #include "ostree-mount-util.h"
 
-/* Initialized early in main */
-static bool running_as_pid1;
-
 static inline bool
 sysroot_is_configured_ro (const char *sysroot)
 {
@@ -175,7 +172,7 @@ main(int argc, char *argv[])
    * - Quiet logging as there's no journal
    * etc.
    */
-  running_as_pid1 = (getpid () == 1);
+  bool running_as_pid1 = (getpid () == 1);
 
   const char *root_arg = NULL;
   bool we_mounted_proc = false;
