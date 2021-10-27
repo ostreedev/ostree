@@ -33,6 +33,8 @@ mod checksum;
 pub use crate::checksum::*;
 mod core;
 pub use crate::core::*;
+mod sysroot;
+pub use crate::sysroot::*;
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod collection_ref;
