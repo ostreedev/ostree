@@ -216,6 +216,20 @@ main(int argc, char *argv[])
         err (EXIT_FAILURE, "failed to umount proc from /proc");
     }
 
+  /* Query the repository configuration - this is an operating system builder
+   * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
+   */
+  const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
+  const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
+#ifdef USE_LIBSYSTEMD
+  sd_journal_send ("MESSAGE=filesystem at %s currently writable: %d", root_arg,
+                   (int)sysroot_currently_writable,
+                   NULL);
+  sd_journal_send ("MESSAGE=sysroot.readonly configuration value: %d",
+                   (int)sysroot_readonly,
+                   NULL);
+#endif
+
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
    * MS_SHARED. Hence remount them MS_PRIVATE here as a
@@ -234,20 +248,6 @@ main(int argc, char *argv[])
    * below. */
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
-
-  /* Query the repository configuration - this is an operating system builder
-   * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
-   */
-  const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
-  const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
-#ifdef USE_LIBSYSTEMD
-  sd_journal_send ("MESSAGE=filesystem at %s currently writable: %d", root_arg,
-                   (int)sysroot_currently_writable,
-                   NULL);
-  sd_journal_send ("MESSAGE=sysroot.readonly configuration value: %d",
-                   (int)sysroot_readonly,
-                   NULL);
-#endif
 
   if (sysroot_readonly)
     {
