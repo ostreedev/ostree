@@ -1389,7 +1389,7 @@ ostree_repo_checkout_at (OstreeRepo                        *self,
   g_autoptr(GFile) target_dir = NULL;
 
   if (strcmp (options->subpath, "/") != 0)
-    target_dir = g_file_get_child (commit_root, options->subpath);
+    target_dir = g_file_resolve_relative_path (commit_root, options->subpath);
   else
     target_dir = g_object_ref (commit_root);
   g_autoptr(GFileInfo) target_info =
