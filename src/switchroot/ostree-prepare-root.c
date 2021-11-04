@@ -166,6 +166,8 @@ pivot_root(const char * new_root, const char * put_old)
 int
 main(int argc, char *argv[])
 {
+  char srcpath[PATH_MAX];
+
   /* If we're pid 1, that means there's no initramfs; in this situation
    * various defaults change:
    *
@@ -249,17 +251,13 @@ main(int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
+  /* This will result in a system with /sysroot read-only. Thus, two additional
+   * writable bind-mounts (for /etc and /var) are required later on. */
   if (sysroot_readonly)
     {
       if (!sysroot_currently_writable)
         errx (EXIT_FAILURE, "sysroot.readonly=true requires %s to be writable at this point",
               root_arg);
-      /* Now, /etc is not normally a bind mount, but if we have a readonly
-       * sysroot, we still need a writable /etc.  And to avoid race conditions
-       * we ensure it's writable in the initramfs, before we switchroot at all.
-       */
-      if (mount ("etc", "etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make /etc a bind mount");
       /* Pass on the fact that we discovered a readonly sysroot to ostree-remount.service */
       int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
       if (fd < 0)
@@ -267,23 +265,8 @@ main(int argc, char *argv[])
       (void) close (fd);
     }
 
-  /* Default to true, but in the systemd case, default to false because it's handled by
-   * ostree-system-generator. */
-  bool mount_var = true;
-#ifdef HAVE_SYSTEMD_AND_LIBMOUNT
-  mount_var = false;
-#endif
-
-  /* file in /run can override the default behaviour so that we definitely mount /var */
-  if (lstat (INITRAMFS_MOUNT_VAR, &stbuf) == 0)
-    mount_var = true;
-
-  /* Link to the deployment's /var */
-  if (mount_var && mount ("../../var", "var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to bind mount ../../var to var");
-
-  char srcpath[PATH_MAX];
-  /* If /boot is on the same partition, use a bind mount to make it visible
+  /* Prepare /boot.
+   * If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
   if (snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint) < 0)
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
@@ -298,9 +281,23 @@ main(int argc, char *argv[])
         }
     }
 
-  /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
+  /* Prepare /etc.
+   * No action required if sysroot is writable. Otherwise, a bind-mount for
+   * the deployment needs to be created and remounted as read/write. */
+  if (sysroot_readonly)
+  {
+    /* Bind-mount /etc (at deploy path), and remount as writable. */
+    if (mount ("etc", "etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+      err (EXIT_FAILURE, "failed to prepare /etc bind-mount at %s", srcpath);
+    if (mount ("etc", "etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+      err (EXIT_FAILURE, "failed to make writable /etc bind-mount at %s", srcpath);
+  }
+
+  /* Prepare /usr.
+   * It may be either just a read-only bind-mount, or a persistent overlayfs. */
   if (lstat (".usr-ovl-work", &stbuf) == 0)
     {
+      /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
       const char usr_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
 
       /* Except overlayfs barfs if we try to mount it on a read-only
@@ -326,6 +323,38 @@ main(int argc, char *argv[])
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
+  /* Prepare /var.
+   * When a read-only sysroot is configured, this adds a dedicated bind-mount (to itself)
+   * so that the stateroot location stays writable. */
+  if (sysroot_readonly)
+    {
+      /* Bind-mount /var (at stateroot path), and remount as writable. */
+      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", srcpath);
+      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
+    }
+
+  /* When running under systemd, /var will be handled by a 'var.mount' unit outside
+   * of initramfs.
+   * Systemd auto-detection can be overridden by a marker file under /run. */
+#ifdef HAVE_SYSTEMD_AND_LIBMOUNT
+  bool mount_var = false;
+#else
+  bool mount_var = true;
+#endif
+  if (lstat (INITRAMFS_MOUNT_VAR, &stbuf) == 0)
+    mount_var = true;
+
+  /* If required, bind-mount `/var` in the deployment to the "stateroot", which is
+  *  the shared persistent directory for a set of deployments.  More info:
+  *  https://ostreedev.github.io/ostree/deployment/#stateroot-aka-osname-group-of-deployments-that-share-var
+  */
+  if (mount_var)
+    {
+      if (mount ("../../var", "var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+    }
 
   /* We only stamp /run now if we're running in an initramfs, i.e. we're
    * not pid 1.  Otherwise it's handled later via ostree-system-generator.
@@ -375,6 +404,19 @@ main(int argc, char *argv[])
 
       if (rmdir ("/sysroot.tmp") < 0)
         err (EXIT_FAILURE, "couldn't remove temporary sysroot /sysroot.tmp");
+
+      if (sysroot_readonly)
+        {
+          if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to make /sysroot read-only");
+
+          /* TODO(lucab): This will make the final '/' read-only.
+           * Stabilize read-only '/sysroot' first, then enable this additional hardening too.
+           *
+           * if (mount (".", ".", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
+           *   err (EXIT_FAILURE, "failed to make / read-only");
+           */
+        }
     }
 
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
