@@ -84,6 +84,7 @@ case "$ID" in
             libsoup2.4-dev
             libsystemd-dev
             libtool
+            libcap2-bin
             procps
             python3
             python3-yaml
