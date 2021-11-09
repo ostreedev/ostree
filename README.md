@@ -51,10 +51,11 @@ projects.
 For Debian/apt, see also https://github.com/stb-tester/apt2ostree
 and the LWN article [Merkle trees and build systems](https://lwn.net/Articles/821367/).
 
-Fedora derivatives use rpm-ostree (noted below); there are 3 variants using OSTree:
+Fedora derivatives use rpm-ostree (noted below); there are 4 variants using OSTree:
 
  - [Fedora CoreOS](https://getfedora.org/en/coreos/)
  - [Fedora Silverblue](https://silverblue.fedoraproject.org/)
+ - [Fedora Kinoite](https://kinoite.fedoraproject.org/)
  - [Fedora IoT](https://iot.fedoraproject.org/)
 
 Red Hat Enterprise Linux CoreOS is a derivative of Fedora CoreOS, used in [OpenShift 4](https://try.openshift.com/).
