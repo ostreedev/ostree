@@ -457,9 +457,15 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo   *self,
 
       if (sign)
         {
-          verified = _ostree_repo_static_delta_verify_signature (self, meta_fd, sign, NULL, error);
-          if (*error)
-            return FALSE;
+          g_autoptr(GError) local_error = NULL;
+
+          verified = _ostree_repo_static_delta_verify_signature (self, meta_fd, sign, NULL, &local_error);
+          if (local_error != NULL)
+            {
+              g_propagate_error (error, g_steal_pointer (&local_error));
+              return FALSE;
+            }
+
           if (!verified)
             return glnx_throw (error, "Delta signature verification failed");
         }
