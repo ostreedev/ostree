@@ -487,12 +487,16 @@ _load_pk_from_stream (OstreeSign *self,
   while (TRUE)
     {
       gsize len = 0;
-      g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
       g_autoptr (GVariant) pk = NULL;
       gboolean added = FALSE;
+      g_autoptr(GError) local_error = NULL;
+      g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, &local_error);
 
-      if (*error != NULL)
-        return FALSE;
+      if (local_error != NULL)
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
+        }
 
       if (line == NULL)
         return ret;
