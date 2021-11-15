@@ -216,6 +216,15 @@ cleanup_other_bootversions (OstreeSysroot       *self,
   const int cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;
   /* Reusable buffer for path */
   g_autoptr(GString) buf = g_string_new ("");
+  struct stat stbuf;
+
+  if ((glnx_fstatat_allow_noent (self->sysroot_fd, "boot/loader", &stbuf, AT_SYMLINK_NOFOLLOW, error))
+      && (!S_ISLNK (stbuf.st_mode)))
+    {
+      g_string_truncate (buf, 0); g_string_append_printf (buf, "boot/loader.%d", self->bootversion);
+      if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
+        return FALSE;
+    }
 
   /* These directories are for the other major version */
   g_string_truncate (buf, 0); g_string_append_printf (buf, "boot/loader.%d", cleanup_bootversion);
