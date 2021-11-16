@@ -24,23 +24,36 @@ unsafe extern "C" fn read_variant_table(
     set.insert(ObjectName::new_from_variant(value));
 }
 
-unsafe extern "C" fn read_variant_table_from_key(
+unsafe extern "C" fn read_variant_object_map(
     key: glib_sys::gpointer,
-    _value: glib_sys::gpointer,
+    value: glib_sys::gpointer,
     hash_set: glib_sys::gpointer,
 ) {
     let key: glib::Variant = from_glib_none(key as *const glib_sys::GVariant);
-    let set: &mut HashSet<ObjectName> = &mut *(hash_set as *mut HashSet<ObjectName>);
-    set.insert(ObjectName::new_from_variant(key));
+    let value: glib::Variant = from_glib_none(value as *const glib_sys::GVariant);
+    if let Some(insert) = value.get::<(bool, Vec<String>)>() {
+        let set: &mut HashMap<ObjectName, (bool, Vec<String>)> = &mut *(hash_set as *mut HashMap<ObjectName, (bool, Vec<String>)>);
+        set.insert(ObjectName::new_from_variant(key), insert);
+    }
 }
 
-unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable, from_key: bool) -> HashSet<ObjectName> {
+unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> HashSet<ObjectName> {
     let mut set = HashSet::new();
-    let read_variant_table_cb = if from_key { read_variant_table_from_key } else { read_variant_table };
     glib_sys::g_hash_table_foreach(
         ptr,
-        Some(read_variant_table_cb),
+        Some(read_variant_table),
         &mut set as *mut HashSet<ObjectName> as *mut _,
+    );
+    glib_sys::g_hash_table_unref(ptr);
+    set
+}
+
+unsafe fn from_glib_container_variant_map(ptr: *mut glib_sys::GHashTable) -> HashMap<ObjectName, (bool, Vec<String>)> {
+    let mut set = HashMap::new();
+    glib_sys::g_hash_table_foreach(
+        ptr,
+        Some(read_variant_object_map),
+        &mut set as *mut HashMap<ObjectName, (bool, Vec<String>)> as *mut _,
     );
     glib_sys::g_hash_table_unref(ptr);
     set
@@ -127,7 +140,7 @@ impl Repo {
                 &mut error,
             );
             if error.is_null() {
-                Ok(from_glib_container_variant_set(hashtable, false))
+                Ok(from_glib_container_variant_set(hashtable))
             } else {
                 Err(from_glib_full(error))
             }
@@ -164,7 +177,7 @@ impl Repo {
         &self,
         flags: OstreeRepoListObjectsFlags,
         cancellable: Option<&P>,
-    ) -> Result<HashSet<ObjectName>, Error> {
+    ) -> Result<HashMap<ObjectName, (bool, Vec<String>)>, Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();
@@ -178,7 +191,7 @@ impl Repo {
             );
 
             if error.is_null() {
-                Ok(from_glib_container_variant_set(hashtable, true))
+                Ok(from_glib_container_variant_map(hashtable))
             } else {
                 Err(from_glib_full(error))
             }
