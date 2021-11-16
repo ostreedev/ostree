@@ -13,16 +13,16 @@ fn list_repo_objects() {
 
     let objects = repo.repo.list_objects( ffi::OSTREE_REPO_LIST_OBJECTS_ALL, NONE_CANCELLABLE).expect("List Objects");
     for object in objects {
-        if object.object_type() == ObjectType::Commit {
-            commit_cnt += 1;
-            assert_eq!(commit_checksum.to_string(), object.checksum());
-        } else if object.object_type() == ObjectType::DirTree {
-            dirtree_cnt += 1;
-        } else if object.object_type() == ObjectType::DirMeta {
-            dirmeta_cnt += 1;
-        } else if object.object_type() == ObjectType::File {
-            file_cnt += 1;
-        } else { panic!("unexpected object type {}", object.object_type()); }
+        match object.object_type()  {
+            ObjectType::DirTree => { dirtree_cnt += 1; },
+            ObjectType::DirMeta => { dirmeta_cnt += 1; },
+            ObjectType::File => { file_cnt += 1; },
+            ObjectType::Commit => {
+                assert_eq!(commit_checksum.to_string(), object.checksum());
+                commit_cnt += 1;
+            },
+            x => { panic!("unexpected object type {}", x ); }
+        }
     }
     assert_eq!(dirtree_cnt, 2);
     assert_eq!(dirmeta_cnt, 1);
