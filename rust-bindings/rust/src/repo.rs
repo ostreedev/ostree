@@ -1,6 +1,6 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
-use crate::{Checksum, ObjectName, ObjectType, Repo, RepoTransactionStats};
+use crate::{Checksum, ObjectName, ObjectDetails, ObjectType, Repo, RepoTransactionStats};
 use ffi;
 use ffi::OstreeRepoListObjectsFlags;
 use glib::ffi as glib_sys;
@@ -31,9 +31,9 @@ unsafe extern "C" fn read_variant_object_map(
 ) {
     let key: glib::Variant = from_glib_none(key as *const glib_sys::GVariant);
     let value: glib::Variant = from_glib_none(value as *const glib_sys::GVariant);
-    if let Some(insert) = value.get::<(bool, Vec<String>)>() {
-        let set: &mut HashMap<ObjectName, (bool, Vec<String>)> = &mut *(hash_set as *mut HashMap<ObjectName, (bool, Vec<String>)>);
-        set.insert(ObjectName::new_from_variant(key), insert);
+    let set: &mut HashMap<ObjectName, ObjectDetails> = &mut *(hash_set as *mut HashMap<ObjectName, ObjectDetails>);
+    if let Some(details) = ObjectDetails::new_from_variant(value) {
+        set.insert(ObjectName::new_from_variant(key), details);
     }
 }
 
@@ -48,12 +48,12 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> Has
     set
 }
 
-unsafe fn from_glib_container_variant_map(ptr: *mut glib_sys::GHashTable) -> HashMap<ObjectName, (bool, Vec<String>)> {
+unsafe fn from_glib_container_variant_map(ptr: *mut glib_sys::GHashTable) -> HashMap<ObjectName, ObjectDetails> {
     let mut set = HashMap::new();
     glib_sys::g_hash_table_foreach(
         ptr,
         Some(read_variant_object_map),
-        &mut set as *mut HashMap<ObjectName, (bool, Vec<String>)> as *mut _,
+        &mut set as *mut HashMap<ObjectName, ObjectDetails> as *mut _,
     );
     glib_sys::g_hash_table_unref(ptr);
     set
@@ -177,7 +177,7 @@ impl Repo {
         &self,
         flags: OstreeRepoListObjectsFlags,
         cancellable: Option<&P>,
-    ) -> Result<HashMap<ObjectName, (bool, Vec<String>)>, Error> {
+    ) -> Result<HashMap<ObjectName, ObjectDetails>, Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let mut hashtable = ptr::null_mut();

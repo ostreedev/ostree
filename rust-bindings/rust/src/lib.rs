@@ -48,6 +48,8 @@ mod kernel_args;
 pub use crate::kernel_args::*;
 mod object_name;
 pub use crate::object_name::*;
+mod object_details;
+pub use crate::object_details::*;
 mod repo;
 pub use crate::repo::*;
 #[cfg(any(feature = "v2016_8", feature = "dox"))]
