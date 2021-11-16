@@ -2,6 +2,7 @@
 use crate::RepoListRefsExtFlags;
 use crate::{Checksum, ObjectName, ObjectType, Repo, RepoTransactionStats};
 use ffi;
+use ffi::OstreeRepoListObjectsFlags;
 use glib::ffi as glib_sys;
 use glib::{self, translate::*, Error, IsA};
 use std::{
@@ -23,11 +24,22 @@ unsafe extern "C" fn read_variant_table(
     set.insert(ObjectName::new_from_variant(value));
 }
 
-unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> HashSet<ObjectName> {
+unsafe extern "C" fn read_variant_table_from_key(
+    key: glib_sys::gpointer,
+    _value: glib_sys::gpointer,
+    hash_set: glib_sys::gpointer,
+) {
+    let key: glib::Variant = from_glib_none(key as *const glib_sys::GVariant);
+    let set: &mut HashSet<ObjectName> = &mut *(hash_set as *mut HashSet<ObjectName>);
+    set.insert(ObjectName::new_from_variant(key));
+}
+
+unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable, from_key: bool) -> HashSet<ObjectName> {
     let mut set = HashSet::new();
+    let read_variant_table_cb = if from_key { read_variant_table_from_key } else { read_variant_table };
     glib_sys::g_hash_table_foreach(
         ptr,
-        Some(read_variant_table),
+        Some(read_variant_table_cb),
         &mut set as *mut HashSet<ObjectName> as *mut _,
     );
     glib_sys::g_hash_table_unref(ptr);
@@ -115,7 +127,7 @@ impl Repo {
                 &mut error,
             );
             if error.is_null() {
-                Ok(from_glib_container_variant_set(hashtable))
+                Ok(from_glib_container_variant_set(hashtable, false))
             } else {
                 Err(from_glib_full(error))
             }
@@ -141,6 +153,32 @@ impl Repo {
 
             if error.is_null() {
                 Ok(FromGlibPtrContainer::from_glib_container(hashtable))
+            } else {
+                Err(from_glib_full(error))
+            }
+        }
+    }
+
+    /// List all repo objects
+    pub fn list_objects<P: IsA<gio::Cancellable>>(
+        &self,
+        flags: OstreeRepoListObjectsFlags,
+        cancellable: Option<&P>,
+    ) -> Result<HashSet<ObjectName>, Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let mut hashtable = ptr::null_mut();
+
+            ffi::ostree_repo_list_objects(
+                self.to_glib_none().0,
+                flags,
+                &mut hashtable,
+                cancellable.map(AsRef::as_ref).to_glib_none().0,
+                &mut error
+            );
+
+            if error.is_null() {
+                Ok(from_glib_container_variant_set(hashtable, true))
             } else {
                 Err(from_glib_full(error))
             }

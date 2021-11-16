@@ -3,6 +3,34 @@ use gio::NONE_CANCELLABLE;
 use ostree::{checksum_file_from_input, ObjectType};
 
 #[test]
+fn list_repo_objects() {
+    let repo = TestRepo::new();
+    let commit_checksum = repo.test_commit("test");
+    let mut dirtree_cnt = 0;
+    let mut dirmeta_cnt = 0;
+    let mut file_cnt = 0;
+    let mut commit_cnt = 0;
+
+    let objects = repo.repo.list_objects( ffi::OSTREE_REPO_LIST_OBJECTS_ALL, NONE_CANCELLABLE).expect("List Objects");
+    for object in objects {
+        if object.object_type() == ObjectType::Commit {
+            commit_cnt += 1;
+            assert_eq!(commit_checksum.to_string(), object.checksum());
+        } else if object.object_type() == ObjectType::DirTree {
+            dirtree_cnt += 1;
+        } else if object.object_type() == ObjectType::DirMeta {
+            dirmeta_cnt += 1;
+        } else if object.object_type() == ObjectType::File {
+            file_cnt += 1;
+        } else { panic!("unexpected object type {}", object.object_type()); }
+    }
+    assert_eq!(dirtree_cnt, 2);
+    assert_eq!(dirmeta_cnt, 1);
+    assert_eq!(file_cnt, 1);
+    assert_eq!(commit_cnt, 1);
+}
+
+#[test]
 fn should_checksum_file_from_input() {
     let repo = TestRepo::new();
     let commit_checksum = repo.test_commit("test");
