@@ -2097,7 +2097,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
    **/
   if (bootloader)
     {
-      if (!_ostree_bootloader_post_bls_sync (bootloader, cancellable, error))
+      if (!_ostree_bootloader_post_bls_sync (bootloader, new_bootversion, cancellable, error))
         return FALSE;
     }
 
