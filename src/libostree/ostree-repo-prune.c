@@ -39,17 +39,17 @@ typedef struct {
 } OtPruneData;
 
 static gboolean
-maybe_prune_loose_object (OtPruneData        *data,
-                          OstreeRepoPruneFlags    flags,
-                          const char         *checksum,
-                          OstreeObjectType    objtype,
-                          GCancellable       *cancellable,
-                          GError            **error)
+maybe_prune_loose_object (OtPruneData           *data,
+                          OstreeRepoPruneFlags   flags,
+                          GVariant              *key,
+                          GCancellable          *cancellable,
+                          GError               **error)
 {
   gboolean reachable = FALSE;
-  g_autoptr(GVariant) key = NULL;
+  const char *checksum;
+  OstreeObjectType objtype;
 
-  key = ostree_object_name_serialize (checksum, objtype);
+  ostree_object_name_deserialize (key, &checksum, &objtype);
 
   if (g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     reachable = TRUE;
@@ -276,17 +276,14 @@ repo_prune_internal (OstreeRepo        *self,
 
   GLNX_HASH_TABLE_FOREACH_KV (objects, GVariant*, serialized_key, GVariant*, objdata)
     {
-      const char *checksum;
-      OstreeObjectType objtype;
       gboolean is_loose;
 
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
       g_variant_get_child (objdata, 0, "b", &is_loose);
 
       if (!is_loose)
         continue;
 
-      if (!maybe_prune_loose_object (&data, options->flags, checksum, objtype,
+      if (!maybe_prune_loose_object (&data, options->flags, serialized_key,
                                      cancellable, error))
         return FALSE;
     }
