@@ -238,7 +238,7 @@ ostree_run (int    argc,
   return 0;
 }
 
-/* Process a --repo arg; used below, and for the remote builtins */
+/* Process a --repo arg. */
 static OstreeRepo *
 parse_repo_option (GOptionContext *context,
                    const char     *repo_path,
@@ -247,19 +247,6 @@ parse_repo_option (GOptionContext *context,
                    GError        **error)
 {
   g_autoptr(OstreeRepo) repo = NULL;
-
-  /* This is a bit of a brutal hack; we set up a mount
-   * namespace if it appears that we may need it.  It'd
-   * be better to do this more precisely in the future.
-   */
-  gboolean setup_ns = FALSE;
-  if (!maybe_setup_mount_namespace (&setup_ns, error))
-    return FALSE;
-  if (setup_ns)
-    {
-      if (mount ("/sysroot", "/sysroot", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-        return glnx_null_throw_errno_prefix (error, "Remounting /sysroot read-write");
-    }
 
   if (repo_path == NULL)
     {
@@ -300,6 +287,43 @@ parse_repo_option (GOptionContext *context,
   return g_steal_pointer (&repo);
 }
 
+/* Process a --repo arg, determining if we should remount /sysroot; used below, and for the remote builtins */
+static OstreeRepo *
+parse_repo_option_and_maybe_remount (GOptionContext *context,
+                                     const char     *repo_path,
+                                     gboolean        skip_repo_open,
+                                     GCancellable   *cancellable,
+                                     GError        **error)
+{
+  g_autoptr(OstreeRepo) repo = parse_repo_option (context, repo_path, skip_repo_open, cancellable, error);
+  if (!repo)
+    return NULL;
+
+  /* This is a bit of a brutal hack; we set up a mount
+   * namespace if it appears that we may need it.  It'd
+   * be better to do this more precisely in the future.
+   */
+  if (ostree_repo_is_system (repo) && !ostree_repo_is_writable (repo, NULL))
+    {
+      gboolean setup_ns = FALSE;
+      if (!maybe_setup_mount_namespace (&setup_ns, error))
+        return FALSE;
+      if (setup_ns)
+        {
+          if (mount ("/sysroot", "/sysroot", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+            return glnx_null_throw_errno_prefix (error, "Remounting /sysroot read-write");
+
+          /* Reload the repo so it's actually writable. */
+          g_clear_pointer (&repo, g_object_unref);
+          repo = parse_repo_option (context, repo_path, skip_repo_open, cancellable, error);
+          if (!repo)
+            return NULL;
+        }
+    }
+
+  return g_steal_pointer (&repo);
+}
+
 /* Used by the remote builtins which are special in taking --sysroot or --repo */
 gboolean
 ostree_parse_sysroot_or_repo_option (GOptionContext *context,
@@ -323,7 +347,7 @@ ostree_parse_sysroot_or_repo_option (GOptionContext *context,
     }
   else
     {
-      repo = parse_repo_option (context, repo_path, FALSE, cancellable, error);
+      repo = parse_repo_option_and_maybe_remount (context, repo_path, FALSE, cancellable, error);
       if (!repo)
         return FALSE;
     }
@@ -424,8 +448,8 @@ ostree_option_context_parse (GOptionContext *context,
 
   if (!(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      repo = parse_repo_option (context, opt_repo, (flags & OSTREE_BUILTIN_FLAG_NO_CHECK) > 0,
-                                cancellable, error);
+      repo = parse_repo_option_and_maybe_remount (context, opt_repo, (flags & OSTREE_BUILTIN_FLAG_NO_CHECK) > 0,
+                                                  cancellable, error);
       if (!repo)
         return FALSE;
     }
