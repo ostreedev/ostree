@@ -31,18 +31,13 @@ impl ObjectDetails {
     pub fn appearances(&self) -> &Vec<String> {
         &self.object_appearances
     }
-
-    /// Format this `ObjectDetails` as a string.
-    fn to_string(&self) -> String {
-        format!("Object is {} loose and appears in {} checksums",
-                if self.loose {"available"} else {"not available"},
-                self.object_appearances.len() )
-    }
 }
 
 impl Display for ObjectDetails{
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f, "{}", self.to_string())
+        write!(f, "Object is {} and appears in {} checksums",
+                if self.loose {"loose"} else {"not loose"},
+                self.object_appearances.len() )
     }
 }
 
