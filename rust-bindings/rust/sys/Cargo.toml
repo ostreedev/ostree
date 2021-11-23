@@ -1,8 +1,5 @@
-[badges.gitlab]
-repository = "fkrull/ostree-rs"
-
 [build-dependencies]
-system-deps = "3"
+system-deps = "6"
 
 [dependencies]
 glib-sys = "0.14"
