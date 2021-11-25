@@ -44,6 +44,7 @@ corrupt (GBytes *input)
   g_assert_cmpint (len, >, 0);
   g_assert_cmpint (len, <, G_MAXINT);
   g_autofree char *newbuf = g_memdup (buf, len);
+  g_assert (newbuf != NULL);
   int o = g_random_int_range (0, len);
   newbuf[o] = (newbuf[0] + 1);
 
