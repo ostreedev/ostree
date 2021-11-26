@@ -770,8 +770,8 @@ initiate_next_curl_request (FetcherRequest *req,
     curl_easy_setopt (req->easy, CURLOPT_URL, uri);
   }
 
-  curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
-                    self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
+  (void) curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
+                           self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
 
   /* Set caching request headers */
   if (req->if_none_match != NULL)
