@@ -1,7 +1,5 @@
 use ffi::OstreeKernelArgs;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
-use gio;
-#[cfg(any(feature = "v2019_3", feature = "dox"))]
 use glib::object::IsA;
 use glib::translate::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]

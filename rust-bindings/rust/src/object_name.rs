@@ -1,6 +1,5 @@
 use crate::ObjectType;
 use crate::{object_name_deserialize, object_name_serialize, object_to_string};
-use glib;
 use glib::translate::*;
 use glib::GString;
 use std::fmt::Display;

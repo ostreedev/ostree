@@ -1,7 +1,6 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
 use crate::{Checksum, ObjectName, ObjectDetails, ObjectType, Repo, RepoTransactionStats};
-use ffi;
 use ffi::OstreeRepoListObjectsFlags;
 use glib::ffi as glib_sys;
 use glib::{self, translate::*, Error, IsA};
@@ -117,7 +116,7 @@ impl Repo {
             let copy = dfd.try_clone();
             // Now release our temporary ownership of the original
             let _ = dfd.into_raw_fd();
-            Ok(copy?)
+            copy
         }
     }
 

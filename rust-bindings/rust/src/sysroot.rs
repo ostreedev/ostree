@@ -49,7 +49,7 @@ impl SysrootBuilder {
     /// Perform common configuration steps, returning a not-yet-fully-loaded `Sysroot`.
     fn configure_common(self) -> Sysroot {
         let sysroot = {
-            let opt_file = self.path.map(|p| gio::File::for_path(p));
+            let opt_file = self.path.map(gio::File::for_path);
             Sysroot::new(opt_file.as_ref())
         };
 
