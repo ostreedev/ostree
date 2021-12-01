@@ -1,6 +1,6 @@
 use std::fmt::Display;
-use std::fmt::Formatter;
 use std::fmt::Error;
+use std::fmt::Formatter;
 
 /// Details of an object in an OSTree repo. It contains information about if
 /// the object is "loose", and contains a list of pack file checksums in which
@@ -32,11 +32,13 @@ impl ObjectDetails {
     }
 }
 
-impl Display for ObjectDetails{
+impl Display for ObjectDetails {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f, "Object is {} and appears in {} checksums",
-                if self.loose {"loose"} else {"not loose"},
-                self.object_appearances.len() )
+        write!(
+            f,
+            "Object is {} and appears in {} checksums",
+            if self.loose { "loose" } else { "not loose" },
+            self.object_appearances.len()
+        )
     }
 }
-

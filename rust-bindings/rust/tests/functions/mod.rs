@@ -11,17 +11,28 @@ fn list_repo_objects() {
     let mut file_cnt = 0;
     let mut commit_cnt = 0;
 
-    let objects = repo.repo.list_objects( ffi::OSTREE_REPO_LIST_OBJECTS_ALL, NONE_CANCELLABLE).expect("List Objects");
+    let objects = repo
+        .repo
+        .list_objects(ffi::OSTREE_REPO_LIST_OBJECTS_ALL, NONE_CANCELLABLE)
+        .expect("List Objects");
     for (object, _items) in objects {
-        match object.object_type()  {
-            ObjectType::DirTree => { dirtree_cnt += 1; },
-            ObjectType::DirMeta => { dirmeta_cnt += 1; },
-            ObjectType::File => { file_cnt += 1; },
+        match object.object_type() {
+            ObjectType::DirTree => {
+                dirtree_cnt += 1;
+            }
+            ObjectType::DirMeta => {
+                dirmeta_cnt += 1;
+            }
+            ObjectType::File => {
+                file_cnt += 1;
+            }
             ObjectType::Commit => {
                 assert_eq!(commit_checksum.to_string(), object.checksum());
                 commit_cnt += 1;
-            },
-            x => { panic!("unexpected object type {}", x ); }
+            }
+            x => {
+                panic!("unexpected object type {}", x);
+            }
         }
     }
     assert_eq!(dirtree_cnt, 2);

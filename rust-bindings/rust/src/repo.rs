@@ -1,6 +1,6 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
-use crate::{Checksum, ObjectName, ObjectDetails, ObjectType, Repo, RepoTransactionStats};
+use crate::{Checksum, ObjectDetails, ObjectName, ObjectType, Repo, RepoTransactionStats};
 use ffi::OstreeRepoListObjectsFlags;
 use glib::ffi as glib_sys;
 use glib::{self, translate::*, Error, IsA};
@@ -30,7 +30,8 @@ unsafe extern "C" fn read_variant_object_map(
 ) {
     let key: glib::Variant = from_glib_none(key as *const glib_sys::GVariant);
     let value: glib::Variant = from_glib_none(value as *const glib_sys::GVariant);
-    let set: &mut HashMap<ObjectName, ObjectDetails> = &mut *(hash_set as *mut HashMap<ObjectName, ObjectDetails>);
+    let set: &mut HashMap<ObjectName, ObjectDetails> =
+        &mut *(hash_set as *mut HashMap<ObjectName, ObjectDetails>);
     if let Some(details) = ObjectDetails::new_from_variant(value) {
         set.insert(ObjectName::new_from_variant(key), details);
     }
@@ -47,7 +48,9 @@ unsafe fn from_glib_container_variant_set(ptr: *mut glib_sys::GHashTable) -> Has
     set
 }
 
-unsafe fn from_glib_container_variant_map(ptr: *mut glib_sys::GHashTable) -> HashMap<ObjectName, ObjectDetails> {
+unsafe fn from_glib_container_variant_map(
+    ptr: *mut glib_sys::GHashTable,
+) -> HashMap<ObjectName, ObjectDetails> {
     let mut set = HashMap::new();
     glib_sys::g_hash_table_foreach(
         ptr,
@@ -186,7 +189,7 @@ impl Repo {
                 flags,
                 &mut hashtable,
                 cancellable.map(AsRef::as_ref).to_glib_none().0,
-                &mut error
+                &mut error,
             );
 
             if error.is_null() {
