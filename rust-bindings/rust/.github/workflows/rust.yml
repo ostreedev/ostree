@@ -1,5 +1,8 @@
 name: Rust
 
+permissions:
+  actions: read
+
 on:
   push:
     branches: [ main ]
@@ -8,16 +11,58 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_PROJECT_FEATURES: "v2021_3"
+  # Minimum supported Rust version (MSRV)
+  ACTION_MSRV_TOOLCHAIN: 1.54.0
+  # Pinned toolchain for linting
+  ACTION_LINTS_TOOLCHAIN: 1.56.0
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose --features=v2021_3
-    - name: Run tests
-      run: cargo test --verbose --features=v2021_3
+      - uses: actions/checkout@v2
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+      - name: Build
+        run: cargo build --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
+      - name: Run tests
+        run: cargo test --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
+  build-minimum-toolchain:
+    name: "Build, minimum supported toolchain (MSRV)"
+    runs-on: ubuntu-latest
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Remove system Rust toolchain
+        run: dnf remove -y rust cargo
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env['ACTION_MSRV_TOOLCHAIN']  }}
+          default: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+      - name: cargo build
+        run: cargo build --features=${{ env['CARGO_PROJECT_FEATURES'] }}
+  linting:
+    name: "Lints, pinned toolchain"
+    runs-on: ubuntu-latest
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Remove system Rust toolchain
+        run: dnf remove -y rust cargo
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env['ACTION_LINTS_TOOLCHAIN']  }}
+          default: true
+          components: rustfmt, clippy
+      - name: cargo fmt (check)
+        run: cargo fmt -p ostree -- --check -l
+      - name: cargo clippy (warnings)
+        run: cargo clippy -p ostree --features=${{ env['CARGO_PROJECT_FEATURES'] }} -- -D warnings
