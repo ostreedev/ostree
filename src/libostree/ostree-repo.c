@@ -6105,7 +6105,7 @@ summary_add_ref_entry (OstreeRepo       *self,
  * and refs in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in
  * lexicographic order.
  *
- * Locking: exclusive
+ * Locking: shared (Prior to 2021.7, this was exclusive)
  */
 gboolean
 ostree_repo_regenerate_summary (OstreeRepo     *self,
@@ -6113,16 +6113,10 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GCancellable   *cancellable,
                                 GError        **error)
 {
-  /* Take an exclusive lock. This makes sure the commits and deltas don't get
-   * deleted while generating the summary. It also means we can be sure refs
-   * won't be created/updated/deleted during the operation, without having to
-   * add exclusive locks to those operations which would prevent concurrent
-   * commits from working.
-   */
   g_autoptr(OstreeRepoAutoLock) lock = NULL;
   gboolean no_deltas_in_summary = FALSE;
 
-  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_EXCLUSIVE,
+  lock = ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED,
                                      cancellable, error);
   if (!lock)
     return FALSE;
