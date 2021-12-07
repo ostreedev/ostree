@@ -1560,8 +1560,10 @@ gboolean
 ostree_repo_is_writable (OstreeRepo *self,
                          GError **error)
 {
-  g_return_val_if_fail (self->inited, FALSE);
+  g_assert (self != NULL);
+  g_assert (self->inited);
 
+  g_assert (self->writable == (self->writable_error == NULL));
   if (error != NULL && self->writable_error != NULL)
     *error = g_error_copy (self->writable_error);
 
