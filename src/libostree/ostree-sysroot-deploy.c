@@ -101,14 +101,14 @@ sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults,
  * hardlink if we're on the same partition.
  */
 static gboolean
-install_into_boot (OstreeRepo *repo,
-                   OstreeSePolicy *sepolicy,
-                   int         src_dfd,
-                   const char *src_subpath,
-                   int         dest_dfd,
-                   const char *dest_subpath,
-                   GCancellable  *cancellable,
-                   GError       **error)
+install_into_boot_alone (OstreeRepo *repo,
+                         OstreeSePolicy *sepolicy,
+                         int         src_dfd,
+                         const char *src_subpath,
+                         int         dest_dfd,
+                         const char *dest_subpath,
+                         GCancellable  *cancellable,
+                         GError       **error)
 {
   if (linkat (src_dfd, src_subpath, dest_dfd, dest_subpath, 0) == 0)
     return TRUE; /* Note early return */
@@ -171,6 +171,36 @@ install_into_boot (OstreeRepo *repo,
 
   if (!glnx_link_tmpfile_at (&tmp_dest, GLNX_LINK_TMPFILE_NOREPLACE, dest_dfd, dest_subpath, error))
     return FALSE;
+
+  return TRUE;
+}
+
+/* As install_into_boot_alone, but also copies a detached signature if any */
+static gboolean
+install_into_boot (OstreeRepo *repo,
+                   OstreeSePolicy *sepolicy,
+                   int         src_dfd,
+                   const char *src_subpath,
+                   int         dest_dfd,
+                   const char *dest_subpath,
+                   GCancellable  *cancellable,
+                   GError       **error)
+{
+  if (!install_into_boot_alone (repo, sepolicy, src_dfd, src_subpath,
+                                dest_dfd, dest_subpath, cancellable, error))
+    return FALSE;
+
+  /* If the source file has a detached signature, install it too */
+  g_autofree char *src_sig_subpath = g_strdup_printf("%s.sig", src_subpath);
+  if (!glnx_fstatat_allow_noent (src_dfd, src_sig_subpath, NULL, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno != ENOENT)
+    {
+      g_autofree char *dest_sig_subpath = g_strdup_printf("%s.sig", dest_subpath);
+      if (!install_into_boot_alone (repo, sepolicy, src_dfd, src_sig_subpath,
+                                    dest_dfd, dest_sig_subpath, cancellable, error))
+        return FALSE;
+    }
 
   return TRUE;
 }
