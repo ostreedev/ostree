@@ -3816,7 +3816,8 @@ ostree_repo_equal (OstreeRepo *a,
 OstreeRepoMode
 ostree_repo_get_mode (OstreeRepo  *self)
 {
-  g_return_val_if_fail (self->inited, FALSE);
+  g_assert (self != NULL);
+  g_assert (self->inited);
 
   return self->mode;
 }
