@@ -1599,7 +1599,8 @@ _ostree_repo_update_mtime (OstreeRepo        *self,
 GKeyFile *
 ostree_repo_get_config (OstreeRepo *self)
 {
-  g_return_val_if_fail (self->inited, NULL);
+  g_assert (self != NULL);
+  g_assert (self->inited);
 
   return self->config;
 }
@@ -1617,7 +1618,8 @@ ostree_repo_copy_config (OstreeRepo *self)
   char *data;
   gsize len;
 
-  g_return_val_if_fail (self->inited, NULL);
+  g_assert (self != NULL);
+  g_assert (self->inited);
 
   copy = g_key_file_new ();
   data = g_key_file_to_data (self->config, &len, NULL);
