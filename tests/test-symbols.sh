@@ -15,9 +15,7 @@
 # Lesser General Public License for more details.
 #
 # You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the
-# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-# Boston, MA 02111-1307, USA.
+# License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
 set -xeuo pipefail
 
@@ -56,7 +54,7 @@ echo 'ok documented symbols'
 
 # ONLY update this checksum in release commits!
 cat > released-sha256.txt <<EOF
-b28728cc162642b66ca7d9c4333b8e63dedf6321b29a3a019037d8c0c609e00d  ${released_syms}
+165d3d940b7e6e09f39221b983fd17efae8ae40b8b2136a84b422a21e402f771  ${released_syms}
 EOF
 sha256sum -c released-sha256.txt
 
