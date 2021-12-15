@@ -27,7 +27,7 @@ fn should_commit_content_to_repo_and_list_refs_again() {
 }
 
 #[test]
-fn should_traverse_commit() {
+fn repo_traverse_and_read() {
     let test_repo = TestRepo::new();
     let checksum = test_repo.test_commit("test");
 
@@ -58,6 +58,13 @@ fn should_traverse_commit() {
         ),
         objects
     );
+
+    let dirmeta = test_repo
+        .repo
+        .read_dirmeta("ad49a0f4e3bc165361b6d17e8a865d479b373ee67d89ac6f0ce871f27da1be6d")
+        .unwrap();
+    // Right now, the uid/gid are actually that of the test runner
+    assert_eq!(dirmeta.mode, 0o40750);
 }
 
 #[test]

@@ -441,4 +441,13 @@ impl Repo {
             );
         }))
     }
+
+    /// Load and parse directory metadata.
+    /// In particular, uid/gid/mode are stored in big-endian format; this function
+    /// converts them to host native endianness.
+    pub fn read_dirmeta(&self, checksum: &str) -> Result<crate::DirMetaParsed, glib::Error> {
+        let v = self.load_variant(crate::ObjectType::DirMeta, checksum)?;
+        // Safety: We know the variant type will match since we just passed it above
+        Ok(crate::DirMetaParsed::from_variant(&v).unwrap())
+    }
 }
