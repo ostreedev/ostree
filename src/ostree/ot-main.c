@@ -23,6 +23,7 @@
 
 #include <gio/gio.h>
 
+#include <locale.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/statvfs.h>
@@ -138,6 +139,102 @@ message_handler (const gchar *log_domain,
     g_printerr ("OT: %s\n", message);
   else
     g_printerr ("%s: %s\n", g_get_prgname (), message);
+}
+
+int
+ostree_main (int    argc,
+             char **argv,
+             OstreeCommand *commands)
+{
+  g_autoptr(GError) error = NULL;
+
+  setlocale (LC_ALL, "");
+
+  g_set_prgname (argv[0]);
+
+  int ret = ostree_run (argc, argv, commands, &error);
+
+  if (error != NULL)
+    {
+      g_printerr ("%s%serror:%s%s %s\n",
+                  ot_get_red_start (), ot_get_bold_start (),
+                  ot_get_bold_end (), ot_get_red_end (),
+                  error->message);
+    }
+
+  return ret;
+}
+
+
+/**
+ * ostree_command_lookup_external:
+ * @argc: number of entries in @argv
+ * @argv: array of command-line arguments
+ * @commands: array of hardcoded internal commands
+ *
+ * Search for a relevant ostree extension binary in $PATH. Given a verb
+ * from argv, if it is not an internal command, it tries to locate a
+ * corresponding 'ostree-$verb' executable on the system.
+ *
+ * Returns: (transfer full) (nullable): callname (i.e. argv[0]) for the
+ * external command if found, or %NULL otherwise.
+ */
+gchar *
+ostree_command_lookup_external (int argc,
+                                char **argv,
+                                OstreeCommand *commands)
+{
+  g_assert (commands != NULL);
+
+  // Find the first verb (ignoring all earlier flags), then
+  // check if it is a known native command. Otherwise, try to look it
+  // up in $PATH.
+  // We ignore argv[0] here, the ostree binary itself is not multicall.
+  for (guint arg_index = 1; arg_index < argc; arg_index++)
+    {
+      char *current_arg = argv[arg_index];
+      if (current_arg == NULL ||
+          g_str_has_prefix (current_arg, "-") ||
+          g_strcmp0 (current_arg, "") == 0)
+          continue;
+
+      for (guint cmd_index = 0; commands[cmd_index].name != NULL; cmd_index++)
+        {
+          if (g_strcmp0 (current_arg, (commands[cmd_index]).name) == 0)
+            return NULL;
+        }
+
+      g_autofree gchar *ext_command = g_strdup_printf ("ostree-%s", current_arg);
+      if (g_find_program_in_path (ext_command) == NULL)
+          return NULL;
+
+      return g_steal_pointer (&ext_command);
+    }
+
+  return NULL;
+}
+
+/**
+ * ostree_command_exec_external:
+ * @argv: array of command-line arguments
+ *
+ * Execute an ostree extension binary.
+ *
+ * Returns: diverge on proper execution, otherwise return 1.
+ */
+int
+ostree_command_exec_external (char **argv)
+{
+  int r = execvp(argv[0], argv);
+  g_assert (r == -1);
+
+  setlocale (LC_ALL, "");
+  g_printerr ("%s%serror:%s%s: Executing %s: %s\n",
+              ot_get_red_start (), ot_get_bold_start (),
+              ot_get_bold_end (), ot_get_red_end (),
+              argv[0],
+              g_strerror (errno));
+  return 1;
 }
 
 int

@@ -58,9 +58,15 @@ struct OstreeCommandInvocation {
   OstreeCommand *command;
 };
 
+int ostree_main (int argc, char **argv, OstreeCommand *commands);
+
 int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
 
 int ostree_usage (OstreeCommand *commands, gboolean is_error);
+
+char* ostree_command_lookup_external (int argc, char **argv, OstreeCommand *commands);
+
+int ostree_command_exec_external (char **argv);
 
 gboolean ostree_parse_sysroot_or_repo_option (GOptionContext *context,
                                               const char *sysroot_path,
