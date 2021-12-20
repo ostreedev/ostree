@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <locale.h>
 
 #include "ot-main.h"
 #include "ot-builtins.h"
@@ -131,22 +130,16 @@ int
 main (int    argc,
       char **argv)
 {
-  g_autoptr(GError) error = NULL;
-  int ret;
+  g_assert (argc > 0);
 
-  setlocale (LC_ALL, "");
-
-  g_set_prgname (argv[0]);
-
-  ret = ostree_run (argc, argv, commands, &error);
-
-  if (error != NULL)
+  g_autofree gchar *ext_command = ostree_command_lookup_external (argc, argv, commands);
+  if (ext_command != NULL)
     {
-      g_printerr ("%s%serror:%s%s %s\n",
-                  ot_get_red_start (), ot_get_bold_start (),
-                  ot_get_bold_end (), ot_get_red_end (),
-                  error->message);
+      argv[0] = ext_command;
+      return ostree_command_exec_external (argv);
     }
-
-  return ret;
+  else
+    {
+      return ostree_main (argc, argv, commands);
+    }
 }
