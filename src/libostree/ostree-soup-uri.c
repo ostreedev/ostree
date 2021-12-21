@@ -16,8 +16,6 @@
 char *soup_uri_decoded_copy (const char *str, int length, int *decoded_length);
 char *soup_uri_to_string_internal (SoupURI *uri, gboolean just_path_and_query,
 				   gboolean force_port);
-gboolean soup_uri_is_http (SoupURI *uri, char **aliases);
-gboolean soup_uri_is_https (SoupURI *uri, char **aliases);
 
 /* OSTREECHANGE: import soup-misc's char helpers */
 #define SOUP_CHAR_URI_PERCENT_ENCODED 0x01
@@ -1434,49 +1432,6 @@ soup_uri_host_equal (gconstpointer v1, gconstpointer v2)
 		return FALSE;
 
 	return g_ascii_strcasecmp (one->host, two->host) == 0;
-}
-
-gboolean
-soup_uri_is_http (SoupURI *uri, char **aliases)
-{
-	int i;
-
-	if (uri->scheme == SOUP_URI_SCHEME_HTTP)
-		return TRUE;
-	else if (uri->scheme == SOUP_URI_SCHEME_HTTPS)
-		return FALSE;
-	else if (!aliases)
-		return FALSE;
-
-	for (i = 0; aliases[i]; i++) {
-		if (uri->scheme == aliases[i])
-			return TRUE;
-	}
-
-	if (!aliases[1] && !strcmp (aliases[0], "*"))
-		return TRUE;
-	else
-		return FALSE;
-}
-
-gboolean
-soup_uri_is_https (SoupURI *uri, char **aliases)
-{
-	int i;
-
-	if (uri->scheme == SOUP_URI_SCHEME_HTTPS)
-		return TRUE;
-	else if (uri->scheme == SOUP_URI_SCHEME_HTTP)
-		return FALSE;
-	else if (!aliases)
-		return FALSE;
-
-	for (i = 0; aliases[i]; i++) {
-		if (uri->scheme == aliases[i])
-			return TRUE;
-	}
-
-	return FALSE;
 }
 
 /* OSTREECHANGE: drop boxed type definition */
