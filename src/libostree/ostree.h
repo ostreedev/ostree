@@ -20,6 +20,7 @@
 #pragma once
 
 #include <ostree-async-progress.h>
+#include <ostree-content-writer.h>
 #include <ostree-core.h>
 #include <ostree-repo.h>
 #include <ostree-repo-os.h>
