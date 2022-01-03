@@ -72,6 +72,20 @@ callback_getattr (const char *path, struct stat *st_data)
 }
 
 static int
+callback_fgetattr (const char *path, struct stat *st_data,
+                   struct fuse_file_info *fi)
+{
+  if (fi)
+    {
+      if (fstat (fi->fh, st_data) == -1)
+        return -errno;
+      return 0;
+    }
+  else
+    return callback_getattr (path, st_data);
+}
+
+static int
 callback_readlink (const char *path, char *buf, size_t size)
 {
   int r;
@@ -338,6 +352,15 @@ callback_truncate (const char *path, off_t size)
 }
 
 static int
+callback_ftruncate (const char *path, off_t size, struct fuse_file_info *fi)
+{
+  if (ftruncate (fi->fh, size) == -1)
+    return -errno;
+
+  return 0;
+}
+
+static int
 callback_utimens (const char *path, const struct timespec tv[2])
 {
   /* This one isn't write-verified, we support changing times
@@ -514,6 +537,16 @@ callback_fsync (const char *path, int crap, struct fuse_file_info *finfo)
 }
 
 static int
+callback_flush (const char *path, struct fuse_file_info *fi)
+{
+  int f = dup (fi->fh);
+  if (f == -1)
+    return -errno;
+  (void) close (f);
+	return 0;
+}
+
+static int
 callback_access (const char *path, int mode)
 {
   path = ENSURE_RELPATH (path);
@@ -591,6 +624,7 @@ callback_removexattr (const char *path, const char *name)
 
 struct fuse_operations callback_oper = {
   .getattr = callback_getattr,
+  .fgetattr = callback_fgetattr,
   .readlink = callback_readlink,
   .readdir = callback_readdir,
   .mknod = callback_mknod,
@@ -603,6 +637,7 @@ struct fuse_operations callback_oper = {
   .chmod = callback_chmod,
   .chown = callback_chown,
   .truncate = callback_truncate,
+  .ftruncate = callback_ftruncate,
   .utimens = callback_utimens,
   .create = callback_create,
   .open = callback_open,
@@ -610,6 +645,7 @@ struct fuse_operations callback_oper = {
   .read = callback_read,
   .write_buf = callback_write_buf,
   .write = callback_write,
+  .flush = callback_flush,
   .statfs = callback_statfs,
   .release = callback_release,
   .fsync = callback_fsync,
