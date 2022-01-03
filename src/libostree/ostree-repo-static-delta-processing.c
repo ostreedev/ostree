@@ -456,7 +456,7 @@ dispatch_bspatch (OstreeRepo                 *repo,
                    buf,
                    state->content_size,
                    &stream) < 0)
-        return FALSE;
+        return glnx_throw (error, "bsdiff patch failed");
 
       if (!_ostree_repo_bare_content_write (repo, &state->content_out,
                                             buf, state->content_size,
