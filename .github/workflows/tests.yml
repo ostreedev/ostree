@@ -44,22 +44,24 @@ jobs:
           # oldstable-backports and unstable.
           #
           # https://hub.docker.com/_/debian
-          - name: Debian Stable with sign-ed25519
+          - name: Debian Stable with sign-ed25519 and FUSE 2
             image: debian:stable-slim
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
             extra-packages: >-
+              libfuse-dev
               libsodium-dev
             configure-options: >-
               --with-ed25519-libsodium
 
-          - name: Debian Stable with curl, sign-ed25519 and no gpgme
+          - name: Debian Stable with curl, sign-ed25519, no gpgme, FUSE 3
             image: debian:stable-slim
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
             extra-packages: >-
+              libfuse3-dev
               libsodium-dev
             configure-options: >-
               --with-curl

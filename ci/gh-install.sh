@@ -43,6 +43,19 @@ case "$ID" in
         # Ubuntu package data:
         # https://packages.ubuntu.com/source/impish/ostree
         #
+        # Use libfuse3-dev unless otherwise specified
+        case " $* " in
+            (*\ libfuse-dev\ *)
+                ;;
+
+            (*\ libfuse3-dev\ *)
+                ;;
+
+            (*)
+                set -- "$@" libfuse3-dev
+                ;;
+        esac
+
         # TODO: fetch this list from the Debian packaging git repository?
 
         # First construct a list of Build-Depends common to all
