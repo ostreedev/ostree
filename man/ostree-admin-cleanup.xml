@@ -48,9 +48,9 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     </refnamediv>
 
     <refsynopsisdiv>
-            <cmdsynopsis>
-                <command>ostree admin cleanup </command>
-            </cmdsynopsis>
+        <cmdsynopsis>
+            <command>ostree admin cleanup <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+        </cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1>
@@ -59,6 +59,25 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <para>
             OSTree sysroot cleans up other bootversions and old deployments.  If/when a pull or deployment is interrupted, a partially written state may remain on disk. This command cleans up any such partial states.
         </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--auto</option></term>
+
+                <listitem><para>
+                    Cleanup the sysroot only when needed. Whether to
+                    cleanup or not is determined by the presence of the
+                    <filename>.cleanup</filename> file in the sysroot.
+                    When the <filename>.cleanup</filename> file exists,
+                    the sysroot will be cleaned and the file will be
+                    removed if it is successful.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
     </refsect1>
 
     <refsect1>

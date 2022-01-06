@@ -28,7 +28,10 @@
 
 #include <glib/gi18n.h>
 
+static gboolean opt_auto;
+
 static GOptionEntry options[] = {
+  { "auto", 0, 0, G_OPTION_ARG_NONE, &opt_auto, "Cleanup sysroot when needed", NULL },
   { NULL }
 };
 
@@ -43,8 +46,19 @@ ot_admin_builtin_cleanup (int argc, char **argv, OstreeCommandInvocation *invoca
                                           invocation, &sysroot, cancellable, error))
     return FALSE;
 
-  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
-    return FALSE;
+  if (opt_auto)
+    {
+      gboolean cleaned = FALSE;
+      if (!ostree_sysroot_auto_cleanup (sysroot, &cleaned, cancellable, error))
+        return FALSE;
+      if (!cleaned)
+        g_print ("No cleanup needed.\n");
+    }
+  else
+    {
+      if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+        return FALSE;
+    }
 
   return TRUE;
 }
