@@ -134,6 +134,8 @@ require_internal_units (const char *normal_dir,
     return FALSE;
   if (symlinkat (SYSTEM_DATA_UNIT_PATH "/ostree-finalize-staged.path", normal_dir_dfd, "multi-user.target.wants/ostree-finalize-staged.path") < 0)
     return glnx_throw_errno_prefix (error, "symlinkat");
+  if (symlinkat (SYSTEM_DATA_UNIT_PATH "/ostree-auto-cleanup.service", normal_dir_dfd, "multi-user.target.wants/ostree-auto-cleanup.service") < 0)
+    return glnx_throw_errno_prefix (error, "symlinkat");
 
   return TRUE;
 #else
