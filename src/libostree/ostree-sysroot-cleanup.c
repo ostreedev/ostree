@@ -556,6 +556,48 @@ ostree_sysroot_cleanup (OstreeSysroot       *self,
 }
 
 /**
+ * ostree_sysroot_auto_cleanup:
+ * @self: Sysroot
+ * @out_cleaned: (out): Whether a cleanup was performed
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Cleanup @self when needed. Whether to cleanup or not is determined by
+ * the presence of the .cleanup file in the sysroot. When the .cleanup
+ * file exists, ostree_sysroot_cleanup() will be called and the file
+ * will be removed if it is successful.
+ *
+ * Locking: exclusive
+ * Since: 2022.2
+ */
+gboolean
+ostree_sysroot_auto_cleanup (OstreeSysroot       *self,
+                             gboolean            *out_cleaned,
+                             GCancellable        *cancellable,
+                             GError             **error)
+{
+  struct stat stbuf;
+  if (!glnx_fstatat_allow_noent (self->sysroot_fd, _OSTREE_SYSROOT_AUTOCLEANUP, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno == ENOENT)
+    {
+      g_debug ("Did not find %s in sysroot; skipping auto cleanup",  _OSTREE_SYSROOT_AUTOCLEANUP);
+      return TRUE;
+    }
+
+  if (!ostree_sysroot_cleanup (self, cancellable, error))
+    return FALSE;
+
+  if (!ot_ensure_unlinked_at (self->sysroot_fd, _OSTREE_SYSROOT_AUTOCLEANUP, error))
+    return FALSE;
+
+  if (out_cleaned != NULL)
+    *out_cleaned = TRUE;
+
+  return TRUE;
+}
+
+/**
  * ostree_sysroot_prepare_cleanup:
  * @self: Sysroot
  * @cancellable: Cancellable

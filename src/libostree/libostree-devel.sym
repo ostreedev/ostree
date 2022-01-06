@@ -20,12 +20,17 @@
    - uncomment the include in Makefile-libostree.am
 */
 
+LIBOSTREE_2022.2 {
+global:
+  ostree_sysroot_auto_cleanup;
+} LIBOSTREE_2021.5;
+
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
  * with whatever the next version with new symbols will be.
-LIBOSTREE_2021.$NEWVERSION {
+LIBOSTREE_2022.$NEWVERSION {
 global:
   someostree_symbol_deleteme;
-} LIBOSTREE_2021.$LASTSTABLE;
+} LIBOSTREE_2022.$LASTSTABLE;
 */
