@@ -35,7 +35,8 @@ main (int argc, char **argv)
   OstreeRollsumMatches *matches;
   GMappedFile *mfile;
 
-  g_setenv ("GIO_USE_VFS", "local", TRUE);
+  gboolean is_ok = g_setenv ("GIO_USE_VFS", "local", TRUE);
+  g_assert (is_ok == TRUE);
 
   if (argc < 3)
     return 1;
