@@ -253,7 +253,11 @@ ostree_run (int    argc,
   int in, out;
 
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
-  g_setenv ("GIO_USE_VFS", "local", TRUE);
+  if (!g_setenv ("GIO_USE_VFS", "local", TRUE))
+    {
+      (void) glnx_throw (res_error, "Failed to set environment variable GIO_USE_FVS");
+      return 1;
+    }
 
   g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE, message_handler, NULL);
 

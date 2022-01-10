@@ -155,7 +155,8 @@ ot_test_setup_sysroot (GCancellable *cancellable,
     }
 
   /* Make sure deployments are mutable */
-  g_setenv ("OSTREE_SYSROOT_DEBUG", buf->str, TRUE);
+  if (!g_setenv ("OSTREE_SYSROOT_DEBUG", buf->str, TRUE))
+    return glnx_null_throw (error, "Failed to set environment variable OSTREE_SYSROOT_DEBUG");
 
   g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
   return ostree_sysroot_new (sysroot_path);

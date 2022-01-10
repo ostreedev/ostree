@@ -78,7 +78,8 @@ test_fixture_setup (TestFixture *fixture,
    * certificates for certain test cases. */
 
   homedir = g_test_build_filename (G_TEST_DIST, "tests/gpg-verify-data", NULL);
-  g_setenv ("GNUPGHOME", homedir, TRUE);
+  gboolean is_ok = g_setenv ("GNUPGHOME", homedir, TRUE);
+  g_assert (is_ok == TRUE);
 
   result = g_initable_new (OSTREE_TYPE_GPG_VERIFY_RESULT,
                            NULL, &local_error, NULL);

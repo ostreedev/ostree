@@ -58,7 +58,8 @@ int
 main (int argc, char **argv)
 {
 
-  g_setenv ("GIO_USE_VFS", "local", TRUE);
+  gboolean is_ok = g_setenv ("GIO_USE_VFS", "local", TRUE);
+  g_assert (is_ok == TRUE);
 
   g_test_init (&argc, &argv, NULL);
 
