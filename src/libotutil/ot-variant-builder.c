@@ -760,9 +760,9 @@ ot_variant_builder_info_new (OtVariantBuilder *builder, const GVariantType *type
 {
   OtVariantBuilderInfo *info;
 
-  info = (OtVariantBuilderInfo *) g_slice_new0 (OtVariantBuilderInfo);
-
   g_return_val_if_fail (g_variant_type_is_container (type), NULL);
+
+  info = (OtVariantBuilderInfo *) g_slice_new0 (OtVariantBuilderInfo);
 
   info->builder = builder;
   info->type = g_variant_type_copy (type);
@@ -845,9 +845,9 @@ ot_variant_builder_new (const GVariantType *type,
 {
   OtVariantBuilder *builder;
 
-  builder = (OtVariantBuilder *) g_slice_new0 (OtVariantBuilder);
-
   g_return_val_if_fail (g_variant_type_is_container (type), NULL);
+
+  builder = (OtVariantBuilder *) g_slice_new0 (OtVariantBuilder);
 
   builder->head = ot_variant_builder_info_new (builder, type);
   builder->ref_count = 1;
