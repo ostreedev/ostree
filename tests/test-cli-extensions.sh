@@ -9,6 +9,9 @@ set -euo pipefail
 
 echo '1..2'
 
+# Test CLI extensions via $PATH.  If you change this, you may
+# also want to change the corresponding destructive version in
+# tests/kolainst/destructive/basic-misc.sh
 mkdir -p ./localbin
 ORIG_PATH="${PATH}"
 export PATH="./localbin/:${PATH}"

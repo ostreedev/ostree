@@ -3,6 +3,7 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 features=@OSTREE_FEATURES@
+cliextdir=@pkglibexecdir@/ext
 
 Name: OSTree
 Description: Git for operating system binaries
