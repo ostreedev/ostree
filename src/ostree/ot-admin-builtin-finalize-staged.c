@@ -45,7 +45,7 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
   /* Just a sanity check; we shouldn't be called outside of the service though.
    */
   struct stat stbuf;
-  if (fstatat (AT_FDCWD, "/run/ostree-booted", &stbuf, 0) < 0)
+  if (fstatat (AT_FDCWD, OSTREE_PATH_BOOTED, &stbuf, 0) < 0)
     return TRUE;
 
   g_autoptr(GOptionContext) context = g_option_context_new ("");

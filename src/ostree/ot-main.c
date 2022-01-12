@@ -120,7 +120,7 @@ maybe_setup_mount_namespace (gboolean    *out_ns,
     return TRUE;
 
   /* If the system isn't booted via libostree, also nothing to do */
-  if (!glnx_fstatat_allow_noent (AT_FDCWD, "/run/ostree-booted", NULL, 0, error))
+  if (!glnx_fstatat_allow_noent (AT_FDCWD, OSTREE_PATH_BOOTED, NULL, 0, error))
     return FALSE;
   if (errno == ENOENT)
     return TRUE;

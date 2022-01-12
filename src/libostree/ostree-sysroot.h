@@ -24,6 +24,14 @@
 
 G_BEGIN_DECLS
 
+/**
+ * OSTREE_PATH_BOOTED:
+ * Filesystem path that is created on an ostree-booted system.
+ *
+ * Since: 2022.2
+ */
+#define OSTREE_PATH_BOOTED "/run/ostree-booted"
+
 #define OSTREE_TYPE_SYSROOT ostree_sysroot_get_type()
 #define OSTREE_SYSROOT(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST ((obj), OSTREE_TYPE_SYSROOT, OstreeSysroot))
