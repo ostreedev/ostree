@@ -25,6 +25,10 @@ AC_SUBST([YEAR_VERSION], [year_version])
 AC_SUBST([RELEASE_VERSION], [release_version])
 AC_SUBST([PACKAGE_VERSION], [package_version])
 
+dnl automake variables we want in pkg-config
+pkglibexecdir=$libexecdir/$PACKAGE
+AC_SUBST(pkglibexecdir)
+
 AS_IF([echo "$CFLAGS" | grep -q -E -e '-Werror($| )'], [], [
 CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
   -pipe \
