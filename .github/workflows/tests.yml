@@ -22,6 +22,8 @@ jobs:
     #
     # image: The Docker image to use.
     #
+    # container-options: Additional Docker command line options.
+    #
     # pre-checkout-setup: Commands to run before the git repo checkout.
     #   If git is not in the Docker image, it must be installed here.
     #   Otherwise, the checkout action uses the GitHub REST API, which
@@ -100,6 +102,21 @@ jobs:
 
           - name: Ubuntu Latest Release
             image: ubuntu:rolling
+            # FIXME: The ubuntu-latest VMs are currently based on 20.04
+            # (focal). In focal, libseccomp2 doesn't know about the
+            # close_range syscall, but g_spawn_sync in impish tries to
+            # use close_range since it's defined in glibc. That causes
+            # libseccomp2 to return EPERM as it does for any unknown
+            # syscalls. g_spawn_sync carries on silently instead of
+            # falling back to other means of setting CLOEXEC on open
+            # FDs. Eventually it causes some tests to hang since once
+            # side of a pipe is never closed. Remove this when
+            # libseccomp2 in focal is updated or glib in impish handles
+            # the EPERM better.
+            #
+            # https://github.com/ostreedev/ostree/issues/2495
+            # https://bugs.launchpad.net/ubuntu/+source/libseccomp/+bug/1944436
+            container-options: --security-opt seccomp=unconfined
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
@@ -108,6 +125,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
+      # An empty string isn't valid, so a dummy --label option is always
+      # added.
+      options: --label ostree ${{ matrix.container-options }}
 
     steps:
       - name: Pre-checkout setup
