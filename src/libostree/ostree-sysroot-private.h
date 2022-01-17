@@ -39,6 +39,11 @@ typedef enum {
 } OstreeSysrootDebugFlags;
 
 typedef enum {
+  /* Skip invoking `sync()` */
+  OSTREE_SYSROOT_GLOBAL_OPT_SKIP_SYNC = 1 << 0,
+} OstreeSysrootGlobalOptFlags;
+
+typedef enum {
       OSTREE_SYSROOT_LOAD_STATE_NONE, /* ostree_sysroot_new() was called */
       OSTREE_SYSROOT_LOAD_STATE_INIT, /* We've loaded basic sysroot state and have an fd */
       OSTREE_SYSROOT_LOAD_STATE_LOADED, /* We've loaded all of the deployments */
@@ -75,6 +80,7 @@ struct OstreeSysroot {
   /* Only access through ostree_sysroot_[_get]repo() */
   OstreeRepo *repo;
 
+  OstreeSysrootGlobalOptFlags opt_flags;
   OstreeSysrootDebugFlags debug_flags;
 };
 
