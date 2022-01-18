@@ -184,6 +184,9 @@ ostree_sysroot_class_init (OstreeSysrootClass *klass)
 static void
 ostree_sysroot_init (OstreeSysroot *self)
 {
+  const GDebugKey globalopt_keys[] = {
+    { "skip-sync", OSTREE_SYSROOT_GLOBAL_OPT_SKIP_SYNC },
+  };
   const GDebugKey keys[] = {
     { "mutable-deployments", OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS },
     { "test-fifreeze", OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE },
@@ -191,6 +194,8 @@ ostree_sysroot_init (OstreeSysroot *self)
     { "no-dtb", OSTREE_SYSROOT_DEBUG_TEST_NO_DTB },
   };
 
+  self->opt_flags = g_parse_debug_string (g_getenv ("OSTREE_SYSROOT_OPTS"),
+                                          globalopt_keys, G_N_ELEMENTS (globalopt_keys));
   self->debug_flags = g_parse_debug_string (g_getenv ("OSTREE_SYSROOT_DEBUG"),
                                             keys, G_N_ELEMENTS (keys));
 
