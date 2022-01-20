@@ -1647,7 +1647,10 @@ full_system_sync (OstreeSysroot     *self,
       while (!syncdata->success)
         {
           if (!g_cond_wait_until (&syncdata->cond, &syncdata->mutex, end_time))
-            break;
+            {
+              ot_journal_print (LOG_INFO, "Timed out waiting for global sync()");
+              break;
+            }
         }
       g_mutex_unlock (&syncdata->mutex);
       sync_data_unref (syncdata);
