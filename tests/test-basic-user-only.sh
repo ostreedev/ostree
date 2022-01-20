@@ -23,7 +23,7 @@ set -euo pipefail
 
 mode="bare-user-only"
 setup_test_repository "$mode"
-extra_basic_tests=6
+extra_basic_tests=7
 . $(dirname $0)/basic-test.sh
 
 $CMD_PREFIX ostree --version > version.yaml
@@ -53,6 +53,17 @@ if $CMD_PREFIX ostree pull-local --repo=repo repo-input 2>err.txt; then
 fi
 assert_file_has_content err.txt "Content object.*invalid mode.*with bits 040.*"
 echo "ok failed to commit suid"
+
+cd ${test_tmpdir}
+rm repo-input -rf
+ostree_repo_init repo-input init --mode=archive
+rm files -rf && mkdir files
+if $CMD_PREFIX ostree --repo=repo-input commit -b metadata --tree=dir=files --add-metadata-string='=FOO' 2>err.txt; then
+    assert_not_reached "committed an empty metadata key"
+fi
+assert_file_has_content err.txt "Empty metadata key"
+$CMD_PREFIX ostree --repo=repo-input commit -b metadata --tree=dir=files --add-metadata-string='FOO='
+echo "ok rejected invalid metadata"
 
 cd ${test_tmpdir}
 rm repo-input -rf

@@ -335,17 +335,18 @@ parse_keyvalue_strings (GVariantBuilder   *builder,
       if (!eq)
         return glnx_throw (error, "Missing '=' in KEY=VALUE metadata '%s'", s);
       g_autofree char *key = g_strndup (s, eq - s);
+      const char *value = eq + 1;
       if (is_gvariant_print)
         {
-          g_autoptr(GVariant) value = g_variant_parse (NULL, eq + 1, NULL, NULL, error);
-          if (!value)
+          g_autoptr(GVariant) variant = g_variant_parse (NULL, value, NULL, NULL, error);
+          if (!variant)
             return glnx_prefix_error (error, "Parsing %s", s);
 
-          g_variant_builder_add (builder, "{sv}", key, value);
+          g_variant_builder_add (builder, "{sv}", key, variant);
         }
       else
         g_variant_builder_add (builder, "{sv}", key,
-                               g_variant_new_string (eq + 1));
+                               g_variant_new_string (value));
     }
 
   return TRUE;
