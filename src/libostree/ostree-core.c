@@ -2197,6 +2197,19 @@ ostree_validate_structureof_commit (GVariant      *commit,
   if (!validate_variant (commit, OSTREE_COMMIT_GVARIANT_FORMAT, error))
     return FALSE;
 
+  g_autoptr(GVariant) metadata = NULL;
+  g_variant_get_child (commit, 0, "@a{sv}", &metadata);
+  g_assert (metadata != NULL);
+  g_autoptr(GVariantIter) metadata_iter = g_variant_iter_new (metadata);
+  g_assert (metadata_iter != NULL);
+  g_autoptr(GVariant) metadata_entry = NULL;
+  const gchar *metadata_key = NULL;
+  while (g_variant_iter_loop (metadata_iter, "{sv}", &metadata_key, NULL))
+    {
+      if (metadata_key == NULL || strlen (metadata_key) == 0)
+        return glnx_throw (error, "Empty metadata key");
+    }
+
   g_autoptr(GVariant) parent_csum_v = NULL;
   g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
   gsize n_elts;

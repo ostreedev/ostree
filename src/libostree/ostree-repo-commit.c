@@ -2478,12 +2478,8 @@ ostree_repo_write_metadata (OstreeRepo         *self,
       normalized = g_variant_get_normal_form (object);
     }
 
-  /* For untrusted objects, verify their structure here */
-  if (expected_checksum)
-    {
-      if (!_ostree_validate_structureof_metadata (objtype, object, error))
-        return FALSE;
-    }
+  if (!_ostree_validate_structureof_metadata (objtype, object, error))
+    return FALSE;
 
   g_autoptr(GBytes) vdata = g_variant_get_data_as_bytes (normalized);
   if (!write_metadata_object (self, objtype, expected_checksum,
