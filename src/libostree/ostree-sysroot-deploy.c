@@ -2493,6 +2493,10 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       if (!_ostree_sysroot_rmrf_deployment (self, self->staged_deployment, cancellable, error))
         return FALSE;
 
+      /* Delete the lock if there was any. */
+      if (!ot_ensure_unlinked_at (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED, error))
+        return FALSE;
+
       /* Clear it out of the *current* deployments list to maintain invariants */
       self->staged_deployment = NULL;
       g_ptr_array_remove_index (self->deployments, 0);
