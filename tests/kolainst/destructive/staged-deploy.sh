@@ -78,10 +78,18 @@ EOF
     # And there should not be a staged deployment
     test '!' -f /run/ostree/staged-deployment
 
-    # Upgrade with staging
     test '!' -f /run/ostree/staged-deployment
-    ostree admin deploy --stage staged-deploy
+    ostree admin deploy --stage staged-deploy --lock-finalization
     test -f /run/ostree/staged-deployment
+    test -f /run/ostree/staged-deployment-locked
+    # check that we can cleanup the staged deployment
+    ostree admin undeploy 0
+    test ! -f /run/ostree/staged-deployment
+    test ! -f /run/ostree/staged-deployment-locked
+    echo "ok cleanup staged"
+
+    # Upgrade with staging
+    ostree admin deploy --stage staged-deploy
     origcommit=$(ostree rev-parse staged-deploy)
     cd /ostree/repo/tmp
     ostree checkout -H "${origcommit}" t
