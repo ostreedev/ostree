@@ -47,17 +47,19 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static void
-print_one_file_text (GFile     *f,
-                     GFileInfo *file_info)
+static gboolean
+print_one_file_text (GFile        *f,
+                     GFileInfo    *file_info,
+                     GCancellable *cancellable,
+                     GError      **error)
 {
   g_autoptr(GString) buf = g_string_new ("");
   char type_c;
   guint32 mode;
   guint32 type;
 
-  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
-    g_assert_not_reached ();
+  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, error))
+    return FALSE;
 
   type_c = '?';
   mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
@@ -82,8 +84,7 @@ print_one_file_text (GFile     *f,
     case G_FILE_TYPE_UNKNOWN:
     case G_FILE_TYPE_SHORTCUT:
     case G_FILE_TYPE_MOUNTABLE:
-      g_assert_not_reached ();
-      break;
+      return glnx_throw (error, "Invalid file type");
     }
   g_string_append_c (buf, type_c);
   g_string_append_printf (buf, "0%04o %u %u %6" G_GUINT64_FORMAT " ",
@@ -104,8 +105,8 @@ print_one_file_text (GFile     *f,
       GVariant *xattrs;
       char *formatted;
 
-      if (!ostree_repo_file_get_xattrs ((OstreeRepoFile*)f, &xattrs, NULL, NULL))
-        g_assert_not_reached ();
+      if (!ostree_repo_file_get_xattrs ((OstreeRepoFile*)f, &xattrs, cancellable, error))
+        return FALSE;
       
       formatted = g_variant_print (xattrs, TRUE);
       g_string_append (buf, "{ ");
@@ -121,39 +122,47 @@ print_one_file_text (GFile     *f,
     g_string_append_printf (buf, " -> %s", g_file_info_get_attribute_byte_string (file_info, "standard::symlink-target"));
       
   g_print ("%s\n", buf->str);
+
+  return TRUE;
 }
 
-static void
-print_one_file_binary (GFile     *f,
-                       GFileInfo *file_info)
+static gboolean
+print_one_file_binary (GFile        *f,
+                       GFileInfo    *file_info,
+                       GCancellable *cancellable,
+                       GError      **error)
 {
   const char *path;
 
-  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
-    g_assert_not_reached ();
+  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, error))
+    return FALSE;
 
   path = gs_file_get_path_cached (f);
 
   fwrite (path, 1, strlen (path), stdout);
   fwrite ("\0", 1, 1, stdout);
-}
 
-static void
-print_one_file (GFile     *f,
-                GFileInfo *file_info)
-{
-  if (opt_nul_filenames_only)
-    print_one_file_binary (f, file_info);
-  else
-    print_one_file_text (f, file_info);
+  return TRUE;
 }
 
 static gboolean
-print_directory_recurse (GFile    *f,
-                         int       depth,
-                         GError  **error)
+print_one_file (GFile        *f,
+                GFileInfo    *file_info,
+                GCancellable *cancellable,
+                GError      **error)
 {
-  gboolean ret = FALSE;
+  if (opt_nul_filenames_only)
+    return print_one_file_binary (f, file_info, cancellable, error);
+  else
+    return print_one_file_text (f, file_info, cancellable, error);
+}
+
+static gboolean
+print_directory_recurse (GFile        *f,
+                         int           depth,
+                         GCancellable *cancellable,
+                         GError      **error)
+{
   g_autoptr(GFileEnumerator) dir_enum = NULL;
   g_autoptr(GFile) child = NULL;
   g_autoptr(GFileInfo) child_info = NULL;
@@ -170,20 +179,21 @@ print_directory_recurse (GFile    *f,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                         NULL, 
                                         error);
-  if (!dir_enum)
-    goto out;
+  if (dir_enum == NULL)
+    return FALSE;
   
   while ((child_info = g_file_enumerator_next_file (dir_enum, NULL, &temp_error)) != NULL)
     {
       g_clear_object (&child);
       child = g_file_get_child (f, g_file_info_get_name (child_info));
 
-      print_one_file (child, child_info);
+      if (!print_one_file (child, child_info, cancellable, error))
+        return FALSE;
 
       if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!print_directory_recurse (child, depth, error))
-            goto out;
+          if (!print_directory_recurse (child, depth, cancellable, error))
+            return FALSE;
         }
 
       g_clear_object (&child_info);
@@ -191,12 +201,10 @@ print_directory_recurse (GFile    *f,
   if (temp_error)
     {
       g_propagate_error (error, temp_error);
-      goto out;
+      return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -206,37 +214,38 @@ print_one_argument (OstreeRepo   *repo,
                     GCancellable *cancellable,
                     GError      **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFile) f = NULL;
-  g_autoptr(GFileInfo) file_info = NULL;
+  g_assert (root != NULL);
+  g_assert (arg != NULL);
 
-  f = g_file_resolve_relative_path (root, arg);
-  
+  g_autoptr(GFile) f = g_file_resolve_relative_path (root, arg);
+  if (f == NULL)
+    return glnx_throw (error, "Failed to resolve path '%s'", arg);
+
+  g_autoptr(GFileInfo) file_info = NULL;
   file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  cancellable, error);
-  if (!file_info)
-    goto out;
+  if (file_info == NULL)
+    return FALSE;
   
-  print_one_file (f, file_info);
+  if (!print_one_file (f, file_info, cancellable, error))
+    return FALSE;
       
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
       if (opt_recursive)
         {
-          if (!print_directory_recurse (f, -1, error))
-            goto out;
+          if (!print_directory_recurse (f, -1, cancellable, error))
+            return FALSE;
         }
       else if (!opt_dironly)
         {
-          if (!print_directory_recurse (f, 1, error))
-            goto out;
+          if (!print_directory_recurse (f, 1, cancellable, error))
+            return FALSE;
         }
     }
   
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -244,7 +253,6 @@ ostree_builtin_ls (int argc, char **argv, OstreeCommandInvocation *invocation, G
 {
   g_autoptr(GOptionContext) context = NULL;
   g_autoptr(OstreeRepo) repo = NULL;
-  gboolean ret = FALSE;
   const char *rev;
   int i;
   g_autoptr(GFile) root = NULL;
@@ -252,33 +260,31 @@ ostree_builtin_ls (int argc, char **argv, OstreeCommandInvocation *invocation, G
   context = g_option_context_new ("COMMIT [PATH...]");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc <= 1)
     {
       ot_util_usage_error (context, "An COMMIT argument is required", error);
-      goto out;
+      return FALSE;
     }
   rev = argv[1];
 
   if (!ostree_repo_read_commit (repo, rev, &root, NULL, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc > 2)
     {
       for (i = 2; i < argc; i++)
         {
           if (!print_one_argument (repo, root, argv[i], cancellable, error))
-            goto out;
+            return glnx_prefix_error (error, "Inspecting path '%s'", argv[i]);
         }
     }
   else
     {
       if (!print_one_argument (repo, root, "/", cancellable, error))
-        goto out;
+        return FALSE;
     }
   
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
