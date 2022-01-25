@@ -4218,8 +4218,9 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
                                           cancellable, error);
     }
 
-  const gboolean need_open =
-    (out_fd || out_xattrs || self->mode == OSTREE_REPO_MODE_BARE_USER);
+  const gboolean need_open = (out_fd ||
+                              (out_xattrs && self->mode == OSTREE_REPO_MODE_BARE) ||
+                              self->mode == OSTREE_REPO_MODE_BARE_USER);
   /* If it's a regular file and we're requested to return the fd, do it now. As
    * a special case in bare-user, we always do an open, since the stat() metadata
    * lives there.
@@ -4284,10 +4285,8 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
           ret_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
         }
     }
-  else
+  else if (self->mode == OSTREE_REPO_MODE_BARE)
     {
-      g_assert (self->mode == OSTREE_REPO_MODE_BARE);
-
       if (S_ISREG (stbuf.st_mode) && out_xattrs)
         {
           if (self->disable_xattrs)
@@ -4305,6 +4304,10 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
                                                   cancellable, error))
             return FALSE;
         }
+    }
+  else
+    {
+      g_assert_not_reached ();
     }
 
   if (out_fd)
