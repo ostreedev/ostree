@@ -21,6 +21,8 @@
 
 #include "config.h"
 
+#include "ostree-sysroot-private.h"
+
 #include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
@@ -31,6 +33,7 @@
 
 static gboolean opt_retain;
 static gboolean opt_stage;
+static gboolean opt_lock_finalization;
 static gboolean opt_retain_pending;
 static gboolean opt_retain_rollback;
 static gboolean opt_not_as_default;
@@ -51,6 +54,7 @@ static GOptionEntry options[] = {
   { "no-merge", 0, 0, G_OPTION_ARG_NONE, &opt_no_merge, "Do not apply configuration (/etc and kernel arguments) from booted deployment", NULL},
   { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployments", NULL },
   { "stage", 0, 0, G_OPTION_ARG_NONE, &opt_stage, "Complete deployment at OS shutdown", NULL },
+  { "lock-finalization", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_lock_finalization, "Prevent automatic deployment finalization on shutdown", NULL },
   { "retain-pending", 0, 0, G_OPTION_ARG_NONE, &opt_retain_pending, "Do not delete pending deployments", NULL },
   { "retain-rollback", 0, 0, G_OPTION_ARG_NONE, &opt_retain_rollback, "Do not delete rollback deployments", NULL },
   { "not-as-default", 0, 0, G_OPTION_ARG_NONE, &opt_not_as_default, "Append rather than prepend new deployment", NULL },
@@ -202,6 +206,20 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
         return glnx_throw (error, "--stage cannot currently be combined with --retain arguments");
       if (opt_not_as_default)
         return glnx_throw (error, "--stage cannot currently be combined with --not-as-default");
+      /* touch file *before* we stage to avoid races */
+      if (opt_lock_finalization)
+        {
+          if (!glnx_shutil_mkdir_p_at (AT_FDCWD,
+                                       dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED)),
+                                       0755, cancellable, error))
+            return FALSE;
+
+          glnx_autofd int fd = open (_OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED,
+                                     O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC, 0640);
+          if (fd == -1)
+            return glnx_throw_errno_prefix (error, "touch(%s)",
+                                            _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED);
+        }
       /* use old API if we can to exercise it in CI */
       if (!overlay_initrd_chksums)
         {
