@@ -10,6 +10,25 @@ mod treegen;
 // Written by Ignition
 const DESTRUCTIVE_TEST_STAMP: &str = "/etc/ostree-destructive-test-ok";
 
+macro_rules! test {
+    ($f: path) => {
+        (stringify!($f), $f)
+    };
+}
+
+type StaticTest = (&'static str, fn() -> Result<()>);
+
+const TESTS: &[StaticTest] = &[
+    test!(sysroot::itest_sysroot_ro),
+    test!(sysroot::itest_immutable_bit),
+    test!(sysroot::itest_tmpfiles),
+    test!(repobin::itest_basic),
+    test!(repobin::itest_nofifo),
+    test!(repobin::itest_extensions),
+    test!(repobin::itest_pull_basicauth),
+];
+const DESTRUCTIVE_TESTS: &[StaticTest] = &[test!(destructive::itest_transactionality)];
+
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 #[allow(clippy::enum_variant_names)]
@@ -30,18 +49,18 @@ enum NonDestructiveOpts {
     Args(Vec<String>),
 }
 
-fn libtest_from_test(t: &'static test::Test) -> test::TestImpl {
+fn libtest_from_test(t: &StaticTest) -> test::TestImpl {
     libtest_mimic::Test {
-        name: t.name.into(),
+        name: t.0.into(),
         kind: "".into(),
         is_ignored: false,
         is_bench: false,
-        data: t,
+        data: t.1,
     }
 }
 
 fn run_test(test: &test::TestImpl) -> libtest_mimic::Outcome {
-    if let Err(e) = (test.data.f)() {
+    if let Err(e) = (test.data)() {
         libtest_mimic::Outcome::Failed {
             msg: Some(e.to_string()),
         }
@@ -72,8 +91,8 @@ fn main() -> Result<()> {
 
     match opt {
         Opt::ListDestructive => {
-            for t in test::DESTRUCTIVE_TESTS.iter() {
-                println!("{}", t.name);
+            for t in DESTRUCTIVE_TESTS {
+                println!("{}", t.0);
             }
             Ok(())
         }
@@ -81,10 +100,7 @@ fn main() -> Result<()> {
             // FIXME add method to parse subargs
             let NonDestructiveOpts::Args(iter) = subopt;
             let libtestargs = libtest_mimic::Arguments::from_iter(iter);
-            let tests: Vec<_> = test::NONDESTRUCTIVE_TESTS
-                .iter()
-                .map(libtest_from_test)
-                .collect();
+            let tests: Vec<_> = TESTS.iter().map(libtest_from_test).collect();
             libtest_mimic::run_tests(&libtestargs, tests, run_test).exit();
         }
         Opt::RunDestructive { name } => {
@@ -98,10 +114,10 @@ fn main() -> Result<()> {
                 bail!("An ostree-based host is required")
             }
 
-            for t in test::DESTRUCTIVE_TESTS.iter() {
-                if t.name == name {
-                    (t.f)()?;
-                    println!("ok destructive test: {}", t.name);
+            for (tname, f) in DESTRUCTIVE_TESTS {
+                if *tname == name.as_str() {
+                    (f)()?;
+                    println!("ok destructive test: {}", tname);
                     return Ok(());
                 }
             }

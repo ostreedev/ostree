@@ -29,7 +29,6 @@ futures-util = "0.3.1"
 base64 = "0.12.0"
 procspawn = "0.8"
 rand = "0.7.3"
-linkme = "0.2"
 strum = "0.18.0"
 strum_macros = "0.18.0"
 openat = "0.1.19"
@@ -40,6 +39,3 @@ rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", tag = "v2021.
 
 # This one I might publish to crates.io, not sure yet
 with-procspawn-tempdir = { git = "https://github.com/cgwalters/with-procspawn-tempdir" }
-
-# Internal crate for the test macro
-itest-macro = { path = "itest-macro" }

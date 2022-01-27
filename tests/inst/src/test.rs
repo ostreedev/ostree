@@ -6,10 +6,8 @@ use std::process::Command;
 use std::time;
 
 use anyhow::{bail, Context, Result};
-use linkme::distributed_slice;
 use rand::Rng;
 
-pub use itest_macro::itest;
 pub use with_procspawn_tempdir::with_procspawn_tempdir;
 
 // HTTP Server deps
@@ -20,19 +18,7 @@ use hyper_staticfile::Static;
 use tokio::runtime::Runtime;
 
 pub(crate) type TestFn = fn() -> Result<()>;
-
-#[derive(Debug)]
-pub(crate) struct Test {
-    pub(crate) name: &'static str,
-    pub(crate) f: TestFn,
-}
-
-pub(crate) type TestImpl = libtest_mimic::Test<&'static Test>;
-
-#[distributed_slice]
-pub(crate) static NONDESTRUCTIVE_TESTS: [Test] = [..];
-#[distributed_slice]
-pub(crate) static DESTRUCTIVE_TESTS: [Test] = [..];
+pub(crate) type TestImpl = libtest_mimic::Test<TestFn>;
 
 /// Run command and assert that its stderr contains pat
 pub(crate) fn cmd_fails_with<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Result<()> {

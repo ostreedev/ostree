@@ -8,15 +8,13 @@ use anyhow::{Context, Result};
 use sh_inline::{bash, bash_command};
 use with_procspawn_tempdir::with_procspawn_tempdir;
 
-#[itest]
-fn test_basic() -> Result<()> {
+pub(crate) fn itest_basic() -> Result<()> {
     bash!(r"ostree --help >/dev/null")?;
     Ok(())
 }
 
-#[itest]
 #[with_procspawn_tempdir]
-fn test_nofifo() -> Result<()> {
+pub(crate) fn itest_nofifo() -> Result<()> {
     assert!(std::path::Path::new(".procspawn-tmpdir").exists());
     bash!(
         r"ostree --repo=repo init --mode=archive
@@ -34,9 +32,8 @@ fn test_nofifo() -> Result<()> {
     Ok(())
 }
 
-#[itest]
 #[with_procspawn_tempdir]
-fn test_mtime() -> Result<()> {
+pub(crate) fn itest_mtime() -> Result<()> {
     bash!(
         r"ostree --repo=repo init --mode=archive
     mkdir tmproot
@@ -50,17 +47,15 @@ fn test_mtime() -> Result<()> {
     Ok(())
 }
 
-#[itest]
 #[with_procspawn_tempdir]
-fn test_extensions() -> Result<()> {
+pub(crate) fn itest_extensions() -> Result<()> {
     bash!(r"ostree --repo=repo init --mode=bare")?;
     assert!(Path::new("repo/extensions").exists());
     Ok(())
 }
 
-#[itest]
 #[with_procspawn_tempdir]
-fn test_pull_basicauth() -> Result<()> {
+pub(crate) fn itest_pull_basicauth() -> Result<()> {
     let opts = TestHttpServerOpts {
         basicauth: true,
         ..Default::default()

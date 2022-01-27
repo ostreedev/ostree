@@ -537,8 +537,7 @@ fn impl_transaction_test<M: AsRef<str>>(
     }
 }
 
-#[itest(destructive = true)]
-fn transactionality() -> Result<()> {
+pub(crate) fn itest_transactionality() -> Result<()> {
     testinit()?;
     let mark = get_reboot_mark()?;
     let cancellable = Some(gio::Cancellable::new());
