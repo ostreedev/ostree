@@ -830,7 +830,7 @@ static void
 ot_variant_builder_info_free (OtVariantBuilderInfo *info)
 {
   if (info->parent)
-    ot_variant_builder_info_free (info);
+    ot_variant_builder_info_free (info->parent);
 
   g_variant_type_free (info->type);
   g_array_unref (info->child_ends);
