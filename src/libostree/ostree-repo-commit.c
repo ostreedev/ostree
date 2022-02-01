@@ -912,8 +912,9 @@ write_content_object (OstreeRepo         *self,
                       GCancellable       *cancellable,
                       GError            **error)
 {
+  g_assert (expected_checksum != NULL || out_csum != NULL);
+
   GLNX_AUTO_PREFIX_ERROR ("Writing content object", error);
-  g_return_val_if_fail (expected_checksum || out_csum, FALSE);
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -1244,9 +1245,10 @@ adopt_and_commit_regfile (OstreeRepo   *self,
                           GCancellable *cancellable,
                           GError      **error)
 {
+  g_assert (G_IN_SET (self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER_ONLY));
+
   GLNX_AUTO_PREFIX_ERROR ("Commit regfile (adopt)", error);
 
-  g_assert (G_IN_SET (self->mode, OSTREE_REPO_MODE_BARE, OSTREE_REPO_MODE_BARE_USER_ONLY));
   g_autoptr(GBytes) header = _ostree_file_header_new (finfo, xattrs);
 
   g_auto(OtChecksum) hasher = { 0, };
@@ -1341,9 +1343,9 @@ write_metadata_object (OstreeRepo         *self,
                        GCancellable       *cancellable,
                        GError            **error)
 {
-  GLNX_AUTO_PREFIX_ERROR ("Writing metadata object", error);
+  g_assert (expected_checksum != NULL || out_csum != NULL);
 
-  g_return_val_if_fail (expected_checksum || out_csum, FALSE);
+  GLNX_AUTO_PREFIX_ERROR ("Writing metadata object", error);
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -1629,7 +1631,11 @@ ostree_repo_scan_hardlinks (OstreeRepo    *self,
                             GCancellable  *cancellable,
                             GError       **error)
 {
-  g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+
+  if (!self->in_transaction)
+    return glnx_throw (error, "Failed to scan hardlinks, not in a transaction");
 
   if (!self->loose_object_devino_hash)
     self->loose_object_devino_hash = (GHashTable*)ostree_repo_devino_cache_new ();
@@ -1671,10 +1677,10 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
                                  GError        **error)
 {
   g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
 
-  guint64 reserved_bytes = 0;
-
-  g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
+  if (self->in_transaction)
+    return glnx_throw (error, "Failed to prepare transaction, another transaction is in progress");
 
   g_debug ("Preparing transaction in repository %p", self);
 
@@ -1700,6 +1706,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   g_mutex_lock (&self->txn_lock);
   self->txn.blocksize = stvfsbuf.f_bsize;
+  guint64 reserved_bytes = 0;
   if (!ostree_repo_get_min_free_space_bytes (self, &reserved_bytes, error))
     {
       g_mutex_unlock (&self->txn_lock);
@@ -2077,7 +2084,9 @@ ostree_repo_transaction_set_refspec (OstreeRepo *self,
                                      const char *refspec,
                                      const char *checksum)
 {
-  g_return_if_fail (self->in_transaction == TRUE);
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+  g_assert (self->in_transaction == TRUE);
 
   g_mutex_lock (&self->txn_lock);
   ensure_txn_refs (self);
@@ -2120,7 +2129,9 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
                                  const char *ref,
                                  const char *checksum)
 {
-  g_return_if_fail (self->in_transaction == TRUE);
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+  g_assert (self->in_transaction == TRUE);
 
   char *refspec;
   if (remote)
@@ -2160,9 +2171,13 @@ ostree_repo_transaction_set_collection_ref (OstreeRepo                *self,
                                             const OstreeCollectionRef *ref,
                                             const char                *checksum)
 {
-  g_return_if_fail (OSTREE_IS_REPO (self));
-  g_return_if_fail (self->in_transaction == TRUE);
-  g_return_if_fail (ref != NULL);
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+  g_assert (self->in_transaction == TRUE);
+  g_assert (ref != NULL);
+
+  // TODO(lucab): introduce a method with error-returning in order to deprecate
+  // this one, because it can silently fail.
   g_return_if_fail (checksum == NULL || ostree_validate_checksum_string (checksum, NULL));
 
   g_mutex_lock (&self->txn_lock);
@@ -2248,11 +2263,13 @@ ostree_repo_set_collection_ref_immediate (OstreeRepo                 *self,
                                           GCancellable               *cancellable,
                                           GError                    **error)
 {
-  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
-  g_return_val_if_fail (ref != NULL, FALSE);
-  g_return_val_if_fail (checksum == NULL || ostree_validate_checksum_string (checksum, NULL), FALSE);
-  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), FALSE);
-  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+  g_assert (ref != NULL);
+
+  /* If a checksum was provided, validate it upfront. */
+  if (checksum != NULL && !ostree_validate_checksum_string (checksum, error))
+    return FALSE;
 
   return _ostree_repo_write_ref (self, NULL, ref, checksum, NULL,
                                  cancellable, error);
@@ -2283,7 +2300,11 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
                                 GCancellable                *cancellable,
                                 GError                     **error)
 {
-  g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+
+  if (!self->in_transaction)
+    return glnx_throw (error, "Failed to commit transaction, no transaction in progress");
 
   g_debug ("Committing transaction in repository %p", self);
 
@@ -2370,6 +2391,9 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
                                GCancellable   *cancellable,
                                GError        **error)
 {
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+
   g_autoptr(GError) cleanup_error = NULL;
 
   /* Always ignore the cancellable to avoid the chance that, if it gets
