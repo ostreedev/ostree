@@ -29,6 +29,8 @@ members = [".", "sys"]
 
 [dependencies]
 bitflags = "1.2.1"
+cap-std = { version = "0.24", optional = true}
+io-lifetimes = { version = "0.5", optional = true}
 ffi = { package = "ostree-sys", path = "sys", version = "0.9.1" }
 gio = "0.14"
 glib = "0.14.4"
@@ -42,8 +44,10 @@ thiserror = "1.0.20"
 maplit = "1.0.2"
 openat = "0.1.19"
 tempfile = "3"
+cap-tempfile = "0.24"
 
 [features]
+cap-std-apis = ["cap-std", "io-lifetimes", "v2017_10"]
 dox = ["ffi/dox"]
 v2014_9 = ["ffi/v2014_9"]
 v2015_7 = ["v2014_9", "ffi/v2015_7"]

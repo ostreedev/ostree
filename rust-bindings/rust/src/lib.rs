@@ -12,6 +12,8 @@
 // Re-export our dependencies.  See https://gtk-rs.org/blog/2021/06/22/new-release.html
 // "Dependencies are re-exported".  Users will need e.g. `gio::File`, so this avoids
 // them needing to update matching versions.
+#[cfg(feature = "cap-std-apis")]
+pub use cap_std;
 pub use ffi;
 pub use gio;
 pub use glib;

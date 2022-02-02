@@ -27,6 +27,26 @@ fn should_commit_content_to_repo_and_list_refs_again() {
 }
 
 #[test]
+#[cfg(feature = "cap-std-apis")]
+fn cap_std_commit() {
+    let test_repo = CapTestRepo::new();
+
+    assert!(test_repo.repo.require_rev("nosuchrev").is_err());
+
+    let mtree = create_mtree(&test_repo.repo);
+    let checksum = commit(&test_repo.repo, &mtree, "test");
+
+    assert_eq!(test_repo.repo.require_rev("test").unwrap(), checksum);
+
+    let repo2 = ostree::Repo::open_at_dir(&test_repo.dir, ".").unwrap();
+    let refs = repo2
+        .list_refs(None, NONE_CANCELLABLE)
+        .expect("failed to list refs");
+    assert_eq!(1, refs.len());
+    assert_eq!(checksum, refs["test"]);
+}
+
+#[test]
 fn repo_traverse_and_read() {
     let test_repo = TestRepo::new();
     let checksum = test_repo.test_commit("test");

@@ -28,6 +28,26 @@ impl TestRepo {
     }
 }
 
+#[derive(Debug)]
+#[cfg(feature = "cap-std-apis")]
+pub struct CapTestRepo {
+    pub dir: cap_tempfile::TempDir,
+    pub repo: ostree::Repo,
+}
+
+#[cfg(feature = "cap-std-apis")]
+impl CapTestRepo {
+    pub fn new() -> Self {
+        Self::new_with_mode(ostree::RepoMode::Archive)
+    }
+
+    pub fn new_with_mode(repo_mode: ostree::RepoMode) -> Self {
+        let dir = cap_tempfile::tempdir(cap_std::ambient_authority()).unwrap();
+        let repo = ostree::Repo::create_at_dir(&dir, ".", repo_mode, None).expect("repo create");
+        Self { dir, repo }
+    }
+}
+
 pub fn create_mtree(repo: &ostree::Repo) -> ostree::MutableTree {
     let mtree = ostree::MutableTree::new();
     let file = gio::File::for_path(

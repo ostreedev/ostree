@@ -1,5 +1,7 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
+#[cfg(feature = "cap-std-apis")]
+use crate::RepoMode;
 use crate::{Checksum, ObjectDetails, ObjectName, ObjectType, Repo, RepoTransactionStats};
 use ffi::OstreeRepoListObjectsFlags;
 use glib::ffi as glib_sys;
@@ -95,6 +97,26 @@ impl Repo {
     /// Create a new `Repo` object for working with an OSTree repo at the given path.
     pub fn new_for_path<P: AsRef<Path>>(path: P) -> Repo {
         Repo::new(&gio::File::for_path(path.as_ref()))
+    }
+
+    #[cfg(feature = "cap-std-apis")]
+    /// A version of [`open_at`] which uses cap-std.
+    pub fn open_at_dir(dir: &cap_std::fs::Dir, path: &str) -> Result<Repo, glib::Error> {
+        use std::os::unix::io::AsRawFd;
+        crate::Repo::open_at(dir.as_raw_fd(), path, gio::NONE_CANCELLABLE)
+    }
+
+    #[cfg(feature = "cap-std-apis")]
+    /// A version of [`create_at`] which uses cap-std, and also returns the opened repo.
+    pub fn create_at_dir(
+        dir: &cap_std::fs::Dir,
+        path: &str,
+        mode: RepoMode,
+        options: Option<&glib::Variant>,
+    ) -> Result<Repo, glib::Error> {
+        use std::os::unix::io::AsRawFd;
+        crate::Repo::create_at(dir.as_raw_fd(), path, mode, options, gio::NONE_CANCELLABLE)?;
+        Repo::open_at_dir(dir, path)
     }
 
     /// A wrapper for [`prepare_transaction`] which ensures the transaction will be aborted when the guard goes out of scope.
