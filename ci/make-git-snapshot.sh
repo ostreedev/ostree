@@ -26,3 +26,4 @@ ls -al ${TARFILE_TMP}
     rm submodule.tar
 done
 mv ${TARFILE_TMP} ${TARFILE}
+xz "${TARFILE}"
