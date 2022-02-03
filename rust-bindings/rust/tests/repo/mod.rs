@@ -31,6 +31,10 @@ fn should_commit_content_to_repo_and_list_refs_again() {
 fn cap_std_commit() {
     let test_repo = CapTestRepo::new();
 
+    assert!(test_repo.dir.exists("config"));
+    // Also test re-acquiring a new dfd
+    assert!(test_repo.repo.dfd_as_dir().unwrap().exists("config"));
+
     assert!(test_repo.repo.require_rev("nosuchrev").is_err());
 
     let mtree = create_mtree(&test_repo.repo);

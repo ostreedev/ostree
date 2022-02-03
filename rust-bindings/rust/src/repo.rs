@@ -145,6 +145,18 @@ impl Repo {
         }
     }
 
+    /// Borrow the directory file descriptor for this repository.
+    #[cfg(feature = "cap-std-apis")]
+    pub fn dfd_borrow<'a>(&'a self) -> io_lifetimes::BorrowedFd<'a> {
+        unsafe { io_lifetimes::BorrowedFd::borrow_raw_fd(self.dfd()) }
+    }
+
+    /// Return a new `cap-std` directory reference for this repository.
+    #[cfg(feature = "cap-std-apis")]
+    pub fn dfd_as_dir(&self) -> std::io::Result<cap_std::fs::Dir> {
+        cap_std::fs::Dir::reopen_dir(&self.dfd_borrow())
+    }
+
     /// Find all objects reachable from a commit.
     pub fn traverse_commit<P: IsA<gio::Cancellable>>(
         &self,
