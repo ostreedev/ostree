@@ -6067,16 +6067,21 @@ summary_add_ref_entry (OstreeRepo       *self,
   g_autoptr(GVariant) commit_obj = NULL;
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, checksum, &commit_obj, error))
     return FALSE;
+  g_autoptr(GVariant) orig_metadata = g_variant_get_child_value (commit_obj, 0);
 
   g_variant_dict_init (&commit_metadata_builder, NULL);
 
-  /* Forward the commit’s timestamp if it’s valid. */
+  /* Forward the commit’s timestamp and version if they're valid. */
   guint64 commit_timestamp = ostree_commit_get_timestamp (commit_obj);
   g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (commit_timestamp);
 
   if (dt != NULL)
     g_variant_dict_insert_value (&commit_metadata_builder, OSTREE_COMMIT_TIMESTAMP,
                                  g_variant_new_uint64 (GUINT64_TO_BE (commit_timestamp)));
+
+  const char *version = NULL;
+  if (g_variant_lookup (orig_metadata, OSTREE_COMMIT_META_KEY_VERSION, "&s", &version))
+    g_variant_dict_insert (&commit_metadata_builder, OSTREE_COMMIT_VERSION, "s", version);
 
   g_variant_builder_add_value (refs_builder,
                                g_variant_new ("(s(t@ay@a{sv}))", ref,

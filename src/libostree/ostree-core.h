@@ -164,6 +164,8 @@ typedef enum {
  * The currently defined keys for the `a{sv}` of additional metadata for each commit are:
  *  - key: `ostree.commit.timestamp`, value: `t`, timestamp (seconds since the
  *    Unix epoch in UTC, big-endian) when the commit was committed
+ *  - key: `ostree.commit.version`, value: `s`, the `version` value from the
+ *    commit's metadata if it was defined. Since: 2022.2
  */
 #define OSTREE_SUMMARY_GVARIANT_STRING "(a(s(taya{sv}))a{sv})"
 #define OSTREE_SUMMARY_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_SUMMARY_GVARIANT_STRING)
