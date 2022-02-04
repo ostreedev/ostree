@@ -249,6 +249,11 @@ dump_summary_ref (const char   *collection_id,
           pretty_key = "Timestamp";
           value_str = uint64_secs_to_iso8601 (GUINT64_FROM_BE (g_variant_get_uint64 (value)));
         }
+      else if (g_strcmp0 (key, OSTREE_COMMIT_VERSION) == 0)
+        {
+          pretty_key = "Version";
+          value_str = g_strdup (g_variant_get_string (value, NULL));
+        }
       else
         {
           value_str = g_variant_print (value, FALSE);

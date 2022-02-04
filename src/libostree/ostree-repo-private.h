@@ -63,6 +63,7 @@ G_BEGIN_DECLS
 /* Well-known keys for the additional metadata field in a commit in a ref entry
  * in a summary file. */
 #define OSTREE_COMMIT_TIMESTAMP "ostree.commit.timestamp"
+#define OSTREE_COMMIT_VERSION "ostree.commit.version"
 
 typedef enum {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0),

@@ -183,6 +183,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     Latest Commit (4.2 MB):
       9828ab80f357459b4ab50f0629beab2ae3b67318fc3d161d10a89fae353afa90
     Timestamp (ostree.commit.timestamp): 2017-11-21T01:41:10-08
+    Version (ostree.commit.version): 1.2.3
 
 Last-Modified (ostree.summary.last-modified): 2018-01-12T22:06:38-08
 </programlisting>
