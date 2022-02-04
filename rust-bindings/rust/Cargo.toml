@@ -8,7 +8,7 @@ license = "MIT"
 name = "ostree"
 readme = "README.md"
 repository = "https://github.com/ostreedev/ostree-rs"
-version = "0.13.4"
+version = "0.13.5"
 
 exclude = [
     "conf/**",
