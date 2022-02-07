@@ -542,8 +542,9 @@ traverse_dirtree (OstreeRepo           *repo,
 }
 
 /**
- * ostree_repo_traverse_commit_union_with_parents: (skip)
+ * ostree_repo_traverse_commit_with_flags: (skip)
  * @repo: Repo
+ * @flags: change traversal behaviour according to these flags
  * @commit_checksum: ASCII SHA256 checksum
  * @maxdepth: Traverse this many parent commits, -1 for unlimited
  * @inout_reachable: Set of reachable objects
@@ -561,15 +562,17 @@ traverse_dirtree (OstreeRepo           *repo,
  * Since: 2018.5
  */
 gboolean
-ostree_repo_traverse_commit_union_with_parents (OstreeRepo      *repo,
-                                                const char      *commit_checksum,
-                                                int              maxdepth,
-                                                GHashTable      *inout_reachable,
-                                                GHashTable      *inout_parents,
-                                                GCancellable    *cancellable,
-                                                GError         **error)
+ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
+                                        OstreeRepoCommitTraverseFlags   flags,
+                                        const char                     *commit_checksum,
+                                        int                             maxdepth,
+                                        GHashTable                     *inout_reachable,
+                                        GHashTable                     *inout_parents,
+                                        GCancellable                   *cancellable,
+                                        GError                        **error)
 {
   g_autofree char *tmp_checksum = NULL;
+  gboolean commit_only = flags & OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY;
 
   while (TRUE)
     {
@@ -603,16 +606,20 @@ ostree_repo_traverse_commit_union_with_parents (OstreeRepo      *repo,
 
       g_hash_table_add (inout_reachable, g_variant_ref (key));
 
-      g_debug ("Traversing commit %s", commit_checksum);
-      ostree_cleanup_repo_commit_traverse_iter
-        OstreeRepoCommitTraverseIter iter = { 0, };
-      if (!ostree_repo_commit_traverse_iter_init_commit (&iter, repo, commit,
-                                                         OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
-                                                         error))
-        return FALSE;
+      /* Save time by skipping traversal of non-commit objects */
+      if (!commit_only) 
+        {
+          g_debug ("Traversing commit %s", commit_checksum);
+          ostree_cleanup_repo_commit_traverse_iter
+            OstreeRepoCommitTraverseIter iter = { 0, };
+          if (!ostree_repo_commit_traverse_iter_init_commit (&iter, repo, commit,
+                                                            OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
+                                                            error))
+            return FALSE;
 
-      if (!traverse_iter (repo, &iter, key, inout_reachable, inout_parents, ignore_missing_dirs, cancellable, error))
-        return FALSE;
+          if (!traverse_iter (repo, &iter, key, inout_reachable, inout_parents, ignore_missing_dirs, cancellable, error))
+            return FALSE;
+        } 
 
       gboolean recurse = FALSE;
       if (maxdepth == -1 || maxdepth > 0)
@@ -632,6 +639,39 @@ ostree_repo_traverse_commit_union_with_parents (OstreeRepo      *repo,
     }
 
   return TRUE;
+}
+
+/**
+ * ostree_repo_traverse_commit_union_with_parents: (skip)
+ * @repo: Repo
+ * @commit_checksum: ASCII SHA256 checksum
+ * @maxdepth: Traverse this many parent commits, -1 for unlimited
+ * @inout_reachable: Set of reachable objects
+ * @inout_parents: Map from object to parent object
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Update the set @inout_reachable containing all objects reachable
+ * from @commit_checksum, traversing @maxdepth parent commits.
+ *
+ * Additionally this constructs a mapping from each object to the parents
+ * of the object, which can be used to track which commits an object
+ * belongs to.
+ *
+ * Since: 2018.5
+ */
+gboolean
+ostree_repo_traverse_commit_union_with_parents (OstreeRepo      *repo,
+                                                const char      *commit_checksum,
+                                                int              maxdepth,
+                                                GHashTable      *inout_reachable,
+                                                GHashTable      *inout_parents,
+                                                GCancellable    *cancellable,
+                                                GError         **error)
+{
+  return ostree_repo_traverse_commit_with_flags(repo, OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
+                                                commit_checksum, maxdepth, inout_reachable, inout_parents,
+                                                cancellable, error);
 }
 
 /**

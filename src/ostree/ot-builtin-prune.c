@@ -35,6 +35,7 @@ static char *opt_delete_commit;
 static char *opt_keep_younger_than;
 static char **opt_retain_branch_depth;
 static char **opt_only_branches;
+static gboolean opt_commit_only;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
@@ -50,6 +51,7 @@ static GOptionEntry options[] = {
   { "static-deltas-only", 0, 0, G_OPTION_ARG_NONE, &opt_static_deltas_only, "Change the behavior of delete-commit and keep-younger-than to prune only static deltas" },
   { "retain-branch-depth", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_retain_branch_depth, "Additionally retain BRANCH=DEPTH commits", "BRANCH=DEPTH" },
   { "only-branch", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_only_branches, "Only prune BRANCH (may be specified multiple times)", "BRANCH" },
+  { "commit-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Only traverse and delete commit objects.", NULL },
   { NULL }
 };
 
@@ -99,12 +101,15 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
                             GCancellable *cancellable, GError **error)
 {
   g_autofree char *next_checksum = g_strdup (checksum);
+  OstreeRepoCommitTraverseFlags traverse_flags = OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE;
+  if (opt_commit_only)
+    traverse_flags |= OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY;
 
   /* This is the first commit in our loop, which has a ref pointing to it. We
    * don't want to auto-prune it.
    */
-  if (!ostree_repo_traverse_commit_union (repo, checksum, 0, reachable,
-                                          cancellable, error))
+  if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, checksum, 0, reachable,
+                                                NULL, cancellable, error))
     return FALSE;
 
   while (TRUE)
@@ -121,8 +126,8 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
       if (commit_timestamp >= ts->tv_sec)
         {
           /* It's newer, traverse it */
-          if (!ostree_repo_traverse_commit_union (repo, next_checksum, 0, reachable,
-                                                  cancellable, error))
+          if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, next_checksum, 0, reachable,
+                                                        NULL, cancellable, error))
             return FALSE;
 
           g_free (next_checksum);
@@ -183,6 +188,8 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
     pruneflags |= OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
   if (opt_no_prune)
     pruneflags |= OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE;
+  if (opt_commit_only)
+    pruneflags |= OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY;
 
   /* If no newer more complex options are specified, drop down to the original
    * prune API - both to avoid code duplication, and to keep it run from the
@@ -285,6 +292,10 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
       /* Traverse each ref, and gather all objects pointed to by it up to a
        * specific depth (if configured).
        */
+      OstreeRepoCommitTraverseFlags traverse_flags = OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE;
+      if (opt_commit_only)
+        /** We can avoid looking at all objects if --commit-only is specified **/
+        traverse_flags |= OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY;
       g_hash_table_iter_init (&hash_iter, all_refs);
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
@@ -316,8 +327,8 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
                                   the global default */
 
           g_debug ("Finding objects to keep for commit %s", checksum);
-          if (!ostree_repo_traverse_commit_union (repo, checksum, depth, reachable,
-                                                  cancellable, error))
+          if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, checksum, depth, reachable,
+                                                        NULL, cancellable, error))
             return FALSE;
         }
 
@@ -333,7 +344,10 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
     }
 
   g_autofree char *formatted_freed_size = g_format_size_full (objsize_total, 0);
-  g_print ("Total objects: %u\n", n_objects_total);
+  if (opt_commit_only) 
+    g_print("Total (commit only) objects: %u\n", n_objects_total);
+  else
+    g_print ("Total objects: %u\n", n_objects_total);
   if (n_objects_pruned == 0)
     g_print ("No unreachable objects\n");
   else if (pruneflags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE)

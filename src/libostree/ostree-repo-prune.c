@@ -48,6 +48,10 @@ maybe_prune_loose_object (OtPruneData           *data,
   OstreeObjectType objtype;
 
   ostree_object_name_deserialize (key, &checksum, &objtype);
+  /* Return if we only want to delete commits and this object is not a commit object. */
+  gboolean commit_only = flags & OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY;
+  if (commit_only && (objtype != OSTREE_OBJECT_TYPE_COMMIT))
+    goto exit;
 
   if (g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     reachable = TRUE;
@@ -125,7 +129,11 @@ maybe_prune_loose_object (OtPruneData           *data,
       else
         data->n_reachable_content++;
     }
-
+    if (commit_only && (objtype != OSTREE_OBJECT_TYPE_COMMIT))
+    {
+      g_debug ("Keeping object (not commit) %s.%s", checksum,
+               ostree_object_type_to_string (objtype));
+    }
   return TRUE;
 }
 
@@ -299,6 +307,52 @@ repo_prune_internal (OstreeRepo        *self,
   return TRUE;
 }
 
+static gboolean
+traverse_reachable_internal (OstreeRepo                    *self,
+                             OstreeRepoCommitTraverseFlags  flags,
+                             guint                          depth,
+                             GHashTable                    *reachable,
+                             GCancellable                  *cancellable,
+                             GError                       **error)
+{
+  g_autoptr(OstreeRepoAutoLock) lock =
+    ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED, cancellable, error);
+  if (!lock)
+    return FALSE;
+
+  /* Ignoring collections. */
+  g_autoptr(GHashTable) all_refs = NULL;  /* (element-type utf8 utf8) */
+
+  if (!ostree_repo_list_refs (self, NULL, &all_refs,
+                              cancellable, error))
+    return FALSE;
+
+  GLNX_HASH_TABLE_FOREACH_V (all_refs, const char*, checksum)
+    {
+      g_debug ("Finding objects to keep for commit %s", checksum);
+      if (!ostree_repo_traverse_commit_with_flags (self, flags, checksum, depth, reachable,
+                                                    NULL, cancellable, error))
+        return FALSE;
+    }
+
+  /* Using collections. */
+  g_autoptr(GHashTable) all_collection_refs = NULL;  /* (element-type OstreeChecksumRef utf8) */
+
+  if (!ostree_repo_list_collection_refs (self, NULL, &all_collection_refs,
+                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES, cancellable, error))
+    return FALSE;
+
+  GLNX_HASH_TABLE_FOREACH_V (all_collection_refs, const char*, checksum)
+    {
+      g_debug ("Finding objects to keep for commit %s", checksum);
+      if (!ostree_repo_traverse_commit_with_flags (self, flags, checksum, depth, reachable,
+                                                    NULL, cancellable, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /**
  * ostree_repo_traverse_reachable_refs:
  * @self: Repo
@@ -319,42 +373,10 @@ ostree_repo_traverse_reachable_refs (OstreeRepo *self,
                                      GCancellable *cancellable,
                                      GError      **error)
 {
-  g_autoptr(OstreeRepoAutoLock) lock =
-    ostree_repo_auto_lock_push (self, OSTREE_REPO_LOCK_SHARED, cancellable, error);
-  if (!lock)
-    return FALSE;
-
-  /* Ignoring collections. */
-  g_autoptr(GHashTable) all_refs = NULL;  /* (element-type utf8 utf8) */
-
-  if (!ostree_repo_list_refs (self, NULL, &all_refs,
-                              cancellable, error))
-    return FALSE;
-
-  GLNX_HASH_TABLE_FOREACH_V (all_refs, const char*, checksum)
-    {
-      g_debug ("Finding objects to keep for commit %s", checksum);
-      if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
-                                              cancellable, error))
-        return FALSE;
-    }
-
-  /* Using collections. */
-  g_autoptr(GHashTable) all_collection_refs = NULL;  /* (element-type OstreeChecksumRef utf8) */
-
-  if (!ostree_repo_list_collection_refs (self, NULL, &all_collection_refs,
-                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES, cancellable, error))
-    return FALSE;
-
-  GLNX_HASH_TABLE_FOREACH_V (all_collection_refs, const char*, checksum)
-    {
-      g_debug ("Finding objects to keep for commit %s", checksum);
-      if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
-                                              cancellable, error))
-        return FALSE;
-    }
-
-  return TRUE;
+  return traverse_reachable_internal (self, 
+                                      OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
+                                      depth, reachable,
+                                      cancellable, error);
 }
 
 /**
@@ -401,6 +423,7 @@ ostree_repo_prune (OstreeRepo        *self,
 
   g_autoptr(GHashTable) objects = NULL;
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
+  gboolean commit_only = flags & OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY;
 
   g_autoptr(GHashTable) reachable = ostree_repo_traverse_new_reachable ();
 
@@ -409,9 +432,15 @@ ostree_repo_prune (OstreeRepo        *self,
    * the deletion.
    */
 
+  OstreeRepoCommitTraverseFlags traverse_flags = OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE;
+  if (commit_only)
+    traverse_flags |= OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY;
+
   if (refs_only)
     {
-      if (!ostree_repo_traverse_reachable_refs (self, depth, reachable, cancellable, error))
+      if (!traverse_reachable_internal (self, traverse_flags,
+                                        depth, reachable,
+                                        cancellable, error))
         return FALSE;
     }
 
@@ -432,8 +461,8 @@ ostree_repo_prune (OstreeRepo        *self,
             continue;
 
           g_debug ("Finding objects to keep for commit %s", checksum);
-          if (!ostree_repo_traverse_commit_union (self, checksum, depth, reachable,
-                                                  cancellable, error))
+          if (!ostree_repo_traverse_commit_with_flags (self, traverse_flags, checksum, depth, reachable,
+                                                       NULL, cancellable, error))
             return FALSE;
         }
     }

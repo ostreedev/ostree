@@ -20,6 +20,11 @@
    - uncomment the include in Makefile-libostree.am
 */
 
+LIBOSTREE_2022.2 {
+global:
+  ostree_repo_traverse_commit_with_flags;
+} LIBOSTREE_2021.5;
+
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
