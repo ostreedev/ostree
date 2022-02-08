@@ -805,6 +805,7 @@ _ostree_prune() {
         --no-prune
         --refs-only
         --static-deltas-only
+        --commit-only
     "
 
     local options_with_args="
