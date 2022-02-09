@@ -143,7 +143,7 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
  * an invalid @signature_index.  Use ostree_gpg_verify_result_count_all() to
  * find the number of signatures in @result.
  *
- * Returns: a new, floating, #GVariant tuple
+ * Returns: (transfer floating): a new, floating, #GVariant tuple
  **/
 GVariant *
 ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
@@ -184,7 +184,7 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
  * ostree_gpg_verify_result_count_all() to find the number of signatures in
  * @result.
  *
- * Returns: a new, floating, #GVariant tuple
+ * Returns: (transfer floating): a new, floating, #GVariant tuple
  **/
 GVariant *
 ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
