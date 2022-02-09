@@ -50,7 +50,7 @@ impl GpgVerifyResult {
     #[doc(alias = "get_all")]
     pub fn all(&self, signature_index: u32) -> Option<glib::Variant> {
         unsafe {
-            from_glib_full(ffi::ostree_gpg_verify_result_get_all(self.to_glib_none().0, signature_index))
+            from_glib_none(ffi::ostree_gpg_verify_result_get_all(self.to_glib_none().0, signature_index))
         }
     }
 
