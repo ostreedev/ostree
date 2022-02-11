@@ -1141,7 +1141,7 @@ _ostree_compare_object_checksum (OstreeObjectType objtype,
  * @dir_info: a #GFileInfo containing directory information
  * @xattrs: (allow-none): Optional extended attributes
  *
- * Returns: (transfer full): A new #GVariant containing %OSTREE_OBJECT_TYPE_DIR_META
+ * Returns: (transfer full) (not nullable): A new #GVariant containing %OSTREE_OBJECT_TYPE_DIR_META
  */
 GVariant *
 ostree_create_directory_metadata (GFileInfo    *dir_info,
