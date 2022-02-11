@@ -184,7 +184,8 @@ EXTRA_DIST += \
 
 libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) \
-	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern'
+	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern' \
+	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\"
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions $(addprefix $(wl_versionscript_arg),$(symbol_files))
 libostree_1_la_LIBADD = libotutil.la libglnx.la libbsdiff.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) \
                         $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS) $(OT_DEP_CRYPTO_LIBS)
@@ -292,8 +293,12 @@ EXTRA_DIST += src/libostree/README-gpg src/libostree/bupsplit.h \
 		src/libostree/ostree-enumtypes.c.template \
 		src/libostree/ostree-deployment-private.h \
 		src/libostree/ostree-repo-deprecated.h \
-		src/libostree/ostree-version.h
+		src/libostree/ostree-version.h \
+		src/libostree/s390x-se-luks-gencpio
 
 install-mkdir-remotes-d-hook:
 	mkdir -p $(DESTDIR)$(sysconfdir)/ostree/remotes.d
 INSTALL_DATA_HOOKS += install-mkdir-remotes-d-hook
+
+# Secure Execution: script for creating new initramdisk with LUKS key and config
+pkglibexec_SCRIPTS += src/libostree/s390x-se-luks-gencpio

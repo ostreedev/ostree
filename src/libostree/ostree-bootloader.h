@@ -46,6 +46,7 @@ struct _OstreeBootloaderInterface
                                                    GCancellable  *cancellable,
                                                    GError       **error);
   gboolean             (* post_bls_sync)          (OstreeBootloader  *self,
+                                                   int bootversion,
                                                    GCancellable  *cancellable,
                                                    GError       **error);
   gboolean             (* is_atomic)              (OstreeBootloader  *self);
@@ -68,6 +69,7 @@ gboolean _ostree_bootloader_write_config (OstreeBootloader  *self,
                                           GError       **error);
 
 gboolean _ostree_bootloader_post_bls_sync (OstreeBootloader  *self,
+                                           int bootversion,
                                            GCancellable  *cancellable,
                                            GError       **error);
 
