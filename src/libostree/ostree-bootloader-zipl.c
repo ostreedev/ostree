@@ -21,7 +21,6 @@
 #include "ostree-bootloader-zipl.h"
 #include "ostree-deployment-private.h"
 #include "otutil.h"
-#include <systemd/sd-journal.h>
 #include <string.h>
 
 #define SECURE_EXECUTION_BOOT_IMAGE     "/boot/sd-boot"
@@ -177,7 +176,7 @@ _ostree_secure_execution_enable_luks(const gchar *oldramfs,
       return glnx_prefix_error(error, "s390x SE: `%s` failed", SECURE_EXECUTION_RAMDISK_TOOL);
     }
 
-  sd_journal_print(LOG_INFO, "s390x SE: luks key added to initrd");
+  ot_journal_print(LOG_INFO, "s390x SE: luks key added to initrd");
   return TRUE;
 }
 
@@ -189,9 +188,9 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz,
                                           GError **error)
 {
   g_assert (vmlinuz && initramfs && options && keys && keys->len);
-  sd_journal_print(LOG_INFO, "s390x SE: kernel: %s", vmlinuz);
-  sd_journal_print(LOG_INFO, "s390x SE: initrd: %s", initramfs);
-  sd_journal_print(LOG_INFO, "s390x SE: kargs: %s", options);
+  ot_journal_print(LOG_INFO, "s390x SE: kernel: %s", vmlinuz);
+  ot_journal_print(LOG_INFO, "s390x SE: initrd: %s", initramfs);
+  ot_journal_print(LOG_INFO, "s390x SE: kargs: %s", options);
 
   pid_t self = getpid();
 
@@ -228,7 +227,7 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz,
       gchar *key = g_ptr_array_index (keys, i);
       g_ptr_array_add (argv, "-k");
       g_ptr_array_add (argv, key);
-      sd_journal_print(LOG_INFO, "s390x SE: key[%d]: %s", i + 1, key);
+      ot_journal_print(LOG_INFO, "s390x SE: key[%d]: %s", i + 1, key);
     }
   g_ptr_array_add (argv, "--no-verify");
   g_ptr_array_add (argv, "-o");
@@ -243,7 +242,7 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz,
   if (!g_spawn_check_exit_status (status, error))
     return glnx_prefix_error(error, "s390x SE: `genprotimg` failed");
 
-  sd_journal_print(LOG_INFO, "s390x SE: `%s` generated", SECURE_EXECUTION_BOOT_IMAGE);
+  ot_journal_print(LOG_INFO, "s390x SE: `%s` generated", SECURE_EXECUTION_BOOT_IMAGE);
   return TRUE;
 }
 
@@ -259,7 +258,7 @@ _ostree_secure_execution_call_zipl (GError **error)
   if (!g_spawn_check_exit_status (status, error))
     return glnx_prefix_error(error, "s390x SE: `zipl` failed");
 
-  sd_journal_print(LOG_INFO, "s390x SE: `sd-boot` zipled");
+  ot_journal_print(LOG_INFO, "s390x SE: `sd-boot` zipled");
   return TRUE;
 }
 

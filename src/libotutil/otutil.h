@@ -23,7 +23,12 @@
 
 #include <gio/gio.h>
 #include <string.h> /* Yeah...let's just do that here. */
+#include <syslog.h>
 #include <libglnx.h>
+
+#ifdef HAVE_LIBSYSTEMD
+#include <systemd/sd-journal.h>
+#endif
 
 /* https://bugzilla.gnome.org/show_bug.cgi?id=766370 */
 #if !GLIB_CHECK_VERSION(2, 49, 3)
