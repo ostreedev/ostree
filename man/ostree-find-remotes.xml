@@ -57,7 +57,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>Description</title>
 
         <para>
-            OSTree has the ability do pulls not just from configured remote
+            OSTree has the ability to pull not just from the configured remote
             servers but also from peer computers on the LAN and from mounted
             filesystems such as USB drives. This functionality requires the use
             of collection IDs and GPG verification.
