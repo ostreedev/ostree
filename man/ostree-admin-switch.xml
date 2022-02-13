@@ -57,7 +57,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>Description</title>
 
         <para>
-            Choose a different REF forom the current remote to track.  This is the ref that will be "tracked" and upgraded with <command>ostree admin upgrade</command>.  Like an upgrade, the operating system state will be preserved.
+            Choose a different REF from the current remote to track.  This is the ref that will be "tracked" and upgraded with <command>ostree admin upgrade</command>.  Like an upgrade, the operating system state will be preserved.
         </para>
     </refsect1>
 
