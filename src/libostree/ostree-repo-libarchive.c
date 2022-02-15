@@ -364,6 +364,7 @@ aic_ensure_parent_dir (OstreeRepoArchiveImportContext *ctx,
                        GCancellable        *cancellable,
                        GError             **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to create parent", error);
   /* Who should own the parent dir? Since it's not in the archive, it's up to
    * us. Here, we use the heuristic of simply creating it as the same user as
    * the owner of the archive entry for which we're creating the dir. This is OK
@@ -452,6 +453,7 @@ aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
                 GCancellable       *cancellable,
                 GError            **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to get xattrs", error);
   g_autofree char *abspath = g_build_filename ("/", path, NULL);
   g_autoptr(GVariant) xattrs = NULL;
   const char *cb_path = abspath;
@@ -526,6 +528,7 @@ aic_handle_dir (OstreeRepoArchiveImportContext *ctx,
                 GCancellable       *cancellable,
                 GError            **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to handle directory", error);
   const char *name = glnx_basename (path);
   g_autoptr(GVariant) xattrs = NULL;
 
@@ -575,6 +578,7 @@ aic_import_file (OstreeRepoArchiveImportContext *ctx,
                  GCancellable       *cancellable,
                  GError            **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to import file", error);
   const char *name = glnx_basename (path);
   g_autoptr(GVariant) xattrs = NULL;
   g_autofree char *csum = NULL;
@@ -631,6 +635,7 @@ aic_handle_file (OstreeRepoArchiveImportContext *ctx,
                  GCancellable       *cancellable,
                  GError            **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to handle file", error);
   /* The wonderful world of hardlinks and archives. We have to be very careful
    * here. Do not assume that if a file is a hardlink, it will have size 0 (e.g.
    * cpio). Do not assume that if a file will have hardlinks to it, it will have
@@ -784,10 +789,10 @@ aic_import_deferred_hardlinks_for (OstreeRepoArchiveImportContext *ctx,
   /* rewrite the target so it points to the csum of the payload hardlink */
   if (payload)
     if (!aic_import_from_hardlink (ctx, target, payload->data, error))
-      return FALSE;
+      return glnx_prefix_error (error, "Failed importing hardlink");
 
   if (!aic_lookup_file_csum (ctx, target, &csum, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Failed to find object");
 
   /* import all the hardlinks */
   for (GSList *hl = hardlinks; hl != NULL; hl = g_slist_next (hl))
@@ -799,7 +804,7 @@ aic_import_deferred_hardlinks_for (OstreeRepoArchiveImportContext *ctx,
         continue; /* small optimization; no need to redo this one */
 
       if (!ostree_mutable_tree_replace_file (df->parent, name, csum, error))
-        return FALSE;
+        return glnx_prefix_error (error, "Failed to replace file");
     }
 
   return TRUE;
@@ -813,7 +818,7 @@ aic_import_deferred_hardlinks (OstreeRepoArchiveImportContext *ctx,
   GLNX_HASH_TABLE_FOREACH_KV (ctx->deferred_hardlinks, const char*, target, GSList*, links)
     {
       if (!aic_import_deferred_hardlinks_for (ctx, target, links, error))
-        return FALSE;
+        return glnx_prefix_error (error, "ostree-tar: Processing deferred hardlink %s", target);
     }
   return TRUE;
 }
