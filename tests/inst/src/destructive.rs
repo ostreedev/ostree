@@ -463,6 +463,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             "
             systemctl stop rpm-ostreed
             systemctl stop ostree-finalize-staged
+            systemctl stop ostree-finalize-staged-hold
             ostree reset testrepo:${testref} ${booted_commit}
             rpm-ostree cleanup -pbrm
             ",
@@ -504,7 +505,8 @@ fn impl_transaction_test<M: AsRef<str>>(
                 InterruptStrategy::Force(ForceInterruptStrategy::Kill9) => {
                     bash!(
                         "systemctl kill -s KILL rpm-ostreed || true
-                      systemctl kill -s KILL ostree-finalize-staged || true"
+                      systemctl kill -s KILL ostree-finalize-staged || true
+                      systemctl kill -s KILL ostree-finalize-staged-hold || true"
                     )?;
                     live_strategy = Some(strategy);
                 }
@@ -528,7 +530,8 @@ fn impl_transaction_test<M: AsRef<str>>(
                 InterruptStrategy::Polite(PoliteInterruptStrategy::Stop) => {
                     bash!(
                         "systemctl stop rpm-ostreed || true
-                      systemctl stop ostree-finalize-staged || true"
+                      systemctl stop ostree-finalize-staged || true
+                      systemctl stop ostree-finalize-staged-hold || true"
                     )?;
                     live_strategy = Some(strategy);
                 }

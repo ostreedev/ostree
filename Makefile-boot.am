@@ -41,6 +41,7 @@ systemdsystemunit_DATA = src/boot/ostree-prepare-root.service \
 	src/boot/ostree-boot-complete.service \
 	src/boot/ostree-finalize-staged.service \
 	src/boot/ostree-finalize-staged.path \
+	src/boot/ostree-finalize-staged-hold.service \
 	$(NULL)
 systemdtmpfilesdir = $(prefix)/lib/tmpfiles.d
 dist_systemdtmpfiles_DATA = src/boot/ostree-tmpfiles.conf
@@ -70,6 +71,7 @@ EXTRA_DIST += src/boot/dracut/module-setup.sh \
 	src/boot/ostree-finalize-staged.path \
 	src/boot/ostree-remount.service \
 	src/boot/ostree-finalize-staged.service \
+	src/boot/ostree-finalize-staged-hold.service \
 	src/boot/grub2/grub2-15_ostree \
 	src/boot/grub2/ostree-grub-generator \
 	$(NULL)
