@@ -29,7 +29,7 @@ extraction:
       - "libfuse-dev"
       - "libgirepository1.0-dev"
       - "libglib2.0-dev"
-      - "libgpgme11-dev"
+      - "libgpgme-dev"
       - "liblzma-dev"
       - "libmount-dev"
       - "libselinux1-dev"
