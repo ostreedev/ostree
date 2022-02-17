@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -55,8 +56,8 @@ ostree_repo_file_finalize (GObject *object)
 
   self = OSTREE_REPO_FILE (object);
 
-  g_clear_pointer (&self->tree_contents, (GDestroyNotify) g_variant_unref);
-  g_clear_pointer (&self->tree_metadata, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&self->tree_contents, g_variant_unref);
+  g_clear_pointer (&self->tree_metadata, g_variant_unref);
   g_free (self->cached_file_checksum);
   g_free (self->tree_contents_checksum);
   g_free (self->tree_metadata_checksum);
@@ -236,7 +237,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
 
       files_variant = g_variant_get_child_value (self->parent->tree_contents, 0);
       self->index = g_variant_n_children (files_variant) + i;
-      g_clear_pointer (&files_variant, (GDestroyNotify) g_variant_unref);
+      g_clear_pointer (&files_variant, g_variant_unref);
 
       g_variant_get_child (container, i, "(&s@ay@ay)",
                            &name, &contents_csum_v, &metadata_csum_v);
@@ -337,7 +338,7 @@ ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                      const char     *checksum,
                                      GVariant       *metadata)
 {
-  g_clear_pointer (&self->tree_metadata, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&self->tree_metadata, g_variant_unref);
   self->tree_metadata = g_variant_ref (metadata);
   g_free (self->tree_metadata_checksum);
   self->tree_metadata_checksum = g_strdup (checksum);
@@ -414,8 +415,8 @@ ostree_repo_file_get_checksum (OstreeRepoFile  *self)
       g_variant_get_child (files_variant, n,
                            "(@s@ay)", NULL, &csum_bytes);
     }
-  g_clear_pointer (&files_variant, (GDestroyNotify) g_variant_unref);
-  g_clear_pointer (&dirs_variant, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&files_variant, g_variant_unref);
+  g_clear_pointer (&dirs_variant, g_variant_unref);
 
   self->cached_file_checksum = ostree_checksum_from_bytes_v (csum_bytes);
 
@@ -775,9 +776,9 @@ ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
       *out_container = ret_container;
       ret_container = NULL;
     }
-  g_clear_pointer (&ret_container, (GDestroyNotify) g_variant_unref);
-  g_clear_pointer (&files_variant, (GDestroyNotify) g_variant_unref);
-  g_clear_pointer (&dirs_variant, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&ret_container, g_variant_unref);
+  g_clear_pointer (&files_variant, g_variant_unref);
+  g_clear_pointer (&dirs_variant, g_variant_unref);
   return i;
 }
 
@@ -969,7 +970,7 @@ ostree_repo_file_read (GFile         *file,
       return g_file_read (dest, cancellable, error);
     }
 
-  return g_steal_pointer (&ret_stream);
+  return (GFileInputStream *)g_steal_pointer (&ret_stream);
 }
 
 static void

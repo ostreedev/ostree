@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -153,7 +154,7 @@ thread_closure_unref (ThreadClosure *thread_closure)
 
       g_clear_pointer (&thread_closure->main_context, g_main_context_unref);
 
-      g_clear_pointer (&thread_closure->extra_headers, (GDestroyNotify)g_variant_unref);
+      g_clear_pointer (&thread_closure->extra_headers, g_variant_unref);
 
       g_clear_pointer (&thread_closure->output_stream_set, g_hash_table_unref);
       g_mutex_clear (&thread_closure->output_stream_set_lock);
@@ -329,7 +330,7 @@ session_thread_set_headers_cb (ThreadClosure *thread_closure,
 {
   GVariant *headers = data;
 
-  g_clear_pointer (&thread_closure->extra_headers, (GDestroyNotify)g_variant_unref);
+  g_clear_pointer (&thread_closure->extra_headers, g_variant_unref);
   thread_closure->extra_headers = g_variant_ref (headers);
 }
 
@@ -431,11 +432,15 @@ create_pending_soup_request (OstreeFetcherPendingURI  *pending,
   next_mirror = g_ptr_array_index (pending->mirrorlist, pending->mirrorlist_idx);
   if (pending->filename)
     uri = _ostree_fetcher_uri_new_subpath (next_mirror, pending->filename);
+  if (!uri)
+    uri = (OstreeFetcherURI*)g_uri_ref ((GUri*)next_mirror);
 
   g_clear_object (&pending->request);
 
-  pending->request = soup_session_request_uri (pending->thread_closure->session,
-                                               (SoupURI*)(uri ? uri : next_mirror), error);
+  {
+    g_autofree gchar *uri_str = g_uri_to_string ((GUri*)uri);
+    pending->request = soup_session_request (pending->thread_closure->session, uri_str, error);
+  }
 
   /* Add caching headers. */
   if (SOUP_IS_REQUEST_HTTP (pending->request) && pending->if_none_match != NULL)

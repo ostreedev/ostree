@@ -1,5 +1,6 @@
 /*
  * Copyright © 2017 Endless Mobile, Inc.
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -136,7 +137,7 @@ ostree_mock_volume_monitor_new (GList *mounts,
   monitor->mounts = g_list_copy_deep (mounts, (GCopyFunc) g_object_ref, NULL);
   monitor->volumes = g_list_copy_deep (volumes, (GCopyFunc) g_object_ref, NULL);
 
-  return g_steal_pointer (&monitor);
+  return (GVolumeMonitor *)g_steal_pointer (&monitor);
 }
 
 /* Mock volume class. This returns a static set of data to the caller, which it

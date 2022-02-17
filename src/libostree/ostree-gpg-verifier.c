@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  * Copyright (C) 2013 Sjoerd Simons <sjoerd.simons@collabora.co.uk>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -53,7 +54,7 @@ ostree_gpg_verifier_finalize (GObject *object)
   g_list_free_full (self->keyrings, g_object_unref);
   if (self->key_ascii_files)
     g_ptr_array_unref (self->key_ascii_files);
-  g_clear_pointer (&self->keyring_data, (GDestroyNotify)g_ptr_array_unref);
+  g_clear_pointer (&self->keyring_data, g_ptr_array_unref);
 
   G_OBJECT_CLASS (_ostree_gpg_verifier_parent_class)->finalize (object);
 }

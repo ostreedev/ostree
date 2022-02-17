@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011,2017 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -21,15 +22,7 @@
 
 #include "config.h"
 
-
-#ifdef HAVE_LIBCURL
-#include "ostree-soup-uri.h"
-#else
-#define LIBSOUP_USE_UNSTABLE_REQUEST_API
-#include <libsoup/soup.h>
-#include <libsoup/soup-requester.h>
-#include <libsoup/soup-request-http.h>
-#endif
+#include <glib.h>
 
 #include "ostree-fetcher.h"
 
@@ -39,21 +32,52 @@ void
 _ostree_fetcher_uri_free (OstreeFetcherURI *uri)
 {
   if (uri)
-    soup_uri_free ((SoupURI*)uri);
+    g_uri_unref ((GUri*)uri);
 }
 
 OstreeFetcherURI *
 _ostree_fetcher_uri_parse (const char       *str,
                            GError          **error)
 {
-  SoupURI *soupuri = soup_uri_new (str);
-  if (soupuri == NULL)
+  GUri *uri = NULL;
+#if GLIB_CHECK_VERSION(2, 68, 0)
+  uri = g_uri_parse (str, G_URI_FLAGS_HAS_PASSWORD | G_URI_FLAGS_ENCODED | G_URI_FLAGS_SCHEME_NORMALIZE, error);
+#else
+  /* perform manual scheme normalization for older glib */
+  uri = g_uri_parse (str, G_URI_FLAGS_HAS_PASSWORD | G_URI_FLAGS_ENCODED, error);
+  if (uri)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Failed to parse uri: %s", str);
-      return NULL;
+      GUri *nuri = NULL;
+      switch (g_uri_get_port (uri))
+        {
+          case 21:
+            if (!strcmp (g_uri_get_scheme (uri), "ftp"))
+              break;
+            return (OstreeFetcherURI*)uri;
+          case 80:
+            if (!strcmp (g_uri_get_scheme (uri), "http"))
+              break;
+            return (OstreeFetcherURI*)uri;
+          case 443:
+            if (!strcmp (g_uri_get_scheme (uri), "https"))
+              break;
+            return (OstreeFetcherURI*)uri;
+          default:
+            return (OstreeFetcherURI*)uri;
+        }
+      nuri = g_uri_build_with_user (g_uri_get_flags (uri), "http",
+                                    g_uri_get_user (uri),
+                                    g_uri_get_password (uri),
+                                    NULL,
+                                    g_uri_get_host (uri), -1,
+                                    g_uri_get_path (uri),
+                                    g_uri_get_query (uri),
+                                    g_uri_get_fragment (uri));
+      g_uri_unref (uri);
+      uri = nuri;
     }
-  return (OstreeFetcherURI*)soupuri;
+#endif
+  return (OstreeFetcherURI*)uri;
 }
 
 static OstreeFetcherURI *
@@ -61,21 +85,31 @@ _ostree_fetcher_uri_new_path_internal (OstreeFetcherURI *uri,
                                        gboolean          extend,
                                        const char       *path)
 {
-  SoupURI *newuri = soup_uri_copy ((SoupURI*)uri);
+  GUri *guri = (GUri*)uri;
+  const char *opath = g_uri_get_path (guri);
+  g_autofree char *newpath = NULL;
   if (path)
     {
       if (extend)
         {
-          const char *origpath = soup_uri_get_path ((SoupURI*)uri);
-          g_autofree char *newpath = g_build_filename (origpath, path, NULL);
-          soup_uri_set_path (newuri, newpath);
+          newpath = g_build_filename (opath, path, NULL);
+          opath = newpath;
         }
       else
         {
-          soup_uri_set_path (newuri, path);
+          opath = path;
         }
     }
-  return (OstreeFetcherURI*)newuri;
+  return (OstreeFetcherURI*)g_uri_build_with_user (g_uri_get_flags (guri),
+                                                   g_uri_get_scheme (guri),
+                                                   g_uri_get_user (guri),
+                                                   g_uri_get_password (guri),
+                                                   NULL,
+                                                   g_uri_get_host (guri),
+                                                   g_uri_get_port (guri),
+                                                   opath,
+                                                   g_uri_get_query (guri),
+                                                   g_uri_get_fragment (guri));
 }
 
 OstreeFetcherURI *
@@ -101,19 +135,19 @@ _ostree_fetcher_uri_clone (OstreeFetcherURI *uri)
 char *
 _ostree_fetcher_uri_get_scheme (OstreeFetcherURI *uri)
 {
-  return g_strdup (soup_uri_get_scheme ((SoupURI*)uri));
+  return g_strdup (g_uri_get_scheme ((GUri*)uri));
 }
 
 char *
 _ostree_fetcher_uri_get_path (OstreeFetcherURI *uri)
 {
-  return g_strdup (soup_uri_get_path ((SoupURI*)uri));
+  return g_strdup (g_uri_get_path ((GUri*)uri));
 }
 
 char *
 _ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
 {
-  return soup_uri_to_string ((SoupURI*)uri, FALSE);
+  return g_uri_to_string_partial ((GUri*)uri, G_URI_HIDE_PASSWORD);
 }
 
 
@@ -124,7 +158,7 @@ _ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
 gboolean
 _ostree_fetcher_uri_validate (OstreeFetcherURI *uri, GError **error) 
 {
-  const char *scheme = soup_uri_get_scheme ((SoupURI*)uri);
+  const char *scheme = g_uri_get_scheme ((GUri*)uri);
   // TODO only allow file if explicitly requested by a higher level
   if (!(g_str_equal (scheme, "http") || g_str_equal (scheme, "https") || g_str_equal (scheme, "file")))
     {

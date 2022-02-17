@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -124,7 +125,7 @@ _ostree_fetcher_mirrored_request_to_membuf_once  (OstreeFetcher              *fe
  out:
   if (mainctx)
     g_main_context_pop_thread_default (mainctx);
-  g_clear_pointer (&data.result_buf, (GDestroyNotify)g_bytes_unref);
+  g_clear_pointer (&data.result_buf, g_bytes_unref);
   g_clear_pointer (&data.result_etag, g_free);
   return ret;
 }

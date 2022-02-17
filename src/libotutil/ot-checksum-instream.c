@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2017 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -22,11 +23,11 @@
 #include "ot-checksum-instream.h"
 #include "ot-checksum-utils.h"
 
-G_DEFINE_TYPE (OtChecksumInstream, ot_checksum_instream, G_TYPE_FILTER_INPUT_STREAM)
-
 struct _OtChecksumInstreamPrivate {
   OtChecksum checksum;
 };
+
+G_DEFINE_TYPE_WITH_PRIVATE (OtChecksumInstream, ot_checksum_instream, G_TYPE_FILTER_INPUT_STREAM)
 
 static gssize   ot_checksum_instream_read         (GInputStream         *stream,
                                                            void                 *buffer,
@@ -50,8 +51,6 @@ ot_checksum_instream_class_init (OtChecksumInstreamClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GInputStreamClass *stream_class = G_INPUT_STREAM_CLASS (klass);
 
-  g_type_class_add_private (klass, sizeof (OtChecksumInstreamPrivate));
-
   object_class->finalize = ot_checksum_instream_finalize;
   stream_class->read_fn = ot_checksum_instream_read;
 }
@@ -59,7 +58,7 @@ ot_checksum_instream_class_init (OtChecksumInstreamClass *klass)
 static void
 ot_checksum_instream_init (OtChecksumInstream *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, OT_TYPE_CHECKSUM_INSTREAM, OtChecksumInstreamPrivate);
+  self->priv = ot_checksum_instream_get_instance_private (self);
 }
 
 OtChecksumInstream *

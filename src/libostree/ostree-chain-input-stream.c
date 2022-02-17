@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -26,12 +27,12 @@ enum {
   PROP_STREAMS
 };
 
-G_DEFINE_TYPE (OstreeChainInputStream, ostree_chain_input_stream, G_TYPE_INPUT_STREAM)
-
 struct _OstreeChainInputStreamPrivate {
   GPtrArray *streams;
   guint index;
 };
+
+G_DEFINE_TYPE_WITH_PRIVATE (OstreeChainInputStream, ostree_chain_input_stream, G_TYPE_INPUT_STREAM)
 
 static void     ostree_chain_input_stream_set_property (GObject              *object,
                                                            guint                 prop_id,
@@ -56,8 +57,6 @@ ostree_chain_input_stream_class_init (OstreeChainInputStreamClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GInputStreamClass *stream_class = G_INPUT_STREAM_CLASS (klass);
-  
-  g_type_class_add_private (klass, sizeof (OstreeChainInputStreamPrivate));
 
   gobject_class->get_property = ostree_chain_input_stream_get_property;
   gobject_class->set_property = ostree_chain_input_stream_set_property;
@@ -137,9 +136,7 @@ ostree_chain_input_stream_finalize (GObject *object)
 static void
 ostree_chain_input_stream_init (OstreeChainInputStream *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-					    OSTREE_TYPE_CHAIN_INPUT_STREAM,
-					    OstreeChainInputStreamPrivate);
+  self->priv = ostree_chain_input_stream_get_instance_private (self);
 
 }
 

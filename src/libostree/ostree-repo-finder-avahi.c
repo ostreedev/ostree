@@ -1,6 +1,7 @@
 /*
  * Copyright © 2016 Kinvolk GmbH
  * Copyright © 2017 Endless Mobile, Inc.
+ * Copyright © 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -53,7 +54,6 @@
 #include "ostree-repo-private.h"
 #include "ostree-repo.h"
 #include "ostree-repo-finder-avahi-private.h"
-#include "ostree-soup-uri.h"
 #include "otutil.h"
 #endif  /* HAVE_AVAHI */
 
@@ -490,7 +490,7 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
         return FALSE;
     }
 
-  g_clear_pointer (&ref_map, (GDestroyNotify) g_variant_iter_free);
+  g_clear_pointer (&ref_map, g_variant_iter_free);
 
   /* Repeat for the other collections listed in the summary. */
   if (g_variant_dict_lookup (&additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP, "a{sa(s(taya{sv}))}", &collection_map))
@@ -705,7 +705,7 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
   g_autoptr(GVariant) repo_index = NULL;
   g_autofree gchar *repo_path = NULL;
   g_autoptr(GPtrArray) possible_refs = NULL; /* (element-type OstreeCollectionRef) */
-  SoupURI *_uri = NULL;
+  GUri *_uri = NULL;
   g_autofree gchar *uri = NULL;
   g_autoptr(GError) error = NULL;
   gsize i;
@@ -772,13 +772,9 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
   repo_to_refs = g_hash_table_new_full (uri_and_keyring_hash, uri_and_keyring_equal,
                                         (GDestroyNotify) uri_and_keyring_free, (GDestroyNotify) g_hash_table_unref);
 
-  _uri = soup_uri_new (NULL);
-  soup_uri_set_scheme (_uri, "http");
-  soup_uri_set_host (_uri, service->address);
-  soup_uri_set_port (_uri, service->port);
-  soup_uri_set_path (_uri, repo_path);
-  uri = soup_uri_to_string (_uri, FALSE);
-  soup_uri_free (_uri);
+  _uri = g_uri_build (G_URI_FLAGS_ENCODED, "http", NULL, service->address, service->port, repo_path, NULL, NULL);
+  uri = g_uri_to_string (_uri);
+  g_uri_unref (_uri);
 
   for (i = 0; i < possible_refs->len; i++)
     {

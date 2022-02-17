@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Red Hat, Inc.
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -129,7 +130,7 @@ ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
         goto out;
 
       /* Sneaky cast from GFileOutputStream to GOutputStream. */
-      *out_pubring_stream = g_steal_pointer (&pubring_stream);
+      *out_pubring_stream = (GOutputStream *)g_steal_pointer (&pubring_stream);
     }
 
   if (out_tmp_home_dir != NULL)

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -49,8 +50,6 @@
 #include "ostree-enumtypes.h"
 #include "ostree-repo-private.h"
 #include "otutil.h"
-
-#include "ostree-soup-uri.h"
 
 typedef struct FetcherRequest FetcherRequest;
 typedef struct SockInfo SockInfo;
@@ -183,13 +182,13 @@ _ostree_fetcher_finalize (GObject *object)
   g_free (self->cookie_jar_path);
   g_free (self->proxy);
   g_assert_cmpint (g_hash_table_size (self->outstanding_requests), ==, 0);
-  g_clear_pointer (&self->extra_headers, (GDestroyNotify)curl_slist_free_all);
+  g_clear_pointer (&self->extra_headers, curl_slist_free_all);
   g_hash_table_unref (self->outstanding_requests);
   g_hash_table_unref (self->sockets);
-  g_clear_pointer (&self->timer_event, (GDestroyNotify)destroy_and_unref_source);
+  g_clear_pointer (&self->timer_event, destroy_and_unref_source);
   if (self->mainctx)
     g_main_context_unref (self->mainctx);
-  g_clear_pointer (&self->custom_user_agent, (GDestroyNotify)g_free);
+  g_clear_pointer (&self->custom_user_agent, g_free);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
@@ -266,11 +265,11 @@ destroy_and_unref_source (GSource *source)
 }
 
 static char *
-request_get_uri (FetcherRequest *req, SoupURI *baseuri)
+request_get_uri (FetcherRequest *req, GUri *baseuri)
 {
   if (!req->filename)
-    return soup_uri_to_string (baseuri, FALSE);
-  { g_autofree char *uristr = soup_uri_to_string (baseuri, FALSE);
+    return g_uri_to_string_partial (baseuri, G_URI_HIDE_PASSWORD);
+  { g_autofree char *uristr =  g_uri_to_string_partial (baseuri, G_URI_HIDE_PASSWORD);
     return g_build_filename (uristr, req->filename, NULL);
   }
 }
@@ -424,7 +423,7 @@ static gboolean
 timer_cb (gpointer data)
 {
   OstreeFetcher *fetcher = data;
-  g_clear_pointer (&fetcher->timer_event, (GDestroyNotify)destroy_and_unref_source);
+  g_clear_pointer (&fetcher->timer_event, destroy_and_unref_source);
   (void)curl_multi_socket_action (fetcher->multi, CURL_SOCKET_TIMEOUT, 0, &fetcher->curl_running);
   check_multi_info (fetcher);
 
@@ -437,7 +436,7 @@ update_timeout_cb (CURLM *multi, long timeout_ms, void *userp)
 {
   OstreeFetcher *fetcher = userp;
 
-  g_clear_pointer (&fetcher->timer_event, (GDestroyNotify)destroy_and_unref_source);
+  g_clear_pointer (&fetcher->timer_event, destroy_and_unref_source);
 
   if (timeout_ms != -1)
     {
@@ -479,7 +478,7 @@ sock_unref (SockInfo *f)
     return;
   if (--f->refcount != 0)
     return;
-  g_clear_pointer (&f->ch, (GDestroyNotify)destroy_and_unref_source);
+  g_clear_pointer (&f->ch, destroy_and_unref_source);
   g_free (f);
 }
 
@@ -492,7 +491,7 @@ setsock (SockInfo*f, curl_socket_t s, int act, OstreeFetcher *fetcher)
 
   f->sockfd = s;
   f->action = act;
-  g_clear_pointer (&f->ch, (GDestroyNotify)destroy_and_unref_source);
+  g_clear_pointer (&f->ch, destroy_and_unref_source);
   /* TODO - investigate new g_source_modify_unix_fd() so changing the poll
    * flags involves less allocation.
    */
@@ -648,7 +647,7 @@ request_unref (FetcherRequest *req)
     g_string_free (req->output_buf, TRUE);
   g_free (req->if_none_match);
   g_free (req->out_etag);
-  g_clear_pointer (&req->req_headers, (GDestroyNotify)curl_slist_free_all);
+  g_clear_pointer (&req->req_headers, curl_slist_free_all);
   curl_easy_cleanup (req->easy);
 
   g_free (req);
@@ -705,7 +704,7 @@ _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
   const char *key;
   const char *value;
 
-  g_clear_pointer (&self->extra_headers, (GDestroyNotify)curl_slist_free_all);
+  g_clear_pointer (&self->extra_headers, curl_slist_free_all);
 
   g_variant_iter_init (&viter, extra_headers);
   while (g_variant_iter_loop (&viter, "(&s&s)", &key, &value))
@@ -719,7 +718,7 @@ void
 _ostree_fetcher_set_extra_user_agent (OstreeFetcher *self,
                                       const char    *extra_user_agent)
 {
-  g_clear_pointer (&self->custom_user_agent, (GDestroyNotify)g_free);
+  g_clear_pointer (&self->custom_user_agent, g_free);
   if (extra_user_agent)
     {
       self->custom_user_agent =
@@ -763,7 +762,7 @@ initiate_next_curl_request (FetcherRequest *req,
 
   g_assert_cmpint (req->idx, <, req->mirrorlist->len);
 
-  SoupURI *baseuri = req->mirrorlist->pdata[req->idx];
+  GUri *baseuri = req->mirrorlist->pdata[req->idx];
   { g_autofree char *uri = request_get_uri (req, baseuri);
     curl_easy_setopt (req->easy, CURLOPT_URL, uri);
   }
@@ -842,9 +841,9 @@ initiate_next_curl_request (FetcherRequest *req,
     curl_easy_setopt (req->easy, CURLOPT_ACCEPT_ENCODING, "");
 
   /* If we have e.g. basic auth in the URL string, let's honor that */
-  const char *username = soup_uri_get_user (baseuri);
+  const char *username = g_uri_get_user (baseuri);
   curl_easy_setopt (req->easy, CURLOPT_USERNAME, username);
-  const char *password = soup_uri_get_password (baseuri);
+  const char *password = g_uri_get_password (baseuri);
   curl_easy_setopt (req->easy, CURLOPT_PASSWORD, password);
 
   /* We should only speak HTTP; TODO: only enable file if specified */

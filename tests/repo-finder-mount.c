@@ -1,5 +1,6 @@
 /*
  * Copyright © 2017 Endless Mobile, Inc.
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -47,7 +48,7 @@ result_cb (GObject      *source_object,
 static void
 collection_ref_free0 (OstreeCollectionRef *ref)
 {
-  g_clear_pointer (&ref, (GDestroyNotify) ostree_collection_ref_free);
+  g_clear_pointer (&ref, ostree_collection_ref_free);
 }
 
 int

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -82,7 +83,7 @@ ostree_sysroot_finalize (GObject *object)
   g_clear_pointer (&self->deployments, g_ptr_array_unref);
   g_clear_object (&self->booted_deployment);
   g_clear_object (&self->staged_deployment);
-  g_clear_pointer (&self->staged_deployment_data, (GDestroyNotify)g_variant_unref);
+  g_clear_pointer (&self->staged_deployment_data, g_variant_unref);
 
   glnx_release_lock_file (&self->lock);
 
@@ -1016,7 +1017,7 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self,
   g_assert (self->booted_deployment);
 
   g_clear_object (&self->staged_deployment);
-  g_clear_pointer (&self->staged_deployment_data, (GDestroyNotify)g_variant_unref);
+  g_clear_pointer (&self->staged_deployment_data, g_variant_unref);
 
   /* Read the staged state from disk */
   glnx_autofd int fd = -1;

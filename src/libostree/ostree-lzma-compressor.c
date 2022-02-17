@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2014 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -66,7 +67,7 @@ _ostree_lzma_compressor_finalize (GObject *object)
   OstreeLzmaCompressor *self = OSTREE_LZMA_COMPRESSOR (object);
 
   lzma_end (&self->lstream);
-  g_clear_pointer (&self->params, (GDestroyNotify)g_variant_unref);
+  g_clear_pointer (&self->params, g_variant_unref);
 
   G_OBJECT_CLASS (_ostree_lzma_compressor_parent_class)->finalize (object);
 }
