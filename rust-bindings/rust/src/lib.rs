@@ -47,6 +47,8 @@ mod collection_ref;
 pub use crate::collection_ref::*;
 mod functions;
 pub use crate::functions::*;
+mod mutable_tree;
+pub use crate::mutable_tree::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 mod kernel_args;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]

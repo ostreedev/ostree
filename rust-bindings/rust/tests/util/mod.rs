@@ -50,6 +50,8 @@ impl CapTestRepo {
 
 pub fn create_mtree(repo: &ostree::Repo) -> ostree::MutableTree {
     let mtree = ostree::MutableTree::new();
+    assert_eq!(mtree.copy_files().len(), 0);
+    assert_eq!(mtree.copy_subdirs().len(), 0);
     let file = gio::File::for_path(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
