@@ -149,6 +149,21 @@ AS_IF([test x$enable_http2 != xno ], [
   OSTREE_FEATURES="$OSTREE_FEATURES no-http2"
 ])
 
+SOUP3_DEPENDENCY="libsoup-3.0 >= 3.0.0"
+AC_ARG_WITH(soup3,
+	    AS_HELP_STRING([--with-soup3], [Use libsoup3 @<:@default=no@:>@]),
+	    [], [with_soup3=no])
+AS_IF([test x$with_soup3 != xno], [
+    PKG_CHECK_MODULES(OT_DEP_SOUP3, $SOUP3_DEPENDENCY)
+    with_soup3=yes
+    AC_DEFINE([HAVE_LIBSOUP3], 1, [Define if we have libsoup3])
+    OSTREE_FEATURES="$OSTREE_FEATURES libsoup3"
+    with_soup_default=no
+    dnl soup3 always supports client certs
+    have_libsoup_client_certs=yes
+], [with_soup_default=check])
+AM_CONDITIONAL(USE_LIBSOUP3, test x$with_soup3 != xno)
+
 dnl When bumping the libsoup-2.4 dependency, remember to bump
 dnl SOUP_VERSION_MIN_REQUIRED and SOUP_VERSION_MAX_ALLOWED in
 dnl Makefile.am
@@ -180,7 +195,7 @@ AS_IF([test x$with_soup != xno], [
         ], [], [#include <libsoup/soup.h>])
     AS_IF([test x$enable_libsoup_client_certs = xyes && test x$have_libsoup_client_certs != xyes], [
       AC_MSG_ERROR([libsoup client certs explicitly requested but not found])
-    ]) 
+    ])
     CFLAGS=$save_CFLAGS
   ], [
     with_soup=no
@@ -190,6 +205,13 @@ if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 AM_CONDITIONAL(HAVE_LIBSOUP_CLIENT_CERTS, test x$have_libsoup_client_certs = xyes)
 
+dnl Some components use either soup2 or soup3.
+AM_CONDITIONAL([USE_LIBSOUP_OR_LIBSOUP3],
+               [test x$with_soup = xyes || test x$with_soup3 = xyes])
+AS_IF([test x$with_soup = xyes || test x$with_soup3 = xyes], [
+  AC_DEFINE([HAVE_LIBSOUP_OR_LIBSOUP3], 1, [Define if we have libsoup.pc or libsoup3.pc])
+])
+
 AC_ARG_ENABLE(trivial-httpd-cmdline,
   [AS_HELP_STRING([--enable-trivial-httpd-cmdline],
   [Continue to support "ostree trivial-httpd" [default=no]])],,
@@ -198,13 +220,16 @@ AS_IF([test x$enable_trivial_httpd_cmdline = xyes],
   [AC_DEFINE([BUILDOPT_ENABLE_TRIVIAL_HTTPD_CMDLINE], 1, [Define if we are enabling ostree trivial-httpd entrypoint])]
 )
 
-AS_IF([test x$with_curl = xyes && test x$with_soup = xno], [
+AS_IF([test x$with_curl = xyes && test x$with_soup = xno && test x$with_soup3 = xno], [
   AC_MSG_WARN([Curl enabled, but libsoup is not; libsoup is needed for tests (make check, etc.)])
 ])
-AM_CONDITIONAL(USE_CURL_OR_SOUP, test x$with_curl != xno || test x$with_soup != xno)
-AS_IF([test x$with_curl != xno || test x$with_soup != xno],
+AM_CONDITIONAL(USE_CURL_OR_SOUP, test x$with_curl != xno || test x$with_soup != xno || test x$with_soup3 != xno)
+AS_IF([test x$with_curl != xno || test x$with_soup != xno || test x$with_soup3 != xno],
             [AC_DEFINE([HAVE_LIBCURL_OR_LIBSOUP], 1, [Define if we have soup or curl])])
-AS_IF([test x$with_curl = xyes], [fetcher_backend=curl], [test x$with_soup = xyes], [fetcher_backend=libsoup], [fetcher_backend=none])
+AS_IF([test x$with_curl = xyes], [fetcher_backend=curl],
+      [test x$with_soup = xyes], [fetcher_backend=libsoup],
+      [test x$with_soup3 = xyes], [fetcher_backend=libsoup3],
+      [fetcher_backend=none])
 
 m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
   GOBJECT_INTROSPECTION_CHECK([1.51.5])

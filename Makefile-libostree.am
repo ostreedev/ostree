@@ -221,16 +221,23 @@ libostree_1_la_SOURCES += \
 	$(NULL)
 endif
 
+# Only enable one fetcher backend.
 if USE_CURL
 libostree_1_la_SOURCES += src/libostree/ostree-fetcher-curl.c \
   $(NULL)
 libostree_1_la_CFLAGS += $(OT_DEP_CURL_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_CURL_LIBS)
 else
+if USE_LIBSOUP3
+libostree_1_la_SOURCES += src/libostree/ostree-fetcher-soup3.c
+libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
+libostree_1_la_LIBADD += $(OT_INTERNAL_SOUP_LIBS)
+else
 if USE_LIBSOUP
 libostree_1_la_SOURCES += src/libostree/ostree-fetcher-soup.c
 libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 libostree_1_la_LIBADD += $(OT_INTERNAL_SOUP_LIBS)
+endif
 endif
 endif
 

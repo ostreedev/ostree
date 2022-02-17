@@ -185,7 +185,7 @@ else
 EXTRA_DIST += tests/test-rofiles-fuse.sh
 endif
 
-if USE_LIBSOUP
+if USE_LIBSOUP_OR_LIBSOUP3
 _installed_or_uninstalled_test_scripts += tests/test-remote-cookies.sh
 endif
 
@@ -438,7 +438,7 @@ dist_test_scripts += $(_installed_or_uninstalled_test_scripts)
 test_programs += $(_installed_or_uninstalled_test_programs)
 endif
 
-if !USE_LIBSOUP
+if !USE_LIBSOUP_OR_LIBSOUP3
 no-soup-for-you-warning:
 	@echo "WARNING: $(PACKAGE) was built without libsoup, which is currently" 1>&2
 	@echo "WARNING: required for many unit tests." 1>&2
