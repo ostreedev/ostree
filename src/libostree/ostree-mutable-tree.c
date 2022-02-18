@@ -477,6 +477,9 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
         }
 
       subdir = next;
+      g_assert (subdir);
+      if (!_ostree_mutable_tree_make_whole (subdir, NULL, error))
+        return FALSE;
     }
 
   if (out_parent)
