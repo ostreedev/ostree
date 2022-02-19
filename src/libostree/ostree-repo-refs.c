@@ -396,7 +396,6 @@ _ostree_repo_resolve_rev_internal (OstreeRepo     *self,
     {
       ret_rev = g_strdup (refspec);
     }
-
   else if (!ostree_repo_resolve_partial_checksum (self, refspec, &ret_rev, error))
     return FALSE;
 
