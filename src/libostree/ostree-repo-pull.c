@@ -2244,6 +2244,9 @@ process_one_static_delta (OtPullData                 *pull_data,
                                          ref, cancellable, error))
             return FALSE;
 
+          if (!ostree_repo_mark_commit_partial (pull_data->repo, to_revision, TRUE, error))
+            return FALSE;
+
           if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
                                                                             to_revision,
                                                                             detached_data,
