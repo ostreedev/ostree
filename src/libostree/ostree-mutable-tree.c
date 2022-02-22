@@ -463,13 +463,11 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
   OstreeMutableTree *subdir = self; /* nofree */
   for (guint i = 0; i+1 < split_path->len; i++)
     {
-      OstreeMutableTree *next;
       const char *name = split_path->pdata[i];
-
       if (g_hash_table_lookup (subdir->files, name))
         return glnx_throw (error, "Can't replace file with directory: %s", name);
 
-      next = g_hash_table_lookup (subdir->subdirs, name);
+      OstreeMutableTree *next = g_hash_table_lookup (subdir->subdirs, name);
       if (!next)
         {
           invalidate_contents_checksum (subdir);
@@ -479,6 +477,9 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
         }
 
       subdir = next;
+      g_assert (subdir);
+      if (!_ostree_mutable_tree_make_whole (subdir, NULL, error))
+        return FALSE;
     }
 
   if (out_parent)
@@ -580,11 +581,9 @@ ostree_mutable_tree_walk (OstreeMutableTree     *self,
     }
   else
     {
-      OstreeMutableTree *subdir;
       if (!_ostree_mutable_tree_make_whole (self, NULL, error))
         return FALSE;
-
-      subdir = g_hash_table_lookup (self->subdirs, split_path->pdata[start]);
+      OstreeMutableTree *subdir = g_hash_table_lookup (self->subdirs, split_path->pdata[start]);
       if (!subdir)
         return set_error_noent (error, (char*)split_path->pdata[start]);
 
