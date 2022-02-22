@@ -202,7 +202,8 @@ fn upgrade_and_finalize() -> Result<()> {
     bash!(
         "rpm-ostree upgrade
         systemctl start ostree-finalize-staged
-        systemctl stop ostree-finalize-staged"
+        systemctl stop ostree-finalize-staged
+        test -f /sysroot/.cleanup"
     )
     .context("Upgrade and finalize failed")?;
     Ok(())
@@ -465,6 +466,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             systemctl stop ostree-finalize-staged
             ostree reset testrepo:{testref} {booted_commit}
             rpm-ostree cleanup -pbrm
+            rm -f /sysroot/.cleanup
             ",
             testref,
             booted_commit,

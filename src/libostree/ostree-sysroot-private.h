@@ -85,6 +85,7 @@ struct OstreeSysroot {
 };
 
 #define OSTREE_SYSROOT_LOCKFILE "ostree/lock"
+#define _OSTREE_SYSROOT_AUTOCLEANUP ".cleanup"
 /* We keep some transient state in /run */
 #define _OSTREE_SYSROOT_RUNSTATE_STAGED "/run/ostree/staged-deployment"
 #define _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED "/run/ostree/staged-deployment-locked"

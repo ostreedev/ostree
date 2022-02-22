@@ -1,0 +1,43 @@
+# Copyright © 2022 Endless OS Foundation LLC
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library. If not, see <https://www.gnu.org/licenses/>.
+
+[Unit]
+Description=OSTree Automatic Sysroot Cleanup
+Documentation=man:ostree-admin-cleanup(1)
+ConditionPathExists=/sysroot/.cleanup
+
+# We want this to be triggered by multi-user.target but not block it via
+# the default After added to target units since pruning the repo can be
+# slow. See the Default Dependencies sections in systemd.service(5) and
+# systemd.target(5).
+DefaultDependencies=no
+Requires=sysinit.target
+After=sysinit.target basic.target
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStop=/usr/bin/ostree admin cleanup --auto
+ProtectSystem=strict
+ReadWritePaths=/sysroot /boot
+
+# This will be allowed to run in the background, so try to make it less
+# disruptive while it prunes the repo.
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

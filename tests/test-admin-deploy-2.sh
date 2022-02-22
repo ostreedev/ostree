@@ -24,7 +24,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
-echo "1..8"
+echo "1..9"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
@@ -61,6 +61,17 @@ assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 
 echo "ok manual cleanup"
+
+assert_not_has_file sysroot/.cleanup
+${CMD_PREFIX} ostree admin cleanup --auto > cleanup.txt
+assert_file_has_content cleanup.txt "No cleanup needed."
+assert_not_has_file sysroot/.cleanup
+touch sysroot/.cleanup
+${CMD_PREFIX} ostree admin cleanup --auto > cleanup.txt
+assert_not_file_has_content cleanup.txt "No cleanup needed."
+assert_not_has_file sysroot/.cleanup
+
+echo "ok auto cleanup"
 
 # Commit + upgrade twice, so that we'll rotate out the original deployment
 os_repository_new_commit "1"

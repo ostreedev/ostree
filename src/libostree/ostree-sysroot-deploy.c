@@ -3355,6 +3355,15 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
   if (!ostree_sysroot_prepare_cleanup (self, cancellable, error))
     return FALSE;
 
+  /* Touch the autocleanup file so the repo pruning can be run on the
+   * next boot, but ignore errors.
+   */
+  glnx_autofd int autocleanup_fd =
+    openat (self->sysroot_fd, _OSTREE_SYSROOT_AUTOCLEANUP, O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC, 0644);
+  if (autocleanup_fd == -1)
+    ot_journal_print (LOG_WARNING, "Failed to create sysroot autocleanup file: %s",
+                      g_strerror (errno));
+
   return TRUE;
 }
 

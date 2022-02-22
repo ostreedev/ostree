@@ -10,6 +10,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "")
   # Test our generator
   test -f /run/systemd/generator/multi-user.target.wants/ostree-finalize-staged.path
+  test -f /run/systemd/generator/multi-user.target.wants/ostree-auto-cleanup.service
   test -f /run/systemd/generator/local-fs.target.requires/ostree-remount.service
 
   cat >/etc/systemd/system/sock-to-ignore.socket << 'EOF'
@@ -77,6 +78,12 @@ EOF
     rm -f svc.txt
     # And there should not be a staged deployment
     test '!' -f /run/ostree/staged-deployment
+    # Check that auto cleanup ran
+    assert_not_has_file /sysroot/.cleanup
+    journalctl -b 0 -u ostree-auto-cleanup.service > svc.txt
+    assert_file_has_content svc.txt 'Starting ostree-auto-cleanup.service'
+    assert_not_file_has_content svc.txt 'No cleanup needed.'
+    rm -f svc.txt
 
     test '!' -f /run/ostree/staged-deployment
     ostree admin deploy --stage staged-deploy --lock-finalization

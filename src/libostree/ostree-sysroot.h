@@ -138,6 +138,12 @@ gboolean ostree_sysroot_cleanup (OstreeSysroot       *self,
                                  GError             **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_auto_cleanup (OstreeSysroot       *self,
+                                      gboolean            *out_cleaned,
+                                      GCancellable        *cancellable,
+                                      GError             **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_prepare_cleanup (OstreeSysroot  *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
