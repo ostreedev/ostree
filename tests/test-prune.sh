@@ -25,7 +25,7 @@ skip_without_user_xattrs
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..12'
+echo '1..17'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -48,6 +48,12 @@ assert_repo_has_n_commits() {
     repo=$1
     count=$2
     assert_streq "$(find ${repo}/objects -name '*.commit' | wc -l)" "${count}"
+}
+
+assert_repo_has_n_non_commit_objects() {
+    repo=$1
+    count=$2
+    assert_streq "$(find ${repo}/objects -name '*.*' ! -name '*.commit' ! -name '*.tombstone-commit'| wc -l)" "${count}"
 }
 
 # Test --no-prune
@@ -294,3 +300,68 @@ if ${CMD_PREFIX} ostree --repo=repo prune --only-branch=BACON 2>err.txt; then
 fi
 assert_file_has_content err.txt "Refspec.*BACON.*not found"
 echo "ok --only-branch=BACON"
+
+# We will use the same principle as datesnap repo
+# to create a snapshot to test --commit-only
+rm -rf commit-only-test-repo
+ostree_repo_init commit-only-test-repo --mode=archive
+# Older commits w/ content objects
+echo 'message' > tree/file.txt
+${CMD_PREFIX} ostree --repo=commit-only-test-repo commit --branch=stable -m test -s "new stable build 1" tree --timestamp="October 15 1985"
+${CMD_PREFIX} ostree --repo=commit-only-test-repo commit --branch=dev -m test -s "new dev build 1" tree --timestamp="October 15 1985"
+# Commits without any content objects
+${CMD_PREFIX} ostree --repo=commit-only-test-repo commit --branch=stable -m test -s "new stable build 2" tree
+${CMD_PREFIX} ostree --repo=commit-only-test-repo commit --branch=dev -m test -s "new dev build 2" tree
+# Commits with content objects
+echo 'message2' > tree/file2.txt
+${CMD_PREFIX} ostree --repo=commit-only-test-repo commit --branch=stable -m test -s "new stable build 2" tree
+${CMD_PREFIX} ostree --repo=commit-only-test-repo commit --branch=dev -m test -s "new dev build 2" tree
+assert_repo_has_n_commits commit-only-test-repo 6
+reinitialize_commit_only_test_repo() {
+    rm repo -rf
+    ostree_repo_init repo --mode=archive
+    ${CMD_PREFIX} ostree --repo=repo pull-local --depth=-1 commit-only-test-repo
+}
+orig_obj_count=$(find commit-only-test-repo/objects -name '*.*' ! -name '*.commit' | wc -l)
+
+# --commit-only tests
+# Test single branch
+reinitialize_commit_only_test_repo
+${CMD_PREFIX} ostree --repo=repo prune --commit-only --only-branch=dev --depth=0
+assert_repo_has_n_commits repo 4
+assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
+echo 'ok --commit-only and --only-branch'
+
+# Test multiple branches (and depth > 0)
+reinitialize_commit_only_test_repo
+${CMD_PREFIX} ostree --repo=repo prune --commit-only --refs-only --depth=1
+assert_repo_has_n_commits repo 4
+assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
+echo 'ok --commit-only and multiple branches (depth > 0)'
+
+# Test --delete-commit with --commit-only
+reinitialize_commit_only_test_repo
+# this commit does not have a parent commit
+COMMIT_TO_DELETE=$(${CMD_PREFIX} ostree --repo=repo log dev | grep ^commit | cut -f 2 -d' ' | tail -n 1)
+${CMD_PREFIX} ostree --repo=repo prune --commit-only --delete-commit=$COMMIT_TO_DELETE
+assert_repo_has_n_commits repo 5
+# We gain an extra
+assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
+echo 'ok --commit-only and --delete-commit'
+
+# Test --delete-commit when it creates orphaned commits
+reinitialize_commit_only_test_repo
+# get the current HEAD's parent on dev branch
+COMMIT_TO_DELETE=$(${CMD_PREFIX} ostree --repo=repo log dev | grep ^commit | cut -f 2 -d' ' | head -n 2 | tail -n 1)
+${CMD_PREFIX} ostree --repo=repo prune --commit-only --refs-only --delete-commit=$COMMIT_TO_DELETE
+# we deleted a commit that orphaned another, so we lose two commits
+assert_repo_has_n_commits repo 4
+assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
+echo 'ok --commit-only and --delete-commit with orphaned commits'
+
+# Test --keep-younger-than with --commit-only
+reinitialize_commit_only_test_repo
+${CMD_PREFIX} ostree --repo=repo prune --commit-only --keep-younger-than="1 week ago"
+assert_repo_has_n_commits repo 4
+assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
+echo 'ok --commit-only and --keep-younger-than'
