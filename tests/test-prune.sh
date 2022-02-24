@@ -25,8 +25,6 @@ skip_without_user_xattrs
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..17'
-
 cd ${test_tmpdir}
 mkdir repo
 ostree_repo_init repo
@@ -150,7 +148,7 @@ if ${CMD_PREFIX} ostree --repo=repo prune --static-deltas-only --keep-younger-th
 fi
 assert_file_has_content_literal err.txt "--static-deltas-only requires --delete-commit"
 
-echo "ok prune"
+tap_ok prune
 
 rm repo -rf
 ostree_repo_init repo --mode=bare-user
@@ -158,7 +156,7 @@ ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 --commit-metadata-only origin test
 ${CMD_PREFIX} ostree --repo=repo prune
 
-echo "ok prune with partial repo"
+tap_ok prune with partial repo
 
 assert_has_n_objects() {
     find $1/objects -name '*.filez' | wc -l > object-count
@@ -194,7 +192,7 @@ ${CMD_PREFIX} ostree --repo=repo refs --delete test
 ${CMD_PREFIX} ostree --repo=child-repo prune --refs-only --depth=0
 assert_has_n_objects child-repo 3
 
-echo "ok prune with parent repo"
+tap_ok prune with parent repo
 
 # Delete all the above since I can't be bothered to think about how new tests
 # would interact. We make a new repo test suite, then clone it
@@ -239,7 +237,7 @@ $OSTREE fsck
 ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago" --retain-branch-depth=stable=5
 assert_repo_has_n_commits repo 9
 $OSTREE fsck
-echo "ok retain branch depth and keep-younger-than"
+tap_ok retain branch depth and keep-younger-than
 
 # Just stable branch ref, we should prune everything except the tip of dev,
 # so 8 stable + 1 dev = 9
@@ -248,7 +246,7 @@ ${CMD_PREFIX} ostree --repo=repo prune --depth=0 --retain-branch-depth=stable=-1
 assert_repo_has_n_commits repo 9
 $OSTREE fsck
 
-echo "ok retain branch depth (alone)"
+tap_ok retain branch depth [alone]
 
 # Test --only-branch with --depth=0; this should be exactly identical to the
 # above with a result of 9.
@@ -256,13 +254,13 @@ reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --depth=0
 assert_repo_has_n_commits repo 9
 $OSTREE fsck
-echo "ok --only-branch --depth=0"
+tap_ok --only-branch --depth=0
 
 # Test --only-branch with --depth=1; should just add 1 to the above, for 10.
 reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --depth=1
 assert_repo_has_n_commits repo 10
-echo "ok --only-branch --depth=1"
+tap_ok --only-branch --depth=1
 
 # Test --only-branch with all branches
 reinitialize_datesnap_repo
@@ -271,27 +269,27 @@ assert_repo_has_n_commits repo 2
 reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --only-branch=stable --depth=1
 assert_repo_has_n_commits repo 4
-echo "ok --only-branch (all) --depth=1"
+tap_ok --only-branch [all] --depth=1
 
 # Test --only-branch and --retain-branch-depth overlap
 reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --only-branch=stable --depth=0 \
                      --retain-branch-depth=stable=2
 assert_repo_has_n_commits repo 4
-echo "ok --only-branch and --retain-branch-depth overlap"
+tap_ok --only-branch and --retain-branch-depth overlap
 
 # Test --only-branch and --retain-branch-depth together
 reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --only-branch=dev --depth=0 --retain-branch-depth=stable=2
 assert_repo_has_n_commits repo 4
-echo "ok --only-branch and --retain-branch-depth together"
+tap_ok --only-branch and --retain-branch-depth together
 
 # Test --only-branch with --keep-younger-than; this should be identical to the test
 # above for --retain-branch-depth=stable=-1
 reinitialize_datesnap_repo
 ${CMD_PREFIX} ostree --repo=repo prune --only-branch=stable --keep-younger-than="1 week ago"
 assert_repo_has_n_commits repo 11
-echo "ok --only-branch --keep-younger-than"
+tap_ok --only-branch --keep-younger-than
 
 # Test --only-branch with a nonexistent ref
 reinitialize_datesnap_repo
@@ -299,7 +297,7 @@ if ${CMD_PREFIX} ostree --repo=repo prune --only-branch=BACON 2>err.txt; then
     fatal "we pruned BACON?"
 fi
 assert_file_has_content err.txt "Refspec.*BACON.*not found"
-echo "ok --only-branch=BACON"
+tap_ok --only-branch=BACON
 
 # We will use the same principle as datesnap repo
 # to create a snapshot to test --commit-only
@@ -330,14 +328,14 @@ reinitialize_commit_only_test_repo
 ${CMD_PREFIX} ostree --repo=repo prune --commit-only --only-branch=dev --depth=0
 assert_repo_has_n_commits repo 4
 assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
-echo 'ok --commit-only and --only-branch'
+tap_ok --commit-only and --only-branch
 
 # Test multiple branches (and depth > 0)
 reinitialize_commit_only_test_repo
 ${CMD_PREFIX} ostree --repo=repo prune --commit-only --refs-only --depth=1
 assert_repo_has_n_commits repo 4
 assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
-echo 'ok --commit-only and multiple branches (depth > 0)'
+tap_ok --commit-only and multiple branches depth=1
 
 # Test --delete-commit with --commit-only
 reinitialize_commit_only_test_repo
@@ -347,7 +345,7 @@ ${CMD_PREFIX} ostree --repo=repo prune --commit-only --delete-commit=$COMMIT_TO_
 assert_repo_has_n_commits repo 5
 # We gain an extra
 assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
-echo 'ok --commit-only and --delete-commit'
+tap_ok --commit-only and --delete-commit
 
 # Test --delete-commit when it creates orphaned commits
 reinitialize_commit_only_test_repo
@@ -357,11 +355,12 @@ ${CMD_PREFIX} ostree --repo=repo prune --commit-only --refs-only --delete-commit
 # we deleted a commit that orphaned another, so we lose two commits
 assert_repo_has_n_commits repo 4
 assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
-echo 'ok --commit-only and --delete-commit with orphaned commits'
+tap_ok --commit-only and --delete-commit with orphaned commits
 
 # Test --keep-younger-than with --commit-only
 reinitialize_commit_only_test_repo
 ${CMD_PREFIX} ostree --repo=repo prune --commit-only --keep-younger-than="1 week ago"
 assert_repo_has_n_commits repo 4
 assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
-echo 'ok --commit-only and --keep-younger-than'
+tap_ok --commit-only and --keep-younger-than
+tap_end
