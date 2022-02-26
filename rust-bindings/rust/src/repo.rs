@@ -269,6 +269,37 @@ impl Repo {
         Ok(self.resolve_rev(refspec, false)?.unwrap())
     }
 
+    /// Query metadata for a content object.
+    ///
+    /// This is similar to [`load_file`], but is more efficient if reading the file content is not needed.
+    pub fn query_file<P: IsA<gio::Cancellable>>(
+        &self,
+        checksum: &str,
+        cancellable: Option<&P>,
+    ) -> Result<(gio::FileInfo, glib::Variant), glib::Error> {
+        unsafe {
+            let mut out_file_info = ptr::null_mut();
+            let mut out_xattrs = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let r = ffi::ostree_repo_load_file(
+                self.to_glib_none().0,
+                checksum.to_glib_none().0,
+                ptr::null_mut(),
+                &mut out_file_info,
+                &mut out_xattrs,
+                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                &mut error,
+            );
+            if error.is_null() {
+                debug_assert!(r != 0);
+                Ok((from_glib_full(out_file_info), from_glib_full(out_xattrs)))
+            } else {
+                debug_assert_eq!(r, 0);
+                Err(from_glib_full(error))
+            }
+        }
+    }
+
     /// Write a content object from provided input.
     pub fn write_content<P: IsA<gio::InputStream>, Q: IsA<gio::Cancellable>>(
         &self,

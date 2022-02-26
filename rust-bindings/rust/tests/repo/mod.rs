@@ -89,6 +89,15 @@ fn repo_traverse_and_read() {
         .unwrap();
     // Right now, the uid/gid are actually that of the test runner
     assert_eq!(dirmeta.mode, 0o40750);
+
+    let (finfo, _xattrs) = test_repo
+        .repo
+        .query_file(
+            "89f84ca9854a80e85b583e46a115ba4985254437027bad34f0b113219323d3f8",
+            NONE_CANCELLABLE,
+        )
+        .unwrap();
+    assert_eq!(finfo.size(), 5);
 }
 
 #[test]
