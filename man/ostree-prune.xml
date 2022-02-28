@@ -120,6 +120,17 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                   <option>--delete-commit</option>.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--commit-only</option></term>
+
+                <listitem><para>
+                    Only traverse and delete commit objects. This leaves orphaned meta and 
+                    content objects, which can be cleaned up with another prune invocation.
+                    One may want to use this option to cheaply delete multiple commits,
+                    and then clean up with a more expensive prune at the end.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

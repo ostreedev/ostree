@@ -1118,6 +1118,16 @@ typedef enum {
   OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE = 0,
 } OstreeStaticDeltaIndexFlags;
 
+/**
+ * OstreeRepoCommitTraverseFlags:
+ * @OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE: No special options for traverse
+ * @OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY: Traverse and retrieve only commit objects.  (Since: 2022.2)
+ */
+typedef enum {
+  OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE = (1 << 0),
+  OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY = (1 << 1),
+} OstreeRepoCommitTraverseFlags;
+
 _OSTREE_PUBLIC
 gboolean ostree_repo_static_delta_reindex (OstreeRepo                  *repo,
                                            OstreeStaticDeltaIndexFlags flags,
@@ -1171,6 +1181,7 @@ gboolean ostree_repo_traverse_commit_union (OstreeRepo         *repo,
                                             GHashTable         *inout_reachable,
                                             GCancellable       *cancellable,
                                             GError            **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_repo_traverse_commit_union_with_parents (OstreeRepo         *repo,
                                                          const char         *commit_checksum,
@@ -1180,6 +1191,16 @@ gboolean ostree_repo_traverse_commit_union_with_parents (OstreeRepo         *rep
                                                          GCancellable       *cancellable,
                                                          GError            **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
+                                                 OstreeRepoCommitTraverseFlags   flags,
+                                                 const char                     *commit_checksum,
+                                                 int                             maxdepth,
+                                                 GHashTable                     *inout_reachable,
+                                                 GHashTable                     *inout_parents,
+                                                 GCancellable                   *cancellable,
+                                                 GError                        **error);
+
 struct _OstreeRepoCommitTraverseIter {
   gboolean initialized;
   /* 4 byte hole on 64 bit */
@@ -1188,10 +1209,6 @@ struct _OstreeRepoCommitTraverseIter {
 };
 
 typedef struct _OstreeRepoCommitTraverseIter OstreeRepoCommitTraverseIter;
-
-typedef enum {
-  OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE = (1 << 0)
-} OstreeRepoCommitTraverseFlags;
 
 _OSTREE_PUBLIC
 gboolean
@@ -1245,11 +1262,13 @@ void ostree_repo_commit_traverse_iter_cleanup (void *p);
  * @OSTREE_REPO_PRUNE_FLAGS_NONE: No special options for pruning
  * @OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE: Don't actually delete objects
  * @OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: Do not traverse individual commit objects, only follow refs
+ * @OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY: Only traverse commit objects.  (Since 2022.2)
  */
 typedef enum {
   OSTREE_REPO_PRUNE_FLAGS_NONE = 0,
   OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE = (1 << 0),
   OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY = (1 << 1),
+  OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY = (1 << 2),
 } OstreeRepoPruneFlags;
 
 _OSTREE_PUBLIC
