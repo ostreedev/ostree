@@ -81,14 +81,36 @@ warnings such as GNU Tar emitting "implausibly old time stamp" with 0; however,
 until we have a mechanism to transition cleanly to 1, for compatibilty OSTree
 is reverted to use zero again.
 
+### Xattrs objects
+
+In some repository modes (e.g. `bare-split-xattrs`), xattrs are stored on the
+side of the content objects they refer to. This is done via two dedicated
+object types, `file-xattrs` and `file-xattrs-link`.
+
+`file-xattrs` store xattrs data, encoded as GVariant. Each object is keyed by
+the checksum of the xattrs content, allowing for multiple references.
+
+`file-xattrs-link` are hardlinks which are associated to file objects.
+Each object is keyed by the same checksum of the corresponding file
+object. The target of the hardlink is an existing `file-xattrs` object.
+In case of reaching the limit of too many links, this object could be
+a plain file too.
+
 # Repository types and locations
 
-Also unlike git, an OSTree repository can be in one of four separate
-modes: `bare`, `bare-user`, `bare-user-only`, and `archive`.  A bare repository is
-one where content files are just stored as regular files; it's
-designed to be the source of a "hardlink farm", where each operating
-system checkout is merely links into it.  If you want to store files
+Also unlike git, an OSTree repository can be in one of five separate
+modes: `bare`, `bare-split-xattrs, ``bare-user`, `bare-user-only`, and
+`archive`.
+
+A `bare` repository is one where content files are just stored as regular
+files; it's designed to be the source of a "hardlink farm", where each
+operating system checkout is merely links into it.  If you want to store files
 owned by e.g. root in this mode, you must run OSTree as root.
+
+The `bare-split-xattrs` mode is similar to the above one, but it does store
+xattrs as separate objects.  This is meant to avoid conflicts with
+kernel-enforced constraints (e.g. on SELinux labels) and with other softwares
+that may perform ephemeral changes to xattrs (e.g. container runtimes).
 
 The `bare-user` mode is a later addition that is like `bare` in that
 files are unpacked, but it can (and should generally) be created as

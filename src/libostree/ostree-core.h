@@ -193,6 +193,7 @@ typedef enum {
  * @OSTREE_REPO_MODE_ARCHIVE_Z2: Legacy alias for `OSTREE_REPO_MODE_ARCHIVE`
  * @OSTREE_REPO_MODE_BARE_USER: Files are stored as themselves, except ownership; can be written by user. Hardlinks work only in user checkouts.
  * @OSTREE_REPO_MODE_BARE_USER_ONLY: Same as BARE_USER, but all metadata is not stored, so it can only be used for user checkouts. Does not need xattrs.
+ * @OSTREE_REPO_MODE_BARE_SPLIT_XATTRS: Same as BARE_USER, but xattrs are stored separately from file content, with dedicated object types.
  *
  * See the documentation of #OstreeRepo for more information about the
  * possible modes.
@@ -203,6 +204,7 @@ typedef enum {
   OSTREE_REPO_MODE_ARCHIVE_Z2 = OSTREE_REPO_MODE_ARCHIVE,
   OSTREE_REPO_MODE_BARE_USER,
   OSTREE_REPO_MODE_BARE_USER_ONLY,
+  OSTREE_REPO_MODE_BARE_SPLIT_XATTRS,
 } OstreeRepoMode;
 
 /**

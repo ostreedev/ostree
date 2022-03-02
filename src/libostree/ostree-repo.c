@@ -2704,6 +2704,9 @@ ostree_repo_mode_to_string (OstreeRepoMode   mode,
       /* Legacy alias */
       ret_mode ="archive-z2";
       break;
+    case OSTREE_REPO_MODE_BARE_SPLIT_XATTRS:
+      ret_mode = "bare-split-xattrs";
+      break;
     default:
       return glnx_throw (error, "Invalid mode '%d'", mode);
     }
@@ -2734,6 +2737,8 @@ ostree_repo_mode_from_string (const char      *mode,
   else if (strcmp (mode, "archive-z2") == 0 ||
            strcmp (mode, "archive") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE;
+  else if (strcmp (mode, "bare-split-xattrs") == 0)
+    ret_mode = OSTREE_REPO_MODE_BARE_SPLIT_XATTRS;
   else
     return glnx_throw (error, "Invalid mode '%s' in repository configuration", mode);
 

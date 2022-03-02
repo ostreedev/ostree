@@ -59,6 +59,7 @@ test_programs = \
 	$(NULL)
 _installed_or_uninstalled_test_scripts = \
 	tests/test-basic.sh \
+	tests/test-basic-bare-split-xattrs.sh \
 	tests/test-basic-user.sh \
 	tests/test-basic-user-only.sh \
 	tests/test-basic-root.sh \
