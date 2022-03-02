@@ -920,6 +920,9 @@ write_content_object (OstreeRepo         *self,
     return FALSE;
 
   OstreeRepoMode repo_mode = ostree_repo_get_mode (self);
+  if (repo_mode == OSTREE_REPO_MODE_BARE_SPLIT_XATTRS &&
+      g_getenv ("OSTREE_EXP_WRITE_BARE_SPLIT_XATTRS") == NULL)
+    return glnx_throw (error, "Not allowed due to repo mode");
 
   GInputStream *file_input; /* Unowned alias */
   g_autoptr(GInputStream) file_input_owned = NULL; /* We need a temporary for bare-user symlinks */
