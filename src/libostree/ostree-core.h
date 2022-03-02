@@ -67,6 +67,8 @@ G_BEGIN_DECLS
  * @OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT: Toplevel object, refers to a deleted commit
  * @OSTREE_OBJECT_TYPE_COMMIT_META: Detached metadata for a commit
  * @OSTREE_OBJECT_TYPE_PAYLOAD_LINK: Symlink to a .file given its checksum on the payload only.
+ * @OSTREE_OBJECT_TYPE_FILE_XATTRS: Detached xattrs content, for 'bare-split-xattrs' mode.
+ * @OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK: Hardlink to a .file-xattrs given the checksum of its .file object.
  *
  * Enumeration for core object types; %OSTREE_OBJECT_TYPE_FILE is for
  * content, the other types are metadata.
@@ -78,7 +80,9 @@ typedef enum {
   OSTREE_OBJECT_TYPE_COMMIT = 4,              /* .commit */
   OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT = 5,    /* .commit-tombstone */
   OSTREE_OBJECT_TYPE_COMMIT_META = 6,         /* .commitmeta */
-  OSTREE_OBJECT_TYPE_PAYLOAD_LINK = 7,         /* .payload-link */
+  OSTREE_OBJECT_TYPE_PAYLOAD_LINK = 7,        /* .payload-link */
+  OSTREE_OBJECT_TYPE_FILE_XATTRS = 8,         /* .file-xattrs */
+  OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK = 9,    /* .file-xattrs-link */
 } OstreeObjectType;
 
 /**
@@ -94,7 +98,7 @@ typedef enum {
  *
  * Last valid object type; use this to validate ranges.
  */
-#define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_PAYLOAD_LINK
+#define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK
 
 /**
  * OSTREE_DIRMETA_GVARIANT_FORMAT:
