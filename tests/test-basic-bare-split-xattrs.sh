@@ -9,6 +9,15 @@ set -euo pipefail
 mode="bare-split-xattrs"
 OSTREE="${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo"
 
+SUDO="sudo --non-interactive"
+PRIVILEGED="false"
+if [ $(id -u) -eq 0 ]; then
+  PRIVILEGED="true"
+  SUDO=""
+elif $(${SUDO} -v); then
+  PRIVILEGED="true"
+fi
+
 cd ${test_tmpdir}
 ${OSTREE} init --mode "${mode}"
 ${OSTREE} config get core.mode > mode.txt
@@ -43,5 +52,24 @@ if ${OSTREE} fsck --all; then
 fi
 tap_ok "commit exp override"
 rm -rf -- repo files
+
+if [ "${PRIVILEGED}" = "true" ]; then
+    COMMIT="d614c428015227259031b0f19b934dade908942fd71c49047e0daa70e7800a5d"
+    cd ${test_tmpdir}
+    ${SUDO} tar --same-permissions --same-owner -xaf ${test_srcdir}/fixtures/bare-split-xattrs/basic.tar.xz
+    ${SUDO} ${OSTREE} fsck --all
+    ${OSTREE} log ${COMMIT} > out.txt
+    assert_file_has_content_literal out.txt "fixtures: bare-split-xattrs repo"
+    ${OSTREE} ls ${COMMIT} -X /foo > out.txt
+    assert_file_has_content_literal out.txt "{ @a(ayay) [] } /foo"
+    ${OSTREE} ls ${COMMIT} -X /bar > out.txt
+    assert_file_has_content_literal out.txt "{ [(b'user.mykey', [byte 0x6d, 0x79, 0x76, 0x61, 0x6c, 0x75, 0x65])] } /bar"
+    ${OSTREE} ls ${COMMIT} /foolink > out.txt
+    assert_file_has_content_literal out.txt "/foolink -> foo"
+    tap_ok "reading simple fixture"
+    ${SUDO} rm -rf -- repo log.txt
+else
+    tap_ok "reading simple fixture # skip Unable to sudo"
+fi
 
 tap_end
