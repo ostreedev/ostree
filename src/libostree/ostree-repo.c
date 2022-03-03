@@ -2704,6 +2704,9 @@ ostree_repo_mode_to_string (OstreeRepoMode   mode,
       /* Legacy alias */
       ret_mode ="archive-z2";
       break;
+    case OSTREE_REPO_MODE_BARE_SPLIT_XATTRS:
+      ret_mode = "bare-split-xattrs";
+      break;
     default:
       return glnx_throw (error, "Invalid mode '%d'", mode);
     }
@@ -2734,6 +2737,8 @@ ostree_repo_mode_from_string (const char      *mode,
   else if (strcmp (mode, "archive-z2") == 0 ||
            strcmp (mode, "archive") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE;
+  else if (strcmp (mode, "bare-split-xattrs") == 0)
+    ret_mode = OSTREE_REPO_MODE_BARE_SPLIT_XATTRS;
   else
     return glnx_throw (error, "Invalid mode '%s' in repository configuration", mode);
 
@@ -4171,6 +4176,32 @@ repo_load_file_archive (OstreeRepo *self,
     }
 }
 
+static GVariant *
+_ostree_repo_read_xattrs_file_link (OstreeRepo   *self,
+                                    const char   *checksum,
+                                    GCancellable *cancellable,
+                                    GError      **error)
+{
+  g_assert (self != NULL);
+  g_assert (checksum != NULL);
+
+  char xattr_path[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path (xattr_path, checksum, OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK, self->mode);
+
+  g_autoptr(GVariant) xattrs = NULL;
+  glnx_autofd int fd = -1;
+  if (!glnx_openat_rdonly (self->objects_dir_fd, xattr_path, FALSE, &fd, error))
+    return FALSE;
+
+  g_assert (fd >= 0);
+  if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a(ayay)"), TRUE,
+                           &xattrs, error))
+    return glnx_prefix_error_null (error, "Deserializing xattrs content");
+
+  g_assert (xattrs != NULL);
+  return g_steal_pointer (&xattrs);
+}
+
 gboolean
 _ostree_repo_load_file_bare (OstreeRepo         *self,
                              const char         *checksum,
@@ -4302,6 +4333,15 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
           else if (!glnx_dfd_name_get_all_xattrs (objdir_fd, loose_path_buf,
                                                   &ret_xattrs,
                                                   cancellable, error))
+            return FALSE;
+        }
+    }
+  else if (self->mode == OSTREE_REPO_MODE_BARE_SPLIT_XATTRS)
+    {
+      if (out_xattrs)
+        {
+          ret_xattrs = _ostree_repo_read_xattrs_file_link(self, checksum, cancellable, error);
+          if (ret_xattrs == NULL)
             return FALSE;
         }
     }

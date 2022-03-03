@@ -59,6 +59,7 @@ test_programs = \
 	$(NULL)
 _installed_or_uninstalled_test_scripts = \
 	tests/test-basic.sh \
+	tests/test-basic-bare-split-xattrs.sh \
 	tests/test-basic-user.sh \
 	tests/test-basic-user-only.sh \
 	tests/test-basic-root.sh \
@@ -201,6 +202,7 @@ dist_installed_test_data = tests/archive-test.sh \
 	tests/ostree-path-traverse.tar.gz \
 	tests/pre-signed-pull-data.tar.gz \
 	tests/libtest-core.sh \
+	tests/fixtures/bare-split-xattrs/basic.tar.xz \
 	$(NULL)
 
 EXTRA_DIST += tests/libtest.sh

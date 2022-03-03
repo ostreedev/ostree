@@ -63,17 +63,31 @@ Other disadvantages of `archive`:
  - One doesn't know the total size (compressed or uncompressed) of content
    before downloading everything
 
-## Aside: the bare and bare-user formats
+## Aside: bare formats
 
-The most common operation is to pull from an `archive` repository
-into a `bare` or `bare-user` formatted repository.  These latter two
-are not compressed on disk.  In other words, pulling to them is
-similar to unpacking (but not installing) an RPM/deb package.
+The most common operation is to pull from a remote `archive` repository
+into a local one.  This latter is not compressed on disk.  In other
+words, pulling to a local repository is similar to unpacking (but not
+installing) the content of an RPM/deb package.
+
+The `bare` repository format is the simplest one. In this mode regular files
+are directly stored to disk, and all metadata (e.g. uid/gid and xattrs) is
+reflected to the filesystem.
+It allows further direct access to content and metadata, but it may require
+elevated privileges when writing objects to the repository.
 
 The `bare-user` format is a bit special in that the uid/gid and xattrs
 from the content are ignored.  This is primarily useful if you want to
 have the same OSTree-managed content that can be run on a host system
 or an unprivileged container.
+
+Similarly, the `bare-split-xattrs` format is a special mode where xattrs
+are stored as separate repository objects, and not directly reflected to
+the filesystem.
+This is primarily useful when transporting xattrs through lossy environments
+(e.g. tar streams and containerized environments). It also allows carrying
+security-sensitive xattrs (e.g. SELinux labels) out-of-band without involving
+OS filesystem logic.
 
 ## Static deltas
 

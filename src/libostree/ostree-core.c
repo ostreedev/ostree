@@ -39,6 +39,7 @@ G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE_Z2 == 1);
 G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE == OSTREE_REPO_MODE_ARCHIVE_Z2);
 G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER == 2);
 G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
+G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_SPLIT_XATTRS == 4);
 
 static GBytes *variant_to_lenprefixed_buffer (GVariant *variant);
 
@@ -1228,6 +1229,10 @@ ostree_object_type_to_string (OstreeObjectType objtype)
       return "commitmeta";
     case OSTREE_OBJECT_TYPE_PAYLOAD_LINK:
       return "payload-link";
+    case OSTREE_OBJECT_TYPE_FILE_XATTRS:
+      return "file-xattrs";
+    case OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK:
+      return "file-xattrs-link";
     default:
       g_assert_not_reached ();
       return NULL;
@@ -1257,6 +1262,10 @@ ostree_object_type_from_string (const char *str)
     return OSTREE_OBJECT_TYPE_COMMIT_META;
   else if (!strcmp (str, "payload-link"))
     return OSTREE_OBJECT_TYPE_PAYLOAD_LINK;
+  else if (!strcmp (str, "file-xattrs"))
+    return OSTREE_OBJECT_TYPE_FILE_XATTRS;
+  else if (!strcmp (str, "file-xattrs-link"))
+    return OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK;
   g_assert_not_reached ();
   return 0;
 }
@@ -2141,6 +2150,8 @@ _ostree_validate_structureof_metadata (OstreeObjectType objtype,
       /* TODO */
       break;
     case OSTREE_OBJECT_TYPE_FILE:
+    case OSTREE_OBJECT_TYPE_FILE_XATTRS:
+    case OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK:
       g_assert_not_reached ();
       break;
     }
