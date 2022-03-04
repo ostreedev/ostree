@@ -66,6 +66,8 @@ pub const OSTREE_OBJECT_TYPE_COMMIT: OstreeObjectType = 4;
 pub const OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT: OstreeObjectType = 5;
 pub const OSTREE_OBJECT_TYPE_COMMIT_META: OstreeObjectType = 6;
 pub const OSTREE_OBJECT_TYPE_PAYLOAD_LINK: OstreeObjectType = 7;
+pub const OSTREE_OBJECT_TYPE_FILE_XATTRS: OstreeObjectType = 8;
+pub const OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK: OstreeObjectType = 9;
 
 pub type OstreeRepoCheckoutFilterResult = c_int;
 pub const OSTREE_REPO_CHECKOUT_FILTER_ALLOW: OstreeRepoCheckoutFilterResult = 0;
@@ -101,6 +103,7 @@ pub const OSTREE_REPO_MODE_ARCHIVE: OstreeRepoMode = 1;
 pub const OSTREE_REPO_MODE_ARCHIVE_Z2: OstreeRepoMode = 1;
 pub const OSTREE_REPO_MODE_BARE_USER: OstreeRepoMode = 2;
 pub const OSTREE_REPO_MODE_BARE_USER_ONLY: OstreeRepoMode = 3;
+pub const OSTREE_REPO_MODE_BARE_SPLIT_XATTRS: OstreeRepoMode = 4;
 
 pub type OstreeRepoRemoteChange = c_int;
 pub const OSTREE_REPO_REMOTE_CHANGE_ADD: OstreeRepoRemoteChange = 0;
@@ -134,6 +137,7 @@ pub const OSTREE_METADATA_KEY_BOOTABLE: *const c_char = b"ostree.bootable\0" as 
 pub const OSTREE_METADATA_KEY_LINUX: *const c_char = b"ostree.linux\0" as *const u8 as *const c_char;
 pub const OSTREE_META_KEY_DEPLOY_COLLECTION_ID: *const c_char = b"ostree.deploy-collection-id\0" as *const u8 as *const c_char;
 pub const OSTREE_ORIGIN_TRANSIENT_GROUP: *const c_char = b"libostree-transient\0" as *const u8 as *const c_char;
+pub const OSTREE_PATH_BOOTED: *const c_char = b"/run/ostree-booted\0" as *const u8 as *const c_char;
 pub const OSTREE_REPO_METADATA_REF: *const c_char = b"ostree-metadata\0" as *const u8 as *const c_char;
 pub const OSTREE_SHA256_DIGEST_LEN: c_int = 32;
 pub const OSTREE_SHA256_STRING_LEN: c_int = 64;
@@ -172,6 +176,7 @@ pub const OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL: OstreeRepoCommitState = 2;
 
 pub type OstreeRepoCommitTraverseFlags = c_uint;
 pub const OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE: OstreeRepoCommitTraverseFlags = 1;
+pub const OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY: OstreeRepoCommitTraverseFlags = 2;
 
 pub type OstreeRepoListObjectsFlags = c_uint;
 pub const OSTREE_REPO_LIST_OBJECTS_LOOSE: OstreeRepoListObjectsFlags = 1;
@@ -189,6 +194,7 @@ pub type OstreeRepoPruneFlags = c_uint;
 pub const OSTREE_REPO_PRUNE_FLAGS_NONE: OstreeRepoPruneFlags = 0;
 pub const OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE: OstreeRepoPruneFlags = 1;
 pub const OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: OstreeRepoPruneFlags = 2;
+pub const OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY: OstreeRepoPruneFlags = 4;
 
 pub type OstreeRepoPullFlags = c_uint;
 pub const OSTREE_REPO_PULL_FLAGS_NONE: OstreeRepoPullFlags = 0;
@@ -1575,6 +1581,9 @@ extern "C" {
     #[cfg(any(feature = "v2018_5", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
     pub fn ostree_repo_traverse_commit_union_with_parents(repo: *mut OstreeRepo, commit_checksum: *const c_char, maxdepth: c_int, inout_reachable: *mut glib::GHashTable, inout_parents: *mut glib::GHashTable, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
+    #[cfg(any(feature = "v2018_5", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    pub fn ostree_repo_traverse_commit_with_flags(repo: *mut OstreeRepo, flags: OstreeRepoCommitTraverseFlags, commit_checksum: *const c_char, maxdepth: c_int, inout_reachable: *mut glib::GHashTable, inout_parents: *mut glib::GHashTable, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_traverse_reachable_refs(self_: *mut OstreeRepo, depth: c_uint, reachable: *mut glib::GHashTable, cancellable: *mut gio::GCancellable, error: *mut *mut glib::GError) -> gboolean;
