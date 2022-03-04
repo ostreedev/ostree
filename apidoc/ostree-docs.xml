@@ -25,9 +25,16 @@
 		<xi:include href="xml/ostree-bootconfig-parser.xml"/>
 		<xi:include href="xml/ostree-chain-input-stream.xml"/>
 		<xi:include href="xml/ostree-checksum-input-stream.xml"/>
+		<xi:include href="xml/ostree-content-writer.xml"/>
 		<xi:include href="xml/ostree-deployment.xml"/>
 		<xi:include href="xml/ostree-diff.xml"/>
+		<xi:include href="xml/ostree-kernel-args.xml"/>
+		<xi:include href="xml/ostree-ref.xml"/>
+		<xi:include href="xml/ostree-remote.xml"/>
 		<xi:include href="xml/ostree-repo-file.xml"/>
+		<xi:include href="xml/ostree-repo-finder.xml"/>
+		<xi:include href="xml/ostree-repo-remote-finder.xml"/>
+		<xi:include href="xml/ostree-version.xml"/>
 		<index id="api-index-full">
 			<title>API Index</title>
 			<xi:include href="xml/api-index-full.xml"><xi:fallback /></xi:include>
