@@ -65,13 +65,13 @@ authors = ["Felix Krull"]
 build = "build.rs"
 categories = ["external-ffi-bindings"]
 description = "FFI bindings to libostree-1"
-documentation = "https://fkrull.gitlab.io/ostree-rs/ostree_sys"
+documentation = "https://docs.rs/ostree-sys"
 keywords = ["ffi", "ostree", "libostree"]
 license = "MIT"
 links = "ostree-1"
 name = "ostree-sys"
-repository = "https://gitlab.com/fkrull/ostree-rs"
-version = "0.9.1"
+repository = "https://github.com/ostreedev/ostree-rs"
+version = "0.9.2"
 edition = "2018"
 [package.metadata.docs.rs]
 features = ["dox"]
