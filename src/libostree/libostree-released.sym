@@ -672,6 +672,11 @@ global:
   ostree_mutable_tree_new_from_commit;
 } LIBOSTREE_2021.4;
 
+LIBOSTREE_2022.2 {
+global:
+  ostree_repo_traverse_commit_with_flags;
+} LIBOSTREE_2021.5;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
