@@ -193,6 +193,10 @@ pub enum ObjectType {
     CommitMeta,
     #[doc(alias = "OSTREE_OBJECT_TYPE_PAYLOAD_LINK")]
     PayloadLink,
+    #[doc(alias = "OSTREE_OBJECT_TYPE_FILE_XATTRS")]
+    FileXattrs,
+    #[doc(alias = "OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK")]
+    FileXattrsLink,
 #[doc(hidden)]
     __Unknown(i32),
 }
@@ -207,6 +211,8 @@ impl fmt::Display for ObjectType {
             Self::TombstoneCommit => "TombstoneCommit",
             Self::CommitMeta => "CommitMeta",
             Self::PayloadLink => "PayloadLink",
+            Self::FileXattrs => "FileXattrs",
+            Self::FileXattrsLink => "FileXattrsLink",
             _ => "Unknown",
         })
     }
@@ -225,6 +231,8 @@ impl IntoGlib for ObjectType {
             Self::TombstoneCommit => ffi::OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
             Self::CommitMeta => ffi::OSTREE_OBJECT_TYPE_COMMIT_META,
             Self::PayloadLink => ffi::OSTREE_OBJECT_TYPE_PAYLOAD_LINK,
+            Self::FileXattrs => ffi::OSTREE_OBJECT_TYPE_FILE_XATTRS,
+            Self::FileXattrsLink => ffi::OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK,
             Self::__Unknown(value) => value,
 }
     }
@@ -241,6 +249,8 @@ impl FromGlib<ffi::OstreeObjectType> for ObjectType {
             ffi::OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT => Self::TombstoneCommit,
             ffi::OSTREE_OBJECT_TYPE_COMMIT_META => Self::CommitMeta,
             ffi::OSTREE_OBJECT_TYPE_PAYLOAD_LINK => Self::PayloadLink,
+            ffi::OSTREE_OBJECT_TYPE_FILE_XATTRS => Self::FileXattrs,
+            ffi::OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK => Self::FileXattrsLink,
             value => Self::__Unknown(value),
 }
     }
@@ -522,6 +532,8 @@ pub enum RepoMode {
     BareUser,
     #[doc(alias = "OSTREE_REPO_MODE_BARE_USER_ONLY")]
     BareUserOnly,
+    #[doc(alias = "OSTREE_REPO_MODE_BARE_SPLIT_XATTRS")]
+    BareSplitXattrs,
 #[doc(hidden)]
     __Unknown(i32),
 }
@@ -533,6 +545,7 @@ impl fmt::Display for RepoMode {
             Self::Archive => "Archive",
             Self::BareUser => "BareUser",
             Self::BareUserOnly => "BareUserOnly",
+            Self::BareSplitXattrs => "BareSplitXattrs",
             _ => "Unknown",
         })
     }
@@ -548,6 +561,7 @@ impl IntoGlib for RepoMode {
             Self::Archive => ffi::OSTREE_REPO_MODE_ARCHIVE,
             Self::BareUser => ffi::OSTREE_REPO_MODE_BARE_USER,
             Self::BareUserOnly => ffi::OSTREE_REPO_MODE_BARE_USER_ONLY,
+            Self::BareSplitXattrs => ffi::OSTREE_REPO_MODE_BARE_SPLIT_XATTRS,
             Self::__Unknown(value) => value,
 }
     }
@@ -561,6 +575,7 @@ impl FromGlib<ffi::OstreeRepoMode> for RepoMode {
             ffi::OSTREE_REPO_MODE_ARCHIVE => Self::Archive,
             ffi::OSTREE_REPO_MODE_BARE_USER => Self::BareUser,
             ffi::OSTREE_REPO_MODE_BARE_USER_ONLY => Self::BareUserOnly,
+            ffi::OSTREE_REPO_MODE_BARE_SPLIT_XATTRS => Self::BareSplitXattrs,
             value => Self::__Unknown(value),
 }
     }

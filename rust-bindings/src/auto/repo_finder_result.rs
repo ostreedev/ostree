@@ -3,7 +3,6 @@
 // DO NOT EDIT
 
 use std::cmp;
-use glib::translate::ToGlibPtr;
 
 glib::wrapper! {
     #[derive(Debug, Hash)]

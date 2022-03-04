@@ -56,6 +56,10 @@ pub static META_KEY_DEPLOY_COLLECTION_ID: once_cell::sync::Lazy<&'static str> = 
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
 #[doc(alias = "OSTREE_ORIGIN_TRANSIENT_GROUP")]
 pub static ORIGIN_TRANSIENT_GROUP: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ffi::OSTREE_ORIGIN_TRANSIENT_GROUP).to_str().unwrap()});
+#[cfg(any(feature = "v2022_2", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_2")))]
+#[doc(alias = "OSTREE_PATH_BOOTED")]
+pub static PATH_BOOTED: once_cell::sync::Lazy<&'static str> = once_cell::sync::Lazy::new(|| unsafe{CStr::from_ptr(ffi::OSTREE_PATH_BOOTED).to_str().unwrap()});
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 #[doc(alias = "OSTREE_REPO_METADATA_REF")]

@@ -202,7 +202,9 @@ bitflags! {
     #[doc(alias = "OstreeRepoCommitTraverseFlags")]
     pub struct RepoCommitTraverseFlags: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE")]
-        const REPO_COMMIT_TRAVERSE_FLAG_NONE = ffi::OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE as u32;
+        #[doc(alias = "OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY")]
+        const COMMIT_ONLY = ffi::OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY as u32;
     }
 }
 
@@ -309,6 +311,8 @@ bitflags! {
         const NO_PRUNE = ffi::OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE as u32;
         #[doc(alias = "OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY")]
         const REFS_ONLY = ffi::OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY as u32;
+        #[doc(alias = "OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY")]
+        const COMMIT_ONLY = ffi::OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY as u32;
     }
 }
 

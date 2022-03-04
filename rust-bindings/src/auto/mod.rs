@@ -193,6 +193,9 @@ pub use self::constants::META_KEY_DEPLOY_COLLECTION_ID;
 #[cfg(any(feature = "v2018_3", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
 pub use self::constants::ORIGIN_TRANSIENT_GROUP;
+#[cfg(any(feature = "v2022_2", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_2")))]
+pub use self::constants::PATH_BOOTED;
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 pub use self::constants::REPO_METADATA_REF;

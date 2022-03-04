@@ -1055,6 +1055,13 @@ impl Repo {
     //    unsafe { TODO: call ffi:ostree_repo_traverse_commit_union_with_parents() }
     //}
 
+    //#[cfg(any(feature = "v2018_5", feature = "dox"))]
+    //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    //#[doc(alias = "ostree_repo_traverse_commit_with_flags")]
+    //pub fn traverse_commit_with_flags<P: IsA<gio::Cancellable>>(&self, flags: RepoCommitTraverseFlags, commit_checksum: &str, maxdepth: i32, inout_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, inout_parents: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 25 }/TypeId { ns_id: 0, id: 25 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    //    unsafe { TODO: call ffi:ostree_repo_traverse_commit_with_flags() }
+    //}
+
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
     //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     //#[doc(alias = "ostree_repo_traverse_reachable_refs")]
