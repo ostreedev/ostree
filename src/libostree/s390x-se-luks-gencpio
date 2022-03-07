@@ -1,5 +1,5 @@
- #!/usr/bin/bash
- # This script creates new initramdisk with LUKS config within
+#!/usr/bin/bash
+# This script creates new initramdisk with LUKS config within
 set -euo pipefail
 
 old_initrd=$1
