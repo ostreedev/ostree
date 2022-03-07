@@ -350,7 +350,7 @@ tap_ok --commit-only and --delete-commit
 # Test --delete-commit when it creates orphaned commits
 reinitialize_commit_only_test_repo
 # get the current HEAD's parent on dev branch
-COMMIT_TO_DELETE=$(${CMD_PREFIX} ostree --repo=repo log dev | grep ^commit | cut -f 2 -d' ' | head -n 2 | tail -n 1)
+COMMIT_TO_DELETE=$(${CMD_PREFIX} ostree --repo=repo log dev | grep ^commit | cut -f 2 -d' ' | sed -ne '2p')
 ${CMD_PREFIX} ostree --repo=repo prune --commit-only --refs-only --delete-commit=$COMMIT_TO_DELETE
 # we deleted a commit that orphaned another, so we lose two commits
 assert_repo_has_n_commits repo 4
