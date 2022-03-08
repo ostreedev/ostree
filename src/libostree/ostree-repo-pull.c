@@ -4020,7 +4020,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                      &pull_data->signapi_commit_verifiers,
                                      &pull_data->signapi_summary_verifiers,
                                      error))
-        return FALSE;
+        goto out;
     }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
