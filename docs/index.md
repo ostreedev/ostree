@@ -47,10 +47,11 @@ their [eos-updater](https://github.com/endlessm/eos-updater)
 and [deb-ostree-builder](https://github.com/dbnicholson/deb-ostree-builder)
 projects.
 
-Fedora derivatives use rpm-ostree (noted below); there are 3 variants using OSTree:
+Fedora derivatives use rpm-ostree (noted below); there are 4 variants using OSTree:
 
  - [Fedora CoreOS](https://getfedora.org/en/coreos/)
  - [Fedora Silverblue](https://silverblue.fedoraproject.org/)
+ - [Fedora Kinoite](https://kinoite.fedoraproject.org/)
  - [Fedora IoT](https://iot.fedoraproject.org/)
 
 Red Hat Enterprise Linux CoreOS is a derivative of Fedora CoreOS, used in [OpenShift 4](https://try.openshift.com/).
