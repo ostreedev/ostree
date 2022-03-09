@@ -69,6 +69,7 @@ case "$ID" in
             automake
             bison
             build-essential
+            bubblewrap
             ca-certificates
             cpio
             debhelper
