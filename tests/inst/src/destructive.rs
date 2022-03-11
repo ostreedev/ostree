@@ -450,7 +450,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             let ms = std::cmp::min(cycle_time_ms.saturating_mul(20), 24 * 60 * 60 * 1000);
             time::Duration::from_millis(ms)
         } else {
-            time::Duration::from_millis(rng.gen_range(0, cycle_time_ms))
+            time::Duration::from_millis(rng.gen_range(0..cycle_time_ms))
         };
         println!(
             "force-reboot-time={:?} cycle={:?} status:{:?}",

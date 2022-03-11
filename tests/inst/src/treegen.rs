@@ -62,9 +62,9 @@ pub(crate) fn mutate_one_executable_to(
     let extra = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(10)
-        .collect::<String>();
+        .collect::<Vec<u8>>();
     destf
-        .write_all(extra.as_bytes())
+        .write_all(&extra)
         .context("Failed to append extra data")?;
     Ok(())
 }

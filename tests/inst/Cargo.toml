@@ -28,7 +28,7 @@ tokio = { version = "1.4.0", features = ["full"] }
 futures-util = "0.3.1"
 base64 = "0.12.0"
 procspawn = "0.8"
-rand = "0.7.3"
+rand = "0.8"
 strum = "0.18.0"
 strum_macros = "0.18.0"
 openat = "0.1.19"

@@ -91,7 +91,7 @@ pub(crate) async fn http_server<P: AsRef<Path>>(
     ) -> Result<Response<Body>> {
         if let Some(random_delay) = opts.random_delay {
             let slices = 100u32;
-            let n: u32 = rand::thread_rng().gen_range(0, slices);
+            let n: u32 = rand::thread_rng().gen_range(0..slices);
             std::thread::sleep((random_delay / slices) * n);
         }
         if opts.basicauth {
