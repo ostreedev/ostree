@@ -1,5 +1,8 @@
 //! Tests that mostly use the API and access the booted sysroot read-only.
 
+use std::os::unix::prelude::PermissionsExt;
+use std::path::Path;
+
 use anyhow::Result;
 use ostree_ext::prelude::*;
 use ostree_ext::{gio, ostree};
@@ -43,5 +46,15 @@ fn test_immutable_bit() -> Result<()> {
     }
     // https://bugzilla.redhat.com/show_bug.cgi?id=1867601
     cmd_has_output(sh_inline::bash_command!("lsattr -d /").unwrap(), "-i-")?;
+    Ok(())
+}
+
+#[itest]
+fn test_tmpfiles() -> Result<()> {
+    if skip_non_ostree_host() {
+        return Ok(());
+    }
+    let metadata = Path::new("/run/ostree").metadata()?;
+    assert_eq!(metadata.permissions().mode() & !nix::libc::S_IFMT, 0o755);
     Ok(())
 }
