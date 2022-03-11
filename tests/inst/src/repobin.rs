@@ -72,14 +72,14 @@ pub(crate) fn itest_pull_basicauth() -> Result<()> {
         let osroot = Path::new("osroot");
         crate::treegen::mkroot(&osroot)?;
         bash!(
-            r#"ostree --repo={serverrepo} init --mode=archive
-        ostree --repo={serverrepo} commit -b os --tree=dir={osroot} >/dev/null
+            r#"ostree --repo=${serverrepo} init --mode=archive
+        ostree --repo=${serverrepo} commit -b os --tree=dir=${osroot} >/dev/null
         mkdir client
         cd client
         ostree --repo=repo init --mode=archive
-        ostree --repo=repo remote add --set=gpg-verify=false origin-unauth {baseuri}
-        ostree --repo=repo remote add --set=gpg-verify=false origin-badauth {unauthuri}
-        ostree --repo=repo remote add --set=gpg-verify=false origin-goodauth {authuri}
+        ostree --repo=repo remote add --set=gpg-verify=false origin-unauth ${baseuri}
+        ostree --repo=repo remote add --set=gpg-verify=false origin-badauth ${unauthuri}
+        ostree --repo=repo remote add --set=gpg-verify=false origin-goodauth ${authuri}
         "#,
             osroot = osroot,
             serverrepo = serverrepo,
@@ -90,7 +90,7 @@ pub(crate) fn itest_pull_basicauth() -> Result<()> {
         for rem in &["unauth", "badauth"] {
             cmd_fails_with(
                 bash_command!(
-                    r#"ostree --repo=client/repo pull origin-{rem} os >/dev/null"#,
+                    r#"ostree --repo=client/repo pull origin-${rem} os >/dev/null"#,
                     rem = *rem
                 )
                 .unwrap(),
