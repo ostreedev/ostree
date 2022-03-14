@@ -94,11 +94,12 @@ jobs:
           # the devel tag, which is the unreleased version.
           #
           # https://hub.docker.com/_/ubuntu
-          - name: Ubuntu Latest LTS
-            image: ubuntu:latest
-            pre-checkout-setup: |
-              apt-get update
-              apt-get install -y git
+          # For now, this is disabled because its glib version is too old.
+          # - name: Ubuntu Latest LTS
+          #   image: ubuntu:latest
+          #   pre-checkout-setup: |
+          #     apt-get update
+          #     apt-get install -y git
 
           - name: Ubuntu Latest Release
             image: ubuntu:rolling
