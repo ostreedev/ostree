@@ -152,7 +152,7 @@ fn generate_update(commit: &str) -> Result<()> {
     // but traversing all the objects is expensive.  So here we only prune 1/5 of the time.
     if rand::thread_rng().gen_ratio(1, 5) {
         bash!(
-            "ostree --repo={srvrepo} prune --refs-only --depth=1",
+            "ostree --repo=${srvrepo} prune --refs-only --depth=1",
             srvrepo = SRVREPO
         )?;
     }
@@ -166,10 +166,10 @@ fn generate_update(commit: &str) -> Result<()> {
 fn generate_srv_repo(commit: &str) -> Result<()> {
     bash!(
         r#"
-        ostree --repo={srvrepo} init --mode=archive
-        ostree --repo={srvrepo} config set archive.zlib-level 1
-        ostree --repo={srvrepo} pull-local /sysroot/ostree/repo {commit}
-        ostree --repo={srvrepo} refs --create={testref} {commit}
+        ostree --repo=${srvrepo} init --mode=archive
+        ostree --repo=${srvrepo} config set archive.zlib-level 1
+        ostree --repo=${srvrepo} pull-local /sysroot/ostree/repo ${commit}
+        ostree --repo=${srvrepo} refs --create=${testref} ${commit}
         "#,
         srvrepo = SRVREPO,
         commit = commit,
@@ -310,7 +310,7 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
 fn validate_pending_commit(pending_commit: &str, commitstates: &CommitStates) -> Result<()> {
     if pending_commit != commitstates.target {
         bash!("rpm-ostree status -v")?;
-        bash!("ostree show {pending_commit}", pending_commit)?;
+        bash!("ostree show ${pending_commit}", pending_commit)?;
         anyhow::bail!(
             "Expected target commit={} but pending={} ({:?})",
             commitstates.target,
@@ -450,7 +450,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             let ms = std::cmp::min(cycle_time_ms.saturating_mul(20), 24 * 60 * 60 * 1000);
             time::Duration::from_millis(ms)
         } else {
-            time::Duration::from_millis(rng.gen_range(0, cycle_time_ms))
+            time::Duration::from_millis(rng.gen_range(0..cycle_time_ms))
         };
         println!(
             "force-reboot-time={:?} cycle={:?} status:{:?}",
@@ -463,11 +463,11 @@ fn impl_transaction_test<M: AsRef<str>>(
             "
             systemctl stop rpm-ostreed
             systemctl stop ostree-finalize-staged
-            ostree reset testrepo:{testref} {booted_commit}
+            ostree reset testrepo:${testref} ${booted_commit}
             rpm-ostree cleanup -pbrm
             ",
             testref,
-            booted_commit,
+            booted_commit
         )
         .with_context(|| {
             format!(
@@ -537,8 +537,7 @@ fn impl_transaction_test<M: AsRef<str>>(
     }
 }
 
-#[itest(destructive = true)]
-fn transactionality() -> Result<()> {
+pub(crate) fn itest_transactionality() -> Result<()> {
     testinit()?;
     let mark = get_reboot_mark()?;
     let cancellable = Some(gio::Cancellable::new());
@@ -572,7 +571,7 @@ fn transactionality() -> Result<()> {
         let url = format!("http://{}", addr);
         bash!(
             "ostree remote delete --if-exists testrepo
-             ostree remote add --set=gpg-verify=false testrepo {url}",
+             ostree remote add --set=gpg-verify=false testrepo ${url}",
             url
         )?;
 
@@ -590,9 +589,9 @@ fn transactionality() -> Result<()> {
             let testref = TESTREF;
             bash!(
                 "
-                ostree admin set-origin testrepo {url} {testref}
-                ostree refs --create testrepo:{testref} {commit}
-                ostree refs --create={origref} {commit}
+                ostree admin set-origin testrepo ${url} ${testref}
+                ostree refs --create testrepo:${testref} ${commit}
+                ostree refs --create=${origref} ${commit}
                 ",
                 url,
                 origref,

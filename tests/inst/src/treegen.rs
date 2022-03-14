@@ -62,9 +62,9 @@ pub(crate) fn mutate_one_executable_to(
     let extra = rand::thread_rng()
         .sample_iter(&rand::distributions::Alphanumeric)
         .take(10)
-        .collect::<String>();
+        .collect::<Vec<u8>>();
     destf
-        .write_all(extra.as_bytes())
+        .write_all(&extra)
         .context("Failed to append extra data")?;
     Ok(())
 }
@@ -140,7 +140,7 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
     }
     assert!(mutated > 0);
     println!("Mutated ELF files: {}", mutated);
-    bash!("ostree --repo={repo} commit --consume -b {ostref} --base={ostref} --tree=dir={tempdir} --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs",
+    bash!("ostree --repo=${repo} commit --consume -b ${ostref} --base=${ostref} --tree=dir=${tempdir} --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs",
         repo = repo_path,
         ostref = ostref,
         tempdir = tempdir.path()).context("Failed to commit updated content")?;

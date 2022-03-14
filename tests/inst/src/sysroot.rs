@@ -13,8 +13,7 @@ fn skip_non_ostree_host() -> bool {
     !std::path::Path::new("/run/ostree-booted").exists()
 }
 
-#[itest]
-fn test_sysroot_ro() -> Result<()> {
+pub(crate) fn itest_sysroot_ro() -> Result<()> {
     // TODO add a skipped identifier
     if skip_non_ostree_host() {
         return Ok(());
@@ -39,8 +38,7 @@ fn test_sysroot_ro() -> Result<()> {
     Ok(())
 }
 
-#[itest]
-fn test_immutable_bit() -> Result<()> {
+pub(crate) fn itest_immutable_bit() -> Result<()> {
     if skip_non_ostree_host() {
         return Ok(());
     }
@@ -49,8 +47,7 @@ fn test_immutable_bit() -> Result<()> {
     Ok(())
 }
 
-#[itest]
-fn test_tmpfiles() -> Result<()> {
+pub(crate) fn itest_tmpfiles() -> Result<()> {
     if skip_non_ostree_host() {
         return Ok(());
     }
