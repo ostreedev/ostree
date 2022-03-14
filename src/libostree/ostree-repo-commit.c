@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011,2013 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -640,8 +641,8 @@ _ostree_repo_bare_content_cleanup (OstreeRepoBareContent *regwrite)
     return;
   glnx_tmpfile_clear (&real->tmpf);
   ot_checksum_clear (&real->checksum);
-  g_clear_pointer (&real->expected_checksum, (GDestroyNotify)g_free);
-  g_clear_pointer (&real->xattrs, (GDestroyNotify)g_variant_unref);
+  g_clear_pointer (&real->expected_checksum, g_free);
+  g_clear_pointer (&real->xattrs, g_variant_unref);
   real->initialized = FALSE;
 }
 
@@ -2584,8 +2585,6 @@ typedef struct {
   char *expected_checksum;
   GVariant *object;
   GCancellable *cancellable;
-  GSimpleAsyncResult *result;
-
   guchar *result_csum;
 } WriteMetadataAsyncData;
 
@@ -2603,19 +2602,21 @@ write_metadata_async_data_free (gpointer user_data)
 }
 
 static void
-write_metadata_thread (GSimpleAsyncResult  *res,
+write_metadata_thread (GTask               *task,
                        GObject             *object,
+                       gpointer             datap,
                        GCancellable        *cancellable)
 {
   GError *error = NULL;
-  WriteMetadataAsyncData *data;
+  WriteMetadataAsyncData *data = datap;
 
-  data = g_simple_async_result_get_op_res_gpointer (res);
   if (!ostree_repo_write_metadata (data->repo, data->objtype, data->expected_checksum,
                                    data->object,
                                    &data->result_csum,
                                    cancellable, &error))
-    g_simple_async_result_take_error (res, error);
+    g_task_return_error (task, error);
+  else
+    g_task_return_pointer (task, data, NULL);
 }
 
 /**
@@ -2640,6 +2641,7 @@ ostree_repo_write_metadata_async (OstreeRepo               *self,
                                   GAsyncReadyCallback       callback,
                                   gpointer                  user_data)
 {
+  g_autoptr(GTask) task = NULL;
   WriteMetadataAsyncData *asyncdata;
 
   asyncdata = g_new0 (WriteMetadataAsyncData, 1);
@@ -2649,14 +2651,10 @@ ostree_repo_write_metadata_async (OstreeRepo               *self,
   asyncdata->object = g_variant_ref (object);
   asyncdata->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
-  asyncdata->result = g_simple_async_result_new ((GObject*) self,
-                                                 callback, user_data,
-                                                 ostree_repo_write_metadata_async);
-
-  g_simple_async_result_set_op_res_gpointer (asyncdata->result, asyncdata,
-                                             write_metadata_async_data_free);
-  g_simple_async_result_run_in_thread (asyncdata->result, write_metadata_thread, G_PRIORITY_DEFAULT, cancellable);
-  g_object_unref (asyncdata->result);
+  task = g_task_new (G_OBJECT (self), cancellable, callback, user_data);
+  g_task_set_task_data (task, asyncdata, write_metadata_async_data_free);
+  g_task_set_source_tag (task, ostree_repo_write_metadata_async);
+  g_task_run_in_thread (task, (GTaskThreadFunc)write_metadata_thread);
 }
 
 /**
@@ -2674,15 +2672,18 @@ ostree_repo_write_metadata_finish (OstreeRepo        *self,
                                    guchar           **out_csum,
                                    GError           **error)
 {
-  GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
   WriteMetadataAsyncData *data;
 
-  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_repo_write_metadata_async);
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+  g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  g_return_val_if_fail (g_async_result_is_tagged (result, ostree_repo_write_metadata_async), FALSE);
 
-  if (g_simple_async_result_propagate_error (simple, error))
+  data = g_task_propagate_pointer (G_TASK (result), error);
+  if (data == NULL)
     return FALSE;
 
-  data = g_simple_async_result_get_op_res_gpointer (simple);
   /* Transfer ownership */
   *out_csum = data->result_csum;
   data->result_csum = NULL;
@@ -2920,7 +2921,6 @@ typedef struct {
   GInputStream *object;
   guint64 file_object_length;
   GCancellable *cancellable;
-  GSimpleAsyncResult *result;
 
   guchar *result_csum;
 } WriteContentAsyncData;
@@ -2939,19 +2939,21 @@ write_content_async_data_free (gpointer user_data)
 }
 
 static void
-write_content_thread (GSimpleAsyncResult  *res,
+write_content_thread (GTask               *task,
                       GObject             *object,
+                      gpointer             datap,
                       GCancellable        *cancellable)
 {
   GError *error = NULL;
-  WriteContentAsyncData *data;
+  WriteContentAsyncData *data = datap;
 
-  data = g_simple_async_result_get_op_res_gpointer (res);
   if (!ostree_repo_write_content (data->repo, data->expected_checksum,
                                   data->object, data->file_object_length,
                                   &data->result_csum,
                                   cancellable, &error))
-    g_simple_async_result_take_error (res, error);
+    g_task_return_error (task, error);
+  else
+    g_task_return_pointer (task, data, NULL);
 }
 
 /**
@@ -2976,6 +2978,7 @@ ostree_repo_write_content_async (OstreeRepo               *self,
                                  GAsyncReadyCallback       callback,
                                  gpointer                  user_data)
 {
+  g_autoptr(GTask) task = NULL;
   WriteContentAsyncData *asyncdata;
 
   asyncdata = g_new0 (WriteContentAsyncData, 1);
@@ -2985,14 +2988,10 @@ ostree_repo_write_content_async (OstreeRepo               *self,
   asyncdata->file_object_length = length;
   asyncdata->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
-  asyncdata->result = g_simple_async_result_new ((GObject*) self,
-                                                 callback, user_data,
-                                                 ostree_repo_write_content_async);
-
-  g_simple_async_result_set_op_res_gpointer (asyncdata->result, asyncdata,
-                                             write_content_async_data_free);
-  g_simple_async_result_run_in_thread (asyncdata->result, write_content_thread, G_PRIORITY_DEFAULT, cancellable);
-  g_object_unref (asyncdata->result);
+  task = g_task_new (G_OBJECT (self), cancellable, callback, user_data);
+  g_task_set_task_data (task, asyncdata, (GDestroyNotify)write_content_async_data_free);
+  g_task_set_source_tag (task, ostree_repo_write_content_async);
+  g_task_run_in_thread (task, (GTaskThreadFunc)write_content_thread);
 }
 
 /**
@@ -3010,15 +3009,18 @@ ostree_repo_write_content_finish (OstreeRepo        *self,
                                   guchar           **out_csum,
                                   GError           **error)
 {
-  GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
   WriteContentAsyncData *data;
 
-  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_repo_write_content_async);
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+  g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  g_return_val_if_fail (g_async_result_is_tagged (result, ostree_repo_write_content_async), FALSE);
 
-  if (g_simple_async_result_propagate_error (simple, error))
+  data = g_task_propagate_pointer (G_TASK (result), error);
+  if (data == NULL)
     return FALSE;
 
-  data = g_simple_async_result_get_op_res_gpointer (simple);
   ot_transfer_out_value (out_csum, &data->result_csum);
   return TRUE;
 }
@@ -4336,7 +4338,7 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
   if (modifier->xattr_destroy)
     modifier->xattr_destroy (modifier->xattr_user_data);
 
-  g_clear_pointer (&modifier->devino_cache, (GDestroyNotify)g_hash_table_unref);
+  g_clear_pointer (&modifier->devino_cache, g_hash_table_unref);
 
   g_clear_object (&modifier->sepolicy);
 

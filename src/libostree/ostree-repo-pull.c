@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011,2012,2013 Colin Walters <walters@verbum.org>
  * Copyright © 2017 Endless Mobile, Inc.
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -435,7 +436,7 @@ idle_worker (gpointer user_data)
   scan_data = g_queue_pop_head (&pull_data->scan_object_queue);
   if (!scan_data)
     {
-      g_clear_pointer (&pull_data->idle_src, (GDestroyNotify) g_source_destroy);
+      g_clear_pointer (&pull_data->idle_src, g_source_destroy);
       return G_SOURCE_REMOVE;
     }
 
@@ -4476,7 +4477,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                              pull_data->remote_name);
 
                   summary_from_cache = FALSE;
-                  g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                  g_clear_pointer (&bytes_summary, g_bytes_unref);
                   g_clear_pointer (&summary_etag, g_free);
                   summary_last_modified = 0;
                   if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
@@ -4544,7 +4545,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                  pull_data->remote_name);
 
                       summary_from_cache = FALSE;
-                      g_clear_pointer (&bytes_summary, (GDestroyNotify)g_bytes_unref);
+                      g_clear_pointer (&bytes_summary, g_bytes_unref);
                       g_clear_pointer (&summary_etag, g_free);
                       summary_last_modified = 0;
                       if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
@@ -5153,46 +5154,46 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_source_destroy (update_timeout);
   g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
-  g_clear_pointer (&pull_data->extra_headers, (GDestroyNotify)g_variant_unref);
+  g_clear_pointer (&pull_data->extra_headers, g_variant_unref);
   g_clear_object (&pull_data->cancellable);
-  g_clear_pointer (&pull_data->localcache_repos, (GDestroyNotify)g_ptr_array_unref);
+  g_clear_pointer (&pull_data->localcache_repos, g_ptr_array_unref);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_refspec_name);
   g_free (pull_data->remote_name);
   g_free (pull_data->append_user_agent);
-  g_clear_pointer (&pull_data->signapi_commit_verifiers, (GDestroyNotify) g_ptr_array_unref);
-  g_clear_pointer (&pull_data->signapi_summary_verifiers, (GDestroyNotify) g_ptr_array_unref);
-  g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
-  g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
-  g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
+  g_clear_pointer (&pull_data->signapi_commit_verifiers, g_ptr_array_unref);
+  g_clear_pointer (&pull_data->signapi_summary_verifiers, g_ptr_array_unref);
+  g_clear_pointer (&pull_data->meta_mirrorlist, g_ptr_array_unref);
+  g_clear_pointer (&pull_data->content_mirrorlist, g_ptr_array_unref);
+  g_clear_pointer (&pull_data->summary_data, g_bytes_unref);
   g_clear_pointer (&pull_data->summary_etag, g_free);
-  g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);
+  g_clear_pointer (&pull_data->summary_data_sig, g_bytes_unref);
   g_clear_pointer (&pull_data->summary_sig_etag, g_free);
-  g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
-  g_clear_pointer (&pull_data->static_delta_superblocks, (GDestroyNotify) g_ptr_array_unref);
-  g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->expected_commit_sizes, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->fetched_detached_metadata, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->ref_original_commits, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->summary, g_variant_unref);
+  g_clear_pointer (&pull_data->static_delta_superblocks, g_ptr_array_unref);
+  g_clear_pointer (&pull_data->commit_to_depth, g_hash_table_unref);
+  g_clear_pointer (&pull_data->expected_commit_sizes, g_hash_table_unref);
+  g_clear_pointer (&pull_data->scanned_metadata, g_hash_table_unref);
+  g_clear_pointer (&pull_data->fetched_detached_metadata, g_hash_table_unref);
+  g_clear_pointer (&pull_data->summary_deltas_checksums, g_hash_table_unref);
+  g_clear_pointer (&pull_data->ref_original_commits, g_hash_table_unref);
   g_free (pull_data->timestamp_check_from_rev);
-  g_clear_pointer (&pull_data->verified_commits, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->signapi_verified_commits, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->ref_keyring_map, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->requested_fallback_content, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->pending_fetch_content, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->pending_fetch_metadata, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->pending_fetch_delta_indexes, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->pending_fetch_delta_superblocks, (GDestroyNotify) g_hash_table_unref);
-  g_clear_pointer (&pull_data->pending_fetch_deltaparts, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->verified_commits, g_hash_table_unref);
+  g_clear_pointer (&pull_data->signapi_verified_commits, g_hash_table_unref);
+  g_clear_pointer (&pull_data->ref_keyring_map, g_hash_table_unref);
+  g_clear_pointer (&pull_data->requested_content, g_hash_table_unref);
+  g_clear_pointer (&pull_data->requested_fallback_content, g_hash_table_unref);
+  g_clear_pointer (&pull_data->requested_metadata, g_hash_table_unref);
+  g_clear_pointer (&pull_data->pending_fetch_content, g_hash_table_unref);
+  g_clear_pointer (&pull_data->pending_fetch_metadata, g_hash_table_unref);
+  g_clear_pointer (&pull_data->pending_fetch_delta_indexes, g_hash_table_unref);
+  g_clear_pointer (&pull_data->pending_fetch_delta_superblocks, g_hash_table_unref);
+  g_clear_pointer (&pull_data->pending_fetch_deltaparts, g_hash_table_unref);
   g_queue_foreach (&pull_data->scan_object_queue, (GFunc) scan_object_queue_data_free, NULL);
   g_queue_clear (&pull_data->scan_object_queue);
-  g_clear_pointer (&pull_data->idle_src, (GDestroyNotify) g_source_destroy);
-  g_clear_pointer (&pull_data->dirs, (GDestroyNotify) g_ptr_array_unref);
-  g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
+  g_clear_pointer (&pull_data->idle_src, g_source_destroy);
+  g_clear_pointer (&pull_data->dirs, g_ptr_array_unref);
+  g_clear_pointer (&remote_config, g_key_file_unref);
   return ret;
 }
 
@@ -5838,7 +5839,7 @@ find_remotes_cb (GObject      *obj,
         {
           g_debug ("%s: Failed to download summary for result ‘%s’. Ignoring. %s",
                    G_STRFUNC, result->remote->name, error->message);
-          g_clear_pointer (&g_ptr_array_index (results, i), (GDestroyNotify) ostree_repo_finder_result_free);
+          g_clear_pointer (&g_ptr_array_index (results, i), ostree_repo_finder_result_free);
           g_clear_error (&error);
           continue;
         }
@@ -5847,7 +5848,7 @@ find_remotes_cb (GObject      *obj,
           g_debug ("%s: Failed to download summary for result ‘%s’. Ignoring. %s",
                    G_STRFUNC, result->remote->name,
                    "No summary file exists on server");
-          g_clear_pointer (&g_ptr_array_index (results, i), (GDestroyNotify) ostree_repo_finder_result_free);
+          g_clear_pointer (&g_ptr_array_index (results, i), ostree_repo_finder_result_free);
           continue;
         }
 
@@ -5869,7 +5870,7 @@ find_remotes_cb (GObject      *obj,
           if (!find_remotes_process_refs (self, refs, result, i, summary_collection_id, summary_refs,
                                           commit_metadatas, refs_and_remotes_table))
             {
-              g_clear_pointer (&g_ptr_array_index (results, i), (GDestroyNotify) ostree_repo_finder_result_free);
+              g_clear_pointer (&g_ptr_array_index (results, i), ostree_repo_finder_result_free);
               continue;
             }
         }
@@ -5890,7 +5891,7 @@ find_remotes_cb (GObject      *obj,
           if (!find_remotes_process_refs (self, refs, result, i, summary_collection_id, summary_refs,
                                           commit_metadatas, refs_and_remotes_table))
             {
-              g_clear_pointer (&g_ptr_array_index (results, i), (GDestroyNotify) ostree_repo_finder_result_free);
+              g_clear_pointer (&g_ptr_array_index (results, i), ostree_repo_finder_result_free);
               invalid_result = TRUE;
               break;
             }

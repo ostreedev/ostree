@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013,2014 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -285,7 +286,6 @@ typedef struct {
   GVariant *header;
   GVariant *part;
   GCancellable *cancellable;
-  GSimpleAsyncResult *result;
 } StaticDeltaPartExecuteAsyncData;
 
 static void
@@ -301,20 +301,22 @@ static_delta_part_execute_async_data_free (gpointer user_data)
 }
 
 static void
-static_delta_part_execute_thread (GSimpleAsyncResult  *res,
+static_delta_part_execute_thread (GTask               *task,
                                   GObject             *object,
+                                  gpointer             datap,
                                   GCancellable        *cancellable)
 {
   GError *error = NULL;
-  StaticDeltaPartExecuteAsyncData *data;
+  StaticDeltaPartExecuteAsyncData *data = datap;
 
-  data = g_simple_async_result_get_op_res_gpointer (res);
   if (!_ostree_static_delta_part_execute (data->repo,
                                           data->header,
                                           data->part,
                                           FALSE, NULL,
                                           cancellable, &error))
-    g_simple_async_result_take_error (res, error);
+    g_task_return_error (task, error);
+  else
+    g_task_return_boolean (task, TRUE);
 }
 
 void
@@ -325,6 +327,7 @@ _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
                                          GAsyncReadyCallback  callback,
                                          gpointer         user_data)
 {
+  g_autoptr(GTask) task = NULL;
   StaticDeltaPartExecuteAsyncData *asyncdata;
 
   asyncdata = g_new0 (StaticDeltaPartExecuteAsyncData, 1);
@@ -333,14 +336,10 @@ _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
   asyncdata->part = g_variant_ref (part);
   asyncdata->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
-  asyncdata->result = g_simple_async_result_new ((GObject*) repo,
-                                                 callback, user_data,
-                                                 _ostree_static_delta_part_execute_async);
-
-  g_simple_async_result_set_op_res_gpointer (asyncdata->result, asyncdata,
-                                             static_delta_part_execute_async_data_free);
-  g_simple_async_result_run_in_thread (asyncdata->result, static_delta_part_execute_thread, G_PRIORITY_DEFAULT, cancellable);
-  g_object_unref (asyncdata->result);
+  task = g_task_new (G_OBJECT (repo), cancellable, callback, user_data);
+  g_task_set_task_data (task, asyncdata, (GDestroyNotify)static_delta_part_execute_async_data_free);
+  g_task_set_source_tag (task, _ostree_static_delta_part_execute_async);
+  g_task_run_in_thread (task, (GTaskThreadFunc)static_delta_part_execute_thread);
 }
 
 gboolean
@@ -348,13 +347,13 @@ _ostree_static_delta_part_execute_finish (OstreeRepo      *repo,
                                           GAsyncResult    *result,
                                           GError         **error)
 {
-  GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
+  g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
+  g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+  g_return_val_if_fail (g_task_is_valid (result, repo), FALSE);
+  g_return_val_if_fail (g_async_result_is_tagged (result, _ostree_static_delta_part_execute_async), FALSE);
 
-  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == _ostree_static_delta_part_execute_async);
-
-  if (g_simple_async_result_propagate_error (simple, error))
-    return FALSE;
-  return TRUE;
+  return g_task_propagate_boolean (G_TASK (result), error);
 }
 
 static gboolean

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -133,7 +134,7 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
           g_free (next_checksum);
           next_checksum = ostree_commit_get_parent (commit);
           if (next_checksum)
-            g_clear_pointer (&commit, (GDestroyNotify)g_variant_unref);
+            g_clear_pointer (&commit, g_variant_unref);
           else
             break; /* No parent, we're done */
         }

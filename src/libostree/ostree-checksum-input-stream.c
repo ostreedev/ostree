@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -26,11 +27,11 @@ enum {
   PROP_CHECKSUM
 };
 
-G_DEFINE_TYPE (OstreeChecksumInputStream, ostree_checksum_input_stream, G_TYPE_FILTER_INPUT_STREAM)
-
 struct _OstreeChecksumInputStreamPrivate {
   GChecksum *checksum;
 };
+
+G_DEFINE_TYPE_WITH_PRIVATE (OstreeChecksumInputStream, ostree_checksum_input_stream, G_TYPE_FILTER_INPUT_STREAM)
 
 static void     ostree_checksum_input_stream_set_property (GObject              *object,
                                                            guint                 prop_id,
@@ -51,8 +52,6 @@ ostree_checksum_input_stream_class_init (OstreeChecksumInputStreamClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GInputStreamClass *stream_class = G_INPUT_STREAM_CLASS (klass);
-  
-  g_type_class_add_private (klass, sizeof (OstreeChecksumInputStreamPrivate));
 
   gobject_class->get_property = ostree_checksum_input_stream_get_property;
   gobject_class->set_property = ostree_checksum_input_stream_set_property;
@@ -118,10 +117,7 @@ ostree_checksum_input_stream_get_property (GObject    *object,
 static void
 ostree_checksum_input_stream_init (OstreeChecksumInputStream *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-					    OSTREE_TYPE_CHECKSUM_INPUT_STREAM,
-					    OstreeChecksumInputStreamPrivate);
-
+  self->priv = ostree_checksum_input_stream_get_instance_private (self);
 }
 
 OstreeChecksumInputStream *

@@ -1,5 +1,6 @@
 /* 
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2022 Igalia S.L.
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -29,11 +30,11 @@ enum {
   PROP_ARCHIVE
 };
 
-G_DEFINE_TYPE (OstreeLibarchiveInputStream, _ostree_libarchive_input_stream, G_TYPE_INPUT_STREAM)
-
 struct _OstreeLibarchiveInputStreamPrivate {
   struct archive *archive;
 };
+
+G_DEFINE_TYPE_WITH_PRIVATE (OstreeLibarchiveInputStream, _ostree_libarchive_input_stream, G_TYPE_INPUT_STREAM)
 
 static void     ostree_libarchive_input_stream_set_property (GObject              *object,
 						  guint                 prop_id,
@@ -63,8 +64,6 @@ _ostree_libarchive_input_stream_class_init (OstreeLibarchiveInputStreamClass *kl
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GInputStreamClass *stream_class = G_INPUT_STREAM_CLASS (klass);
-  
-  g_type_class_add_private (klass, sizeof (OstreeLibarchiveInputStreamPrivate));
 
   gobject_class->get_property = ostree_libarchive_input_stream_get_property;
   gobject_class->set_property = ostree_libarchive_input_stream_set_property;
@@ -132,10 +131,7 @@ ostree_libarchive_input_stream_get_property (GObject    *object,
 static void
 _ostree_libarchive_input_stream_init (OstreeLibarchiveInputStream *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-					    OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM,
-					    OstreeLibarchiveInputStreamPrivate);
-
+  self->priv = _ostree_libarchive_input_stream_get_instance_private (self);
 }
 
 GInputStream *
