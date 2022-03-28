@@ -2926,9 +2926,12 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
                           SEMODULE_HELP_ARGC, &exit_status, &stdout, error))
     return FALSE;
   if (!g_spawn_check_exit_status (exit_status, error))
-    return FALSE;
+    return glnx_prefix_error (error, "failed to run semodule");
   if (!strstr(stdout, "--rebuild-if-modules-changed"))
-    return TRUE;
+    {
+      ot_journal_print (LOG_INFO, "semodule does not have --rebuild-if-modules-changed");
+      return TRUE;
+    }
 
   static const gchar * const SEMODULE_REBUILD_ARGV[] = {
     "semodule", "-N", "--rebuild-if-modules-changed"
