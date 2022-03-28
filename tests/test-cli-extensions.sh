@@ -15,7 +15,9 @@ echo '1..2'
 mkdir -p ./localbin
 ORIG_PATH="${PATH}"
 export PATH="./localbin/:${PATH}"
-ln -s /usr/bin/env ./localbin/ostree-env
+echo '#!/bin/sh' >> ./localbin/ostree-env
+echo 'env "$@"' >> ./localbin/ostree-env
+chmod +x ./localbin/ostree-env
 export A_CUSTOM_TEST_FLAG="myvalue"
 ${CMD_PREFIX} ostree env >out.txt
 assert_file_has_content out.txt "^A_CUSTOM_TEST_FLAG=myvalue"
