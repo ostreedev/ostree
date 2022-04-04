@@ -12,11 +12,11 @@ gzip -cd ${old_initrd} | cpio -imd --quiet
 
 # Adding LUKS root key and crypttab config
 mkdir -p etc/luks
-cp -f /etc/luks/root etc/luks/
+cp -f /etc/luks/* etc/luks/
 cp -f /etc/crypttab etc/
 
 # Creating new initramdisk image
-find . | cpio --quiet -H newc -o | gzip -9 -n >> ${new_initrd}
+find . -mindepth 1 | cpio --quiet -H newc -o | gzip -9 -n >> ${new_initrd}
 
 # Cleanup
 rm -rf ${workdir}
