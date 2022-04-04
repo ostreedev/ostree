@@ -146,8 +146,12 @@ file_info_from_archive_entry (struct archive_entry *entry)
 
   g_autoptr(GFileInfo) info = _ostree_stbuf_to_gfileinfo (&stbuf);
   if (S_ISLNK (stbuf.st_mode))
-    g_file_info_set_attribute_byte_string (info, "standard::symlink-target",
-                                           archive_entry_symlink (entry));
+    {
+      const char *target = archive_entry_symlink (entry);
+      if (target != NULL)
+        g_file_info_set_attribute_byte_string (info, "standard::symlink-target",
+                                               target);
+    }
 
   return g_steal_pointer (&info);
 }
