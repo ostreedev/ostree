@@ -3,10 +3,10 @@
 // DO NOT EDIT
 
 use ostree_sys::*;
-use std::mem::{align_of, size_of};
 use std::env;
 use std::error::Error;
 use std::ffi::OsString;
+use std::mem::{align_of, size_of};
 use std::path::Path;
 use std::process::Command;
 use std::str;
@@ -64,20 +64,17 @@ fn pkg_config_cflags(packages: &[&str]) -> Result<Vec<String>, Box<dyn Error>> {
     if packages.is_empty() {
         return Ok(Vec::new());
     }
-    let pkg_config = env::var_os("PKG_CONFIG")
-        .unwrap_or_else(|| OsString::from("pkg-config"));
+    let pkg_config = env::var_os("PKG_CONFIG").unwrap_or_else(|| OsString::from("pkg-config"));
     let mut cmd = Command::new(pkg_config);
     cmd.arg("--cflags");
     cmd.args(packages);
     let out = cmd.output()?;
     if !out.status.success() {
-        return Err(format!("command {:?} returned {}",
-                           &cmd, out.status).into());
+        return Err(format!("command {:?} returned {}", &cmd, out.status).into());
     }
     let stdout = str::from_utf8(&out.stdout)?;
     Ok(shell_words::split(stdout.trim())?)
 }
-
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct Layout {
@@ -172,8 +169,7 @@ fn cross_validate_layout_with_c() {
 
     let mut results = Results::default();
 
-    for ((rust_name, rust_layout), (c_name, c_layout)) in
-        RUST_LAYOUTS.iter().zip(c_layouts.iter())
+    for ((rust_name, rust_layout), (c_name, c_layout)) in RUST_LAYOUTS.iter().zip(c_layouts.iter())
     {
         if rust_name != c_name {
             results.record_failed();
@@ -214,60 +210,384 @@ fn get_c_output(name: &str) -> Result<String, Box<dyn Error>> {
 }
 
 const RUST_LAYOUTS: &[(&str, Layout)] = &[
-    ("OstreeAsyncProgressClass", Layout {size: size_of::<OstreeAsyncProgressClass>(), alignment: align_of::<OstreeAsyncProgressClass>()}),
-    ("OstreeChecksumFlags", Layout {size: size_of::<OstreeChecksumFlags>(), alignment: align_of::<OstreeChecksumFlags>()}),
-    ("OstreeCollectionRef", Layout {size: size_of::<OstreeCollectionRef>(), alignment: align_of::<OstreeCollectionRef>()}),
-    ("OstreeCollectionRefv", Layout {size: size_of::<OstreeCollectionRefv>(), alignment: align_of::<OstreeCollectionRefv>()}),
-    ("OstreeCommitSizesEntry", Layout {size: size_of::<OstreeCommitSizesEntry>(), alignment: align_of::<OstreeCommitSizesEntry>()}),
-    ("OstreeContentWriterClass", Layout {size: size_of::<OstreeContentWriterClass>(), alignment: align_of::<OstreeContentWriterClass>()}),
-    ("OstreeDeploymentUnlockedState", Layout {size: size_of::<OstreeDeploymentUnlockedState>(), alignment: align_of::<OstreeDeploymentUnlockedState>()}),
-    ("OstreeDiffDirsOptions", Layout {size: size_of::<OstreeDiffDirsOptions>(), alignment: align_of::<OstreeDiffDirsOptions>()}),
-    ("OstreeDiffFlags", Layout {size: size_of::<OstreeDiffFlags>(), alignment: align_of::<OstreeDiffFlags>()}),
-    ("OstreeDiffItem", Layout {size: size_of::<OstreeDiffItem>(), alignment: align_of::<OstreeDiffItem>()}),
-    ("OstreeGpgError", Layout {size: size_of::<OstreeGpgError>(), alignment: align_of::<OstreeGpgError>()}),
-    ("OstreeGpgSignatureAttr", Layout {size: size_of::<OstreeGpgSignatureAttr>(), alignment: align_of::<OstreeGpgSignatureAttr>()}),
-    ("OstreeGpgSignatureFormatFlags", Layout {size: size_of::<OstreeGpgSignatureFormatFlags>(), alignment: align_of::<OstreeGpgSignatureFormatFlags>()}),
-    ("OstreeMutableTreeClass", Layout {size: size_of::<OstreeMutableTreeClass>(), alignment: align_of::<OstreeMutableTreeClass>()}),
-    ("OstreeMutableTreeIter", Layout {size: size_of::<OstreeMutableTreeIter>(), alignment: align_of::<OstreeMutableTreeIter>()}),
-    ("OstreeObjectType", Layout {size: size_of::<OstreeObjectType>(), alignment: align_of::<OstreeObjectType>()}),
-    ("OstreeRepoCheckoutAtOptions", Layout {size: size_of::<OstreeRepoCheckoutAtOptions>(), alignment: align_of::<OstreeRepoCheckoutAtOptions>()}),
-    ("OstreeRepoCheckoutFilterResult", Layout {size: size_of::<OstreeRepoCheckoutFilterResult>(), alignment: align_of::<OstreeRepoCheckoutFilterResult>()}),
-    ("OstreeRepoCheckoutMode", Layout {size: size_of::<OstreeRepoCheckoutMode>(), alignment: align_of::<OstreeRepoCheckoutMode>()}),
-    ("OstreeRepoCheckoutOverwriteMode", Layout {size: size_of::<OstreeRepoCheckoutOverwriteMode>(), alignment: align_of::<OstreeRepoCheckoutOverwriteMode>()}),
-    ("OstreeRepoCommitFilterResult", Layout {size: size_of::<OstreeRepoCommitFilterResult>(), alignment: align_of::<OstreeRepoCommitFilterResult>()}),
-    ("OstreeRepoCommitIterResult", Layout {size: size_of::<OstreeRepoCommitIterResult>(), alignment: align_of::<OstreeRepoCommitIterResult>()}),
-    ("OstreeRepoCommitModifierFlags", Layout {size: size_of::<OstreeRepoCommitModifierFlags>(), alignment: align_of::<OstreeRepoCommitModifierFlags>()}),
-    ("OstreeRepoCommitState", Layout {size: size_of::<OstreeRepoCommitState>(), alignment: align_of::<OstreeRepoCommitState>()}),
-    ("OstreeRepoCommitTraverseFlags", Layout {size: size_of::<OstreeRepoCommitTraverseFlags>(), alignment: align_of::<OstreeRepoCommitTraverseFlags>()}),
-    ("OstreeRepoCommitTraverseIter", Layout {size: size_of::<OstreeRepoCommitTraverseIter>(), alignment: align_of::<OstreeRepoCommitTraverseIter>()}),
-    ("OstreeRepoFileClass", Layout {size: size_of::<OstreeRepoFileClass>(), alignment: align_of::<OstreeRepoFileClass>()}),
-    ("OstreeRepoFinderAvahiClass", Layout {size: size_of::<OstreeRepoFinderAvahiClass>(), alignment: align_of::<OstreeRepoFinderAvahiClass>()}),
-    ("OstreeRepoFinderConfigClass", Layout {size: size_of::<OstreeRepoFinderConfigClass>(), alignment: align_of::<OstreeRepoFinderConfigClass>()}),
-    ("OstreeRepoFinderInterface", Layout {size: size_of::<OstreeRepoFinderInterface>(), alignment: align_of::<OstreeRepoFinderInterface>()}),
-    ("OstreeRepoFinderMountClass", Layout {size: size_of::<OstreeRepoFinderMountClass>(), alignment: align_of::<OstreeRepoFinderMountClass>()}),
-    ("OstreeRepoFinderOverrideClass", Layout {size: size_of::<OstreeRepoFinderOverrideClass>(), alignment: align_of::<OstreeRepoFinderOverrideClass>()}),
-    ("OstreeRepoFinderResult", Layout {size: size_of::<OstreeRepoFinderResult>(), alignment: align_of::<OstreeRepoFinderResult>()}),
-    ("OstreeRepoFinderResultv", Layout {size: size_of::<OstreeRepoFinderResultv>(), alignment: align_of::<OstreeRepoFinderResultv>()}),
-    ("OstreeRepoListObjectsFlags", Layout {size: size_of::<OstreeRepoListObjectsFlags>(), alignment: align_of::<OstreeRepoListObjectsFlags>()}),
-    ("OstreeRepoListRefsExtFlags", Layout {size: size_of::<OstreeRepoListRefsExtFlags>(), alignment: align_of::<OstreeRepoListRefsExtFlags>()}),
-    ("OstreeRepoLockType", Layout {size: size_of::<OstreeRepoLockType>(), alignment: align_of::<OstreeRepoLockType>()}),
-    ("OstreeRepoMode", Layout {size: size_of::<OstreeRepoMode>(), alignment: align_of::<OstreeRepoMode>()}),
-    ("OstreeRepoPruneFlags", Layout {size: size_of::<OstreeRepoPruneFlags>(), alignment: align_of::<OstreeRepoPruneFlags>()}),
-    ("OstreeRepoPruneOptions", Layout {size: size_of::<OstreeRepoPruneOptions>(), alignment: align_of::<OstreeRepoPruneOptions>()}),
-    ("OstreeRepoPullFlags", Layout {size: size_of::<OstreeRepoPullFlags>(), alignment: align_of::<OstreeRepoPullFlags>()}),
-    ("OstreeRepoRemoteChange", Layout {size: size_of::<OstreeRepoRemoteChange>(), alignment: align_of::<OstreeRepoRemoteChange>()}),
-    ("OstreeRepoResolveRevExtFlags", Layout {size: size_of::<OstreeRepoResolveRevExtFlags>(), alignment: align_of::<OstreeRepoResolveRevExtFlags>()}),
-    ("OstreeRepoTransactionStats", Layout {size: size_of::<OstreeRepoTransactionStats>(), alignment: align_of::<OstreeRepoTransactionStats>()}),
-    ("OstreeRepoVerifyFlags", Layout {size: size_of::<OstreeRepoVerifyFlags>(), alignment: align_of::<OstreeRepoVerifyFlags>()}),
-    ("OstreeSePolicyRestoreconFlags", Layout {size: size_of::<OstreeSePolicyRestoreconFlags>(), alignment: align_of::<OstreeSePolicyRestoreconFlags>()}),
-    ("OstreeSignInterface", Layout {size: size_of::<OstreeSignInterface>(), alignment: align_of::<OstreeSignInterface>()}),
-    ("OstreeStaticDeltaGenerateOpt", Layout {size: size_of::<OstreeStaticDeltaGenerateOpt>(), alignment: align_of::<OstreeStaticDeltaGenerateOpt>()}),
-    ("OstreeStaticDeltaIndexFlags", Layout {size: size_of::<OstreeStaticDeltaIndexFlags>(), alignment: align_of::<OstreeStaticDeltaIndexFlags>()}),
-    ("OstreeSysrootDeployTreeOpts", Layout {size: size_of::<OstreeSysrootDeployTreeOpts>(), alignment: align_of::<OstreeSysrootDeployTreeOpts>()}),
-    ("OstreeSysrootSimpleWriteDeploymentFlags", Layout {size: size_of::<OstreeSysrootSimpleWriteDeploymentFlags>(), alignment: align_of::<OstreeSysrootSimpleWriteDeploymentFlags>()}),
-    ("OstreeSysrootUpgraderFlags", Layout {size: size_of::<OstreeSysrootUpgraderFlags>(), alignment: align_of::<OstreeSysrootUpgraderFlags>()}),
-    ("OstreeSysrootUpgraderPullFlags", Layout {size: size_of::<OstreeSysrootUpgraderPullFlags>(), alignment: align_of::<OstreeSysrootUpgraderPullFlags>()}),
-    ("OstreeSysrootWriteDeploymentsOpts", Layout {size: size_of::<OstreeSysrootWriteDeploymentsOpts>(), alignment: align_of::<OstreeSysrootWriteDeploymentsOpts>()}),
+    (
+        "OstreeAsyncProgressClass",
+        Layout {
+            size: size_of::<OstreeAsyncProgressClass>(),
+            alignment: align_of::<OstreeAsyncProgressClass>(),
+        },
+    ),
+    (
+        "OstreeChecksumFlags",
+        Layout {
+            size: size_of::<OstreeChecksumFlags>(),
+            alignment: align_of::<OstreeChecksumFlags>(),
+        },
+    ),
+    (
+        "OstreeCollectionRef",
+        Layout {
+            size: size_of::<OstreeCollectionRef>(),
+            alignment: align_of::<OstreeCollectionRef>(),
+        },
+    ),
+    (
+        "OstreeCollectionRefv",
+        Layout {
+            size: size_of::<OstreeCollectionRefv>(),
+            alignment: align_of::<OstreeCollectionRefv>(),
+        },
+    ),
+    (
+        "OstreeCommitSizesEntry",
+        Layout {
+            size: size_of::<OstreeCommitSizesEntry>(),
+            alignment: align_of::<OstreeCommitSizesEntry>(),
+        },
+    ),
+    (
+        "OstreeContentWriterClass",
+        Layout {
+            size: size_of::<OstreeContentWriterClass>(),
+            alignment: align_of::<OstreeContentWriterClass>(),
+        },
+    ),
+    (
+        "OstreeDeploymentUnlockedState",
+        Layout {
+            size: size_of::<OstreeDeploymentUnlockedState>(),
+            alignment: align_of::<OstreeDeploymentUnlockedState>(),
+        },
+    ),
+    (
+        "OstreeDiffDirsOptions",
+        Layout {
+            size: size_of::<OstreeDiffDirsOptions>(),
+            alignment: align_of::<OstreeDiffDirsOptions>(),
+        },
+    ),
+    (
+        "OstreeDiffFlags",
+        Layout {
+            size: size_of::<OstreeDiffFlags>(),
+            alignment: align_of::<OstreeDiffFlags>(),
+        },
+    ),
+    (
+        "OstreeDiffItem",
+        Layout {
+            size: size_of::<OstreeDiffItem>(),
+            alignment: align_of::<OstreeDiffItem>(),
+        },
+    ),
+    (
+        "OstreeGpgError",
+        Layout {
+            size: size_of::<OstreeGpgError>(),
+            alignment: align_of::<OstreeGpgError>(),
+        },
+    ),
+    (
+        "OstreeGpgSignatureAttr",
+        Layout {
+            size: size_of::<OstreeGpgSignatureAttr>(),
+            alignment: align_of::<OstreeGpgSignatureAttr>(),
+        },
+    ),
+    (
+        "OstreeGpgSignatureFormatFlags",
+        Layout {
+            size: size_of::<OstreeGpgSignatureFormatFlags>(),
+            alignment: align_of::<OstreeGpgSignatureFormatFlags>(),
+        },
+    ),
+    (
+        "OstreeMutableTreeClass",
+        Layout {
+            size: size_of::<OstreeMutableTreeClass>(),
+            alignment: align_of::<OstreeMutableTreeClass>(),
+        },
+    ),
+    (
+        "OstreeMutableTreeIter",
+        Layout {
+            size: size_of::<OstreeMutableTreeIter>(),
+            alignment: align_of::<OstreeMutableTreeIter>(),
+        },
+    ),
+    (
+        "OstreeObjectType",
+        Layout {
+            size: size_of::<OstreeObjectType>(),
+            alignment: align_of::<OstreeObjectType>(),
+        },
+    ),
+    (
+        "OstreeRepoCheckoutAtOptions",
+        Layout {
+            size: size_of::<OstreeRepoCheckoutAtOptions>(),
+            alignment: align_of::<OstreeRepoCheckoutAtOptions>(),
+        },
+    ),
+    (
+        "OstreeRepoCheckoutFilterResult",
+        Layout {
+            size: size_of::<OstreeRepoCheckoutFilterResult>(),
+            alignment: align_of::<OstreeRepoCheckoutFilterResult>(),
+        },
+    ),
+    (
+        "OstreeRepoCheckoutMode",
+        Layout {
+            size: size_of::<OstreeRepoCheckoutMode>(),
+            alignment: align_of::<OstreeRepoCheckoutMode>(),
+        },
+    ),
+    (
+        "OstreeRepoCheckoutOverwriteMode",
+        Layout {
+            size: size_of::<OstreeRepoCheckoutOverwriteMode>(),
+            alignment: align_of::<OstreeRepoCheckoutOverwriteMode>(),
+        },
+    ),
+    (
+        "OstreeRepoCommitFilterResult",
+        Layout {
+            size: size_of::<OstreeRepoCommitFilterResult>(),
+            alignment: align_of::<OstreeRepoCommitFilterResult>(),
+        },
+    ),
+    (
+        "OstreeRepoCommitIterResult",
+        Layout {
+            size: size_of::<OstreeRepoCommitIterResult>(),
+            alignment: align_of::<OstreeRepoCommitIterResult>(),
+        },
+    ),
+    (
+        "OstreeRepoCommitModifierFlags",
+        Layout {
+            size: size_of::<OstreeRepoCommitModifierFlags>(),
+            alignment: align_of::<OstreeRepoCommitModifierFlags>(),
+        },
+    ),
+    (
+        "OstreeRepoCommitState",
+        Layout {
+            size: size_of::<OstreeRepoCommitState>(),
+            alignment: align_of::<OstreeRepoCommitState>(),
+        },
+    ),
+    (
+        "OstreeRepoCommitTraverseFlags",
+        Layout {
+            size: size_of::<OstreeRepoCommitTraverseFlags>(),
+            alignment: align_of::<OstreeRepoCommitTraverseFlags>(),
+        },
+    ),
+    (
+        "OstreeRepoCommitTraverseIter",
+        Layout {
+            size: size_of::<OstreeRepoCommitTraverseIter>(),
+            alignment: align_of::<OstreeRepoCommitTraverseIter>(),
+        },
+    ),
+    (
+        "OstreeRepoFileClass",
+        Layout {
+            size: size_of::<OstreeRepoFileClass>(),
+            alignment: align_of::<OstreeRepoFileClass>(),
+        },
+    ),
+    (
+        "OstreeRepoFinderAvahiClass",
+        Layout {
+            size: size_of::<OstreeRepoFinderAvahiClass>(),
+            alignment: align_of::<OstreeRepoFinderAvahiClass>(),
+        },
+    ),
+    (
+        "OstreeRepoFinderConfigClass",
+        Layout {
+            size: size_of::<OstreeRepoFinderConfigClass>(),
+            alignment: align_of::<OstreeRepoFinderConfigClass>(),
+        },
+    ),
+    (
+        "OstreeRepoFinderInterface",
+        Layout {
+            size: size_of::<OstreeRepoFinderInterface>(),
+            alignment: align_of::<OstreeRepoFinderInterface>(),
+        },
+    ),
+    (
+        "OstreeRepoFinderMountClass",
+        Layout {
+            size: size_of::<OstreeRepoFinderMountClass>(),
+            alignment: align_of::<OstreeRepoFinderMountClass>(),
+        },
+    ),
+    (
+        "OstreeRepoFinderOverrideClass",
+        Layout {
+            size: size_of::<OstreeRepoFinderOverrideClass>(),
+            alignment: align_of::<OstreeRepoFinderOverrideClass>(),
+        },
+    ),
+    (
+        "OstreeRepoFinderResult",
+        Layout {
+            size: size_of::<OstreeRepoFinderResult>(),
+            alignment: align_of::<OstreeRepoFinderResult>(),
+        },
+    ),
+    (
+        "OstreeRepoFinderResultv",
+        Layout {
+            size: size_of::<OstreeRepoFinderResultv>(),
+            alignment: align_of::<OstreeRepoFinderResultv>(),
+        },
+    ),
+    (
+        "OstreeRepoListObjectsFlags",
+        Layout {
+            size: size_of::<OstreeRepoListObjectsFlags>(),
+            alignment: align_of::<OstreeRepoListObjectsFlags>(),
+        },
+    ),
+    (
+        "OstreeRepoListRefsExtFlags",
+        Layout {
+            size: size_of::<OstreeRepoListRefsExtFlags>(),
+            alignment: align_of::<OstreeRepoListRefsExtFlags>(),
+        },
+    ),
+    (
+        "OstreeRepoLockType",
+        Layout {
+            size: size_of::<OstreeRepoLockType>(),
+            alignment: align_of::<OstreeRepoLockType>(),
+        },
+    ),
+    (
+        "OstreeRepoMode",
+        Layout {
+            size: size_of::<OstreeRepoMode>(),
+            alignment: align_of::<OstreeRepoMode>(),
+        },
+    ),
+    (
+        "OstreeRepoPruneFlags",
+        Layout {
+            size: size_of::<OstreeRepoPruneFlags>(),
+            alignment: align_of::<OstreeRepoPruneFlags>(),
+        },
+    ),
+    (
+        "OstreeRepoPruneOptions",
+        Layout {
+            size: size_of::<OstreeRepoPruneOptions>(),
+            alignment: align_of::<OstreeRepoPruneOptions>(),
+        },
+    ),
+    (
+        "OstreeRepoPullFlags",
+        Layout {
+            size: size_of::<OstreeRepoPullFlags>(),
+            alignment: align_of::<OstreeRepoPullFlags>(),
+        },
+    ),
+    (
+        "OstreeRepoRemoteChange",
+        Layout {
+            size: size_of::<OstreeRepoRemoteChange>(),
+            alignment: align_of::<OstreeRepoRemoteChange>(),
+        },
+    ),
+    (
+        "OstreeRepoResolveRevExtFlags",
+        Layout {
+            size: size_of::<OstreeRepoResolveRevExtFlags>(),
+            alignment: align_of::<OstreeRepoResolveRevExtFlags>(),
+        },
+    ),
+    (
+        "OstreeRepoTransactionStats",
+        Layout {
+            size: size_of::<OstreeRepoTransactionStats>(),
+            alignment: align_of::<OstreeRepoTransactionStats>(),
+        },
+    ),
+    (
+        "OstreeRepoVerifyFlags",
+        Layout {
+            size: size_of::<OstreeRepoVerifyFlags>(),
+            alignment: align_of::<OstreeRepoVerifyFlags>(),
+        },
+    ),
+    (
+        "OstreeSePolicyRestoreconFlags",
+        Layout {
+            size: size_of::<OstreeSePolicyRestoreconFlags>(),
+            alignment: align_of::<OstreeSePolicyRestoreconFlags>(),
+        },
+    ),
+    (
+        "OstreeSignInterface",
+        Layout {
+            size: size_of::<OstreeSignInterface>(),
+            alignment: align_of::<OstreeSignInterface>(),
+        },
+    ),
+    (
+        "OstreeStaticDeltaGenerateOpt",
+        Layout {
+            size: size_of::<OstreeStaticDeltaGenerateOpt>(),
+            alignment: align_of::<OstreeStaticDeltaGenerateOpt>(),
+        },
+    ),
+    (
+        "OstreeStaticDeltaIndexFlags",
+        Layout {
+            size: size_of::<OstreeStaticDeltaIndexFlags>(),
+            alignment: align_of::<OstreeStaticDeltaIndexFlags>(),
+        },
+    ),
+    (
+        "OstreeSysrootDeployTreeOpts",
+        Layout {
+            size: size_of::<OstreeSysrootDeployTreeOpts>(),
+            alignment: align_of::<OstreeSysrootDeployTreeOpts>(),
+        },
+    ),
+    (
+        "OstreeSysrootSimpleWriteDeploymentFlags",
+        Layout {
+            size: size_of::<OstreeSysrootSimpleWriteDeploymentFlags>(),
+            alignment: align_of::<OstreeSysrootSimpleWriteDeploymentFlags>(),
+        },
+    ),
+    (
+        "OstreeSysrootUpgraderFlags",
+        Layout {
+            size: size_of::<OstreeSysrootUpgraderFlags>(),
+            alignment: align_of::<OstreeSysrootUpgraderFlags>(),
+        },
+    ),
+    (
+        "OstreeSysrootUpgraderPullFlags",
+        Layout {
+            size: size_of::<OstreeSysrootUpgraderPullFlags>(),
+            alignment: align_of::<OstreeSysrootUpgraderPullFlags>(),
+        },
+    ),
+    (
+        "OstreeSysrootWriteDeploymentsOpts",
+        Layout {
+            size: size_of::<OstreeSysrootWriteDeploymentsOpts>(),
+            alignment: align_of::<OstreeSysrootWriteDeploymentsOpts>(),
+        },
+    ),
 ];
 
 const RUST_CONSTANTS: &[(&str, &str)] = &[
@@ -276,9 +596,15 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
     ("(guint) OSTREE_CHECKSUM_FLAGS_NONE", "0"),
     ("OSTREE_COMMIT_GVARIANT_STRING", "(a{sv}aya(say)sstayay)"),
     ("OSTREE_COMMIT_META_KEY_ARCHITECTURE", "ostree.architecture"),
-    ("OSTREE_COMMIT_META_KEY_COLLECTION_BINDING", "ostree.collection-binding"),
+    (
+        "OSTREE_COMMIT_META_KEY_COLLECTION_BINDING",
+        "ostree.collection-binding",
+    ),
     ("OSTREE_COMMIT_META_KEY_ENDOFLIFE", "ostree.endoflife"),
-    ("OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE", "ostree.endoflife-rebase"),
+    (
+        "OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE",
+        "ostree.endoflife-rebase",
+    ),
     ("OSTREE_COMMIT_META_KEY_REF_BINDING", "ostree.ref-binding"),
     ("OSTREE_COMMIT_META_KEY_SOURCE_TITLE", "ostree.source-title"),
     ("OSTREE_COMMIT_META_KEY_VERSION", "version"),
@@ -303,7 +629,10 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
     ("(gint) OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME", "9"),
     ("(gint) OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED", "2"),
     ("(gint) OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP", "13"),
-    ("(gint) OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY", "14"),
+    (
+        "(gint) OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY",
+        "14",
+    ),
     ("(gint) OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING", "4"),
     ("(gint) OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED", "3"),
     ("(gint) OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME", "8"),
@@ -317,7 +646,10 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
     ("OSTREE_MAX_METADATA_WARN_SIZE", "7340032"),
     ("OSTREE_METADATA_KEY_BOOTABLE", "ostree.bootable"),
     ("OSTREE_METADATA_KEY_LINUX", "ostree.linux"),
-    ("OSTREE_META_KEY_DEPLOY_COLLECTION_ID", "ostree.deploy-collection-id"),
+    (
+        "OSTREE_META_KEY_DEPLOY_COLLECTION_ID",
+        "ostree.deploy-collection-id",
+    ),
     ("(gint) OSTREE_OBJECT_TYPE_COMMIT", "4"),
     ("(gint) OSTREE_OBJECT_TYPE_COMMIT_META", "6"),
     ("(gint) OSTREE_OBJECT_TYPE_DIR_META", "3"),
@@ -343,11 +675,23 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
     ("(gint) OSTREE_REPO_COMMIT_ITER_RESULT_END", "1"),
     ("(gint) OSTREE_REPO_COMMIT_ITER_RESULT_ERROR", "0"),
     ("(gint) OSTREE_REPO_COMMIT_ITER_RESULT_FILE", "2"),
-    ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS", "4"),
+    (
+        "(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS",
+        "4",
+    ),
     ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME", "16"),
-    ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL", "32"),
-    ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED", "8"),
-    ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES", "2"),
+    (
+        "(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL",
+        "32",
+    ),
+    (
+        "(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED",
+        "8",
+    ),
+    (
+        "(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES",
+        "2",
+    ),
     ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE", "0"),
     ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS", "1"),
     ("(guint) OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL", "2"),
@@ -392,8 +736,14 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
     ("(guint) OSTREE_REPO_VERIFY_FLAGS_NONE", "0"),
     ("(guint) OSTREE_REPO_VERIFY_FLAGS_NO_GPG", "1"),
     ("(guint) OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI", "2"),
-    ("(guint) OSTREE_SEPOLICY_RESTORECON_FLAGS_ALLOW_NOLABEL", "1"),
-    ("(guint) OSTREE_SEPOLICY_RESTORECON_FLAGS_KEEP_EXISTING", "2"),
+    (
+        "(guint) OSTREE_SEPOLICY_RESTORECON_FLAGS_ALLOW_NOLABEL",
+        "1",
+    ),
+    (
+        "(guint) OSTREE_SEPOLICY_RESTORECON_FLAGS_KEEP_EXISTING",
+        "2",
+    ),
     ("(guint) OSTREE_SEPOLICY_RESTORECON_FLAGS_NONE", "0"),
     ("OSTREE_SHA256_DIGEST_LEN", "32"),
     ("OSTREE_SHA256_STRING_LEN", "64"),
@@ -403,19 +753,41 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
     ("(gint) OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE", "0"),
     ("OSTREE_SUMMARY_GVARIANT_STRING", "(a(s(taya{sv}))a{sv})"),
     ("OSTREE_SUMMARY_SIG_GVARIANT_STRING", "a{sv}"),
-    ("(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE", "0"),
-    ("(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT", "2"),
-    ("(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN", "4"),
-    ("(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN", "1"),
-    ("(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING", "8"),
-    ("(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK", "16"),
-    ("(guint) OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED", "2"),
+    (
+        "(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE",
+        "0",
+    ),
+    (
+        "(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT",
+        "2",
+    ),
+    (
+        "(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN",
+        "4",
+    ),
+    (
+        "(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN",
+        "1",
+    ),
+    (
+        "(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING",
+        "8",
+    ),
+    (
+        "(guint) OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK",
+        "16",
+    ),
+    (
+        "(guint) OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED",
+        "2",
+    ),
     ("(guint) OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE", "4"),
-    ("(guint) OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER", "1"),
+    (
+        "(guint) OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER",
+        "1",
+    ),
     ("(guint) OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_NONE", "0"),
     ("(guint) OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC", "2"),
     ("OSTREE_TIMESTAMP", "0"),
     ("OSTREE_TREE_GVARIANT_STRING", "(a(say)a(sayay))"),
 ];
-
-
