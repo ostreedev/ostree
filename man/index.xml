@@ -1,0 +1,202 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright © 2022 Endless OS Foundation LLC
+
+SPDX-License-Identifier: LGPL-2.0+
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<index id="index">
+    <title>OSTree Manual</title>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-cleanup</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-config-diff</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-deploy</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-init-fs</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-instutil</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-os-init</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-pin</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-set-origin</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-status</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-switch</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-undeploy</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-unlock</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin-upgrade</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-admin</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-cat</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-checkout</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-checksum</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-commit</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-config</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-create-usb</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-diff</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-export</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-find-remotes</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-fsck</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-gpg-sign</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-init</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-log</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-ls</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-prune</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-pull-local</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-pull</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-refs</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-remote</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree.repo-config</refentrytitle><manvolnum>5</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree.repo</refentrytitle><manvolnum>5</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-reset</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-rev-parse</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-show</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-sign</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-static-delta</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-summary</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+
+    <indexentry><primaryie><citerefentry>
+        <refentrytitle>rofiles-fuse</refentrytitle><manvolnum>1</manvolnum>
+    </citerefentry></primaryie></indexentry>
+</index>
