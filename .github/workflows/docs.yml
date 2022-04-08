@@ -26,10 +26,11 @@ jobs:
       - name: Install dependencies
         run: ./ci/installdeps.sh
 
-      - name: Build API docs
+      - name: Build API docs and manpages
         run: |
-          ./autogen.sh --enable-gtk-doc
+          ./autogen.sh --enable-gtk-doc --enable-man --enable-man-html
           make -C apidoc
+          make manhtml
 
       - name: Build and publish jekyll docs
         uses: helaili/jekyll-action@v2
