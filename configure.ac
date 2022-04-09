@@ -292,6 +292,16 @@ AS_IF([test "$enable_man" != no], [
 ])
 AM_CONDITIONAL(ENABLE_MAN, test "$enable_man" != no)
 
+AC_ARG_ENABLE([man-html],
+              [AS_HELP_STRING([--enable-man-html],
+                              [generate man HTML pages [default=no]])],,
+              enable_man_html=no)
+
+AS_IF([test "$enable_man_html" = yes && test "$enable_man" = no], [
+  AC_MSG_ERROR([--enable-man is required for --enable-man-html])
+])
+AM_CONDITIONAL(ENABLE_MAN_HTML, test "$enable_man_html" = yes)
+
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)

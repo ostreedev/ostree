@@ -146,6 +146,10 @@ make install DESTDIR=/path/to/dest
 
 The libostree API documentation is available in [Reference](reference/).
 
+## Manual Pages
+
+The ostree manual pages are available in [Manual](man/).
+
 ## Contributing
 
 See [Contributing]({{ site.baseurl }}{% link CONTRIBUTING.md %}).

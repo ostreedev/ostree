@@ -151,7 +151,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-admin-cleanup</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
-                    &nbsp;Delete untagged
+                    Delete untagged
                     deployments and repository objects.
                 </para></listitem>
             </varlistentry>
@@ -160,7 +160,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                  <term><citerefentry><refentrytitle>ostree-admin-config-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;See changes to
+                    See changes to
                     <filename>/etc</filename> as compared
                     to the current default (from
                     <filename>/usr/etc</filename>).
@@ -171,7 +171,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                  <term><citerefentry><refentrytitle>ostree-admin-deploy</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Takes a particular
+                    Takes a particular
                     commit or revision, and sets it up for
                     the next boot.
                 </para></listitem>
@@ -181,7 +181,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                  <term><citerefentry><refentrytitle>ostree-admin-init-fs</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Initialize a root filesystem
+                    Initialize a root filesystem
                     in a specified path.
                 </para></listitem>
             </varlistentry>
@@ -190,7 +190,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-admin-instutil</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Utility functions intended primarily for operating system installation programs
+                    Utility functions intended primarily for operating system installation programs
                 </para></listitem>
             </varlistentry>
 
@@ -198,7 +198,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                  <term><citerefentry><refentrytitle>ostree-admin-os-init</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Initialize the
+                    Initialize the
                     deployment location for an operating
                     system with  a specified name.
                 </para></listitem>
@@ -208,7 +208,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-admin-status</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Show and list the deployments.
+                    Show and list the deployments.
                 </para></listitem>
             </varlistentry>
 
@@ -216,7 +216,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-admin-switch</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Choose a different ref
+                    Choose a different ref
                     to track from the same remote as the
                     current tree.
                 </para></listitem>
@@ -226,7 +226,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-admin-undeploy</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Remove the previously
+                    Remove the previously
                     <replaceable>INDEX</replaceable>
                     deployed tree from the bootloader
                     configuration.
@@ -237,7 +237,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-admin-upgrade</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Download the latest version for the
+                    Download the latest version for the
                     current ref, and deploy it.
                 </para></listitem>
             </varlistentry>
@@ -253,7 +253,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-cat</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Concatenate contents of files
+                    Concatenate contents of files
                 </para></listitem>
             </varlistentry>
 
@@ -261,7 +261,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-checkout</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Check out a commit into a filesystem tree.
+                    Check out a commit into a filesystem tree.
                 </para></listitem>
             </varlistentry>
 
@@ -269,7 +269,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-checksum</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Gives checksum of any file.
+                    Gives checksum of any file.
                 </para></listitem>
             </varlistentry>
 
@@ -277,7 +277,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-commit</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Given one or more
+                    Given one or more
                     trees, create a new commit using those contents.
                 </para></listitem>
             </varlistentry>
@@ -286,7 +286,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-config</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Change settings.
+                    Change settings.
                 </para></listitem>
             </varlistentry>
 
@@ -294,7 +294,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-create-usb</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Put the given refs on an external drive for P2P distribution.
+                    Put the given refs on an external drive for P2P distribution.
                 </para></listitem>
             </varlistentry>
 
@@ -302,7 +302,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Concisely list
+                    Concisely list
                     differences between the given refs.
                 </para></listitem>
             </varlistentry>
@@ -311,7 +311,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-find-remotes</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Find remotes to serve the given refs.
+                    Find remotes to serve the given refs.
                 </para></listitem>
             </varlistentry>
 
@@ -319,7 +319,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-fsck</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Check a repository for consistency.
+                    Check a repository for consistency.
                 </para></listitem>
             </varlistentry>
 
@@ -327,7 +327,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-init</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Initialize a new repository.
+                    Initialize a new repository.
                 </para></listitem>
             </varlistentry>
             
@@ -335,7 +335,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-log</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Show revision log.
+                    Show revision log.
                 </para></listitem>
             </varlistentry>
 
@@ -343,7 +343,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-ls</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;List the contents of a given commit.
+                    List the contents of a given commit.
                 </para></listitem>
             </varlistentry>
 
@@ -351,7 +351,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-prune</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
-                    &nbsp;Search for unreachable objects.
+                    Search for unreachable objects.
                 </para></listitem>
             </varlistentry>
 
@@ -359,7 +359,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-pull-local</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Copy data from source-repo.
+                    Copy data from source-repo.
                 </para></listitem>
             </varlistentry>
 
@@ -367,7 +367,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-pull</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Download data from remote repo.  If you have libsoup.
+                    Download data from remote repo.  If you have libsoup.
                 </para></listitem>
             </varlistentry>
 
@@ -375,7 +375,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-refs</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;List refs.
+                    List refs.
                 </para></listitem>
             </varlistentry>
 
@@ -383,7 +383,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-remote</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Manipulate remote archive configuration.
+                    Manipulate remote archive configuration.
                 </para></listitem>
             </varlistentry>
 
@@ -391,7 +391,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-reset</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
-                    &nbsp;Reset a ref to a previous commit.
+                    Reset a ref to a previous commit.
                 </para></listitem>
             </varlistentry>
 
@@ -399,7 +399,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-rev-parse</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
-                    &nbsp;Show the SHA256 corresponding to a given rev.
+                    Show the SHA256 corresponding to a given rev.
                 </para></listitem>
             </varlistentry>
 
@@ -407,7 +407,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-show</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
-                    &nbsp;Given an OSTree SHA256 checksum, display its contents.
+                    Given an OSTree SHA256 checksum, display its contents.
                 </para></listitem>
             </varlistentry>
 
@@ -415,7 +415,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-static-delta</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
-                    &nbsp;Manage static delta files.
+                    Manage static delta files.
                 </para></listitem>
             </varlistentry>
 
@@ -423,7 +423,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-summary</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
-                    &nbsp;Regenerate the repository summary metadata.
+                    Regenerate the repository summary metadata.
                 </para></listitem>
             </varlistentry>
 
@@ -431,7 +431,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><citerefentry><refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
-                    &nbsp;Simple webserver.
+                    Simple webserver.
                 </para></listitem>
             </varlistentry>
         </variablelist>

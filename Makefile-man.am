@@ -19,6 +19,8 @@
 
 if ENABLE_MAN
 
+# If you add a new man page here, add a reference to it in index.xml and
+# ostree.xml.
 man1_files = ostree.1 ostree-admin-cleanup.1				\
 ostree-admin-config-diff.1 ostree-admin-deploy.1			\
 ostree-admin-init-fs.1 ostree-admin-instutil.1 ostree-admin-os-init.1	\
@@ -52,9 +54,25 @@ man5_files = ostree.repo.5 ostree.repo-config.5
 man1_MANS = $(addprefix man/,$(man1_files))
 man5_MANS = $(addprefix man/,$(man5_files))
 
-EXTRA_DIST += $(man1_MANS:.1=.xml) $(man5_MANS:.5=.xml)
+manhtml_files = \
+	man/html/index.html \
+	$(addprefix man/html/,$(man1_files:.1=.html)) \
+	$(addprefix man/html/,$(man5_files:.5=.html)) \
+	$(NULL)
 
-XSLT_STYLESHEET = http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
+if ENABLE_MAN_HTML
+noinst_DATA += $(manhtml_files)
+
+# Convenience target for building the just the HTML man pages
+manhtml: $(manhtml_files)
+.PHONY: manhtml
+endif
+
+EXTRA_DIST += man/index.xml $(man1_MANS:.1=.xml) $(man5_MANS:.5=.xml)
+
+XSLT_MAN_STYLESHEET = http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
+XSLT_HTML_STYLESHEET = man/html.xsl
+EXTRA_DIST += $(XSLT_HTML_STYLESHEET)
 
 XSLTPROC_FLAGS = \
         --nonet \
@@ -67,14 +85,19 @@ XSLTPROC_FLAGS = \
 XSLTPROC_MAN = $(XSLTPROC) $(XSLTPROC_FLAGS)
 
 %.1: %.xml
-	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_STYLESHEET) $<
+	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_MAN_STYLESHEET) $<
 
 %.5: %.xml
-	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_STYLESHEET) $<
+	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_MAN_STYLESHEET) $<
+
+man/html/%.html: man/%.xml
+	@mkdir -p man/html
+	$(AM_V_GEN) $(XSLTPROC_MAN) --output $@ $(XSLT_HTML_STYLESHEET) $<
 
 CLEANFILES += \
 	$(man1_MANS) \
 	$(man5_MANS) \
+	$(manhtml_files) \
 	$(NULL)
 
 endif
