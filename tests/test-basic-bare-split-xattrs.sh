@@ -56,7 +56,7 @@ rm -rf -- repo files
 if [ "${PRIVILEGED}" = "true" ]; then
     COMMIT="d614c428015227259031b0f19b934dade908942fd71c49047e0daa70e7800a5d"
     cd ${test_tmpdir}
-    ${SUDO} tar --same-permissions --same-owner -xaf ${test_srcdir}/fixtures/bare-split-xattrs/basic.tar.xz
+    ${SUDO} tar --same-permissions --same-owner -xaf ${test_srcdir}/bare-split-xattrs-basic.tar.xz
     ${SUDO} ${OSTREE} fsck --all
     ${OSTREE} log ${COMMIT} > out.txt
     assert_file_has_content_literal out.txt "fixtures: bare-split-xattrs repo"
