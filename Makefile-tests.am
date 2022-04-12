@@ -202,7 +202,7 @@ dist_installed_test_data = tests/archive-test.sh \
 	tests/ostree-path-traverse.tar.gz \
 	tests/pre-signed-pull-data.tar.gz \
 	tests/libtest-core.sh \
-	tests/fixtures/bare-split-xattrs/basic.tar.xz \
+	tests/bare-split-xattrs-basic.tar.xz \
 	$(NULL)
 
 EXTRA_DIST += tests/libtest.sh
