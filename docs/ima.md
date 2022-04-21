@@ -25,14 +25,17 @@ files would (depending on policy) not be readable or executable.
 ## IMA signatures and OSTree checksum
 
 Mechanically, IMA signatures appear as a `security.ima` extended attribute
-on the file.   This is a signed digest of just the file content.
+on the file.   This is a signed digest of just the file content (and not
+any metadata)
 
-OSTree has first-class support for extended attributes;
-they are included in the object digest along with other key file attributes
-such as uid, gid and mode.
+OSTree's checksums in contrast include not just the file content, but also 
+metadata such as uid, gid and mode and extended attributes;
 
 Together, this means that adding an IMA signature to a file in the OSTree
-model appears as a new object (with a new digest).
+model appears as a new object (with a new digest).  A nice property is that
+this enables the transactional addition (or removal) of IMA signatures.
+However, adding IMA signatures to files that were previously unsigned
+also today duplicates disk space.
 
 ## Signing 
 
@@ -51,7 +54,7 @@ page; we will not replicate it here.
 
 - An OSTree repository (could be any mode; `archive` or e.g. `bare-user`)
 - A ref or commit digest (e.g. `exampleos/x86_64/stable`)
-- A digest algorthim (usually `sha256`, but you may use e.g. `sha512` as well)
+- A digest algorithm (usually `sha256`, but you may use e.g. `sha512` as well)
 - An RSA private key
 
 You can then add IMA signatures to all regular files in the commit:
@@ -79,8 +82,9 @@ The EVM subsystem builds on IMA, and adds another signature which
 covers most file data, such as the uid, gid and mode and selected
 security-relevant extended attributes.
 
-If you've been following along, note this is very, very close to what ostree
-checksums as well!
+This is quite close to the ostree native checksum - the ordering
+of the fields is different so the checksums are physically different, but
+logically they are very close.
 
 However, the focus of the EVM design seems to mostly
 be on machine-specific signatures with keys stored in a TPM.
@@ -106,6 +110,5 @@ signing commits with these "portable" EVM signatures in addition to IMA.
 - https://fedoraproject.org/wiki/Changes/Signed_RPM_Contents
 - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/enhancing-security-with-the-kernel-integrity-subsystem_managing-monitoring-and-updating-the-kernel
 
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
