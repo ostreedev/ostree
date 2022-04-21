@@ -40,6 +40,9 @@ EOF
     cd /ostree/repo/tmp
     # https://github.com/ostreedev/ostree/issues/1569
     ostree checkout -H ${commit} t
+    # xref https://github.com/coreos/coreos-assembler/pull/2814
+    systemctl mask --now zincati
+    # Create a synthetic commit for upgrade
     ostree commit --no-bindings --parent="${commit}" -b staged-deploy -I --consume t
     newcommit=$(ostree rev-parse staged-deploy)
     orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
