@@ -764,11 +764,13 @@ initiate_next_curl_request (FetcherRequest *req,
 
   GUri *baseuri = req->mirrorlist->pdata[req->idx];
   { g_autofree char *uri = request_get_uri (req, baseuri);
-    curl_easy_setopt (req->easy, CURLOPT_URL, uri);
+    rc = curl_easy_setopt (req->easy, CURLOPT_URL, uri);
+    g_assert_cmpint (rc, ==, CURLM_OK);
   }
 
-  (void) curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
+  rc = curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
                            self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
+  g_assert_cmpint (rc, ==, CURLM_OK);
 
   /* Set caching request headers */
   if (req->if_none_match != NULL)
@@ -791,7 +793,10 @@ initiate_next_curl_request (FetcherRequest *req,
     req->req_headers = curl_slist_append (req->req_headers, l->data);
 
   if (req->req_headers != NULL)
-    curl_easy_setopt (req->easy, CURLOPT_HTTPHEADER, req->req_headers);
+    {
+      rc = curl_easy_setopt (req->easy, CURLOPT_HTTPHEADER, req->req_headers);
+      g_assert_cmpint (rc, ==, CURLM_OK);
+    }
 
   if (self->cookie_jar_path)
     {
@@ -808,10 +813,17 @@ initiate_next_curl_request (FetcherRequest *req,
     }
 
   if (self->tls_ca_db_path)
-    curl_easy_setopt (req->easy, CURLOPT_CAINFO, self->tls_ca_db_path);
+    {
+      rc = curl_easy_setopt (req->easy, CURLOPT_CAINFO, self->tls_ca_db_path);
+      g_assert_cmpint (rc, ==, CURLM_OK);
+    }
+
 
   if ((self->config_flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
-    curl_easy_setopt (req->easy, CURLOPT_SSL_VERIFYPEER, 0L);
+    {
+      rc = curl_easy_setopt (req->easy, CURLOPT_SSL_VERIFYPEER, 0L);
+      g_assert_cmpint (rc, ==, CURLM_OK);
+    }
 
   if (self->tls_client_cert_path)
     {
@@ -826,28 +838,43 @@ initiate_next_curl_request (FetcherRequest *req,
        */
       if (g_str_has_prefix (self->tls_client_key_path, "pkcs11:"))
         {
-          curl_easy_setopt (req->easy, CURLOPT_SSLENGINE, "pkcs11");
-          curl_easy_setopt (req->easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
-          curl_easy_setopt (req->easy, CURLOPT_SSLKEYTYPE, "ENG");
+          rc = curl_easy_setopt (req->easy, CURLOPT_SSLENGINE, "pkcs11");
+          g_assert_cmpint (rc, ==, CURLM_OK);
+          rc = curl_easy_setopt (req->easy, CURLOPT_SSLENGINE_DEFAULT, 1L);
+          g_assert_cmpint (rc, ==, CURLM_OK);
+          rc = curl_easy_setopt (req->easy, CURLOPT_SSLKEYTYPE, "ENG");
+          g_assert_cmpint (rc, ==, CURLM_OK);
         }
       if (g_str_has_prefix (self->tls_client_cert_path, "pkcs11:"))
-        curl_easy_setopt (req->easy, CURLOPT_SSLCERTTYPE, "ENG");
+        {
+          rc = curl_easy_setopt (req->easy, CURLOPT_SSLCERTTYPE, "ENG");
+          g_assert_cmpint (rc, ==, CURLM_OK);
+        }
 
-      curl_easy_setopt (req->easy, CURLOPT_SSLCERT, self->tls_client_cert_path);
-      curl_easy_setopt (req->easy, CURLOPT_SSLKEY, self->tls_client_key_path);
+      rc = curl_easy_setopt (req->easy, CURLOPT_SSLCERT, self->tls_client_cert_path);
+      g_assert_cmpint (rc, ==, CURLM_OK);
+
+      rc = curl_easy_setopt (req->easy, CURLOPT_SSLKEY, self->tls_client_key_path);
+      g_assert_cmpint (rc, ==, CURLM_OK);
     }
 
   if ((self->config_flags & OSTREE_FETCHER_FLAGS_TRANSFER_GZIP) > 0)
-    curl_easy_setopt (req->easy, CURLOPT_ACCEPT_ENCODING, "");
+    {
+      rc = curl_easy_setopt (req->easy, CURLOPT_ACCEPT_ENCODING, "");
+      g_assert_cmpint (rc, ==, CURLM_OK);
+    }
 
   /* If we have e.g. basic auth in the URL string, let's honor that */
   const char *username = g_uri_get_user (baseuri);
-  curl_easy_setopt (req->easy, CURLOPT_USERNAME, username);
+  rc = curl_easy_setopt (req->easy, CURLOPT_USERNAME, username);
+  g_assert_cmpint (rc, ==, CURLM_OK);
   const char *password = g_uri_get_password (baseuri);
-  curl_easy_setopt (req->easy, CURLOPT_PASSWORD, password);
+  rc = curl_easy_setopt (req->easy, CURLOPT_PASSWORD, password);
+  g_assert_cmpint (rc, ==, CURLM_OK);
 
   /* We should only speak HTTP; TODO: only enable file if specified */
-  curl_easy_setopt (req->easy, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FILE));
+  rc = curl_easy_setopt (req->easy, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FILE));
+  g_assert_cmpint (rc, ==, CURLM_OK);
   /* Picked the current version in F25 as of 20170127, since
    * there are numerous HTTP/2 fixes since the original version in
    * libcurl 7.43.0.
@@ -855,25 +882,37 @@ initiate_next_curl_request (FetcherRequest *req,
   if (!(self->config_flags & OSTREE_FETCHER_FLAGS_DISABLE_HTTP2))
     {
 #if CURL_AT_LEAST_VERSION(7, 51, 0)
-      curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+     rc = curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+     g_assert_cmpint (rc, ==, CURLM_OK);
 #endif
       /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
 #if (CURLPIPE_MULTIPLEX > 0)
       /* wait for pipe connection to confirm */
-      curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
+      rc = curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
+      g_assert_cmpint (rc, ==, CURLM_OK);
 #endif
     }
 
-  curl_easy_setopt (req->easy, CURLOPT_WRITEFUNCTION, write_cb);
-  curl_easy_setopt (req->easy, CURLOPT_HEADERFUNCTION, response_header_cb);
+  rc = curl_easy_setopt (req->easy, CURLOPT_WRITEFUNCTION, write_cb);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_HEADERFUNCTION, response_header_cb);
+  g_assert_cmpint (rc, ==, CURLM_OK);
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
-    curl_easy_setopt (req->easy, CURLOPT_VERBOSE, 1L);
-  curl_easy_setopt (req->easy, CURLOPT_ERRORBUFFER, req->error);
+    {
+      rc = curl_easy_setopt (req->easy, CURLOPT_VERBOSE, 1L);
+      g_assert_cmpint (rc, ==, CURLM_OK);
+    }
+  rc = curl_easy_setopt (req->easy, CURLOPT_ERRORBUFFER, req->error);
+  g_assert_cmpint (rc, ==, CURLM_OK);
   /* Note that the "easy" object's privdata is the task */
-  curl_easy_setopt (req->easy, CURLOPT_NOPROGRESS, 1L);
-  curl_easy_setopt (req->easy, CURLOPT_PROGRESSFUNCTION, prog_cb);
-  curl_easy_setopt (req->easy, CURLOPT_FOLLOWLOCATION, 1L);
-  curl_easy_setopt (req->easy, CURLOPT_CONNECTTIMEOUT, 30L);
+  rc = curl_easy_setopt (req->easy, CURLOPT_NOPROGRESS, 1L);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_PROGRESSFUNCTION, prog_cb);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_FOLLOWLOCATION, 1L);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_CONNECTTIMEOUT, 30L);
+  g_assert_cmpint (rc, ==, CURLM_OK);
   /* We used to set CURLOPT_LOW_SPEED_LIMIT and CURLOPT_LOW_SPEED_TIME
    * here, but see https://github.com/ostreedev/ostree/issues/878#issuecomment-347228854
    * basically those options don't play well with HTTP2 at the moment
@@ -883,10 +922,14 @@ initiate_next_curl_request (FetcherRequest *req,
    */
 
   /* closure bindings -> task */
-  curl_easy_setopt (req->easy, CURLOPT_PRIVATE, task);
-  curl_easy_setopt (req->easy, CURLOPT_WRITEDATA, task);
-  curl_easy_setopt (req->easy, CURLOPT_HEADERDATA, task);
-  curl_easy_setopt (req->easy, CURLOPT_PROGRESSDATA, task);
+  rc = curl_easy_setopt (req->easy, CURLOPT_PRIVATE, task);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_WRITEDATA, task);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_HEADERDATA, task);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_PROGRESSDATA, task);
+  g_assert_cmpint (rc, ==, CURLM_OK);
 
   CURLMcode multi_rc = curl_multi_add_handle (self->multi, req->easy);
   g_assert (multi_rc == CURLM_OK);
