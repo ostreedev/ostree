@@ -96,6 +96,9 @@ struct OstreeSysroot {
 #define _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS "ostree/initramfs-overlays"
 #define _OSTREE_SYSROOT_INITRAMFS_OVERLAYS "boot/" _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS
 
+// Relative to /boot, consumed by ostree-boot-complete.service
+#define _OSTREE_FINALIZE_STAGED_FAILURE_PATH "ostree/finalize-failure.stamp"
+
 gboolean
 _ostree_sysroot_ensure_writable (OstreeSysroot      *self,
                                  GError            **error);
@@ -142,6 +145,10 @@ gboolean
 _ostree_sysroot_finalize_staged (OstreeSysroot *self,
                                  GCancellable  *cancellable,
                                  GError       **error);
+gboolean
+_ostree_sysroot_boot_complete (OstreeSysroot *self,
+                               GCancellable  *cancellable,
+                               GError       **error);
 
 OstreeDeployment *
 _ostree_sysroot_deserialize_deployment_from_variant (GVariant *v,
