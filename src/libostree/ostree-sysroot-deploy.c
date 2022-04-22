@@ -3255,10 +3255,10 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot     *self,
 }
 
 /* Invoked at shutdown time by ostree-finalize-staged.service */
-gboolean
-_ostree_sysroot_finalize_staged (OstreeSysroot *self,
-                                 GCancellable  *cancellable,
-                                 GError       **error)
+static gboolean
+_ostree_sysroot_finalize_staged_inner (OstreeSysroot *self,
+                                       GCancellable  *cancellable,
+                                       GError       **error)
 {
   /* It's totally fine if there's no staged deployment; perhaps down the line
    * though we could teach the ostree cmdline to tell systemd to activate the
@@ -3355,7 +3355,61 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
   if (!ostree_sysroot_prepare_cleanup (self, cancellable, error))
     return FALSE;
 
+  // Cleanup will have closed some FDs, re-ensure writability
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
   return TRUE;
+}
+
+/* Invoked at shutdown time by ostree-finalize-staged.service */
+gboolean
+_ostree_sysroot_finalize_staged (OstreeSysroot *self,
+                                 GCancellable  *cancellable,
+                                 GError       **error)
+{
+  g_autoptr(GError) finalization_error = NULL;
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
+  if (!_ostree_sysroot_finalize_staged_inner (self, cancellable, &finalization_error))
+    {
+      g_autoptr(GError) writing_error = NULL;
+      g_assert_cmpint (self->boot_fd, !=, -1);
+      if (!glnx_file_replace_contents_at (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, 
+                                           (guint8*)finalization_error->message, -1,
+                                           0, cancellable, &writing_error))
+        {
+          // We somehow failed to write the failure message...that's not great.  Maybe ENOSPC on /boot.
+          g_printerr ("Failed to write %s: %s\n", _OSTREE_FINALIZE_STAGED_FAILURE_PATH, writing_error->message);
+        }
+      g_propagate_error (error, g_steal_pointer (&finalization_error));
+      return FALSE;
+    }
+  return TRUE;
+}
+
+/* Invoked at bootup time by ostree-boot-complete.service */
+gboolean
+_ostree_sysroot_boot_complete (OstreeSysroot *self,
+                               GCancellable  *cancellable,
+                               GError       **error)
+{
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
+
+  glnx_autofd int failure_fd = -1;
+  if (!ot_openat_ignore_enoent (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, &failure_fd, error))
+    return FALSE;
+  // If we didn't find a failure log, then there's nothing to do right now.
+  // (Actually this unit shouldn't even be invoked, but we may do more in the future)
+  if (failure_fd == -1)
+    return TRUE;
+  g_autofree char *failure_data = glnx_fd_readall_utf8 (failure_fd, NULL, cancellable, error);
+  if (failure_data == NULL)
+    return glnx_prefix_error (error, "Reading from %s", _OSTREE_FINALIZE_STAGED_FAILURE_PATH);
+  // Remove the file; we don't want to continually error out.
+  (void) unlinkat (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, 0);
+  return glnx_throw (error, "ostree-finalize-staged.service failed on previous boot: %s", failure_data);
 }
 
 /**

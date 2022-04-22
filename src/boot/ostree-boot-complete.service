@@ -1,0 +1,33 @@
+# Copyright (C) 2022 Red Hat, Inc.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library. If not, see <https://www.gnu.org/licenses/>.
+
+[Unit]
+Description=OSTree Complete Boot
+Documentation=man:ostree(1)
+# For now, this is the only condition on which we start, but it's
+# marked as a triggering condition in case in the future we want
+# to do something else.
+ConditionPathExists=|/boot/ostree/finalize-failure.stamp
+RequiresMountsFor=/boot
+# Ensure that we propagate the failure into the current boot before
+# any further finalization attempts.
+Before=ostree-finalize-staged.service
+
+[Service]
+Type=oneshot
+# To write to /boot while keeping it read-only
+MountFlags=slave
+RemainAfterExit=yes
+ExecStart=/usr/bin/ostree admin boot-complete

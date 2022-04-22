@@ -356,6 +356,8 @@ _ostree_sysroot_ensure_writable (OstreeSysroot      *self,
   ostree_sysroot_unload (self);
   if (!ensure_sysroot_fd (self, error))
     return FALSE;
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
 
   return TRUE;
 }
