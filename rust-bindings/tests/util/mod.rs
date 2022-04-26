@@ -67,7 +67,8 @@ pub fn commit(repo: &ostree::Repo, mtree: &ostree::MutableTree, ref_: &str) -> G
     let txn = repo
         .auto_transaction(NONE_CANCELLABLE)
         .expect("prepare transaction");
-    let repo_file = repo
+    let repo_file = txn
+        .repo()
         .write_mtree(mtree, NONE_CANCELLABLE)
         .expect("write mtree")
         .downcast::<ostree::RepoFile>()

@@ -72,6 +72,12 @@ pub struct TransactionGuard<'a> {
 }
 
 impl<'a> TransactionGuard<'a> {
+    /// Returns a reference to the repository.
+    pub fn repo(&self) -> &Repo {
+        // SAFETY: This is only set to None in `commit`, which consumes self
+        self.repo.unwrap()
+    }
+
     /// Commit this transaction.
     pub fn commit<P: IsA<gio::Cancellable>>(
         mut self,
