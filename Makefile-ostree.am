@@ -70,6 +70,7 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-diff.c \
 	src/ostree/ot-admin-builtin-deploy.c \
 	src/ostree/ot-admin-builtin-finalize-staged.c \
+	src/ostree/ot-admin-builtin-boot-complete.c \
 	src/ostree/ot-admin-builtin-undeploy.c \
 	src/ostree/ot-admin-builtin-instutil.c \
 	src/ostree/ot-admin-builtin-cleanup.c \
