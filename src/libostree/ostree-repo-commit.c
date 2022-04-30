@@ -1688,10 +1688,10 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   g_debug ("Preparing transaction in repository %p", self);
 
   /* Set up to abort the transaction if we return early from this function.
-   * This needs to be manually built here due to a circular dependency. */
-  g_autoptr(OstreeRepoAutoTransaction) txn = g_malloc(sizeof(OstreeRepoAutoTransaction));
+   * We can't call _ostree_repo_auto_transaction_start() here, because that
+   * would be a circular dependency; use the lower-level version instead. */
+  g_autoptr(OstreeRepoAutoTransaction) txn = _ostree_repo_auto_transaction_new (self);
   g_assert (txn != NULL);
-  txn->repo = self;
 
   memset (&self->txn.stats, 0, sizeof (OstreeRepoTransactionStats));
 
