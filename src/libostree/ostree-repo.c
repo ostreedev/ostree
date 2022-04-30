@@ -711,6 +711,32 @@ ostree_repo_auto_lock_cleanup (OstreeRepoAutoLock *auto_lock)
 }
 
 /**
+ * _ostree_repo_auto_transaction_new:
+ * @repo: (not nullable): an #OsreeRepo object
+ * @cancellable: Cancellable
+ * @error: a #GError
+ *
+ * Return a guard for a transaction in @repo.
+ *
+ * Do not call this function outside the OstreeRepo transaction implementation.
+ * Use _ostree_repo_auto_transaction_start() instead.
+ *
+ * Returns: (transfer full): an #OstreeRepoAutoTransaction guard on success,
+ * %NULL otherwise.
+ */
+OstreeRepoAutoTransaction *
+_ostree_repo_auto_transaction_new (OstreeRepo *repo)
+{
+  g_assert (repo != NULL);
+
+  OstreeRepoAutoTransaction *txn = g_malloc(sizeof(OstreeRepoAutoTransaction));
+  txn->atomic_refcount = 1;
+  txn->repo = g_object_ref (repo);
+
+  return g_steal_pointer (&txn);
+}
+
+/**
  * _ostree_repo_auto_transaction_start:
  * @repo: (not nullable): an #OsreeRepo object
  * @cancellable: Cancellable
@@ -731,11 +757,7 @@ _ostree_repo_auto_transaction_start (OstreeRepo     *repo,
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     return NULL;
 
-  OstreeRepoAutoTransaction *txn = g_malloc(sizeof(OstreeRepoAutoTransaction));
-  txn->atomic_refcount = 1;
-  txn->repo = g_object_ref (repo);
-
-  return g_steal_pointer (&txn);
+  return _ostree_repo_auto_transaction_new (repo);
 }
 
 /**

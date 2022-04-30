@@ -554,4 +554,8 @@ GType _ostree_repo_auto_transaction_get_type (void);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoTransaction, _ostree_repo_auto_transaction_unref);
 
+/* Internal function to break a circular dependency:
+ * should not be made into public API, even if the rest is */
+OstreeRepoAutoTransaction *_ostree_repo_auto_transaction_new (OstreeRepo *repo);
+
 G_END_DECLS
