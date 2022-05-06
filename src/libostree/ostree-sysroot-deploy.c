@@ -22,6 +22,7 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 #include <glib-unix.h>
+#include <stdint.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
 #include <sys/socket.h>

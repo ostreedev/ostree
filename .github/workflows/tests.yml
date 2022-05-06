@@ -82,6 +82,15 @@ jobs:
               apt-get update
               apt-get install -y git libc6:amd64 libstdc++6:amd64
 
+          # A build without libsystemd support, similar to what flatpak-builder does.
+          - name: Debian Stable without libsystemd
+            image: debian:stable-slim
+            pre-checkout-setup: |
+              apt-get update
+              apt-get install -y git
+            configure-options: >-
+              --without-libsystemd
+
           - name: Debian Testing
             image: debian:testing-slim
             pre-checkout-setup: |
