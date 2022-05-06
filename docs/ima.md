@@ -106,6 +106,7 @@ signing commits with these "portable" EVM signatures in addition to IMA.
 ## Further references
 
 - https://sourceforge.net/p/linux-ima/wiki/Home/
+- https://en.opensuse.org/SDB:Ima_evm
 - https://wiki.gentoo.org/wiki/Integrity_Measurement_Architecture
 - https://fedoraproject.org/wiki/Changes/Signed_RPM_Contents
 - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/enhancing-security-with-the-kernel-integrity-subsystem_managing-monitoring-and-updating-the-kernel
