@@ -20,7 +20,11 @@
    - uncomment the include in Makefile-libostree.am
 */
 
-
+LIBOSTREE_2022.4 {
+global:
+  ostree_fs_get_all_xattrs;
+  ostree_fs_get_all_xattrs_at;
+} LIBOSTREE_2021.5;
 
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste

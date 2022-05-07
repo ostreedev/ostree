@@ -28,6 +28,7 @@
 #include <gio/gunixoutputstream.h>
 #include <gio/gfiledescriptorbased.h>
 #include "libglnx.h"
+#include "ostree-core.h"
 #include "otutil.h"
 #include <glnx-console.h>
 #include <linux/magic.h>
@@ -4345,9 +4346,12 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
         {
           if (self->disable_xattrs)
             ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
-          else if (!glnx_fd_get_all_xattrs (fd, &ret_xattrs,
-                                            cancellable, error))
-            return FALSE;
+          else 
+            {
+              ret_xattrs = ostree_fs_get_all_xattrs (fd, cancellable, error);
+              if (!ret_xattrs)
+                return FALSE;
+            }
         }
       else if (S_ISLNK (stbuf.st_mode) && out_xattrs)
         {
