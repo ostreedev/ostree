@@ -3436,14 +3436,15 @@ get_final_xattrs (OstreeRepo                       *self,
       else if (dfd_subpath == NULL)
         {
           g_assert (dfd != -1);
-          if (!glnx_fd_get_all_xattrs (dfd, &original_xattrs, cancellable, error))
+          original_xattrs = ostree_fs_get_all_xattrs (dfd, cancellable, error);
+          if (!original_xattrs)
             return FALSE;
         }
       else
         {
           g_assert (dfd != -1);
-          if (!glnx_dfd_name_get_all_xattrs (dfd, dfd_subpath, &original_xattrs,
-                                             cancellable, error))
+          original_xattrs = ostree_fs_get_all_xattrs_at (dfd, dfd_subpath, cancellable, error);
+          if (!original_xattrs)
             return FALSE;
         }
 
@@ -4641,8 +4642,8 @@ import_one_object_direct (OstreeRepo    *dest_repo,
           if (src_repo->mode == OSTREE_REPO_MODE_BARE)
             {
               g_autoptr(GVariant) xattrs = NULL;
-              if (!glnx_fd_get_all_xattrs (src_fd, &xattrs,
-                                           cancellable, error))
+              xattrs = ostree_fs_get_all_xattrs (src_fd, cancellable, error);
+              if (!xattrs)
                 return FALSE;
               if (!glnx_fd_set_all_xattrs (tmp_dest.fd, xattrs,
                                            cancellable, error))

@@ -20,6 +20,7 @@
 #include "config.h"
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <gio/gio.h>
 #include <string.h>
 #include <err.h>
@@ -476,6 +477,76 @@ test_big_metadata (void)
   g_assert (ret);
 }
 
+static void
+compare_xattrs (GVariant *orig, GVariant *new)
+{
+  g_assert_cmpint (g_variant_n_children (orig) + 1, ==, g_variant_n_children (new));
+  GVariant *kp, *vp;
+  GVariantIter iter;
+  g_variant_iter_init (&iter, new);
+  bool found = false;
+  while (g_variant_iter_loop (&iter, "(@ay@ay)", &kp, &vp))
+    {
+      const char *k = g_variant_get_bytestring (kp);
+      if (!g_str_equal (k, "user.ostreetesting"))
+        continue;
+      g_assert_cmpint (g_variant_get_size (vp), ==, 4);
+      found = true;
+    }
+  g_assert (found);
+}
+
+static void
+test_read_xattrs (void)
+{
+  g_autoptr(GError) local_error = NULL;
+  GError **error = &local_error;
+
+  g_auto(GLnxTmpDir) tmpd = { 0, };
+  // Use /var/tmp to hope we get xattr support
+  glnx_mkdtempat (AT_FDCWD, "/var/tmp/ostree-xattrs-test.XXXXXX", 0700, &tmpd, error);
+  g_assert_no_error (local_error);
+
+  const char value[] = "foo";
+
+  {
+    g_autoptr(GVariant) current_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
+    g_assert_no_error (local_error);
+  
+    int r = fsetxattr (tmpd.fd, "user.ostreetesting", value, sizeof (value), 0);
+    g_assert_cmpint (r, ==, 0);
+  
+    g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
+    g_assert_no_error (local_error);
+  
+    compare_xattrs (current_xattrs, new_xattrs);
+  }
+
+  {
+    if (symlinkat ("nosuchtarget", tmpd.fd, "somelink") < 0)
+      glnx_throw_errno_prefix (error, "symlinkat");
+    g_assert_no_error (local_error);
+
+    g_autoptr(GVariant) current_xattrs = ostree_fs_get_all_xattrs_at (tmpd.fd, "somelink", NULL, error);
+    g_assert_no_error (local_error);
+    (void) current_xattrs;
+
+    // OK, can't do user. xattrs on symlinks unfortunately.
+
+    // char pathbuf[PATH_MAX];
+    // snprintf (pathbuf, sizeof (pathbuf), "/proc/self/fd/%d/%s", tmpd.fd, "somelink");
+    // int r = lsetxattr (pathbuf, "user.ostreetesting", value, sizeof (value), 0);
+    // if (r < 0)
+    //   glnx_throw_errno_prefix (error, "lsetxattr");
+    // g_assert_no_error (local_error);
+  
+    // g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs_at (tmpd.fd, "somelink", NULL, error);
+    // g_assert_no_error (local_error);
+  
+    // compare_xattrs (current_xattrs, new_xattrs);
+  }
+}
+
 int main (int argc, char **argv)
 {
   g_autoptr(GError) error = NULL;
@@ -494,6 +565,7 @@ int main (int argc, char **argv)
   g_test_add_func ("/break-hardlink", test_break_hardlink);
   g_test_add_func ("/remotename", test_validate_remotename);
   g_test_add_func ("/big-metadata", test_big_metadata);
+  g_test_add_func ("/read-xattrs", test_read_xattrs);
 
   return g_test_run();
  out:

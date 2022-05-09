@@ -837,6 +837,51 @@ gboolean ostree_break_hardlink (int               dfd,
 }
 
 /**
+ * ostree_fs_get_all_xattrs:
+ * @fd: File descriptor
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Retrieve all extended attributes in a canonical (sorted) order from
+ * the given file descriptor.
+ *
+ * Returns: (transfer full): A GVariant of type `a(ayay)`
+ */
+GVariant *
+ostree_fs_get_all_xattrs (int fd, GCancellable *cancellable, GError **error)
+{
+  GVariant *ret = NULL;
+  if (!glnx_fd_get_all_xattrs (fd, &ret, cancellable, error))
+    return NULL;
+  return ret;
+}
+
+/**
+ * ostree_fs_get_all_xattrs_at:
+ * @dfd: Directory file descriptor
+ * @path: Filesystem path
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Retrieve all extended attributes in a canonical (sorted) order from
+ * the given path, relative to the provided directory file descriptor.
+ * The target path will not be dereferenced.  Currently on Linux, this
+ * API must be used currently to retrieve extended attributes
+ * for symbolic links because while `O_PATH` exists, it cannot be used
+ * with `fgetxattr()`.
+ *
+ * Returns: (transfer full): A GVariant of type `a(ayay)`
+ */
+GVariant *
+ostree_fs_get_all_xattrs_at (int dfd, const char *path, GCancellable *cancellable, GError **error)
+{
+  GVariant *ret = NULL;
+  if (!glnx_dfd_name_get_all_xattrs (dfd, path, &ret, cancellable, error))
+    return NULL;
+  return ret;
+}
+
+/**
  * ostree_checksum_file_from_input:
  * @file_info: File information
  * @xattrs: (allow-none): Optional extended attributes
@@ -928,8 +973,8 @@ ostree_checksum_file (GFile            *f,
   g_autoptr(GVariant) xattrs = NULL;
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (f),
-                                         &xattrs, cancellable, error))
+      xattrs = ostree_fs_get_all_xattrs_at (AT_FDCWD, gs_file_get_path_cached (f), cancellable, error);
+      if (!xattrs)
         return FALSE;
     }
 

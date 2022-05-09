@@ -464,6 +464,12 @@ gboolean ostree_break_hardlink (int               dfd,
                                 GCancellable     *cancellable,
                                 GError          **error);
 
+_OSTREE_PUBLIC
+GVariant *ostree_fs_get_all_xattrs (int fd, GCancellable *cancellable, GError **error);
+
+_OSTREE_PUBLIC
+GVariant *ostree_fs_get_all_xattrs_at (int dfd, const char *path, GCancellable *cancellable, GError **error);
+
 /**
  * OstreeChecksumFlags:
  * @OSTREE_CHECKSUM_FLAGS_NONE: Default checksumming without tweaks.
