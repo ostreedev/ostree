@@ -1,0 +1,266 @@
+# Legend:
+# - [IGNORE] we don't want to autogenerate this
+# - [MANUAL] we have manual wrappers for this, but would prefer to autogenerate it
+# - [FAIL] this is currently disabled because it generates broken code
+
+[options]
+work_mode = "normal"
+library = "OSTree"
+version = "1.0"
+target_path = ".."
+doc_target_path = "../target/vendor.md"
+deprecate_by_min_version = true
+single_version_file = true
+generate_display_trait = true
+
+girs_directories = [ "../gir-files" ]
+
+generate = [
+    "OSTree.AsyncProgress",
+    "OSTree.BootconfigParser",
+    "OSTree.ChecksumFlags",
+    "OSTree.ContentWriter",
+    "OSTree.CommitSizesEntry",
+    "OSTree.Deployment",
+    "OSTree.DeploymentUnlockedState",
+    "OSTree.DiffFlags",
+    "OSTree.DiffItem",
+    "OSTree.GpgSignatureAttr",
+    "OSTree.GpgSignatureFormatFlags",
+    "OSTree.GpgVerifyResult",
+    "OSTree.MutableTree",
+    "OSTree.ObjectType",
+    "OSTree.Remote",
+    "OSTree.RepoCheckoutFilterResult",
+    "OSTree.RepoCheckoutMode",
+    "OSTree.RepoCheckoutOverwriteMode",
+    "OSTree.RepoCommitFilterResult",
+    "OSTree.RepoCommitFilter",
+    "OSTree.RepoCommitIterResult",
+    "OSTree.RepoCommitModifierFlags",
+    "OSTree.RepoCommitTraverseFlags",
+    "OSTree.RepoCommitModifier",
+    "OSTree.RepoCommitState",
+    "OSTree.RepoDevInoCache",
+    "OSTree.RepoFile",
+    "OSTree.RepoFinderAvahi",
+    "OSTree.RepoFinderConfig",
+    "OSTree.RepoFinderMount",
+    "OSTree.RepoFinderOverride",
+    "OSTree.RepoListObjectsFlags",
+    "OSTree.RepoListRefsExtFlags",
+    "OSTree.RepoMode",
+    "OSTree.RepoPruneFlags",
+    "OSTree.RepoPullFlags",
+    "OSTree.RepoRemoteChange",
+    "OSTree.RepoResolveRevExtFlags",
+    "OSTree.RepoVerifyFlags",
+    "OSTree.SePolicyRestoreconFlags",
+    "OSTree.StaticDeltaGenerateOpt",
+    "OSTree.SysrootSimpleWriteDeploymentFlags",
+    "OSTree.SysrootUpgrader",
+    "OSTree.SysrootUpgraderFlags",
+    "OSTree.SysrootUpgraderPullFlags",
+]
+
+manual = [
+    # types from glib/gio we need
+    "Gio.AsyncReadyCallback",
+    "Gio.AsyncResult",
+    "Gio.Cancellable",
+    "Gio.File",
+    "Gio.FileInfo",
+    "Gio.FileQueryInfoFlags",
+    "Gio.FilterInputStream",
+    "Gio.InputStream",
+    "Gio.OutputStream",
+    "Gio.VolumeMonitor",
+    "GLib.Bytes",
+    "GLib.Checksum",
+    "GLib.DestroyNotify",
+    "GLib.Error",
+    "GLib.KeyFile",
+    "GLib.MainContext",
+    "GLib.Quark",
+    "GLib.String",
+    "GLib.Variant",
+    "GLib.VariantType",
+
+    # [MANUAL] types implemented by hand
+    "OSTree.KernelArgs",
+    "OSTree.RepoCheckoutAtOptions",
+    "OSTree.RepoCheckoutFilter",
+    "OSTree.RepoTransactionStats",
+    "OSTree.SysrootWriteDeploymentsOpts",
+    "OSTree.SysrootDeployTreeOpts",
+]
+
+ignore = [
+    # only used for the already-deprecated checkout_tree_at function
+    "OSTree.RepoCheckoutOptions",
+    # types for zero-terminated arrays we probably don't want
+    "OSTree.CollectionRefv",
+    "OSTree.RepoFinderResultv",
+    # not part of the public interface, as far as I can tell
+    "OSTree.Bootloader",
+    "OSTree.BootloaderGrub2",
+    "OSTree.BootloaderInterface",
+    "OSTree.BootloaderSyslinux",
+    "OSTree.BootloaderUboot",
+    "OSTree.BootloaderZipl",
+    "OSTree.ChecksumInputStream",
+    "OSTree.ChecksumInputStreamBuilder",
+    "OSTree.CmdPrivateVTable",
+    "OSTree.GpgVerifier",
+    "OSTree.LibarchiveInputStream",
+    "OSTree.LzmaCompressor",
+    "OSTree.LzmaDecompressor",
+    "OSTree.RollsumMatches",
+    # builders we don't want
+    "OSTree.RepoBuilder",
+    "OSTree.RepoFinderMountBuilder",
+    "OSTree.SePolicyBuilder",
+    "OSTree.SysrootBuilder",
+    "OSTree.SysrootUpgraderBuilder",
+]
+
+[crate_name_overrides]
+os_tree = "ostree"
+
+[[object]]
+name = "OSTree.CollectionRef"
+status = "generate"
+    [[object.function]]
+    # [IGNORE] helper functions for NULL-terminated arrays
+    pattern = "^(dupv|freev)$"
+    ignore = true
+
+    [[object.function]]
+    # [IGNORE] clone() should already be this
+    name = "dup"
+    ignore = true
+
+[[object]]
+name = "OSTree.Repo"
+status = "generate"
+concurrency = "send"
+    [[object.function]]
+    # [MANUAL] we special-case the checksum value
+    pattern = "^(write_content|write_content_async|write_metadata|write_metadata_async)$"
+    ignore = true
+
+    [[object.function]]
+    # [FAIL] these fail because of issues with arrays of dubious lifetimes
+    pattern = "^(find_remotes_async|pull_from_remotes_async)$"
+    ignore = true
+
+    [[object.function]]
+    # [IGNORE] this is deprecated and supposedly unsafe for GI
+    name = "checkout_tree_at"
+    ignore = true
+
+    [[object.function]]
+    name = "checkout_at"
+    [[object.function.parameter]]
+    name = "options"
+    const = true
+    [[object.function.parameter]]
+    name = "destination_path"
+    string_type = "filename"
+
+[[object]]
+name = "OSTree.RepoFinder"
+status = "generate"
+    [[object.function]]
+    # [FAIL] these fail because of issues with arrays of dubious lifetimes/NULL-terminated arrays
+    pattern = "^(resolve_async|resolve_all_async)$"
+    ignore = true
+
+[[object]]
+name = "OSTree.RepoFinderResult"
+status = "generate"
+    [[object.function]]
+    # [IGNORE] array helper function
+    name = "freev"
+    ignore = true
+
+    [[object.function]]
+    # [IGNORE] clone() should already be this
+    name = "dup"
+    ignore = true
+
+[[object]]
+name = "OSTree.SePolicy"
+status = "generate"
+concurrency = "send"
+    [[object.function]]
+    # [IGNORE] has an unused raw pointer parameter
+    name = "fscreatecon_cleanup"
+    ignore = true
+
+[[object]]
+name = "OSTree.Sign"
+status = "generate"
+    [[object.function]]
+    # [IGNORE] these shouldn't be on this type, they belong to subclasses
+    pattern = "^(dummy_.+|ed25519_.+)$"
+    ignore = true
+
+[[object]]
+name = "OSTree.Sysroot"
+status = "generate"
+    [[object.function]]
+    name = "deploy_tree_with_options"
+    [[object.function.parameter]]
+    name = "opts"
+    const = true
+
+    [[object.function]]
+    name = "stage_tree_with_options"
+    [[object.function.parameter]]
+    name = "opts"
+    const = true
+
+    [[object.function]]
+    name = "write_deployments_with_options"
+    [[object.function.parameter]]
+    name = "opts"
+    const = true
+
+    [[object.function]]
+    # [IGNORE] overlaps with repo()
+    name = "get_repo"
+    ignore = true
+
+[[object]]
+name = "OSTree.*"
+status = "generate"
+    [[object.function]]
+    # [MANUAL] probably can't be autogenerated because of the custom Checksum type
+    pattern = "^(checksum_file|checksum_file_async|checksum_file_at|checksum_file_from_input)$"
+    ignore = true
+
+    [[object.function]]
+    # [IGNORE] low-level checksum functions, we have a custom checksum API
+    pattern = "^(cmp_checksum_bytes|checksum_from_bytes|checksum_to_bytes|checksum_inplace_from_bytes|checksum_inplace_to_bytes|checksum_b64_from_bytes|checksum_b64_to_bytes|checksum_b64_inplace_from_bytes|checksum_b64_inplace_to_bytes)$"
+    ignore = true
+
+    [[object.function]]
+    # [IGNORE] needs custom handling to deal with its raw pointer parameter
+    name = "hash_object_name"
+    ignore = true
+
+    [[object.function]]
+    # [IGNORE] private API
+    name = "cmd__private__"
+    ignore = true
+
+    [[object.constant]]
+    # [IGNORE] version-dependent constants
+    pattern = "^(VERSION|VERSION_S|YEAR_VERSION|RELEASE_VERSION)$"
+    ignore = true
+
+    [[object.constant]]
+    # [IGNORE] build-dependent constants
+    name = "BUILT_FEATURES"
+    ignore = true

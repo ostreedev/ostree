@@ -1,0 +1,31 @@
+.sccache:
+  variables:
+    SCCACHE_URL: https://github.com/mozilla/sccache/releases/download/0.2.13/sccache-0.2.13-x86_64-unknown-linux-musl.tar.gz
+    CARGO_TARGET_DIR: ${CI_PROJECT_DIR}/target
+    CARGO_HOME: ${CI_PROJECT_DIR}/cargo
+    SCCACHE_DIR: ${CI_PROJECT_DIR}/sccache
+    RUSTC_WRAPPER: sccache
+  cache:
+    paths:
+      - cargo/
+      - sccache/
+
+# config with sccache based on Fedora Rawhide, i.e. very recent libostree
+.fedora-ostree-devel:
+  image: registry.fedoraproject.org/fedora:rawhide
+  extends: .sccache
+  before_script:
+    - dnf install -y cargo rust ostree-devel
+    - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+    # ??? This seems to not work correctly on Fedora Rawhide right now?
+    - ln -s /usr/bin/x86_64-redhat-linux-gnu-pkg-config /usr/bin/x86_64-redhat-linux-pkg-config
+
+# config with sccache based on Rust image, i.e. older libostree but shorter setup and rustup access
+.rust-ostree-devel:
+  image: rust
+  extends: .sccache
+  before_script:
+    - apt-get update
+    - apt-get install -y libostree-dev
+    - curl -L "${SCCACHE_URL}" | tar -C /usr/bin/ -xz --wildcards --strip-components=1 '*/sccache'
+

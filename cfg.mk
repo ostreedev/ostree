@@ -1,4 +1,4 @@
-export VC_LIST_EXCEPT_DEFAULT=^(docs/.*|git.mk|lib/.*|m4/.*|md5/.*|build-aux/.*|src/gettext\.h|.*ChangeLog|buildutil/.*)$$
+export VC_LIST_EXCEPT_DEFAULT=^(rust-bindings/.*|docs/.*|git.mk|lib/.*|m4/.*|md5/.*|build-aux/.*|src/gettext\.h|.*ChangeLog|buildutil/.*)$$
 
 local-checks-to-skip = \
     sc_const_long_option \

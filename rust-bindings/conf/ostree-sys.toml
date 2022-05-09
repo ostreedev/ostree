@@ -1,0 +1,39 @@
+[options]
+work_mode = "sys"
+library = "OSTree"
+version = "1.0"
+target_path = "../sys"
+single_version_file = true
+external_libraries = [
+   "GLib",
+   "GObject",
+   "Gio",
+]
+ignore = [
+    # private API (not in installed headers)
+    "OSTree.BootloaderInterface",
+    "OSTree.ChecksumInputStream",
+    "OSTree.ChecksumInputStreamClass",
+    "OSTree.CmdPrivateVTable",
+    "OSTree.LibarchiveInputStream",
+    "OSTree.LibarchiveInputStreamClass",
+    "OSTree.LzmaCompressorClass",
+    "OSTree.LzmaDecompressorClass",
+    "OSTree.RepoFileEnumeratorClass",
+    "OSTree.RollsumMatches",
+    "OSTree.SignDummy",
+    "OSTree.SignDummyClass",
+    "OSTree.SignEd25519",
+    "OSTree.SignEd25519Class",
+
+    # version-dependent constants
+    "OSTree.RELEASE_VERSION",
+    "OSTree.VERSION",
+    "OSTree.VERSION_S",
+    "OSTree.YEAR_VERSION",
+
+    # build-dependent constants
+    "OSTree.BUILT_FEATURES",
+]
+
+girs_directories = [ "../gir-files" ]
