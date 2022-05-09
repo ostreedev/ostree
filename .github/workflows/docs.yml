@@ -21,6 +21,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: GH actions checkout post
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       # This is taken from ci/travis-install.sh but should probably be
       # refactored.
       - name: Install dependencies
