@@ -1896,6 +1896,7 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   /* tracks when we come across the booted deployment */
   gboolean before_booted = TRUE;
   gboolean before_merge = TRUE;
+  g_assert (deployments);
   for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
