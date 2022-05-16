@@ -1267,7 +1267,7 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
 OstreeDeployment *
 ostree_sysroot_require_booted_deployment (OstreeSysroot *self, GError **error)
 {
-  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
+  g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
 
   if (!self->booted_deployment)
     return glnx_null_throw (error, "Not currently booted into an OSTree system");
@@ -1286,7 +1286,7 @@ ostree_sysroot_require_booted_deployment (OstreeSysroot *self, GError **error)
 OstreeDeployment *
 ostree_sysroot_get_staged_deployment (OstreeSysroot       *self)
 {
-  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
+  g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
 
   return self->staged_deployment;
 }
@@ -1300,7 +1300,7 @@ ostree_sysroot_get_staged_deployment (OstreeSysroot       *self)
 GPtrArray *
 ostree_sysroot_get_deployments (OstreeSysroot  *self)
 {
-  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, NULL);
+  g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
 
   GPtrArray *copy = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
   for (guint i = 0; i < self->deployments->len; i++)
@@ -1525,7 +1525,7 @@ ostree_sysroot_query_deployments_for (OstreeSysroot     *self,
                                       OstreeDeployment  **out_pending,
                                       OstreeDeployment  **out_rollback)
 {
-  g_return_if_fail (osname != NULL || self->booted_deployment != NULL);
+  g_assert (osname != NULL || self->booted_deployment != NULL);
   g_autoptr(OstreeDeployment) ret_pending = NULL;
   g_autoptr(OstreeDeployment) ret_rollback = NULL;
 
