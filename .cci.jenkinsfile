@@ -3,7 +3,7 @@
 stage("Build") {
 parallel normal: {
   def n = 5
-  buildPod(runAsUser:0, memory: "2Gi", cpu: "${n}") {
+  buildPod(memory: "2Gi", cpu: "${n}") {
       checkout scm
       stage("Core build") {
         shwrap("""
@@ -39,7 +39,7 @@ parallel normal: {
 },
 // A minimal build, helps test our build options
 minimal: {
-  buildPod(runAsUser:0) {
+  buildPod() {
       checkout scm
       shwrap("""
         git submodule update --init
@@ -54,7 +54,7 @@ minimal: {
   }
 },
 codestyle: {
-  buildPod(runAsUser:0) {
+  buildPod() {
       checkout scm
       shwrap("""
         # Jenkins by default only fetches the branch it's testing. Explicitly fetch main
