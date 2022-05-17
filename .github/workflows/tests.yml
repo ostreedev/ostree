@@ -11,6 +11,39 @@ permissions:
   contents: read
 
 jobs:
+  codestyle:
+    name: "Code style"
+    runs-on: ubuntu-latest
+    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          submodules: true
+      # https://github.com/actions/checkout/issues/760
+      - name: Mark git checkout as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Test style
+        run: ./ci/ci-commitmessage-submodules.sh
+  minimal:
+    name: "Build - FCOS minimal"
+    runs-on: ubuntu-latest
+    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      # https://github.com/actions/checkout/issues/760
+      - name: Mark git checkout as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Build
+        run: |
+          env NOCONFIGURE=1 ./autogen.sh &&
+          ./configure --without-curl --without-soup --disable-gtk-doc --disable-man \
+          --disable-rust --without-libarchive --without-selinux --without-smack \
+          --without-openssl --without-avahi --without-libmount --disable-rofiles-fuse \
+          --without-libsodium &&
+          make
   tests:
     # Distro configuration matrix
     #

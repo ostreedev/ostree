@@ -1,7 +1,6 @@
 // Documentation: https://github.com/coreos/coreos-ci/blob/main/README-upstream-ci.md
 
 stage("Build") {
-parallel normal: {
   def n = 5
   buildPod(memory: "2Gi", cpu: "${n}") {
       checkout scm
@@ -36,34 +35,6 @@ parallel normal: {
       }
       stash includes: "installed/", name: 'build'
   }
-},
-// A minimal build, helps test our build options
-minimal: {
-  buildPod() {
-      checkout scm
-      shwrap("""
-        git submodule update --init
-
-        env NOCONFIGURE=1 ./autogen.sh
-        ./configure --without-curl --without-soup --disable-gtk-doc --disable-man \
-          --disable-rust --without-libarchive --without-selinux --without-smack \
-          --without-openssl --without-avahi --without-libmount --disable-rofiles-fuse \
-          --without-libsodium
-        make
-      """)
-  }
-},
-codestyle: {
-  buildPod() {
-      checkout scm
-      shwrap("""
-        # Jenkins by default only fetches the branch it's testing. Explicitly fetch main
-        # for ci-commitmessage-submodules.sh
-        git fetch origin +refs/heads/main:refs/remotes/origin/main
-        ci/ci-commitmessage-submodules.sh
-      """)
-  }
-}
 }
 
 // Build FCOS and do a kola basic run
