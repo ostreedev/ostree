@@ -39,6 +39,7 @@ gitdir=$(realpath $(pwd))
 # try to read the submodules from the Internet again.  If we wanted to
 # require a newer git, we could use `git worktree`.
 cp -a ${gitdir} ${tmpd}/workdir
+git config --global --add safe.directory "${tmpd}/workdir"
 cd ${tmpd}/workdir
 git log --pretty=oneline origin/main..$HEAD | while read logline; do
     commit=$(echo ${logline} | cut -f 1 -d ' ')
