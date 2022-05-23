@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <string.h>
 
+#define SECURE_EXECUTION_SYSFS_FLAG     "/sys/firmware/uv/prot_virt_guest"
 #define SECURE_EXECUTION_PARTITION      "/dev/disk/by-label/se"
 #define SECURE_EXECUTION_MOUNTPOINT     "/sysroot/se"
 #define SECURE_EXECUTION_BOOT_IMAGE     SECURE_EXECUTION_MOUNTPOINT "/sd-boot"
@@ -107,6 +108,14 @@ _ostree_bootloader_zipl_write_config (OstreeBootloader  *bootloader,
     return FALSE;
 
   return TRUE;
+}
+
+static gboolean _ostree_secure_execution_is_enabled (GCancellable *cancellable) {
+  gsize len = 0;
+  g_autofree char *data = glnx_file_get_contents_utf8_at (-1, SECURE_EXECUTION_SYSFS_FLAG, &len, cancellable, NULL);
+  if (!data)
+    return FALSE;
+  return strstr (data, "1") != NULL;
 }
 
 static gboolean
@@ -329,12 +338,15 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader  *bootloader,
     return TRUE;
 
   /* Try with Secure Execution */
-  g_autoptr(GPtrArray) keys = NULL;
-  if (!_ostree_secure_execution_get_keys (&keys, cancellable, error))
-    return FALSE;
-  if (keys && keys->len)
-    return _ostree_secure_execution_enable (self, bootversion, keys, cancellable, error);
-
+  if ( _ostree_secure_execution_is_enabled (cancellable) )
+    {
+      g_autoptr(GPtrArray) keys = NULL;
+      if (!_ostree_secure_execution_get_keys (&keys, cancellable, error))
+        return FALSE;
+      if (!keys || keys->len == 0)
+          return glnx_throw (error, "s390x SE: no keys");
+      return _ostree_secure_execution_enable (self, bootversion, keys, cancellable, error);
+    }
   /* Fallback to non-SE setup */
   const char *const zipl_argv[] = {"zipl", NULL};
   int estatus;
