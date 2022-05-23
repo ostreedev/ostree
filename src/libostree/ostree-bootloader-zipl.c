@@ -21,12 +21,17 @@
 #include "ostree-bootloader-zipl.h"
 #include "ostree-deployment-private.h"
 #include "otutil.h"
+#include <sys/mount.h>
+#include <sys/stat.h>
 #include <string.h>
 
-#define SECURE_EXECUTION_BOOT_IMAGE     "/boot/sd-boot"
+#define SECURE_EXECUTION_PARTITION      "/dev/disk/by-label/se"
+#define SECURE_EXECUTION_MOUNTPOINT     "/sysroot/se"
+#define SECURE_EXECUTION_BOOT_IMAGE     SECURE_EXECUTION_MOUNTPOINT "/sd-boot"
 #define SECURE_EXECUTION_HOSTKEY_PATH   "/etc/se-hostkeys/"
 #define SECURE_EXECUTION_HOSTKEY_PREFIX "ibm-z-hostkey"
 #define SECURE_EXECUTION_LUKS_ROOT_KEY  "/etc/luks/root"
+#define SECURE_EXECUTION_LUKS_BOOT_KEY  "/etc/luks/boot"
 #define SECURE_EXECUTION_LUKS_CONFIG    "/etc/crypttab"
 #define SECURE_EXECUTION_RAMDISK_TOOL   PKGLIBEXECDIR "/s390x-se-luks-gencpio"
 
@@ -65,6 +70,25 @@ static const char *
 _ostree_bootloader_zipl_get_name (OstreeBootloader *bootloader)
 {
   return "zipl";
+}
+
+static gboolean
+_ostree_secure_execution_mount(GError **error)
+{
+  const char *device = realpath (SECURE_EXECUTION_PARTITION, NULL);
+  if (device == NULL)
+    return glnx_throw_errno_prefix(error, "s390x SE: resolving %s", SECURE_EXECUTION_PARTITION);
+  if (mount (device, SECURE_EXECUTION_MOUNTPOINT, "ext4", 0, NULL) < 0)
+    return glnx_throw_errno_prefix (error, "s390x SE: Mounting %s", device);
+  return TRUE;
+}
+
+static gboolean
+_ostree_secure_execution_umount(GError **error)
+{
+  if (umount (SECURE_EXECUTION_MOUNTPOINT) < 0)
+    return glnx_throw_errno_prefix (error, "s390x SE: Unmounting %s", SECURE_EXECUTION_MOUNTPOINT);
+  return TRUE;
 }
 
 static gboolean
@@ -152,8 +176,8 @@ _ostree_secure_execution_get_bls_config (OstreeBootloaderZipl *self,
 static gboolean
 _ostree_secure_execution_luks_key_exists (void)
 {
-  return (access(SECURE_EXECUTION_LUKS_ROOT_KEY, F_OK) == 0 &&
-          access(SECURE_EXECUTION_LUKS_CONFIG, F_OK) == 0);
+  return (access(SECURE_EXECUTION_LUKS_CONFIG, F_OK) == 0 &&
+    (access(SECURE_EXECUTION_LUKS_ROOT_KEY, F_OK) == 0 || access(SECURE_EXECUTION_LUKS_BOOT_KEY, F_OK) == 0));
 }
 
 static gboolean
@@ -250,7 +274,7 @@ static gboolean
 _ostree_secure_execution_call_zipl (GError **error)
 {
   int status = 0;
-  const char *const zipl_argv[] = {"zipl", "-V", "-t", "/boot", "-i", SECURE_EXECUTION_BOOT_IMAGE, NULL};
+  const char *const zipl_argv[] = {"zipl", "-V", "-t", SECURE_EXECUTION_MOUNTPOINT, "-i", SECURE_EXECUTION_BOOT_IMAGE, NULL};
   if (!g_spawn_sync (NULL, (char**)zipl_argv, NULL, G_SPAWN_SEARCH_PATH,
                        NULL, NULL, NULL, NULL, &status, error))
     return glnx_prefix_error(error, "s390x SE: spawning zipl");
@@ -274,9 +298,11 @@ _ostree_secure_execution_enable (OstreeBootloaderZipl *self,
   g_autofree gchar* options = NULL;
 
   gboolean rc =
+      _ostree_secure_execution_mount (error) &&
       _ostree_secure_execution_get_bls_config (self, bootversion, &vmlinuz, &initramfs, &options, cancellable, error) &&
       _ostree_secure_execution_generate_sdboot (vmlinuz, initramfs, options, keys, error) &&
-      _ostree_secure_execution_call_zipl (error);
+      _ostree_secure_execution_call_zipl (error) &&
+      _ostree_secure_execution_umount (error);
 
   return rc;
 }
