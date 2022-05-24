@@ -41,6 +41,7 @@ static gboolean opt_no_prune;
 static gboolean opt_no_merge;
 static char **opt_kernel_argv;
 static char **opt_kernel_argv_append;
+static char *opt_kernel_argv_delete;
 static gboolean opt_kernel_proc_cmdline;
 static char *opt_osname;
 static char *opt_origin_path;
@@ -62,6 +63,7 @@ static GOptionEntry options[] = {
   { "karg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "NAME=VALUE" },
   { "karg-append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "NAME=VALUE" },
   { "karg-none", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_arg_none, "Do not import kernel arguments", NULL },
+  { "karg-delete", 0, 0, G_OPTION_ARG_STRING, &opt_kernel_argv_delete, "Delete kernel argument if exists", "NAME=VALUE" },
   { "overlay-initrd", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_overlay_initrds, "Overlay iniramfs file", "FILE" },
   { NULL }
 };
@@ -87,6 +89,18 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
   if (opt_kernel_proc_cmdline && opt_kernel_arg_none)
   {
     ot_util_usage_error (context, "Can't specify both --karg-proc-cmdline and --karg-none", error);
+    return FALSE;
+  }
+
+  if (opt_kernel_arg_none && opt_kernel_argv_delete)
+  {
+    ot_util_usage_error (context, "Can't specify both --karg-none and --karg-delete", error);
+    return FALSE;
+  }
+
+  if (opt_no_merge && opt_kernel_argv_delete)
+  {
+    ot_util_usage_error (context, "Can't specify both --no-merge and --karg-delete", error);
     return FALSE;
   }
 
@@ -145,7 +159,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
       if (!ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
         return FALSE;
     }
-  else if (merge_deployment && (opt_kernel_argv || opt_kernel_argv_append))
+  else if (merge_deployment && (opt_kernel_argv || opt_kernel_argv_append || opt_kernel_argv_delete))
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
       g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
@@ -169,6 +183,12 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
       if (!kargs)
         kargs = ostree_kernel_args_new ();
       ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
+    }
+
+  if (opt_kernel_argv_delete)
+    {
+      if (!ostree_kernel_args_delete (kargs, opt_kernel_argv_delete, error))
+        return FALSE;
     }
 
   g_autoptr(GPtrArray) overlay_initrd_chksums = NULL;
