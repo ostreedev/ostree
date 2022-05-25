@@ -110,12 +110,21 @@ _ostree_bootloader_zipl_write_config (OstreeBootloader  *bootloader,
   return TRUE;
 }
 
-static gboolean _ostree_secure_execution_is_enabled (GCancellable *cancellable) {
-  gsize len = 0;
-  g_autofree char *data = glnx_file_get_contents_utf8_at (-1, SECURE_EXECUTION_SYSFS_FLAG, &len, cancellable, NULL);
+static gboolean _ostree_secure_execution_is_enabled (gboolean *out_enabled,
+                                                     GCancellable *cancellable,
+                                                     GError **error)
+{
+  *out_enabled = FALSE;
+  glnx_autofd int fd = -1;
+  if (!ot_openat_ignore_enoent (AT_FDCWD, SECURE_EXECUTION_SYSFS_FLAG, &fd, error))
+    return FALSE;
+  if (fd == -1)
+    return TRUE; //ENOENT --> SecureExecution is disabled
+  g_autofree char *data = glnx_fd_readall_utf8 (fd, NULL, cancellable, error);
   if (!data)
     return FALSE;
-  return strstr (data, "1") != NULL;
+  *out_enabled = strstr (data, "1") != NULL;
+  return TRUE;
 }
 
 static gboolean
@@ -338,13 +347,16 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader  *bootloader,
     return TRUE;
 
   /* Try with Secure Execution */
-  if ( _ostree_secure_execution_is_enabled (cancellable) )
+  gboolean se_enabled = FALSE;
+  if ( !_ostree_secure_execution_is_enabled (&se_enabled, cancellable, error))
+    return FALSE;
+  if (se_enabled)
     {
       g_autoptr(GPtrArray) keys = NULL;
       if (!_ostree_secure_execution_get_keys (&keys, cancellable, error))
         return FALSE;
       if (!keys || keys->len == 0)
-          return glnx_throw (error, "s390x SE: no keys");
+        return glnx_throw (error, "s390x SE: no keys");
       return _ostree_secure_execution_enable (self, bootversion, keys, cancellable, error);
     }
   /* Fallback to non-SE setup */
