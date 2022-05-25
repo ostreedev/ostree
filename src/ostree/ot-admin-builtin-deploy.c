@@ -87,22 +87,22 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
     }
 
   if (opt_kernel_proc_cmdline && opt_kernel_arg_none)
-  {
-    ot_util_usage_error (context, "Can't specify both --karg-proc-cmdline and --karg-none", error);
-    return FALSE;
-  }
+    {
+      ot_util_usage_error (context, "Can't specify both --karg-proc-cmdline and --karg-none", error);
+      return FALSE;
+    }
 
   if (opt_kernel_arg_none && opt_kernel_argv_delete)
-  {
-    ot_util_usage_error (context, "Can't specify both --karg-none and --karg-delete", error);
-    return FALSE;
-  }
+    {
+      ot_util_usage_error (context, "Can't specify both --karg-none and --karg-delete", error);
+      return FALSE;
+    }
 
   if (opt_no_merge && opt_kernel_argv_delete)
-  {
-    ot_util_usage_error (context, "Can't specify both --no-merge and --karg-delete", error);
-    return FALSE;
-  }
+    {
+      ot_util_usage_error (context, "Can't specify both --no-merge and --karg-delete", error);
+      return FALSE;
+    }
 
   const char *refspec = argv[1];
 

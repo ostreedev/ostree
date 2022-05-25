@@ -39,7 +39,6 @@ gboolean
 ot_admin_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GOptionContext) context = g_option_context_new ("");
-  g_option_context_add_main_entries (context, options, NULL);
 
   g_autoptr(OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
