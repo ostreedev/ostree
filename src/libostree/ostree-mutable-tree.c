@@ -403,8 +403,8 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
  * ostree_mutable_tree_lookup:
  * @self: Tree
  * @name: name
- * @out_file_checksum: (out) (transfer full): checksum
- * @out_subdir: (out) (transfer full): subdirectory
+ * @out_file_checksum: (out) (transfer full) (nullable) (optional): checksum
+ * @out_subdir: (out) (transfer full) (nullable) (optional): subdirectory
  * @error: a #GError
  */
 gboolean
