@@ -66,18 +66,16 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>Subcommands</title>
 
         <variablelist>
+            <cmdsynopsis><command>selinux-ensure-labeled</command> <arg choice="opt">SUBPATH PREFIX</arg></cmdsynopsis>
             <varlistentry>
-                <term><cmdsynopsis><command>selinux-ensure-labeled</command> <arg choice="opt">SUBPATH PREFIX</arg></cmdsynopsis></term>
-
                 <listitem><para>
                     Ensure all files and directories are labeled according to SELinux policy of the first deployment.
                 </para></listitem>
             </varlistentry>
-
+        </variablelist>
+        <variablelist>
+            <cmdsynopsis><command>set-kargs</command> <arg choice="opt">--merge</arg> <arg choice="opt">--import-proc-cmdline</arg> <arg choice="opt">--append="NAME=VALUE"</arg> <arg choice="opt">--replace="NAME=VALUE"</arg> <arg choice="opt">MORE_APPEND_ARGS</arg></cmdsynopsis>
             <varlistentry>
-                <term><cmdsynopsis>
-<command>set-kargs</command> <arg choice="opt">--merge</arg> <arg choice="opt">--import-proc-cmdline</arg> <arg choice="opt">--append="NAME=VALUE"</arg> <arg choice="opt">--replace="NAME=VALUE"</arg> <arg choice="opt">MORE_APPEND_ARGS</arg></cmdsynopsis></term>
-
                 <listitem><para>
                     Replace the kernel arguments of the default deployment. The new arguments are based
                     on an empty list (the default), the current options (--merge), or the arguments
