@@ -26,6 +26,9 @@
 set -euo pipefail
 set -x
 
+# First, basic static analysis
+./ci/codestyle.sh
+
 NOCONFIGURE=1 ./autogen.sh
 
 srcdir="$(pwd)"

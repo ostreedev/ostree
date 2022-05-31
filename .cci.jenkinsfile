@@ -4,6 +4,9 @@ stage("Build") {
   def n = 5
   buildPod(memory: "2Gi", cpu: "${n}") {
       checkout scm
+      stage("Static analysis") {
+          shwrap("./ci/codestyle.sh")
+      }
       stage("Core build") {
         shwrap("""
           # fetch tags so `git describe` gives a nice NEVRA when building the RPM
