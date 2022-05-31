@@ -38,8 +38,7 @@ stage("Build") {
 }
 
 // Build FCOS and do a kola basic run
-stage("More builds and test") {
-parallel fcos: {
+stage("FCOS") {
   cosaPod(runAsUser: 0, memory: "3072Mi", cpu: "4") {
     stage("Build FCOS") {
       checkout scm
@@ -74,19 +73,4 @@ parallel fcos: {
       }
     }
   }
-},
-buildopts: {
-  def n = 5
-  buildPod(memory: "2Gi", cpu: "${n}") {
-      checkout scm
-      shwrap("""
-        git submodule update --init
-
-        git worktree add build-libsoup && cd build-libsoup
-        env MAKE_JOBS=${n} CONFIGOPTS="--without-curl --without-openssl --with-soup" SKIP_INSTALLDEPS=1 ./ci/build.sh
-        make check
-        cd .. && rm -rf build-libsoup
-      """)
-  }
-}
 }
