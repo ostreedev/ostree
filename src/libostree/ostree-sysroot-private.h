@@ -136,6 +136,12 @@ OstreeDeployment *_ostree_sysroot_new_deployment_object (OstreeSysroot *self, co
 
 void _ostree_sysroot_emit_journal_msg (OstreeSysroot *self, const char *msg);
 
+gboolean _ostree_sysroot_get_live_loader_dir (OstreeSysroot *self, const char **out_dir,
+                                              GError **error);
+
+gboolean _ostree_sysroot_query_loader_is_dir (OstreeSysroot *self, gboolean *out_is_dir,
+                                              GError **error);
+
 gboolean _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
                                                    GPtrArray **out_loader_configs,
                                                    GCancellable *cancellable, GError **error);

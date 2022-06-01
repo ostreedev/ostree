@@ -283,7 +283,8 @@ sysroot_mount_generator (const char *normal_dir, GError **error)
  * needed in that case.
  *
  * When /boot is on the same partition (detected by /sysroot/boot/loader being
- * a symlink), a bind mount from /sysroot/boot is needed. Previously this was
+ * present, see otcore_boot_is_on_physical_root()), a bind mount from
+ * /sysroot/boot is needed. Previously this was
  * done in the initramfs (ostree-prepare-root), but that breaks on bare
  * soft-reboot since the initramfs doesn't re-run. By generating boot.mount
  * here, the generator handles all three boot scenarios:

@@ -21,10 +21,12 @@ mkfs.vfat boot.img
 mkdir sysroot
 ostree admin init-fs -E 1 sysroot
 mount -o loop boot.img sysroot/boot
-if ostree admin status --sysroot=sysroot 2>err.txt; then
+# A VFAT /boot is supported, with boot/loader as a directory
+if ! ostree admin status --sysroot=sysroot >out.txt 2>err.txt; then
     # So cleanup works on failure too
     umount sysroot/boot
-    fatal "computed status on vfat sysroot"
+    cat err.txt
+    fatal "failed to compute status on vfat sysroot"
 fi
 umount sysroot/boot
-assert_file_has_content_literal err.txt "/boot cannot currently be a vfat filesystem"
+assert_file_has_content_literal out.txt "No deployments."
