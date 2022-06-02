@@ -29,7 +29,7 @@
 #include "ostree.h"
 #include "otutil.h"
 
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 #include "ostree.h"
 
 static GOptionEntry options[] = {

@@ -53,8 +53,8 @@ CLEANFILES += $(BUILT_SOURCES)
 
 libostree_1_la_SOURCES = \
 	src/libostree/ostree-async-progress.c \
-	src/libostree/ostree-cmdprivate.h \
-	src/libostree/ostree-cmdprivate.c \
+	src/libostree/ostree-cmd-private.h \
+	src/libostree/ostree-cmd-private.c \
 	src/libostree/ostree-core-private.h \
 	src/libostree/ostree-core.c \
 	src/libostree/ostree-date-utils.c \

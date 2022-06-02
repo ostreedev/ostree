@@ -19,7 +19,7 @@
 
 #include "config.h"
 
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-static-delta-private.h"

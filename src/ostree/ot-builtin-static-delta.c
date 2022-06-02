@@ -22,7 +22,7 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 #include "ot-main.h"
 #include "otutil.h"
 
