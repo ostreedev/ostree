@@ -114,6 +114,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-pull-deploy-split.sh \
 	tests/test-admin-locking.sh \
 	tests/test-admin-deploy-clean.sh \
+	tests/test-admin-kargs.sh \
 	tests/test-reset-nonlinear.sh \
 	tests/test-oldstyle-partial.sh \
 	tests/test-delta.sh \
