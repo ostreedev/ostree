@@ -49,17 +49,4 @@ gir-files:
 	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/master/${@F}
 
 gir-files/OSTree-1.0.gir:
-	podman build \
-		--pull \
-		--build-arg OSTREE_REPO=$(OSTREE_REPO) \
-		--build-arg OSTREE_VERSION=$(OSTREE_VERSION) \
-		-t ostree-build \
-		.
-	podman create \
-		--name ostree-gir-container \
-		ostree-build
-	podman cp \
-		ostree-gir-container:/build/OSTree-1.0.gir \
-		gir-files/OSTree-1.0.gir
-	podman rm \
-		ostree-gir-container
+	ln -sfr ../OSTree-1.0.gir $@
