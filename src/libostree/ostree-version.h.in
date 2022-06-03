@@ -98,4 +98,6 @@
  *
  * Since: 2019.3
  */
+#ifndef __GI_SCANNER__
 #define OSTREE_BUILT_FEATURES "@OSTREE_FEATURES@"
+#endif
