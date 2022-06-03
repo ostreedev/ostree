@@ -112,12 +112,12 @@ impl MutableTree {
 
     //#[doc(alias = "ostree_mutable_tree_get_subdirs")]
     //#[doc(alias = "get_subdirs")]
-    //pub fn subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 44 } {
+    //pub fn subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 41 } {
     //    unsafe { TODO: call ffi:ostree_mutable_tree_get_subdirs() }
     //}
 
     #[doc(alias = "ostree_mutable_tree_lookup")]
-    pub fn lookup(&self, name: &str) -> Result<(glib::GString, MutableTree), glib::Error> {
+    pub fn lookup(&self, name: &str) -> Result<(Option<glib::GString>, Option<MutableTree>), glib::Error> {
         unsafe {
             let mut out_file_checksum = ptr::null_mut();
             let mut out_subdir = ptr::null_mut();
