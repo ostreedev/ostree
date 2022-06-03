@@ -3588,7 +3588,6 @@ extern "C" {
     pub fn ostree_checksum_inplace_to_bytes(checksum: *const c_char, buf: *mut u8);
     pub fn ostree_checksum_to_bytes(checksum: *const c_char) -> *mut [c_uchar; 32];
     pub fn ostree_checksum_to_bytes_v(checksum: *const c_char) -> *mut glib::GVariant;
-    //pub fn ostree_cmd__private__() -> /*Ignored*/*const OstreeCmdPrivateVTable;
     pub fn ostree_cmp_checksum_bytes(a: *const u8, b: *const u8) -> c_int;
     #[cfg(any(feature = "v2018_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_2")))]
@@ -3678,6 +3677,17 @@ extern "C" {
         removed: *mut glib::GPtrArray,
         added: *mut glib::GPtrArray,
     );
+    pub fn ostree_fs_get_all_xattrs(
+        fd: c_int,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> *mut glib::GVariant;
+    pub fn ostree_fs_get_all_xattrs_at(
+        dfd: c_int,
+        path: *const c_char,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> *mut glib::GVariant;
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
     pub fn ostree_gpg_error_quark() -> glib::GQuark;

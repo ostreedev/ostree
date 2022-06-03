@@ -168,6 +168,24 @@ pub fn diff_print<P: IsA<gio::File>, Q: IsA<gio::File>>(a: &P, b: &Q, modified: 
     }
 }
 
+#[doc(alias = "ostree_fs_get_all_xattrs")]
+pub fn fs_get_all_xattrs<P: IsA<gio::Cancellable>>(fd: i32, cancellable: Option<&P>) -> Result<glib::Variant, glib::Error> {
+    unsafe {
+        let mut error = ptr::null_mut();
+        let ret = ffi::ostree_fs_get_all_xattrs(fd, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+        if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+    }
+}
+
+#[doc(alias = "ostree_fs_get_all_xattrs_at")]
+pub fn fs_get_all_xattrs_at<P: IsA<gio::Cancellable>>(dfd: i32, path: &str, cancellable: Option<&P>) -> Result<glib::Variant, glib::Error> {
+    unsafe {
+        let mut error = ptr::null_mut();
+        let ret = ffi::ostree_fs_get_all_xattrs_at(dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+        if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
+    }
+}
+
 #[cfg(any(feature = "v2017_10", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
 #[doc(alias = "ostree_gpg_error_quark")]
