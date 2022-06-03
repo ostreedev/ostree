@@ -22,7 +22,7 @@
 
 #include "ot-main.h"
 #include "ot-admin-instutil-builtins.h"
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 
 #include "otutil.h"
 

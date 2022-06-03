@@ -27,7 +27,7 @@
 
 #include <libglnx.h>
 
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 #include "ostree-mount-util.h"
 
 static const char *arg_dest = "/tmp";

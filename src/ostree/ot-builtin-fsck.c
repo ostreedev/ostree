@@ -25,7 +25,7 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 #include "otutil.h"
 
 static gboolean opt_quiet;

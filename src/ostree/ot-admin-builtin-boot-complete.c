@@ -27,7 +27,7 @@
 #include "ostree.h"
 #include "otutil.h"
 
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 
 static GOptionEntry options[] = {
   { NULL }

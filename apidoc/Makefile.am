@@ -71,7 +71,7 @@ IGNORE_HFILES= \
 	ostree-bootloader-grub2.h \
 	ostree-bootloader-syslinux.h \
 	ostree-bootloader-uboot.h \
-	ostree-cmdprivate.h \
+	ostree-cmd-private.h \
 	ostree-core-private.h \
 	ostree-fetcher.h \
 	ostree-gpg-verifier.h \

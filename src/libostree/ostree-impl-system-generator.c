@@ -32,7 +32,7 @@
 
 #include "ostree.h"
 #include "ostree-core-private.h"
-#include "ostree-cmdprivate.h"
+#include "ostree-cmd-private.h"
 
 #ifdef HAVE_LIBMOUNT
 typedef FILE OtLibMountFile;
