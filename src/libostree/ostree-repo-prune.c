@@ -189,7 +189,6 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
   return TRUE;
 }
 
-
 /**
  * ostree_repo_prune_static_deltas:
  * @self: Repo
@@ -437,8 +436,17 @@ ostree_repo_prune (OstreeRepo        *self,
         return FALSE;
     }
 
-  objects = ostree_repo_list_objects_set (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
+  if (commit_only)
+    {
+      if (!ostree_repo_list_commit_objects_starting_with (self, "", &objects, cancellable, error))
+        return FALSE; 
+    }
+  else 
+    {
+      objects = ostree_repo_list_objects_set (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
                                           cancellable, error);
+    }
+
   if (!objects)
     return FALSE;
 
@@ -508,9 +516,20 @@ ostree_repo_prune_from_reachable (OstreeRepo        *self,
   if (!lock)
     return FALSE;
 
-  g_autoptr(GHashTable) objects =
-    ostree_repo_list_objects_set (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
-                                  cancellable, error);
+  g_autoptr(GHashTable) objects = NULL;
+  OstreeRepoPruneFlags flags = options->flags;
+  gboolean commit_only = (flags & OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY) > 0;
+  if (commit_only) 
+    {
+      if (!ostree_repo_list_commit_objects_starting_with (self, "", &objects, cancellable, error))
+        return FALSE;  
+    } 
+  else
+    {
+      objects =
+        ostree_repo_list_objects_set (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
+                                      cancellable, error);
+    }
   if (!objects)
     return FALSE;
 

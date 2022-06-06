@@ -1261,7 +1261,7 @@ void ostree_repo_commit_traverse_iter_cleanup (void *p);
  * OstreeRepoPruneFlags:
  * @OSTREE_REPO_PRUNE_FLAGS_NONE: No special options for pruning
  * @OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE: Don't actually delete objects
- * @OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: Do not traverse individual commit objects, only follow refs
+ * @OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: Do not traverse individual commit objects, only follow refs for reachability calculations
  * @OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY: Only traverse commit objects.  (Since 2022.2)
  */
 typedef enum {
