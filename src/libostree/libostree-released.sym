@@ -681,7 +681,7 @@ LIBOSTREE_2022.4 {
 global:
   ostree_fs_get_all_xattrs;
   ostree_fs_get_all_xattrs_at;
-} LIBOSTREE_2021.5;
+} LIBOSTREE_2022.2;
 
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
