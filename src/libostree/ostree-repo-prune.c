@@ -280,15 +280,8 @@ repo_prune_internal (OstreeRepo        *self,
   g_autoptr(GHashTable) reachable_owned = g_hash_table_ref (options->reachable);
   data.reachable = reachable_owned;
 
-  GLNX_HASH_TABLE_FOREACH_KV (objects, GVariant*, serialized_key, GVariant*, objdata)
+  GLNX_HASH_TABLE_FOREACH (objects, GVariant*, serialized_key)
     {
-      gboolean is_loose;
-
-      g_variant_get_child (objdata, 0, "b", &is_loose);
-
-      if (!is_loose)
-        continue;
-
       if (!maybe_prune_loose_object (&data, options->flags, serialized_key,
                                      cancellable, error))
         return FALSE;
@@ -444,8 +437,9 @@ ostree_repo_prune (OstreeRepo        *self,
         return FALSE;
     }
 
-  if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
-                                 &objects, cancellable, error))
+  objects = ostree_repo_list_objects_set (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
+                                          cancellable, error);
+  if (!objects)
     return FALSE;
 
   if (!refs_only)

@@ -513,6 +513,12 @@ _ostree_repo_verify_bindings (const char  *collection_id,
                               GVariant    *commit,
                               GError     **error);
 
+GHashTable *
+ostree_repo_list_objects_set (OstreeRepo                  *self,
+                              OstreeRepoListObjectsFlags   flags,
+                              GCancellable                *cancellable,
+                              GError                     **error);
+
 /**
  * OstreeRepoAutoTransaction:
  *
