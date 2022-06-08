@@ -508,10 +508,10 @@ ostree_repo_prune_from_reachable (OstreeRepo        *self,
   if (!lock)
     return FALSE;
 
-  g_autoptr(GHashTable) objects = NULL;
-
-  if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
-                                 &objects, cancellable, error))
+  g_autoptr(GHashTable) objects =
+    ostree_repo_list_objects_set (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
+                                  cancellable, error);
+  if (!objects)
     return FALSE;
 
   return repo_prune_internal (self, objects, options, out_objects_total,
