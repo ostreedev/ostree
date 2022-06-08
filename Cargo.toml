@@ -8,7 +8,7 @@ license = "MIT"
 name = "ostree"
 readme = "README.md"
 repository = "https://github.com/ostreedev/ostree-rs"
-version = "0.13.6"
+version = "0.14.0"
 
 exclude = [
     "rust-bindings/conf/**",
@@ -32,7 +32,7 @@ members = [".", "rust-bindings/sys"]
 bitflags = "1.2.1"
 cap-std = { version = "0.24", optional = true}
 io-lifetimes = { version = "0.5", optional = true}
-ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.9.1" }
+ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.10.0" }
 gio = "0.14"
 glib = "0.14.4"
 hex = "0.4.2"
@@ -92,3 +92,4 @@ v2021_2 = ["v2021_1", "ffi/v2021_2"]
 v2021_3 = ["v2021_2", "ffi/v2021_3"]
 v2021_4 = ["v2021_3", "ffi/v2021_4"]
 v2021_5 = ["v2021_4", "ffi/v2021_5"]
+v2022_5 = ["v2021_5", "ffi/v2022_5"]
