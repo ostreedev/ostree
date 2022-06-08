@@ -3895,6 +3895,7 @@ ostree_repo_get_parent (OstreeRepo  *self)
 
 static gboolean
 list_loose_objects_at (OstreeRepo             *self,
+                       GVariant               *dummy_value,
                        GHashTable             *inout_objects,
                        int                     dfd,
                        const char             *prefix,
@@ -3902,7 +3903,7 @@ list_loose_objects_at (OstreeRepo             *self,
                        GCancellable           *cancellable,
                        GError                **error)
 {
-  GVariant *key, *value;
+  GVariant *key;
 
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   gboolean exists;
@@ -3971,11 +3972,10 @@ list_loose_objects_at (OstreeRepo             *self,
         }
 
       key = ostree_object_name_serialize (buf, objtype);
-      value = g_variant_new ("(b@as)",
-                             TRUE, g_variant_new_strv (NULL, 0));
+
       /* transfer ownership */
       g_hash_table_replace (inout_objects, g_variant_ref_sink (key),
-                            g_variant_ref_sink (value));
+                            g_variant_ref (dummy_value));
     }
 
   return TRUE;
@@ -3989,6 +3989,9 @@ list_loose_objects (OstreeRepo                     *self,
                     GError                        **error)
 {
   static const gchar hexchars[] = "0123456789abcdef";
+  // For unfortunate historical reasons we emit this dummy value.
+  g_autoptr(GVariant) dummy_loose_object_variant =
+    g_variant_ref_sink (g_variant_new ("(b@as)", TRUE, g_variant_new_strv (NULL, 0)));
 
   for (guint c = 0; c < 256; c++)
     {
@@ -3996,7 +3999,8 @@ list_loose_objects (OstreeRepo                     *self,
       buf[0] = hexchars[c >> 4];
       buf[1] = hexchars[c & 0xF];
       buf[2] = '\0';
-      if (!list_loose_objects_at (self, inout_objects, self->objects_dir_fd, buf,
+      if (!list_loose_objects_at (self, dummy_loose_object_variant,
+                                  inout_objects, self->objects_dir_fd, buf,
                                   commit_starting_with,
                                   cancellable, error))
         return FALSE;
