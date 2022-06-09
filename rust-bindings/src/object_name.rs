@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn should_stringify_object_name() {
         let object_name = ObjectName::new("abcdef123456", ObjectType::DirTree);
-        let stringified = format!("{}", object_name);
+        let stringified = format!("{object_name}");
         assert_eq!(stringified, "abcdef123456.dirtree");
     }
 
