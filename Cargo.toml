@@ -11,11 +11,15 @@ repository = "https://github.com/ostreedev/ostree"
 version = "0.14.0"
 
 exclude = [
-    "rust-bindings/conf/**",
-    "rust-bindings/gir-files/**",
-    "rust-bindings/sys/**",
-    ".gitlab-ci.yml",
-    "LICENSE.LGPL*",
+    "/*.am", "/apidoc", "/autogen.sh", "/bash", "/bsdiff",
+    "/build-aux", "/buildutil", "/*.mk", "/ci", "/coccinelle",
+    "/*.ac", "/docs", "/libglnx", "/man", "/manual-tests",
+    "/*.yml", "/*.doap", "/src", "/tests",
+    "/.github", "/.cci.jenkinsfile", "/.dir-locals.el", "/.editorconfig",
+    "/.vimrc", "/.copr", "/.packit.yaml", "/GNUmakefile", "TODO",
+    "/rust-bindings/conf/**",
+    "/rust-bindings/gir-files/**",
+    "/rust-bindings/sys/**",
 ]
 
 [package.metadata.docs.rs]
