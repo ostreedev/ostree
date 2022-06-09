@@ -280,6 +280,32 @@ AS_IF([test x$have_gpgme = xyes],
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
+COMPOSEFS_DEPENDENCY="composefs >= 0.1.2"
+AC_ARG_WITH(composefs,
+	    AS_HELP_STRING([--without-composefs], [Do not use composefs]),
+	    :, with_composefs=maybe)
+
+AS_IF([ test x$with_composefs != xno ], [
+    AC_MSG_CHECKING([for $COMPOSEFS_DEPENDENCY])
+    PKG_CHECK_EXISTS($COMPOSEFS_DEPENDENCY, have_composefs=yes, have_composefs=no)
+    AC_MSG_RESULT([$have_composefs])
+    AS_IF([ test x$have_composefs = xno && test x$with_composefs != xmaybe ], [
+       AC_MSG_ERROR([composefs is enabled but could not be found])
+    ])
+    AS_IF([ test x$have_composefs = xyes], [
+        AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have composefs.pc])
+	PKG_CHECK_MODULES(OT_DEP_COMPOSEFS, $COMPOSEFS_DEPENDENCY)
+        save_LIBS=$LIBS
+        LIBS=$OT_DEP_COMPOSEFS_LIBS
+        AC_CHECK_FUNCS(lcfs_node_new)
+        LIBS=$save_LIBS
+	with_composefs=yes
+    ], [
+	with_composefs=no
+    ])
+], [ with_composefs=no ])
+if test x$with_composefs != xno; then OSTREE_FEATURES="$OSTREE_FEATURES composefs"; fi
+AM_CONDITIONAL(USE_COMPOSEFS, test $with_composefs != no)
 
 LIBSODIUM_DEPENDENCY="1.0.14"
 AC_ARG_WITH(ed25519_libsodium,
@@ -675,7 +701,8 @@ echo "
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
     mkinitcpio:                                   $with_mkinitcpio
-    Static compiler for ostree-prepare-root:      $with_static_compiler"
+    Static compiler for ostree-prepare-root:      $with_static_compiler
+    Composefs:                                    $with_composefs"
 AS_IF([test x$with_builtin_grub2_mkconfig = xyes], [
     echo "    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
 ], [

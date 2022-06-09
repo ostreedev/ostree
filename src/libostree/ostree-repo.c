@@ -3154,6 +3154,9 @@ reload_core_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
   if (!_ostree_repo_parse_fsverity_config (self, error))
     return FALSE;
 
+  if (!_ostree_repo_parse_composefs_config (self, error))
+    return FALSE;
+
   {
     g_clear_pointer (&self->collection_id, g_free);
     if (!ot_keyfile_get_value_with_default (self->config, "core", "collection-id", NULL,
