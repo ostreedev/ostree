@@ -282,16 +282,15 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
     }
 
   if (!opt_quiet)
-    g_print ("Enumerating objects...\n");
+    g_print ("Enumerating commits...\n");
 
-  g_autoptr(GHashTable) objects = NULL;
-  if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL,
-                                 &objects, cancellable, error))
+  // Find all commit objects, including partial ones
+  g_autoptr(GHashTable) all_commits = NULL;
+  if (!ostree_repo_list_commit_objects_starting_with (repo, "", &all_commits, cancellable, error))
     return FALSE;
-
+  // And gather a set of non-partial commits for further analysis
   g_autoptr(GHashTable) commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                          (GDestroyNotify)g_variant_unref, NULL);
-
 
   g_autoptr(GPtrArray) tombstones = NULL;
   if (opt_add_tombstones)
@@ -302,8 +301,8 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
 
   guint n_partial = 0;
   guint n_fsck_partial = 0;
-  g_hash_table_iter_init (&hash_iter, objects);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  g_hash_table_iter_init (&hash_iter, all_commits);
+  while (g_hash_table_iter_next (&hash_iter, &key, NULL))
     {
       GVariant *serialized_key = key;
       const char *checksum;
@@ -313,7 +312,9 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+      g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
+
+      if (TRUE)  // Temporarily avoiding the noise of de-indenting this whole thing
         {
           if (!ostree_repo_load_commit (repo, checksum, &commit, &commitstate, error))
             return FALSE;
@@ -420,7 +421,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
     }
 
-  g_clear_pointer (&objects, g_hash_table_unref);
+  g_clear_pointer (&all_commits, g_hash_table_unref);
 
   if (!opt_quiet)
     g_print ("Verifying content integrity of %u commit objects...\n",
