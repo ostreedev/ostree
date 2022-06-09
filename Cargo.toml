@@ -7,7 +7,7 @@ keywords = ["ostree", "libostree"]
 license = "MIT"
 name = "ostree"
 readme = "README.md"
-repository = "https://github.com/ostreedev/ostree-rs"
+repository = "https://github.com/ostreedev/ostree"
 version = "0.14.0"
 
 exclude = [
