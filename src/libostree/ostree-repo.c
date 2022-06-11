@@ -4999,7 +4999,7 @@ ostree_repo_list_objects (OstreeRepo                  *self,
 /**
  * ostree_repo_list_commit_objects_starting_with:
  * @self: Repo
- * @start: List commits starting with this checksum
+ * @start: List commits starting with this checksum (empty string for all)
  * @out_commits: (out) (transfer container) (element-type GVariant GVariant):
  * Map of serialized commit name to variant data
  * @cancellable: Cancellable
@@ -5007,6 +5007,8 @@ ostree_repo_list_objects (OstreeRepo                  *self,
  *
  * This function synchronously enumerates all commit objects starting
  * with @start, returning data in @out_commits.
+ *
+ * To list all commit objects, provide the empty string `""` for @start.
  *
  * Returns: %TRUE on success, %FALSE on error, and @error will be set
  */
