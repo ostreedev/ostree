@@ -53,10 +53,7 @@ pub fn create_mtree(repo: &ostree::Repo) -> ostree::MutableTree {
     assert_eq!(mtree.copy_files().len(), 0);
     assert_eq!(mtree.copy_subdirs().len(), 0);
     let file = gio::File::for_path(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("data")
-            .join("test.tar"),
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-bindings/tests/data/test.tar"),
     );
     repo.write_archive_to_mtree(&file, &mtree, None, true, NONE_CANCELLABLE)
         .expect("test mtree");
