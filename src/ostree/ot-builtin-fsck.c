@@ -298,25 +298,15 @@ fsck_one_commit (OstreeRepo *repo, const char *checksum, GVariant *commit, GPtrA
 
   if (opt_add_tombstones)
     {
-      GError *local_error = NULL;
       g_autofree char *parent = ostree_commit_get_parent (commit);
       if (parent)
         {
           g_autoptr(GVariant) parent_commit = NULL;
-          if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, parent,
-                                         &parent_commit, &local_error))
-            {
-              if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-                {
-                  g_ptr_array_add (tombstones, g_strdup (checksum));
-                  g_clear_error (&local_error);
-                }
-              else
-                {
-                  g_propagate_error (error, local_error);
-                  return FALSE;
-                }
-            }
+          if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT, parent,
+                                                   &parent_commit, error))
+            return FALSE;
+          if (!parent_commit)
+            g_ptr_array_add (tombstones, g_strdup (checksum));
         }
     }
 
