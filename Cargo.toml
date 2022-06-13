@@ -29,6 +29,10 @@ features = ["dox"]
 name = "ostree"
 path = "rust-bindings/src/lib.rs"
 
+[[test]]
+name = "integration"
+path = "rust-bindings/tests/tests.rs"
+
 [workspace]
 members = [".", "rust-bindings/sys"]
 
