@@ -2,7 +2,7 @@
 name = "ostree-test"
 version = "0.1.0"
 authors = ["Colin Walters <walters@verbum.org>"]
-edition = "2018"
+edition = "2021"
 
 [workspace]
 

@@ -363,7 +363,7 @@ fn impl_transaction_test<M: AsRef<str>>(
             booted: booted_commit.to_string(),
             orig: sysrepo_obj.resolve_rev(ORIGREF, false)?.unwrap().into(),
             prev: srvrepo_obj
-                .resolve_rev(&format!("{}^", TESTREF), false)?
+                .resolve_rev(&format!("{TESTREF}^"), false)?
                 .unwrap()
                 .into(),
             target: srvrepo_obj.resolve_rev(TESTREF, false)?.unwrap().into(),
@@ -568,7 +568,7 @@ pub(crate) fn itest_transactionality() -> Result<()> {
         ..Default::default()
     };
     with_webserver_in(&srvrepo, &webserver_opts, move |addr| {
-        let url = format!("http://{}", addr);
+        let url = format!("http://{addr}");
         bash!(
             "ostree remote delete --if-exists testrepo
              ostree remote add --set=gpg-verify=false testrepo ${url}",

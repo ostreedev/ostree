@@ -31,9 +31,9 @@ pub(crate) fn mkvroot<P: AsRef<Path>>(p: P, v: u32) -> Result<()> {
         std::fs::create_dir_all(p.join(v))?;
     }
     let verpath = p.join("etc/.mkrootversion");
-    write_file(&verpath, &format!("{}", v))?;
-    write_file(p.join("usr/bin/somebinary"), &format!("somebinary v{}", v))?;
-    write_file(p.join("etc/someconf"), &format!("someconf v{}", v))?;
+    write_file(&verpath, &format!("{v}"))?;
+    write_file(p.join("usr/bin/somebinary"), &format!("somebinary v{v}"))?;
+    write_file(p.join("etc/someconf"), &format!("someconf v{v}"))?;
     write_file(p.join("usr/bin/vmod2"), &format!("somebinary v{}", v % 2))?;
     write_file(p.join("usr/bin/vmod3"), &format!("somebinary v{}", v % 3))?;
     Ok(())
@@ -134,7 +134,7 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
                 tempdir.ensure_dir(v, 0o755)?;
                 let dest = tempdir.sub_dir(v)?;
                 mutated += mutate_executables_to(&src, &dest, percentage)
-                    .with_context(|| format!("Replacing binaries in {}", v))?;
+                    .with_context(|| format!("Replacing binaries in {v}"))?;
             }
         }
     }

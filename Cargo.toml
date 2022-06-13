@@ -2,7 +2,7 @@
 authors = ["Felix Krull"]
 description = "Rust bindings for libostree"
 documentation = "https://docs.rs/ostree"
-edition = "2018"
+edition = "2021"
 keywords = ["ostree", "libostree"]
 license = "MIT"
 name = "ostree"

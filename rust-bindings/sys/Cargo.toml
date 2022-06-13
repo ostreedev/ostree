@@ -73,7 +73,7 @@ links = "ostree-1"
 name = "ostree-sys"
 repository = "https://github.com/ostreedev/ostree-rs"
 version = "0.10.0"
-edition = "2018"
+edition = "2021"
 [package.metadata.docs.rs]
 features = ["dox"]
 [package.metadata.system-deps.ostree_1]
