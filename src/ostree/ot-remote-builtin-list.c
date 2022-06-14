@@ -37,45 +37,38 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
+
   g_autoptr(OstreeRepo) repo = NULL;
-  g_auto(GStrv) remotes = NULL;
-  guint ii, n_remotes = 0;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("");
-
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
-  remotes = ostree_repo_remote_list (repo, &n_remotes);
+  guint n_remotes = 0;
+  g_auto(GStrv) remotes = ostree_repo_remote_list (repo, &n_remotes);
 
   if (opt_show_urls)
     {
       int max_length = 0;
 
-      for (ii = 0; ii < n_remotes; ii++)
+      for (guint ii = 0; ii < n_remotes; ii++)
         max_length = MAX (max_length, strlen (remotes[ii]));
 
-      for (ii = 0; ii < n_remotes; ii++)
+      for (guint ii = 0; ii < n_remotes; ii++)
         {
           g_autofree char *remote_url = NULL;
 
           if (!ostree_repo_remote_get_url (repo, remotes[ii], &remote_url, error))
-            goto out;
+            return FALSE;
 
           g_print ("%-*s  %s\n", max_length, remotes[ii], remote_url);
         }
     }
   else
     {
-      for (ii = 0; ii < n_remotes; ii++)
+      for (guint ii = 0; ii < n_remotes; ii++)
         g_print ("%s\n", remotes[ii]);
     }
 
-  ret = TRUE;
-
- out:
-  return ret;
+  return TRUE;
 }
