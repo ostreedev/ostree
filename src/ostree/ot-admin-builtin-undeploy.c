@@ -34,15 +34,9 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("INDEX");
+
   g_autoptr(OstreeSysroot) sysroot = NULL;
-  const char *deploy_index_str;
-  int deploy_index;
-  g_autoptr(GPtrArray) current_deployments = NULL;
-  g_autoptr(OstreeDeployment) target_deployment = NULL;
-
-  context = g_option_context_new ("INDEX");
-
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           invocation, &sysroot, cancellable, error))
@@ -54,12 +48,13 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invoc
       return FALSE;
     }
 
-  current_deployments = ostree_sysroot_get_deployments (sysroot);
+  g_autoptr(GPtrArray) current_deployments = ostree_sysroot_get_deployments (sysroot);
 
-  deploy_index_str = argv[1];
-  deploy_index = atoi (deploy_index_str);
+  const char *deploy_index_str = argv[1];
+  int deploy_index = atoi (deploy_index_str);
 
-  target_deployment = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
+  g_autoptr(OstreeDeployment) target_deployment =
+    ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
   if (!target_deployment)
     return FALSE;
 
