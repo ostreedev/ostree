@@ -39,34 +39,30 @@ static GOptionEntry option_entries[] = {
 gboolean
 ot_remote_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("NAME");
+
   g_autoptr(OstreeRepo) repo = NULL;
-  const char *remote_name;
-  gboolean ret = FALSE;
-  g_autoptr(GHashTable) refs = NULL;
-
-  context = g_option_context_new ("NAME");
-
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     invocation, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 2)
     {
       ot_util_usage_error (context, "NAME must be specified", error);
-      goto out;
+      return FALSE;
     }
 
   if (opt_cache_dir)
     {
       if (!ostree_repo_set_cache_dir (repo, AT_FDCWD, opt_cache_dir, cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  remote_name = argv[1];
+  const char *remote_name = argv[1];
+  g_autoptr(GHashTable) refs = NULL;
 
   if (!ostree_repo_remote_list_refs (repo, remote_name, &refs, cancellable, error))
-    goto out;
+    return FALSE;
   else
     {
       g_autoptr(GList) ordered_keys = NULL;
@@ -81,7 +77,5 @@ ot_remote_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocati
         }
     }
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
