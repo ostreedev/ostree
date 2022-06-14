@@ -201,62 +201,52 @@ out:
 gboolean
 ostree_builtin_gpg_sign (int argc, char **argv,OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+
+  g_autoptr(GOptionContext) context = g_option_context_new ("COMMIT KEY-ID...");
+
   g_autoptr(OstreeRepo) repo = NULL;
-  g_autofree char *resolved_commit = NULL;
-  const char *commit;
-  char **key_ids;
-  int n_key_ids, ii;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("COMMIT KEY-ID...");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 2)
     {
       usage_error (context, "Need a COMMIT to sign", error);
-      goto out;
+      return FALSE;
     }
 
   if (argc < 3)
     {
       usage_error (context, "Need at least one GPG KEY-ID to sign with", error);
-      goto out;
+      return FALSE;
     }
 
-  commit = argv[1];
-  key_ids = argv + 2;
-  n_key_ids = argc - 2;
+  const char *commit = argv[1];
+  char **key_ids = argv + 2;
+  int n_key_ids = argc - 2;
 
+  g_autofree char *resolved_commit = NULL;
   if (!ostree_repo_resolve_rev (repo, commit, FALSE, &resolved_commit, error))
-    goto out;
+    return FALSE;
 
   if (opt_delete)
     {
       guint n_deleted = 0;
 
-      if (delete_signatures (repo, resolved_commit,
-                             (const char * const *) key_ids, n_key_ids,
-                             &n_deleted, cancellable, error))
-        {
-          g_print ("Signatures deleted: %u\n", n_deleted);
-          ret = TRUE;
-        }
+      if (!delete_signatures (repo, resolved_commit,
+                              (const char * const *) key_ids, n_key_ids,
+                              &n_deleted, cancellable, error))
+        return FALSE;
 
-      goto out;
+      g_print ("Signatures deleted: %u\n", n_deleted);
+      return TRUE;
     }
 
-  for (ii = 0; ii < n_key_ids; ii++)
+  for (int ii = 0; ii < n_key_ids; ii++)
     {
       if (!ostree_repo_sign_commit (repo, resolved_commit, key_ids[ii],
                                     opt_gpg_homedir, cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
-
-out:
-  return ret;
+  return TRUE;
 }
