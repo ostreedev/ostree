@@ -40,33 +40,28 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("");
+
   g_autoptr(OstreeSysroot) sysroot = NULL;
-  OstreeDeployment *booted_deployment = NULL;
-  OstreeDeploymentUnlockedState target_state;
-
-  context = g_option_context_new ("");
-
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           invocation, &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
   
   if (argc > 1)
     {
       ot_util_usage_error (context, "This command takes no extra arguments", error);
-      goto out;
+      return FALSE;
     }
 
-  booted_deployment = ostree_sysroot_require_booted_deployment (sysroot, error);
+  OstreeDeployment *booted_deployment = ostree_sysroot_require_booted_deployment (sysroot, error);
   if (!booted_deployment)
-    goto out;
+    return FALSE;
 
+  OstreeDeploymentUnlockedState target_state;
   if (opt_hotfix && opt_transient)
     {
-      glnx_throw (error, "Cannot specify both --hotfix and --transient");
-      goto out;
+      return glnx_throw (error, "Cannot specify both --hotfix and --transient");
     }
   else if (opt_hotfix)
     target_state = OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX;
@@ -77,8 +72,8 @@ ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocat
 
   if (!ostree_sysroot_deployment_unlock (sysroot, booted_deployment,
                                          target_state, cancellable, error))
-    goto out;
-  
+    return FALSE;
+
   switch (target_state)
     {
     case OSTREE_DEPLOYMENT_UNLOCKED_NONE:
@@ -99,7 +94,5 @@ ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocat
       break;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }

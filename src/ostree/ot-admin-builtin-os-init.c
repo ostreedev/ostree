@@ -35,35 +35,29 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("OSNAME");
+
   g_autoptr(OstreeSysroot) sysroot = NULL;
-  gboolean ret = FALSE;
-  const char *osname = NULL;
-
-  context = g_option_context_new ("OSNAME");
-
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           invocation, &sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (!ostree_sysroot_ensure_initialized (sysroot, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 2)
     {
       ot_util_usage_error (context, "OSNAME must be specified", error);
-      goto out;
+      return FALSE;
     }
 
-  osname = argv[1];
+  const char *osname = argv[1];
 
   if (!ostree_sysroot_init_osname (sysroot, osname, cancellable, error))
-    goto out;
+    return FALSE;
 
   g_print ("ostree/deploy/%s initialized as OSTree root\n", osname);
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
