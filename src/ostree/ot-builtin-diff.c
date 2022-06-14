@@ -53,7 +53,6 @@ parse_file_or_commit (OstreeRepo  *repo,
                       GCancellable *cancellable,
                       GError     **error)
 {
-  gboolean ret = FALSE;
   g_autoptr(GFile) ret_file = NULL;
 
   if (g_str_has_prefix (arg, "/")
@@ -65,13 +64,11 @@ parse_file_or_commit (OstreeRepo  *repo,
   else
     {
       if (!ostree_repo_read_commit (repo, arg, &ret_file, NULL, cancellable, error))
-        goto out;
+        return FALSE;
     }
 
-  ret = TRUE;
   ot_transfer_out_value (out_file, &ret_file);
- out:
-  return ret;
+  return TRUE;
 }
 
 static GHashTable *
@@ -99,7 +96,6 @@ object_set_total_size (OstreeRepo    *repo,
                        GCancellable  *cancellable,
                        GError       **error)
 {
-  gboolean ret = FALSE;
   GHashTableIter hashiter;
   gpointer key, value;
 
@@ -116,34 +112,21 @@ object_set_total_size (OstreeRepo    *repo,
       ostree_object_name_deserialize (v, &csum, &objtype);
       if (!ostree_repo_query_object_storage_size (repo, objtype, csum, &size,
                                                   cancellable, error))
-        goto out;
+        return FALSE;
       *out_total += size;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
 ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("REV_OR_DIR REV_OR_DIR");
+
   g_autoptr(OstreeRepo) repo = NULL;
-  const char *src;
-  const char *target;
-  g_autofree char *src_prev = NULL;
-  g_autoptr(GFile) srcf = NULL;
-  g_autoptr(GFile) targetf = NULL;
-  g_autoptr(GPtrArray) modified = NULL;
-  g_autoptr(GPtrArray) removed = NULL;
-  g_autoptr(GPtrArray) added = NULL;
-
-  context = g_option_context_new ("REV_OR_DIR REV_OR_DIR");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 2)
     {
@@ -152,9 +135,12 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
       g_free (help);
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "REV must be specified");
-      goto out;
+      return FALSE;
     }
 
+  g_autofree char *src_prev = NULL;
+  const char *src;
+  const char *target;
   if (argc == 2)
     {
       src_prev = g_strconcat (argv[1], "^", NULL);
@@ -170,6 +156,12 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
   if (!opt_stats && !opt_fs_diff)
     opt_fs_diff = TRUE;
 
+  g_autoptr(GFile) srcf = NULL;
+  g_autoptr(GFile) targetf = NULL;
+  g_autoptr(GPtrArray) modified = NULL;
+  g_autoptr(GPtrArray) removed = NULL;
+  g_autoptr(GPtrArray) added = NULL;
+
   if (opt_fs_diff)
     {
       OstreeDiffFlags diff_flags = OSTREE_DIFF_FLAGS_NONE; 
@@ -178,9 +170,9 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
         diff_flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
       
       if (!parse_file_or_commit (repo, src, &srcf, cancellable, error))
-        goto out;
+        return FALSE;
       if (!parse_file_or_commit (repo, target, &targetf, cancellable, error))
-        goto out;
+        return FALSE;
 
       modified = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_diff_item_unref);
       removed = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
@@ -189,7 +181,7 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
       OstreeDiffDirsOptions diff_opts = { opt_owner_uid, opt_owner_gid };
       if (!ostree_diff_dirs_with_options (diff_flags, srcf, targetf, modified, removed,
                                           added, &diff_opts, cancellable, error))
-        goto out;
+        return FALSE;
 
       ostree_diff_print (srcf, targetf, modified, removed, added);
     }
@@ -207,14 +199,14 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
       guint64 total_common;
 
       if (!ostree_repo_resolve_rev (repo, src, FALSE, &rev_a, error))
-        goto out;
+        return FALSE;
       if (!ostree_repo_resolve_rev (repo, target, FALSE, &rev_b, error))
-        goto out;
+        return FALSE;
 
       if (!ostree_repo_traverse_commit (repo, rev_a, 0, &reachable_a, cancellable, error))
-        goto out;
+        return FALSE;
       if (!ostree_repo_traverse_commit (repo, rev_b, 0, &reachable_b, cancellable, error))
-        goto out;
+        return FALSE;
 
       a_size = g_hash_table_size (reachable_a);
       b_size = g_hash_table_size (reachable_b);
@@ -227,12 +219,10 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
 
       if (!object_set_total_size (repo, reachable_intersection, &total_common,
                                   cancellable, error))
-        goto out;
+        return FALSE;
       size = g_format_size_full (total_common, 0);
       g_print ("Common Object Size: %s\n", size);
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }

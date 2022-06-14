@@ -61,18 +61,10 @@ split_key_string (const char   *k,
 gboolean
 ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+
+  g_autoptr(GOptionContext) context = g_option_context_new ("(get KEY|set KEY VALUE|unset KEY)");
+
   g_autoptr(OstreeRepo) repo = NULL;
-  const char *op;
-  const char *section_key;
-  const char *value;
-  g_autofree char *section = NULL;
-  g_autofree char *key = NULL;
-  g_autoptr(GKeyFile) config = NULL;
-  int correct_argc;
-
-  context = g_option_context_new ("(get KEY|set KEY VALUE|unset KEY)");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     return FALSE;
 
@@ -82,12 +74,11 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
       return FALSE;
     }
 
-  op = argv[1];
+  const char *op = argv[1];
 
+  int correct_argc = 3;
   if (!strcmp (op, "set"))
     correct_argc = 4;
-  else
-    correct_argc = 3;
 
   if (argc > correct_argc)
     {
@@ -95,6 +86,11 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
       return FALSE;
     }
 
+  g_autofree char *section = NULL;
+  g_autofree char *key = NULL;
+  g_autoptr(GKeyFile) config = NULL;
+  const char *section_key;
+  const char *value;
   if (!strcmp (op, "set"))
     {
       if (opt_group)
