@@ -514,8 +514,15 @@ test_read_xattrs (void)
     g_assert_no_error (local_error);
   
     int r = fsetxattr (tmpd.fd, "user.ostreetesting", value, sizeof (value), 0);
-    g_assert_cmpint (r, ==, 0);
-  
+
+    if (r != 0)
+      {
+        g_autofree gchar *message = g_strdup_printf ("Unable to set extended attributes in /var/tmp: %s",
+                                                     g_strerror (errno));
+        g_test_skip (message);
+        return;
+      }
+
     g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
     g_assert_no_error (local_error);
   
