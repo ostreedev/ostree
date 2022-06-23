@@ -130,4 +130,8 @@ char **ostree_kernel_args_to_strv (OstreeKernelArgs *kargs);
 _OSTREE_PUBLIC
 char *ostree_kernel_args_to_string (OstreeKernelArgs *kargs);
 
+_OSTREE_PUBLIC
+void ostree_kernel_args_append_if_missing (OstreeKernelArgs *kargs, 
+                                           const char *arg);
+
 G_END_DECLS

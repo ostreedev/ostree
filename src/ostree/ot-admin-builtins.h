@@ -46,6 +46,7 @@ BUILTINPROTO(set_origin);
 BUILTINPROTO(diff);
 BUILTINPROTO(switch);
 BUILTINPROTO(upgrade);
+BUILTINPROTO(kargs);
 
 #undef BUILTINPROTO
 

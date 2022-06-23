@@ -73,6 +73,7 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-boot-complete.c \
 	src/ostree/ot-admin-builtin-undeploy.c \
 	src/ostree/ot-admin-builtin-instutil.c \
+	src/ostree/ot-admin-builtin-kargs.c \
 	src/ostree/ot-admin-builtin-cleanup.c \
 	src/ostree/ot-admin-builtin-os-init.c \
 	src/ostree/ot-admin-builtin-set-origin.c \
@@ -88,6 +89,8 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-instutil-builtins.h \
 	src/ostree/ot-admin-functions.h \
 	src/ostree/ot-admin-functions.c \
+	src/ostree/ot-admin-kargs-builtins.h \
+	src/ostree/ot-admin-kargs-builtin-edit-in-place.c \
 	$(NULL)
 
 # Remote subcommand

@@ -804,3 +804,28 @@ ostree_kernel_args_get_last_value (OstreeKernelArgs *kargs, const char *key)
   const OstreeKernelArgsEntry *e = entries->pdata[entries->len-1];
   return _ostree_kernel_args_entry_get_value (e);
 }
+
+/**
+ * ostree_kernel_args_append_if_missing:
+ * @kargs: a OstreeKernelArgs instance
+ * @arg: key or key/value pair to be added
+ *
+ * Appends @arg which is in the form of key=value pair to the hash table kargs->table
+ * (appends to the value list if key is not in the hash table)
+ * and appends key to kargs->order if it is not in the hash table.
+ *
+ * Since: 2022.5
+ **/
+void
+ostree_kernel_args_append_if_missing (OstreeKernelArgs  *kargs,
+                                      const char *arg)
+{
+  g_autofree char *key = g_strdup (arg);
+  split_keyeq (key);
+ 
+  // Don't insert a duplicate key.
+  if (g_hash_table_contains (kargs->table, key))
+    return;
+ 
+  ostree_kernel_args_append (kargs, arg);
+}
