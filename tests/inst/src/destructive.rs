@@ -576,10 +576,10 @@ pub(crate) fn itest_transactionality() -> Result<()> {
         )?;
 
         if firstrun {
-            // Also disable some services (like zincati) because we don't want automatic updates
+            // Also disable zincati because we don't want automatic updates
             // in our reboots, and it currently fails to start.  The less
             // we have in each reboot, the faster reboots are.
-            bash!("systemctl disable --now zincati fedora-coreos-pinger")?;
+            bash!("systemctl disable --now zincati")?;
             // And prepare for updates
             bash!("rpm-ostree cleanup -pr")?;
             generate_update(&commit)?;
