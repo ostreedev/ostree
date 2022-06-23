@@ -277,6 +277,39 @@ impl Repo {
         Ok(self.resolve_rev(refspec, false)?.unwrap())
     }
 
+    /// Load the contents (for regular files) and metadata for a content object.
+    #[doc(alias = "ostree_repo_load_file")]
+    pub fn load_file<P: IsA<gio::Cancellable>>(
+        &self,
+        checksum: &str,
+        cancellable: Option<&P>,
+    ) -> Result<(Option<gio::InputStream>, gio::FileInfo, glib::Variant), glib::Error> {
+        unsafe {
+            let mut out_input = ptr::null_mut();
+            let mut out_file_info = ptr::null_mut();
+            let mut out_xattrs = ptr::null_mut();
+            let mut error = ptr::null_mut();
+            let _ = ffi::ostree_repo_load_file(
+                self.to_glib_none().0,
+                checksum.to_glib_none().0,
+                &mut out_input,
+                &mut out_file_info,
+                &mut out_xattrs,
+                cancellable.map(|p| p.as_ref()).to_glib_none().0,
+                &mut error,
+            );
+            if error.is_null() {
+                Ok((
+                    from_glib_full(out_input),
+                    from_glib_full(out_file_info),
+                    from_glib_full(out_xattrs),
+                ))
+            } else {
+                Err(from_glib_full(error))
+            }
+        }
+    }
+
     /// Query metadata for a content object.
     ///
     /// This is similar to [`load_file`], but is more efficient if reading the file content is not needed.

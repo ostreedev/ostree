@@ -168,6 +168,11 @@ concurrency = "send"
     name = "destination_path"
     string_type = "filename"
 
+    # Cases where we use nullable output parameters that shouldn't be `Option<T>`
+    [[object.function]]
+    pattern = "^(load_file)$"
+    ignore = true
+
 [[object]]
 name = "OSTree.RepoFinder"
 status = "generate"
