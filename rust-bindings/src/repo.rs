@@ -154,13 +154,15 @@ impl Repo {
     /// Borrow the directory file descriptor for this repository.
     #[cfg(feature = "cap-std-apis")]
     pub fn dfd_borrow(&self) -> io_lifetimes::BorrowedFd {
-        unsafe { io_lifetimes::BorrowedFd::borrow_raw_fd(self.dfd()) }
+        unsafe { io_lifetimes::BorrowedFd::borrow_raw(self.dfd()) }
     }
 
     /// Return a new `cap-std` directory reference for this repository.
     #[cfg(feature = "cap-std-apis")]
     pub fn dfd_as_dir(&self) -> std::io::Result<cap_std::fs::Dir> {
-        cap_std::fs::Dir::reopen_dir(&self.dfd_borrow())
+        use io_lifetimes::AsFd;
+        let dfd = self.dfd_borrow();
+        cap_std::fs::Dir::reopen_dir(&dfd.as_fd())
     }
 
     /// Find all objects reachable from a commit.
