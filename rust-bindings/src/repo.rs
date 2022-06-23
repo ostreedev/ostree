@@ -153,7 +153,7 @@ impl Repo {
 
     /// Borrow the directory file descriptor for this repository.
     #[cfg(feature = "cap-std-apis")]
-    pub fn dfd_borrow<'a>(&'a self) -> io_lifetimes::BorrowedFd<'a> {
+    pub fn dfd_borrow(&self) -> io_lifetimes::BorrowedFd {
         unsafe { io_lifetimes::BorrowedFd::borrow_raw_fd(self.dfd()) }
     }
 
