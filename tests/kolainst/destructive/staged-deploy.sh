@@ -150,13 +150,27 @@ EOF
     # Now finally, try breaking staged updates and verify that ostree-boot-complete fails on the next boot
     unshare -m /bin/sh -c 'mount -o remount,rw /boot; chattr +i /boot'
     rpm-ostree kargs --append=foo=bar
+
+    # Hack around https://github.com/coreos/coreos-assembler/pull/2921#issuecomment-1156592723
+    # where coreos-assembler/kola check systemd unit status right after ssh.
+    cat >/etc/systemd/system/hackaround-cosa-systemd-unit-checks.service << 'EOF'
+[Unit]
+Before=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '(systemctl status ostree-boot-complete.service || true) | tee /run/ostree-boot-complete-status.txt'
+ExecStart=/bin/systemctl reset-failed ostree-boot-complete.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl enable hackaround-cosa-systemd-unit-checks.service
+
     /tmp/autopkgtest-reboot "3"
     ;;
   "3") 
-    (systemctl status ostree-boot-complete.service || true) | tee out.txt
-    assert_file_has_content out.txt 'error: ostree-finalize-staged.service failed on previous boot.*Operation not permitted'
-    systemctl show -p Result ostree-boot-complete.service > out.txt
-    assert_file_has_content out.txt='Result=exit-code'
+    assert_file_has_content /run/ostree-boot-complete-status.txt 'error: ostree-finalize-staged.service failed on previous boot.*Operation not permitted'
     echo "ok boot-complete.service"
     ;;
   *) fatal "Unexpected AUTOPKGTEST_REBOOT_MARK=${AUTOPKGTEST_REBOOT_MARK}" ;;
