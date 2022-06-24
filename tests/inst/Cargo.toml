@@ -11,6 +11,7 @@ name = "ostree-test"
 path = "src/insttestmain.rs"
 
 [dependencies]
+cap-std-ext = "0.25"
 clap = "2.32.0"
 structopt = "0.3"
 serde = "1.0.111"
@@ -33,8 +34,6 @@ procspawn = "0.8"
 rand = "0.8"
 strum = "0.18.0"
 strum_macros = "0.18.0"
-openat = "0.1.19"
-openat-ext = "0.1.4"
 nix = "0.23.0"
 # See discussion in https://github.com/coreos/rpm-ostree/pull/2569#issuecomment-780569188
 rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", tag = "v2021.3" }
