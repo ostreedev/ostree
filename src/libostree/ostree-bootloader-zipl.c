@@ -28,7 +28,7 @@
 #define SECURE_EXECUTION_SYSFS_FLAG     "/sys/firmware/uv/prot_virt_guest"
 #define SECURE_EXECUTION_PARTITION      "/dev/disk/by-label/se"
 #define SECURE_EXECUTION_MOUNTPOINT     "/sysroot/se"
-#define SECURE_EXECUTION_BOOT_IMAGE     SECURE_EXECUTION_MOUNTPOINT "/sd-boot"
+#define SECURE_EXECUTION_BOOT_IMAGE     SECURE_EXECUTION_MOUNTPOINT "/sdboot"
 #define SECURE_EXECUTION_HOSTKEY_PATH   "/etc/se-hostkeys/"
 #define SECURE_EXECUTION_HOSTKEY_PREFIX "ibm-z-hostkey"
 #define SECURE_EXECUTION_LUKS_ROOT_KEY  "/etc/luks/root"
