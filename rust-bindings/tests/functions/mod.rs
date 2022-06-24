@@ -59,8 +59,8 @@ fn should_checksum_file_from_input() {
             .load_file(obj.checksum(), NONE_CANCELLABLE)
             .expect("load file");
         let result = checksum_file_from_input(
-            file_info.as_ref().unwrap(),
-            xattrs.as_ref(),
+            &file_info,
+            Some(&xattrs),
             stream.as_ref(),
             ObjectType::File,
             NONE_CANCELLABLE,
