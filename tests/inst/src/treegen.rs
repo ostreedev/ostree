@@ -1,5 +1,8 @@
 use anyhow::{Context, Result};
-use openat_ext::{FileExt, OpenatDirExt};
+use cap_std::fs::Dir;
+use cap_std_ext::cap_std;
+use cap_std_ext::dirext::*;
+use cap_std_ext::rustix::fs::MetadataExt;
 use rand::Rng;
 use sh_inline::bash;
 use std::fs::File;
@@ -52,40 +55,36 @@ pub(crate) fn is_elf(f: &mut File) -> Result<bool> {
 pub(crate) fn mutate_one_executable_to(
     f: &mut File,
     name: &std::ffi::OsStr,
-    dest: &openat::Dir,
+    dest: &Dir,
 ) -> Result<()> {
-    let mut destf = dest
-        .write_file(name, 0o755)
-        .context("Failed to open for write")?;
-    f.copy_to(&destf).context("Failed to copy")?;
-    // ELF is OK with us just appending some junk
-    let extra = rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(10)
-        .collect::<Vec<u8>>();
-    destf
-        .write_all(&extra)
-        .context("Failed to append extra data")?;
-    Ok(())
+    let perms = f.metadata()?.permissions();
+    dest.atomic_replace_with(name, |w| {
+        std::io::copy(f, w)?;
+        // ELF is OK with us just appending some junk
+        let extra = rand::thread_rng()
+            .sample_iter(&rand::distributions::Alphanumeric)
+            .take(10)
+            .collect::<Vec<u8>>();
+        w.write_all(&extra).context("Failed to append extra data")?;
+        w.get_mut()
+            .as_file_mut()
+            .set_permissions(cap_std::fs::Permissions::from_std(perms))?;
+        Ok::<_, anyhow::Error>(())
+    })
 }
 
 /// Find ELF files in the srcdir, write new copies to dest (only percentage)
-pub(crate) fn mutate_executables_to(
-    src: &openat::Dir,
-    dest: &openat::Dir,
-    percentage: u32,
-) -> Result<u32> {
+pub(crate) fn mutate_executables_to(src: &Dir, dest: &Dir, percentage: u32) -> Result<u32> {
     use nix::sys::stat::Mode as NixMode;
     assert!(percentage > 0 && percentage <= 100);
     let mut mutated = 0;
-    for entry in src.list_dir(".")? {
+    for entry in src.entries()? {
         let entry = entry?;
-        if src.get_file_type(&entry)? != openat::SimpleType::File {
+        if entry.file_type()? != cap_std::fs::FileType::file() {
             continue;
         }
-        let meta = src.metadata(entry.file_name())?;
-        let st = meta.stat();
-        let mode = NixMode::from_bits_truncate(st.st_mode);
+        let meta = entry.metadata()?;
+        let mode = NixMode::from_bits_truncate(meta.mode());
         // Must be executable
         if !mode.intersects(NixMode::S_IXUSR | NixMode::S_IXGRP | NixMode::S_IXOTH) {
             continue;
@@ -95,17 +94,17 @@ pub(crate) fn mutate_executables_to(
             continue;
         }
         // Greater than 1k in size
-        if st.st_size < 1024 {
+        if meta.size() < 1024 {
             continue;
         }
-        let mut f = src.open_file(entry.file_name())?;
+        let mut f = entry.open()?.into_std();
         if !is_elf(&mut f)? {
             continue;
         }
         if !rand::thread_rng().gen_ratio(percentage, 100) {
             continue;
         }
-        mutate_one_executable_to(&mut f, entry.file_name(), dest)
+        mutate_one_executable_to(&mut f, &entry.file_name(), dest)
             .with_context(|| format!("Failed updating {:?}", entry.file_name()))?;
         mutated += 1;
     }
@@ -124,15 +123,14 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
     let tempdir = tempfile::tempdir_in(repo_path.join("tmp"))?;
     let mut mutated = 0;
     {
-        let tempdir = openat::Dir::open(tempdir.path())?;
+        let tempdir = Dir::open_ambient_dir(tempdir.path(), cap_std::ambient_authority())?;
         let binary_dirs = &["usr/bin", "usr/sbin", "usr/lib", "usr/lib64"];
-        let rootfs = openat::Dir::open("/")?;
+        let rootfs = Dir::open_ambient_dir("/", cap_std::ambient_authority())?;
         for v in binary_dirs {
             let v = *v;
-            if let Some(src) = rootfs.sub_dir_optional(v)? {
-                tempdir.ensure_dir("usr", 0o755)?;
-                tempdir.ensure_dir(v, 0o755)?;
-                let dest = tempdir.sub_dir(v)?;
+            if let Some(src) = rootfs.open_dir_optional(v)? {
+                tempdir.create_dir_all(v)?;
+                let dest = tempdir.open_dir(v)?;
                 mutated += mutate_executables_to(&src, &dest, percentage)
                     .with_context(|| format!("Replacing binaries in {v}"))?;
             }
