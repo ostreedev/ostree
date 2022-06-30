@@ -1,0 +1,42 @@
+use crate::util::*;
+use gio::NONE_CANCELLABLE;
+use ostree::glib::prelude::*;
+use ostree::glib::Variant;
+use ostree::*;
+
+use std::collections::HashMap;
+
+#[test]
+fn should_generate_static_delta_at() {
+    let mut options: HashMap<String, Variant> = HashMap::<String, Variant>::new();
+
+    let delta_dir = tempfile::tempdir().expect("static delta dir");
+    let delta_path = delta_dir.path().join("static_delta.file");
+    let path_var = delta_path
+        .to_str()
+        .expect("no valid path")
+        .as_bytes()
+        .to_variant();
+
+    let test_repo = TestRepo::new();
+    let from = test_repo.test_commit("commit1");
+    let to = test_repo.test_commit("commit2");
+
+    options.insert(String::from("filename"), path_var);
+
+    let varopts = &options.to_variant();
+
+    let _result = test_repo
+        .repo
+        .static_delta_generate(
+            ostree::StaticDeltaGenerateOpt::Major,
+            Some(&from),
+            &to,
+            None,
+            Some(varopts),
+            NONE_CANCELLABLE,
+        )
+        .expect("static delta generate");
+
+    assert!(std::fs::File::open(&delta_path).is_err());
+}

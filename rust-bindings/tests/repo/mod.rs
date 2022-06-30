@@ -5,6 +5,7 @@ use ostree::{ObjectName, ObjectType};
 
 #[cfg(feature = "v2016_8")]
 mod checkout_at;
+mod generate_static;
 
 #[test]
 fn should_commit_content_to_repo_and_list_refs_again() {
