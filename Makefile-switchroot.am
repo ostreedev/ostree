@@ -27,7 +27,9 @@ ostree_prepare_root_SOURCES = \
     src/switchroot/ostree-mount-util.h \
     src/switchroot/ostree-prepare-root.c \
     $(NULL)
+ostree_prepare_root_CFLAGS =
 ostree_prepare_root_CPPFLAGS = $(AM_CPPFLAGS)
+ostree_prepare_root_LDADD =
 
 if BUILDOPT_USE_STATIC_COMPILER
 # ostree-prepare-root can be used as init in a system without a populated /lib.
@@ -43,10 +45,10 @@ if BUILDOPT_USE_STATIC_COMPILER
 ostree_boot_SCRIPTS += ostree-prepare-root
 
 ostree-prepare-root : $(ostree_prepare_root_SOURCES)
-	$(STATIC_COMPILER) -o $@ -static $(top_srcdir)/src/switchroot/ostree-prepare-root.c $(ostree_prepare_root_CPPFLAGS) $(AM_CFLAGS) $(DEFAULT_INCLUDES) -DOSTREE_PREPARE_ROOT_STATIC=1
+	$(STATIC_COMPILER) -o $@ -static $(top_srcdir)/src/switchroot/ostree-prepare-root.c $(ostree_prepare_root_CPPFLAGS) $(AM_CFLAGS) $(DEFAULT_INCLUDES) $(OT_DEP_COMPOSEFS_CFLAGS) $(OT_DEP_COMPOSEFS_LIBS) -DOSTREE_PREPARE_ROOT_STATIC=1
 else
 ostree_boot_PROGRAMS += ostree-prepare-root
-ostree_prepare_root_CFLAGS = $(AM_CFLAGS) -Isrc/switchroot
+ostree_prepare_root_CFLAGS += $(AM_CFLAGS) -Isrc/switchroot
 endif
 
 ostree_remount_SOURCES = \
@@ -56,9 +58,14 @@ ostree_remount_SOURCES = \
 ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -Isrc/switchroot -I$(srcdir)/libglnx
 ostree_remount_LDADD = $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) libglnx.la
 
+if USE_COMPOSEFS
+ostree_prepare_root_CFLAGS += $(OT_DEP_COMPOSEFS_CFLAGS)
+ostree_prepare_root_LDADD += $(OT_DEP_COMPOSEFS_LIBS)
+endif
+
 if BUILDOPT_SYSTEMD
 ostree_prepare_root_CPPFLAGS += -DHAVE_SYSTEMD=1
-ostree_prepare_root_LDADD = $(AM_LDFLAGS) $(LIBSYSTEMD_LIBS)
+ostree_prepare_root_LDADD += $(AM_LDFLAGS) $(LIBSYSTEMD_LIBS)
 endif
 
 # This is the "new mode" of using a generator for /var; see
