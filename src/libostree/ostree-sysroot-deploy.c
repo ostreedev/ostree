@@ -2967,9 +2967,20 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
     "semodule", "--help"
   };
   static const gsize SEMODULE_HELP_ARGC = sizeof (SEMODULE_HELP_ARGV) / sizeof (*SEMODULE_HELP_ARGV);
-  if (!run_in_deployment (deployment_dfd, SEMODULE_HELP_ARGV,
-                          SEMODULE_HELP_ARGC, &exit_status, &stdout, error))
-    return FALSE;
+  {
+    g_autoptr(GError) local_error = NULL;
+    if (!run_in_deployment (deployment_dfd, SEMODULE_HELP_ARGV,
+                            SEMODULE_HELP_ARGC, &exit_status, &stdout, &local_error))
+      {
+        if (g_error_matches (local_error, G_SPAWN_ERROR, G_SPAWN_ERROR_NOENT))
+          {
+            ot_journal_print (LOG_INFO, "Skipping `semodule --rebuild-if-modules-changed`: no bwrap available");
+            return TRUE;
+          }
+        g_propagate_error (error, g_steal_pointer (&local_error));
+        return glnx_prefix_error (error, "failed to run semodule (via bwrap)");
+      }
+  }
   if (!g_spawn_check_exit_status (exit_status, error))
     return glnx_prefix_error (error, "failed to run semodule");
   if (!strstr(stdout, "--rebuild-if-modules-changed"))
