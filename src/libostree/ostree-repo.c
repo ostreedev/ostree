@@ -1238,6 +1238,7 @@ ostree_repo_finalize (GObject *object)
   g_mutex_clear (&self->txn_lock);
   g_free (self->collection_id);
   g_strfreev (self->repo_finders);
+  g_clear_pointer (&self->bls_append_values, g_hash_table_unref);
 
   g_clear_pointer (&self->remotes, g_hash_table_destroy);
   g_mutex_clear (&self->remotes_lock);
@@ -1412,6 +1413,9 @@ ostree_repo_init (OstreeRepo *self)
   self->remotes = g_hash_table_new_full (g_str_hash, g_str_equal,
                                          (GDestroyNotify) NULL,
                                          (GDestroyNotify) ostree_remote_unref);
+  self->bls_append_values = g_hash_table_new_full (g_str_hash, g_str_equal, 
+                                                   (GDestroyNotify) g_free, 
+                                                   (GDestroyNotify) g_free);
   g_mutex_init (&self->remotes_lock);
 
   self->repo_dir_fd = -1;
@@ -3510,16 +3514,42 @@ reload_sysroot_config (OstreeRepo          *self,
    * https://github.com/ostreedev/ostree/issues/1719
    * https://github.com/ostreedev/ostree/issues/1801
    */
+  gboolean valid_bootloader;
   for (int i = 0; CFG_SYSROOT_BOOTLOADER_OPTS_STR[i]; i++)
     {
       if (g_str_equal (bootloader, CFG_SYSROOT_BOOTLOADER_OPTS_STR[i]))
         {
           self->bootloader = (OstreeCfgSysrootBootloaderOpt) i;
-          return TRUE;
+          valid_bootloader = TRUE;
         }
     }
+  if (!valid_bootloader) 
+  {
+    return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
+  }
+  /* Parse bls-append-except-default string list. */
+  g_auto(GStrv) read_values = NULL;
+  if (!ot_keyfile_get_string_list_with_default (self->config, "sysroot", "bls-append-except-default", 
+                                                ';', NULL, &read_values, error))
+      return glnx_throw(error, "Unable to parse bls-append-except-default");
+    
+  /* get all key value pairs in bls-append-except-default */
+  g_hash_table_remove_all (self->bls_append_values);
+  for (char **iter = read_values; iter && *iter; iter++)
+    {
+      const char *key_value = *iter;
+      const char *sep = strchr (key_value, '=');
+      if (sep == NULL)
+        {
+          glnx_throw (error, "bls-append-except-default key must be of the form \"key1=value1;key2=value2...\"");
+          return FALSE;
+        }
+      char *key = g_strndup (key_value, sep - key_value);
+      char *value = g_strdup (sep + 1);
+      g_hash_table_replace (self->bls_append_values, key, value); 
+    }
 
-  return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
+  return TRUE;
 }
 
 /**

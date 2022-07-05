@@ -2083,25 +2083,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   g_autofree char *options_key = ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
 
-  g_autoptr(GError) local_error = NULL;
-  GKeyFile *config = ostree_repo_get_config (repo);
-  gchar **read_values = g_key_file_get_string_list (config, "sysroot", "bls-append-except-default", NULL, &local_error);
-  /* We can ignore not found errors */
-  if (!read_values)
-    {
-      gboolean not_found = g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND) || \
-                           g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND);
-      if (not_found)
-        {
-          g_clear_error (&local_error);
-        }
-      else
-        {
-          g_propagate_error (error, g_steal_pointer (&local_error));
-          return FALSE;
-        }
-    }
-
   /* Only append to this BLS config if:
    * - this is not the default deployment
    */
@@ -2111,20 +2092,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   if (allow_append)
     {
       /* get all key value pairs in bls-append */
-      for (char **iter = read_values; iter && *iter; iter++)
-        {
-          const char *key_value = *iter;
-          const char *sep = strchr (key_value, '=');
-          if (sep == NULL)
-            {
-              glnx_throw (error, "bls-append-except-default key must be of the form \"key1=value1;key2=value2...\"");
-              return FALSE;
-            }
-          g_autofree char *key = g_strndup (key_value, sep - key_value);
-          g_autofree char *value = g_strdup (sep + 1);
-          ostree_bootconfig_parser_set (bootconfig, key, value);
-        }
-
+      GLNX_HASH_TABLE_FOREACH_KV (repo->bls_append_values, const char *, key, const char *, value)
+        ostree_bootconfig_parser_set (bootconfig, key, value);
     }
 
   glnx_autofd int bootconf_dfd = -1;
