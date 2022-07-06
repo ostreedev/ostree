@@ -1807,7 +1807,6 @@ parse_os_release (const char *contents,
  */
 static gboolean
 install_deployment_kernel (OstreeSysroot   *sysroot,
-                           OstreeRepo      *repo,
                            int             new_bootversion,
                            OstreeDeployment   *deployment,
                            guint           n_deployments,
@@ -1854,6 +1853,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootconfdir, 0775, cancellable, error))
     return FALSE;
+
+  OstreeRepo *repo = ostree_sysroot_repo (sysroot);
 
   /* Install (hardlink/copy) the kernel into /boot/ostree/osname-${bootcsum} if
    * it doesn't exist already.
@@ -2378,13 +2379,6 @@ write_deployments_bootswap (OstreeSysroot     *self,
                                cancellable, error))
     return FALSE;
 
-  /* Need the repo to try and extract the versions for deployments.
-   * But this is a "nice-to-have" for the bootloader UI, so failure
-   * here is not fatal to the whole operation.  We just gracefully
-   * fall back to the deployment index. */
-  g_autoptr(OstreeRepo) repo = NULL;
-  (void) ostree_sysroot_get_repo (self, &repo, cancellable, NULL);
-
   /* Only show the osname in bootloader titles if there are multiple
    * osname's among the new deployments.  Check for that here. */
   gboolean show_osname = FALSE;
@@ -2402,7 +2396,7 @@ write_deployments_bootswap (OstreeSysroot     *self,
   for (guint i = 0; i < new_deployments->len; i++)
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
-      if (!install_deployment_kernel (self, repo, new_bootversion,
+      if (!install_deployment_kernel (self, new_bootversion,
                                       deployment, new_deployments->len,
                                       show_osname, cancellable, error))
         return FALSE;

@@ -492,7 +492,6 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
                                       GCancellable           *cancellable,
                                       GError                **error)
 {
-  g_autoptr(OstreeRepo) repo = NULL;
   char *refs_to_fetch[] = { NULL, NULL };
   const char *from_revision = NULL;
   g_autofree char *origin_refspec = NULL;
@@ -506,8 +505,7 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
   else
     refs_to_fetch[0] = self->origin_ref;
 
-  if (!ostree_sysroot_get_repo (self->sysroot, &repo, cancellable, error))
-    return FALSE;
+  OstreeRepo *repo = ostree_sysroot_repo (self->sysroot);
 
   if (self->origin_remote)
     origin_refspec = g_strconcat (self->origin_remote, ":", self->origin_ref, NULL);
