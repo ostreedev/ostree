@@ -224,6 +224,7 @@ struct OstreeRepo {
   gint fs_support_reflink; /* The underlying filesystem has support for ioctl (FICLONE..) */
   gchar **repo_finders;
   OstreeCfgSysrootBootloaderOpt bootloader; /* Configure which bootloader to use. */
+  GHashTable *bls_append_values; /* Parsed key-values from bls-append-except-default key in config. */
 
   OstreeRepo *parent_repo;
 };
