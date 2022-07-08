@@ -1,6 +1,8 @@
 [licenses]
 unlicensed = "deny"
-allow = ["Apache-2.0", "Apache-2.0 WITH LLVM-exception", "MIT", "BSD-3-Clause", "BSD-2-Clause"]
+copyleft = "allow"
+allow = ["Apache-2.0", "Apache-2.0 WITH LLVM-exception", "MIT", "BSD-3-Clause", "BSD-2-Clause", "Unlicense", "CC0-1.0"]
+private = { ignore = true }
 
 [bans]
 
