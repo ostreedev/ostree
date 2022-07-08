@@ -3590,6 +3590,49 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
 }
 
 /**
+ * ostree_sysroot_deployment_set_kargs_in_place:
+ * @self: Sysroot
+ * @deployment: A deployment
+ * @kargs_str: (allow none): Replace @deployment's kernel arguments
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Replace the kernel arguments of @deployment with the values in @kargs_str.
+ */
+gboolean
+ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot     *self,
+                                              OstreeDeployment  *deployment,
+                                              char              *kargs_str,
+                                              GCancellable      *cancellable,
+                                              GError           **error)
+{
+  if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
+  g_assert (!ostree_deployment_is_staged (deployment));
+
+  OstreeBootconfigParser *new_bootconfig = ostree_deployment_get_bootconfig (deployment);
+  ostree_bootconfig_parser_set (new_bootconfig, "options", kargs_str);
+
+  g_autofree char *bootconf_name =
+    g_strdup_printf ("ostree-%d-%s.conf",
+                     self->deployments->len - ostree_deployment_get_index (deployment),
+                     ostree_deployment_get_osname (deployment));
+
+  g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", self->bootversion);
+  glnx_autofd int bootconf_dfd = -1;
+  if (!glnx_opendirat (self->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
+    return FALSE;
+
+  if (!ostree_bootconfig_parser_write_at (new_bootconfig,
+                                          bootconf_dfd, bootconf_name,
+                                          cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+/**
  * ostree_sysroot_deployment_set_mutable:
  * @self: Sysroot
  * @deployment: A deployment

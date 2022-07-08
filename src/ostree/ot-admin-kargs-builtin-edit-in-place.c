@@ -67,11 +67,10 @@ ot_admin_kargs_builtin_edit_in_place (int argc, char **argv, OstreeCommandInvoca
             }
         }
       
-      g_auto(GStrv) kargs_strv = ostree_kernel_args_to_strv (kargs);
+      g_autofree char *new_options = ostree_kernel_args_to_string (kargs);
       
-      if (!ostree_sysroot_deployment_set_kargs (sysroot, deployment,
-                                              kargs_strv,
-                                              cancellable, error))
+      if (!ostree_sysroot_deployment_set_kargs_in_place (sysroot, deployment, new_options, 
+                                                         cancellable, error))
         return FALSE;
       
     }

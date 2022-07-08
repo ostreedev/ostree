@@ -176,6 +176,13 @@ gboolean ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
                                               GError           **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot     *self,
+                                                       OstreeDeployment  *deployment,
+                                                       char              *kargs_str,
+                                                       GCancellable      *cancellable,
+                                                       GError           **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                            GPtrArray         *new_deployments,
                                            GCancellable      *cancellable,
