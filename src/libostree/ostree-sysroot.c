@@ -328,13 +328,12 @@ gboolean
 _ostree_sysroot_ensure_writable (OstreeSysroot      *self,
                                  GError            **error)
 {
+  if (!ostree_sysroot_initialize (self, error))
+    return FALSE;
+
   /* Do nothing if no mount namespace is in use */
   if (!self->mount_namespace_in_use)
     return TRUE;
-
-  /* If a mount namespace is in use, ensure we're initialized */
-  if (!ostree_sysroot_initialize (self, error))
-    return FALSE;
 
   /* If we aren't operating on a booted system, then we don't
    * do anything with mounts.
