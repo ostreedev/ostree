@@ -1614,6 +1614,7 @@ full_system_sync (OstreeSysroot     *self,
     return FALSE;
 
   start_msec = g_get_monotonic_time () / 1000;
+  g_assert_cmpint (self->boot_fd, !=, -1);
   if (!fsfreeze_thaw_cycle (self, self->boot_fd, cancellable, error))
     return FALSE;
   end_msec = g_get_monotonic_time () / 1000;
@@ -3526,6 +3527,7 @@ _ostree_sysroot_boot_complete (OstreeSysroot *self,
     return FALSE;
 
   glnx_autofd int failure_fd = -1;
+  g_assert_cmpint (self->boot_fd, !=, -1);
   if (!ot_openat_ignore_enoent (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, &failure_fd, error))
     return FALSE;
   // If we didn't find a failure log, then there's nothing to do right now.
