@@ -3606,6 +3606,10 @@ ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot     *self,
                                               GCancellable      *cancellable,
                                               GError           **error)
 {
+  if (!ostree_sysroot_initialize (self, error))
+    return FALSE;
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
 
