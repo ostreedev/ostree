@@ -302,26 +302,23 @@ This will add a command which prints `Hello OSTree!` when `ostree hello-ostree` 
         gboolean
         ostree_builtin_hello_ostree (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
         {
-          g_autoptr(GOptionContext) context = NULL;
           g_autoptr(OstreeRepo) repo = NULL;
-          gboolean ret = FALSE;
 
           // Creates new command context, ready to be parsed.
           // Input to g_option_context_new shows when running ostree <command> --help
-          context = g_option_context_new ("");
+          g_autoptr(GOptionContext) context = g_option_context_new ("");
 
           // Parses the command context according to the ostree CLI.
           if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
-            goto out;
+            return FALSE;
 
           g_print("Hello OSTree!\n");
 
-          ret = TRUE;
-         out:
-          return ret;
+          return TRUE;
         }
 
     This defines the functionality for `hello-ostree`. Now we have to make sure the CLI can refer to the execution function, and that autotools knows to build this file.
+    Note: libostree codebase supports C99 features.
 
 3. Add the following in `src/ostree/main.c`:
 
@@ -348,6 +345,44 @@ This will add a command which prints `Hello OSTree!` when `ostree hello-ostree` 
 
         $ ostree hello-ostree
         Hello OSTree!
+
+### Adding a new API function to libostree
+
+This will add a new API function `ostree_kernel_args_foo()` in `src/libostree/ostree-kernel-args.c`.
+
+1. Add the following to `src/libostree/ostree-kernel-args.h`:
+        _OSTREE_PUBLIC
+        gboolean ostree_kernel_args_foo (const char *arg, GCancellable *cancellable, GError **error); 
+
+2. Add the following to `ostree-kernel-args.c`:
+        /**
+        * ostree_kernel_args_foo:
+        * @arg: Description of the arg
+        *
+        * Description of the function
+        *
+        * Since: $NEWVERSION  //The new libostree version, for example 2022.5
+        **/
+        gboolean
+        ostree_kernel_args_foo (const char *arg, GCancellable *cancellable, GError **error)
+        {
+          //Add code here
+        }
+
+3. Add the following to `src/libostree/libostree-devel.sym`:
+        LIBOSTREE_$NEWVERSION {        // The new libostree version
+        global:
+          ostree_kernel_args_foo;      // Function name
+        } LIBOSTREE_$LASTSTABLE;       // The last stable libostree version
+
+4. Add the following to `Makefile-libostree.am`:
+        if BUILDOPT_IS_DEVEL_BUILD
+        symbol_files += $(top_srcdir)/src/libostree/libostree-devel.sym
+        endif
+
+5. Add function name `ostree_kernel_args_foo` to `apidoc/ostree-sections.txt` under `<FILE>ostree-kernel-args</FILE>`.
+
+6. Call function `ostree_kernel_args_foo()` in your code.  
 
 ### OSTree Tests
 
