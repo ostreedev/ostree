@@ -209,6 +209,9 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
       g_autoptr (GBytes) signature = g_variant_get_data_as_bytes(child);
 
+      if (g_bytes_get_size (signature) != crypto_sign_BYTES)
+        return glnx_throw (error, "Invalid signature length of %" G_GSIZE_FORMAT " bytes, expected %" G_GSIZE_FORMAT, (gsize) g_bytes_get_size (signature), (gsize) crypto_sign_BYTES);
+
       g_autofree char * hex = g_malloc0 (crypto_sign_PUBLICKEYBYTES*2 + 1);
 
       g_debug("Read signature %d: %s", (gint)i, g_variant_print(child, TRUE));
