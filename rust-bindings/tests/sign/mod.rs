@@ -1,4 +1,8 @@
+use std::process::Command;
+
+use ostree::prelude::SignExt;
 use ostree::prelude::*;
+use ostree::Sign;
 use ostree::{gio, glib};
 
 #[test]
@@ -18,4 +22,64 @@ fn sign_api_should_work() {
 
     let result = ostree::Sign::by_name("NOPE");
     assert!(result.is_err());
+}
+
+fn inner_sign_ed25519<T: SignExt>(signer: T) {
+    assert_eq!(signer.name().unwrap(), "ed25519");
+
+    let td = tempfile::tempdir().unwrap();
+    let path = td.path();
+
+    // Horrible bits to reuse libtest shell script code to generate keys
+    let pwd = std::env::current_dir().unwrap();
+    let cmd = format!(
+        r#". {:?}/tests/libtest.sh
+gen_ed25519_keys
+echo $ED25519PUBLIC > ed25519.public
+echo $ED25519SEED > ed25519.seed
+echo $ED25519SECRET > ed25519.secret
+"#,
+        pwd
+    );
+    let s = Command::new("bash")
+        .env("G_TEST_SRCDIR", pwd)
+        .current_dir(path)
+        .args(["-euo", "pipefail"])
+        .args(["-c", cmd.as_str()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .unwrap();
+    assert!(s.success());
+
+    let seckey = std::fs::read_to_string(path.join("ed25519.secret")).unwrap();
+    let seckey = seckey.to_variant();
+    signer.set_sk(&seckey).unwrap();
+    let pubkey = std::fs::read_to_string(path.join("ed25519.public")).unwrap();
+    let pubkey = pubkey.to_variant();
+    signer.add_pk(&pubkey).unwrap();
+
+    let payload = &glib::Bytes::from_static(b"1234");
+
+    let signature = signer.data(payload, gio::NONE_CANCELLABLE).unwrap();
+    let signatures = [&*signature].to_variant();
+
+    let msg = signer.data_verify(payload, &signatures).unwrap().unwrap();
+    assert!(msg.starts_with("ed25519: Signature verified successfully"));
+
+    assert!(signer
+        .data_verify(&glib::Bytes::from_static(b""), &signatures)
+        .is_err());
+
+    let badsigs = [b"".as_slice()].to_variant();
+
+    let e = signer.data_verify(payload, &badsigs).err().unwrap();
+    assert!(e.to_string().contains("Invalid signature length of 0 bytes"))
+}
+
+#[test]
+fn sign_ed25519() {
+    if let Some(signer) = Sign::by_name("ed25519").ok() {
+        inner_sign_ed25519(signer)
+    }
 }
