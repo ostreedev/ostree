@@ -683,6 +683,12 @@ global:
   ostree_fs_get_all_xattrs_at;
 } LIBOSTREE_2022.2;
 
+LIBOSTREE_2022.5 {
+global:
+  ostree_kernel_args_append_if_missing;
+  ostree_sysroot_deployment_set_kargs_in_place;
+} LIBOSTREE_2022.4;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
