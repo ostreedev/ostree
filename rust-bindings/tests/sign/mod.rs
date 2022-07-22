@@ -74,7 +74,9 @@ echo $ED25519SECRET > ed25519.secret
     let badsigs = [b"".as_slice()].to_variant();
 
     let e = signer.data_verify(payload, &badsigs).err().unwrap();
-    assert!(e.to_string().contains("Invalid signature length of 0 bytes"))
+    assert!(e
+        .to_string()
+        .contains("Invalid signature length of 0 bytes"))
 }
 
 #[test]
