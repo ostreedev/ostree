@@ -2742,6 +2742,35 @@ lint_deployment_fs (OstreeSysroot     *self,
   return TRUE;
 }
 
+/* This is called when deployments are created, but also
+ * via `ostree admin create-toplevel-user-links`. */
+gboolean
+_ostree_sysroot_create_toplevel_user_links (OstreeSysroot     *self,
+                                            int                deployment_dfd,
+                                            GCancellable      *cancellable,
+                                            GError           **error)
+{
+  OstreeRepo *repo = ostree_sysroot_repo (self);
+  g_autoptr(GHashTable) toplevel_links = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+
+  ot_keyfile_get_keys_in_hashtable (repo->config, toplevel_links, "toplevel-links");
+  /* toplevel-links is supported in user configs; read after to support overriding */
+  if (repo->user_config)
+    ot_keyfile_get_keys_in_hashtable (repo->user_config, toplevel_links, "toplevel-links");
+
+  GLNX_HASH_TABLE_FOREACH_KV (toplevel_links, const char *, dir, const char *, symlink)
+    {
+      /* sanity-check the user isn't trying to do silly things */
+      if (g_str_equal (dir, ".") || g_str_equal (dir, "..") || strchr (dir, '/') != NULL)
+        return glnx_throw (error, "Invalid top-level dir: '%s'", dir);
+
+      if (TEMP_FAILURE_RETRY (symlinkat (symlink, deployment_dfd, dir)) < 0)
+        return glnx_throw_errno_prefix (error, "symlinkat(/%s)", dir);
+    }
+
+  return TRUE;
+}
+
 /* The first part of writing a deployment. This primarily means doing the
  * hardlink farm checkout, but we also compute some initial state.
  */
@@ -2791,6 +2820,9 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
     return FALSE;
 
   if (!lint_deployment_fs (self, new_deployment, deployment_dfd, cancellable, error))
+    return FALSE;
+
+  if (!_ostree_sysroot_create_toplevel_user_links (self, deployment_dfd, cancellable, error))
     return FALSE;
 
   ot_transfer_out_value (out_new_deployment, &new_deployment);

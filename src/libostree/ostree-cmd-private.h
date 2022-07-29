@@ -34,6 +34,7 @@ typedef struct {
   gboolean (* ostree_repo_verify_bindings) (const char *collection_id, const char *ref_name, GVariant *commit, GError **error);
   gboolean (* ostree_finalize_staged) (OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
   gboolean (* ostree_boot_complete) (OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
+  gboolean (* ostree_create_toplevel_user_links) (OstreeSysroot *sysroot, int deployment_dfd, GCancellable *cancellable, GError **error);
 } OstreeCmdPrivateVTable;
 
 /* Note this not really "public", we just export the symbol, but not the header */

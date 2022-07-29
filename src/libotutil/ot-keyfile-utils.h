@@ -72,4 +72,9 @@ ot_keyfile_copy_group (GKeyFile   *source_keyfile,
                        GKeyFile   *target_keyfile,
                        const char *group_name);
 
+void
+ot_keyfile_get_keys_in_hashtable (GKeyFile   *keyfile,
+                                  GHashTable *table,
+                                  const char *group_name);
+
 G_END_DECLS
