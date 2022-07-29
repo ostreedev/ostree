@@ -211,6 +211,7 @@ struct OstreeRepo {
   guint test_error_flags; /* OstreeRepoTestErrorFlags */
 
   GKeyFile *config;
+  GKeyFile *user_config;
   GHashTable *remotes;
   GMutex remotes_lock;
   OstreeRepoMode mode;

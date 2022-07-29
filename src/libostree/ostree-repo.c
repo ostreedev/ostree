@@ -3195,6 +3195,97 @@ min_free_space_size_validate_and_convert (OstreeRepo    *self,
   return TRUE;
 }
 
+static int
+compare_strings (gconstpointer a, gconstpointer b)
+{
+  const char **sa = (const char **)a;
+  const char **sb = (const char **)b;
+
+  return strcmp (*sa, *sb);
+}
+
+#define SYSCONF_CONFIGS SHORTENED_SYSCONFDIR "/ostree/config.d"
+
+
+static gboolean
+load_user_configs (OstreeRepo    *self,
+                   GCancellable  *cancellable,
+                   GError       **error)
+{
+  g_clear_pointer (&self->user_config, g_key_file_unref);
+  g_autoptr(OstreeSysroot) sysroot_ref = (OstreeSysroot*)g_weak_ref_get (&self->sysroot);
+
+  /* Only read from /etc/ostree/config.d if we are pointed at a deployment */
+  if (sysroot_ref == NULL || sysroot_ref->is_physical)
+    return TRUE;
+
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  gboolean exists;
+  if (!ot_dfd_iter_init_allow_noent (sysroot_ref->sysroot_fd, SYSCONF_CONFIGS, &dfd_iter, &exists, error))
+    return FALSE;
+  /* Note early return */
+  if (!exists)
+    return TRUE;
+
+  g_autoptr(GPtrArray) configs = g_ptr_array_new_with_free_func (g_free);
+
+  while (TRUE)
+    {
+      struct dirent *dent;
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+
+      /* match remotes.d semantics */
+      if (dent->d_type != DT_REG || !g_str_has_suffix (dent->d_name, ".conf"))
+        continue;
+
+      /* parse it just to validate it */
+      g_autoptr(GKeyFile) k = g_key_file_new ();
+      g_autofree char *path = g_strdup_printf ("/proc/self/fd/%d/%s", dfd_iter.fd, dent->d_name);
+      if (!g_key_file_load_from_file (k, path, G_KEY_FILE_NONE, error))
+        return glnx_prefix_error (error, "parsing config file %s", path);
+
+      g_ptr_array_add (configs, g_strdup (dent->d_name));
+    }
+
+  if (configs->len == 0)
+    return TRUE; /* Note early return; no user configs. */
+
+  g_ptr_array_sort (configs, compare_strings);
+
+  g_auto(GLnxTmpfile) user_keyfile = { 0, };
+  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &user_keyfile, error))
+    return glnx_prefix_error (error, "allocating tmpfile for user config");
+
+  for (guint i = 0; i < configs->len; i++)
+    {
+      const char *config = configs->pdata[i];
+
+      glnx_autofd int fd = -1;
+      if (!glnx_openat_rdonly (dfd_iter.fd, config, FALSE, &fd, error))
+        return glnx_prefix_error (error, "opening %s/%s", SYSCONF_CONFIGS, config);
+
+      if (glnx_regfile_copy_bytes (fd, user_keyfile.fd, -1) < 0)
+        return glnx_throw_errno_prefix (error, "copying %s/%s", SYSCONF_CONFIGS, config);
+
+      /* make sure there's a newline */
+      if (glnx_loop_write (user_keyfile.fd, "\n", 1) < 0)
+        return glnx_throw_errno_prefix (error, "writing newline to tmpfile");
+    }
+
+  self->user_config = g_key_file_new ();
+
+  /* we want g_key_file_load_from_fd() but that's private */
+  g_autofree char *tmpfile_path = g_strdup_printf ("/proc/self/fd/%d", user_keyfile.fd);
+  if (!g_key_file_load_from_file (self->user_config, tmpfile_path, G_KEY_FILE_NONE, error))
+    return glnx_prefix_error (error, "parsing final config file");
+
+  return TRUE;
+}
+
+
 static gboolean
 reload_core_config (OstreeRepo          *self,
                     GCancellable        *cancellable,
@@ -3441,6 +3532,12 @@ reload_core_config (OstreeRepo          *self,
     g_clear_pointer (&self->repo_finders, g_strfreev);
     self->repo_finders = g_steal_pointer (&configured_finders);
   }
+
+  if (ostree_repo_is_system (self))
+    {
+      if (!load_user_configs (self, cancellable, error))
+        return FALSE;
+    }
 
   return TRUE;
 }
