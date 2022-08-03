@@ -29,4 +29,7 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
                                          GCancellable  *cancellable,
                                          GError       **error);
 
+int _ostree_linuxfs_filesystem_freeze (int fd);
+int _ostree_linuxfs_filesystem_thaw (int fd);
+
 G_END_DECLS

@@ -29,7 +29,6 @@
 #include <sys/ioctl.h>
 #include <stdbool.h>
 #include <sys/poll.h>
-#include <linux/fs.h>
 #include <err.h>
 
 #ifdef HAVE_LIBMOUNT
@@ -1476,7 +1475,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
            * EOPNOTSUPP: If the filesystem doesn't support it
            */
           int saved_errno = errno;
-          (void) TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0));
+          _ostree_linuxfs_filesystem_thaw (rootfs_dfd);
           errno = saved_errno;
           /* But if we got an error from poll, let's log it */
           if (r < 0)
@@ -1517,7 +1516,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
           return glnx_throw (error, "aborting due to test-fifreeze");
         }
       /* Do a freeze/thaw cycle; TODO add a FIFREEZETHAW ioctl */
-      if (ioctl (rootfs_dfd, FIFREEZE, 0) != 0)
+      if (_ostree_linuxfs_filesystem_freeze (rootfs_dfd) != 0)
         {
           /* Not supported, we're running in the unit tests (as non-root), or
            * the filesystem is already frozen (EBUSY).
@@ -1539,7 +1538,7 @@ fsfreeze_thaw_cycle (OstreeSysroot *self,
             return glnx_throw_errno_prefix (error, "ioctl(FIFREEZE)");
         }
       /* And finally thaw, then signal our completion to the watchdog */
-      if (TEMP_FAILURE_RETRY (ioctl (rootfs_dfd, FITHAW, 0)) != 0)
+      if (_ostree_linuxfs_filesystem_thaw (rootfs_dfd) != 0)
         {
           /* Warn but don't error if the filesystem was already thawed */
           if (errno == EINVAL)
