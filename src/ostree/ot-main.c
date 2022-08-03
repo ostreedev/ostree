@@ -28,7 +28,6 @@
 #include <string.h>
 #include <sys/statvfs.h>
 #include <sys/mount.h>
-#include <linux/fs.h>
 
 #include "ot-main.h"
 #include "ostree.h"

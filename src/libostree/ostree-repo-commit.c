@@ -30,7 +30,6 @@
 #include <sys/xattr.h>
 #include <glib/gprintf.h>
 #include <sys/ioctl.h>
-#include <linux/fs.h>
 #include <ext2fs/ext2_fs.h>
 
 #include "otutil.h"
