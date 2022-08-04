@@ -24,9 +24,11 @@
 
 #include <fcntl.h>
 #include <sys/ioctl.h>
+// This should be the only file including linux/fs.h; see
+// https://sourceware.org/glibc/wiki/Release/2.36#Usage_of_.3Clinux.2Fmount.h.3E_and_.3Csys.2Fmount.h.3E
+// https://github.com/ostreedev/ostree/issues/2685
+#include <linux/fs.h>
 #include <ext2fs/ext2_fs.h>
-
-#include "otutil.h"
 
 /**
  * _ostree_linuxfs_fd_alter_immutable_flag:
@@ -87,4 +89,22 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
     }
 
   return TRUE;
+}
+
+/* Wrapper for FIFREEZE ioctl.
+ * This is split into a separate wrapped API for
+ * reasons around conflicts between glibc and linux/fs.h
+ * includes; see above.
+ */
+int
+_ostree_linuxfs_filesystem_freeze (int fd)
+{
+  return TEMP_FAILURE_RETRY (ioctl (fd, FIFREEZE, 0));
+}
+
+/* Wrapper for FITHAW ioctl.  See above. */
+int
+_ostree_linuxfs_filesystem_thaw (int fd)
+{
+  return TEMP_FAILURE_RETRY (ioctl (fd, FITHAW, 0));
 }
