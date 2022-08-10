@@ -33,7 +33,6 @@
 #define SECURE_EXECUTION_HOSTKEY_PREFIX "ibm-z-hostkey"
 #define SECURE_EXECUTION_LUKS_ROOT_KEY  "/etc/luks/root"
 #define SECURE_EXECUTION_LUKS_BOOT_KEY  "/etc/luks/boot"
-#define SECURE_EXECUTION_LUKS_CONFIG    "/etc/crypttab"
 #define SECURE_EXECUTION_RAMDISK_TOOL   PKGLIBEXECDIR "/s390x-se-luks-gencpio"
 
 /* This is specific to zipl today, but in the future we could also
@@ -192,10 +191,9 @@ _ostree_secure_execution_get_bls_config (OstreeBootloaderZipl *self,
 }
 
 static gboolean
-_ostree_secure_execution_luks_key_exists (void)
+_ostree_secure_execution_luks_keys_exist (void)
 {
-  return (access(SECURE_EXECUTION_LUKS_CONFIG, F_OK) == 0 &&
-    (access(SECURE_EXECUTION_LUKS_ROOT_KEY, F_OK) == 0 || access(SECURE_EXECUTION_LUKS_BOOT_KEY, F_OK) == 0));
+  return (access(SECURE_EXECUTION_LUKS_ROOT_KEY, F_OK) == 0 && access(SECURE_EXECUTION_LUKS_BOOT_KEY, F_OK) == 0);
 }
 
 static gboolean
@@ -247,7 +245,7 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz,
   // Copy initramfs to temp file and embed LUKS key and config into it
   g_auto(GLnxTmpfile) ramdisk = { 0, };
   g_autofree gchar *ramdisk_filename = NULL;
-  if (_ostree_secure_execution_luks_key_exists ())
+  if (_ostree_secure_execution_luks_keys_exist ())
     {
       if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &ramdisk, error))
         return glnx_prefix_error(error, "s390x SE: creating new ramdisk");

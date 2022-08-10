@@ -9,12 +9,11 @@ currdir=$PWD
 # Copying existing initramdisk
 cp ${old_initrd} ${new_initrd}
 
-# Appending LUKS root keys and crypttab config to the end of initrd
+# Appending LUKS root keys to the end of initrd
 workdir=$(mktemp -d -p /tmp se-initramfs-XXXXXX)
 cd ${workdir}
 mkdir -p etc/luks
 cp -f /etc/luks/* etc/luks/
-cp -f /etc/crypttab etc/
 find . -mindepth 1 | cpio --quiet -H newc -o | gzip -9 -n >> ${new_initrd}
 
 # Cleanup
