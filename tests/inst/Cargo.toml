@@ -21,7 +21,7 @@ sh-inline = "0.2.0"
 anyhow = "1.0"
 tempfile = "3.1.0"
 ostree-ext = { version = "0.7.0" }
-libtest-mimic = "0.3.0"
+libtest-mimic = "0.5.0"
 twoway = "0.2.1"
 hyper = { version = "0.14", features = ["runtime", "http1", "http2", "tcp", "server"] }
 hyper-staticfile = "0.6.0"

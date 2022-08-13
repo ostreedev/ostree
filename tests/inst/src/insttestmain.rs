@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use libtest_mimic::Trial;
 use structopt::StructOpt;
 
 mod destructive;
@@ -49,26 +50,6 @@ enum NonDestructiveOpts {
     Args(Vec<String>),
 }
 
-fn libtest_from_test(t: &StaticTest) -> test::TestImpl {
-    libtest_mimic::Test {
-        name: t.0.into(),
-        kind: "".into(),
-        is_ignored: false,
-        is_bench: false,
-        data: t.1,
-    }
-}
-
-fn run_test(test: &test::TestImpl) -> libtest_mimic::Outcome {
-    if let Err(e) = (test.data)() {
-        libtest_mimic::Outcome::Failed {
-            msg: Some(e.to_string()),
-        }
-    } else {
-        libtest_mimic::Outcome::Passed
-    }
-}
-
 fn main() -> Result<()> {
     // Ensure we're always in tempdir so we can rely on it globally.
     // We use /var/tmp to ensure we have storage space in the destructive
@@ -100,8 +81,11 @@ fn main() -> Result<()> {
             // FIXME add method to parse subargs
             let NonDestructiveOpts::Args(iter) = subopt;
             let libtestargs = libtest_mimic::Arguments::from_iter(iter);
-            let tests: Vec<_> = TESTS.iter().map(libtest_from_test).collect();
-            libtest_mimic::run_tests(&libtestargs, tests, run_test).exit();
+            let tests: Vec<_> = TESTS
+                .iter()
+                .map(|(name, fun)| Trial::test(*name, move || fun().map_err(Into::into)))
+                .collect();
+            libtest_mimic::run(&libtestargs, tests).exit();
         }
         Opt::RunDestructive { name } => {
             if !std::path::Path::new(DESTRUCTIVE_TEST_STAMP).exists() {
