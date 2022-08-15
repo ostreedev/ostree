@@ -100,8 +100,7 @@ EOF
     newcommit=$(ostree rev-parse staged-deploy)
     ostree admin upgrade --stage >out.txt
     test -f /run/ostree/staged-deployment
-    # Debating bouncing back out to Ansible for this
-    firstdeploycommit=$(rpm-ostree status |grep 'Commit:' |head -1|sed -e 's,^ *Commit: *,,')
+    firstdeploycommit=$(rpm-ostree status --json | jq -r .deployments[0].checksum)
     assert_streq "${firstdeploycommit}" "${newcommit}"
     # Cleanup
     rpm-ostree cleanup -rp
