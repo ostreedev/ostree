@@ -54,6 +54,19 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     </refsynopsisdiv>
 
 
+    <refsect1>
+        <title>Options</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>--single</option>, <option>-S</option></term>
+
+                <listitem><para>
+                    If the repository has exactly one commit, then print it; any other case will result in an error.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
 <!-- Is this accurate for all cases?  This is what I observed -->
     <refsect1>
         <title>Description</title>
