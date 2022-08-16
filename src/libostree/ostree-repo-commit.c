@@ -1745,7 +1745,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
     return FALSE;
 
   /* Success: do not abort the transaction when returning. */
-  txn->repo = NULL; (void) txn;
+  g_clear_object (&txn->repo); (void) txn;
 
   if (out_transaction_resume)
     *out_transaction_resume = ret_transaction_resume;
