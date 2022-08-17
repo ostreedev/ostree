@@ -38,34 +38,24 @@ static GOptionEntry options[] = {
 gboolean
 ostree_builtin_rev_parse (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
+  g_autoptr(GOptionContext) context = g_option_context_new ("REV");
   g_autoptr(OstreeRepo) repo = NULL;
-  gboolean ret = FALSE;
-  const char *rev = "master";
-  int i;
-  g_autofree char *resolved_rev = NULL;
-
-  context = g_option_context_new ("REV");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 2)
     {
       ot_util_usage_error (context, "REV must be specified", error);
-      goto out;
+      return FALSE;
     }
-  for (i = 1; i < argc; i++)
+  for (gint i = 1; i < argc; i++)
     {
-      rev = argv[i];
-      g_free (resolved_rev);
-      resolved_rev = NULL;
+      const char *rev = argv[i];
+      g_autofree char *resolved_rev = NULL;
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
-        goto out;
+        return FALSE;
       g_print ("%s\n", resolved_rev);
     }
  
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
