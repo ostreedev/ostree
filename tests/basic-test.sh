@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((87 + ${extra_basic_tests:-0}))"
+echo "1..$((88 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -96,6 +96,22 @@ $OSTREE rev-parse test2
 $OSTREE rev-parse 'test2^'
 $OSTREE rev-parse 'test2^^' 2>/dev/null && fatal "rev-parse test2^^ unexpectedly succeeded!"
 echo "ok rev-parse"
+
+if $OSTREE rev-parse -S 2>err.txt; then
+    fatal "rev parse multiple"
+fi
+assert_file_has_content_literal err.txt 'Multiple commit objects found'
+$CMD_PREFIX ostree --repo=repo-copy init --mode=archive
+if $CMD_PREFIX ostree --repo=repo-copy rev-parse -S 2>err.txt; then
+    fatal "rev parse none"
+fi
+assert_file_has_content_literal err.txt 'No commit objects found'
+rev=$($OSTREE rev-parse test2)
+$CMD_PREFIX ostree --repo=repo-copy pull-local repo test2
+rev2=$($CMD_PREFIX ostree --repo=repo-copy rev-parse -S)
+assert_streq "${rev}" "${rev2}"
+echo "ok rev-parse -S"
+
 
 checksum=$($OSTREE rev-parse test2)
 partial=${checksum:0:6} 
