@@ -3594,7 +3594,7 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
  * ostree_sysroot_deployment_set_kargs_in_place:
  * @self: Sysroot
  * @deployment: A deployment
- * @kargs_str: (allow none): Replace @deployment's kernel arguments
+ * @kargs_str: (allow-none): Replace @deployment's kernel arguments
  * @cancellable: Cancellable
  * @error: Error
  *
