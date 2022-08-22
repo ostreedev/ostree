@@ -1210,6 +1210,9 @@ extern "C" {
         argv: *mut *mut c_char,
         prefixes: *mut *mut c_char,
     );
+    #[cfg(any(feature = "v2022_5", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_5")))]
+    pub fn ostree_kernel_args_append_if_missing(kargs: *mut OstreeKernelArgs, arg: *const c_char);
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_append_proc_cmdline(
@@ -3021,6 +3024,13 @@ extern "C" {
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
         new_kargs: *mut *mut c_char,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    pub fn ostree_sysroot_deployment_set_kargs_in_place(
+        self_: *mut OstreeSysroot,
+        deployment: *mut OstreeDeployment,
+        kargs_str: *mut c_char,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
