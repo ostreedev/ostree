@@ -173,6 +173,11 @@ concurrency = "send"
     pattern = "^(load_file)$"
     ignore = true
 
+    [[object.function]]
+    # [MANUAL] hash table with variants
+    pattern = "^(list_commit_objects_starting_with)$"
+    ignore = true
+
 [[object]]
 name = "OSTree.RepoFinder"
 status = "generate"
