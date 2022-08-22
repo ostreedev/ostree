@@ -126,6 +126,7 @@ jobs:
 
           - name: Debian Testing
             image: debian:testing-slim
+            container-options: --security-opt seccomp=unconfined
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
