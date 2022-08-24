@@ -27,6 +27,33 @@ fn should_commit_content_to_repo_and_list_refs_again() {
 }
 
 #[test]
+fn list_commits() {
+    let cancellable = gio::NONE_CANCELLABLE;
+    let test_repo = TestRepo::new();
+
+    for prefix in [None, Some("a"), Some("0abcde")] {
+        let commits = test_repo
+            .repo
+            .list_commit_objects_starting_with(prefix, cancellable)
+            .unwrap();
+        assert_eq!(commits.len(), 0);
+    }
+
+    let rev = test_repo.test_commit("testref");
+
+    for prefix in [None, Some(&rev[0..1]), Some(&rev[0..5])] {
+        let commits = test_repo
+            .repo
+            .list_commit_objects_starting_with(prefix, cancellable)
+            .unwrap()
+            .into_iter()
+            .collect::<Vec<_>>();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].as_str(), rev.as_str());
+    }
+}
+
+#[test]
 #[cfg(feature = "cap-std-apis")]
 fn cap_std_commit() {
     let test_repo = CapTestRepo::new();

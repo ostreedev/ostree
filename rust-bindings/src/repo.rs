@@ -556,4 +556,52 @@ impl Repo {
         // Safety: We know the variant type will match since we just passed it above
         Ok(crate::DirMetaParsed::from_variant(&v).unwrap())
     }
+
+    /// List all commit objects; an optional prefix filter may be applied.
+    #[doc(alias = "ostree_repo_list_commit_objects_starting_with")]
+    pub fn list_commit_objects_starting_with<P: IsA<gio::Cancellable>>(
+        &self,
+        prefix: Option<&str>,
+        cancellable: Option<&P>,
+    ) -> Result<HashSet<glib::GString>, glib::Error> {
+        use glib::ffi::gpointer;
+        let prefix = prefix.unwrap_or("");
+        unsafe {
+            let repo = self.to_glib_none().0;
+            let mut commits = ptr::null_mut();
+            let cancellable = cancellable.map(|p| p.as_ref()).to_glib_none().0;
+            let mut error = ptr::null_mut();
+            let prefix = prefix.to_glib_none();
+            let r = ffi::ostree_repo_list_commit_objects_starting_with(
+                repo,
+                prefix.0,
+                &mut commits,
+                cancellable,
+                &mut error,
+            );
+            if !error.is_null() {
+                assert_eq!(r, 0);
+                return Err(from_glib_full(error));
+            }
+            assert_ne!(r, 0);
+            let mut ret = HashSet::with_capacity(glib::ffi::g_hash_table_size(commits) as usize);
+            unsafe extern "C" fn visit_hash_table(
+                key: *mut libc::c_void,
+                _value: gpointer,
+                r: *mut libc::c_void,
+            ) -> glib::ffi::gboolean {
+                let key: glib::Variant = from_glib_none(key as *const glib::ffi::GVariant);
+                let checksum = crate::object_name_deserialize(&key).0;
+                let r = &mut *(r as *mut HashSet<glib::GString>);
+                r.insert(checksum);
+                true.into()
+            }
+            glib::ffi::g_hash_table_foreach_remove(
+                commits,
+                Some(visit_hash_table),
+                &mut ret as *mut HashSet<glib::GString> as *mut _,
+            );
+            Ok(ret)
+        }
+    }
 }
