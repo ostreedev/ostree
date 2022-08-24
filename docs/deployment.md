@@ -85,6 +85,26 @@ At the moment, OSTree only supports upgrading a single refspec.
 However, in the future OSTree may support a syntax for composing
 layers of trees, for example.
 
+### Staged deployments
+
+As mentioned above, when OSTree creates a new deployment, a 3-way merge is done
+to update its `/etc`. Depending on the nature of the system, this can cause an
+issue: if a user or program modifies the booted `/etc` *after* the pending
+deployment is created but *before* rebooting, those modifications will be lost.
+OSTree does not do a second `/etc` merge on reboot.
+
+To counter this, OSTree supports staged deployments. In this flow, deployments
+are created using e.g. `ostree admin upgrade --stage` on the CLI. The new
+deployment is still created when the command is invoked, but the 3-way `/etc`
+merge is delayed until the system is rebooted or shut down. Additionally,
+updating the bootloader is also delayed. This is done by the
+`ostree-finalize-staged.service` systemd unit.
+
+The main disadvantage of this approach is that rebooting can take longer and the
+failure mode can be confusing (the machine will reboot into the same
+deployment). In systems where the workload is well-understood and not subject to
+the `/etc` issue above, it may be better to not stage deployments.
+
 ### The system /boot
 
 While OSTree parallel installs deployments cleanly inside the
