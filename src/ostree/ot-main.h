@@ -36,6 +36,7 @@ typedef enum {
   OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER = (1 << 0),
   OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED = (1 << 1),
   OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT = (1 << 2),
+  OSTREE_ADMIN_BUILTIN_FLAG_NO_LOAD = (1 << 3),
 } OstreeAdminBuiltinFlags;
 
 
@@ -90,6 +91,11 @@ gboolean ostree_admin_option_context_parse (GOptionContext *context,
                                             OstreeCommandInvocation *invocation,
                                             OstreeSysroot **out_sysroot,
                                             GCancellable *cancellable, GError **error);
+
+gboolean ostree_admin_sysroot_load (OstreeSysroot            *sysroot,
+                                    OstreeAdminBuiltinFlags   flags,
+                                    GCancellable             *cancellable,
+                                    GError                  **error);
 
 gboolean ostree_ensure_repo_writable (OstreeRepo *repo, GError **error);
 
