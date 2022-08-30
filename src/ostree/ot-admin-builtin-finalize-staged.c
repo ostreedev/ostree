@@ -41,16 +41,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static gboolean
-sigterm_cb (gpointer user_data)
-{
-  gboolean *running = user_data;
-  g_print ("Received SIGTERM, exiting\n");
-  *running = FALSE;
-  g_main_context_wakeup (NULL);
-  return G_SOURCE_REMOVE;
-}
-
 /* Called by ostree-finalize-staged.service, and in turn
  * invokes a cmdprivate function inside the shared library.
  */
@@ -94,14 +84,10 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
         return FALSE;
 
       /* We want to keep /boot open until the deployment is finalized during
-       * system shutdown, so block on SIGTERM under the assumption that it will
-       * be received when systemd stops the unit.
+       * system shutdown, so block until we get SIGTERM which systemd will send
+       * when the unit is stopped.
        */
-      gboolean running = TRUE;
-      g_unix_signal_add (SIGTERM, sigterm_cb, &running);
-      g_print ("Waiting for SIGTERM\n");
-      while (running)
-        g_main_context_iteration (NULL, TRUE);
+      pause ();
     }
   else
     {
