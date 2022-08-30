@@ -1,0 +1,35 @@
+# Copyright (C) 2018 Red Hat, Inc.
+# Copyright (C) 2022 Endless OS Foundation LLC
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library. If not, see <https://www.gnu.org/licenses/>.
+
+# See https://github.com/ostreedev/ostree/pull/2543 for background.
+[Unit]
+Description=Hold /boot Open for OSTree Finalize Staged Deployment
+Documentation=man:ostree(1)
+ConditionPathExists=/run/ostree-booted
+DefaultDependencies=no
+
+RequiresMountsFor=/sysroot /boot
+After=local-fs.target
+Before=basic.target final.target
+
+[Service]
+Type=exec
+
+# This is explicitly run in the root namespace to ensure an automounted
+# /boot doesn't time out since autofs doesn't handle mount namespaces.
+#
+# https://bugzilla.redhat.com/show_bug.cgi?id=2056090
+ExecStart=+/usr/bin/ostree admin finalize-staged --hold

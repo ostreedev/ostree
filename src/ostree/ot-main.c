@@ -579,41 +579,11 @@ on_sysroot_journal_msg (OstreeSysroot *sysroot,
 }
 
 gboolean
-ostree_admin_option_context_parse (GOptionContext *context,
-                                   const GOptionEntry *main_entries,
-                                   int *argc,
-                                   char ***argv,
-                                   OstreeAdminBuiltinFlags flags,
-                                   OstreeCommandInvocation *invocation,
-                                   OstreeSysroot **out_sysroot,
-                                   GCancellable *cancellable,
-                                   GError **error)
+ostree_admin_sysroot_load (OstreeSysroot            *sysroot,
+                           OstreeAdminBuiltinFlags   flags,
+                           GCancellable             *cancellable,
+                           GError                  **error)
 {
-  /* Entries are listed in --help output in the order added.  We add the
-   * main entries ourselves so that we can add the --sysroot entry first. */
-
-  g_option_context_add_main_entries (context, global_admin_entries, NULL);
-
-  if (!ostree_option_context_parse (context, main_entries, argc, argv,
-                                    invocation, NULL, cancellable, error))
-    return FALSE;
-
-  if (!opt_print_current_dir && (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT))
-    {
-      g_assert_null (out_sysroot);
-      /* Early return if no sysroot is requested */
-      return TRUE;
-    }
-
-  g_autoptr(GFile) sysroot_path = NULL;
-  if (opt_sysroot != NULL)
-    sysroot_path = g_file_new_for_path (opt_sysroot);
-
-  g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
-  if (!ostree_sysroot_initialize (sysroot, error))
-    return FALSE;
-  g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
-
   if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
     {
       /* If we're requested to lock the sysroot, first check if we're operating
@@ -655,6 +625,51 @@ ostree_admin_option_context_parse (GOptionContext *context,
                        "You must be root to perform this command");
           return FALSE;
         }
+    }
+
+  return TRUE;
+}
+
+gboolean
+ostree_admin_option_context_parse (GOptionContext *context,
+                                   const GOptionEntry *main_entries,
+                                   int *argc,
+                                   char ***argv,
+                                   OstreeAdminBuiltinFlags flags,
+                                   OstreeCommandInvocation *invocation,
+                                   OstreeSysroot **out_sysroot,
+                                   GCancellable *cancellable,
+                                   GError **error)
+{
+  /* Entries are listed in --help output in the order added.  We add the
+   * main entries ourselves so that we can add the --sysroot entry first. */
+
+  g_option_context_add_main_entries (context, global_admin_entries, NULL);
+
+  if (!ostree_option_context_parse (context, main_entries, argc, argv,
+                                    invocation, NULL, cancellable, error))
+    return FALSE;
+
+  if (!opt_print_current_dir && (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT))
+    {
+      g_assert_null (out_sysroot);
+      /* Early return if no sysroot is requested */
+      return TRUE;
+    }
+
+  g_autoptr(GFile) sysroot_path = NULL;
+  if (opt_sysroot != NULL)
+    sysroot_path = g_file_new_for_path (opt_sysroot);
+
+  g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
+  if (!ostree_sysroot_initialize (sysroot, error))
+    return FALSE;
+  g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
+
+  if (opt_print_current_dir || (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_LOAD) == 0)
+    {
+      if (!ostree_admin_sysroot_load (sysroot, flags, cancellable, error))
+        return FALSE;
     }
 
   if (opt_print_current_dir)
