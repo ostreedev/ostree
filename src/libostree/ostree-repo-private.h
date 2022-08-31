@@ -225,6 +225,7 @@ struct OstreeRepo {
   gchar **repo_finders;
   OstreeCfgSysrootBootloaderOpt bootloader; /* Configure which bootloader to use. */
   GHashTable *bls_append_values; /* Parsed key-values from bls-append-except-default key in config. */
+  gboolean enable_bootprefix; /* If true, prepend bootloader entries with /boot */
 
   OstreeRepo *parent_repo;
 };

@@ -1856,6 +1856,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   OstreeRepo *repo = ostree_sysroot_repo (sysroot);
 
+  const char *bootprefix = repo->enable_bootprefix ? "/boot/" : "/";
+
   /* Install (hardlink/copy) the kernel into /boot/ostree/osname-${bootcsum} if
    * it doesn't exist already.
    */
@@ -1936,7 +1938,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
        * /boot itself and drop the boocsum dir concept entirely. */
 
       g_autofree char *destpath =
-        g_strdup_printf ("/" _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS "/%s.img", checksum);
+        g_strdup_printf ("%s%s/%s.img", bootprefix, _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS, checksum);
       const char *rel_destpath = destpath + 1;
 
       /* lazily allocate array and create dir so we don't pollute /boot if not needed */
@@ -2032,7 +2034,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   g_autofree char *version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
   ostree_bootconfig_parser_set (bootconfig, OSTREE_COMMIT_META_KEY_VERSION, version_key);
-  g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->kernel_namever, NULL);
+  g_autofree char * boot_relpath = g_strconcat (bootprefix, bootcsumdir, "/", kernel_layout->kernel_namever, NULL);
   ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
 
   val = ostree_bootconfig_parser_get (bootconfig, "options");
@@ -2041,7 +2043,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   if (kernel_layout->initramfs_namever)
     {
       g_autofree char * initrd_boot_relpath =
-        g_strconcat ("/", bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
+        g_strconcat (bootprefix, bootcsumdir, "/", kernel_layout->initramfs_namever, NULL);
       ostree_bootconfig_parser_set (bootconfig, "initrd", initrd_boot_relpath);
 
       if (overlay_initrds)
@@ -2061,7 +2063,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
   if (kernel_layout->devicetree_namever)
     {
-      g_autofree char * dt_boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_namever, NULL);
+      g_autofree char * dt_boot_relpath = g_strconcat (bootprefix, bootcsumdir, "/", kernel_layout->devicetree_namever, NULL);
       ostree_bootconfig_parser_set (bootconfig, "devicetree", dt_boot_relpath);
     }
   else if (kernel_layout->devicetree_srcpath)
@@ -2070,7 +2072,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
        * want to point to a whole directory of device trees.
        * See: https://github.com/ostreedev/ostree/issues/1900
        */
-      g_autofree char * dt_boot_relpath = g_strconcat ("/", bootcsumdir, "/", kernel_layout->devicetree_srcpath, NULL);
+      g_autofree char * dt_boot_relpath = g_strconcat (bootprefix, bootcsumdir, "/", kernel_layout->devicetree_srcpath, NULL);
       ostree_bootconfig_parser_set (bootconfig, "fdtdir", dt_boot_relpath);
     }
 
