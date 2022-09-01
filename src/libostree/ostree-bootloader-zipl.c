@@ -195,7 +195,8 @@ static gboolean
 _ostree_secure_execution_luks_key_exists (void)
 {
   return (access(SECURE_EXECUTION_LUKS_CONFIG, F_OK) == 0 &&
-    (access(SECURE_EXECUTION_LUKS_ROOT_KEY, F_OK) == 0 || access(SECURE_EXECUTION_LUKS_BOOT_KEY, F_OK) == 0));
+    access(SECURE_EXECUTION_LUKS_ROOT_KEY, F_OK) == 0 &&
+    access(SECURE_EXECUTION_LUKS_BOOT_KEY, F_OK) == 0);
 }
 
 static gboolean
@@ -245,23 +246,21 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz,
   g_autofree gchar *cmdline_filename = g_strdup_printf ("/proc/%d/fd/%d", self, cmdline.fd);
 
   // Copy initramfs to temp file and embed LUKS key and config into it
+  if (!_ostree_secure_execution_luks_key_exists ())
+    return glnx_throw(error, "s390x SE: missing luks keys and config");
   g_auto(GLnxTmpfile) ramdisk = { 0, };
-  g_autofree gchar *ramdisk_filename = NULL;
-  if (_ostree_secure_execution_luks_key_exists ())
-    {
-      if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &ramdisk, error))
-        return glnx_prefix_error(error, "s390x SE: creating new ramdisk");
-      ramdisk_filename = g_strdup_printf ("/proc/%d/fd/%d", self, ramdisk.fd);
-      if (!_ostree_secure_execution_enable_luks (initramfs, ramdisk_filename, error))
-        return FALSE;
-    }
+  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &ramdisk, error))
+    return glnx_prefix_error(error, "s390x SE: creating new ramdisk");
+  g_autofree gchar *ramdisk_filename = g_strdup_printf ("/proc/%d/fd/%d", self, ramdisk.fd);
+  if (!_ostree_secure_execution_enable_luks (initramfs, ramdisk_filename, error))
+    return FALSE;
 
   g_autoptr(GPtrArray) argv = g_ptr_array_new ();
   g_ptr_array_add (argv, "genprotimg");
   g_ptr_array_add (argv, "-i");
   g_ptr_array_add (argv, vmlinuz);
   g_ptr_array_add (argv, "-r");
-  g_ptr_array_add (argv, (ramdisk_filename == NULL) ? initramfs: ramdisk_filename);
+  g_ptr_array_add (argv, ramdisk_filename);
   g_ptr_array_add (argv, "-p");
   g_ptr_array_add (argv, cmdline_filename);
   for (guint i = 0; i < keys->len; ++i)
@@ -300,7 +299,7 @@ _ostree_secure_execution_call_zipl (GError **error)
   if (!g_spawn_check_exit_status (status, error))
     return glnx_prefix_error(error, "s390x SE: `zipl` failed");
 
-  ot_journal_print(LOG_INFO, "s390x SE: `sd-boot` zipled");
+  ot_journal_print(LOG_INFO, "s390x SE: `sdboot` zipled");
   return TRUE;
 }
 
