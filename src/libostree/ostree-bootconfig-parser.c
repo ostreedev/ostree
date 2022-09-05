@@ -73,7 +73,7 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
                                    GCancellable            *cancellable,
                                    GError                 **error)
 {
-  g_return_val_if_fail (!self->parsed, FALSE);
+  g_assert (!self->parsed);
 
   g_autofree char *contents = glnx_file_get_contents_utf8_at (dfd, path, NULL, cancellable, error);
   if (!contents)

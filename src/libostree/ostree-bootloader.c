@@ -31,7 +31,7 @@ _ostree_bootloader_query (OstreeBootloader *self,
                           GCancellable     *cancellable,
                           GError          **error)
 {
-  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
+  g_assert (OSTREE_IS_BOOTLOADER (self));
 
   return OSTREE_BOOTLOADER_GET_IFACE (self)->query (self, out_is_active, cancellable, error);
 }
@@ -44,7 +44,7 @@ _ostree_bootloader_query (OstreeBootloader *self,
 const char *
 _ostree_bootloader_get_name (OstreeBootloader  *self)
 {
-  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), NULL);
+  g_assert (OSTREE_IS_BOOTLOADER (self));
 
   return OSTREE_BOOTLOADER_GET_IFACE (self)->get_name (self);
 }
@@ -56,7 +56,7 @@ _ostree_bootloader_write_config (OstreeBootloader  *self,
                             GCancellable  *cancellable,
                             GError       **error)
 {
-  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
+  g_assert (OSTREE_IS_BOOTLOADER (self));
 
   return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion,
                                                            new_deployments,
@@ -69,7 +69,7 @@ _ostree_bootloader_post_bls_sync (OstreeBootloader  *self,
                                   GCancellable  *cancellable,
                                   GError       **error)
 {
-  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
+  g_assert (OSTREE_IS_BOOTLOADER (self));
 
   if (OSTREE_BOOTLOADER_GET_IFACE (self)->post_bls_sync)
     return OSTREE_BOOTLOADER_GET_IFACE (self)->post_bls_sync (self, bootversion, cancellable, error);
@@ -80,7 +80,7 @@ _ostree_bootloader_post_bls_sync (OstreeBootloader  *self,
 gboolean
 _ostree_bootloader_is_atomic (OstreeBootloader  *self)
 {
-  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
+  g_assert (OSTREE_IS_BOOTLOADER (self));
 
   if (OSTREE_BOOTLOADER_GET_IFACE (self)->is_atomic)
     return OSTREE_BOOTLOADER_GET_IFACE (self)->is_atomic (self);
