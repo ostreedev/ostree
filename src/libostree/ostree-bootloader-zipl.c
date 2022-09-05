@@ -200,11 +200,28 @@ _ostree_secure_execution_luks_key_exists (void)
 }
 
 static gboolean
-_ostree_secure_execution_enable_luks(const gchar *oldramfs,
-                                     const gchar *newramfs,
-                                     GError **error)
+_ostree_secure_execution_generate_initrd (const gchar *initrd,
+                                          GLnxTmpfile *out_initrd,
+                                          gchar **out_initrdname,
+                                          GError **error)
 {
-  const char *const argv[] = {SECURE_EXECUTION_RAMDISK_TOOL, oldramfs, newramfs, NULL};
+  if (!_ostree_secure_execution_luks_key_exists ())
+    return glnx_throw (error, "s390x SE: missing luks keys and config");
+
+
+  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, out_initrd, error))
+    return glnx_prefix_error (error, "s390x SE: opening new ramdisk");
+  {
+    glnx_autofd int fd = -1;
+    glnx_openat_rdonly (AT_FDCWD, initrd, TRUE, &fd, error);
+    if (glnx_regfile_copy_bytes (fd, out_initrd->fd, (off_t) -1) < 0)
+      return glnx_throw_errno_prefix (error, "s390x SE: copying ramdisk");
+  }
+
+  g_autofree gchar *tmpdir = g_mkdtemp (g_strdup ("/var/tmp/se-initramfs-XXXXXX"));
+
+  *out_initrdname = g_strdup_printf ("/proc/%d/fd/%d", getpid (), out_initrd->fd);
+  const char *const argv[] = {SECURE_EXECUTION_RAMDISK_TOOL, *out_initrdname, tmpdir, NULL};
   g_autofree gchar *out = NULL;
   g_autofree gchar *err = NULL;
   int status = 0;
@@ -219,7 +236,7 @@ _ostree_secure_execution_enable_luks(const gchar *oldramfs,
       return glnx_prefix_error(error, "s390x SE: `%s` failed", SECURE_EXECUTION_RAMDISK_TOOL);
     }
 
-  ot_journal_print(LOG_INFO, "s390x SE: luks key added to initrd");
+  ot_journal_print(LOG_INFO, "s390x SE: luks keys added to initrd");
   return TRUE;
 }
 
@@ -235,24 +252,18 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz,
   ot_journal_print(LOG_INFO, "s390x SE: initrd: %s", initramfs);
   ot_journal_print(LOG_INFO, "s390x SE: kargs: %s", options);
 
-  pid_t self = getpid();
-
   // Store kernel options to temp file, so `genprotimg` can later embed it
   g_auto(GLnxTmpfile) cmdline = { 0, };
   if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &cmdline, error))
-    return glnx_prefix_error(error, "s390x SE: opening cmdline file");
+    return glnx_prefix_error (error, "s390x SE: opening cmdline file");
   if (glnx_loop_write (cmdline.fd, options, strlen (options)) < 0)
     return glnx_throw_errno_prefix (error, "s390x SE: writting cmdline file");
-  g_autofree gchar *cmdline_filename = g_strdup_printf ("/proc/%d/fd/%d", self, cmdline.fd);
+  g_autofree gchar *cmdline_filename = g_strdup_printf ("/proc/%d/fd/%d", getpid (), cmdline.fd);
 
-  // Copy initramfs to temp file and embed LUKS key and config into it
-  if (!_ostree_secure_execution_luks_key_exists ())
-    return glnx_throw(error, "s390x SE: missing luks keys and config");
+  // Copy initramfs to temp file and embed LUKS keys & config into it
   g_auto(GLnxTmpfile) ramdisk = { 0, };
-  if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &ramdisk, error))
-    return glnx_prefix_error(error, "s390x SE: creating new ramdisk");
-  g_autofree gchar *ramdisk_filename = g_strdup_printf ("/proc/%d/fd/%d", self, ramdisk.fd);
-  if (!_ostree_secure_execution_enable_luks (initramfs, ramdisk_filename, error))
+  g_autofree gchar *ramdisk_filename = NULL;
+  if (!_ostree_secure_execution_generate_initrd (initramfs, &ramdisk, &ramdisk_filename, error))
     return FALSE;
 
   g_autoptr(GPtrArray) argv = g_ptr_array_new ();
