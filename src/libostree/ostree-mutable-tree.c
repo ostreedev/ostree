@@ -303,8 +303,6 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
                                   const char        *checksum,
                                   GError           **error)
 {
-  g_return_val_if_fail (name != NULL, FALSE);
-
   if (!ot_util_filename_validate (name, error))
     return FALSE;
 
@@ -338,8 +336,6 @@ ostree_mutable_tree_remove (OstreeMutableTree *self,
                             gboolean           allow_noent,
                             GError           **error)
 {
-  g_return_val_if_fail (name != NULL, FALSE);
-
   if (!ot_util_filename_validate (name, error))
     return FALSE;
 
@@ -374,8 +370,6 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
                                 OstreeMutableTree **out_subdir,
                                 GError           **error)
 {
-  g_return_val_if_fail (name != NULL, FALSE);
-
   if (!ot_util_filename_validate (name, error))
     return FALSE;
 
