@@ -1369,7 +1369,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GPtrArray) builder_parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   g_autoptr(GPtrArray) builder_fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
-  g_autoptr(OtVariantBuilder) descriptor_builder = NULL;
   const char *opt_sign_name;
   const char **opt_key_ids;
 
@@ -1456,7 +1455,10 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                       &descriptor_tmpf, error))
     return FALSE;
 
-  descriptor_builder = ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT), descriptor_tmpf.fd);
+  g_autoptr(OtVariantBuilder) descriptor_builder =
+    ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
+                            descriptor_tmpf.fd);
+  g_assert (descriptor_builder != NULL);
 
   /* Open the metadata dict */
   if (!ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("a{sv}"), error))
@@ -1603,7 +1605,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       const gchar *signature_key = NULL;
       g_autoptr(GVariantBuilder) signature_builder = NULL;
       g_auto(GLnxTmpfile) descriptor_sign_tmpf = { 0, };
-      g_autoptr(OtVariantBuilder) descriptor_sign_builder = NULL;
 
       lseek (descriptor_tmpf.fd, 0, SEEK_SET);
       tmpdata = glnx_fd_readall_bytes (descriptor_tmpf.fd, cancellable, error);
@@ -1640,8 +1641,10 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                           &descriptor_sign_tmpf, error))
         return FALSE;
 
-      descriptor_sign_builder = ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SIGNED_FORMAT),
-                                                        descriptor_sign_tmpf.fd);
+      g_autoptr(OtVariantBuilder) descriptor_sign_builder =
+        ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SIGNED_FORMAT),
+                                descriptor_sign_tmpf.fd);
+      g_assert (descriptor_sign_builder != NULL);
 
       if (!ot_variant_builder_add (descriptor_sign_builder, error, "t",
                                    GUINT64_TO_BE (OSTREE_STATIC_DELTA_SIGNED_MAGIC)))
