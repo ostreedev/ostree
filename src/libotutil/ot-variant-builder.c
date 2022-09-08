@@ -758,11 +758,9 @@ struct _OtVariantBuilder {
 static OtVariantBuilderInfo *
 ot_variant_builder_info_new (OtVariantBuilder *builder, const GVariantType *type)
 {
-  OtVariantBuilderInfo *info;
+  g_assert (g_variant_type_is_container (type));
 
-  g_return_val_if_fail (g_variant_type_is_container (type), NULL);
-
-  info = (OtVariantBuilderInfo *) g_slice_new0 (OtVariantBuilderInfo);
+  OtVariantBuilderInfo *info = (OtVariantBuilderInfo *) g_slice_new0 (OtVariantBuilderInfo);
 
   info->builder = builder;
   info->type = g_variant_type_copy (type);
@@ -843,11 +841,9 @@ OtVariantBuilder *
 ot_variant_builder_new (const GVariantType *type,
                         int fd)
 {
-  OtVariantBuilder *builder;
+  g_assert (g_variant_type_is_container (type));
 
-  g_return_val_if_fail (g_variant_type_is_container (type), NULL);
-
-  builder = (OtVariantBuilder *) g_slice_new0 (OtVariantBuilder);
+  OtVariantBuilder *builder = (OtVariantBuilder *) g_slice_new0 (OtVariantBuilder);
 
   builder->head = ot_variant_builder_info_new (builder, type);
   builder->ref_count = 1;
@@ -1083,7 +1079,6 @@ ot_variant_builder_open (OtVariantBuilder *builder,
                          GError **error)
 {
   OtVariantBuilderInfo *info = builder->head;
-  OtVariantBuilderInfo *new_info;
 
   g_assert (info->n_children < info->max_items);
   g_assert (!info->expected_type ||
@@ -1096,7 +1091,9 @@ ot_variant_builder_open (OtVariantBuilder *builder,
   if (!ot_variant_builder_pre_add (info, type, error))
     return FALSE;
 
-  new_info = ot_variant_builder_info_new (builder, type);
+  OtVariantBuilderInfo *new_info = ot_variant_builder_info_new (builder, type);
+  g_assert (new_info != NULL);
+
   new_info->parent = info;
 
   /* push the prev_item_type down into the subcontainer */
