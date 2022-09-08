@@ -284,12 +284,8 @@ EXTRA_DIST += src/libostree/README-gpg src/libostree/bupsplit.h \
 		src/libostree/ostree-enumtypes.c.template \
 		src/libostree/ostree-deployment-private.h \
 		src/libostree/ostree-repo-deprecated.h \
-		src/libostree/ostree-version.h \
-		src/libostree/s390x-se-luks-gencpio
+		src/libostree/ostree-version.h
 
 install-mkdir-remotes-d-hook:
 	mkdir -p $(DESTDIR)$(sysconfdir)/ostree/remotes.d
 INSTALL_DATA_HOOKS += install-mkdir-remotes-d-hook
-
-# Secure Execution: script for creating new initramdisk with LUKS key and config
-pkglibexec_SCRIPTS += src/libostree/s390x-se-luks-gencpio
