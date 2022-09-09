@@ -96,8 +96,11 @@ ostree_sign_default_init (OstreeSignInterface *iface)
 const gchar *
 ostree_sign_metadata_key (OstreeSign *self)
 {
+  g_assert (OSTREE_IS_SIGN (self));
 
-  g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->metadata_key != NULL, NULL);
+  if (OSTREE_SIGN_GET_IFACE (self)->metadata_key == NULL)
+    return NULL;
+
   return OSTREE_SIGN_GET_IFACE (self)->metadata_key (self);
 }
 
@@ -116,8 +119,11 @@ ostree_sign_metadata_key (OstreeSign *self)
 const gchar *
 ostree_sign_metadata_format (OstreeSign *self)
 {
+  g_assert (OSTREE_IS_SIGN (self));
 
-  g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->metadata_format != NULL, NULL);
+  if (OSTREE_SIGN_GET_IFACE (self)->metadata_format == NULL)
+    return NULL;
+
   return OSTREE_SIGN_GET_IFACE (self)->metadata_format (self);
 }
 
@@ -136,7 +142,8 @@ gboolean
 ostree_sign_clear_keys (OstreeSign *self,
                         GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
   if (OSTREE_SIGN_GET_IFACE (self)->clear_keys == NULL)
     return glnx_throw (error, "not implemented");
 
@@ -163,7 +170,8 @@ ostree_sign_set_sk (OstreeSign *self,
                     GVariant *secret_key,
                     GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
   if (OSTREE_SIGN_GET_IFACE (self)->set_sk == NULL)
     return glnx_throw (error, "not implemented");
 
@@ -191,7 +199,8 @@ ostree_sign_set_pk (OstreeSign *self,
                     GVariant *public_key,
                     GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
   if (OSTREE_SIGN_GET_IFACE (self)->set_pk == NULL)
     return glnx_throw (error, "not implemented");
 
@@ -219,7 +228,8 @@ ostree_sign_add_pk (OstreeSign *self,
                     GVariant *public_key,
                     GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
   if (OSTREE_SIGN_GET_IFACE (self)->add_pk == NULL)
     return glnx_throw (error, "not implemented");
 
@@ -258,7 +268,8 @@ ostree_sign_load_pk (OstreeSign *self,
                      GVariant *options,
                      GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
   if (OSTREE_SIGN_GET_IFACE (self)->load_pk == NULL)
     return glnx_throw (error, "not implemented");
 
@@ -290,8 +301,8 @@ ostree_sign_data (OstreeSign *self,
                   GCancellable *cancellable,
                   GError **error)
 {
+  g_assert (OSTREE_IS_SIGN (self));
 
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   if (OSTREE_SIGN_GET_IFACE (self)->data == NULL)
     return glnx_throw (error, "not implemented");
 
@@ -324,7 +335,8 @@ ostree_sign_data_verify (OstreeSign *self,
                          char      **out_success_message,
                          GError     **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
   if (OSTREE_SIGN_GET_IFACE (self)->data_verify == NULL)
     return glnx_throw (error, "not implemented");
 
@@ -337,9 +349,13 @@ ostree_sign_data_verify (OstreeSign *self,
 static GVariant *
 _sign_detached_metadata_append (OstreeSign *self,
                                 GVariant   *existing_metadata,
-                                GBytes     *signature_bytes)
+                                GBytes     *signature_bytes,
+                                GError    **error)
 {
-  g_return_val_if_fail (signature_bytes != NULL, FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
+  if (signature_bytes == NULL)
+    return glnx_null_throw (error, "Invalid NULL signature bytes");
 
   GVariantDict metadata_dict;
   g_autoptr(GVariant) signature_data = NULL;
@@ -395,7 +411,7 @@ ostree_sign_commit_verify (OstreeSign     *self,
                            GError         **error)
 
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
 
   g_autoptr(GVariant) commit_variant = NULL;
   /* Load the commit */
@@ -447,10 +463,12 @@ ostree_sign_commit_verify (OstreeSign     *self,
 const gchar * 
 ostree_sign_get_name (OstreeSign *self)
 {
-    g_return_val_if_fail (OSTREE_IS_SIGN (self), NULL);
-    g_return_val_if_fail (OSTREE_SIGN_GET_IFACE (self)->get_name != NULL, NULL);
+  g_assert (OSTREE_IS_SIGN (self));
 
-    return OSTREE_SIGN_GET_IFACE (self)->get_name (self);
+  if (OSTREE_SIGN_GET_IFACE (self)->get_name == NULL)
+    return NULL;
+
+  return OSTREE_SIGN_GET_IFACE (self)->get_name (self);
 }
 
 /**
@@ -503,7 +521,9 @@ ostree_sign_commit (OstreeSign     *self,
     return glnx_prefix_error (error, "Not able to sign the cobject");
 
   new_metadata =
-    _sign_detached_metadata_append (self, old_metadata, signature);
+    _sign_detached_metadata_append (self, old_metadata, signature, error);
+  if (new_metadata == NULL)
+    return FALSE;
 
   if (!ostree_repo_write_commit_detached_metadata (repo,
                                                    commit_checksum,
@@ -603,8 +623,8 @@ ostree_sign_summary (OstreeSign    *self,
                      GCancellable  *cancellable,
                      GError       **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-  g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+  g_assert (OSTREE_IS_REPO (repo));
 
   g_autoptr(GVariant) normalized = NULL;
   g_autoptr(GBytes) summary_data = NULL;
@@ -653,7 +673,9 @@ ostree_sign_summary (OstreeSign    *self,
 
       g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
       metadata =
-        _sign_detached_metadata_append (self, old_metadata, signature);
+        _sign_detached_metadata_append (self, old_metadata, signature, error);
+      if (metadata == NULL)
+        return FALSE;
     }
   g_variant_iter_free (iter);
 
