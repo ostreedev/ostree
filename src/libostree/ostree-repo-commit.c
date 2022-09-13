@@ -213,6 +213,37 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
   return TRUE;
 }
 
+gboolean
+_ostree_repo_commit_bare_whiteout (OstreeRepo        *self,
+                                   const char        *checksum,
+                                   guint32            uid,
+                                   guint32            gid,
+                                   GVariant          *xattrs,
+                                   GCancellable      *cancellable,
+                                   GError           **error)
+{
+  g_assert(self->mode == OSTREE_REPO_MODE_BARE);
+
+  char dest_filename[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path (dest_filename, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
+
+  int dest_dfd = commit_dest_dfd (self);
+  if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, dest_filename, cancellable, error))
+    return FALSE;
+
+  if (mknodat(dest_dfd, dest_filename, S_IFCHR, (dev_t)0) < 0)
+    return glnx_throw_errno_prefix (error, "Creating whiteout char device");
+
+  if (xattrs != NULL &&
+      !glnx_dfd_name_set_all_xattrs(dest_dfd, dest_filename, xattrs, cancellable, error))
+    return glnx_throw_errno_prefix (error, "Setting xattrs for whiteout char device");
+
+  if (TEMP_FAILURE_RETRY(fchownat(dest_dfd, dest_filename, uid, gid, AT_SYMLINK_NOFOLLOW) < 0))
+    return glnx_throw_errno_prefix (error, "fchownat");
+
+  return TRUE;
+}
+
 /* Given a dfd+path combination (may be regular file or symlink),
  * rename it into place.
  */
@@ -301,7 +332,7 @@ commit_loose_regfile_object (OstreeRepo        *self,
             return FALSE;
         }
       else
-        g_assert (S_ISLNK (mode));
+        g_assert (S_ISLNK (mode) || S_ISCHR(mode));
     }
   else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
     {
@@ -966,7 +997,9 @@ write_content_object (OstreeRepo         *self,
   else
     file_input = input;
 
+  const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
   gboolean phys_object_is_symlink = FALSE;
+  gboolean phys_object_is_whiteout = FALSE;
   switch (object_file_type)
     {
     case G_FILE_TYPE_REGULAR:
@@ -975,6 +1008,19 @@ write_content_object (OstreeRepo         *self,
       if (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
         phys_object_is_symlink = TRUE;
       break;
+    case G_FILE_TYPE_SPECIAL:
+        /* Only overlayfs whiteout char 0:0 files are supported for G_FILE_TYPE_SPECIAL */
+        if (S_ISCHR(mode))
+          {
+            /* For bare mode repositories where no side file metadata is stored we want to
+             * avoid the creation of an empty tmp file and later setup of permissions because
+             * this won't result in a char device.
+             */
+            if (self->mode == OSTREE_REPO_MODE_BARE)
+              phys_object_is_whiteout = TRUE;
+            break;
+          }
+         return glnx_throw (error, "Unsupported file type %u with mode 0%o", object_file_type, mode);
     default:
       return glnx_throw (error, "Unsupported file type %u", object_file_type);
     }
@@ -1021,7 +1067,8 @@ write_content_object (OstreeRepo         *self,
    * binary with trailing garbage, creating a window on the local
    * system where a malicious setuid binary exists.
    *
-   * We use GLnxTmpfile for regular files, and OtCleanupUnlinkat for symlinks.
+   * We use GLnxTmpfile for regular files, OtCleanupUnlinkat for symlinks,
+   * we use no temporary for whiteout char devices in bare mode.
    */
   g_auto(OtCleanupUnlinkat) tmp_unlinker = { commit_tmp_dfd (self), NULL };
   g_auto(GLnxTmpfile) tmpf = { 0, };
@@ -1037,6 +1084,8 @@ write_content_object (OstreeRepo         *self,
                                               cancellable, error))
         return FALSE;
     }
+  else if (phys_object_is_whiteout)
+    ;
   else if (repo_mode != OSTREE_REPO_MODE_ARCHIVE)
     {
       if (!create_regular_tmpfile_linkable_with_content (self, size, file_input,
@@ -1079,10 +1128,15 @@ write_content_object (OstreeRepo         *self,
 
           unpacked_size = g_file_info_get_size (file_info);
         }
-      else
+      else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
         {
           /* For a symlink, the size is the length of the target */
           unpacked_size = strlen (g_file_info_get_symlink_target (file_info));
+        }
+      else
+        {
+          /* For char devices 0:0 whiteouts the content size is 0 */
+          unpacked_size = 0;
         }
 
       if (!g_output_stream_flush (temp_out, cancellable, error))
@@ -1151,7 +1205,6 @@ write_content_object (OstreeRepo         *self,
 
   const guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   const guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
-  const guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
   /* Is it "physically" a symlink? */
   if (phys_object_is_symlink)
     {
@@ -1187,6 +1240,13 @@ write_content_object (OstreeRepo         *self,
 
       if (!commit_path_final (self, actual_checksum, OSTREE_OBJECT_TYPE_FILE,
                               &tmp_unlinker, cancellable, error))
+        return FALSE;
+    }
+  else if (phys_object_is_whiteout)
+    {
+      if (!_ostree_repo_commit_bare_whiteout (self, actual_checksum,
+                                              uid, gid, xattrs,
+                                              cancellable, error))
         return FALSE;
     }
   else
@@ -3739,6 +3799,7 @@ write_content_to_mtree_internal (OstreeRepo                  *self,
     {
     case G_FILE_TYPE_SYMBOLIC_LINK:
     case G_FILE_TYPE_REGULAR:
+    case G_FILE_TYPE_SPECIAL:
       break;
     default:
       return glnx_throw (error, "Unsupported file type for file: '%s'", child_relpath);
@@ -4090,7 +4151,8 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
           continue;
         }
 
-      if (S_ISREG (stbuf.st_mode))
+      /* For regular files and whiteout char devices we continue */
+      if (S_ISREG (stbuf.st_mode) || (S_ISCHR(stbuf.st_mode) && stbuf.st_rdev == 0))
         ;
       else if (S_ISLNK (stbuf.st_mode))
         {

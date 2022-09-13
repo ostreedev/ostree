@@ -4322,8 +4322,9 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
         return glnx_throw_errno_prefix (error, "openat");
     }
 
-  if (!(S_ISREG (stbuf.st_mode) || S_ISLNK (stbuf.st_mode)))
-    return glnx_throw (error, "Not a regular file or symlink");
+  if (!(S_ISREG (stbuf.st_mode) || S_ISLNK (stbuf.st_mode) ||
+        (S_ISCHR (stbuf.st_mode) && stbuf.st_rdev == 0)))
+    return glnx_throw (error, "Not a regular file, symlink or whiteout");
 
   /* In the non-bare-user case, gather symlink info if requested */
   if (self->mode != OSTREE_REPO_MODE_BARE_USER
@@ -4474,7 +4475,7 @@ ostree_repo_load_file (OstreeRepo         *self,
           if (S_ISLNK (stbuf.st_mode))
             g_file_info_set_symlink_target (*out_file_info, symlink_target);
           else
-            g_assert (S_ISREG (stbuf.st_mode));
+            g_assert (S_ISREG (stbuf.st_mode) || (S_ISCHR(stbuf.st_mode) && stbuf.st_rdev == 0));
         }
 
       ot_transfer_out_value (out_xattrs, &ret_xattrs);

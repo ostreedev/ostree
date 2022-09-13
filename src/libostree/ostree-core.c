@@ -2014,7 +2014,7 @@ file_header_parse (GVariant         *metadata,
   mode = GUINT32_FROM_BE (mode);
   g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
 
-  if (S_ISREG (mode))
+  if (S_ISREG (mode) || S_ISCHR(mode))
     {
       ;
     }
@@ -2065,7 +2065,7 @@ zlib_file_header_parse (GVariant         *metadata,
   g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
   g_file_info_set_size (ret_file_info, GUINT64_FROM_BE (size));
 
-  if (S_ISREG (mode))
+  if (S_ISREG (mode) || S_ISCHR (mode))
     {
       ;
     }
@@ -2368,7 +2368,7 @@ _ostree_validate_bareuseronly_mode (guint32     content_mode,
         return glnx_throw (error, "Content object %s: invalid mode 0%04o with bits 0%04o",
                            checksum, content_mode, invalid_modebits);
     }
-  else if (S_ISLNK (content_mode))
+  else if (S_ISLNK (content_mode) || S_ISCHR(content_mode))
     ; /* Nothing */
   else
     g_assert_not_reached ();
@@ -2400,7 +2400,7 @@ gboolean
 ostree_validate_structureof_file_mode (guint32            mode,
                                        GError           **error)
 {
-  if (!(S_ISREG (mode) || S_ISLNK (mode)))
+  if (!(S_ISREG (mode) || S_ISLNK (mode) || S_ISCHR(mode)))
     return glnx_throw (error, "Invalid file metadata mode %u; not a valid file type", mode);
 
   if (!validate_stat_mode_perms (mode, error))

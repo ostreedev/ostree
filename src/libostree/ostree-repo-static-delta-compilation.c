@@ -516,7 +516,7 @@ process_one_object (OstreeRepo                       *repo,
         }
       else
         {
-          g_assert (S_ISREG (mode));
+          g_assert (S_ISREG (mode) || S_ISCHR(mode));
         }
 
       content_offset = current_part->payload->len;

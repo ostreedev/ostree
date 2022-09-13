@@ -414,6 +414,15 @@ _ostree_repo_commit_tmpf_final (OstreeRepo        *self,
                                 GCancellable      *cancellable,
                                 GError           **error);
 
+gboolean
+_ostree_repo_commit_bare_whiteout (OstreeRepo        *self,
+                                   const char        *checksum,
+                                   guint32            uid,
+                                   guint32            gid,
+                                   GVariant          *xattrs,
+                                   GCancellable      *cancellable,
+                                   GError           **error);
+
 typedef struct {
   gboolean initialized;
   gpointer opaque0[10];
