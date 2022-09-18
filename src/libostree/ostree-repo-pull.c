@@ -3680,7 +3680,7 @@ all_requested_refs_have_commit (GHashTable *requested_refs /* (element-type Ostr
  *   * `override-commit-ids` (`as`): Array of specific commit IDs to fetch for refs
  *   * `timestamp-check` (`b`): Verify commit timestamps are newer than current (when pulling via ref); Since: 2017.11
  *   * `timestamp-check-from-rev` (`s`): Verify that all fetched commit timestamps are newer than timestamp of given rev; Since: 2020.4
- *   * `metadata-size-restriction` (`t`): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
+ *   * `max-metadata-size` (`t`): Restrict metadata objects to a maximum number of bytes; 0 to disable.  Since: 2018.9
  *   * `dry-run` (`b`): Only print information on what will be downloaded (requires static deltas)
  *   * `override-url` (`s`): Fetch objects from this URL if remote specifies no metalink in options
  *   * `inherit-transaction` (`b`): Don't initiate, finish or abort a transaction, useful to do multiple pulls in one transaction.
