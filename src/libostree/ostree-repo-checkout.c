@@ -385,9 +385,9 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
                 if (g_str_equal (checksum, actual_checksum))
                   return TRUE;
 
-                /* Otherwise, fall through and do the link, we should
-                 * get EEXIST.
-                 */
+                  /* Otherwise, fall through and do the link, we should
+                  * get EEXIST.
+                  */
               }
           }
           break;
@@ -401,10 +401,10 @@ create_file_copy_from_input_at (OstreeRepo     *repo,
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SPECIAL)
     {
       guint32 file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-      g_assert(S_ISCHR(file_mode));
+      g_assert(_ostree_gfileinfo_is_whiteout(file_info));
 
       if (mknodat(destination_dfd, destination_name, file_mode, (dev_t)0) < 0)
-        return glnx_throw_errno_prefix (error, "Creating whiteout char device");
+          return glnx_throw_errno_prefix (error, "Creating whiteout char device");
       if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
         {
           if (xattrs != NULL &&

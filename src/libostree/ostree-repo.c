@@ -4323,7 +4323,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
     }
 
   if (!(S_ISREG (stbuf.st_mode) || S_ISLNK (stbuf.st_mode) ||
-        (S_ISCHR (stbuf.st_mode) && stbuf.st_rdev == 0)))
+        _ostree_stbuf_is_whiteout(&stbuf)))
     return glnx_throw (error, "Not a regular file, symlink or whiteout");
 
   /* In the non-bare-user case, gather symlink info if requested */
@@ -4475,7 +4475,7 @@ ostree_repo_load_file (OstreeRepo         *self,
           if (S_ISLNK (stbuf.st_mode))
             g_file_info_set_symlink_target (*out_file_info, symlink_target);
           else
-            g_assert (S_ISREG (stbuf.st_mode) || (S_ISCHR(stbuf.st_mode) && stbuf.st_rdev == 0));
+            g_assert (S_ISREG (stbuf.st_mode) || _ostree_stbuf_is_whiteout(&stbuf));
         }
 
       ot_transfer_out_value (out_xattrs, &ret_xattrs);

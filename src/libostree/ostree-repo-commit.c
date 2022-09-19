@@ -1010,7 +1010,7 @@ write_content_object (OstreeRepo         *self,
       break;
     case G_FILE_TYPE_SPECIAL:
         /* Only overlayfs whiteout char 0:0 files are supported for G_FILE_TYPE_SPECIAL */
-        if (S_ISCHR(mode))
+        if (_ostree_gfileinfo_is_whiteout(file_info))
           {
             /* For bare mode repositories where no side file metadata is stored we want to
              * avoid the creation of an empty tmp file and later setup of permissions because
@@ -4152,7 +4152,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
         }
 
       /* For regular files and whiteout char devices we continue */
-      if (S_ISREG (stbuf.st_mode) || (S_ISCHR(stbuf.st_mode) && stbuf.st_rdev == 0))
+      if (S_ISREG (stbuf.st_mode) || _ostree_stbuf_is_whiteout(&stbuf))
         ;
       else if (S_ISLNK (stbuf.st_mode))
         {

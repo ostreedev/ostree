@@ -1732,6 +1732,7 @@ _ostree_stbuf_to_gfileinfo (const struct stat *stbuf)
   g_file_info_set_attribute_uint32 (ret, "unix::uid", stbuf->st_uid);
   g_file_info_set_attribute_uint32 (ret, "unix::gid", stbuf->st_gid);
   g_file_info_set_attribute_uint32 (ret, "unix::mode", mode);
+  g_file_info_set_attribute_uint32 (ret, "unix::rdev", stbuf->st_rdev);
 
   /* those aren't stored by ostree, but used by the devino cache */
   g_file_info_set_attribute_uint32 (ret, "unix::device", stbuf->st_dev);
@@ -1814,6 +1815,22 @@ _ostree_stbuf_equal (struct stat *stbuf_a, struct stat *stbuf_b)
   if (stbuf_a->st_gid != stbuf_b->st_gid)
     return FALSE;
   return TRUE;
+}
+
+/* Check if stbuf belongs to a whiteout character device */
+gboolean
+_ostree_stbuf_is_whiteout(struct stat *stbuf)
+{
+  return S_ISCHR(stbuf->st_mode) && stbuf->st_rdev == 0;
+}
+
+/* Check if GFileInfo belongs to a whiteout character device */
+gboolean
+_ostree_gfileinfo_is_whiteout(GFileInfo *file_info)
+{
+  struct stat stbuf;
+  _ostree_gfileinfo_to_stbuf(file_info, &stbuf);
+  return _ostree_stbuf_is_whiteout(&stbuf);
 }
 
 /* Many parts of libostree only care about mode,uid,gid - this creates
@@ -2014,7 +2031,7 @@ file_header_parse (GVariant         *metadata,
   mode = GUINT32_FROM_BE (mode);
   g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
 
-  if (S_ISREG (mode) || S_ISCHR(mode))
+  if (S_ISREG (mode) || _ostree_gfileinfo_is_whiteout(ret_file_info))
     {
       ;
     }
@@ -2065,7 +2082,7 @@ zlib_file_header_parse (GVariant         *metadata,
   g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
   g_file_info_set_size (ret_file_info, GUINT64_FROM_BE (size));
 
-  if (S_ISREG (mode) || S_ISCHR (mode))
+  if (S_ISREG (mode) || _ostree_gfileinfo_is_whiteout(ret_file_info))
     {
       ;
     }

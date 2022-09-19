@@ -91,6 +91,8 @@ GFileInfo * _ostree_stbuf_to_gfileinfo (const struct stat *stbuf);
 void _ostree_gfileinfo_to_stbuf (GFileInfo    *file_info, struct stat  *out_stbuf);
 gboolean _ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b);
 gboolean _ostree_stbuf_equal (struct stat *stbuf_a, struct stat *stbuf_b);
+gboolean _ostree_stbuf_is_whiteout(struct stat *stbuf);
+gboolean _ostree_gfileinfo_is_whiteout(GFileInfo *file_info);
 GFileInfo * _ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid);
 
 static inline void
