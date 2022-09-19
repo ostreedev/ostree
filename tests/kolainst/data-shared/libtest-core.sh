@@ -163,6 +163,13 @@ assert_file_has_mode () {
     fi
 }
 
+assert_is_whiteout_device () {
+    device_details="$(stat -c '%F %t:%T' $1)"
+    if [ "$device_details" != "character special file 0:0" ]; then
+        fatal "File '$1' is not a whiteout character device 0:0"
+    fi
+}
+
 assert_symlink_has_content () {
     if ! test -L "$1"; then
         fatal "File '$1' is not a symbolic link"

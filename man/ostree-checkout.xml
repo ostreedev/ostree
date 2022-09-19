@@ -115,6 +115,17 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--process-passthrough-whiteouts</option></term>
+
+                <listitem><para>
+                   Enable overlayfs whiteout extraction into 0:0 character devices.
+                   Overlayfs whiteouts are encoded inside ostree as <literal>.ostree-wh.filename</literal>
+                   and extracted as 0:0 character devices. This is useful to carry
+                   container storage embedded into ostree.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--allow-noent</option></term>
 
                 <listitem><para>
