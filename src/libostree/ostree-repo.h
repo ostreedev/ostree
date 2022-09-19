@@ -989,8 +989,9 @@ typedef struct {
   gboolean force_copy; /* Since: 2017.6 */
   gboolean bareuseronly_dirs; /* Since: 2017.7 */
   gboolean force_copy_zerosized; /* Since: 2018.9 */
-  gboolean unused_bools[4];
-  /* 4 byte hole on 64 bit */
+  gboolean process_passthrough_whiteouts;
+  gboolean unused_bools[3];
+  /* 3 byte hole on 64 bit */
 
   const char *subpath;
 

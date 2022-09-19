@@ -37,6 +37,7 @@ static gboolean opt_union;
 static gboolean opt_union_add;
 static gboolean opt_union_identical;
 static gboolean opt_whiteouts;
+static gboolean opt_process_passthrough_whiteouts;
 static gboolean opt_from_stdin;
 static char *opt_from_file;
 static gboolean opt_disable_fsync;
@@ -77,6 +78,7 @@ static GOptionEntry options[] = {
   { "union-add", 0, 0, G_OPTION_ARG_NONE, &opt_union_add, "Keep existing files/directories, only add new", NULL },
   { "union-identical", 0, 0, G_OPTION_ARG_NONE, &opt_union_identical, "When layering checkouts, error out if a file would be replaced with a different version, but add new files and directories", NULL },
   { "whiteouts", 0, 0, G_OPTION_ARG_NONE, &opt_whiteouts, "Process 'whiteout' (Docker style) entries", NULL },
+  { "process-passthrough-whiteouts", 0, 0, G_OPTION_ARG_NONE, &opt_process_passthrough_whiteouts, "Enable overlayfs whiteout extraction into char 0:0 devices", NULL },
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
@@ -129,7 +131,8 @@ process_one_checkout (OstreeRepo           *repo,
   if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks ||
       opt_union_add || opt_force_copy || opt_force_copy_zerosized ||
       opt_bareuseronly_dirs || opt_union_identical ||
-      opt_skiplist_file || opt_selinux_policy || opt_selinux_prefix)
+      opt_skiplist_file || opt_selinux_policy || opt_selinux_prefix ||
+      opt_process_passthrough_whiteouts)
     {
       OstreeRepoCheckoutAtOptions checkout_options = { 0, };
 
@@ -162,6 +165,8 @@ process_one_checkout (OstreeRepo           *repo,
         }
       if (opt_whiteouts)
         checkout_options.process_whiteouts = TRUE;
+      if (opt_process_passthrough_whiteouts)
+        checkout_options.process_passthrough_whiteouts = TRUE;
       if (subpath)
         checkout_options.subpath = subpath;
 
