@@ -3514,7 +3514,7 @@ reload_sysroot_config (OstreeRepo          *self,
    * https://github.com/ostreedev/ostree/issues/1719
    * https://github.com/ostreedev/ostree/issues/1801
    */
-  gboolean valid_bootloader;
+  gboolean valid_bootloader = FALSE;
   for (int i = 0; CFG_SYSROOT_BOOTLOADER_OPTS_STR[i]; i++)
     {
       if (g_str_equal (bootloader, CFG_SYSROOT_BOOTLOADER_OPTS_STR[i]))
