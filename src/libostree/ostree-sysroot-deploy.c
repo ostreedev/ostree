@@ -2005,7 +2005,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                                     &variant, NULL))
         {
           metadata = g_variant_get_child_value (variant, 0);
-          g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &deployment_version);
+          (void) g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &deployment_version);
         }
     }
 
@@ -2232,7 +2232,7 @@ get_deployment_ostree_version (OstreeRepo       *repo,
   if (ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum, &variant, NULL))
     {
       g_autoptr(GVariant) metadata = g_variant_get_child_value (variant, 0);
-      g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &version);
+      (void) g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &version);
     }
 
   return g_steal_pointer (&version);
