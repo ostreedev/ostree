@@ -87,6 +87,10 @@ which uses libostree.
 The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
 integration tool supports importing and exporting from libostree repos.
 
+[fedora-iot/otto](https://github.com/fedora-iot/otto) is a tool that helps
+ship ostree commits inside Docker/OCI containers and run a webserver
+to serve the commits.
+
 Fedora [coreos-assembler](https://github.com/coreos/coreos-assembler) is
 the build tool used to generate Fedora CoreOS derivatives.
 
