@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((87 + ${extra_basic_tests:-0}))"
+echo "1..$((89 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -1186,4 +1186,31 @@ if test "$(id -u)" != "0"; then
     echo "ok unwritable repo was caught"
 else
     echo "ok # SKIP not run when root"
+fi
+
+if ! skip_one_without_whiteouts_devices; then
+    cd ${test_tmpdir}
+    rm checkout-test2 -rf
+    $OSTREE checkout test2 checkout-test2
+
+    assert_not_has_file checkout-test2/whiteouts/whiteout
+    assert_not_has_file checkout-test2/whiteouts/whiteout2
+    assert_has_file checkout-test2/whiteouts/.ostree-wh.whiteout
+    assert_has_file checkout-test2/whiteouts/.ostree-wh.whiteout2
+
+    echo "ok checkout: no whiteout passthrough by default"
+fi
+
+if ! skip_one_without_whiteouts_devices; then
+    cd ${test_tmpdir}
+    rm checkout-test2 -rf
+    $OSTREE checkout --process-passthrough-whiteouts test2 checkout-test2
+
+    assert_not_has_file checkout-test2/whiteouts/.ostree-wh.whiteout
+    assert_not_has_file checkout-test2/whiteouts/.ostree-wh.whiteout2
+
+    assert_is_whiteout_device checkout-test2/whiteouts/whiteout
+    assert_is_whiteout_device checkout-test2/whiteouts/whiteout2
+
+    echo "ok checkout: whiteout with overlayfs passthrough processing"
 fi

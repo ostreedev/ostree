@@ -35,6 +35,8 @@
 #define WHITEOUT_PREFIX ".wh."
 #define OPAQUE_WHITEOUT_NAME ".wh..wh..opq"
 
+#define OVERLAYFS_WHITEOUT_PREFIX ".ostree-wh."
+
 /* Per-checkout call state/caching */
 typedef struct {
   GString *path_buf; /* buffer for real path if filtering enabled */
@@ -583,6 +585,117 @@ checkout_file_hardlink (OstreeRepo                          *self,
 }
 
 static gboolean
+_checkout_overlayfs_whiteout_at_no_overwrite (OstreeRepoCheckoutAtOptions    *options,
+                                              int                             destination_dfd,
+                                              const char                     *destination_name,
+                                              GFileInfo                      *file_info,
+                                              GVariant                       *xattrs,
+                                              gboolean                       *found_exant_file,
+                                              GCancellable                   *cancellable,
+                                              GError                        **error)
+{
+  if (found_exant_file != NULL)
+    *found_exant_file = FALSE;
+  guint32 file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+  if (mknodat(destination_dfd, destination_name, (file_mode & ~S_IFMT) | S_IFCHR, (dev_t)0) < 0)
+    {
+      if (errno == EEXIST && found_exant_file != NULL)
+        {
+          *found_exant_file = TRUE;
+          return TRUE;
+        }
+      return glnx_throw_errno_prefix (error, "Creating whiteout char device");
+    }
+  if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+    {
+      if (xattrs != NULL &&
+          !glnx_dfd_name_set_all_xattrs(destination_dfd, destination_name, xattrs,
+                                          cancellable, error))
+          return glnx_throw_errno_prefix (error, "Setting xattrs for whiteout char device");
+
+      if (TEMP_FAILURE_RETRY(fchownat(destination_dfd, destination_name,
+                                      g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                      g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                                      AT_SYMLINK_NOFOLLOW) < 0))
+          return glnx_throw_errno_prefix (error, "fchownat");
+      if (TEMP_FAILURE_RETRY (fchmodat (destination_dfd, destination_name, file_mode & ~S_IFMT, 0)) < 0)
+          return glnx_throw_errno_prefix (error, "fchmodat %s to 0%o", destination_name, file_mode & ~S_IFMT);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_checkout_overlayfs_whiteout_at (OstreeRepo                     *repo,
+                                 OstreeRepoCheckoutAtOptions    *options,
+                                 int                             destination_dfd,
+                                 const char                     *destination_name,
+                                 GFileInfo                      *file_info,
+                                 GVariant                       *xattrs,
+                                 GCancellable                   *cancellable,
+                                 GError                        **error)
+{
+  gboolean found_exant_file = FALSE;
+  if (!_checkout_overlayfs_whiteout_at_no_overwrite(options, destination_dfd, destination_name,
+                                                    file_info, xattrs,&found_exant_file,
+                                                    cancellable, error))
+    return FALSE;
+
+   if (!found_exant_file)
+    return TRUE;
+
+  guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
+  guint32 file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
+  struct stat dest_stbuf;
+
+  switch(options->overwrite_mode)
+    {
+      case OSTREE_REPO_CHECKOUT_OVERWRITE_NONE:
+        return FALSE;
+      case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
+        if (!ot_ensure_unlinked_at (destination_dfd, destination_name, error))
+          return FALSE;
+        return _checkout_overlayfs_whiteout_at_no_overwrite(options, destination_dfd, destination_name,
+                                                   file_info, xattrs, NULL, cancellable, error);
+      case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
+        return TRUE;
+
+      case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
+        if (!glnx_fstatat(destination_dfd, destination_name, &dest_stbuf, AT_SYMLINK_NOFOLLOW,
+                          error))
+          return FALSE;
+        if (!(repo->disable_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY))
+          {
+            g_autoptr(GVariant) fs_xattrs;
+            if (!glnx_dfd_name_get_all_xattrs (destination_dfd, destination_name,
+                                               &fs_xattrs, cancellable, error))
+              return FALSE;
+            if (!g_variant_equal(fs_xattrs, xattrs))
+              return glnx_throw(error, "existing destination file %s xattrs don't match",
+                                destination_name);
+          }
+        if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+          {
+            if (gid != dest_stbuf.st_gid)
+              return glnx_throw(error, "existing destination file %s does not match gid %d",
+                                destination_name, gid);
+
+            if (uid != dest_stbuf.st_uid)
+              return glnx_throw(error, "existing destination file %s does not match uid %d",
+                                destination_name, gid);
+
+            if ((file_mode & ALLPERMS) != (dest_stbuf.st_mode & ALLPERMS))
+              return glnx_throw(error, "existing destination file %s does not match mode %o",
+                                destination_name, file_mode);
+          }
+        break;
+    }
+    return TRUE;
+}
+
+static gboolean
 checkout_one_file_at (OstreeRepo                        *repo,
                       OstreeRepoCheckoutAtOptions       *options,
                       CheckoutState                     *state,
@@ -603,7 +716,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
   /* FIXME - avoid the GFileInfo here */
   g_autoptr(GFileInfo) source_info = NULL;
-  if (!ostree_repo_load_file (repo, checksum, NULL, &source_info, NULL,
+  g_autoptr(GVariant) source_xattrs = NULL;
+  if (!ostree_repo_load_file (repo, checksum, NULL, &source_info, &source_xattrs,
                               cancellable, error))
     return FALSE;
 
@@ -623,6 +737,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   const gboolean is_unreadable = (!is_symlink && (source_mode & S_IRUSR) == 0);
   const gboolean is_whiteout = (!is_symlink && options->process_whiteouts &&
                                 g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
+  const gboolean is_overlayfs_whiteout = (!is_symlink && g_str_has_prefix (destination_name, OVERLAYFS_WHITEOUT_PREFIX));
   const gboolean is_reg_zerosized = (!is_symlink && g_file_info_get_size (source_info) == 0);
   const gboolean override_user_unreadable = (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER && is_unreadable);
 
@@ -642,6 +757,18 @@ checkout_one_file_at (OstreeRepo                        *repo,
         return FALSE;
 
       need_copy = FALSE;
+    }
+  else if (is_overlayfs_whiteout && options->process_passthrough_whiteouts)
+    {
+      const char *name = destination_name + (sizeof (OVERLAYFS_WHITEOUT_PREFIX) - 1);
+
+      if (!name[0])
+        return glnx_throw (error, "Invalid empty overlayfs whiteout '%s'", name);
+
+      g_assert (name[0] != '/'); /* Sanity */
+
+      return _checkout_overlayfs_whiteout_at(repo, options, destination_dfd, name,
+                                             source_info, source_xattrs, cancellable, error);
     }
   else if (is_reg_zerosized || override_user_unreadable)
     {

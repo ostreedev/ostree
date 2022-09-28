@@ -249,6 +249,7 @@ _ostree_checkout() {
         --union-identical
         --user-mode -U
         --whiteouts
+        --process-passthrough-whiteouts
     "
 
     local options_with_args="
