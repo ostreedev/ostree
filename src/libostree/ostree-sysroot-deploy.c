@@ -641,7 +641,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
     return FALSE;
 
   /* Generate hardlink farm, then opendir it */
-  OstreeRepoCheckoutAtOptions checkout_opts = { 0, };
+  OstreeRepoCheckoutAtOptions checkout_opts = { .process_passthrough_whiteouts = TRUE };
   if (!ostree_repo_checkout_at (repo, &checkout_opts, osdeploy_dfd,
                                 checkout_target_name, csum,
                                 cancellable, error))

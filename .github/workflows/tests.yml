@@ -172,8 +172,14 @@ jobs:
       # An empty string isn't valid, so a dummy --label option is always
       # added.
       options: --label ostree ${{ matrix.container-options }}
+      # make sure tests are performed on a non-overlayfs filesystem
+      volumes:
+        - tmp_dir:/test-tmp
+      env:
+        TEST_TMPDIR: /test-tmp
 
     steps:
+
       - name: Pre-checkout setup
         run: ${{ matrix.pre-checkout-setup }}
         if: ${{ matrix.pre-checkout-setup }}
@@ -187,7 +193,7 @@ jobs:
         run: ./ci/gh-install.sh ${{ matrix.extra-packages }}
 
       - name: Add non-root user
-        run: "useradd builder && chown -R -h builder: ."
+        run: "useradd builder && chown -R -h builder: . $TEST_TMPDIR"
 
       - name: Build and test
         run: runuser -u builder -- ./ci/gh-build.sh ${{ matrix.configure-options }}

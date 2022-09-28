@@ -107,6 +107,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-deploy-nomerge.sh \
 	tests/test-admin-deploy-none.sh \
 	tests/test-admin-deploy-bootid-gc.sh \
+	tests/test-admin-deploy-whiteouts.sh \
 	tests/test-osupdate-dtb.sh \
 	tests/test-admin-instutil-set-kargs.sh \
 	tests/test-admin-upgrade-not-backwards.sh \
