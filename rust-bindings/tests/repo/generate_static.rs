@@ -14,8 +14,10 @@ fn should_generate_static_delta_at() {
     let delta_path = delta_dir.path().join("static_delta.file");
     let path_var = delta_path
         .to_str()
+        .map(std::ffi::CString::new)
         .expect("no valid path")
-        .as_bytes()
+        .unwrap()
+        .as_bytes_with_nul()
         .to_variant();
 
     let test_repo = TestRepo::new();
@@ -38,5 +40,5 @@ fn should_generate_static_delta_at() {
         )
         .expect("static delta generate");
 
-    assert!(std::fs::File::open(&delta_path).is_err());
+    assert!(delta_path.try_exists().unwrap());
 }
