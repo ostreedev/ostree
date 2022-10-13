@@ -40,40 +40,29 @@ stage("Build") {
   }
 }
 
-// Build FCOS and do a kola basic run
-stage("FCOS") {
-  cosaPod(runAsUser: 0, memory: "3072Mi", cpu: "4") {
-    stage("Build FCOS") {
-      checkout scm
-      unstash 'build'
-      shwrap("""
-        # Move the bits into the cosa pod
-        rsync -rlv installed/rootfs/ /
-        rsync -rlv installed/tests/ /
-        coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
-        mkdir -p overrides/rootfs
-        # And override the on-host bits
-        mv installed/rootfs/* overrides/rootfs/
-        rm installed -rf
-        coreos-assembler fetch
-        coreos-assembler build
-        coreos-assembler buildextend-metal
-        coreos-assembler buildextend-metal4k
-        coreos-assembler buildextend-live --fast
+// Build FCOS and run kola tests.
+// Both kola and kolaTestIso require 4G max. Add 512M for overhead.
+cosaPod(runAsUser: 0, memory: "4608Mi", cpu: "4") {
+  stage("Build FCOS") {
+    checkout scm
+    unstash 'build'
+    shwrap("""
+      # Move the bits into the cosa pod
+      rsync -rlv installed/rootfs/ /
+      rsync -rlv installed/tests/ /
+      coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
+      mkdir -p overrides/rootfs
+      # And override the on-host bits
+      mv installed/rootfs/* overrides/rootfs/
+      rm installed -rf
+      coreos-assembler fetch
+      coreos-assembler build
+      coreos-assembler buildextend-metal
+      coreos-assembler buildextend-metal4k
+      coreos-assembler buildextend-live --fast
 
-      """)
-    }
-    stage("Test") {
-      parallel metal: {
-        try {
-          shwrap("kola testiso -S --scenarios pxe-install,iso-offline-install,pxe-offline-install --output-dir tmp/kola-testiso-metal")
-        } finally {
-          shwrap("tar -cf - tmp/kola-testiso-metal/ | xz -c9 > ${env.WORKSPACE}/kola-testiso-metal.tar.xz")
-          archiveArtifacts allowEmptyArchive: true, artifacts: 'kola-testiso*.tar.xz'
-        }
-      }, kola: {
-        fcosKola(cosaDir: "${env.WORKSPACE}")
-      }
-    }
+    """)
   }
+  kola(cosaDir: "${env.WORKSPACE}")
+  kolaTestIso(cosaDir: "${env.WORKSPACE}", skipMetal4k: true, skipMultipath: true)
 }
