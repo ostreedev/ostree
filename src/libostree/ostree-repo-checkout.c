@@ -684,7 +684,7 @@ _checkout_overlayfs_whiteout_at (OstreeRepo                     *repo,
 
             if (uid != dest_stbuf.st_uid)
               return glnx_throw(error, "existing destination file %s does not match uid %d",
-                                destination_name, gid);
+                                destination_name, uid);
 
             if ((file_mode & ALLPERMS) != (dest_stbuf.st_mode & ALLPERMS))
               return glnx_throw(error, "existing destination file %s does not match mode %o",
