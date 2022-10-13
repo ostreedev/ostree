@@ -273,7 +273,8 @@ _ostree_secure_execution_generate_initrd (const gchar *initrd,
     return glnx_prefix_error (error, "s390x SE: opening new ramdisk");
   {
     glnx_autofd int fd = -1;
-    glnx_openat_rdonly (AT_FDCWD, initrd, TRUE, &fd, error);
+    if (!glnx_openat_rdonly (AT_FDCWD, initrd, TRUE, &fd, error))
+      return glnx_prefix_error (error, "s390x SE: opening initrd");
     if (glnx_regfile_copy_bytes (fd, out_initrd->fd, (off_t) -1) < 0)
       return glnx_throw_errno_prefix (error, "s390x SE: copying ramdisk");
   }
