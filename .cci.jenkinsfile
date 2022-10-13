@@ -42,29 +42,27 @@ stage("Build") {
 
 // Build FCOS and run kola tests.
 // Both fcosKola and fcosKolaTestIso require 4G max. Add 512M for overhead.
-stage("FCOS") {
-  cosaPod(runAsUser: 0, memory: "4608Mi", cpu: "4") {
-    stage("Build FCOS") {
-      checkout scm
-      unstash 'build'
-      shwrap("""
-        # Move the bits into the cosa pod
-        rsync -rlv installed/rootfs/ /
-        rsync -rlv installed/tests/ /
-        coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
-        mkdir -p overrides/rootfs
-        # And override the on-host bits
-        mv installed/rootfs/* overrides/rootfs/
-        rm installed -rf
-        coreos-assembler fetch
-        coreos-assembler build
-        coreos-assembler buildextend-metal
-        coreos-assembler buildextend-metal4k
-        coreos-assembler buildextend-live --fast
+cosaPod(runAsUser: 0, memory: "4608Mi", cpu: "4") {
+  stage("Build FCOS") {
+    checkout scm
+    unstash 'build'
+    shwrap("""
+      # Move the bits into the cosa pod
+      rsync -rlv installed/rootfs/ /
+      rsync -rlv installed/tests/ /
+      coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
+      mkdir -p overrides/rootfs
+      # And override the on-host bits
+      mv installed/rootfs/* overrides/rootfs/
+      rm installed -rf
+      coreos-assembler fetch
+      coreos-assembler build
+      coreos-assembler buildextend-metal
+      coreos-assembler buildextend-metal4k
+      coreos-assembler buildextend-live --fast
 
-      """)
-    }
-    fcosKola(cosaDir: "${env.WORKSPACE}")
-    fcosKolaTestIso(cosaDir: "${env.WORKSPACE}", skipMetal4k: true, skipMultipath: true)
+    """)
   }
+  fcosKola(cosaDir: "${env.WORKSPACE}")
+  fcosKolaTestIso(cosaDir: "${env.WORKSPACE}", skipMetal4k: true, skipMultipath: true)
 }
