@@ -1334,9 +1334,9 @@ get_fallback_headers (OstreeRepo               *self,
  *   - inline-parts: b: Put part data in header, to get a single file delta.  Default FALSE.
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
  *   - endianness: b: Deltas use host byte order by default; this option allows choosing (G_BIG_ENDIAN or G_LITTLE_ENDIAN)
- *   - filename: ay: Save delta superblock to this filename, and parts in the same directory.  Default saves to repository.
- *   - sign-name: ay: Signature type to use.
- *   - sign-key-ids: as: Array of keys used to sign delta superblock.
+ *   - filename: ^ay: Save delta superblock to this filename (bytestring), and parts in the same directory.  Default saves to repository.
+ *   - sign-name: ^ay: Signature type to use (bytestring).
+ *   - sign-key-ids: ^as: NULL-terminated array of keys used to sign delta superblock.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo                   *self,
@@ -1409,9 +1409,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (!g_variant_lookup (params, "filename", "^&ay", &opt_filename))
     opt_filename = NULL;
+  else if (opt_filename[0] == '\0')
+    return glnx_throw (error, "Invalid 'filename' parameter");
 
   if (!g_variant_lookup (params, "sign-name", "^&ay", &opt_sign_name))
     opt_sign_name = NULL;
+  else if (opt_sign_name[0] == '\0')
+    return glnx_throw (error, "Invalid 'sign-name' parameter");
 
   if (!g_variant_lookup (params, "sign-key-ids", "^a&s", &opt_key_ids))
     opt_key_ids = NULL;
