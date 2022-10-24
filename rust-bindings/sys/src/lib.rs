@@ -525,7 +525,8 @@ pub struct OstreeRepoCheckoutAtOptions {
     pub force_copy: gboolean,
     pub bareuseronly_dirs: gboolean,
     pub force_copy_zerosized: gboolean,
-    pub unused_bools: [gboolean; 4],
+    pub process_passthrough_whiteouts: gboolean,
+    pub unused_bools: [gboolean; 3],
     pub subpath: *const c_char,
     pub devino_to_csum_cache: *mut OstreeRepoDevInoCache,
     pub unused_ints: [c_int; 6],
@@ -548,6 +549,10 @@ impl ::std::fmt::Debug for OstreeRepoCheckoutAtOptions {
             .field("force_copy", &self.force_copy)
             .field("bareuseronly_dirs", &self.bareuseronly_dirs)
             .field("force_copy_zerosized", &self.force_copy_zerosized)
+            .field(
+                "process_passthrough_whiteouts",
+                &self.process_passthrough_whiteouts,
+            )
             .field("unused_bools", &self.unused_bools)
             .field("subpath", &self.subpath)
             .field("devino_to_csum_cache", &self.devino_to_csum_cache)

@@ -428,11 +428,6 @@ impl Repo {
     //    unsafe { TODO: call ffi:ostree_repo_list_collection_refs() }
     //}
 
-    //#[doc(alias = "ostree_repo_list_commit_objects_starting_with")]
-    //pub fn list_commit_objects_starting_with<P: IsA<gio::Cancellable>>(&self, start: &str, out_commits: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 203 }/TypeId { ns_id: 2, id: 203 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
-    //    unsafe { TODO: call ffi:ostree_repo_list_commit_objects_starting_with() }
-    //}
-
     //#[doc(alias = "ostree_repo_list_objects")]
     //pub fn list_objects<P: IsA<gio::Cancellable>>(&self, flags: RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 203 }/TypeId { ns_id: 2, id: 203 }, cancellable: Option<&P>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ffi:ostree_repo_list_objects() }
