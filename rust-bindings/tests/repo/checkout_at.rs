@@ -1,5 +1,4 @@
 use crate::util::*;
-use gio::NONE_CANCELLABLE;
 use ostree::*;
 use std::os::unix::io::AsRawFd;
 
@@ -17,7 +16,7 @@ fn should_checkout_at_with_none_options() {
             dirfd.as_raw_fd(),
             "test-checkout",
             &checksum,
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("checkout at");
 
@@ -38,7 +37,7 @@ fn should_checkout_at_with_default_options() {
             dirfd.as_raw_fd(),
             "test-checkout",
             &checksum,
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("checkout at");
 
@@ -65,7 +64,7 @@ fn should_checkout_at_with_options() {
             dirfd.as_raw_fd(),
             "test-checkout",
             &checksum,
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("checkout at");
 
@@ -98,7 +97,7 @@ fn should_checkout_at_with_filter() {
             dirfd.as_raw_fd(),
             "test-checkout",
             &checksum,
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("checkout at");
 

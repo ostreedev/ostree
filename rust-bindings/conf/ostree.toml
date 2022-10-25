@@ -27,7 +27,6 @@ generate = [
     "OSTree.DiffItem",
     "OSTree.GpgSignatureAttr",
     "OSTree.GpgSignatureFormatFlags",
-    "OSTree.GpgVerifyResult",
     "OSTree.MutableTree",
     "OSTree.ObjectType",
     "OSTree.Remote",
@@ -43,7 +42,6 @@ generate = [
     "OSTree.RepoCommitState",
     "OSTree.RepoDevInoCache",
     "OSTree.RepoFile",
-    "OSTree.RepoFinderAvahi",
     "OSTree.RepoFinderConfig",
     "OSTree.RepoFinderMount",
     "OSTree.RepoFinderOverride",
@@ -240,6 +238,22 @@ status = "generate"
     [[object.function]]
     # [IGNORE] overlaps with repo()
     name = "get_repo"
+    ignore = true
+
+[[object]]
+name = "OSTree.RepoFinderAvahi"
+status = "generate"
+    [[object.function]]
+    # [FAIL] this fails because it should return a boolean, but it doesn't
+    name = "start"
+    ignore = true
+
+[[object]]
+name = "OSTree.GpgVerifyResult"
+status = "generate"
+    [[object.function]]
+    # [FAIL] these fail because of some issues with GString
+    pattern = "^describe(|_variant)$"
     ignore = true
 
 [[object]]

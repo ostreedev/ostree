@@ -1,5 +1,4 @@
 use crate::util::*;
-use ostree::gio::NONE_CANCELLABLE;
 use ostree::prelude::*;
 use ostree::{ObjectName, ObjectType};
 
@@ -19,9 +18,9 @@ fn should_commit_content_to_repo_and_list_refs_again() {
     assert_eq!(test_repo.repo.require_rev("test").unwrap(), checksum);
 
     let repo = ostree::Repo::new_for_path(test_repo.dir.path());
-    repo.open(NONE_CANCELLABLE).expect("OSTree test_repo");
+    repo.open(gio::Cancellable::NONE).expect("OSTree test_repo");
     let refs = repo
-        .list_refs(None, NONE_CANCELLABLE)
+        .list_refs(None, gio::Cancellable::NONE)
         .expect("failed to list refs");
     assert_eq!(1, refs.len());
     assert_eq!(checksum, refs["test"]);
@@ -29,7 +28,7 @@ fn should_commit_content_to_repo_and_list_refs_again() {
 
 #[test]
 fn list_commits() {
-    let cancellable = gio::NONE_CANCELLABLE;
+    let cancellable = ostree::gio::Cancellable::NONE;
     let test_repo = TestRepo::new();
 
     for prefix in [None, Some("a"), Some("0abcde")] {
@@ -72,7 +71,7 @@ fn cap_std_commit() {
 
     let repo2 = ostree::Repo::open_at_dir(&test_repo.dir, ".").unwrap();
     let refs = repo2
-        .list_refs(None, NONE_CANCELLABLE)
+        .list_refs(None, gio::Cancellable::NONE)
         .expect("failed to list refs");
     assert_eq!(1, refs.len());
     assert_eq!(checksum, refs["test"]);
@@ -85,7 +84,7 @@ fn repo_traverse_and_read() {
 
     let objects = test_repo
         .repo
-        .traverse_commit(&checksum, -1, NONE_CANCELLABLE)
+        .traverse_commit(&checksum, -1, gio::Cancellable::NONE)
         .expect("traverse commit");
 
     assert_eq!(
@@ -122,7 +121,7 @@ fn repo_traverse_and_read() {
         .repo
         .query_file(
             "89f84ca9854a80e85b583e46a115ba4985254437027bad34f0b113219323d3f8",
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .unwrap();
     assert_eq!(finfo.size(), 5);
@@ -136,13 +135,13 @@ fn should_checkout_tree() {
     let checkout_dir = tempfile::tempdir().expect("checkout dir");
     let file = test_repo
         .repo
-        .read_commit("test", NONE_CANCELLABLE)
+        .read_commit("test", gio::Cancellable::NONE)
         .expect("read commit")
         .0
         .downcast::<ostree::RepoFile>()
         .expect("RepoFile");
     let info = file
-        .query_info("*", gio::FileQueryInfoFlags::NONE, NONE_CANCELLABLE)
+        .query_info("*", gio::FileQueryInfoFlags::NONE, gio::Cancellable::NONE)
         .expect("file info");
     test_repo
         .repo
@@ -152,7 +151,7 @@ fn should_checkout_tree() {
             &gio::File::for_path(checkout_dir.path().join("test-checkout")),
             &file,
             &info,
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("checkout tree");
 
@@ -168,7 +167,7 @@ fn should_write_content_to_repo() {
     let dest = TestRepo::new();
     let objects = src
         .repo
-        .traverse_commit(&checksum, -1, NONE_CANCELLABLE)
+        .traverse_commit(&checksum, -1, gio::Cancellable::NONE)
         .expect("traverse");
     for obj in objects {
         match obj.object_type() {
@@ -192,11 +191,11 @@ fn repo_file() {
 fn copy_file(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) {
     let (stream, len) = src
         .repo
-        .load_object_stream(obj.object_type(), obj.checksum(), NONE_CANCELLABLE)
+        .load_object_stream(obj.object_type(), obj.checksum(), gio::Cancellable::NONE)
         .expect("load object stream");
     let out_csum = dest
         .repo
-        .write_content(None, &stream, len, NONE_CANCELLABLE)
+        .write_content(None, &stream, len, gio::Cancellable::NONE)
         .expect("write content");
     assert_eq!(out_csum.to_string(), obj.checksum());
 }
@@ -208,7 +207,7 @@ fn copy_metadata(src: &TestRepo, dest: &TestRepo, obj: &ObjectName) {
         .expect("load variant");
     let out_csum = dest
         .repo
-        .write_metadata(obj.object_type(), None, &data, NONE_CANCELLABLE)
+        .write_metadata(obj.object_type(), None, &data, gio::Cancellable::NONE)
         .expect("write metadata");
     assert_eq!(out_csum.to_string(), obj.checksum());
 }

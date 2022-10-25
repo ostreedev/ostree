@@ -76,14 +76,14 @@ mod tests {
             let tmp_path = Some(tmpdir.path().to_path_buf());
             let builder = SysrootBuilder::new().path(tmp_path);
 
-            let sysroot = builder.create(gio::NONE_CANCELLABLE).unwrap();
+            let sysroot = builder.create(gio::Cancellable::NONE).unwrap();
 
             assert!(sysroot.fd() >= 0);
             assert_eq!(sysroot.deployments().len(), 0);
             assert_eq!(sysroot.booted_deployment(), None);
             assert_eq!(sysroot.bootversion(), 0);
             assert_eq!(sysroot.subbootversion(), 0);
-            sysroot.cleanup(gio::NONE_CANCELLABLE).unwrap();
+            sysroot.cleanup(gio::Cancellable::NONE).unwrap();
 
             sysroot.path().unwrap()
         };
@@ -91,14 +91,14 @@ mod tests {
             let tmp_path = Some(tmpdir.path().to_path_buf());
             let builder = SysrootBuilder::new().path(tmp_path);
 
-            let sysroot = builder.create(gio::NONE_CANCELLABLE).unwrap();
+            let sysroot = builder.create(gio::Cancellable::NONE).unwrap();
 
             assert!(sysroot.fd() >= 0);
             assert_eq!(sysroot.deployments().len(), 0);
             assert_eq!(sysroot.booted_deployment(), None);
             assert_eq!(sysroot.bootversion(), 0);
             assert_eq!(sysroot.subbootversion(), 0);
-            sysroot.cleanup(gio::NONE_CANCELLABLE).unwrap();
+            sysroot.cleanup(gio::Cancellable::NONE).unwrap();
 
             sysroot.path().unwrap()
         };

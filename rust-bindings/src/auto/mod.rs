@@ -3,79 +3,55 @@
 // DO NOT EDIT
 
 mod async_progress;
-pub use self::async_progress::{AsyncProgress};
+pub use self::async_progress::AsyncProgress;
 
 mod bootconfig_parser;
-pub use self::bootconfig_parser::{BootconfigParser};
+pub use self::bootconfig_parser::BootconfigParser;
 
 mod content_writer;
-pub use self::content_writer::{ContentWriter};
+pub use self::content_writer::ContentWriter;
 
 mod deployment;
-pub use self::deployment::{Deployment};
+pub use self::deployment::Deployment;
 
 mod gpg_verify_result;
-pub use self::gpg_verify_result::{GpgVerifyResult};
+pub use self::gpg_verify_result::GpgVerifyResult;
 
 mod mutable_tree;
-pub use self::mutable_tree::{MutableTree};
+pub use self::mutable_tree::MutableTree;
 
 mod repo;
-pub use self::repo::{Repo};
+pub use self::repo::Repo;
 
 mod repo_file;
-pub use self::repo_file::{RepoFile};
+pub use self::repo_file::RepoFile;
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 mod repo_finder;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-pub use self::repo_finder::{RepoFinder, NONE_REPO_FINDER};
+pub use self::repo_finder::RepoFinder;
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 mod repo_finder_avahi;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-pub use self::repo_finder_avahi::{RepoFinderAvahi};
+pub use self::repo_finder_avahi::RepoFinderAvahi;
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 mod repo_finder_config;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-pub use self::repo_finder_config::{RepoFinderConfig};
+pub use self::repo_finder_config::RepoFinderConfig;
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 mod repo_finder_mount;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-pub use self::repo_finder_mount::{RepoFinderMount};
+pub use self::repo_finder_mount::RepoFinderMount;
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 mod repo_finder_override;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-pub use self::repo_finder_override::{RepoFinderOverride};
+pub use self::repo_finder_override::RepoFinderOverride;
 
 mod se_policy;
-pub use self::se_policy::{SePolicy};
+pub use self::se_policy::SePolicy;
 
-#[cfg(any(feature = "v2020_2", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
 mod sign;
-#[cfg(any(feature = "v2020_2", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
-pub use self::sign::{Sign, NONE_SIGN};
+pub use self::sign::Sign;
 
 mod sysroot;
-pub use self::sysroot::{Sysroot};
+pub use self::sysroot::Sysroot;
 
 mod sysroot_upgrader;
-pub use self::sysroot_upgrader::{SysrootUpgrader};
+pub use self::sysroot_upgrader::SysrootUpgrader;
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
@@ -208,10 +184,6 @@ pub use self::constants::TREE_GVARIANT_STRING;
 
 #[doc(hidden)]
 pub mod traits {
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     pub use super::repo_finder::RepoFinderExt;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
     pub use super::sign::SignExt;
 }

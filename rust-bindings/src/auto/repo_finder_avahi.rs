@@ -3,9 +3,10 @@
 // DO NOT EDIT
 
 use crate::RepoFinder;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use glib::translate::*;
 use std::fmt;
-use std::ptr;
 
 glib::wrapper! {
     #[doc(alias = "OstreeRepoFinderAvahi")]
@@ -17,22 +18,15 @@ glib::wrapper! {
 }
 
 impl RepoFinderAvahi {
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_avahi_new")]
     pub fn new(context: Option<&glib::MainContext>) -> RepoFinderAvahi {
-        unsafe {
-            from_glib_full(ffi::ostree_repo_finder_avahi_new(context.to_glib_none().0))
-        }
+        unsafe { from_glib_full(ffi::ostree_repo_finder_avahi_new(context.to_glib_none().0)) }
     }
 
-    #[doc(alias = "ostree_repo_finder_avahi_start")]
-    pub fn start(&self) -> Result<(), glib::Error> {
-        unsafe {
-            let mut error = ptr::null_mut();
-            let _ = ffi::ostree_repo_finder_avahi_start(self.to_glib_none().0, &mut error);
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_avahi_stop")]
     pub fn stop(&self) {
         unsafe {

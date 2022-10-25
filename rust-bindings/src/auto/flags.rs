@@ -11,8 +11,8 @@ use glib::Type;
 use std::fmt;
 
 #[cfg(any(feature = "v2017_13", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
 bitflags! {
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
     #[doc(alias = "OstreeChecksumFlags")]
     pub struct ChecksumFlags: u32 {
         #[doc(alias = "OSTREE_CHECKSUM_FLAGS_NONE")]
@@ -157,8 +157,8 @@ impl FromGlib<ffi::OstreeRepoCommitModifierFlags> for RepoCommitModifierFlags {
 }
 
 #[cfg(any(feature = "v2015_7", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
 bitflags! {
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
     #[doc(alias = "OstreeRepoCommitState")]
     pub struct RepoCommitState: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_STATE_NORMAL")]
@@ -411,8 +411,8 @@ impl FromGlib<ffi::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
 }
 
 #[cfg(any(feature = "v2021_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
 bitflags! {
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
     #[doc(alias = "OstreeRepoVerifyFlags")]
     pub struct RepoVerifyFlags: u32 {
         #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NONE")]
@@ -623,4 +623,3 @@ impl FromGlib<ffi::OstreeSysrootUpgraderPullFlags> for SysrootUpgraderPullFlags 
         Self::from_bits_truncate(value)
     }
 }
-

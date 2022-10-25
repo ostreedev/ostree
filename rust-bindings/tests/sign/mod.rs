@@ -13,7 +13,7 @@ fn sign_api_should_work() {
     let result = ostree::prelude::SignExt::data(
         &dummy_sign,
         &glib::Bytes::from_static(b"1234"),
-        gio::NONE_CANCELLABLE,
+        gio::Cancellable::NONE,
     );
     assert!(result.is_err());
 
@@ -61,7 +61,7 @@ echo $ED25519SECRET > ed25519.secret
 
     let payload = &glib::Bytes::from_static(b"1234");
 
-    let signature = signer.data(payload, gio::NONE_CANCELLABLE).unwrap();
+    let signature = signer.data(payload, gio::Cancellable::NONE).unwrap();
     let signatures = [&*signature].to_variant();
 
     let msg = signer.data_verify(payload, &signatures).unwrap().unwrap();

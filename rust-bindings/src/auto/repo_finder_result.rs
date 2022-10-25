@@ -18,15 +18,13 @@ glib::wrapper! {
 
 impl RepoFinderResult {
     //#[doc(alias = "ostree_repo_finder_result_new")]
-    //pub fn new<P: IsA<RepoFinder>>(remote: &Remote, finder: &P, priority: i32, ref_to_checksum: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, ref_to_timestamp: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 9 }, summary_last_modified: u64) -> RepoFinderResult {
+    //pub fn new(remote: &Remote, finder: &impl IsA<RepoFinder>, priority: i32, ref_to_checksum: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 28 }, ref_to_timestamp: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 1, id: 0 }/TypeId { ns_id: 0, id: 9 }, summary_last_modified: u64) -> RepoFinderResult {
     //    unsafe { TODO: call ffi:ostree_repo_finder_result_new() }
     //}
 
     #[doc(alias = "ostree_repo_finder_result_compare")]
     fn compare(&self, b: &RepoFinderResult) -> i32 {
-        unsafe {
-            ffi::ostree_repo_finder_result_compare(self.to_glib_none().0, b.to_glib_none().0)
-        }
+        unsafe { ffi::ostree_repo_finder_result_compare(self.to_glib_none().0, b.to_glib_none().0) }
     }
 }
 

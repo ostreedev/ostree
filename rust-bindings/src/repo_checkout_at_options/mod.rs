@@ -243,7 +243,7 @@ mod tests {
             }),
             #[cfg(feature = "v2017_6")]
             sepolicy: Some(
-                SePolicy::new(&gio::File::for_path("a/b"), gio::NONE_CANCELLABLE).unwrap(),
+                SePolicy::new(&gio::File::for_path("a/b"), gio::Cancellable::NONE).unwrap(),
             ),
             sepolicy_prefix: Some("prefix".into()),
         };
