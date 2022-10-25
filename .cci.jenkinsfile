@@ -41,8 +41,8 @@ stage("Build") {
 }
 
 // Build FCOS and run kola tests.
-// Both kola and kolaTestIso require 4G max. Add 512M for overhead.
-cosaPod(runAsUser: 0, memory: "4608Mi", cpu: "4") {
+// Both kola and kolaTestIso require 4G max. Add 1G for overhead.
+cosaPod(runAsUser: 0, memory: "5Gi", cpu: "4") {
   stage("Build FCOS") {
     checkout scm
     unstash 'build'
