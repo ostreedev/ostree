@@ -11,10 +11,6 @@
 )]
 #![cfg_attr(feature = "dox", feature(doc_cfg))]
 
-use gio_sys as gio;
-use glib_sys as glib;
-use gobject_sys as gobject;
-
 mod manual;
 
 pub use manual::*;
@@ -22,7 +18,7 @@ pub use manual::*;
 #[allow(unused_imports)]
 use libc::{
     c_char, c_double, c_float, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void,
-    intptr_t, size_t, ssize_t, time_t, uintptr_t, FILE,
+    intptr_t, size_t, ssize_t, uintptr_t, FILE,
 };
 
 #[allow(unused_imports)]
@@ -297,8 +293,8 @@ pub type OstreeRepoImportArchiveTranslatePathname = Option<
 >;
 
 // Records
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeAsyncProgressClass {
     pub parent_class: gobject::GObjectClass,
     pub changed: Option<unsafe extern "C" fn(*mut OstreeAsyncProgress, gpointer)>,
@@ -314,37 +310,55 @@ impl ::std::fmt::Debug for OstreeAsyncProgressClass {
 }
 
 #[repr(C)]
-pub struct _OstreeBootloader(c_void);
+pub struct _OstreeBootloader {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeBootloader = *mut _OstreeBootloader;
 
 #[repr(C)]
-pub struct _OstreeBootloaderGrub2(c_void);
+pub struct _OstreeBootloaderGrub2 {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeBootloaderGrub2 = *mut _OstreeBootloaderGrub2;
 
 #[repr(C)]
-pub struct _OstreeBootloaderSyslinux(c_void);
+pub struct _OstreeBootloaderSyslinux {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeBootloaderSyslinux = *mut _OstreeBootloaderSyslinux;
 
 #[repr(C)]
-pub struct _OstreeBootloaderUboot(c_void);
+pub struct _OstreeBootloaderUboot {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeBootloaderUboot = *mut _OstreeBootloaderUboot;
 
 #[repr(C)]
-pub struct _OstreeBootloaderZipl(c_void);
+pub struct _OstreeBootloaderZipl {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeBootloaderZipl = *mut _OstreeBootloaderZipl;
 
 #[repr(C)]
-pub struct _OstreeChecksumInputStreamPrivate(c_void);
+pub struct _OstreeChecksumInputStreamPrivate {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeChecksumInputStreamPrivate = *mut _OstreeChecksumInputStreamPrivate;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeCollectionRef {
     pub collection_id: *mut c_char,
     pub ref_name: *mut c_char,
@@ -359,8 +373,8 @@ impl ::std::fmt::Debug for OstreeCollectionRef {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeCommitSizesEntry {
     pub checksum: *mut c_char,
     pub objtype: OstreeObjectType,
@@ -379,8 +393,8 @@ impl ::std::fmt::Debug for OstreeCommitSizesEntry {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeContentWriterClass {
     pub parent_class: gio::GOutputStreamClass,
 }
@@ -393,8 +407,8 @@ impl ::std::fmt::Debug for OstreeContentWriterClass {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeDiffDirsOptions {
     pub owner_uid: c_int,
     pub owner_gid: c_int,
@@ -417,8 +431,8 @@ impl ::std::fmt::Debug for OstreeDiffDirsOptions {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeDiffItem {
     pub refcount: c_int,
     pub src: *mut gio::GFile,
@@ -444,37 +458,55 @@ impl ::std::fmt::Debug for OstreeDiffItem {
 }
 
 #[repr(C)]
-pub struct _OstreeGpgVerifier(c_void);
+pub struct _OstreeGpgVerifier {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeGpgVerifier = *mut _OstreeGpgVerifier;
 
 #[repr(C)]
-pub struct _OstreeKernelArgs(c_void);
+pub struct _OstreeKernelArgs {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeKernelArgs = *mut _OstreeKernelArgs;
 
 #[repr(C)]
-pub struct _OstreeKernelArgsEntry(c_void);
+pub struct _OstreeKernelArgsEntry {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeKernelArgsEntry = *mut _OstreeKernelArgsEntry;
 
 #[repr(C)]
-pub struct _OstreeLibarchiveInputStreamPrivate(c_void);
+pub struct _OstreeLibarchiveInputStreamPrivate {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeLibarchiveInputStreamPrivate = *mut _OstreeLibarchiveInputStreamPrivate;
 
 #[repr(C)]
-pub struct _OstreeLzmaCompressor(c_void);
+pub struct _OstreeLzmaCompressor {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeLzmaCompressor = *mut _OstreeLzmaCompressor;
 
 #[repr(C)]
-pub struct _OstreeLzmaDecompressor(c_void);
+pub struct _OstreeLzmaDecompressor {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeLzmaDecompressor = *mut _OstreeLzmaDecompressor;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeMutableTreeClass {
     pub parent_class: gobject::GObjectClass,
 }
@@ -487,8 +519,8 @@ impl ::std::fmt::Debug for OstreeMutableTreeClass {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeMutableTreeIter {
     pub in_files: gboolean,
     pub iter: glib::GHashTableIter,
@@ -504,7 +536,10 @@ impl ::std::fmt::Debug for OstreeMutableTreeIter {
 }
 
 #[repr(C)]
-pub struct OstreeRemote(c_void);
+pub struct OstreeRemote {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRemote {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -513,8 +548,8 @@ impl ::std::fmt::Debug for OstreeRemote {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoCheckoutAtOptions {
     pub mode: OstreeRepoCheckoutMode,
     pub overwrite_mode: OstreeRepoCheckoutOverwriteMode,
@@ -586,7 +621,10 @@ impl ::std::fmt::Debug for OstreeRepoCheckoutOptions {
 }
 
 #[repr(C)]
-pub struct OstreeRepoCommitModifier(c_void);
+pub struct OstreeRepoCommitModifier {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoCommitModifier {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -595,8 +633,8 @@ impl ::std::fmt::Debug for OstreeRepoCommitModifier {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoCommitTraverseIter {
     pub initialized: gboolean,
     pub dummy: [gpointer; 10],
@@ -613,7 +651,10 @@ impl ::std::fmt::Debug for OstreeRepoCommitTraverseIter {
 }
 
 #[repr(C)]
-pub struct OstreeRepoDevInoCache(c_void);
+pub struct OstreeRepoDevInoCache {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoDevInoCache {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -637,8 +678,8 @@ impl ::std::fmt::Debug for OstreeRepoExportArchiveOptions {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoFileClass {
     pub parent_class: gobject::GObjectClass,
 }
@@ -652,12 +693,15 @@ impl ::std::fmt::Debug for OstreeRepoFileClass {
 }
 
 #[repr(C)]
-pub struct _OstreeRepoFileEnumerator(c_void);
+pub struct _OstreeRepoFileEnumerator {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 pub type OstreeRepoFileEnumerator = *mut _OstreeRepoFileEnumerator;
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoFinderAvahiClass {
     pub parent_class: gobject::GObjectClass,
 }
@@ -670,8 +714,8 @@ impl ::std::fmt::Debug for OstreeRepoFinderAvahiClass {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoFinderConfigClass {
     pub parent_class: gobject::GObjectClass,
 }
@@ -684,8 +728,8 @@ impl ::std::fmt::Debug for OstreeRepoFinderConfigClass {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoFinderInterface {
     pub g_iface: gobject::GTypeInterface,
     pub resolve_async: Option<
@@ -717,8 +761,8 @@ impl ::std::fmt::Debug for OstreeRepoFinderInterface {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoFinderMountClass {
     pub parent_class: gobject::GObjectClass,
 }
@@ -731,8 +775,8 @@ impl ::std::fmt::Debug for OstreeRepoFinderMountClass {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoFinderOverrideClass {
     pub parent_class: gobject::GObjectClass,
 }
@@ -745,8 +789,8 @@ impl ::std::fmt::Debug for OstreeRepoFinderOverrideClass {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoFinderResult {
     pub remote: *mut OstreeRemote,
     pub finder: *mut OstreeRepoFinder,
@@ -788,8 +832,8 @@ impl ::std::fmt::Debug for OstreeRepoImportArchiveOptions {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoPruneOptions {
     pub flags: OstreeRepoPruneFlags,
     pub reachable: *mut glib::GHashTable,
@@ -810,8 +854,8 @@ impl ::std::fmt::Debug for OstreeRepoPruneOptions {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeRepoTransactionStats {
     pub metadata_objects_total: c_uint,
     pub metadata_objects_written: c_uint,
@@ -842,8 +886,8 @@ impl ::std::fmt::Debug for OstreeRepoTransactionStats {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeSignInterface {
     pub g_iface: gobject::GTypeInterface,
     pub get_name: Option<unsafe extern "C" fn(*mut OstreeSign) -> *const c_char>,
@@ -917,8 +961,8 @@ impl ::std::fmt::Debug for OstreeSignInterface {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeSysrootDeployTreeOpts {
     pub unused_bools: [gboolean; 8],
     pub unused_ints: [c_int; 8],
@@ -939,8 +983,8 @@ impl ::std::fmt::Debug for OstreeSysrootDeployTreeOpts {
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct OstreeSysrootWriteDeploymentsOpts {
     pub do_postclean: gboolean,
     pub unused_bools: [gboolean; 7],
@@ -961,7 +1005,10 @@ impl ::std::fmt::Debug for OstreeSysrootWriteDeploymentsOpts {
 
 // Classes
 #[repr(C)]
-pub struct OstreeAsyncProgress(c_void);
+pub struct OstreeAsyncProgress {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeAsyncProgress {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -971,7 +1018,10 @@ impl ::std::fmt::Debug for OstreeAsyncProgress {
 }
 
 #[repr(C)]
-pub struct OstreeBootconfigParser(c_void);
+pub struct OstreeBootconfigParser {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeBootconfigParser {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -981,7 +1031,10 @@ impl ::std::fmt::Debug for OstreeBootconfigParser {
 }
 
 #[repr(C)]
-pub struct OstreeContentWriter(c_void);
+pub struct OstreeContentWriter {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeContentWriter {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -991,7 +1044,10 @@ impl ::std::fmt::Debug for OstreeContentWriter {
 }
 
 #[repr(C)]
-pub struct OstreeDeployment(c_void);
+pub struct OstreeDeployment {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeDeployment {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1001,7 +1057,10 @@ impl ::std::fmt::Debug for OstreeDeployment {
 }
 
 #[repr(C)]
-pub struct OstreeGpgVerifyResult(c_void);
+pub struct OstreeGpgVerifyResult {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeGpgVerifyResult {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1011,7 +1070,10 @@ impl ::std::fmt::Debug for OstreeGpgVerifyResult {
 }
 
 #[repr(C)]
-pub struct OstreeMutableTree(c_void);
+pub struct OstreeMutableTree {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeMutableTree {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1021,7 +1083,10 @@ impl ::std::fmt::Debug for OstreeMutableTree {
 }
 
 #[repr(C)]
-pub struct OstreeRepo(c_void);
+pub struct OstreeRepo {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepo {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1030,7 +1095,10 @@ impl ::std::fmt::Debug for OstreeRepo {
 }
 
 #[repr(C)]
-pub struct OstreeRepoFile(c_void);
+pub struct OstreeRepoFile {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoFile {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1040,7 +1108,10 @@ impl ::std::fmt::Debug for OstreeRepoFile {
 }
 
 #[repr(C)]
-pub struct OstreeRepoFinderAvahi(c_void);
+pub struct OstreeRepoFinderAvahi {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoFinderAvahi {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1050,7 +1121,10 @@ impl ::std::fmt::Debug for OstreeRepoFinderAvahi {
 }
 
 #[repr(C)]
-pub struct OstreeRepoFinderConfig(c_void);
+pub struct OstreeRepoFinderConfig {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoFinderConfig {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1060,7 +1134,10 @@ impl ::std::fmt::Debug for OstreeRepoFinderConfig {
 }
 
 #[repr(C)]
-pub struct OstreeRepoFinderMount(c_void);
+pub struct OstreeRepoFinderMount {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoFinderMount {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1070,7 +1147,10 @@ impl ::std::fmt::Debug for OstreeRepoFinderMount {
 }
 
 #[repr(C)]
-pub struct OstreeRepoFinderOverride(c_void);
+pub struct OstreeRepoFinderOverride {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoFinderOverride {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1080,7 +1160,10 @@ impl ::std::fmt::Debug for OstreeRepoFinderOverride {
 }
 
 #[repr(C)]
-pub struct OstreeSePolicy(c_void);
+pub struct OstreeSePolicy {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeSePolicy {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1090,7 +1173,10 @@ impl ::std::fmt::Debug for OstreeSePolicy {
 }
 
 #[repr(C)]
-pub struct OstreeSysroot(c_void);
+pub struct OstreeSysroot {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeSysroot {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1100,7 +1186,10 @@ impl ::std::fmt::Debug for OstreeSysroot {
 }
 
 #[repr(C)]
-pub struct OstreeSysrootUpgrader(c_void);
+pub struct OstreeSysrootUpgrader {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeSysrootUpgrader {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1111,7 +1200,10 @@ impl ::std::fmt::Debug for OstreeSysrootUpgrader {
 
 // Interfaces
 #[repr(C)]
-pub struct OstreeRepoFinder(c_void);
+pub struct OstreeRepoFinder {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeRepoFinder {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1120,7 +1212,10 @@ impl ::std::fmt::Debug for OstreeRepoFinder {
 }
 
 #[repr(C)]
-pub struct OstreeSign(c_void);
+pub struct OstreeSign {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
 
 impl ::std::fmt::Debug for OstreeSign {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
