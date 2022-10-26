@@ -57,6 +57,7 @@ v2021_4 = ["v2021_3"]
 v2021_5 = ["v2021_4"]
 v2022_2 = ["v2021_5"]
 v2022_5 = ["v2022_2"]
+v2022_6 = ["v2022_5"]
 
 [lib]
 name = "ostree_sys"
@@ -211,3 +212,6 @@ version = "2022.2"
 
 [package.metadata.system-deps.ostree_1.v2022_5]
 version = "2022.5"
+
+[package.metadata.system-deps.ostree_1.v2022_6]
+version = "2022.6"

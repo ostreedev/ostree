@@ -110,7 +110,7 @@ impl Sysroot {
     }
 
     #[doc(alias = "ostree_sysroot_deployment_set_kargs_in_place")]
-    pub fn deployment_set_kargs_in_place<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, kargs_str: &str, cancellable: Option<&P>) -> Result<(), glib::Error> {
+    pub fn deployment_set_kargs_in_place<P: IsA<gio::Cancellable>>(&self, deployment: &Deployment, kargs_str: Option<&str>, cancellable: Option<&P>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
             let _ = ffi::ostree_sysroot_deployment_set_kargs_in_place(self.to_glib_none().0, deployment.to_glib_none().0, kargs_str.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);

@@ -31,6 +31,9 @@ pub struct RepoCheckoutAtOptions {
     /// Copy zero-sized files rather than hardlinking.
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
     pub force_copy_zerosized: bool,
+    /// Enable overlayfs whiteout extraction into char 0:0 devices.
+    #[cfg(any(feature = "v2022_6", feature = "dox"))]
+    pub process_passthrough_whiteouts: bool,
     /// Only check out this subpath.
     pub subpath: Option<PathBuf>,
     /// A cache from device, inode pairs to checksums.
@@ -68,6 +71,8 @@ impl Default for RepoCheckoutAtOptions {
             bareuseronly_dirs: false,
             #[cfg(feature = "v2018_9")]
             force_copy_zerosized: false,
+            #[cfg(feature = "v2022_6")]
+            process_passthrough_whiteouts: false,
             subpath: None,
             devino_to_csum_cache: None,
             #[cfg(feature = "v2018_2")]
@@ -122,6 +127,11 @@ impl<'a> ToGlibPtr<'a, *const ffi::OstreeRepoCheckoutAtOptions> for RepoCheckout
         #[cfg(feature = "v2018_9")]
         {
             options.force_copy_zerosized = self.force_copy_zerosized.into_glib();
+        }
+
+        #[cfg(feature = "v2022_6")]
+        {
+            options.process_passthrough_whiteouts = self.process_passthrough_whiteouts.into_glib();
         }
 
         // We keep these complex values alive by returning them in our Stash. Technically, some of
@@ -191,7 +201,9 @@ mod tests {
             assert_eq!((*ptr).bareuseronly_dirs, GFALSE);
             #[cfg(feature = "v2018_9")]
             assert_eq!((*ptr).force_copy_zerosized, GFALSE);
-            assert_eq!((*ptr).unused_bools, [GFALSE; 4]);
+            #[cfg(feature = "v2022_6")]
+            assert_eq!((*ptr).process_passthrough_whiteouts, GFALSE);
+            assert_eq!((*ptr).unused_bools, [GFALSE; 3]);
             assert_eq!((*ptr).subpath, ptr::null());
             assert_eq!((*ptr).devino_to_csum_cache, ptr::null_mut());
             assert_eq!((*ptr).unused_ints, [0; 6]);
@@ -221,6 +233,8 @@ mod tests {
             bareuseronly_dirs: true,
             #[cfg(feature = "v2018_9")]
             force_copy_zerosized: true,
+            #[cfg(feature = "v2022_6")]
+            process_passthrough_whiteouts: true,
             subpath: Some("sub/path".into()),
             devino_to_csum_cache: Some(RepoDevInoCache::new()),
             #[cfg(feature = "v2018_2")]
@@ -251,7 +265,9 @@ mod tests {
             assert_eq!((*ptr).bareuseronly_dirs, GTRUE);
             #[cfg(feature = "v2018_9")]
             assert_eq!((*ptr).force_copy_zerosized, GTRUE);
-            assert_eq!((*ptr).unused_bools, [GFALSE; 4]);
+            #[cfg(feature = "v2022_6")]
+            assert_eq!((*ptr).process_passthrough_whiteouts, GTRUE);
+            assert_eq!((*ptr).unused_bools, [GFALSE; 3]);
             assert_eq!(
                 CStr::from_ptr((*ptr).subpath),
                 CString::new("sub/path").unwrap().as_c_str()
