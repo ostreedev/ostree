@@ -36,7 +36,8 @@ add_ref_to_set (const char       *remote,
                 GCancellable     *cancellable,
                 GError          **error)
 {
-  g_return_val_if_fail (remote == NULL || collection_id == NULL, FALSE);
+  if (remote != NULL && collection_id != NULL)
+    return glnx_throw (error, "Cannot process both a remote and a collection ID");
 
   gsize len;
   char *contents = glnx_file_get_contents_utf8_at (base_fd, path, &len, cancellable, error);
