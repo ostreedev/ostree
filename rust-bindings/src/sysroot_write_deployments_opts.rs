@@ -2,17 +2,10 @@ use ffi::OstreeSysrootWriteDeploymentsOpts;
 use glib::translate::*;
 
 /// Options for writing a deployment.
+#[derive(Default)]
 pub struct SysrootWriteDeploymentsOpts {
     /// Perform cleanup after writing the deployment.
     pub do_postclean: bool,
-}
-
-impl Default for SysrootWriteDeploymentsOpts {
-    fn default() -> Self {
-        SysrootWriteDeploymentsOpts {
-            do_postclean: false,
-        }
-    }
 }
 
 impl<'a> ToGlibPtr<'a, *const OstreeSysrootWriteDeploymentsOpts> for SysrootWriteDeploymentsOpts {

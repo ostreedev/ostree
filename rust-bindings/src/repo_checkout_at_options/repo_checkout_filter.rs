@@ -18,6 +18,7 @@ use std::process::abort;
 ///
 /// # Return Value
 /// The return value determines whether the current file is checked out or skipped.
+#[allow(clippy::type_complexity)]
 pub struct RepoCheckoutFilter(Box<dyn Fn(&Repo, &Path, &libc::stat) -> RepoCheckoutFilterResult>);
 
 impl RepoCheckoutFilter {
