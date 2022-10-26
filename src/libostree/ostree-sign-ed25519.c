@@ -124,7 +124,7 @@ gboolean ostree_sign_ed25519_data (OstreeSign *self,
                                    GError **error)
 {
 
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
 #ifdef HAVE_LIBSODIUM
@@ -170,8 +170,10 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
                                           char      **out_success_message,
                                           GError     **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-  g_return_val_if_fail (data != NULL, FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
+
+  if (data == NULL)
+    return glnx_throw (error, "ed25519: unable to verify NULL data");
 
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
@@ -274,7 +276,7 @@ gboolean ostree_sign_ed25519_data_verify (OstreeSign *self,
 
 const gchar * ostree_sign_ed25519_get_name (OstreeSign *self)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
 
   return OSTREE_SIGN_ED25519_NAME;
 }
@@ -294,7 +296,7 @@ const gchar * ostree_sign_ed25519_metadata_format (OstreeSign *self)
 gboolean ostree_sign_ed25519_clear_keys (OstreeSign *self,
                                          GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
 
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
@@ -338,8 +340,7 @@ gboolean ostree_sign_ed25519_set_sk (OstreeSign *self,
                                      GVariant *secret_key,
                                      GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
-
+  g_assert (OSTREE_IS_SIGN (self));
 
   if (!ostree_sign_ed25519_clear_keys (self, error))
     return FALSE;
@@ -380,7 +381,7 @@ gboolean ostree_sign_ed25519_set_pk (OstreeSign *self,
                                      GVariant *public_key,
                                      GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
 
   if (!ostree_sign_ed25519_clear_keys (self, error))
     return FALSE;
@@ -396,7 +397,7 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
                                      GVariant *public_key,
                                      GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
 
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private(OSTREE_SIGN_ED25519(self));
 
@@ -444,7 +445,7 @@ _ed25519_add_revoked (OstreeSign *self,
                       GVariant *revoked_key,
                       GError **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
+  g_assert (OSTREE_IS_SIGN (self));
 
   if (!g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
     return glnx_throw (error, "Unknown ed25519 revoked key type");
@@ -480,7 +481,9 @@ _load_pk_from_stream (OstreeSign *self,
                       gboolean trusted,
                       GError **error)
 {
-  g_return_val_if_fail (key_data_in, FALSE);
+  if (key_data_in == NULL)
+    return glnx_throw (error, "ed25519: unable to read from NULL key-data input stream");
+
 #ifdef HAVE_LIBSODIUM
   gboolean ret = FALSE;
 
