@@ -3,20 +3,12 @@ use glib::translate::*;
 use libc::c_char;
 
 /// Options for deploying an ostree commit.
+#[derive(Default)]
 pub struct SysrootDeployTreeOpts<'a> {
     /// Use these kernel arguments.
     pub override_kernel_argv: Option<&'a [&'a str]>,
     /// Paths to initramfs files to overlay.
     pub overlay_initrds: Option<&'a [&'a str]>,
-}
-
-impl<'a> Default for SysrootDeployTreeOpts<'a> {
-    fn default() -> Self {
-        SysrootDeployTreeOpts {
-            override_kernel_argv: None,
-            overlay_initrds: None,
-        }
-    }
 }
 
 type OptionStrSliceStorage<'a> =
