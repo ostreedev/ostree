@@ -1,11 +1,20 @@
 [build-dependencies]
-system-deps = "3"
+system-deps = "6"
 
 [dependencies]
-glib-sys = "0.14"
-gobject-sys = "0.14"
-gio-sys = "0.14"
 libc = "0.2"
+
+[dependencies.gio]
+package = "gio-sys"
+version = "0.15"
+
+[dependencies.glib]
+package = "glib-sys"
+version = "0.15"
+
+[dependencies.gobject]
+package = "gobject-sys"
+version = "0.15"
 
 [dev-dependencies]
 shell-words = "1.0.0"

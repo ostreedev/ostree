@@ -3,9 +3,17 @@
 // DO NOT EDIT
 
 use crate::RepoFinder;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use glib::object::IsA;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use glib::object::ObjectType as ObjectType_;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use glib::translate::*;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use glib::StaticType;
 use std::fmt;
 
@@ -19,21 +27,21 @@ glib::wrapper! {
 }
 
 impl RepoFinderMount {
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_mount_new")]
-    pub fn new<P: IsA<gio::VolumeMonitor>>(monitor: Option<&P>) -> RepoFinderMount {
+    pub fn new(monitor: Option<&impl IsA<gio::VolumeMonitor>>) -> RepoFinderMount {
         unsafe {
-            from_glib_full(ffi::ostree_repo_finder_mount_new(monitor.map(|p| p.as_ref()).to_glib_none().0))
+            from_glib_full(ffi::ostree_repo_finder_mount_new(
+                monitor.map(|p| p.as_ref()).to_glib_none().0,
+            ))
         }
     }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     pub fn monitor(&self) -> Option<gio::VolumeMonitor> {
-        unsafe {
-            let mut value = glib::Value::from_type(<gio::VolumeMonitor as StaticType>::static_type());
-            glib::gobject_ffi::g_object_get_property(self.as_ptr() as *mut glib::gobject_ffi::GObject, b"monitor\0".as_ptr() as *const _, value.to_glib_none_mut().0);
-            value.get().expect("Return Value for property `monitor` getter")
-        }
+        glib::ObjectExt::property(self, "monitor")
     }
 }
 

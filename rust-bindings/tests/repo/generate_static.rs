@@ -1,5 +1,4 @@
 use crate::util::*;
-use gio::NONE_CANCELLABLE;
 use ostree::glib::prelude::*;
 use ostree::glib::Variant;
 use ostree::*;
@@ -36,7 +35,7 @@ fn should_generate_static_delta_at() {
             &to,
             None,
             Some(varopts),
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("static delta generate");
 

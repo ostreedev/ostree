@@ -94,7 +94,7 @@ impl<'a> Drop for TransactionGuard<'a> {
         if let Some(repo) = self.repo {
             // TODO: better logging in ostree?
             // See also https://github.com/ostreedev/ostree/issues/2413
-            let _ = repo.abort_transaction(gio::NONE_CANCELLABLE);
+            let _ = repo.abort_transaction(gio::Cancellable::NONE);
         }
     }
 }
@@ -109,7 +109,7 @@ impl Repo {
     /// A version of [`open_at`] which uses cap-std.
     pub fn open_at_dir(dir: &cap_std::fs::Dir, path: &str) -> Result<Repo, glib::Error> {
         use std::os::unix::io::AsRawFd;
-        crate::Repo::open_at(dir.as_raw_fd(), path, gio::NONE_CANCELLABLE)
+        crate::Repo::open_at(dir.as_raw_fd(), path, gio::Cancellable::NONE)
     }
 
     #[cfg(feature = "cap-std-apis")]
@@ -121,7 +121,7 @@ impl Repo {
         options: Option<&glib::Variant>,
     ) -> Result<Repo, glib::Error> {
         use std::os::unix::io::AsRawFd;
-        crate::Repo::create_at(dir.as_raw_fd(), path, mode, options, gio::NONE_CANCELLABLE)?;
+        crate::Repo::create_at(dir.as_raw_fd(), path, mode, options, gio::Cancellable::NONE)?;
         Repo::open_at_dir(dir, path)
     }
 

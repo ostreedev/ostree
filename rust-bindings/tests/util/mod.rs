@@ -1,4 +1,3 @@
-use gio::NONE_CANCELLABLE;
 use glib::prelude::*;
 use glib::GString;
 use std::path::Path;
@@ -17,7 +16,7 @@ impl TestRepo {
     pub fn new_with_mode(repo_mode: ostree::RepoMode) -> TestRepo {
         let dir = tempfile::tempdir().expect("temp repo dir");
         let repo = ostree::Repo::new_for_path(dir.path());
-        repo.create(repo_mode, NONE_CANCELLABLE)
+        repo.create(repo_mode, gio::Cancellable::NONE)
             .expect("OSTree repo");
         TestRepo { dir, repo }
     }
@@ -55,18 +54,18 @@ pub fn create_mtree(repo: &ostree::Repo) -> ostree::MutableTree {
     let file = gio::File::for_path(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("rust-bindings/tests/data/test.tar"),
     );
-    repo.write_archive_to_mtree(&file, &mtree, None, true, NONE_CANCELLABLE)
+    repo.write_archive_to_mtree(&file, &mtree, None, true, gio::Cancellable::NONE)
         .expect("test mtree");
     mtree
 }
 
 pub fn commit(repo: &ostree::Repo, mtree: &ostree::MutableTree, ref_: &str) -> GString {
     let txn = repo
-        .auto_transaction(NONE_CANCELLABLE)
+        .auto_transaction(gio::Cancellable::NONE)
         .expect("prepare transaction");
     let repo_file = txn
         .repo()
-        .write_mtree(mtree, NONE_CANCELLABLE)
+        .write_mtree(mtree, gio::Cancellable::NONE)
         .expect("write mtree")
         .downcast::<ostree::RepoFile>()
         .unwrap();
@@ -77,11 +76,12 @@ pub fn commit(repo: &ostree::Repo, mtree: &ostree::MutableTree, ref_: &str) -> G
             None,
             None,
             &repo_file,
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("write commit");
     repo.transaction_set_ref(None, ref_, checksum.as_str().into());
-    txn.commit(NONE_CANCELLABLE).expect("commit transaction");
+    txn.commit(gio::Cancellable::NONE)
+        .expect("commit transaction");
     checksum
 }
 

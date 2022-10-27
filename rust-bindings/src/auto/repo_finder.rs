@@ -2,10 +2,16 @@
 // from gir-files
 // DO NOT EDIT
 
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use crate::RepoFinderResult;
 use glib::object::IsA;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use glib::translate::*;
 use std::fmt;
+#[cfg(any(feature = "v2018_6", feature = "dox"))]
+#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 use std::ptr;
 
 glib::wrapper! {
@@ -17,9 +23,9 @@ glib::wrapper! {
     }
 }
 
-impl RepoFinder {}
-
-pub const NONE_REPO_FINDER: Option<&RepoFinder> = None;
+impl RepoFinder {
+    pub const NONE: Option<&'static RepoFinder> = None;
+}
 
 pub trait RepoFinderExt: 'static {}
 

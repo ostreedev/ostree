@@ -1,5 +1,4 @@
 use crate::util::TestRepo;
-use gio::NONE_CANCELLABLE;
 use ostree::{checksum_file_from_input, ObjectType};
 
 #[test]
@@ -13,7 +12,7 @@ fn list_repo_objects() {
 
     let objects = repo
         .repo
-        .list_objects(ffi::OSTREE_REPO_LIST_OBJECTS_ALL, NONE_CANCELLABLE)
+        .list_objects(ffi::OSTREE_REPO_LIST_OBJECTS_ALL, gio::Cancellable::NONE)
         .expect("List Objects");
     for (object, _items) in objects {
         match object.object_type() {
@@ -48,7 +47,7 @@ fn should_checksum_file_from_input() {
 
     let objects = repo
         .repo
-        .traverse_commit(&commit_checksum, -1, NONE_CANCELLABLE)
+        .traverse_commit(&commit_checksum, -1, gio::Cancellable::NONE)
         .expect("traverse commit");
     for obj in objects {
         if obj.object_type() != ObjectType::File {
@@ -56,14 +55,14 @@ fn should_checksum_file_from_input() {
         }
         let (stream, file_info, xattrs) = repo
             .repo
-            .load_file(obj.checksum(), NONE_CANCELLABLE)
+            .load_file(obj.checksum(), gio::Cancellable::NONE)
             .expect("load file");
         let result = checksum_file_from_input(
             &file_info,
             Some(&xattrs),
             stream.as_ref(),
             ObjectType::File,
-            NONE_CANCELLABLE,
+            gio::Cancellable::NONE,
         )
         .expect("checksum file from input");
         assert_eq!(result.to_string(), obj.checksum());

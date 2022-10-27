@@ -18,9 +18,7 @@ glib::wrapper! {
 impl RepoDevInoCache {
     #[doc(alias = "ostree_repo_devino_cache_new")]
     pub fn new() -> RepoDevInoCache {
-        unsafe {
-            from_glib_full(ffi::ostree_repo_devino_cache_new())
-        }
+        unsafe { from_glib_full(ffi::ostree_repo_devino_cache_new()) }
     }
 }
 

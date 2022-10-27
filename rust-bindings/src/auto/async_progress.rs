@@ -22,9 +22,7 @@ glib::wrapper! {
 impl AsyncProgress {
     #[doc(alias = "ostree_async_progress_new")]
     pub fn new() -> AsyncProgress {
-        unsafe {
-            from_glib_full(ffi::ostree_async_progress_new())
-        }
+        unsafe { from_glib_full(ffi::ostree_async_progress_new()) }
     }
 
     //#[doc(alias = "ostree_async_progress_new_and_connect")]
@@ -60,17 +58,13 @@ impl AsyncProgress {
     #[doc(alias = "ostree_async_progress_get_status")]
     #[doc(alias = "get_status")]
     pub fn status(&self) -> Option<glib::GString> {
-        unsafe {
-            from_glib_full(ffi::ostree_async_progress_get_status(self.to_glib_none().0))
-        }
+        unsafe { from_glib_full(ffi::ostree_async_progress_get_status(self.to_glib_none().0)) }
     }
 
     #[doc(alias = "ostree_async_progress_get_uint")]
     #[doc(alias = "get_uint")]
     pub fn uint(&self, key: &str) -> u32 {
-        unsafe {
-            ffi::ostree_async_progress_get_uint(self.to_glib_none().0, key.to_glib_none().0)
-        }
+        unsafe { ffi::ostree_async_progress_get_uint(self.to_glib_none().0, key.to_glib_none().0) }
     }
 
     #[doc(alias = "ostree_async_progress_get_uint64")]
@@ -87,7 +81,10 @@ impl AsyncProgress {
     #[doc(alias = "get_variant")]
     pub fn variant(&self, key: &str) -> Option<glib::Variant> {
         unsafe {
-            from_glib_full(ffi::ostree_async_progress_get_variant(self.to_glib_none().0, key.to_glib_none().0))
+            from_glib_full(ffi::ostree_async_progress_get_variant(
+                self.to_glib_none().0,
+                key.to_glib_none().0,
+            ))
         }
     }
 
@@ -117,7 +114,11 @@ impl AsyncProgress {
     #[doc(alias = "ostree_async_progress_set_uint64")]
     pub fn set_uint64(&self, key: &str, value: u64) {
         unsafe {
-            ffi::ostree_async_progress_set_uint64(self.to_glib_none().0, key.to_glib_none().0, value);
+            ffi::ostree_async_progress_set_uint64(
+                self.to_glib_none().0,
+                key.to_glib_none().0,
+                value,
+            );
         }
     }
 
@@ -126,20 +127,33 @@ impl AsyncProgress {
     #[doc(alias = "ostree_async_progress_set_variant")]
     pub fn set_variant(&self, key: &str, value: &glib::Variant) {
         unsafe {
-            ffi::ostree_async_progress_set_variant(self.to_glib_none().0, key.to_glib_none().0, value.to_glib_none().0);
+            ffi::ostree_async_progress_set_variant(
+                self.to_glib_none().0,
+                key.to_glib_none().0,
+                value.to_glib_none().0,
+            );
         }
     }
 
     #[doc(alias = "changed")]
     pub fn connect_changed<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
-        unsafe extern "C" fn changed_trampoline<F: Fn(&AsyncProgress) + 'static>(this: *mut ffi::OstreeAsyncProgress, f: glib::ffi::gpointer) {
+        unsafe extern "C" fn changed_trampoline<F: Fn(&AsyncProgress) + 'static>(
+            this: *mut ffi::OstreeAsyncProgress,
+            f: glib::ffi::gpointer,
+        ) {
             let f: &F = &*(f as *const F);
             f(&from_glib_borrow(this))
         }
         unsafe {
             let f: Box_<F> = Box_::new(f);
-            connect_raw(self.as_ptr() as *mut _, b"changed\0".as_ptr() as *const _,
-                Some(transmute::<_, unsafe extern "C" fn()>(changed_trampoline::<F> as *const ())), Box_::into_raw(f))
+            connect_raw(
+                self.as_ptr() as *mut _,
+                b"changed\0".as_ptr() as *const _,
+                Some(transmute::<_, unsafe extern "C" fn()>(
+                    changed_trampoline::<F> as *const (),
+                )),
+                Box_::into_raw(f),
+            )
         }
     }
 }

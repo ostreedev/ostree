@@ -2,7 +2,6 @@
 // from gir-files
 // DO NOT EDIT
 
-
 glib::wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct DiffItem(Shared<ffi::OstreeDiffItem>);
