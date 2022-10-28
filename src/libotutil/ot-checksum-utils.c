@@ -249,7 +249,7 @@ ot_gio_splice_get_checksum (GOutputStream  *out,
   guint8 digest[_OSTREE_SHA256_DIGEST_LEN];
   ot_checksum_get_digest (&checksum, digest, sizeof (digest));
   if (out_csum)
-    *out_csum = g_memdup (digest, sizeof (digest));
+    *out_csum = g_memdup2 (digest, sizeof (digest));
   return TRUE;
 }
 
