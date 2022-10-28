@@ -239,6 +239,7 @@ _ostree_fetcher_should_retry_request (const GError *error,
       g_error_matches (error, G_IO_ERROR, G_IO_ERROR_HOST_NOT_FOUND) ||
       g_error_matches (error, G_IO_ERROR, G_IO_ERROR_HOST_UNREACHABLE) ||
       g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PARTIAL_INPUT) ||
+      g_error_matches (error, G_IO_ERROR, G_IO_ERROR_BUSY) ||
 #if !GLIB_CHECK_VERSION(2, 44, 0)
       g_error_matches (error, G_IO_ERROR, G_IO_ERROR_BROKEN_PIPE) ||
 #else
@@ -269,6 +270,8 @@ _ostree_fetcher_http_status_code_to_io_error (guint status_code)
       return G_IO_ERROR_NOT_FOUND;
     case 408:  /* SOUP_STATUS_REQUEST_TIMEOUT */
       return G_IO_ERROR_TIMED_OUT;
+    case 500:  /* SOUP_STATUS_INTERNAL_SERVER_ERROR */
+      return G_IO_ERROR_BUSY;
     default:
       return G_IO_ERROR_FAILED;
     }
