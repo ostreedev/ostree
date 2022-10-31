@@ -40,6 +40,33 @@
 # define READDIR_R "readdir_r"
 #endif
 
+/*
+ * copy_dirent:
+ * @other: Another struct dirent
+ *
+ * Returns: a copy of @other. Free with g_free().
+ */
+static struct dirent *
+copy_dirent (const struct dirent *other)
+{
+  struct dirent *self;
+  size_t len;
+
+  /* We can't just use sizeof (struct dirent) for the length to copy,
+   * because filenames are allowed to be longer than NAME_MAX bytes. */
+  len = G_STRUCT_OFFSET (struct dirent, d_name) + strlen (other->d_name) + 1;
+
+  if (len < other->d_reclen)
+    len = other->d_reclen;
+
+  if (len < sizeof (struct dirent))
+    len = sizeof (struct dirent);
+
+  self = g_malloc0 (len);
+  memcpy (self, other, len);
+  return self;
+}
+
 static GHashTable *direntcache;
 static GMutex direntcache_lock;
 static gsize initialized;
@@ -114,7 +141,7 @@ readdir (DIR *dirp)
                   de = dir_entries_new ();
                   g_hash_table_insert (direntcache, dirp, de);
                 }
-              copy = g_memdup (ret, sizeof (struct dirent));
+              copy = copy_dirent (ret);
               g_ptr_array_add (de->entries, copy);
             }
           else
