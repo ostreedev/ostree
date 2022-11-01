@@ -2923,7 +2923,7 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
     return TRUE;
 
   /*
-   * Skip the SELinux policy refresh if the --rebuild-if-modules-changed
+   * Skip the SELinux policy refresh if the --refresh
    * flag is not supported by semodule.
    */
   static const gchar * const SEMODULE_HELP_ARGV[] = {
@@ -2935,14 +2935,14 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
     return FALSE;
   if (!g_spawn_check_exit_status (exit_status, error))
     return glnx_prefix_error (error, "failed to run semodule");
-  if (!strstr(stdout, "--rebuild-if-modules-changed"))
+  if (!strstr(stdout, "--refresh"))
     {
-      ot_journal_print (LOG_INFO, "semodule does not have --rebuild-if-modules-changed");
+      ot_journal_print (LOG_INFO, "semodule does not have --refresh");
       return TRUE;
     }
 
   static const gchar * const SEMODULE_REBUILD_ARGV[] = {
-    "semodule", "-N", "--rebuild-if-modules-changed"
+    "semodule", "-N", "--refresh"
   };
   static const gsize SEMODULE_REBUILD_ARGC = sizeof (SEMODULE_REBUILD_ARGV) / sizeof (*SEMODULE_REBUILD_ARGV);
 
