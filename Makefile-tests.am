@@ -255,18 +255,6 @@ else
 EXTRA_DIST += $(js_installed_tests)
 endif
 
-test_ltlibraries = libreaddir-rand.la
-libreaddir_rand_la_SOURCES = tests/readdir-rand.c
-libreaddir_rand_la_CFLAGS = $(AM_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
-libreaddir_rand_la_LIBADD = \
-	-ldl \
-	$(OT_INTERNAL_GIO_UNIX_LIBS) \
-	$(NULL)
-libreaddir_rand_la_LDFLAGS = $(AM_LDFLAGS) -avoid-version
-if !ENABLE_INSTALLED_TESTS
-libreaddir_rand_la_LDFLAGS += -rpath $(abs_builddir)
-endif
-
 _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-checksum tests/test-lzma tests/test-rollsum \
@@ -415,11 +403,7 @@ EXTRA_DIST += \
 	tests/libtest.sh \
 	$(NULL)
 
-tests/libreaddir-rand.so: Makefile
-	mkdir -p tests/
-	$(AM_V_GEN) ln -fns ../.libs/libreaddir-rand.so tests/
-ALL_LOCAL_RULES += tests/libreaddir-rand.so
-CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp \
+CLEANFILES += tests/ostree-symlink-stamp \
 		tests/ostree-prepare-root-symlink-stamp tests/ostree-remount-symlink-stamp \
 		tests/rofiles-fuse-symlink-stamp tests/ostree
 CLEANFILES += tests/ostree-prepare-root tests/ostree-remount tests/rofiles-fuse

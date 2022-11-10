@@ -30,11 +30,11 @@ mkdir testrepo-files
 cd testrepo-files
 echo first > firstfile
 cd ..
-${CMD_PREFIX} SOURCE_DATE_EPOCH='1234567890' ostree --repo=./testrepo commit -b env -s "env timestamp"
-if (${CMD_PREFIX} SOURCE_DATE_EPOCH='invalid' ostree --repo=./testrepo commit -b env -s "invalid timestamp") 2> commit-invalid.txt; then
+${CMD_PREFIX} env SOURCE_DATE_EPOCH='1234567890' ostree --repo=./testrepo commit -b env -s "env timestamp"
+if (${CMD_PREFIX} env SOURCE_DATE_EPOCH='invalid' ostree --repo=./testrepo commit -b env -s "invalid timestamp") 2> commit-invalid.txt; then
     assert_not_reached "commit with invalid timestamp succeeded"
 fi
-if (${CMD_PREFIX} SOURCE_DATE_EPOCH='12345678901234567890' ostree --repo=./testrepo commit -b env -s "overflowing timestamp") 2> commit-overflowing.txt; then
+if (${CMD_PREFIX} env SOURCE_DATE_EPOCH='12345678901234567890' ostree --repo=./testrepo commit -b env -s "overflowing timestamp") 2> commit-overflowing.txt; then
     assert_not_reached "commit with overflowing timestamp succeeded"
 fi
 ${CMD_PREFIX} ostree --repo=./testrepo show env > show-env.txt
