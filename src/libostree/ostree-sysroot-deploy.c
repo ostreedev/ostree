@@ -2987,12 +2987,12 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
       if (!merge_configuration_from (self, merge_deployment, deployment, deployment_dfd,
                                      cancellable, error))
         return FALSE;
-    }
 
 #ifdef HAVE_SELINUX
-  if (!sysroot_finalize_selinux_policy(deployment_dfd, error))
-    return FALSE;
+      if (!sysroot_finalize_selinux_policy (deployment_dfd, error))
+        return FALSE;
 #endif /* HAVE_SELINUX */
+    }
 
   const char *osdeploypath = glnx_strjoina ("ostree/deploy/", ostree_deployment_get_osname (deployment));
   glnx_autofd int os_deploy_dfd = -1;
