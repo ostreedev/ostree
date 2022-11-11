@@ -41,8 +41,8 @@ stage("Build") {
 }
 
 // Build FCOS and run kola tests.
-// Both kola and kolaTestIso require 4G max. Add 1G for overhead.
-cosaPod(runAsUser: 0, memory: "5Gi", cpu: "4") {
+// There's some parallelization in testiso up to 8G, add 1G for overhead
+cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
   stage("Build FCOS") {
     checkout scm
     unstash 'build'
