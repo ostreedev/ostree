@@ -38,8 +38,8 @@ members = [".", "rust-bindings/sys"]
 
 [dependencies]
 bitflags = "1.2.1"
-cap-std = { version = "0.25", optional = true}
-io-lifetimes = { version = "0.7", optional = true}
+cap-std = { version = "1.0", optional = true}
+io-lifetimes = { version = "1.0", optional = true}
 ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.11.0" }
 gio = "0.15"
 glib = "0.15"
@@ -53,7 +53,7 @@ thiserror = "1.0.20"
 maplit = "1.0.2"
 openat = "0.1.19"
 tempfile = "3"
-cap-tempfile = "0.25"
+cap-tempfile = "1.0"
 
 [features]
 cap-std-apis = ["cap-std", "io-lifetimes", "v2017_10"]
