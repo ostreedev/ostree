@@ -51,7 +51,6 @@ thiserror = "1.0.20"
 
 [dev-dependencies]
 maplit = "1.0.2"
-openat = "0.1.19"
 tempfile = "3"
 cap-tempfile = "1.0"
 

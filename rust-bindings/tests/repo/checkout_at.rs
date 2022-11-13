@@ -1,4 +1,6 @@
 use crate::util::*;
+use cap_std::fs::Dir;
+use cap_tempfile::cap_std;
 use ostree::*;
 use std::os::unix::io::AsRawFd;
 
@@ -8,12 +10,12 @@ fn should_checkout_at_with_none_options() {
     let checksum = test_repo.test_commit("test");
     let checkout_dir = tempfile::tempdir().expect("checkout dir");
 
-    let dirfd = openat::Dir::open(checkout_dir.path()).expect("openat");
+    let dir = Dir::open_ambient_dir(checkout_dir.path(), cap_std::ambient_authority()).unwrap();
     test_repo
         .repo
         .checkout_at(
             None,
-            dirfd.as_raw_fd(),
+            dir.as_raw_fd(),
             "test-checkout",
             &checksum,
             gio::Cancellable::NONE,
@@ -29,12 +31,12 @@ fn should_checkout_at_with_default_options() {
     let checksum = test_repo.test_commit("test");
     let checkout_dir = tempfile::tempdir().expect("checkout dir");
 
-    let dirfd = openat::Dir::open(checkout_dir.path()).expect("openat");
+    let dir = Dir::open_ambient_dir(checkout_dir.path(), cap_std::ambient_authority()).unwrap();
     test_repo
         .repo
         .checkout_at(
             Some(&RepoCheckoutAtOptions::default()),
-            dirfd.as_raw_fd(),
+            dir.as_raw_fd(),
             "test-checkout",
             &checksum,
             gio::Cancellable::NONE,
@@ -50,7 +52,7 @@ fn should_checkout_at_with_options() {
     let checksum = test_repo.test_commit("test");
     let checkout_dir = tempfile::tempdir().expect("checkout dir");
 
-    let dirfd = openat::Dir::open(checkout_dir.path()).expect("openat");
+    let dir = Dir::open_ambient_dir(checkout_dir.path(), cap_std::ambient_authority()).unwrap();
     test_repo
         .repo
         .checkout_at(
@@ -61,7 +63,7 @@ fn should_checkout_at_with_options() {
                 devino_to_csum_cache: Some(RepoDevInoCache::new()),
                 ..Default::default()
             }),
-            dirfd.as_raw_fd(),
+            dir.as_raw_fd(),
             "test-checkout",
             &checksum,
             gio::Cancellable::NONE,
@@ -80,7 +82,7 @@ fn should_checkout_at_with_filter() {
     let checksum = test_repo.test_commit("test");
     let checkout_dir = tempfile::tempdir().expect("checkout dir");
 
-    let dirfd = openat::Dir::open(checkout_dir.path()).expect("openat");
+    let dir = Dir::open_ambient_dir(checkout_dir.path(), cap_std::ambient_authority()).unwrap();
     test_repo
         .repo
         .checkout_at(
@@ -94,7 +96,7 @@ fn should_checkout_at_with_filter() {
                 }),
                 ..Default::default()
             }),
-            dirfd.as_raw_fd(),
+            dir.as_raw_fd(),
             "test-checkout",
             &checksum,
             gio::Cancellable::NONE,
