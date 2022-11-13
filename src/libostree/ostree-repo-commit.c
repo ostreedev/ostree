@@ -4858,7 +4858,7 @@ _ostree_repo_import_object (OstreeRepo           *self,
 static OstreeRepoTransactionStats *
 ostree_repo_transaction_stats_copy (OstreeRepoTransactionStats *stats)
 {
-  return g_memdup (stats, sizeof (OstreeRepoTransactionStats));
+  return g_memdup2 (stats, sizeof (OstreeRepoTransactionStats));
 }
 
 static void

@@ -430,7 +430,7 @@ gboolean ostree_sign_ed25519_add_pk (OstreeSign *self,
 
   if (g_list_find_custom (sign->public_keys, key, _compare_ed25519_keys) == NULL)
     {
-      gpointer newkey = g_memdup (key, n_elements);
+      gpointer newkey = g_memdup2 (key, n_elements);
       sign->public_keys = g_list_prepend (sign->public_keys, newkey);
     }
 
@@ -466,7 +466,7 @@ _ed25519_add_revoked (OstreeSign *self,
 
   if (g_list_find_custom (sign->revoked_keys, key, _compare_ed25519_keys) == NULL)
     {
-      gpointer newkey = g_memdup (key, n_elements);
+      gpointer newkey = g_memdup2 (key, n_elements);
       sign->revoked_keys = g_list_prepend (sign->revoked_keys, newkey);
     }
 
